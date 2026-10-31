@@ -69,4 +69,5 @@
     <string name="fa_magnifying_glass" translatable="false">&#xf002;</string>
     <string name="fa_bars" translatable="false">&#xf0c9;</string>
     <string name="fa_gamepad" translatable="false">&#xf11b;</string>
+    <string name="fa_mobile_screen" translatable="false">&#xf3cd;</string>
 </resources>
