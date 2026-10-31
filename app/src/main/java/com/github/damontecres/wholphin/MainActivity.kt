@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.github.damontecres.wholphin
 
 import android.content.Context
@@ -269,7 +271,16 @@ class MainActivity : AppCompatActivity() {
                                 LaunchedEffect(appPreferences.debugLogging) {
                                     DebugLogTree.INSTANCE.enabled = appPreferences.debugLogging
                                 }
-                                CompositionLocalProvider(LocalImageUrlService provides imageUrlService) {
+                                val baseBringIntoView = androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
+                                val snappyBringIntoView =
+                                    remember(baseBringIntoView) {
+                                        com.github.damontecres.wholphin.ui.util
+                                            .SnappyBringIntoViewSpec(baseBringIntoView)
+                                    }
+                                CompositionLocalProvider(
+                                    LocalImageUrlService provides imageUrlService,
+                                    androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides snappyBringIntoView,
+                                ) {
                                     WholphinTheme(
                                         true,
                                         appThemeColors = appPreferences.interfacePreferences.appThemeColors,

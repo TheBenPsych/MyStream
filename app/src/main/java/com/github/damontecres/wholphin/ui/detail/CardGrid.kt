@@ -405,12 +405,26 @@ fun <T : CardGridItem> CardGrid(
                             )
                         }
                     }
-                    if (showFooter) {
-                        // Footer
+                    // Benflix: the "12 / 303" counter only shows briefly while moving through the grid
+                    var footerVisible by remember { mutableStateOf(false) }
+                    var footerMoves by remember { mutableIntStateOf(0) }
+                    LaunchedEffect(focusedIndex) {
+                        footerMoves++
+                        if (footerMoves > 2 && focusedIndex >= 0) {
+                            footerVisible = true
+                            kotlinx.coroutines.delay(1500)
+                        }
+                        footerVisible = false
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showFooter && footerVisible,
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(),
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    ) {
                         Box(
                             modifier =
                                 Modifier
-                                    .align(Alignment.BottomCenter)
                                     .background(AppColors.TransparentBlack50),
                         ) {
                             val index = (focusedIndex + 1).takeIf { it > 0 } ?: "?"
@@ -633,5 +647,9 @@ fun phoneGridColumns(wanted: Int): Int {
         return wanted
     }
     val width = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-    return (width / 130).coerceIn(2, wanted.coerceAtLeast(2))
+    val max = wanted.coerceAtLeast(2)
+    // Wide-tile grids (studios, genres, episodes) ask for 4 or fewer columns: keep them big
+    if (max <= 4) return (width / 130).coerceIn(2, max)
+    // Poster grids: Ben's pick is 4 posters per row on a normal phone, more on big screens
+    return (width / 95).coerceIn(4, max)
 }
