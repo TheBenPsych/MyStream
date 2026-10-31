@@ -41,9 +41,12 @@ import com.github.damontecres.wholphin.ui.combinePair
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
+import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -67,6 +70,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
+import org.jellyfin.sdk.api.client.extensions.studiosApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -235,6 +239,7 @@ class HomeViewModel
                 viewModelScope.launchIO { loadThemed(userDto) }
                 viewModelScope.launchIO { loadBecause(userDto) }
                 viewModelScope.launchIO { loadCollections(userDto) }
+                viewModelScope.launchIO { loadStudios(userDto) }
                 viewModelScope.launchIO { loadCelebration(userDto) }
 
                 val semaphore = Semaphore(4)
@@ -610,6 +615,70 @@ class HomeViewModel
         }
 
         /**
+         * Studio tiles under the banner: the studios & networks with the most movies & shows on the server
+         */
+        private suspend fun loadStudios(userDto: ServerUserConfig) {
+            try {
+                val types = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
+                val studios =
+                    api.studiosApi
+                        .getStudios(userId = userDto.id, includeItemTypes = types)
+                        .content.items
+                val tiles =
+                    StudioBrands
+                        .mapNotNull { brand ->
+                            val ids =
+                                studios
+                                    .filter { studio ->
+                                        val name = studio.name?.lowercase() ?: return@filter false
+                                        brand.matches.any { name.contains(it) }
+                                    }.map { it.id }
+                            if (ids.isEmpty()) return@mapNotNull null
+                            val count =
+                                api.itemsApi
+                                    .getItems(
+                                        GetItemsRequest(
+                                            userId = userDto.id,
+                                            studioIds = ids,
+                                            includeItemTypes = types,
+                                            recursive = true,
+                                            limit = 0,
+                                            enableTotalRecordCount = true,
+                                        ),
+                                    ).content.totalRecordCount
+                            StudioTile(brand, ids, count)
+                        }.filter { it.count >= STUDIO_MIN_ITEMS }
+                        .sortedByDescending { it.count }
+                        .take(STUDIO_MAX_TILES)
+                _state.update { it.copy(studios = tiles) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading studio tiles")
+            }
+        }
+
+        fun openStudio(tile: StudioTile) {
+            val userId = serverRepository.currentUser?.id ?: return
+            navigationManager.navigateTo(
+                Destination.ItemGrid(
+                    title = StringStringProvider(tile.brand.name),
+                    request =
+                        GetItemsRequest(
+                            userId = userId,
+                            studioIds = tile.studioIds,
+                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                            recursive = true,
+                            sortBy = listOf(ItemSortBy.PREMIERE_DATE),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            fields = HomeItemFields,
+                        ),
+                    requestHandler = GetItemsRequestHandler,
+                ),
+            )
+        }
+
+        /**
          * "Because you watched X": titles similar to the last movie or show watched
          */
         private suspend fun loadBecause(userDto: ServerUserConfig) {
@@ -929,6 +998,7 @@ data class HomeState(
     val mood: HomeMood? = null,
     val moodRow: ThemedRow? = null,
     val celebration: Celebration? = null,
+    val studios: List<StudioTile> = emptyList(),
 ) {
     companion object {
         val EMPTY =
@@ -958,6 +1028,8 @@ private const val COLLECTIONS_FETCH = 100
 private const val COLLECTIONS_MAX = 20
 private const val COLLECTIONS_MIN = 3
 private const val MOOD_FETCH = 80
+private const val STUDIO_MIN_ITEMS = 3
+private const val STUDIO_MAX_TILES = 20
 private const val MOOD_MAX = 20
 private const val TRAILER_DELAY_MS = 3_000L
 
