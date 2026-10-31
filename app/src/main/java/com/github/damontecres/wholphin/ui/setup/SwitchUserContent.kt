@@ -40,6 +40,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.CircularProgress
@@ -87,7 +88,11 @@ fun SwitchUserContent(
         showAddUser = false
     }
 
-    fun trySwitchUser(user: JellyfinUser) {
+    fun trySwitchUser(
+        user: JellyfinUser,
+        kids: Boolean = false,
+    ) {
+        KidsMode.set(kids)
         val result = viewModel.trySwitchUser(user)
         scope.launch {
             when (val r = result.await()) {
@@ -176,6 +181,13 @@ fun SwitchUserContent(
                         onAddUser = {
                             showAddUserDialog(null)
                         },
+                        // Built-in Kids profile, using a saved grown-up sign-in on this TV
+                        kidsUser =
+                            state.users
+                                .map { it.user }
+                                .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
+                                ?.firstOrNull { it.accessToken != null && !it.requireLogin },
+                        onKids = { user -> trySwitchUser(user, kids = true) },
                         onRemoveUser = { user ->
                             viewModel.removeUser(user)
                         },

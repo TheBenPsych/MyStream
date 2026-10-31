@@ -22,6 +22,7 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
 import com.github.damontecres.wholphin.services.HomePageResolvedSettings
 import com.github.damontecres.wholphin.services.HomeSettingsService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LatestNextUpService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
@@ -497,7 +498,7 @@ class HomeViewModel
                         emptyList()
                     }
                 val missing =
-                    if (userDto.policy?.isAdministrator == true) {
+                    if (userDto.policy?.isAdministrator == true && !KidsMode.isActive) {
                         discovered
                             .filter {
                                 it.jellyfinItemId == null &&
