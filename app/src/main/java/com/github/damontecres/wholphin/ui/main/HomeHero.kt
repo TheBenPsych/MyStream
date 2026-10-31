@@ -53,6 +53,9 @@ import kotlin.time.Duration
 enum class FeaturedReason {
     NEW,
     PICK,
+    RESUME,
+    FAVORITE,
+    BECAUSE,
 }
 
 /**
@@ -61,12 +64,40 @@ enum class FeaturedReason {
 data class FeaturedItem(
     val item: BaseItem,
     val reason: FeaturedReason,
+    val becauseOf: String? = null,
 )
+
+/**
+ * The small colored line above the banner title saying why it is shown, such as "Because you watched ..."
+ */
+@Composable
+fun FeaturedReasonLabel(
+    featured: FeaturedItem,
+    modifier: Modifier = Modifier,
+) {
+    val text =
+        when (featured.reason) {
+            FeaturedReason.NEW -> stringResource(R.string.featured_new)
+            FeaturedReason.PICK -> stringResource(R.string.featured_pick)
+            FeaturedReason.RESUME -> stringResource(R.string.featured_resume)
+            FeaturedReason.FAVORITE -> stringResource(R.string.featured_favorite)
+            FeaturedReason.BECAUSE -> stringResource(R.string.featured_because, featured.becauseOf.orEmpty())
+        }
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 2.sp,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        modifier = modifier,
+    )
+}
 
 /**
  * The buttons & page indicator for the rotating home page banner.
  *
- * The banner's title, details, and description are drawn by the page header above this.
+ * The banner's reason label, title, details, and description are drawn by the page header above this.
  */
 @Composable
 fun HomeHero(
@@ -88,17 +119,6 @@ fun HomeHero(
                 .padding(start = 8.dp, bottom = 16.dp)
                 .onFocusChanged { onFocusChanged(it.hasFocus) },
     ) {
-        Text(
-            text =
-                stringResource(
-                    when (current.reason) {
-                        FeaturedReason.NEW -> R.string.featured_new
-                        FeaturedReason.PICK -> R.string.featured_pick
-                    },
-                ).uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,

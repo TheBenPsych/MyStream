@@ -6,7 +6,7 @@
     <string name="active_recordings">Active Recordings</string>
     <string name="add_favorite">Favorite</string>
     <string name="add_server">Add Server</string>
-    <string name="add_user">Add User</string>
+    <string name="add_user">Add profile</string>
     <string name="audio">Audio</string>
     <string name="birthplace">Birthplace</string>
     <string name="bitrate">Bitrate</string>
@@ -989,6 +989,9 @@
     <string name="surprise_me">Surprise me</string>
     <string name="featured_new">New on your server</string>
     <string name="featured_pick">Picked for you</string>
+    <string name="featured_resume">Pick up where you left off</string>
+    <string name="featured_favorite">From My List</string>
+    <string name="featured_because">Because you watched %1$s</string>
     <string name="top_10_trending">Top 10 trending this week</string>
     <string name="trending_not_on_server">Trending, not on your server</string>
     <string name="new_episode">NEW EPISODE</string>

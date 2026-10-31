@@ -464,6 +464,13 @@ fun HomePageContent(
                     modifier = HeaderUtils.modifier,
                 )
             } else {
+                val currentFeatured = if (heroFocused) featured.getOrNull(heroIndex) else null
+                if (currentFeatured != null) {
+                    FeaturedReasonLabel(
+                        featured = currentFeatured,
+                        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+                    )
+                }
                 headerComposable.invoke(focusedItem)
             }
 
