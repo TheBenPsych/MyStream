@@ -22,6 +22,7 @@ import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.setup.UpdatePrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -112,5 +113,7 @@ fun ApplicationContent(
                 }
             },
         )
+        // "A new version of Benflix is ready" pop-up, once a grown-up profile is picked
+        UpdatePrompt()
     }
 }

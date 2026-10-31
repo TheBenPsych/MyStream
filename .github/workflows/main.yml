@@ -74,6 +74,13 @@ jobs:
           echo "Newest Benflix build (version 1.0.${{ github.run_number }}) from \`main\` (commit ${GITHUB_SHA::7}).
 
           Install **MyStream-universal.apk** on your TV if you are not sure which one to pick." > notes.txt
+          # The app's "Update available" pop-up lists the newest changes (the titles of the last merged pull requests)
+          for sha in $(git log --merges -n 8 --format=%H); do
+            title=$(git log -1 --format=%b "$sha" | sed '/^$/d' | head -1 | sed 's/-->//g')
+            if [ -n "$title" ]; then
+              echo "<!-- app-note:$title -->" >> notes.txt
+            fi
+          done
           gh release create latest-build \
             --prerelease --latest=false \
             --title "v1.0.${{ github.run_number }}" \
