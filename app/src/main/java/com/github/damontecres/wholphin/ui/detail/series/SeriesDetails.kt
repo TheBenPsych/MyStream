@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +80,7 @@ import com.github.damontecres.wholphin.ui.components.TrailerButton
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.detail.DetailsTrailer
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
@@ -364,15 +367,19 @@ fun SeriesDetailsContent(
     val playFocusRequester = remember { FocusRequester() }
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
+    val listState = rememberLazyListState()
+    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     Box(
         modifier = modifier,
     ) {
+        DetailsTrailer(item = series, active = atTop)
         Column(
             modifier =
                 Modifier
                     .fillMaxSize(),
         ) {
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier,
@@ -565,6 +572,50 @@ fun SeriesDetailsContent(
                         },
                     )
                 }
+                // Netflix order: More like this right after the seasons
+                if (similar.isNotEmpty()) {
+                    item {
+                        ItemRow(
+                            title = stringResource(R.string.more_like_this),
+                            items = similar,
+                            onClickItem = { index, item ->
+                                position = SIMILAR_ROW
+                                onClickItem.invoke(index, item)
+                            },
+                            onLongClickItem = { index, item ->
+                                position = SIMILAR_ROW
+                                onShowContextMenu.invoke(
+                                    ContextMenu.ForBaseItem(
+                                        fromLongClick = true,
+                                        item = item,
+                                        chosenStreams = null,
+                                        showGoTo = true,
+                                        showStreamChoices = false,
+                                        canDelete = false,
+                                        canRemoveContinueWatching = false,
+                                        canRemoveNextUp = false,
+                                        actions = actions,
+                                    ),
+                                )
+                            },
+                            cardContent = { index, item, mod, onClick, onLongClick ->
+                                SeasonCard(
+                                    item = item,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    modifier = mod,
+                                    showImageOverlay = true,
+                                    imageHeight = Cards.height2x3,
+                                    imageWidth = Dp.Unspecified,
+                                )
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequesters[SIMILAR_ROW]),
+                        )
+                    }
+                }
                 if (people.isNotEmpty()) {
                     item {
                         PersonRow(
@@ -607,49 +658,6 @@ fun SeriesDetailsContent(
                                 Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequesters[EXTRAS_ROW]),
-                        )
-                    }
-                }
-                if (similar.isNotEmpty()) {
-                    item {
-                        ItemRow(
-                            title = stringResource(R.string.more_like_this),
-                            items = similar,
-                            onClickItem = { index, item ->
-                                position = SIMILAR_ROW
-                                onClickItem.invoke(index, item)
-                            },
-                            onLongClickItem = { index, item ->
-                                position = SIMILAR_ROW
-                                onShowContextMenu.invoke(
-                                    ContextMenu.ForBaseItem(
-                                        fromLongClick = true,
-                                        item = item,
-                                        chosenStreams = null,
-                                        showGoTo = true,
-                                        showStreamChoices = false,
-                                        canDelete = false,
-                                        canRemoveContinueWatching = false,
-                                        canRemoveNextUp = false,
-                                        actions = actions,
-                                    ),
-                                )
-                            },
-                            cardContent = { index, item, mod, onClick, onLongClick ->
-                                SeasonCard(
-                                    item = item,
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = mod,
-                                    showImageOverlay = true,
-                                    imageHeight = Cards.height2x3,
-                                    imageWidth = Dp.Unspecified,
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequesters[SIMILAR_ROW]),
                         )
                     }
                 }
