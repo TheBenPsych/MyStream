@@ -208,5 +208,10 @@ object DeviceModule {
     @Singleton
     fun deviceInfo(
         @ApplicationContext context: Context,
-    ): DeviceInfo = androidDevice(context)
+    ): DeviceInfo =
+        androidDevice(context).let {
+            // Jellyfin signs out every other login that shares a user and device id. Give Benflix its own id so
+            // signing in to Wholphin or Jellyfin on the same TV never signs Benflix out (and the other way round).
+            it.copy(id = "benflix-${it.id}")
+        }
 }
