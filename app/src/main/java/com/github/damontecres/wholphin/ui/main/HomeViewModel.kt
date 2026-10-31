@@ -61,6 +61,7 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -196,6 +197,7 @@ class HomeViewModel
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
+                viewModelScope.launchIO { loadThemed(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -405,6 +407,37 @@ class HomeViewModel
             }
         }
 
+        /**
+         * Load the seasonal themed row, such as horror in October
+         */
+        private suspend fun loadThemed(userDto: ServerUserConfig) {
+            try {
+                val theme = HomeTheme.forDate(LocalDate.now())
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                genres = theme.genres,
+                                searchTerm = theme.searchTerm,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = THEMED_MAX,
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(themed = if (items.isNotEmpty()) ThemedRow(context.getString(theme.title, theme.titleArg), items) else null)
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading themed row")
+            }
+        }
+
         fun updateBackdrop(item: DiscoverItem) {
             viewModelScope.launchIO {
                 backdropService.submit(item)
@@ -543,6 +576,7 @@ data class HomeState(
     val featured: List<FeaturedItem> = emptyList(),
     val trending: List<BaseItem> = emptyList(),
     val trendingMissing: List<DiscoverItem> = emptyList(),
+    val themed: ThemedRow? = null,
 ) {
     companion object {
         val EMPTY =
@@ -560,6 +594,7 @@ private const val FEATURED_PICKS = 4
 private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
+private const val THEMED_MAX = 20
 
 /**
  * Whether a row is a "is watching" type
