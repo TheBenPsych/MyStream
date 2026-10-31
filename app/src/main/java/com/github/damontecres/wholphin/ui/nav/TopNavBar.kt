@@ -8,15 +8,16 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -67,6 +68,7 @@ data class TopNavTab(
  * A streaming-service style navigation bar across the top of the screen: brand name, page tabs, search,
  * settings, the clock, and the current profile
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TopNavBar(
     tabs: List<TopNavTab>,
@@ -81,42 +83,86 @@ fun TopNavBar(
     modifier: Modifier = Modifier,
 ) {
     val selectedIndex = tabs.indexOfFirst { it.selected }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val kids by KidsMode.active.collectAsState()
+    // Two lines: the logo and buttons on top, then every tab on its own full-width line so none are hidden
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(TopNavBarHeight)
-                .padding(horizontal = 40.dp)
+                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 4.dp)
                 .focusGroup()
                 .focusProperties {
                     // Entering the bar from the page lands on the current tab
                     onEnter = { focusRequester.tryRequestFocus() }
                 },
     ) {
-        val kidsBar by KidsMode.active.collectAsState()
-        BenflixLogo(modifier = Modifier.padding(end = if (kidsBar) 8.dp else 16.dp))
-        if (kidsBar) {
-            Text(
-                text = stringResource(R.string.kids_profile).uppercase(),
-                color = Color.Black,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                modifier =
-                    Modifier
-                        .padding(end = 16.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-            )
-        }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth().height(TopNavBarHeight),
         ) {
-            itemsIndexed(tabs) { index, tab ->
+            BenflixLogo(modifier = Modifier.padding(end = 8.dp))
+            if (kids) {
+                Text(
+                    text = stringResource(R.string.kids_profile).uppercase(),
+                    color = Color.Black,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier =
+                        Modifier
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            TopNavIconButton(
+                icon = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search),
+                selected = searchSelected,
+                onClick = onClickSearch,
+            )
+            if (!kids) {
+                TopNavIconButton(
+                    icon = Icons.Default.Settings,
+                    contentDescription = stringResource(R.string.settings),
+                    selected = false,
+                    onClick = onClickSettings,
+                )
+            }
+            if (showClock) {
+                val timeString by LocalClock.current.timeString
+                Text(
+                    text = timeString,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+            IconButton(
+                onClick = onClickProfile,
+                colors =
+                    IconButtonDefaults.colors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = Color.White,
+                    ),
+                modifier = Modifier.size(40.dp),
+            ) {
+                UserIconCardImage(
+                    id = user.id,
+                    name = if (kids) "Kids" else user.name,
+                    imageUrl = if (kids) null else userImageUrl,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+        }
+        // If there are ever more tabs than fit on one line, they wrap onto another line instead of hiding
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.fillMaxWidth().offset(x = (-14).dp),
+        ) {
+            tabs.forEachIndexed { index, tab ->
                 TopNavTabButton(
                     tab = tab,
                     modifier =
@@ -126,46 +172,6 @@ fun TopNavBar(
                         ),
                 )
             }
-        }
-        TopNavIconButton(
-            icon = Icons.Default.Search,
-            contentDescription = stringResource(R.string.search),
-            selected = searchSelected,
-            onClick = onClickSearch,
-        )
-        val kids by KidsMode.active.collectAsState()
-        if (!kids) {
-            TopNavIconButton(
-                icon = Icons.Default.Settings,
-                contentDescription = stringResource(R.string.settings),
-                selected = false,
-                onClick = onClickSettings,
-            )
-        }
-        if (showClock) {
-            val timeString by LocalClock.current.timeString
-            Text(
-                text = timeString,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-        }
-        IconButton(
-            onClick = onClickProfile,
-            colors =
-                IconButtonDefaults.colors(
-                    containerColor = Color.Transparent,
-                    focusedContainerColor = Color.White,
-                ),
-            modifier = Modifier.size(40.dp),
-        ) {
-            UserIconCardImage(
-                id = user.id,
-                name = if (kids) "Kids" else user.name,
-                imageUrl = if (kids) null else userImageUrl,
-                modifier = Modifier.size(32.dp),
-            )
         }
     }
 }
@@ -238,7 +244,8 @@ fun topNavTitle(item: NavDrawerItem): String =
         item.name(LocalContext.current)
     }
 
-val TopNavBarHeight = 64.dp
+/** Height of the top line of the bar (logo and buttons) */
+val TopNavBarHeight = 44.dp
 
 /** The Benflix logo, with a small emoji and a short line underneath on holidays and birthdays */
 @Composable
