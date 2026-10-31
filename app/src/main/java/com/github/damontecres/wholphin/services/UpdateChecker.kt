@@ -47,6 +47,21 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
+ * Where Benflix checks for new builds
+ */
+const val BENFLIX_UPDATE_URL = "https://api.github.com/repos/TheBenPsych/MyStream/releases/tags/latest-build"
+
+/**
+ * Installs set up before Benflix still have Wholphin's update address saved, so send those to Benflix's builds
+ */
+fun benflixUpdateUrl(updateUrl: String): String =
+    if (updateUrl.isBlank() || updateUrl.contains("damontecres/Wholphin", ignoreCase = true)) {
+        BENFLIX_UPDATE_URL
+    } else {
+        updateUrl
+    }
+
+/**
  * Checks if an app update is available
  */
 @Singleton
@@ -57,7 +72,7 @@ class UpdateChecker
         @param:StandardOkHttpClient private val okHttpClient: OkHttpClient,
     ) {
         companion object {
-            const val ASSET_NAME = "Wholphin"
+            const val ASSET_NAME = "Benflix"
             const val APK_NAME = "$ASSET_NAME.apk"
 
             private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
@@ -149,7 +164,7 @@ class UpdateChecker
                 val request =
                     Request
                         .Builder()
-                        .url(updateUrl)
+                        .url(benflixUpdateUrl(updateUrl))
                         .get()
                         .build()
                 getRelease(request)
