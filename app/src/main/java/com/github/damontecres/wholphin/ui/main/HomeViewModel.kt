@@ -517,25 +517,33 @@ class HomeViewModel
          */
         private suspend fun loadThemed(userDto: ServerUserConfig) {
             try {
-                val theme = HomeTheme.forDate(LocalDate.now())
-                val items =
-                    api.itemsApi
-                        .getItems(
-                            GetItemsRequest(
-                                userId = userDto.id,
-                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                recursive = true,
-                                genres = theme.genres,
-                                searchTerm = theme.searchTerm,
-                                sortBy = listOf(ItemSortBy.RANDOM),
-                                limit = THEMED_MAX,
-                                fields = HomeItemFields,
-                            ),
-                        ).content.items
-                        .map { BaseItem(it) }
-                _state.update {
-                    it.copy(themed = if (items.isNotEmpty()) ThemedRow(context.getString(theme.title, theme.titleArg), items) else null)
+                val today = LocalDate.now()
+                // If the seasonal theme has nothing on the server, fall back to the genre of the week
+                val themes = listOf(HomeTheme.forDate(today), HomeTheme.weekly(today)).distinct()
+                for (theme in themes) {
+                    val items =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userDto.id,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    recursive = true,
+                                    genres = theme.genres,
+                                    searchTerm = theme.searchTerm,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = THEMED_MAX,
+                                    fields = HomeItemFields,
+                                ),
+                            ).content.items
+                            .map { BaseItem(it) }
+                    Timber.d("Themed row %s found %s items", theme, items.size)
+                    if (items.isNotEmpty()) {
+                        val title = context.getString(theme.title, theme.titleArg)
+                        _state.update { it.copy(themed = ThemedRow(title, items)) }
+                        return
+                    }
                 }
+                _state.update { it.copy(themed = null) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {

@@ -306,7 +306,7 @@ private const val HERO_ROTATE_MS = 8_000L
 // Which home rows the trending rows are shown after
 private const val TOP_10_AFTER_ROW = 0
 private const val MISSING_AFTER_ROW = 1
-private const val THEMED_AFTER_ROW = 2
+private const val THEMED_AFTER_ROW = 0
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =

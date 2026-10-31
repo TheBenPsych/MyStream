@@ -62,11 +62,18 @@ data class HomeTheme(
                 }
 
                 else -> {
-                    val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-                    val genre = weeklyGenres[week % weeklyGenres.size]
-                    HomeTheme(R.string.theme_genre_of_week, genres = listOf(genre), titleArg = genre)
+                    weekly(date)
                 }
             }
+        }
+
+        /**
+         * A different genre each week, also used when the seasonal theme finds nothing on the server
+         */
+        fun weekly(date: LocalDate): HomeTheme {
+            val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+            val genre = weeklyGenres[week % weeklyGenres.size]
+            return HomeTheme(R.string.theme_genre_of_week, genres = listOf(genre), titleArg = genre)
         }
     }
 }
