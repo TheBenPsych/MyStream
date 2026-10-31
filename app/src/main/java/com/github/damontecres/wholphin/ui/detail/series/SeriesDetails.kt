@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -36,11 +38,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ExtrasItem
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -50,6 +55,7 @@ import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.studioNames
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.TrailerService
+import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.RequestOrRestoreFocus
 import com.github.damontecres.wholphin.ui.cards.ExtrasRow
@@ -75,6 +81,7 @@ import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.TrailerButton
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
@@ -188,10 +195,20 @@ fun SeriesDetails(
             }
             val series = st.data
             val played = series.data.userData?.played ?: false
+            LaunchedEffect(state.seasons) {
+                if (state.inlineSeasonIndex < 0 && state.seasons.isNotEmpty()) {
+                    val firstUnwatched =
+                        state.seasons.indexOfFirst { it?.data?.userData?.played == false }
+                    viewModel.showSeasonEpisodes(firstUnwatched.coerceAtLeast(0))
+                }
+            }
             SeriesDetailsContent(
                 preferences = preferences,
                 series = series,
                 seasons = state.seasons,
+                inlineSeasonIndex = state.inlineSeasonIndex,
+                inlineEpisodes = state.inlineEpisodes,
+                onPickSeason = viewModel::showSeasonEpisodes,
                 trailers = state.trailers,
                 extras = state.extras,
                 people = state.people,
@@ -326,6 +343,7 @@ private const val TRAILER_ROW = PEOPLE_ROW + 1
 private const val EXTRAS_ROW = TRAILER_ROW + 1
 private const val SIMILAR_ROW = EXTRAS_ROW + 1
 private const val DISCOVER_ROW = SIMILAR_ROW + 1
+private const val EPISODES_ROW = DISCOVER_ROW + 1
 
 @Composable
 fun SeriesDetailsContent(
@@ -357,13 +375,16 @@ fun SeriesDetailsContent(
     discoverSeries: DiscoverItem?,
     onClickDiscoverSeries: () -> Unit,
     modifier: Modifier = Modifier,
+    inlineSeasonIndex: Int = -1,
+    inlineEpisodes: List<BaseItem> = emptyList(),
+    onPickSeason: (Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     var position by rememberInt()
-    val focusRequesters = remember { List(DISCOVER_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember { List(EPISODES_ROW + 1) { FocusRequester() } }
     val playFocusRequester = remember { FocusRequester() }
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
@@ -539,6 +560,57 @@ fun SeriesDetailsContent(
                                             }
                                         }
                                     },
+                            )
+                        }
+                    }
+                }
+                // Netflix-style: pick a season, its episodes show right here
+                if (inlineEpisodes.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (seasons.size > 1) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(horizontal = HeaderUtils.startPadding),
+                                ) {
+                                    items(seasons.size) { index ->
+                                        val picked = index == inlineSeasonIndex
+                                        TextButton(
+                                            onClick = { onPickSeason.invoke(index) },
+                                        ) {
+                                            Text(
+                                                text = seasons[index]?.name ?: "${index + 1}",
+                                                fontWeight = if (picked) FontWeight.Bold else FontWeight.Normal,
+                                                textDecoration = if (picked) TextDecoration.Underline else null,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            ItemRow(
+                                title = stringResource(R.string.episodes),
+                                items = inlineEpisodes,
+                                onClickItem = { index, item ->
+                                    position = EPISODES_ROW
+                                    onClickItem.invoke(index, item)
+                                },
+                                onLongClickItem = { _, _ -> },
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(focusRequesters[EPISODES_ROW]),
+                                cardContent = @Composable { _, item, mod, onClick, onLongClick ->
+                                    SeasonCard(
+                                        item = item,
+                                        onClick = onClick,
+                                        onLongClick = onLongClick,
+                                        imageHeight = Cards.heightEpisode,
+                                        imageWidth = Dp.Unspecified,
+                                        aspectRatio = AspectRatios.WIDE,
+                                        showImageOverlay = true,
+                                        modifier = mod,
+                                    )
+                                },
                             )
                         }
                     }
