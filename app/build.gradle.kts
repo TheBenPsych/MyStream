@@ -54,8 +54,7 @@ val gitDescribe =
             commandLine("git", "describe", "--tags", "--long", "--match=v*")
             // Forks may not have any tags, so fall back to 0.0.0 instead of failing
             isIgnoreExitValue = true
-        }
-        .standardOutput.asText
+        }.standardOutput.asText
         .getOrElse("v0.0.0")
 
 kotlin {
