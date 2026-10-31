@@ -306,7 +306,7 @@ private const val HERO_ROTATE_MS = 8_000L
 // Which home rows the trending rows are shown after
 private const val TOP_10_AFTER_ROW = 0
 private const val MISSING_AFTER_ROW = 1
-private const val THEMED_AFTER_ROW = 2
+private const val THEMED_AFTER_ROW = 0
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -338,7 +338,7 @@ fun HomePageContent(
         HomePageHeader(
             item = focusedItem,
             showLogo = showLogo,
-            modifier = HeaderUtils.modifier,
+            modifier = HomeHeaderModifier,
         )
     },
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit = { _, _ -> },
@@ -461,9 +461,16 @@ fun HomePageContent(
                     endsAt = null,
                     showLogo = showLogo,
                     logoImageUrl = focusedDiscover.logoUrl,
-                    modifier = HeaderUtils.modifier,
+                    modifier = HomeHeaderModifier,
                 )
             } else {
+                val currentFeatured = if (heroFocused) featured.getOrNull(heroIndex) else null
+                if (currentFeatured != null) {
+                    FeaturedReasonLabel(
+                        featured = currentFeatured,
+                        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+                    )
+                }
                 headerComposable.invoke(focusedItem)
             }
 
@@ -939,3 +946,12 @@ fun HomePageViewMoreCard(
         showTitle = viewOptions.showTitles,
     )
 }
+
+/**
+ * A shorter header than other pages, since the top bar already gives space above it,
+ * so the next row of cards peeks in below the focused row
+ */
+private val HomeHeaderModifier =
+    Modifier
+        .padding(top = 4.dp, bottom = 12.dp, start = HeaderUtils.startPadding)
+        .height(150.dp)

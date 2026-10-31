@@ -5,12 +5,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,21 +30,32 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
+import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
+import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
 import kotlin.time.Duration
 
 enum class FeaturedReason {
     NEW,
     PICK,
+    RESUME,
+    FAVORITE,
+    BECAUSE,
 }
 
 /**
@@ -49,12 +64,40 @@ enum class FeaturedReason {
 data class FeaturedItem(
     val item: BaseItem,
     val reason: FeaturedReason,
+    val becauseOf: String? = null,
 )
+
+/**
+ * The small colored line above the banner title saying why it is shown, such as "Because you watched ..."
+ */
+@Composable
+fun FeaturedReasonLabel(
+    featured: FeaturedItem,
+    modifier: Modifier = Modifier,
+) {
+    val text =
+        when (featured.reason) {
+            FeaturedReason.NEW -> stringResource(R.string.featured_new)
+            FeaturedReason.PICK -> stringResource(R.string.featured_pick)
+            FeaturedReason.RESUME -> stringResource(R.string.featured_resume)
+            FeaturedReason.FAVORITE -> stringResource(R.string.featured_favorite)
+            FeaturedReason.BECAUSE -> stringResource(R.string.featured_because, featured.becauseOf.orEmpty())
+        }
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 2.sp,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        modifier = modifier,
+    )
+}
 
 /**
  * The buttons & page indicator for the rotating home page banner.
  *
- * The banner's title, details, and description are drawn by the page header above this.
+ * The banner's reason label, title, details, and description are drawn by the page header above this.
  */
 @Composable
 fun HomeHero(
@@ -76,32 +119,36 @@ fun HomeHero(
                 .padding(start = 8.dp, bottom = 16.dp)
                 .onFocusChanged { onFocusChanged(it.hasFocus) },
     ) {
-        Text(
-            text =
-                stringResource(
-                    when (current.reason) {
-                        FeaturedReason.NEW -> R.string.featured_new
-                        FeaturedReason.PICK -> R.string.featured_pick
-                    },
-                ).uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.focusRestorer(focusRequester),
         ) {
-            ExpandablePlayButton(
-                title = R.string.play,
-                resume = Duration.ZERO,
-                icon = Icons.Default.PlayArrow,
+            HeroPillButton(
+                title = stringResource(R.string.play),
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp),
+                    )
+                },
+                containerColor = Color.White,
+                contentColor = Color.Black,
                 onClick = { onClickPlay(current.item) },
                 modifier = Modifier.focusRequester(focusRequester),
             )
-            ExpandableFaButton(
-                title = R.string.more_info,
-                iconStringRes = R.string.fa_circle_info,
+            HeroPillButton(
+                title = stringResource(R.string.more_info),
+                icon = {
+                    Text(
+                        text = stringResource(R.string.fa_circle_info),
+                        fontFamily = FontAwesome,
+                        fontSize = 18.sp,
+                    )
+                },
+                containerColor = Color(0x99787882),
+                contentColor = Color.White,
                 onClick = { onClickInfo(current.item) },
             )
             ExpandableFaButton(
@@ -136,6 +183,42 @@ fun HomeHero(
 }
 
 /**
+ * A Netflix-style banner button that always shows its label. Turns bright white with dark text when focused.
+ */
+@Composable
+fun HeroPillButton(
+    title: String,
+    icon: @Composable () -> Unit,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        contentPadding = PaddingValues(start = 18.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
+        colors =
+            ButtonDefaults.colors(
+                containerColor = containerColor,
+                contentColor = contentColor,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+        modifier = modifier.height(48.dp),
+    ) {
+        icon()
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = title,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
  * The muted trailer preview shown behind the banner, faded into the background on the left & bottom
  */
 @Composable
@@ -147,8 +230,8 @@ fun HeroTrailer(
     Box(
         modifier =
             modifier
-                .fillMaxWidth(.7f)
-                .aspectRatio(16f / 9f),
+                .fillMaxWidth(BACKDROP_WIDTH_FRACTION)
+                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION),
     ) {
         PlayerSurface(
             player = player,

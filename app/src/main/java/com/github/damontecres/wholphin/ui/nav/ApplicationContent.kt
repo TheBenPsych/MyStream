@@ -16,6 +16,7 @@ import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.rememberDrawerState
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -58,7 +59,16 @@ fun ApplicationContent(
     Box(
         modifier = modifier,
     ) {
-        val backdropStyle = preferences.appPreferences.interfacePreferences.backdropStyle
+        // MyStream uses a plain dark background behind the artwork instead of tinting the screen with the
+        // artwork's colors, so the colorful style shows as image only
+        val backdropStyle =
+            preferences.appPreferences.interfacePreferences.backdropStyle.let {
+                if (it == BackdropStyle.BACKDROP_DYNAMIC_COLOR || it == BackdropStyle.UNRECOGNIZED) {
+                    BackdropStyle.BACKDROP_IMAGE_ONLY
+                } else {
+                    it
+                }
+            }
         Backdrop(
             drawerIsOpen = drawerState.isOpen,
             backdropStyle = backdropStyle,

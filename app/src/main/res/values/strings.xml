@@ -1,12 +1,12 @@
 <resources>
-    <string name="app_name" translatable="false">MyStream</string>
-    <string name="app_name_long" translatable="false">MyStream</string>
+    <string name="app_name" translatable="false">Benflix</string>
+    <string name="app_name_long" translatable="false">Benflix</string>
 
     <string name="about">About</string>
     <string name="active_recordings">Active Recordings</string>
     <string name="add_favorite">Favorite</string>
     <string name="add_server">Add Server</string>
-    <string name="add_user">Add User</string>
+    <string name="add_user">Add profile</string>
     <string name="audio">Audio</string>
     <string name="birthplace">Birthplace</string>
     <string name="bitrate">Bitrate</string>
@@ -627,7 +627,7 @@
     <string name="bold_blue">Bold Blue</string>
     <string name="black">Black</string>
     <string name="brown">Brown</string>
-    <string name="mystream_theme" translatable="false">MyStream</string>
+    <string name="mystream_theme" translatable="false">Benflix</string>
     <string-array name="app_theme_colors">
         <item>@string/purple</item>
         <item>@string/blue</item>
@@ -989,7 +989,10 @@
     <string name="surprise_me">Surprise me</string>
     <string name="featured_new">New on your server</string>
     <string name="featured_pick">Picked for you</string>
-    <string name="top_10_trending">Top 10 trending this week</string>
+    <string name="featured_resume">Pick up where you left off</string>
+    <string name="featured_favorite">From My List</string>
+    <string name="featured_because">Because you watched %1$s</string>
+    <string name="top_10_trending">Top 10 this week</string>
     <string name="trending_not_on_server">Trending, not on your server</string>
     <string name="new_episode">NEW EPISODE</string>
     <string name="new_badge">NEW</string>

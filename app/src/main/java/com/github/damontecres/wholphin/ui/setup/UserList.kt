@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -207,27 +208,17 @@ private fun UserIconCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Circular card with colored background
+        // Rounded square tile with colored background, like a streaming service profile
         Surface(
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,
             modifier = Modifier.size(cardSize),
-            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
-                    containerColor =
-                        if (isCurrentUser) {
-                            userColor.copy(alpha = 0.7f)
-                        } else {
-                            userColor.copy(alpha = 0.5f)
-                        },
-                    focusedContainerColor =
-                        if (isCurrentUser) {
-                            userColor.copy(alpha = 0.9f)
-                        } else {
-                            userColor.copy(alpha = 0.7f)
-                        },
+                    containerColor = userColor.copy(alpha = if (isCurrentUser) 1f else 0.85f),
+                    focusedContainerColor = userColor,
                 ),
             border =
                 ClickableSurfaceDefaults.border(
@@ -238,7 +229,7 @@ private fun UserIconCard(
                                     width = 3.dp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
-                            shape = CircleShape,
+                            shape = ProfileTileShape,
                         ),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
@@ -256,7 +247,7 @@ private fun UserIconCard(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .clip(CircleShape),
+                                .clip(ProfileTileShape),
                     )
                 } else {
                     // Show big bold first letter of username
@@ -376,12 +367,12 @@ private fun AddUserCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp), // Increased to accommodate 20% scale
     ) {
-        // Circular card with colored background
+        // Rounded square tile with colored background, like a streaming service profile
         Surface(
             onClick = onClick,
             interactionSource = interactionSource,
             modifier = Modifier.size(cardSize),
-            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
                     containerColor = addUserColor.copy(alpha = 0.4f),
@@ -396,7 +387,7 @@ private fun AddUserCard(
                                     width = 3.dp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
-                            shape = CircleShape,
+                            shape = ProfileTileShape,
                         ),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
@@ -432,3 +423,5 @@ private fun AddUserCard(
         )
     }
 }
+
+private val ProfileTileShape = RoundedCornerShape(10.dp)

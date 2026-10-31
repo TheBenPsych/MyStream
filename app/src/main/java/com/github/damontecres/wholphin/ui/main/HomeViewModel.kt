@@ -61,12 +61,15 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
+import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
 import java.util.UUID
@@ -333,16 +336,69 @@ class HomeViewModel
          * the newest movies & shows plus a few random unwatched picks
          */
         private suspend fun loadFeatured(userDto: ServerUserConfig) {
-            try {
-                val baseRequest =
-                    GetItemsRequest(
-                        userId = userDto.id,
-                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                        recursive = true,
-                        imageTypes = listOf(ImageType.BACKDROP),
-                        fields = HomeItemFields,
-                    )
-                val newest =
+            val baseRequest =
+                GetItemsRequest(
+                    userId = userDto.id,
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    imageTypes = listOf(ImageType.BACKDROP),
+                    fields = HomeItemFields,
+                )
+            // Each source is loaded separately so one failing doesn't empty the whole banner
+            val resume =
+                featuredSource("resume") {
+                    api.itemsApi
+                        .getResumeItems(
+                            GetResumeItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                fields = HomeItemFields,
+                                enableUserData = true,
+                                limit = FEATURED_RESUME,
+                            ),
+                        ).content.items
+                        .map { FeaturedItem(BaseItem(it), FeaturedReason.RESUME) }
+                }
+            val because =
+                featuredSource("because") {
+                    val lastWatched =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userDto.id,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                    recursive = true,
+                                    isPlayed = true,
+                                    sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                    sortOrder = listOf(SortOrder.DESCENDING),
+                                    limit = 1,
+                                ),
+                            ).content.items
+                            .firstOrNull()
+                    val sourceId =
+                        if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesId else lastWatched?.id
+                    val sourceName =
+                        if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesName else lastWatched?.name
+                    if (sourceId == null || sourceName == null) {
+                        emptyList()
+                    } else {
+                        api.libraryApi
+                            .getSimilarItems(
+                                GetSimilarItemsRequest(
+                                    userId = userDto.id,
+                                    itemId = sourceId,
+                                    fields = HomeItemFields,
+                                    limit = 12,
+                                ),
+                            ).content.items
+                            .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
+                            .shuffled()
+                            .take(FEATURED_BECAUSE)
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = sourceName) }
+                    }
+                }
+            val newest =
+                featuredSource("newest") {
                     api.itemsApi
                         .getItems(
                             baseRequest.copy(
@@ -352,7 +408,21 @@ class HomeViewModel
                             ),
                         ).content.items
                         .map { FeaturedItem(BaseItem(it), FeaturedReason.NEW) }
-                val picks =
+                }
+            val favorites =
+                featuredSource("favorites") {
+                    api.itemsApi
+                        .getItems(
+                            baseRequest.copy(
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                isFavorite = true,
+                                limit = FEATURED_FAVORITES,
+                            ),
+                        ).content.items
+                        .map { FeaturedItem(BaseItem(it), FeaturedReason.FAVORITE) }
+                }
+            val picks =
+                featuredSource("picks") {
                     api.itemsApi
                         .getItems(
                             baseRequest.copy(
@@ -362,18 +432,29 @@ class HomeViewModel
                             ),
                         ).content.items
                         .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
-                // Alternate between new items and picks
-                val featured =
-                    (0 until maxOf(newest.size, picks.size))
-                        .flatMap { listOfNotNull(newest.getOrNull(it), picks.getOrNull(it)) }
-                        .distinctBy { it.item.id }
-                _state.update { it.copy(featured = featured) }
+                }
+            // Take turns between the sources so the banner mixes them
+            val sources = listOf(resume, because, newest, favorites, picks)
+            val featured =
+                (0 until sources.maxOf { it.size })
+                    .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
+                    .distinctBy { it.item.id }
+                    .take(FEATURED_MAX)
+            _state.update { it.copy(featured = featured) }
+        }
+
+        private suspend fun featuredSource(
+            name: String,
+            block: suspend () -> List<FeaturedItem>,
+        ): List<FeaturedItem> =
+            try {
+                block.invoke()
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
-                Timber.e(ex, "Error loading featured items")
+                Timber.e(ex, "Error loading featured items: %s", name)
+                emptyList()
             }
-        }
 
         /**
          * Load what's trending this week from Seerr: the top items already on the server,
@@ -382,7 +463,7 @@ class HomeViewModel
         private suspend fun loadTrending(userDto: ServerUserConfig) {
             try {
                 if (!seerrService.active.first()) {
-                    _state.update { it.copy(trending = emptyList(), trendingMissing = emptyList()) }
+                    _state.update { it.copy(trending = loadServerTop(userDto), trendingMissing = emptyList()) }
                     return
                 }
                 val discovered =
@@ -423,38 +504,78 @@ class HomeViewModel
                     } else {
                         emptyList()
                     }
-                _state.update { it.copy(trending = trending, trendingMissing = missing) }
+                // Too few trending titles on the server to fill the row, so use the server's own top titles
+                val top = if (trending.size < TRENDING_MIN) loadServerTop(userDto) else trending
+                _state.update { it.copy(trending = top, trendingMissing = missing) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading trending items")
+                _state.update { it.copy(trending = loadServerTop(userDto)) }
             }
         }
+
+        /**
+         * The best rated movies & shows on the server from this year and last year,
+         * used for the Top 10 row when Seerr isn't set up
+         */
+        private suspend fun loadServerTop(userDto: ServerUserConfig): List<BaseItem> =
+            try {
+                val year = LocalDate.now().year
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userDto.id,
+                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                            recursive = true,
+                            years = listOf(year, year - 1),
+                            imageTypes = listOf(ImageType.PRIMARY),
+                            sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            limit = TRENDING_TOP,
+                            fields = HomeItemFields,
+                        ),
+                    ).content.items
+                    .map { BaseItem(it) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading server top items")
+                emptyList()
+            }
 
         /**
          * Load the seasonal themed row, such as horror in October
          */
         private suspend fun loadThemed(userDto: ServerUserConfig) {
             try {
-                val theme = HomeTheme.forDate(LocalDate.now())
-                val items =
-                    api.itemsApi
-                        .getItems(
-                            GetItemsRequest(
-                                userId = userDto.id,
-                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                recursive = true,
-                                genres = theme.genres,
-                                searchTerm = theme.searchTerm,
-                                sortBy = listOf(ItemSortBy.RANDOM),
-                                limit = THEMED_MAX,
-                                fields = HomeItemFields,
-                            ),
-                        ).content.items
-                        .map { BaseItem(it) }
-                _state.update {
-                    it.copy(themed = if (items.isNotEmpty()) ThemedRow(context.getString(theme.title, theme.titleArg), items) else null)
+                val today = LocalDate.now()
+                // If the seasonal theme has nothing on the server, fall back to the genre of the week
+                val themes = listOf(HomeTheme.forDate(today), HomeTheme.weekly(today)).distinct()
+                for (theme in themes) {
+                    val items =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userDto.id,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    recursive = true,
+                                    genres = theme.genres,
+                                    searchTerm = theme.searchTerm,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = THEMED_MAX,
+                                    fields = HomeItemFields,
+                                ),
+                            ).content.items
+                            .map { BaseItem(it) }
+                    Timber.d("Themed row %s found %s items", theme, items.size)
+                    if (items.isNotEmpty()) {
+                        val title = context.getString(theme.title, theme.titleArg)
+                        _state.update { it.copy(themed = ThemedRow(title, items)) }
+                        return
+                    }
                 }
+                _state.update { it.copy(themed = null) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -657,8 +778,13 @@ data class HomeState(
     }
 }
 
-private const val FEATURED_NEWEST = 4
-private const val FEATURED_PICKS = 4
+private const val TRENDING_MIN = 5
+private const val FEATURED_NEWEST = 3
+private const val FEATURED_RESUME = 2
+private const val FEATURED_BECAUSE = 2
+private const val FEATURED_FAVORITES = 2
+private const val FEATURED_MAX = 10
+private const val FEATURED_PICKS = 3
 private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
