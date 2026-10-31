@@ -200,7 +200,8 @@ private fun SeekBarDisplay(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val color = MaterialTheme.colorScheme.border
+    // Benflix red progress, like a streaming service
+    val color = MaterialTheme.colorScheme.primary
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -314,7 +315,7 @@ private fun SeekBarDisplay(
                     cap = StrokeCap.Round,
                 )
                 drawCircle(
-                    color = Color.White,
+                    color = color,
                     radius = size.height + 2,
                     center =
                         Offset(
