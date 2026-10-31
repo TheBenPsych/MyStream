@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -90,7 +91,9 @@ fun TopNavBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 4.dp)
+                // A dark shade behind the bar so the logo, tabs and icons stay easy to read over bright artwork
+                .background(TopNavBarShade)
+                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 10.dp)
                 .focusGroup()
                 .focusProperties {
                     // Entering the bar from the page lands on the current tab
@@ -243,6 +246,14 @@ fun topNavTitle(item: NavDrawerItem): String =
     } else {
         item.name(LocalContext.current)
     }
+
+/** The dark fade behind the top bar: nearly solid at the top, clearing at the bottom edge */
+private val TopNavBarShade =
+    Brush.verticalGradient(
+        0f to Color.Black.copy(alpha = .92f),
+        .7f to Color.Black.copy(alpha = .7f),
+        1f to Color.Transparent,
+    )
 
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
