@@ -80,15 +80,22 @@ object KidsMode {
             if (!isActive || request.method != "GET" || !LIST_PATH.containsMatchIn(request.url.encodedPath)) {
                 return@Interceptor chain.proceed(request)
             }
-            val url =
-                if (request.url.queryParameter("maxOfficialRating") == null) {
-                    request.url
-                        .newBuilder()
-                        .addQueryParameter("maxOfficialRating", MAX_RATING)
-                        .build()
-                } else {
-                    request.url
-                }
+            val builder = request.url.newBuilder()
+            if (request.url.queryParameter("maxOfficialRating") == null) {
+                builder.addQueryParameter("maxOfficialRating", MAX_RATING)
+            }
+            // Let the server drop unrated movies & shows too, so pages come back full
+            // (otherwise long grids end up with blank gaps). Not for episodes & seasons,
+            // which usually have no rating of their own and are checked against their show.
+            val types = request.url.queryParameter("includeItemTypes")
+            if (types != null &&
+                !types.contains("Episode", ignoreCase = true) &&
+                !types.contains("Season", ignoreCase = true) &&
+                request.url.queryParameter("hasParentalRating") == null
+            ) {
+                builder.addQueryParameter("hasParentalRating", "true")
+            }
+            val url = builder.build()
             val response = chain.proceed(request.newBuilder().url(url).build())
             filterResponse(chain, request, response)
         }

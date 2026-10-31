@@ -213,11 +213,16 @@ class HomeViewModel
                 val libraries =
                     navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
 
+                if (state.value.kids != KidsMode.isActive) {
+                    // Switched to or from Kids: start from a clean page so no grown-up rows linger
+                    _state.update { HomeState.EMPTY }
+                }
                 val state = state.value
 
                 // Refreshing if a load has already occurred and the rows haven't significantly changed
                 val refresh =
-                    state.loadingState == LoadingState.Success && state.settings == settings
+                    state.loadingState == LoadingState.Success && state.settings == settings &&
+                        state.kids == KidsMode.isActive
                 Timber.v(
                     "refresh=%s, state.loadingState=%s, %s rows",
                     refresh,
@@ -229,6 +234,7 @@ class HomeViewModel
                         loadingState = if (refresh) LoadingState.Success else LoadingState.Loading,
                         refreshState = LoadingState.Loading,
                         settings = settings,
+                        kids = KidsMode.isActive,
                         homeRows =
                             if (refresh) {
                                 it.homeRows
@@ -244,11 +250,17 @@ class HomeViewModel
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
-                viewModelScope.launchIO { loadThemed(userDto) }
+                // Random rows are picked once per visit, so they don't reshuffle (and move the
+                // focused row) every time you come back from watching something
+                if (!refresh || state.themed == null) {
+                    viewModelScope.launchIO { loadThemed(userDto) }
+                }
                 viewModelScope.launchIO { loadBecause(userDto) }
                 viewModelScope.launchIO { loadNewest(userDto) }
                 viewModelScope.launchIO { loadMyList(userDto) }
-                viewModelScope.launchIO { loadGenreRows(userDto) }
+                if (!refresh || state.genreRows.isEmpty()) {
+                    viewModelScope.launchIO { loadGenreRows(userDto) }
+                }
                 viewModelScope.launchIO { loadCollections(userDto) }
                 viewModelScope.launchIO { loadStudios(userDto) }
                 viewModelScope.launchIO { loadCelebration(userDto) }
@@ -1218,6 +1230,8 @@ data class HomeState(
     val newest: ThemedRow? = null,
     val myList: ThemedRow? = null,
     val genreRows: List<ThemedRow> = emptyList(),
+    /** Whether these rows were loaded for the Kids profile */
+    val kids: Boolean = false,
 ) {
     companion object {
         val EMPTY =
