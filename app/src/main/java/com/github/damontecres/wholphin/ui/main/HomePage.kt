@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.media3.common.Player
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -113,6 +114,10 @@ fun HomePage(
     val trending = state.trending
     val trendingMissing = state.trendingMissing
     val themed = state.themed
+    val previewPlaying by viewModel.previewPlaying.collectAsState()
+    LifecycleStartEffect(Unit) {
+        onStopOrDispose { viewModel.previewTrailer(null) }
+    }
     val loading = state.loadingState
     val refreshing = state.refreshState
     val homeRows = state.homeRows
@@ -254,6 +259,9 @@ fun HomePage(
                 },
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
                 themed = themed,
+                previewPlayer = viewModel.previewPlayer,
+                previewPlaying = previewPlaying,
+                onHeroItemShown = viewModel::previewTrailer,
                 modifier = modifier,
             )
             overviewDialog?.let { info ->
@@ -343,6 +351,9 @@ fun HomePageContent(
     onClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
+    previewPlayer: Player? = null,
+    previewPlaying: Boolean = false,
+    onHeroItemShown: (BaseItem?) -> Unit = {},
     onClickDiscover: (DiscoverItem) -> Unit = {},
     onUpdateDiscoverBackdrop: (DiscoverItem) -> Unit = {},
 ) {
@@ -353,9 +364,13 @@ fun HomePageContent(
     val heroFocusRequester = remember { FocusRequester() }
     val showHero = featured.isNotEmpty()
     val heroOffset = if (showHero) 1 else 0
-    LaunchedEffect(featured.size, heroFocused) {
-        // Rotate the banner while it is focused
-        if (heroFocused && featured.size > 1) {
+    val currentHeroItem = if (heroFocused) featured.getOrNull(heroIndex)?.item else null
+    LaunchedEffect(currentHeroItem?.id) {
+        onHeroItemShown(currentHeroItem)
+    }
+    LaunchedEffect(featured.size, heroFocused, previewPlaying) {
+        // Rotate the banner while it is focused, but let a trailer finish first
+        if (heroFocused && featured.size > 1 && !previewPlaying) {
             while (true) {
                 delay(HERO_ROTATE_MS)
                 heroIndex = (heroIndex + 1) % featured.size
@@ -420,6 +435,12 @@ fun HomePageContent(
         focusedDiscover?.let { onUpdateDiscoverBackdrop.invoke(it) }
     }
     Box(modifier = modifier) {
+        if (heroFocused && previewPlaying && previewPlayer != null) {
+            HeroTrailer(
+                player = previewPlayer,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
         Column(
             modifier =
                 Modifier

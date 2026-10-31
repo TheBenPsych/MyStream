@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -20,9 +23,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
+import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -125,5 +132,51 @@ fun HomeHero(
                 }
             }
         }
+    }
+}
+
+/**
+ * The muted trailer preview shown behind the banner, faded into the background on the left & bottom
+ */
+@Composable
+fun HeroTrailer(
+    player: Player,
+    modifier: Modifier = Modifier,
+) {
+    val background = MaterialTheme.colorScheme.background
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth(.7f)
+                .aspectRatio(16f / 9f),
+    ) {
+        PlayerSurface(
+            player = player,
+            surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to background,
+                            .35f to background.copy(alpha = .4f),
+                            .6f to Color.Transparent,
+                        ),
+                    ),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            .6f to Color.Transparent,
+                            1f to background,
+                        ),
+                    ),
+        )
     }
 }
