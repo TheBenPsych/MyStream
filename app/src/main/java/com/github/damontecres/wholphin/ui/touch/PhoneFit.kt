@@ -46,3 +46,12 @@ fun PhoneFit(content: @Composable () -> Unit) {
 }
 
 private const val TV_SIZE_DP = 540
+
+/** Dialog width: [tvFraction] of the screen normally, but nearly full width on a tall (portrait) phone. */
+@Composable
+fun dialogWidth(tvFraction: Float): Float {
+    val config = LocalConfiguration.current
+    return if (config.screenWidthDp < config.screenHeightDp) PORTRAIT_FRACTION else tvFraction
+}
+
+private const val PORTRAIT_FRACTION = .92f

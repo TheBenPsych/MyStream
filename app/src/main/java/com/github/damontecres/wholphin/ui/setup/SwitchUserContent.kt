@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
+import com.github.damontecres.wholphin.ui.touch.dialogWidth
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -259,7 +260,7 @@ fun SwitchUserContent(
                     Modifier
                         .focusGroup()
                         .padding(16.dp)
-                        .fillMaxWidth(.4f),
+                        .fillMaxWidth(dialogWidth(.4f)),
             ) {
                 if (useQuickConnect) {
                     if (state.quickConnectStatus == null && state.switchUserState !is LoadingState.Error) {

@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
+import com.github.damontecres.wholphin.ui.touch.dialogWidth
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import org.jellyfin.sdk.model.ServerVersion
@@ -339,7 +340,7 @@ private fun AddServerDialog(
             modifier =
                 Modifier
                     .padding(16.dp)
-                    .fillMaxWidth(.4f),
+                    .fillMaxWidth(dialogWidth(.4f)),
         ) {
             if (!showEnterAddress) {
                 // Show discovered servers first
