@@ -23,6 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -108,6 +109,7 @@ fun HomePage(
         onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()
+    val featured = state.featured
     val loading = state.loadingState
     val refreshing = state.refreshState
     val homeRows = state.homeRows
@@ -226,6 +228,19 @@ fun HomePage(
                 showLogo = preferences.appPreferences.interfacePreferences.showLogos,
                 showViewMore = true,
                 onClickViewMore = onClickViewMore,
+                featured = featured,
+                onClickFeaturedPlay = { item ->
+                    if (item.type.playable) {
+                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                    } else {
+                        viewModel.navigationManager.navigateTo(item.destination())
+                    }
+                },
+                onClickFeaturedInfo = { item ->
+                    viewModel.navigationManager.navigateTo(item.destination())
+                },
+                onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
+                onClickSurprise = viewModel::surpriseMe,
                 modifier = modifier,
             )
             overviewDialog?.let { info ->
@@ -265,6 +280,8 @@ fun HomePage(
     }
 }
 
+private const val HERO_ROTATE_MS = 8_000L
+
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
         (this as? HomeRowLoadingState.Success).let { row ->
@@ -299,12 +316,35 @@ fun HomePageContent(
         )
     },
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit = { _, _ -> },
+    featured: List<FeaturedItem> = emptyList(),
+    onClickFeaturedPlay: (BaseItem) -> Unit = {},
+    onClickFeaturedInfo: (BaseItem) -> Unit = {},
+    onClickFeaturedFavorite: (BaseItem) -> Unit = {},
+    onClickSurprise: () -> Unit = {},
 ) {
+    var heroIndex by remember { mutableIntStateOf(0) }
+    var heroFocused by remember { mutableStateOf(false) }
+    val heroFocusRequester = remember { FocusRequester() }
+    val showHero = featured.isNotEmpty()
+    val heroOffset = if (showHero) 1 else 0
+    LaunchedEffect(featured.size, heroFocused) {
+        // Rotate the banner while it is focused
+        if (heroFocused && featured.size > 1) {
+            while (true) {
+                delay(HERO_ROTATE_MS)
+                heroIndex = (heroIndex + 1) % featured.size
+            }
+        }
+    }
     val focusedItem =
-        remember(homeRows, position) {
-            (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(
-                position.column,
-            )
+        remember(homeRows, position, heroFocused, heroIndex, featured) {
+            if (heroFocused && showHero) {
+                featured.getOrNull(heroIndex.coerceIn(0, featured.lastIndex))?.item
+            } else {
+                (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(
+                    position.column,
+                )
+            }
         }
 
     val rowFocusRequesters = remember(homeRows.size) { List(homeRows.size) { FocusRequester() } }
@@ -315,8 +355,12 @@ fun HomePageContent(
     val currentOnClickPlay by rememberUpdatedState(onClickPlay)
 
     if (takeFocus) {
-        LaunchedEffect(homeRows) {
-            if (!firstFocused && homeRows.isNotEmpty()) {
+        LaunchedEffect(homeRows, showHero) {
+            if (!firstFocused && showHero && position.row < 0) {
+                // Start on the banner, like other streaming apps
+                heroFocusRequester.tryRequestFocus()
+                firstFocused = true
+            } else if (!firstFocused && homeRows.isNotEmpty()) {
                 if (position.row >= 0) {
                     val index = position.row.coerceIn(0, rowFocusRequesters.lastIndex)
                     rowFocusRequesters.getOrNull(index)?.tryRequestFocus()
@@ -329,7 +373,7 @@ fun HomePageContent(
                             rowFocusRequesters[it].tryRequestFocus()
                             firstFocused = true
                             delay(50)
-                            listState.scrollToItem(it)
+                            listState.scrollToItem(it + heroOffset)
                         }
                 }
             }
@@ -373,6 +417,20 @@ fun HomePageContent(
                         Modifier
                             .focusRestorer(),
                 ) {
+                    if (showHero) {
+                        item(key = "hero") {
+                            HomeHero(
+                                featured = featured,
+                                index = heroIndex.coerceIn(0, featured.lastIndex),
+                                onClickPlay = onClickFeaturedPlay,
+                                onClickInfo = onClickFeaturedInfo,
+                                onClickFavorite = onClickFeaturedFavorite,
+                                onClickSurprise = onClickSurprise,
+                                onFocusChanged = { heroFocused = it },
+                                focusRequester = heroFocusRequester,
+                            )
+                        }
+                    }
                     itemsIndexed(homeRows) { rowIndex, row ->
                         val rowModifier =
                             Modifier

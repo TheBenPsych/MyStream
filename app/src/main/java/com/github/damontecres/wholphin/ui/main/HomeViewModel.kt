@@ -21,6 +21,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
+import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
 import com.github.damontecres.wholphin.ui.data.RowColumn
@@ -47,8 +48,14 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -70,6 +77,7 @@ class HomeViewModel
         private val userPreferencesService: UserPreferencesService,
         private val mediaManagementService: MediaManagementService,
         private val latestNextUpService: LatestNextUpService,
+        private val api: ApiClient,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -179,6 +187,10 @@ class HomeViewModel
                     )
                 }
 
+                if (!refresh || state.featured.isEmpty()) {
+                    viewModelScope.launchIO { loadFeatured(userDto) }
+                }
+
                 val semaphore = Semaphore(4)
 
                 val deferred =
@@ -284,6 +296,107 @@ class HomeViewModel
             }
         }
 
+        /**
+         * Load the items for the rotating banner at the top of the home page:
+         * the newest movies & shows plus a few random unwatched picks
+         */
+        private suspend fun loadFeatured(userDto: ServerUserConfig) {
+            try {
+                val baseRequest =
+                    GetItemsRequest(
+                        userId = userDto.id,
+                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                        recursive = true,
+                        imageTypes = listOf(ImageType.BACKDROP),
+                        fields = HomeItemFields,
+                    )
+                val newest =
+                    api.itemsApi
+                        .getItems(
+                            baseRequest.copy(
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = FEATURED_NEWEST,
+                            ),
+                        ).content.items
+                        .map { FeaturedItem(BaseItem(it), FeaturedReason.NEW) }
+                val picks =
+                    api.itemsApi
+                        .getItems(
+                            baseRequest.copy(
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                isPlayed = false,
+                                limit = FEATURED_PICKS,
+                            ),
+                        ).content.items
+                        .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
+                // Alternate between new items and picks
+                val featured =
+                    (0 until maxOf(newest.size, picks.size))
+                        .flatMap { listOfNotNull(newest.getOrNull(it), picks.getOrNull(it)) }
+                        .distinctBy { it.item.id }
+                _state.update { it.copy(featured = featured) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading featured items")
+            }
+        }
+
+        /**
+         * Navigate to a random unwatched movie or show
+         */
+        fun surpriseMe() {
+            viewModelScope.launch(ExceptionHandler(autoToast = true) + WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id ?: return@launch
+                val item =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                isPlayed = false,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = 1,
+                            ),
+                        ).content.items
+                        .firstOrNull()
+                if (item != null) {
+                    withContext(WholphinDispatchers.Main) {
+                        navigationManager.navigateTo(BaseItem(item).destination())
+                    }
+                } else {
+                    showToast(context, "Nothing unwatched to pick from")
+                }
+            }
+        }
+
+        fun toggleFeaturedFavorite(item: BaseItem) {
+            viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
+                val favorite = !item.favorite
+                favoriteWatchManager.setFavorite(item.id, favorite)
+                _state.update { state ->
+                    state.copy(
+                        featured =
+                            state.featured.map {
+                                if (it.item.id == item.id) {
+                                    val data = it.item.data
+                                    it.copy(
+                                        item =
+                                            it.item.copy(
+                                                data = data.copy(userData = data.userData?.copy(isFavorite = favorite)),
+                                            ),
+                                    )
+                                } else {
+                                    it
+                                }
+                            },
+                    )
+                }
+            }
+        }
+
         fun setWatched(
             itemId: UUID,
             played: Boolean,
@@ -359,6 +472,7 @@ data class HomeState(
     val refreshState: LoadingState,
     val homeRows: List<HomeRowLoadingState>,
     val settings: HomePageResolvedSettings,
+    val featured: List<FeaturedItem> = emptyList(),
 ) {
     companion object {
         val EMPTY =
@@ -370,6 +484,9 @@ data class HomeState(
             )
     }
 }
+
+private const val FEATURED_NEWEST = 4
+private const val FEATURED_PICKS = 4
 
 /**
  * Whether a row is a "is watching" type
