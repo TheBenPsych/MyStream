@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -43,6 +45,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -55,9 +58,11 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -81,7 +86,7 @@ enum class BuiltInGame(
     POPCORN_POP(
         title = "Popcorn Pop",
         tagline = "Bounce a popcorn kernel up a tower of soda cups and film reels.",
-        howTo = "Remote: ◀ ▶ to steer · Phone: hold left or right side",
+        howTo = "Remote or controller: ◀ ▶ to steer · Phone: hold left or right side",
         remoteOk = true,
         touchSteers = true,
         colors = listOf(Color(0xFFE50914), Color(0xFF5C0A10)),
@@ -90,7 +95,7 @@ enum class BuiltInGame(
     REEL_RUSH(
         title = "Reel Rush",
         tagline = "Fly the Benflix B through the gaps in the film strips.",
-        howTo = "Remote: press OK to flap · Phone: tap anywhere",
+        howTo = "Remote: OK · Controller: A · to flap · Phone: tap anywhere",
         remoteOk = true,
         touchSteers = false,
         colors = listOf(Color(0xFF1B3F8A), Color(0xFF0D1B2A)),
@@ -225,11 +230,9 @@ private fun GameTile(
                     .padding(16.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Badge(
-                    if (game.remoteOk) "Remote OK" else "Controller recommended",
-                    if (game.remoteOk) Color(0xFF46D369) else Color(0xFFFFB74D),
-                )
-                Badge("Touch OK", Color(0xFF64B5F6))
+                if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
+                Badge(PlayWith.CONTROLLER, "Controller")
+                Badge(PlayWith.PHONE, "Phone")
             }
             Text(game.title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
             Text(game.tagline, fontSize = 13.sp, color = Color.White.copy(alpha = .9f))
@@ -244,21 +247,59 @@ private fun GameTile(
     }
 }
 
+private enum class PlayWith { REMOTE, CONTROLLER, PHONE }
+
+/**
+ * A small "works with" chip: an icon plus a word, e.g. a controller icon with "Controller"
+ */
 @Composable
 private fun Badge(
+    kind: PlayWith,
     text: String,
-    color: Color,
 ) {
-    Text(
-        text = text,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.Black,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier =
             Modifier
-                .background(color, RoundedCornerShape(4.dp))
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-    )
+                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        when (kind) {
+            PlayWith.REMOTE -> {
+                RemoteIcon(Modifier.size(width = 8.dp, height = 15.dp))
+            }
+
+            PlayWith.CONTROLLER -> {
+                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 13.sp, color = Color.White)
+            }
+
+            PlayWith.PHONE -> {
+                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 13.sp, color = Color.White)
+            }
+        }
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
+    }
+}
+
+/**
+ * A simple TV remote drawing: a rounded stick with a round OK button and two small buttons
+ */
+@Composable
+private fun RemoteIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        drawRoundRect(Color.White, cornerRadius = CornerRadius(w * .35f, w * .35f))
+        drawCircle(Color.Black, radius = w * .3f, center = Offset(w / 2, h * .27f))
+        drawCircle(Color.Black, radius = w * .12f, center = Offset(w / 2, h * .6f))
+        drawCircle(Color.Black, radius = w * .12f, center = Offset(w / 2, h * .8f))
+    }
 }
 
 /**
