@@ -114,6 +114,8 @@ fun HomePage(
     val trending = state.trending
     val trendingMissing = state.trendingMissing
     val themed = state.themed
+    val because = state.because
+    val collections = state.collections
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -259,6 +261,8 @@ fun HomePage(
                 },
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
                 themed = themed,
+                because = because,
+                collections = collections,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
@@ -307,6 +311,8 @@ private const val HERO_ROTATE_MS = 8_000L
 private const val TOP_10_AFTER_ROW = 0
 private const val MISSING_AFTER_ROW = 1
 private const val THEMED_AFTER_ROW = 0
+private const val COLLECTIONS_AFTER_ROW = 2
+private const val BECAUSE_AFTER_ROW = 3
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -351,6 +357,8 @@ fun HomePageContent(
     onClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
+    because: ThemedRow? = null,
+    collections: ThemedRow? = null,
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
     onHeroItemShown: (BaseItem?) -> Unit = {},
@@ -420,7 +428,9 @@ fun HomePageContent(
                                 it + heroOffset +
                                     (if (it > TOP_10_AFTER_ROW && trending.isNotEmpty()) 1 else 0) +
                                     (if (it > MISSING_AFTER_ROW && trendingMissing.isNotEmpty()) 1 else 0) +
-                                    (if (it > THEMED_AFTER_ROW && themed != null) 1 else 0),
+                                    (if (it > THEMED_AFTER_ROW && themed != null) 1 else 0) +
+                                    (if (it > COLLECTIONS_AFTER_ROW && collections != null) 1 else 0) +
+                                    (if (it > BECAUSE_AFTER_ROW && because != null) 1 else 0),
                             )
                         }
                 }
@@ -680,6 +690,38 @@ fun HomePageContent(
                                             .padding(bottom = 8.dp)
                                             .onFocusChanged {
                                                 if (!it.hasFocus && extraFocus in trendingMissing) extraFocus = null
+                                            },
+                                )
+                            }
+                        }
+                        if (rowIndex == COLLECTIONS_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && collections != null) {
+                            item(key = "collections") {
+                                PosterRow(
+                                    title = collections.title,
+                                    items = collections.items,
+                                    onClickItem = onClickTrending,
+                                    onFocusItem = { extraFocus = it },
+                                    modifier =
+                                        Modifier
+                                            .padding(bottom = 8.dp)
+                                            .onFocusChanged {
+                                                if (!it.hasFocus && extraFocus in collections.items) extraFocus = null
+                                            },
+                                )
+                            }
+                        }
+                        if (rowIndex == BECAUSE_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && because != null) {
+                            item(key = "because") {
+                                PosterRow(
+                                    title = because.title,
+                                    items = because.items,
+                                    onClickItem = onClickTrending,
+                                    onFocusItem = { extraFocus = it },
+                                    modifier =
+                                        Modifier
+                                            .padding(bottom = 8.dp)
+                                            .onFocusChanged {
+                                                if (!it.hasFocus && extraFocus in because.items) extraFocus = null
                                             },
                                 )
                             }
