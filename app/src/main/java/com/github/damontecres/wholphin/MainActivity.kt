@@ -2,8 +2,6 @@ package com.github.damontecres.wholphin
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.KeyEvent
@@ -69,6 +67,7 @@ import com.github.damontecres.wholphin.ui.playback.PlayExternalViewModel
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.colors.PurpleThemeColors
+import com.github.damontecres.wholphin.ui.touch.touchTaps
 import com.github.damontecres.wholphin.ui.util.ProvideLocalClock
 import com.github.damontecres.wholphin.util.DebugLogTree
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -167,12 +166,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         instance = this
-        // Benflix on a phone: the TV layout fits best sideways, so keep phones in landscape
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) &&
-            resources.configuration.smallestScreenWidthDp < PHONE_MAX_WIDTH_DP
-        ) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")
         lifecycle.addObserver(playbackLifecycleObserver)
 
@@ -240,7 +233,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.appStart(intent)
         setContent {
             MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
-                Surface(Modifier.fillMaxSize()) {
+                Surface(Modifier.fillMaxSize().touchTaps()) {
                     val userPreferences by userPreferencesService.flow.collectAsState(null)
                     // Benflix startup animation, once each time the app is opened
                     var showIntro by rememberSaveable { mutableStateOf(true) }
@@ -599,5 +592,3 @@ private val Destination?.isPlayback: Boolean
         this is Destination.Playback ||
             this is Destination.PlaybackList ||
             this is Destination.Slideshow
-
-private const val PHONE_MAX_WIDTH_DP = 600

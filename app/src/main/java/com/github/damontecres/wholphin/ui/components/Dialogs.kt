@@ -53,7 +53,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -70,6 +69,7 @@ import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.playback.SimpleMediaStream
 import com.github.damontecres.wholphin.ui.roundMinutes
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
