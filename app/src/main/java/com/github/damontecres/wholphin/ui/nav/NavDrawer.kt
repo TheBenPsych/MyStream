@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -91,6 +92,7 @@ import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.spacedByWithFooter
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.toServerString
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -358,6 +360,49 @@ fun NavDrawer(
             )
         }
 
+    val onClickSearch = {
+        viewModel.setIndex(SEARCH_INDEX)
+        viewModel.navigationManager.navigateToFromDrawer(Destination.Search())
+    }
+    val onClickSettings = {
+        viewModel.navigationManager.navigateTo(
+            Destination.Settings(
+                PreferenceScreenOption.BASIC,
+            ),
+        )
+    }
+    val onClickProfile = {
+        viewModel.navigateToSetup(
+            SetupDestination.UserList(server),
+        )
+    }
+    if (!rememberIsTv()) {
+        // Phones: logo on top, menu along the bottom
+        Column(modifier = modifier) {
+            PhoneHeader()
+            DestinationContent(
+                destination = destination,
+                preferences = preferences,
+                onClearBackdrop = onClearBackdrop,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 8.dp),
+            )
+            PhoneNavBar(
+                tabs = tabs,
+                gamesTitle = stringResource(R.string.games),
+                user = user,
+                userImageUrl = userImageUrl,
+                searchSelected = selectedIndex == SEARCH_INDEX,
+                onClickSearch = onClickSearch,
+                onClickSettings = onClickSettings,
+                onClickProfile = onClickProfile,
+            )
+        }
+        return
+    }
     Column(modifier = modifier) {
         TopNavBar(
             tabs = tabs,
@@ -365,22 +410,9 @@ fun NavDrawer(
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,
             searchSelected = selectedIndex == SEARCH_INDEX,
-            onClickSearch = {
-                viewModel.setIndex(SEARCH_INDEX)
-                viewModel.navigationManager.navigateToFromDrawer(Destination.Search())
-            },
-            onClickSettings = {
-                viewModel.navigationManager.navigateTo(
-                    Destination.Settings(
-                        PreferenceScreenOption.BASIC,
-                    ),
-                )
-            },
-            onClickProfile = {
-                viewModel.navigateToSetup(
-                    SetupDestination.UserList(server),
-                )
-            },
+            onClickSearch = onClickSearch,
+            onClickSettings = onClickSettings,
+            onClickProfile = onClickProfile,
             focusRequester = focusRequester,
             modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
         )
