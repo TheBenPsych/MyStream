@@ -2,9 +2,11 @@
 
 package com.github.damontecres.wholphin.ui.nav
 
+import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -36,6 +39,8 @@ import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.services.BackdropResult
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
+import com.github.damontecres.wholphin.ui.ifElse
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -78,6 +83,9 @@ fun Backdrop(
     crossfadeDuration: Duration = 800.milliseconds,
 ) {
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // On an upright phone a TV-shaped crop zooms way in, so show the whole wide picture across the top instead
+    val phonePortrait =
+        !rememberIsTv() && LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val baseBackgroundColor = MaterialTheme.colorScheme.background
     if (backdrop.hasColors &&
         (backdropStyle == BackdropStyle.BACKDROP_DYNAMIC_COLOR || backdropStyle == BackdropStyle.UNRECOGNIZED)
@@ -166,9 +174,11 @@ fun Backdrop(
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .fillMaxHeight(BACKDROP_HEIGHT_FRACTION)
-                        .fillMaxWidth(BACKDROP_WIDTH_FRACTION)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .ifElse(
+                            phonePortrait,
+                            Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                            Modifier.fillMaxHeight(BACKDROP_HEIGHT_FRACTION).fillMaxWidth(BACKDROP_WIDTH_FRACTION),
+                        ).graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             val start = if (isRtl) size.width else 0f
                             drawContent()
@@ -192,15 +202,17 @@ fun Backdrop(
                                     blendMode = BlendMode.Multiply,
                                 )
                             }
-                            drawRect(
-                                brush =
-                                    Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black),
-                                        startX = start,
-                                        endX = size.width * 0.6f,
-                                    ),
-                                blendMode = BlendMode.DstIn,
-                            )
+                            if (!phonePortrait) {
+                                drawRect(
+                                    brush =
+                                        Brush.horizontalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black),
+                                            startX = start,
+                                            endX = size.width * 0.6f,
+                                        ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
                             drawRect(
                                 brush =
                                     Brush.verticalGradient(
