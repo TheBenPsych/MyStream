@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,7 @@ import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
 import com.github.damontecres.wholphin.ui.playback.playable
 import com.github.damontecres.wholphin.ui.playback.scale
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
@@ -383,10 +385,15 @@ fun HomePageContent(
     // An item focused in the trending rows, which aren't part of homeRows
     var extraFocus by remember { mutableStateOf<Any?>(null) }
     var heroIndex by remember { mutableIntStateOf(0) }
-    var heroFocused by remember { mutableStateOf(false) }
+    var heroFocusedTv by remember { mutableStateOf(false) }
+    val isTv = rememberIsTv()
+    // Phones have no focus, so there the banner counts as "selected" while it is still on screen
+    val heroOnScreen by remember(listState) { derivedStateOf { listState.firstVisibleItemIndex <= 1 } }
+    val heroFocused = if (isTv) heroFocusedTv else featured.isNotEmpty() && heroOnScreen
     val heroFocusRequester = remember { FocusRequester() }
     val showHero = featured.isNotEmpty()
-    val heroOffset = if (showHero) 1 else 0
+    // Rows start after the banner, and on phones also after the header that scrolls with the page
+    val heroOffset = (if (showHero) 1 else 0) + (if (isTv) 0 else 1)
     val currentHeroItem = if (heroFocused) featured.getOrNull(heroIndex)?.item else null
     LaunchedEffect(currentHeroItem?.id) {
         onHeroItemShown(currentHeroItem)
@@ -470,29 +477,33 @@ fun HomePageContent(
                         }
                     }.fillMaxSize(),
         ) {
-            if (focusedDiscover != null) {
-                HomePageHeader(
-                    title = focusedDiscover.title,
-                    subtitle = null,
-                    overview = focusedDiscover.overview,
-                    overviewTwoLines = false,
-                    quickDetails = null,
-                    timeRemaining = null,
-                    endsAt = null,
-                    showLogo = showLogo,
-                    logoImageUrl = focusedDiscover.logoUrl,
-                    modifier = HomeHeaderModifier,
-                )
-            } else {
-                val currentFeatured = if (heroFocused) featured.getOrNull(heroIndex) else null
-                if (currentFeatured != null) {
-                    FeaturedReasonLabel(
-                        featured = currentFeatured,
-                        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+            val pageHeader: @Composable () -> Unit = {
+                if (focusedDiscover != null) {
+                    HomePageHeader(
+                        title = focusedDiscover.title,
+                        subtitle = null,
+                        overview = focusedDiscover.overview,
+                        overviewTwoLines = false,
+                        quickDetails = null,
+                        timeRemaining = null,
+                        endsAt = null,
+                        showLogo = showLogo,
+                        logoImageUrl = focusedDiscover.logoUrl,
+                        modifier = HomeHeaderModifier,
                     )
+                } else {
+                    val currentFeatured = if (heroFocused) featured.getOrNull(heroIndex) else null
+                    if (currentFeatured != null) {
+                        FeaturedReasonLabel(
+                            featured = currentFeatured,
+                            modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+                        )
+                    }
+                    headerComposable.invoke(focusedItem)
                 }
-                headerComposable.invoke(focusedItem)
             }
+            // On TV the header stays put above the rows; on phones it scrolls away with the rest of the page
+            if (isTv) pageHeader()
 
             val density = LocalDensity.current
             val spaceAbovePx =
@@ -517,6 +528,9 @@ fun HomePageContent(
                         Modifier
                             .focusRestorer(),
                 ) {
+                    if (!isTv) {
+                        item(key = "header") { Column { pageHeader() } }
+                    }
                     if (showHero) {
                         item(key = "hero") {
                             HomeHero(
@@ -526,7 +540,7 @@ fun HomePageContent(
                                 onClickInfo = onClickFeaturedInfo,
                                 onClickFavorite = onClickFeaturedFavorite,
                                 onClickSurprise = onClickSurprise,
-                                onFocusChanged = { heroFocused = it },
+                                onFocusChanged = { heroFocusedTv = it },
                                 focusRequester = heroFocusRequester,
                             )
                         }
