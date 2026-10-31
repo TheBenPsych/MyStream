@@ -7,6 +7,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.MostRecentServerProvider
 import com.github.damontecres.wholphin.data.MostRecentServerSharedPreferences
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SeerrApi
 import com.github.damontecres.wholphin.util.CoroutineContextApiClientFactory
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -96,6 +97,8 @@ object AppModule {
             .Builder()
             .apply {
                 // TODO user agent, timeouts, logging, etc
+                // Benflix Kids profile: only kid-rated movies & shows
+                addInterceptor(KidsMode.interceptor)
             }.build()
 
     @AuthOkHttpClient

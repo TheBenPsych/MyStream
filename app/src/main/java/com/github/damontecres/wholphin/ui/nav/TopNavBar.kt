@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -119,12 +121,15 @@ fun TopNavBar(
             selected = searchSelected,
             onClick = onClickSearch,
         )
-        TopNavIconButton(
-            icon = Icons.Default.Settings,
-            contentDescription = stringResource(R.string.settings),
-            selected = false,
-            onClick = onClickSettings,
-        )
+        val kids by KidsMode.active.collectAsState()
+        if (!kids) {
+            TopNavIconButton(
+                icon = Icons.Default.Settings,
+                contentDescription = stringResource(R.string.settings),
+                selected = false,
+                onClick = onClickSettings,
+            )
+        }
         if (showClock) {
             val timeString by LocalClock.current.timeString
             Text(
@@ -145,8 +150,8 @@ fun TopNavBar(
         ) {
             UserIconCardImage(
                 id = user.id,
-                name = user.name,
-                imageUrl = userImageUrl,
+                name = if (kids) "Kids" else user.name,
+                imageUrl = if (kids) null else userImageUrl,
                 modifier = Modifier.size(32.dp),
             )
         }

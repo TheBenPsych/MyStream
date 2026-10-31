@@ -78,6 +78,8 @@ fun UserList(
     onRemoveUser: (JellyfinUser) -> Unit,
     onSwitchServer: () -> Unit,
     modifier: Modifier = Modifier,
+    kidsUser: JellyfinUser? = null,
+    onKids: (JellyfinUser) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
 
@@ -113,6 +115,11 @@ fun UserList(
                         onLongClick = { showDeleteDialog = user },
                         modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
                     )
+                }
+                kidsUser?.let { grownUp ->
+                    item {
+                        KidsProfileCard(onClick = { onKids.invoke(grownUp) })
+                    }
                 }
                 // Add User card - always rightmost
                 item {
@@ -445,3 +452,59 @@ fun benflixAvatarFor(
     } else {
         BenflixAvatars[Math.floorMod(id.hashCode(), BenflixAvatars.size)]
     }
+
+/**
+ * The built-in Kids profile tile: rainbow picture and "Kids"
+ */
+@Composable
+private fun KidsProfileCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cardSize = Cards.serverUserCircle
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.size(cardSize),
+            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
+            border =
+                ClickableSurfaceDefaults.border(
+                    focusedBorder =
+                        Border(
+                            border =
+                                BorderStroke(
+                                    width = 3.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            shape = ProfileTileShape,
+                        ),
+                ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.benflix_avatar_kids),
+                contentDescription = stringResource(R.string.kids_profile),
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(ProfileTileShape),
+            )
+        }
+        Text(
+            text = stringResource(R.string.kids_profile),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .width(cardSize)
+                    .padding(horizontal = 4.dp),
+        )
+    }
+}
