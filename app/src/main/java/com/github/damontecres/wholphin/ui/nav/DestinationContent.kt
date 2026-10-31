@@ -41,6 +41,8 @@ import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverPage
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
+import com.github.damontecres.wholphin.ui.games.GamesPage
+import com.github.damontecres.wholphin.ui.games.PlayGamePage
 import com.github.damontecres.wholphin.ui.main.HomePage
 import com.github.damontecres.wholphin.ui.main.settings.HomeSettingsPage
 import com.github.damontecres.wholphin.ui.playback.PlayExternalPage
@@ -352,6 +354,15 @@ fun DestinationContent(
 
         Destination.NowPlaying -> {
             NowPlayingPage(modifier)
+        }
+
+        Destination.Games -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            GamesPage(modifier)
+        }
+
+        is Destination.PlayGame -> {
+            PlayGamePage(destination.gameName, modifier)
         }
 
         Destination.UpdateApp -> {

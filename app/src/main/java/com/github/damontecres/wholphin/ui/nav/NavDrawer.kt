@@ -187,6 +187,8 @@ class NavDrawerViewModel
                             SEARCH_INDEX
                         } else if (key is Destination.NowPlaying) {
                             NOW_PLAYING_INDEX
+                        } else if (key is Destination.Games) {
+                            GAMES_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -270,6 +272,7 @@ data class ServerNavDrawerItem(
 private const val HOME_INDEX = -1
 private const val SEARCH_INDEX = -2
 private const val NOW_PLAYING_INDEX = -3
+private const val GAMES_INDEX = -4
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -343,6 +346,16 @@ fun NavDrawer(
                     ),
                 )
             }
+            add(
+                TopNavTab(
+                    title = stringResource(R.string.games),
+                    selected = selectedIndex == GAMES_INDEX,
+                    onClick = {
+                        viewModel.setIndex(GAMES_INDEX)
+                        viewModel.navigationManager.navigateToFromDrawer(Destination.Games)
+                    },
+                ),
+            )
         }
 
     Column(modifier = modifier) {
