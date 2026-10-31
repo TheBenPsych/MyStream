@@ -161,13 +161,13 @@ fun Backdrop(
                         .transitionFactory(CrossFadeFactory(crossfadeDuration))
                         .build(),
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 alignment = Alignment.TopEnd,
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .fillMaxHeight(.7f)
-                        .fillMaxWidth(.7f)
+                        .fillMaxHeight(BACKDROP_HEIGHT_FRACTION)
+                        .fillMaxWidth(BACKDROP_WIDTH_FRACTION)
                         .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             val start = if (isRtl) size.width else 0f
@@ -215,3 +215,9 @@ fun Backdrop(
         }
     }
 }
+
+/**
+ * How much of the screen the backdrop artwork covers, anchored to the top right
+ */
+const val BACKDROP_WIDTH_FRACTION = .8f
+const val BACKDROP_HEIGHT_FRACTION = .8f

@@ -34,7 +34,7 @@ sealed interface HomeRowConfig {
     @Serializable
     @SerialName("ContinueWatching")
     data class ContinueWatching(
-        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
+        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions.continueWatchingDefault,
     ) : HomeRowConfig {
         override fun updateViewOptions(viewOptions: HomeRowViewOptions): ContinueWatching = this.copy(viewOptions = viewOptions)
     }
@@ -45,7 +45,7 @@ sealed interface HomeRowConfig {
     @Serializable
     @SerialName("NextUp")
     data class NextUp(
-        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
+        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions.continueWatchingDefault,
     ) : HomeRowConfig {
         override fun updateViewOptions(viewOptions: HomeRowViewOptions): NextUp = this.copy(viewOptions = viewOptions)
     }
@@ -56,7 +56,7 @@ sealed interface HomeRowConfig {
     @Serializable
     @SerialName("ContinueWatchingCombined")
     data class ContinueWatchingCombined(
-        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
+        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions.continueWatchingDefault,
     ) : HomeRowConfig {
         override fun updateViewOptions(viewOptions: HomeRowViewOptions): ContinueWatchingCombined = this.copy(viewOptions = viewOptions)
     }
@@ -260,6 +260,19 @@ data class HomeRowViewOptions(
     val episodeImageType: ViewOptionImageType = ViewOptionImageType.PRIMARY,
 ) {
     companion object {
+        /**
+         * Wide landscape cards (like a streaming service) for continue watching & next up
+         */
+        val continueWatchingDefault =
+            HomeRowViewOptions(
+                heightDp = Cards.HEIGHT_EPISODE,
+                aspectRatio = AspectRatio.WIDE,
+                imageType = ViewOptionImageType.THUMB,
+                useSeries = true,
+                episodeAspectRatio = AspectRatio.WIDE,
+                episodeImageType = ViewOptionImageType.THUMB,
+            )
+
         val genreDefault =
             HomeRowViewOptions(
                 heightDp = Cards.HEIGHT_EPISODE,
