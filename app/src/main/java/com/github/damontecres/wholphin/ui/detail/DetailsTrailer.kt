@@ -3,14 +3,13 @@ package com.github.damontecres.wholphin.ui.detail
 import android.content.Context
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -44,11 +43,10 @@ fun BoxScope.DetailsTrailer(
     viewModel: DetailsTrailerViewModel = hiltViewModel(),
 ) {
     val playing by viewModel.playing.collectAsState()
-    LaunchedEffect(item?.id, active) {
+    // Also stops while the app is in the background or another screen is on top
+    LifecycleResumeEffect(item?.id, active) {
         viewModel.preview(if (active) item else null)
-    }
-    DisposableEffect(Unit) {
-        onDispose { viewModel.preview(null) }
+        onPauseOrDispose { viewModel.preview(null) }
     }
     if (active && playing) {
         HeroTrailer(
