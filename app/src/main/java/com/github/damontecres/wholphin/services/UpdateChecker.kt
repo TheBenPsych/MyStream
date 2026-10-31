@@ -24,6 +24,8 @@ import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.util.Version
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -80,6 +82,30 @@ class UpdateChecker
             private val NOTE_REGEX = Regex("<!-- app-note:(.+) -->")
 
             val ACTIVE = BuildConfig.UPDATING_ENABLED
+
+            private const val KEY_SNOOZE_VERSION = "benflix_update_snoozed_version"
+            private const val KEY_SNOOZE_AT = "benflix_update_snoozed_at"
+        }
+
+        private val _prompt = MutableStateFlow<Release?>(null)
+
+        /** A newer build to offer in the "Update available" pop-up, or null when there is nothing to show */
+        val prompt: StateFlow<Release?> = _prompt
+
+        /** Set when the pop-up's Update button was pressed, so the update page starts installing right away */
+        var installWhenOpened = false
+
+        /** "Not now": hide the pop-up and don't ask about this build again for a day */
+        fun snooze(release: Release) {
+            PreferenceManager.getDefaultSharedPreferences(context).edit {
+                putString(KEY_SNOOZE_VERSION, release.version.toString())
+                putLong(KEY_SNOOZE_AT, Date().time)
+            }
+            _prompt.value = null
+        }
+
+        fun clearPrompt() {
+            _prompt.value = null
         }
 
         /**
@@ -93,10 +119,6 @@ class UpdateChecker
         ) {
             val pref = PreferenceManager.getDefaultSharedPreferences(context)
             val now = Date()
-            val lastUpdateCheckThreshold =
-                pref
-                    .getLong(context.getString(R.string.pref_key_update_last_check_threshold), 12)
-                    .hours
             val lastUpdateCheck =
                 pref.getLong(
                     context.getString(R.string.pref_key_update_last_check),
@@ -111,16 +133,13 @@ class UpdateChecker
                 pref.edit {
                     putLong(context.getString(R.string.pref_key_update_last_check), now.time)
                 }
-                if (lastUpdateCheckThreshold >= timeSince) {
-                    Timber.i(
-                        "Skipping update notification, threshold is $lastUpdateCheckThreshold",
-                    )
+                val snoozedVersion = pref.getString(KEY_SNOOZE_VERSION, null)
+                val snoozedFor = (now.time - pref.getLong(KEY_SNOOZE_AT, 0)).milliseconds
+                if (snoozedVersion == latestRelease.version.toString() && snoozedFor < 24.hours) {
+                    Timber.i("Update pop-up snoozed for ${latestRelease.version}")
                 } else {
-                    showToast(
-                        context,
-                        "Update available: $installedVersion => ${latestRelease.version}!",
-                        Toast.LENGTH_LONG,
-                    )
+                    // Shown as a pop-up with what's new once a profile is picked
+                    _prompt.value = latestRelease
                 }
             } else {
                 Timber.v("No update available for $installedVersion")
@@ -381,7 +400,7 @@ data class Release(
     val content =
         "# ${version}\n" +
             (
-                (notes.joinToString("\n").takeIf { it.isNotNullOrBlank() } ?: "") +
+                (notes.joinToString("\n", postfix = "\n\n") { "- $it" }.takeIf { notes.isNotEmpty() } ?: "") +
                     (body ?: "")
             ).replace(
                 Regex("https://github.com/\\w*/\\w+/pull/(\\d+)"),

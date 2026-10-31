@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -194,6 +195,17 @@ fun InstallUpdatePage(
         LoadingState.Success -> {
             val release = state.release
             if (release != null) {
+                // Came here from the "Update" button on the pop-up, so start right away
+                LaunchedEffect(release) {
+                    if (viewModel.updater.installWhenOpened) {
+                        viewModel.updater.installWhenOpened = false
+                        if (permissions) {
+                            viewModel.installRelease(release)
+                        } else {
+                            launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        }
+                    }
+                }
                 InstallUpdatePageContent(
                     currentVersion = viewModel.currentVersion,
                     release = release,
