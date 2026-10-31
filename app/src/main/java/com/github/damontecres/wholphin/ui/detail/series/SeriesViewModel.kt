@@ -398,6 +398,35 @@ class SeriesViewModel
             return EpisodeList.Success(seasonId, pager, initialIndex)
         }
 
+        /**
+         * Netflix-style episode list on the show page: load the episodes of the season at [index]
+         */
+        fun showSeasonEpisodes(index: Int) {
+            val season = state.value.seasons.getOrNull(index) ?: return
+            _state.update { it.copy(inlineSeasonIndex = index) }
+            viewModelScope.launchIO(ExceptionHandler()) {
+                val request =
+                    GetEpisodesRequest(
+                        seriesId = seriesId,
+                        seasonId = season.id,
+                        sortBy = ItemSortBy.INDEX_NUMBER,
+                        fields =
+                            listOf(
+                                ItemFields.OVERVIEW,
+                                ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
+                            ),
+                    )
+                val episodes =
+                    api.tvShowsApi
+                        .getEpisodes(request)
+                        .content.items
+                        .map { BaseItem(it) }
+                _state.update {
+                    if (it.inlineSeasonIndex == index) it.copy(inlineEpisodes = episodes) else it
+                }
+            }
+        }
+
         fun loadEpisodes(
             seasonId: UUID,
             seasonNum: Int?,
@@ -899,4 +928,6 @@ data class SeriesState(
     val discovered: List<DiscoverItem> = emptyList(),
     val discoverSeries: DiscoverItem? = null,
     val chosenStreams: ChosenStreams? = null,
+    val inlineSeasonIndex: Int = -1,
+    val inlineEpisodes: List<BaseItem> = emptyList(),
 )
