@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -26,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -177,7 +181,11 @@ fun Backdrop(
                         .ifElse(
                             phonePortrait,
                             Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                            Modifier.fillMaxHeight(BACKDROP_HEIGHT_FRACTION).fillMaxWidth(BACKDROP_WIDTH_FRACTION),
+                            // On the TV the picture starts just under the top menu so the menu never covers it
+                            Modifier
+                                .padding(top = with(LocalDensity.current) { TopBarInset.heightPx.toDp() })
+                                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION)
+                                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true),
                         ).graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
                             val start = if (isRtl) size.width else 0f
@@ -226,6 +234,13 @@ fun Backdrop(
             )
         }
     }
+}
+
+/**
+ * How tall the TV top menu is right now, so the banner picture can start just below it
+ */
+object TopBarInset {
+    var heightPx by mutableIntStateOf(0)
 }
 
 /**

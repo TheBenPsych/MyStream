@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,8 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -85,13 +88,17 @@ fun TopNavBar(
 ) {
     val selectedIndex = tabs.indexOfFirst { it.selected }
     val kids by KidsMode.active.collectAsState()
+    DisposableEffect(Unit) { onDispose { TopBarInset.heightPx = 0 } }
     // Two lines: the logo and buttons on top, then every tab on its own full-width line so none are hidden
     Column(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 4.dp)
+                .onSizeChanged { TopBarInset.heightPx = it.height }
+                // A dark shade behind the bar so the logo, tabs and icons stay easy to read over bright artwork
+                .background(TopNavBarShade)
+                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 10.dp)
                 .focusGroup()
                 .focusProperties {
                     // Entering the bar from the page lands on the current tab
@@ -244,6 +251,14 @@ fun topNavTitle(item: NavDrawerItem): String =
     } else {
         item.name(LocalContext.current)
     }
+
+/** The dark fade behind the top bar: nearly solid at the top, clearing at the bottom edge */
+private val TopNavBarShade =
+    Brush.verticalGradient(
+        0f to Color.Black.copy(alpha = .92f),
+        .7f to Color.Black.copy(alpha = .7f),
+        1f to Color.Transparent,
+    )
 
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
