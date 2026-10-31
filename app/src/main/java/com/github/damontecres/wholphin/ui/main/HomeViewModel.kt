@@ -1000,42 +1000,9 @@ class HomeViewModel
             }
         }
 
-        /**
-         * Find movies & shows for a mood, shown in a row under the mood tiles. Picking it again reshuffles.
-         */
+        /** Opens a full page of picks for the mood, like the studio tiles do */
         fun pickMood(mood: HomeMood) {
-            viewModelScope.launch(ExceptionHandler(autoToast = true) + WholphinDispatchers.IO) {
-                val userId = serverRepository.currentUser?.id ?: return@launch
-                _state.update { it.copy(mood = mood) }
-                val taste = loadTaste(userId)
-                val items =
-                    api.itemsApi
-                        .getItems(
-                            GetItemsRequest(
-                                userId = userId,
-                                includeItemTypes = mood.types,
-                                recursive = true,
-                                genres = mood.genres,
-                                minCommunityRating = mood.minRating,
-                                isPlayed = if (mood.unwatchedOnly) false else null,
-                                sortBy = listOf(ItemSortBy.RANDOM),
-                                limit = MOOD_FETCH,
-                                fields = HomeItemFields + listOf(ItemFields.RECURSIVE_ITEM_COUNT, ItemFields.CHILD_COUNT),
-                            ),
-                        ).content.items
-                        .filter { taste.keep(it) }
-                        .map { BaseItem(it) }
-                        .filter(mood.keep)
-                        .take(MOOD_MAX)
-                _state.update {
-                    if (it.mood == mood) {
-                        it.copy(moodRow = ThemedRow(context.getString(mood.title), items))
-                    } else {
-                        it
-                    }
-                }
-                if (items.isEmpty()) showToast(context, context.getString(R.string.mood_nothing_found))
-            }
+            navigationManager.navigateTo(Destination.Mood(mood.name))
         }
 
         /**
@@ -1266,10 +1233,8 @@ private const val BECAUSE_MIN = 4
 private const val COLLECTIONS_FETCH = 100
 private const val COLLECTIONS_MAX = 20
 private const val COLLECTIONS_MIN = 3
-private const val MOOD_FETCH = 80
 private const val STUDIO_MIN_ITEMS = 3
 private const val STUDIO_MAX_TILES = 20
-private const val MOOD_MAX = 20
 private const val TRAILER_DELAY_MS = 3_000L
 
 /**

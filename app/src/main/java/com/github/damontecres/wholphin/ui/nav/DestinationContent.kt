@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
 import com.github.damontecres.wholphin.ui.games.GamesPage
 import com.github.damontecres.wholphin.ui.games.PlayGamePage
 import com.github.damontecres.wholphin.ui.main.HomePage
+import com.github.damontecres.wholphin.ui.main.MoodPage
 import com.github.damontecres.wholphin.ui.main.settings.HomeSettingsPage
 import com.github.damontecres.wholphin.ui.playback.PlayExternalPage
 import com.github.damontecres.wholphin.ui.playback.PlaybackPage
@@ -354,6 +355,11 @@ fun DestinationContent(
 
         Destination.NowPlaying -> {
             NowPlayingPage(modifier)
+        }
+
+        is Destination.Mood -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            MoodPage(destination.moodName, modifier)
         }
 
         Destination.Games -> {

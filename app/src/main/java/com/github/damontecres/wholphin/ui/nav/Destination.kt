@@ -169,6 +169,12 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** A full page of picks for one "Pick a mood" tile */
+    @Serializable
+    data class Mood(
+        val moodName: String,
+    ) : Destination(false)
+
     @Serializable
     data class PlayGame(
         val gameName: String,
