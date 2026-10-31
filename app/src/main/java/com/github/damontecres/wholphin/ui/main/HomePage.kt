@@ -116,6 +116,8 @@ fun HomePage(
     val themed = state.themed
     val because = state.because
     val collections = state.collections
+    val mood = state.mood
+    val moodRow = state.moodRow
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -263,6 +265,9 @@ fun HomePage(
                 themed = themed,
                 because = because,
                 collections = collections,
+                mood = mood,
+                moodRow = moodRow,
+                onClickMood = viewModel::pickMood,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
@@ -313,6 +318,7 @@ private const val MISSING_AFTER_ROW = 1
 private const val THEMED_AFTER_ROW = 0
 private const val COLLECTIONS_AFTER_ROW = 2
 private const val BECAUSE_AFTER_ROW = 3
+private const val MOOD_AFTER_ROW = 1
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -359,6 +365,9 @@ fun HomePageContent(
     themed: ThemedRow? = null,
     because: ThemedRow? = null,
     collections: ThemedRow? = null,
+    mood: HomeMood? = null,
+    moodRow: ThemedRow? = null,
+    onClickMood: ((HomeMood) -> Unit)? = null,
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
     onHeroItemShown: (BaseItem?) -> Unit = {},
@@ -430,7 +439,9 @@ fun HomePageContent(
                                     (if (it > MISSING_AFTER_ROW && trendingMissing.isNotEmpty()) 1 else 0) +
                                     (if (it > THEMED_AFTER_ROW && themed != null) 1 else 0) +
                                     (if (it > COLLECTIONS_AFTER_ROW && collections != null) 1 else 0) +
-                                    (if (it > BECAUSE_AFTER_ROW && because != null) 1 else 0),
+                                    (if (it > BECAUSE_AFTER_ROW && because != null) 1 else 0) +
+                                    (if (it > MOOD_AFTER_ROW && onClickMood != null) 1 else 0) +
+                                    (if (it > MOOD_AFTER_ROW && moodRow != null) 1 else 0),
                             )
                         }
                 }
@@ -692,6 +703,31 @@ fun HomePageContent(
                                                 if (!it.hasFocus && extraFocus in trendingMissing) extraFocus = null
                                             },
                                 )
+                            }
+                        }
+                        if (rowIndex == MOOD_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && onClickMood != null) {
+                            item(key = "moods") {
+                                MoodRow(
+                                    selected = mood,
+                                    onClickMood = onClickMood,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                            }
+                            if (moodRow != null) {
+                                item(key = "moodRow") {
+                                    PosterRow(
+                                        title = moodRow.title,
+                                        items = moodRow.items,
+                                        onClickItem = onClickTrending,
+                                        onFocusItem = { extraFocus = it },
+                                        modifier =
+                                            Modifier
+                                                .padding(bottom = 8.dp)
+                                                .onFocusChanged {
+                                                    if (!it.hasFocus && extraFocus in moodRow.items) extraFocus = null
+                                                },
+                                    )
+                                }
                             }
                         }
                         if (rowIndex == COLLECTIONS_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && collections != null) {

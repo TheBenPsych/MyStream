@@ -1010,4 +1010,13 @@
     <string name="because_you_watched_row">Because you watched %1$s</string>
     <string name="top_collections_row">Top collections</string>
     <string name="kids_profile">Kids</string>
+    <string name="mood_row_title">Pick a mood</string>
+    <string name="mood_binge">Binge Mode</string>
+    <string name="mood_thoughtful">Something Thoughtful</string>
+    <string name="mood_background">Background Noise</string>
+    <string name="mood_quick">Quick Watch</string>
+    <string name="mood_date_night">Date Night</string>
+    <string name="mood_edge">Edge of My Seat</string>
+    <string name="mood_family">Family Time</string>
+    <string name="mood_nothing_found">Nothing found for that mood yet</string>
 </resources>

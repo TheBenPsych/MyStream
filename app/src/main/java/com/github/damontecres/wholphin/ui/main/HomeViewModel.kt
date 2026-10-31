@@ -67,6 +67,7 @@ import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
@@ -684,6 +685,42 @@ class HomeViewModel
         }
 
         /**
+         * Find movies & shows for a mood, shown in a row under the mood tiles. Picking it again reshuffles.
+         */
+        fun pickMood(mood: HomeMood) {
+            viewModelScope.launch(ExceptionHandler(autoToast = true) + WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id ?: return@launch
+                _state.update { it.copy(mood = mood) }
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = mood.types,
+                                recursive = true,
+                                genres = mood.genres,
+                                minCommunityRating = mood.minRating,
+                                isPlayed = if (mood.unwatchedOnly) false else null,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = MOOD_FETCH,
+                                fields = HomeItemFields + listOf(ItemFields.RECURSIVE_ITEM_COUNT, ItemFields.CHILD_COUNT),
+                            ),
+                        ).content.items
+                        .map { BaseItem(it) }
+                        .filter(mood.keep)
+                        .take(MOOD_MAX)
+                _state.update {
+                    if (it.mood == mood) {
+                        it.copy(moodRow = ThemedRow(context.getString(mood.title), items))
+                    } else {
+                        it
+                    }
+                }
+                if (items.isEmpty()) showToast(context, context.getString(R.string.mood_nothing_found))
+            }
+        }
+
+        /**
          * Play the item's local trailer muted behind the banner after a short delay,
          * or stop the preview if [item] is null
          */
@@ -868,6 +905,8 @@ data class HomeState(
     val themed: ThemedRow? = null,
     val because: ThemedRow? = null,
     val collections: ThemedRow? = null,
+    val mood: HomeMood? = null,
+    val moodRow: ThemedRow? = null,
 ) {
     companion object {
         val EMPTY =
@@ -896,6 +935,8 @@ private const val BECAUSE_MIN = 4
 private const val COLLECTIONS_FETCH = 100
 private const val COLLECTIONS_MAX = 20
 private const val COLLECTIONS_MIN = 3
+private const val MOOD_FETCH = 80
+private const val MOOD_MAX = 20
 private const val TRAILER_DELAY_MS = 3_000L
 
 /**
