@@ -1021,7 +1021,7 @@ sealed interface AppPreference<Pref, T> {
         val SignInAuto =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.sign_in_auto,
-                defaultValue = true,
+                defaultValue = false,
                 getter = { it.signInAutomatically },
                 setter = { prefs, value ->
                     prefs.update { signInAutomatically = value }
