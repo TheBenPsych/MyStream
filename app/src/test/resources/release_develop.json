@@ -40,7 +40,7 @@
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937404",
       "id": 373937404,
       "node_id": "RA_kwDOPzwRps4WSdT8",
-      "name": "Wholphin-debug-0.5.3-8-g627b89f1-44-arm64-v8a.apk",
+      "name": "Benflix-debug-0.5.3-8-g627b89f1-44-arm64-v8a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -70,13 +70,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:23Z",
       "updated_at": "2026-03-14T20:54:26Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-0.5.3-8-g627b89f1-44-arm64-v8a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-0.5.3-8-g627b89f1-44-arm64-v8a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937407",
       "id": 373937407,
       "node_id": "RA_kwDOPzwRps4WSdT_",
-      "name": "Wholphin-debug-0.5.3-8-g627b89f1-44-armeabi-v7a.apk",
+      "name": "Benflix-debug-0.5.3-8-g627b89f1-44-armeabi-v7a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -106,13 +106,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:24Z",
       "updated_at": "2026-03-14T20:54:25Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-0.5.3-8-g627b89f1-44-armeabi-v7a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-0.5.3-8-g627b89f1-44-armeabi-v7a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937406",
       "id": 373937406,
       "node_id": "RA_kwDOPzwRps4WSdT-",
-      "name": "Wholphin-debug-0.5.3-8-g627b89f1-44.apk",
+      "name": "Benflix-debug-0.5.3-8-g627b89f1-44.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -142,13 +142,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:24Z",
       "updated_at": "2026-03-14T20:54:26Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-0.5.3-8-g627b89f1-44.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-0.5.3-8-g627b89f1-44.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937405",
       "id": 373937405,
       "node_id": "RA_kwDOPzwRps4WSdT9",
-      "name": "Wholphin-debug-arm64-v8a.apk",
+      "name": "Benflix-debug-arm64-v8a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -178,13 +178,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:23Z",
       "updated_at": "2026-03-14T20:54:26Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-arm64-v8a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-arm64-v8a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937408",
       "id": 373937408,
       "node_id": "RA_kwDOPzwRps4WSdUA",
-      "name": "Wholphin-debug-armeabi-v7a.apk",
+      "name": "Benflix-debug-armeabi-v7a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -214,13 +214,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:24Z",
       "updated_at": "2026-03-14T20:54:26Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-armeabi-v7a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-armeabi-v7a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937422",
       "id": 373937422,
       "node_id": "RA_kwDOPzwRps4WSdUO",
-      "name": "Wholphin-debug.apk",
+      "name": "Benflix-debug.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -250,13 +250,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:26Z",
       "updated_at": "2026-03-14T20:54:29Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937424",
       "id": 373937424,
       "node_id": "RA_kwDOPzwRps4WSdUQ",
-      "name": "Wholphin-release-0.5.3-8-g627b89f1-44-arm64-v8a.apk",
+      "name": "Benflix-release-0.5.3-8-g627b89f1-44-arm64-v8a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -286,13 +286,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:26Z",
       "updated_at": "2026-03-14T20:54:28Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-0.5.3-8-g627b89f1-44-arm64-v8a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-0.5.3-8-g627b89f1-44-arm64-v8a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937427",
       "id": 373937427,
       "node_id": "RA_kwDOPzwRps4WSdUT",
-      "name": "Wholphin-release-0.5.3-8-g627b89f1-44-armeabi-v7a.apk",
+      "name": "Benflix-release-0.5.3-8-g627b89f1-44-armeabi-v7a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -322,13 +322,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:26Z",
       "updated_at": "2026-03-14T20:54:28Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-0.5.3-8-g627b89f1-44-armeabi-v7a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-0.5.3-8-g627b89f1-44-armeabi-v7a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937431",
       "id": 373937431,
       "node_id": "RA_kwDOPzwRps4WSdUX",
-      "name": "Wholphin-release-0.5.3-8-g627b89f1-44.apk",
+      "name": "Benflix-release-0.5.3-8-g627b89f1-44.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -358,13 +358,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:27Z",
       "updated_at": "2026-03-14T20:54:29Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-0.5.3-8-g627b89f1-44.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-0.5.3-8-g627b89f1-44.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937439",
       "id": 373937439,
       "node_id": "RA_kwDOPzwRps4WSdUf",
-      "name": "Wholphin-release-arm64-v8a.apk",
+      "name": "Benflix-release-arm64-v8a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -394,13 +394,13 @@
       "download_count": 1,
       "created_at": "2026-03-14T20:54:27Z",
       "updated_at": "2026-03-14T20:54:29Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-arm64-v8a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-arm64-v8a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937452",
       "id": 373937452,
       "node_id": "RA_kwDOPzwRps4WSdUs",
-      "name": "Wholphin-release-armeabi-v7a.apk",
+      "name": "Benflix-release-armeabi-v7a.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -430,13 +430,13 @@
       "download_count": 0,
       "created_at": "2026-03-14T20:54:28Z",
       "updated_at": "2026-03-14T20:54:30Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-armeabi-v7a.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-armeabi-v7a.apk"
     },
     {
       "url": "https://api.github.com/repos/damontecres/Wholphin/releases/assets/373937453",
       "id": 373937453,
       "node_id": "RA_kwDOPzwRps4WSdUt",
-      "name": "Wholphin-release.apk",
+      "name": "Benflix-release.apk",
       "label": "",
       "uploader": {
         "login": "github-actions[bot]",
@@ -466,7 +466,7 @@
       "download_count": 1,
       "created_at": "2026-03-14T20:54:28Z",
       "updated_at": "2026-03-14T20:54:31Z",
-      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release.apk"
+      "browser_download_url": "https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release.apk"
     }
   ],
   "tarball_url": "https://api.github.com/repos/damontecres/Wholphin/tarball/develop",

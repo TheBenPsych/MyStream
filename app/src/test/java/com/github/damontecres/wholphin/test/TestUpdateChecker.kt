@@ -34,31 +34,31 @@ class TestUpdateChecker {
     @Test
     fun `Release chooses release`() {
         val url = getDownloadUrl(assetsJson, false, listOf())
-        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release.apk", url)
+        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release.apk", url)
     }
 
     @Test
     fun `Choose abi`() {
         val url = getDownloadUrl(assetsJson, false, listOf("arm64-v8a"))
-        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release-arm64-v8a.apk", url)
+        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release-arm64-v8a.apk", url)
     }
 
     @Test
     fun `Choose unknown abi`() {
         val url = getDownloadUrl(assetsJson, false, listOf("unknown"))
-        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-release.apk", url)
+        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-release.apk", url)
     }
 
     @Test
     fun `Debug chooses debug`() {
         val url = getDownloadUrl(assetsJson, true, listOf())
-        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug.apk", url)
+        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug.apk", url)
     }
 
     @Test
     fun `Choose debug abi`() {
         val url = getDownloadUrl(assetsJson, true, listOf("arm64-v8a"))
-        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Wholphin-debug-arm64-v8a.apk", url)
+        Assert.assertEquals("https://github.com/damontecres/Wholphin/releases/download/develop/Benflix-debug-arm64-v8a.apk", url)
     }
 
     @Test
@@ -66,19 +66,19 @@ class TestUpdateChecker {
         releaseV108Json = read("release_v108.json")
         getDownloadUrl(assetsV108Json, false, listOf("arm64-v8a")).let { url ->
             Assert.assertEquals(
-                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Wholphin-arm64-v8a.apk",
+                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Benflix-arm64-v8a.apk",
                 url,
             )
         }
         getDownloadUrl(assetsV108Json, false, listOf("armeabi-v7a")).let { url ->
             Assert.assertEquals(
-                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Wholphin-armeabi-v7a.apk",
+                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Benflix-armeabi-v7a.apk",
                 url,
             )
         }
         getDownloadUrl(assetsV108Json, false, emptyList()).let { url ->
             Assert.assertEquals(
-                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Wholphin.apk",
+                "https://github.com/damontecres/Wholphin/releases/download/v1.0.8/Benflix.apk",
                 url,
             )
         }
