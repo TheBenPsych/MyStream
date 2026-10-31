@@ -41,6 +41,19 @@ class FavoriteWatchManager
                 api.userLibraryApi.unmarkFavoriteItem(itemId).content
             }
 
+        /**
+         * Thumbs up (true), thumbs down (false) or clear (null), using Jellyfin's built-in Likes
+         */
+        suspend fun setLikes(
+            itemId: UUID,
+            likes: Boolean?,
+        ): UserItemDataDto =
+            if (likes == null) {
+                api.userLibraryApi.deleteUserItemRating(itemId).content
+            } else {
+                api.userLibraryApi.updateUserItemRating(itemId, likes = likes).content
+            }
+
         suspend fun removeContinueWatching(item: BaseItem) {
         }
     }

@@ -89,6 +89,8 @@ fun ExpandablePlayButtons(
     chooseVersionParams: ChooseVersionParams?,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
+    likes: Boolean? = null,
+    rateOnClick: ((Boolean?) -> Unit)? = null,
 ) {
     val resources = LocalResources.current
     val firstFocus = remember { FocusRequester() }
@@ -182,6 +184,15 @@ fun ExpandablePlayButtons(
             )
         }
 
+        if (rateOnClick != null) {
+            item("like") {
+                LikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
+            }
+            item("dislike") {
+                DislikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
+            }
+        }
+
         if (trailers != null) {
             item("trailers") {
                 TrailerButton(
@@ -225,6 +236,41 @@ fun ExpandablePlayButtons(
         )
     }
 }
+
+val LikedColor = Color(0xFF46D369)
+val DislikedColor = Color(0xFFFF8A3D)
+
+/**
+ * Thumbs up button. Pressing it again clears the rating.
+ */
+@Composable
+fun LikeButton(
+    likes: Boolean?,
+    rateOnClick: (Boolean?) -> Unit,
+    modifier: Modifier = Modifier,
+) = ExpandableFaButton(
+    title = if (likes == true) R.string.liked else R.string.like,
+    iconStringRes = R.string.fa_thumbs_up,
+    onClick = { rateOnClick.invoke(if (likes == true) null else true) },
+    iconColor = if (likes == true) LikedColor else Color.Unspecified,
+    modifier = modifier,
+)
+
+/**
+ * Thumbs down button. Pressing it again clears the rating.
+ */
+@Composable
+fun DislikeButton(
+    likes: Boolean?,
+    rateOnClick: (Boolean?) -> Unit,
+    modifier: Modifier = Modifier,
+) = ExpandableFaButton(
+    title = if (likes == false) R.string.disliked else R.string.dislike,
+    iconStringRes = R.string.fa_thumbs_down,
+    onClick = { rateOnClick.invoke(if (likes == false) null else false) },
+    iconColor = if (likes == false) DislikedColor else Color.Unspecified,
+    modifier = modifier,
+)
 
 val MinButtonSize = 40.dp
 

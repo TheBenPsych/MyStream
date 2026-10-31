@@ -72,9 +72,11 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.studiosApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
+import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
@@ -85,6 +87,7 @@ import java.time.LocalDate
 import java.time.MonthDay
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.random.Random
 
 @HiltViewModel
 class HomeViewModel
@@ -352,6 +355,7 @@ class HomeViewModel
          * the newest movies & shows plus a few random unwatched picks
          */
         private suspend fun loadFeatured(userDto: ServerUserConfig) {
+            val taste = loadTaste(userDto.id)
             val baseRequest =
                 GetItemsRequest(
                     userId = userDto.id,
@@ -413,6 +417,28 @@ class HomeViewModel
                             .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = sourceName) }
                     }
                 }
+            val liked =
+                featuredSource("liked") {
+                    val likedItem = taste.liked
+                    val name = likedItem?.name
+                    if (likedItem == null || name == null) {
+                        emptyList()
+                    } else {
+                        api.libraryApi
+                            .getSimilarItems(
+                                GetSimilarItemsRequest(
+                                    userId = userDto.id,
+                                    itemId = likedItem.id,
+                                    fields = HomeItemFields,
+                                    limit = 12,
+                                ),
+                            ).content.items
+                            .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
+                            .shuffled()
+                            .take(FEATURED_BECAUSE)
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = name) }
+                    }
+                }
             val newest =
                 featuredSource("newest") {
                     api.itemsApi
@@ -450,10 +476,11 @@ class HomeViewModel
                         .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
                 }
             // Take turns between the sources so the banner mixes them
-            val sources = listOf(resume, because, newest, favorites, picks)
+            val sources = listOf(resume, because, liked, newest, favorites, picks)
             val featured =
                 (0 until sources.maxOf { it.size })
                     .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
+                    .filter { taste.keep(it.item) }
                     .distinctBy { it.item.id }
                     .take(FEATURED_MAX)
             _state.update { it.copy(featured = featured) }
@@ -679,7 +706,57 @@ class HomeViewModel
         }
 
         /**
-         * "Because you watched X": titles similar to the last movie or show watched
+         * What this profile rated with thumbs up / thumbs down (Jellyfin Likes)
+         */
+        private data class Taste(
+            val disliked: Set<UUID>,
+            val liked: BaseItemDto?,
+        ) {
+            fun keep(item: BaseItemDto) = item.id !in disliked && item.seriesId?.let { it in disliked } != true
+
+            fun keep(item: BaseItem) = keep(item.data)
+        }
+
+        private suspend fun loadTaste(userId: UUID): Taste {
+            fun request(filter: ItemFilter) =
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    filters = listOf(filter),
+                    sortBy = listOf(ItemSortBy.RANDOM),
+                )
+            val disliked =
+                try {
+                    api.itemsApi
+                        .getItems(request(ItemFilter.DISLIKES).copy(limit = TASTE_MAX))
+                        .content.items
+                        .map { it.id }
+                        .toSet()
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.e(ex, "Error loading dislikes")
+                    emptySet()
+                }
+            val liked =
+                try {
+                    api.itemsApi
+                        .getItems(request(ItemFilter.LIKES).copy(limit = 1))
+                        .content.items
+                        .firstOrNull()
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.e(ex, "Error loading likes")
+                    null
+                }
+            return Taste(disliked, liked)
+        }
+
+        /**
+         * "Because you watched X" (or "Because you liked X"): titles similar to the last
+         * movie or show watched, or to one the profile gave a thumbs up
          */
         private suspend fun loadBecause(userDto: ServerUserConfig) {
             try {
@@ -697,9 +774,22 @@ class HomeViewModel
                             ),
                         ).content.items
                         .firstOrNull()
+                val taste = loadTaste(userDto.id)
                 val isEpisode = lastWatched?.type == BaseItemKind.EPISODE
-                val sourceId = if (isEpisode) lastWatched?.seriesId else lastWatched?.id
-                val sourceName = if (isEpisode) lastWatched?.seriesName else lastWatched?.name
+                // Half the time (or when nothing was watched yet) base the row on something the profile liked
+                val fromLiked = taste.liked != null && (lastWatched == null || Random.nextBoolean())
+                val sourceId =
+                    when {
+                        fromLiked -> taste.liked?.id
+                        isEpisode -> lastWatched?.seriesId
+                        else -> lastWatched?.id
+                    }
+                val sourceName =
+                    when {
+                        fromLiked -> taste.liked?.name
+                        isEpisode -> lastWatched?.seriesName
+                        else -> lastWatched?.name
+                    }
                 if (sourceId == null || sourceName == null) {
                     _state.update { it.copy(because = null) }
                     return
@@ -714,12 +804,19 @@ class HomeViewModel
                                 limit = BECAUSE_MAX,
                             ),
                         ).content.items
+                        .filter { taste.keep(it) }
                         .map { BaseItem(it) }
                 _state.update {
                     it.copy(
                         because =
                             if (items.size >= BECAUSE_MIN) {
-                                ThemedRow(context.getString(R.string.because_you_watched_row, sourceName), items)
+                                ThemedRow(
+                                    context.getString(
+                                        if (fromLiked) R.string.because_you_liked else R.string.because_you_watched_row,
+                                        sourceName,
+                                    ),
+                                    items,
+                                )
                             } else {
                                 null
                             },
@@ -781,6 +878,7 @@ class HomeViewModel
             viewModelScope.launch(ExceptionHandler(autoToast = true) + WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 _state.update { it.copy(mood = mood) }
+                val taste = loadTaste(userId)
                 val items =
                     api.itemsApi
                         .getItems(
@@ -796,6 +894,7 @@ class HomeViewModel
                                 fields = HomeItemFields + listOf(ItemFields.RECURSIVE_ITEM_COUNT, ItemFields.CHILD_COUNT),
                             ),
                         ).content.items
+                        .filter { taste.keep(it) }
                         .map { BaseItem(it) }
                         .filter(mood.keep)
                         .take(MOOD_MAX)
@@ -1011,6 +1110,7 @@ data class HomeState(
     }
 }
 
+private const val TASTE_MAX = 300
 private const val TRENDING_MIN = 5
 private const val FEATURED_NEWEST = 3
 private const val FEATURED_RESUME = 2

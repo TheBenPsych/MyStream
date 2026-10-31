@@ -476,6 +476,14 @@ class SeriesViewModel
             }
         }
 
+        fun setLikes(
+            itemId: UUID,
+            likes: Boolean?,
+        ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
+            favoriteWatchManager.setLikes(itemId, likes)
+            updateSeries()
+        }
+
         fun setSeasonWatched(
             seasonId: UUID,
             played: Boolean,
