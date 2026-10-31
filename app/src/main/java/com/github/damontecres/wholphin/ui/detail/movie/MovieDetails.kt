@@ -198,6 +198,7 @@ fun MovieDetails(
                 favoriteOnClick = {
                     viewModel.setFavorite(movie.id, !movie.favorite)
                 },
+                rateOnClick = { viewModel.setLikes(movie.id, it) },
                 onLongClickPerson = { index, person ->
                     showContextMenu =
                         ContextMenu.ForPerson(
@@ -296,6 +297,7 @@ fun MovieDetailsContent(
     overviewOnClick: () -> Unit,
     watchOnClick: () -> Unit,
     favoriteOnClick: () -> Unit,
+    rateOnClick: (Boolean?) -> Unit,
     moreOnClick: () -> Unit,
     onClickItem: (Int, BaseItem) -> Unit,
     onClickPerson: (Person) -> Unit,
@@ -356,6 +358,8 @@ fun MovieDetailsContent(
                         moreOnClick = moreOnClick,
                         watchOnClick = watchOnClick,
                         favoriteOnClick = favoriteOnClick,
+                        likes = dto.userData?.likes,
+                        rateOnClick = rateOnClick,
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 position = HEADER_ROW

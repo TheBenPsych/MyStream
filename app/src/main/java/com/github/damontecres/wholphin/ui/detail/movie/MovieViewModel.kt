@@ -217,6 +217,22 @@ class MovieViewModel
             }
         }
 
+        fun setLikes(
+            itemId: UUID,
+            likes: Boolean?,
+        ) = viewModelScope.launchDefault {
+            try {
+                favoriteWatchManager.setLikes(itemId, likes)
+                val movie = getMovie()
+                _state.update {
+                    it.copy(loading = DataLoadingState.Success(movie))
+                }
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error updating rating %s", itemId)
+                showToast(context, "Something went wrong...")
+            }
+        }
+
         fun savePlayVersion(
             item: BaseItem,
             sourceId: UUID,

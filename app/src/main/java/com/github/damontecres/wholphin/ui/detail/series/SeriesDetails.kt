@@ -61,11 +61,13 @@ import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.DeleteButton
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
+import com.github.damontecres.wholphin.ui.components.DislikeButton
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.GenreText
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
+import com.github.damontecres.wholphin.ui.components.LikeButton
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
@@ -193,6 +195,7 @@ fun SeriesDetails(
                 similar = state.similar,
                 played = played,
                 favorite = series.data.userData?.isFavorite ?: false,
+                likes = series.data.userData?.likes,
                 canDelete = state.canDeleteSeries,
                 modifier = modifier,
                 onClickItem = { index, item ->
@@ -240,6 +243,7 @@ fun SeriesDetails(
                     val favorite = series.data.userData?.isFavorite ?: false
                     viewModel.setFavorite(series.id, !favorite, null)
                 },
+                rateOnClick = { viewModel.setLikes(series.id, it) },
                 trailerOnClick = {
                     TrailerService.onClick(context, it, viewModel::navigateTo)
                 },
@@ -332,6 +336,7 @@ fun SeriesDetailsContent(
     discovered: List<DiscoverItem>,
     played: Boolean,
     favorite: Boolean,
+    likes: Boolean?,
     canDelete: Boolean,
     onClickItem: (Int, BaseItem) -> Unit,
     onClickPerson: (Person) -> Unit,
@@ -340,6 +345,7 @@ fun SeriesDetailsContent(
     playOnClick: (Boolean) -> Unit,
     watchOnClick: () -> Unit,
     favoriteOnClick: () -> Unit,
+    rateOnClick: (Boolean?) -> Unit,
     trailerOnClick: (Trailer) -> Unit,
     onClickExtra: (Int, ExtrasItem) -> Unit,
     onShowContextMenu: (ContextMenu) -> Unit,
@@ -446,6 +452,30 @@ fun SeriesDetailsContent(
                             iconStringRes = R.string.fa_heart,
                             onClick = favoriteOnClick,
                             iconColor = if (favorite) Color.Red else Color.Unspecified,
+                            modifier =
+                                Modifier.onFocusChanged {
+                                    if (it.isFocused) {
+                                        scope.launch(ExceptionHandler()) {
+                                            bringIntoViewRequester.bringIntoView()
+                                        }
+                                    }
+                                },
+                        )
+                        LikeButton(
+                            likes = likes,
+                            rateOnClick = rateOnClick,
+                            modifier =
+                                Modifier.onFocusChanged {
+                                    if (it.isFocused) {
+                                        scope.launch(ExceptionHandler()) {
+                                            bringIntoViewRequester.bringIntoView()
+                                        }
+                                    }
+                                },
+                        )
+                        DislikeButton(
+                            likes = likes,
+                            rateOnClick = rateOnClick,
                             modifier =
                                 Modifier.onFocusChanged {
                                     if (it.isFocused) {
