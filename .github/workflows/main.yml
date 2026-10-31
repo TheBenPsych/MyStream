@@ -32,7 +32,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      # A debug build is signed automatically, so no signing keys are needed
+      # A release build is optimized (much smoother on TVs) and signed with the Benflix key
       - name: Build app
         env:
           # Numbers each build 1.0.<run number> so the app knows when an update is available
@@ -42,7 +42,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-        run: ./gradlew clean assembleDefaultDebug --no-daemon
+        run: ./gradlew clean assembleDefaultRelease --no-daemon
 
       - name: Copy APKs to short names
         run: |
@@ -53,9 +53,9 @@ jobs:
               cp "$apk" "out/MyStream-$abi.apk"
               # Names the in-app updater looks for
               if [ "$abi" = universal ]; then
-                cp "$apk" "out/Benflix-debug.apk"
+                cp "$apk" "out/Benflix-release.apk"
               else
-                cp "$apk" "out/Benflix-debug-$abi.apk"
+                cp "$apk" "out/Benflix-release-$abi.apk"
               fi
             done
           ls -l out

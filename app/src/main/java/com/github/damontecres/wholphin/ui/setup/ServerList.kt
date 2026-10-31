@@ -169,7 +169,11 @@ fun ServerIconCard(
             ) {
                 // Show connection status indicator or server name/letter
                 when {
-                    connectionStatus is ServerConnectionStatus.Error || serverVersionSupported != ServerVersionSupported.SUPPORTED -> {
+                    connectionStatus is ServerConnectionStatus.Error ||
+                        (
+                            serverVersionSupported != ServerVersionSupported.SUPPORTED &&
+                                serverVersionSupported != ServerVersionSupported.NOT_SUPPORTED_IN_FUTURE
+                        ) -> {
                         // Show warning icon with server letter below
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
