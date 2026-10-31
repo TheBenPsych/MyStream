@@ -992,7 +992,7 @@
     <string name="featured_resume">Pick up where you left off</string>
     <string name="featured_favorite">From My List</string>
     <string name="featured_because">Because you watched %1$s</string>
-    <string name="top_10_trending">Top 10 trending this week</string>
+    <string name="top_10_trending">Top 10 this week</string>
     <string name="trending_not_on_server">Trending, not on your server</string>
     <string name="new_episode">NEW EPISODE</string>
     <string name="new_badge">NEW</string>

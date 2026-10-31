@@ -463,7 +463,7 @@ class HomeViewModel
         private suspend fun loadTrending(userDto: ServerUserConfig) {
             try {
                 if (!seerrService.active.first()) {
-                    _state.update { it.copy(trending = emptyList(), trendingMissing = emptyList()) }
+                    _state.update { it.copy(trending = loadServerTop(userDto), trendingMissing = emptyList()) }
                     return
                 }
                 val discovered =
@@ -504,13 +504,45 @@ class HomeViewModel
                     } else {
                         emptyList()
                     }
-                _state.update { it.copy(trending = trending, trendingMissing = missing) }
+                // Too few trending titles on the server to fill the row, so use the server's own top titles
+                val top = if (trending.size < TRENDING_MIN) loadServerTop(userDto) else trending
+                _state.update { it.copy(trending = top, trendingMissing = missing) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading trending items")
+                _state.update { it.copy(trending = loadServerTop(userDto)) }
             }
         }
+
+        /**
+         * The best rated movies & shows on the server from this year and last year,
+         * used for the Top 10 row when Seerr isn't set up
+         */
+        private suspend fun loadServerTop(userDto: ServerUserConfig): List<BaseItem> =
+            try {
+                val year = LocalDate.now().year
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userDto.id,
+                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                            recursive = true,
+                            years = listOf(year, year - 1),
+                            imageTypes = listOf(ImageType.PRIMARY),
+                            sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            limit = TRENDING_TOP,
+                            fields = HomeItemFields,
+                        ),
+                    ).content.items
+                    .map { BaseItem(it) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading server top items")
+                emptyList()
+            }
 
         /**
          * Load the seasonal themed row, such as horror in October
@@ -746,6 +778,7 @@ data class HomeState(
     }
 }
 
+private const val TRENDING_MIN = 5
 private const val FEATURED_NEWEST = 3
 private const val FEATURED_RESUME = 2
 private const val FEATURED_BECAUSE = 2
