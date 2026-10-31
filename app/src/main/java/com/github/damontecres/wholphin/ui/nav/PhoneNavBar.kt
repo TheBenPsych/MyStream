@@ -125,7 +125,7 @@ fun PhoneNavBar(
             )
             Text(
                 text = stringResource(R.string.phone_profiles),
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 color = UNSELECTED,
                 maxLines = 1,
             )
@@ -174,12 +174,12 @@ private fun androidx.compose.foundation.layout.RowScope.PhoneNavItem(
         Text(
             text = stringResource(faIcon),
             fontFamily = FontAwesome,
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             color = color,
         )
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             color = color,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             maxLines = 1,
@@ -209,5 +209,5 @@ private fun BrowseRow(
     }
 }
 
-private val BAR_HEIGHT = 60.dp
+private val BAR_HEIGHT = 64.dp
 private val UNSELECTED = Color(0xFFB3B3B3)

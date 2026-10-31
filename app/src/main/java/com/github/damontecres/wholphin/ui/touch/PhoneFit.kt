@@ -16,8 +16,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 
 /**
- * Benflix on phones: the screens are designed for a TV (about 540dp tall), so on a phone
- * everything is shrunk a bit to fit like it does on the TV, and kept clear of the
+ * Benflix on phones: the screens are designed for a TV, so on a phone everything is
+ * scaled to the phone's width so it fits, and kept clear of the
  * status bar / notch. TVs are left untouched.
  */
 @Composable
@@ -26,12 +26,13 @@ fun PhoneFit(content: @Composable () -> Unit) {
     val isTv =
         remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
     val smallest = LocalConfiguration.current.smallestScreenWidthDp
-    if (isTv || smallest <= 0 || smallest >= TV_SIZE_DP) {
+    if (isTv || smallest <= 0 || smallest >= PHONE_DESIGN_DP) {
         content()
         return
     }
     val density = LocalDensity.current
-    val scale = smallest.toFloat() / TV_SIZE_DP
+    // Scales with the phone: a bigger phone gets bigger text and buttons
+    val scale = smallest.toFloat() / PHONE_DESIGN_DP
     CompositionLocalProvider(
         LocalDensity provides Density(density.density * scale, density.fontScale),
     ) {
@@ -45,7 +46,8 @@ fun PhoneFit(content: @Composable () -> Unit) {
     }
 }
 
-private const val TV_SIZE_DP = 540
+/** The phone width the layout is sized for; smaller phones shrink it a little, bigger ones don't */
+private const val PHONE_DESIGN_DP = 440
 
 /** Dialog width: [tvFraction] of the screen normally, but nearly full width on a tall (portrait) phone. */
 @Composable

@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +59,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -136,9 +139,10 @@ fun GamesPage(
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
+    val isTv = rememberIsTv()
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = modifier.padding(start = 48.dp, end = 48.dp, top = 24.dp),
+        modifier = modifier.padding(start = if (isTv) 48.dp else 0.dp, end = if (isTv) 48.dp else 8.dp, top = if (isTv) 24.dp else 8.dp),
     ) {
         Text(
             text = "Benflix Games",
@@ -146,21 +150,45 @@ fun GamesPage(
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text = "Quick games you can play with your TV remote. Your own game collection is coming here later.",
+            text = if (isTv) "Quick games you can play with your TV remote. Your own game collection is coming here later." else "Quick games you can play by tapping. Your own game collection is coming here later.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(vertical = 16.dp, horizontal = 8.dp),
-            modifier = Modifier.focusRequester(focusRequester),
-        ) {
-            items(BuiltInGame.entries) { game ->
-                GameTile(
-                    game = game,
-                    best = viewModel.best(game),
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
-                )
+        if (isTv) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding = PaddingValues(vertical = 16.dp, horizontal = 8.dp),
+                modifier = Modifier.focusRequester(focusRequester),
+            ) {
+                items(BuiltInGame.entries) { game ->
+                    GameTile(
+                        game = game,
+                        best = viewModel.best(game),
+                        onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
+                        modifier = Modifier.size(width = 320.dp, height = 190.dp),
+                    )
+                }
+            }
+        } else {
+            // Phones: one big tile per game, stacked
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier =
+                    Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 16.dp),
+            ) {
+                BuiltInGame.entries.forEach { game ->
+                    GameTile(
+                        game = game,
+                        best = viewModel.best(game),
+                        onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(180.dp),
+                    )
+                }
             }
         }
     }
@@ -171,6 +199,7 @@ private fun GameTile(
     game: BuiltInGame,
     best: Int,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
@@ -181,7 +210,7 @@ private fun GameTile(
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
-        modifier = Modifier.size(width = 320.dp, height = 190.dp),
+        modifier = modifier,
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),

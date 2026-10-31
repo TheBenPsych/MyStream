@@ -295,7 +295,8 @@ fun NavDrawer(
             key = "${server.id}_${user.id}", // Keyed to the server & user to ensure its reset when switching either
         ),
 ) {
-    LaunchedEffect(Unit) { viewModel.updateSelectedIndex() }
+    // Keep the highlighted tab right after Back, too
+    LaunchedEffect(destination) { viewModel.updateSelectedIndex() }
     val focusRequester = remember { FocusRequester() }
 
     // If the user presses back while on the home page, move to the top bar, another back press will quit the app
