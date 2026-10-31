@@ -1031,4 +1031,7 @@
     <string name="studios_row">Studios</string>
     <string name="new_on_benflix">New on Benflix</string>
     <string name="games">Games</string>
+    <string name="night_mode_on">Night mode: On</string>
+    <string name="night_mode_off">Night mode: Off</string>
+    <string name="night_mode_summary">Quieter booms, clearer voices</string>
 </resources>

@@ -28,6 +28,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -63,6 +64,7 @@ enum class PlaybackDialogType {
     VIDEO_SCALE,
     SUBTITLE_DELAY,
     BITRATE,
+    NIGHT_MODE,
 }
 
 data class PlaybackSettings(
@@ -136,8 +138,17 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.SETTINGS -> {
+            val context = LocalContext.current
+            val nightOn = NightMode.isOn(context)
             val options =
                 buildList {
+                    add(
+                        BottomDialogItem(
+                            data = PlaybackDialogType.NIGHT_MODE,
+                            headline = stringResource(if (nightOn) R.string.night_mode_on else R.string.night_mode_off),
+                            supporting = stringResource(R.string.night_mode_summary),
+                        ),
+                    )
                     add(
                         BottomDialogItem(
                             data = PlaybackDialogType.PLAYBACK_SPEED,
@@ -188,6 +199,9 @@ fun PlaybackDialog(
                 onSelectChoice = { _, choice ->
                     if (choice.data == PlaybackDialogType.DEBUG) {
                         onPlaybackActionClick.invoke(PlaybackAction.ShowDebug)
+                    } else if (choice.data == PlaybackDialogType.NIGHT_MODE) {
+                        NightMode.toggle(context)
+                        onDismissRequest.invoke()
                     } else {
                         onClickPlaybackDialogType(choice.data)
                     }
@@ -256,6 +270,8 @@ fun PlaybackDialog(
                 gravity = leftGravity,
             )
         }
+
+        PlaybackDialogType.NIGHT_MODE -> {}
 
         PlaybackDialogType.SUBTITLE_DELAY -> {
             Dialog(
