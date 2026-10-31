@@ -145,7 +145,7 @@ object KidsMode {
             for (i in 0 until array.length()) {
                 val item = array.optJSONObject(i) ?: continue
                 if (item.optString("Type") in USES_SERIES_RATING && ratingOf(item) == null) {
-                    item.optString("SeriesId").takeIf { it.isNotBlank() && it !in seriesRatings }?.let(missing::add)
+                    item.optString("SeriesId").takeIf { it.isNotBlank() && !seriesRatings.containsKey(it) }?.let(missing::add)
                 }
             }
         }
