@@ -167,6 +167,14 @@ sealed class Destination(
     data object NowPlaying : Destination(true)
 
     @Serializable
+    data object Games : Destination(false)
+
+    @Serializable
+    data class PlayGame(
+        val gameName: String,
+    ) : Destination(true)
+
+    @Serializable
     data object UpdateApp : Destination(true)
 
     @Serializable

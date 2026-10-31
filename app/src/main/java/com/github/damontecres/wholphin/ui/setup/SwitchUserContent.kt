@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -42,6 +44,7 @@ import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
+import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.EditTextBox
@@ -49,12 +52,14 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
+import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @Composable
 fun SwitchUserContent(
@@ -136,11 +141,21 @@ fun SwitchUserContent(
         }
 
         LoadingState.Success -> {
+            // On a holiday the profile screen gets a soft glow and a greeting in the holiday's color
+            val holiday = remember { holidayFor(LocalDate.now()) }
             Box(
                 modifier =
                     modifier
                         .background(MaterialTheme.colorScheme.background)
-                        .dimAndBlur(showAddUser || switchUserWithPin != null),
+                        .ifElse(
+                            holiday != null,
+                            Modifier.background(
+                                Brush.radialGradient(
+                                    listOf(Color(holiday?.color ?: 0).copy(alpha = .22f), Color.Transparent),
+                                    radius = 1400f,
+                                ),
+                            ),
+                        ).dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -165,6 +180,13 @@ fun SwitchUserContent(
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                        holiday?.let {
+                            Text(
+                                text = "${it.emoji} ${it.text} ${it.emoji}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(it.color),
+                            )
+                        }
                     }
                     UserList(
                         users = state.users,

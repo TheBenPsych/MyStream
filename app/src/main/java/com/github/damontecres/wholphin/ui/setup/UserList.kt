@@ -54,6 +54,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
@@ -63,6 +64,7 @@ import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -236,7 +238,7 @@ private fun UserIconCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = profileBorderColor(),
                                 ),
                             shape = ProfileTileShape,
                         ),
@@ -386,7 +388,7 @@ private fun AddUserCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = profileBorderColor(),
                                 ),
                             shape = ProfileTileShape,
                         ),
@@ -478,7 +480,7 @@ private fun KidsProfileCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = profileBorderColor(),
                                 ),
                             shape = ProfileTileShape,
                         ),
@@ -507,4 +509,13 @@ private fun KidsProfileCard(
                     .padding(horizontal = 4.dp),
         )
     }
+}
+
+/**
+ * The outline around the chosen profile: white normally, the holiday's color on a holiday
+ */
+@Composable
+private fun profileBorderColor(): Color {
+    val holiday = remember { holidayFor(LocalDate.now()) }
+    return holiday?.let { Color(it.color) } ?: MaterialTheme.colorScheme.onSurface
 }
