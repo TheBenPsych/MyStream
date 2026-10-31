@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.nav
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -27,6 +28,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,13 +88,13 @@ fun TopNavBar(
                     onEnter = { focusRequester.tryRequestFocus() }
                 },
     ) {
-        Text(
-            text = stringResource(R.string.app_name).uppercase(),
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(end = 16.dp),
+        Image(
+            painter = painterResource(R.drawable.benflix_logo),
+            contentDescription = stringResource(R.string.app_name),
+            modifier =
+                Modifier
+                    .padding(end = 16.dp)
+                    .height(26.dp),
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),

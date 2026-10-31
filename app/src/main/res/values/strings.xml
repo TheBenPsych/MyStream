@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name" translatable="false">MyStream</string>
-    <string name="app_name_long" translatable="false">MyStream</string>
+    <string name="app_name" translatable="false">Benflix</string>
+    <string name="app_name_long" translatable="false">Benflix</string>
 
     <string name="about">About</string>
     <string name="active_recordings">Active Recordings</string>
@@ -627,7 +627,7 @@
     <string name="bold_blue">Bold Blue</string>
     <string name="black">Black</string>
     <string name="brown">Brown</string>
-    <string name="mystream_theme" translatable="false">MyStream</string>
+    <string name="mystream_theme" translatable="false">Benflix</string>
     <string-array name="app_theme_colors">
         <item>@string/purple</item>
         <item>@string/blue</item>
