@@ -685,6 +685,11 @@ fun PlaybackPageContent(
                     },
                     timeLeft = if (autoPlayEnabled) timeLeft.seconds else null,
                     runtime = it.data.runTimeTicks?.ticks,
+                    totalCountdown = preferences.appPreferences.playbackPreferences.autoPlayNextDelaySeconds.seconds,
+                    onWatchCredits = {
+                        timeLeft = -1
+                        autoPlayEnabled = false
+                    },
                     modifier =
                         Modifier
                             .padding(8.dp)
