@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -36,7 +37,6 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
-import com.github.damontecres.wholphin.ui.components.GridTitle
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -160,8 +160,14 @@ fun MoodPage(
                     .height(40.dp)
                     .background(Brush.verticalGradient(mood.colors), RoundedCornerShape(4.dp)),
             )
-            GridTitle(stringResource(mood.title))
-            Box(Modifier.weight(1f))
+            // The title takes the space that's left, so the shuffle button always fits beside it
+            Text(
+                text = stringResource(mood.title),
+                style = MaterialTheme.typography.headlineMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
             Button(onClick = { viewModel.load(mood) }) {
                 Text(stringResource(R.string.mood_shuffle))
             }

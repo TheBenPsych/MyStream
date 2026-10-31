@@ -118,6 +118,8 @@ fun <T : CardGridItem> CardGrid(
     spacing: Dp = 16.dp,
     bringIntoViewSpec: BringIntoViewSpec = LocalBringIntoViewSpec.current,
 ) {
+    // Phones get fewer, bigger columns so posters and titles aren't squished
+    val columns = phoneGridColumns(columns)
     val startPosition =
         remember(initialPosition, pager.size) {
             initialPosition.coerceIn(0, (pager.size - 1).coerceAtLeast(0))
@@ -617,4 +619,19 @@ fun AlphabetButtons(
             }
         }
     }
+}
+
+/**
+ * How many grid columns fit on this screen: the TV keeps what was asked for, phones get
+ * about one column per 130dp of width (3 upright, more sideways)
+ */
+@androidx.compose.runtime.Composable
+fun phoneGridColumns(wanted: Int): Int {
+    if (com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    ) {
+        return wanted
+    }
+    val width = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    return (width / 130).coerceIn(2, wanted.coerceAtLeast(2))
 }
