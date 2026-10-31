@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.WholphinApplication
+import com.github.damontecres.wholphin.services.BENFLIX_UPDATE_URL
 import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.ui.formatMaxBitrate
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -627,7 +628,7 @@ sealed interface AppPreference<Pref, T> {
         val UpdateUrl =
             AppStringPreference<AppPreferences>(
                 title = R.string.update_url,
-                defaultValue = "https://api.github.com/repos/damontecres/Wholphin/releases/latest",
+                defaultValue = BENFLIX_UPDATE_URL,
                 getter = { it.updateUrl },
                 setter = { prefs, value ->
                     prefs.update { updateUrl = value }

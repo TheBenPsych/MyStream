@@ -34,6 +34,14 @@ jobs:
 
       # A debug build is signed automatically, so no signing keys are needed
       - name: Build app
+        env:
+          # Numbers each build 1.0.<run number> so the app knows when an update is available
+          BENFLIX_BUILD: ${{ github.run_number }}
+          # The Benflix signing key, so every build can update the last one
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
         run: ./gradlew clean assembleDefaultDebug --no-daemon
 
       - name: Copy APKs to short names
@@ -43,6 +51,12 @@ jobs:
             while IFS= read -r -d '' apk; do
               abi="$(basename "$apk" .apk | grep -oE '(universal|armeabi-v7a|arm64-v8a|x86_64)$' || echo universal)"
               cp "$apk" "out/MyStream-$abi.apk"
+              # Names the in-app updater looks for
+              if [ "$abi" = universal ]; then
+                cp "$apk" "out/Benflix-debug.apk"
+              else
+                cp "$apk" "out/Benflix-debug-$abi.apk"
+              fi
             done
           ls -l out
 
@@ -57,12 +71,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest-build --cleanup-tag -y || true
-          echo "Newest MyStream build from \`main\` (commit ${GITHUB_SHA::7}).
+          echo "Newest Benflix build (version 1.0.${{ github.run_number }}) from \`main\` (commit ${GITHUB_SHA::7}).
 
           Install **MyStream-universal.apk** on your TV if you are not sure which one to pick." > notes.txt
           gh release create latest-build \
             --prerelease --latest=false \
-            --title "MyStream latest build" \
+            --title "v1.0.${{ github.run_number }}" \
             --target "$GITHUB_SHA" \
             -F notes.txt \
             out/*.apk

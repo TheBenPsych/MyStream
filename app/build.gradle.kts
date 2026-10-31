@@ -78,8 +78,16 @@ configure<ApplicationExtension> {
         applicationId = "com.github.damontecres.wholphin"
         minSdk = libs.versions.minSdk.getInt()
         targetSdk = libs.versions.targetSdk.getInt()
-        versionCode = gitTags.trim().lines().size
-        versionName = gitDescribe.trim().removePrefix("v").ifBlank { "0.0.0" }
+        // Benflix builds from GitHub Actions are numbered 1.0.<build number> so the in-app updater
+        // can tell when a newer build is available
+        val benflixBuild = providers.environmentVariable("BENFLIX_BUILD").orNull?.toIntOrNull()
+        versionCode = benflixBuild ?: gitTags.trim().lines().size
+        versionName =
+            if (benflixBuild != null) {
+                "1.0.$benflixBuild"
+            } else {
+                gitDescribe.trim().removePrefix("v").ifBlank { "0.0.0" }
+            }
         testInstrumentationRunner = "com.github.damontecres.wholphin.test.WholphinTestRunner"
 
         buildConfigField("long", "BUILD_TIME", System.currentTimeMillis().toString())
@@ -132,6 +140,10 @@ configure<ApplicationExtension> {
             isShrinkResources = false
             isDebuggable = true
             applicationIdSuffix = ".debug"
+            // Sign every build with the same key so new builds install over old ones
+            if (shouldSign.get()) {
+                signingConfig = signingConfigs.getByName("ci")
+            }
         }
     }
     flavorDimensions += "version"
