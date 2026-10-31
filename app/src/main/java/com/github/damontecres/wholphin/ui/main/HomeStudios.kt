@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,8 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import java.util.UUID
 
 /**
@@ -102,7 +105,7 @@ val StudioBrands =
     )
 
 /**
- * Row of big studio tiles under the banner
+ * Row of big studio tiles, under the library rows
  */
 @Composable
 fun StudioRow(
@@ -111,6 +114,7 @@ fun StudioRow(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
+        ItemRowTitle(stringResource(R.string.studios_row))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),

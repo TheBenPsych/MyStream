@@ -6,10 +6,13 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -44,6 +47,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
@@ -92,14 +96,36 @@ fun TopNavBar(
                 },
     ) {
         val kidsBar by KidsMode.active.collectAsState()
-        Image(
-            painter = painterResource(R.drawable.benflix_logo),
-            contentDescription = stringResource(R.string.app_name),
-            modifier =
-                Modifier
-                    .padding(end = if (kidsBar) 8.dp else 16.dp)
-                    .height(26.dp),
-        )
+        val celebration by CelebrationNow.current.collectAsState()
+        // On a holiday or birthday the logo gets a small emoji and a short line underneath
+        Box(modifier = Modifier.padding(end = if (kidsBar) 8.dp else 16.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(
+                    painter = painterResource(R.drawable.benflix_logo),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.height(26.dp),
+                )
+                celebration?.let {
+                    Text(
+                        text = it.text,
+                        color = Color(it.color),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
+            celebration?.let {
+                Text(
+                    text = it.emoji,
+                    fontSize = 14.sp,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 10.dp, y = (-8).dp),
+                )
+            }
+        }
         if (kidsBar) {
             Text(
                 text = stringResource(R.string.kids_profile).uppercase(),

@@ -1028,4 +1028,6 @@
     <string name="dislike">Not for me</string>
     <string name="disliked">Not for me (press to undo)</string>
     <string name="because_you_liked">Because you liked %1$s</string>
+    <string name="studios_row">Studios</string>
+    <string name="new_on_benflix">New on Benflix</string>
 </resources>

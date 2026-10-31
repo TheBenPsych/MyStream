@@ -55,7 +55,6 @@ import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
@@ -119,8 +118,10 @@ fun HomePage(
     val collections = state.collections
     val mood = state.mood
     val moodRow = state.moodRow
-    val celebration = state.celebration
     val studios = state.studios
+    val newest = state.newest
+    val myList = state.myList
+    val genreRows = state.genreRows
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -271,8 +272,10 @@ fun HomePage(
                 mood = mood,
                 moodRow = moodRow,
                 onClickMood = viewModel::pickMood,
-                celebration = celebration,
                 studios = studios,
+                newest = newest,
+                myList = myList,
+                genreRows = genreRows,
                 onClickStudio = viewModel::openStudio,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
@@ -317,14 +320,6 @@ fun HomePage(
 }
 
 private const val HERO_ROTATE_MS = 8_000L
-
-// Which home rows the trending rows are shown after
-private const val TOP_10_AFTER_ROW = 0
-private const val MISSING_AFTER_ROW = 1
-private const val THEMED_AFTER_ROW = 0
-private const val COLLECTIONS_AFTER_ROW = 2
-private const val BECAUSE_AFTER_ROW = 3
-private const val MOOD_AFTER_ROW = 1
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -374,8 +369,10 @@ fun HomePageContent(
     mood: HomeMood? = null,
     moodRow: ThemedRow? = null,
     onClickMood: ((HomeMood) -> Unit)? = null,
-    celebration: Celebration? = null,
     studios: List<StudioTile> = emptyList(),
+    newest: ThemedRow? = null,
+    myList: ThemedRow? = null,
+    genreRows: List<ThemedRow> = emptyList(),
     onClickStudio: (StudioTile) -> Unit = {},
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
@@ -443,14 +440,7 @@ fun HomePageContent(
                             firstFocused = true
                             delay(50)
                             listState.scrollToItem(
-                                it + heroOffset +
-                                    (if (it > TOP_10_AFTER_ROW && trending.isNotEmpty()) 1 else 0) +
-                                    (if (it > MISSING_AFTER_ROW && trendingMissing.isNotEmpty()) 1 else 0) +
-                                    (if (it > THEMED_AFTER_ROW && themed != null) 1 else 0) +
-                                    (if (it > COLLECTIONS_AFTER_ROW && collections != null) 1 else 0) +
-                                    (if (it > BECAUSE_AFTER_ROW && because != null) 1 else 0) +
-                                    (if (it > MOOD_AFTER_ROW && onClickMood != null) 1 else 0) +
-                                    (if (it > MOOD_AFTER_ROW && moodRow != null) 1 else 0),
+                                it + heroOffset,
                             )
                         }
                 }
@@ -529,12 +519,6 @@ fun HomePageContent(
                 ) {
                     if (showHero) {
                         item(key = "hero") {
-                            celebration?.let {
-                                CelebrationBanner(
-                                    celebration = it,
-                                    modifier = Modifier.padding(end = 24.dp, top = 4.dp, bottom = 8.dp),
-                                )
-                            }
                             HomeHero(
                                 featured = featured,
                                 index = heroIndex.coerceIn(0, featured.lastIndex),
@@ -545,13 +529,6 @@ fun HomePageContent(
                                 onFocusChanged = { heroFocused = it },
                                 focusRequester = heroFocusRequester,
                             )
-                            if (studios.isNotEmpty()) {
-                                StudioRow(
-                                    tiles = studios,
-                                    onClick = onClickStudio,
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
-                            }
                         }
                     }
                     homeRows.forEachIndexed { rowIndex, row ->
@@ -697,108 +674,167 @@ fun HomePageContent(
                                 }
                             }
                         }
-                        if (rowIndex == TOP_10_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && trending.isNotEmpty()) {
-                            item(key = "top10") {
-                                Top10Row(
-                                    items = trending,
-                                    onClickItem = onClickTrending,
-                                    onFocusItem = { extraFocus = it },
-                                    modifier =
-                                        Modifier
-                                            .padding(bottom = 8.dp)
-                                            .onFocusChanged {
-                                                if (!it.hasFocus && extraFocus in trending) extraFocus = null
-                                            },
-                                )
-                            }
+                    }
+                    // Benflix rows, Netflix style, after Continue watching
+                    if (trending.isNotEmpty()) {
+                        item(key = "top10") {
+                            Top10Row(
+                                items = trending,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in trending) extraFocus = null
+                                        },
+                            )
                         }
-                        if (rowIndex == MISSING_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && trendingMissing.isNotEmpty()) {
-                            item(key = "trendingMissing") {
-                                TrendingMissingRow(
-                                    items = trendingMissing,
-                                    onClickItem = onClickDiscover,
-                                    onFocusItem = { extraFocus = it },
-                                    modifier =
-                                        Modifier
-                                            .padding(bottom = 8.dp)
-                                            .onFocusChanged {
-                                                if (!it.hasFocus && extraFocus in trendingMissing) extraFocus = null
-                                            },
-                                )
-                            }
+                    }
+                    if (trendingMissing.isNotEmpty()) {
+                        item(key = "trendingMissing") {
+                            TrendingMissingRow(
+                                items = trendingMissing,
+                                onClickItem = onClickDiscover,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in trendingMissing) extraFocus = null
+                                        },
+                            )
                         }
-                        if (rowIndex == MOOD_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && onClickMood != null) {
-                            item(key = "moods") {
-                                MoodRow(
-                                    selected = mood,
-                                    onClickMood = onClickMood,
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
-                            }
-                            if (moodRow != null) {
-                                item(key = "moodRow") {
-                                    PosterRow(
-                                        title = moodRow.title,
-                                        items = moodRow.items,
-                                        onClickItem = onClickTrending,
-                                        onFocusItem = { extraFocus = it },
-                                        modifier =
-                                            Modifier
-                                                .padding(bottom = 8.dp)
-                                                .onFocusChanged {
-                                                    if (!it.hasFocus && extraFocus in moodRow.items) extraFocus = null
-                                                },
-                                    )
-                                }
-                            }
+                    }
+                    if (themed != null) {
+                        item(key = "themed") {
+                            PosterRow(
+                                title = themed.title,
+                                items = themed.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in themed.items) extraFocus = null
+                                        },
+                            )
                         }
-                        if (rowIndex == COLLECTIONS_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && collections != null) {
-                            item(key = "collections") {
+                    }
+                    if (because != null) {
+                        item(key = "because") {
+                            PosterRow(
+                                title = because.title,
+                                items = because.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in because.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    if (onClickMood != null) {
+                        item(key = "moods") {
+                            MoodRow(
+                                selected = mood,
+                                onClickMood = onClickMood,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                        if (moodRow != null) {
+                            item(key = "moodRow") {
                                 PosterRow(
-                                    title = collections.title,
-                                    items = collections.items,
+                                    title = moodRow.title,
+                                    items = moodRow.items,
                                     onClickItem = onClickTrending,
                                     onFocusItem = { extraFocus = it },
                                     modifier =
                                         Modifier
                                             .padding(bottom = 8.dp)
                                             .onFocusChanged {
-                                                if (!it.hasFocus && extraFocus in collections.items) extraFocus = null
+                                                if (!it.hasFocus && extraFocus in moodRow.items) extraFocus = null
                                             },
                                 )
                             }
                         }
-                        if (rowIndex == BECAUSE_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && because != null) {
-                            item(key = "because") {
-                                PosterRow(
-                                    title = because.title,
-                                    items = because.items,
-                                    onClickItem = onClickTrending,
-                                    onFocusItem = { extraFocus = it },
-                                    modifier =
-                                        Modifier
-                                            .padding(bottom = 8.dp)
-                                            .onFocusChanged {
-                                                if (!it.hasFocus && extraFocus in because.items) extraFocus = null
-                                            },
-                                )
-                            }
+                    }
+                    newest?.let { row ->
+                        item(key = "newest") {
+                            PosterRow(
+                                title = row.title,
+                                items = row.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
+                                        },
+                            )
                         }
-                        if (rowIndex == THEMED_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && themed != null) {
-                            item(key = "themed") {
-                                PosterRow(
-                                    title = themed.title,
-                                    items = themed.items,
-                                    onClickItem = onClickTrending,
-                                    onFocusItem = { extraFocus = it },
-                                    modifier =
-                                        Modifier
-                                            .padding(bottom = 8.dp)
-                                            .onFocusChanged {
-                                                if (!it.hasFocus && extraFocus in themed.items) extraFocus = null
-                                            },
-                                )
-                            }
+                    }
+                    myList?.let { row ->
+                        item(key = "myList") {
+                            PosterRow(
+                                title = row.title,
+                                items = row.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    if (collections != null) {
+                        item(key = "collections") {
+                            PosterRow(
+                                title = collections.title,
+                                items = collections.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in collections.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    genreRows.forEachIndexed { index, row ->
+                        item(key = "genre$index") {
+                            PosterRow(
+                                title = row.title,
+                                items = row.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    // Studios sit under all of the library rows
+                    if (studios.isNotEmpty()) {
+                        item(key = "studios") {
+                            StudioRow(
+                                tiles = studios,
+                                onClick = onClickStudio,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
                         }
                     }
                 }

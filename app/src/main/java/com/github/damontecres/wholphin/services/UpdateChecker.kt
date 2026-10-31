@@ -143,8 +143,8 @@ class UpdateChecker
         }
 
         suspend fun getRelease(version: Version): Release? {
-            val url =
-                "https://api.github.com/repos/damontecres/Wholphin/releases/tags/v${version.major}.${version.minor}.${version.patch}"
+            // Benflix only publishes the newest build, so show that build's notes
+            val url = BENFLIX_UPDATE_URL
             return withContext(WholphinDispatchers.IO) {
                 val request =
                     Request
