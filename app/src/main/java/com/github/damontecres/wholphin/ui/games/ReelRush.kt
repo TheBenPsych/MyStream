@@ -31,7 +31,7 @@ class ReelRush : MiniGame() {
 
     private val u get() = height / 100f
     private val bx get() = width * 0.25f
-    private val size get() = 7f * u
+    private val bSize get() = 7f * u
     private val gravity get() = 210f * u
     private val flap get() = 62f * u
     private val stripW get() = 11f * u
@@ -58,7 +58,7 @@ class ReelRush : MiniGame() {
         strips.forEach { it.x -= speed * dt }
         strips.removeAll { it.x < -stripW }
 
-        val half = size / 2f
+        val half = bSize / 2f
         if (by - half < 0f || by + half > height) {
             gameOver()
             return
@@ -88,14 +88,14 @@ class ReelRush : MiniGame() {
             drawFilm(s.x, s.gapY + gap / 2f, height)
         }
         // The B, tilting with its speed
-        val half = size / 2f
+        val half = bSize / 2f
         val tilt = (vy / flap * 25f).coerceIn(-25f, 60f)
         rotate(tilt, Offset(bx, by)) {
-            drawRoundRect(Color(0xFFE50914), Offset(bx - half, by - half), Size(size, size), CornerRadius(size * 0.18f))
+            drawRoundRect(Color(0xFFE50914), Offset(bx - half, by - half), Size(bSize, bSize), CornerRadius(bSize * 0.18f))
             val layout =
                 textMeasurer.measure(
                     "B",
-                    TextStyle(color = Color.White, fontSize = (size * 0.62f / density).sp, fontWeight = FontWeight.Black),
+                    TextStyle(color = Color.White, fontSize = (bSize * 0.62f / density).sp, fontWeight = FontWeight.Black),
                 )
             drawText(layout, topLeft = Offset(bx - layout.size.width / 2f, by - layout.size.height / 2f))
         }
