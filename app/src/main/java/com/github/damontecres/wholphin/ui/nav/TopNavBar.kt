@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -90,14 +91,28 @@ fun TopNavBar(
                     onEnter = { focusRequester.tryRequestFocus() }
                 },
     ) {
+        val kidsBar by KidsMode.active.collectAsState()
         Image(
             painter = painterResource(R.drawable.benflix_logo),
             contentDescription = stringResource(R.string.app_name),
             modifier =
                 Modifier
-                    .padding(end = 16.dp)
+                    .padding(end = if (kidsBar) 8.dp else 16.dp)
                     .height(26.dp),
         )
+        if (kidsBar) {
+            Text(
+                text = stringResource(R.string.kids_profile).uppercase(),
+                color = Color.Black,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                modifier =
+                    Modifier
+                        .padding(end = 16.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
