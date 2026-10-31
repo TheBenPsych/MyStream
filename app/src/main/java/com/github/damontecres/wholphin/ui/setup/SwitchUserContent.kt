@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -131,7 +132,10 @@ fun SwitchUserContent(
 
         LoadingState.Success -> {
             Box(
-                modifier = modifier.dimAndBlur(showAddUser || switchUserWithPin != null),
+                modifier =
+                    modifier
+                        .background(MaterialTheme.colorScheme.background)
+                        .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

@@ -346,8 +346,9 @@ fun Resources.serverSupportedMessage(
                 getString(R.string.server_version_not_supported)
             }
 
+            // Benflix keeps working with the current server, so no "not supported soon" warning
             ServerVersionSupported.NOT_SUPPORTED_IN_FUTURE -> {
-                getString(R.string.server_version_not_supported_future)
+                null
             }
         }
     return errorMsg?.let {
