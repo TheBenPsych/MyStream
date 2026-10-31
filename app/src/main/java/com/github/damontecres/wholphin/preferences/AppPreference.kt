@@ -1037,6 +1037,11 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.profile_protection,
             )
 
+        val BirthdayPreference =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.my_birthday,
+            )
+
         val ImageDiskCacheSize =
             AppSliderPreference<AppPreferences>(
                 title = R.string.image_cache_size,
@@ -1207,6 +1212,7 @@ val basicPreferences =
             preferences =
                 listOf(
                     AppPreference.ProtectProfilePreference,
+                    AppPreference.BirthdayPreference,
                     AppPreference.CustomizeHome,
                     AppPreference.UserPinnedNavDrawerItems,
                     AppPreference.UserInterfaceLanguage,

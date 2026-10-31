@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
@@ -118,6 +119,7 @@ fun HomePage(
     val collections = state.collections
     val mood = state.mood
     val moodRow = state.moodRow
+    val celebration = state.celebration
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -268,6 +270,7 @@ fun HomePage(
                 mood = mood,
                 moodRow = moodRow,
                 onClickMood = viewModel::pickMood,
+                celebration = celebration,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
@@ -368,6 +371,7 @@ fun HomePageContent(
     mood: HomeMood? = null,
     moodRow: ThemedRow? = null,
     onClickMood: ((HomeMood) -> Unit)? = null,
+    celebration: Celebration? = null,
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
     onHeroItemShown: (BaseItem?) -> Unit = {},
@@ -520,6 +524,12 @@ fun HomePageContent(
                 ) {
                     if (showHero) {
                         item(key = "hero") {
+                            celebration?.let {
+                                CelebrationBanner(
+                                    celebration = it,
+                                    modifier = Modifier.padding(end = 24.dp, top = 4.dp, bottom = 8.dp),
+                                )
+                            }
                             HomeHero(
                                 featured = featured,
                                 index = heroIndex.coerceIn(0, featured.lastIndex),

@@ -17,6 +17,8 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.BirthdayService
+import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
@@ -32,6 +34,7 @@ import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
+import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
@@ -75,6 +78,7 @@ import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
 import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
+import java.time.MonthDay
 import java.util.UUID
 import javax.inject.Inject
 
@@ -98,6 +102,7 @@ class HomeViewModel
         private val api: ApiClient,
         private val seerrService: SeerrService,
         private val trailerService: TrailerService,
+        private val birthdayService: BirthdayService,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -230,6 +235,7 @@ class HomeViewModel
                 viewModelScope.launchIO { loadThemed(userDto) }
                 viewModelScope.launchIO { loadBecause(userDto) }
                 viewModelScope.launchIO { loadCollections(userDto) }
+                viewModelScope.launchIO { loadCelebration(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -589,6 +595,21 @@ class HomeViewModel
         }
 
         /**
+         * Birthday banner on the profile's birthday, otherwise a holiday banner
+         */
+        private suspend fun loadCelebration(userDto: ServerUserConfig) {
+            val today = LocalDate.now()
+            val birthday = if (KidsMode.isActive) null else birthdayService.get(userDto.id)
+            val celebration =
+                if (birthday != null && birthday == MonthDay.from(today)) {
+                    Celebration("🎂 Happy Birthday, ${userDto.name ?: ""}! 🎉", true)
+                } else {
+                    holidayFor(today)
+                }
+            _state.update { it.copy(celebration = celebration) }
+        }
+
+        /**
          * "Because you watched X": titles similar to the last movie or show watched
          */
         private suspend fun loadBecause(userDto: ServerUserConfig) {
@@ -907,6 +928,7 @@ data class HomeState(
     val collections: ThemedRow? = null,
     val mood: HomeMood? = null,
     val moodRow: ThemedRow? = null,
+    val celebration: Celebration? = null,
 ) {
     companion object {
         val EMPTY =

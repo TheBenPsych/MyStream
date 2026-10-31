@@ -1020,4 +1020,7 @@
     <string name="mood_family">Family Time</string>
     <string name="mood_nothing_found">Nothing found for that mood yet</string>
     <string name="ambient_paused">PAUSED</string>
+    <string name="my_birthday">My birthday</string>
+    <string name="remove_birthday">Remove birthday</string>
+    <string name="not_set">Not set</string>
 </resources>
