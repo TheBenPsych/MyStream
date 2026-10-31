@@ -69,6 +69,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
+import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.studiosApi
@@ -199,9 +200,12 @@ class HomeViewModel
 
         suspend fun loadHomeRows(
             userDto: ServerUserConfig,
-            settings: HomePageResolvedSettings,
+            allSettings: HomePageResolvedSettings,
         ) {
             Timber.i("Starting loadHomeRows")
+            // Benflix Home keeps only Continue watching / Next up from the server's home sections.
+            // "Recently added" rows for each library live on that library's own page.
+            val settings = allSettings.copy(rows = allSettings.rows.filter { isWatchingRow(it.config) })
             try {
                 val preferences = userPreferencesService.getCurrent()
                 val prefs = preferences.appPreferences.homePagePreferences
@@ -242,6 +246,9 @@ class HomeViewModel
                 viewModelScope.launchIO { loadTrending(userDto) }
                 viewModelScope.launchIO { loadThemed(userDto) }
                 viewModelScope.launchIO { loadBecause(userDto) }
+                viewModelScope.launchIO { loadNewest(userDto) }
+                viewModelScope.launchIO { loadMyList(userDto) }
+                viewModelScope.launchIO { loadGenreRows(userDto) }
                 viewModelScope.launchIO { loadCollections(userDto) }
                 viewModelScope.launchIO { loadStudios(userDto) }
                 viewModelScope.launchIO { loadCelebration(userDto) }
@@ -766,7 +773,9 @@ class HomeViewModel
          */
         private suspend fun loadBecause(userDto: ServerUserConfig) {
             try {
-                val lastWatched =
+                val taste = loadTaste(userDto.id)
+                // Recently watched (finished or in progress), as shows/movies
+                val played =
                     api.itemsApi
                         .getItems(
                             GetItemsRequest(
@@ -776,62 +785,164 @@ class HomeViewModel
                                 isPlayed = true,
                                 sortBy = listOf(ItemSortBy.DATE_PLAYED),
                                 sortOrder = listOf(SortOrder.DESCENDING),
-                                limit = 1,
+                                limit = BECAUSE_LOOKBACK,
                             ),
                         ).content.items
-                        .firstOrNull()
-                val taste = loadTaste(userDto.id)
-                val isEpisode = lastWatched?.type == BaseItemKind.EPISODE
-                // Half the time (or when nothing was watched yet) base the row on something the profile liked
-                val fromLiked = taste.liked != null && (lastWatched == null || Random.nextBoolean())
-                val sourceId =
-                    when {
-                        fromLiked -> taste.liked?.id
-                        isEpisode -> lastWatched?.seriesId
-                        else -> lastWatched?.id
-                    }
-                val sourceName =
-                    when {
-                        fromLiked -> taste.liked?.name
-                        isEpisode -> lastWatched?.seriesName
-                        else -> lastWatched?.name
-                    }
-                if (sourceId == null || sourceName == null) {
-                    _state.update { it.copy(because = null) }
-                    return
-                }
-                val items =
-                    api.libraryApi
-                        .getSimilarItems(
-                            GetSimilarItemsRequest(
+                val resume =
+                    api.itemsApi
+                        .getResumeItems(
+                            GetResumeItemsRequest(
                                 userId = userDto.id,
-                                itemId = sourceId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                limit = 5,
+                            ),
+                        ).content.items
+                val watched =
+                    (resume + played)
+                        .mapNotNull {
+                            if (it.type == BaseItemKind.EPISODE) {
+                                it.seriesId?.let { id -> it.seriesName?.let { name -> Triple(id, name, false) } }
+                            } else {
+                                it.name?.let { name -> Triple(it.id, name, false) }
+                            }
+                        }
+                val liked = taste.liked?.let { item -> item.name?.let { Triple(item.id, it, true) } }
+                // Sometimes start with something the profile gave a thumbs up
+                val candidates =
+                    (if (liked != null && Random.nextBoolean()) listOf(liked) + watched else watched + listOfNotNull(liked))
+                        .distinctBy { it.first }
+                        .take(BECAUSE_TRIES)
+                for ((sourceId, sourceName, fromLiked) in candidates) {
+                    val items =
+                        api.libraryApi
+                            .getSimilarItems(
+                                GetSimilarItemsRequest(
+                                    userId = userDto.id,
+                                    itemId = sourceId,
+                                    fields = HomeItemFields,
+                                    limit = BECAUSE_MAX,
+                                ),
+                            ).content.items
+                            .filter { taste.keep(it) }
+                            .map { BaseItem(it) }
+                    if (items.size >= BECAUSE_MIN) {
+                        val title =
+                            context.getString(
+                                if (fromLiked) R.string.because_you_liked else R.string.because_you_watched_row,
+                                sourceName,
+                            )
+                        _state.update { it.copy(because = ThemedRow(title, items)) }
+                        return
+                    }
+                }
+                _state.update { it.copy(because = null) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading because you watched row")
+            }
+        }
+
+        /**
+         * "New on Benflix": newest movies & shows from every library together
+         */
+        private suspend fun loadNewest(userDto: ServerUserConfig) {
+            try {
+                val taste = loadTaste(userDto.id)
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = EXTRA_ROW_MAX,
                                 fields = HomeItemFields,
-                                limit = BECAUSE_MAX,
                             ),
                         ).content.items
                         .filter { taste.keep(it) }
                         .map { BaseItem(it) }
                 _state.update {
-                    it.copy(
-                        because =
-                            if (items.size >= BECAUSE_MIN) {
-                                ThemedRow(
-                                    context.getString(
-                                        if (fromLiked) R.string.because_you_liked else R.string.because_you_watched_row,
-                                        sourceName,
-                                    ),
-                                    items,
-                                )
-                            } else {
-                                null
-                            },
-                    )
+                    it.copy(newest = items.takeIf { it.isNotEmpty() }?.let { ThemedRow(context.getString(R.string.new_on_benflix), it) })
                 }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
-                Timber.e(ex, "Error loading because you watched row")
+                Timber.e(ex, "Error loading new on Benflix row")
+            }
+        }
+
+        /**
+         * "My List": the profile's favorite movies & shows
+         */
+        private suspend fun loadMyList(userDto: ServerUserConfig) {
+            try {
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                isFavorite = true,
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = EXTRA_ROW_MAX,
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(myList = items.takeIf { it.isNotEmpty() }?.let { ThemedRow(context.getString(R.string.my_list), it) })
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading my list row")
+            }
+        }
+
+        /**
+         * A few genre rows ("Comedy", "Action"...), picked at random each visit
+         */
+        private suspend fun loadGenreRows(userDto: ServerUserConfig) {
+            try {
+                val taste = loadTaste(userDto.id)
+                val genres =
+                    api.genresApi
+                        .getGenres(
+                            userId = userDto.id,
+                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                        ).content.items
+                        .mapNotNull { it.name }
+                        .shuffled()
+                val rows = mutableListOf<ThemedRow>()
+                for (genre in genres) {
+                    if (rows.size >= GENRE_ROWS) break
+                    val items =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userDto.id,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    recursive = true,
+                                    genres = listOf(genre),
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = EXTRA_ROW_MAX,
+                                    fields = HomeItemFields,
+                                ),
+                            ).content.items
+                            .filter { taste.keep(it) }
+                            .map { BaseItem(it) }
+                    if (items.size >= GENRE_MIN) rows.add(ThemedRow(genre, items))
+                }
+                _state.update { it.copy(genreRows = rows) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading genre rows")
             }
         }
 
@@ -1104,6 +1215,9 @@ data class HomeState(
     val moodRow: ThemedRow? = null,
     val celebration: Celebration? = null,
     val studios: List<StudioTile> = emptyList(),
+    val newest: ThemedRow? = null,
+    val myList: ThemedRow? = null,
+    val genreRows: List<ThemedRow> = emptyList(),
 ) {
     companion object {
         val EMPTY =
@@ -1117,6 +1231,11 @@ data class HomeState(
 }
 
 private const val TASTE_MAX = 300
+private const val BECAUSE_LOOKBACK = 30
+private const val BECAUSE_TRIES = 6
+private const val EXTRA_ROW_MAX = 20
+private const val GENRE_ROWS = 3
+private const val GENRE_MIN = 6
 private const val TRENDING_MIN = 5
 private const val FEATURED_NEWEST = 3
 private const val FEATURED_RESUME = 2
