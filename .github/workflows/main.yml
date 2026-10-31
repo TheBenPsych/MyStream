@@ -42,7 +42,19 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-        run: ./gradlew clean assembleDefaultRelease --no-daemon
+          # A GitHub token that can read packages, so the build includes the MPV player
+          # and the AV1 / ffmpeg decoders (without them, those features are left out)
+          EXTENSIONS_USERNAME: ${{ secrets.EXTENSIONS_USERNAME }}
+          EXTENSIONS_PASSWORD: ${{ secrets.EXTENSIONS_PASSWORD }}
+        run: |
+          if [ -n "$EXTENSIONS_USERNAME" ] && [ -n "$EXTENSIONS_PASSWORD" ]; then
+            echo "Building with the MPV player and extra decoders"
+            export ORG_GRADLE_PROJECT_WholphinExtensionsUsername="$EXTENSIONS_USERNAME"
+            export ORG_GRADLE_PROJECT_WholphinExtensionsPassword="$EXTENSIONS_PASSWORD"
+          else
+            echo "::warning::EXTENSIONS_USERNAME / EXTENSIONS_PASSWORD not set, building without the MPV player and extra decoders"
+          fi
+          ./gradlew clean assembleDefaultRelease --no-daemon
 
       - name: Copy APKs to short names
         run: |
