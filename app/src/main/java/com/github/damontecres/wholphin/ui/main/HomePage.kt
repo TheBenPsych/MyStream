@@ -55,7 +55,6 @@ import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
@@ -119,7 +118,6 @@ fun HomePage(
     val collections = state.collections
     val mood = state.mood
     val moodRow = state.moodRow
-    val celebration = state.celebration
     val studios = state.studios
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
@@ -271,7 +269,6 @@ fun HomePage(
                 mood = mood,
                 moodRow = moodRow,
                 onClickMood = viewModel::pickMood,
-                celebration = celebration,
                 studios = studios,
                 onClickStudio = viewModel::openStudio,
                 previewPlayer = viewModel.previewPlayer,
@@ -374,7 +371,6 @@ fun HomePageContent(
     mood: HomeMood? = null,
     moodRow: ThemedRow? = null,
     onClickMood: ((HomeMood) -> Unit)? = null,
-    celebration: Celebration? = null,
     studios: List<StudioTile> = emptyList(),
     onClickStudio: (StudioTile) -> Unit = {},
     previewPlayer: Player? = null,
@@ -529,12 +525,6 @@ fun HomePageContent(
                 ) {
                     if (showHero) {
                         item(key = "hero") {
-                            celebration?.let {
-                                CelebrationBanner(
-                                    celebration = it,
-                                    modifier = Modifier.padding(end = 24.dp, top = 4.dp, bottom = 8.dp),
-                                )
-                            }
                             HomeHero(
                                 featured = featured,
                                 index = heroIndex.coerceIn(0, featured.lastIndex),
@@ -545,13 +535,6 @@ fun HomePageContent(
                                 onFocusChanged = { heroFocused = it },
                                 focusRequester = heroFocusRequester,
                             )
-                            if (studios.isNotEmpty()) {
-                                StudioRow(
-                                    tiles = studios,
-                                    onClick = onClickStudio,
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
-                            }
                         }
                     }
                     homeRows.forEachIndexed { rowIndex, row ->
@@ -799,6 +782,16 @@ fun HomePageContent(
                                             },
                                 )
                             }
+                        }
+                    }
+                    // Studios sit under all of the library rows
+                    if (studios.isNotEmpty()) {
+                        item(key = "studios") {
+                            StudioRow(
+                                tiles = studios,
+                                onClick = onClickStudio,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
                         }
                     }
                 }

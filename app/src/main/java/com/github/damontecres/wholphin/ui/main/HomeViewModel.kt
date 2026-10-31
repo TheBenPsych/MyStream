@@ -19,6 +19,7 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.Celebration
+import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
@@ -634,10 +635,15 @@ class HomeViewModel
             val birthday = if (KidsMode.isActive) null else birthdayService.get(userDto.id)
             val celebration =
                 if (birthday != null && birthday == MonthDay.from(today)) {
-                    Celebration("🎂 Happy Birthday, ${userDto.name ?: ""}! 🎉", true)
+                    Celebration(
+                        listOfNotNull("Happy Birthday", userDto.name?.takeIf { it.isNotBlank() }).joinToString(", "),
+                        "🎂",
+                        0xFFFF5CA8,
+                    )
                 } else {
                     holidayFor(today)
                 }
+            CelebrationNow.set(celebration)
             _state.update { it.copy(celebration = celebration) }
         }
 

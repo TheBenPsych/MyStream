@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.services
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
 import java.time.LocalDate
@@ -46,15 +48,28 @@ class BirthdayService
     }
 
 /**
- * The banner shown at the top of Home on a special day
+ * A special day: a small emoji on the Benflix logo and a short line under it
  */
 data class Celebration(
     val text: String,
-    val confetti: Boolean,
+    val emoji: String,
+    val color: Long,
 )
 
 /**
- * Holiday banners, or null on an ordinary day
+ * Today's celebration for the signed-in profile, shown by the logo in the top bar
+ */
+object CelebrationNow {
+    private val _current = MutableStateFlow<Celebration?>(null)
+    val current: StateFlow<Celebration?> = _current
+
+    fun set(celebration: Celebration?) {
+        _current.value = celebration
+    }
+}
+
+/**
+ * Holidays, or null on an ordinary day
  */
 fun holidayFor(date: LocalDate): Celebration? {
     val m = date.monthValue
@@ -62,15 +77,15 @@ fun holidayFor(date: LocalDate): Celebration? {
     val thanksgiving =
         date.withDayOfMonth(1).with(TemporalAdjusters.dayOfWeekInMonth(4, java.time.DayOfWeek.THURSDAY))
     return when {
-        m == 1 && d == 1 -> Celebration("🎆 Happy New Year from Benflix! 🎆", true)
-        m == 2 && d == 14 -> Celebration("❤️ Happy Valentine's Day ❤️", false)
-        m == 3 && d == 17 -> Celebration("☘️ Happy St. Patrick's Day ☘️", false)
-        m == 7 && d == 4 -> Celebration("🎆 Happy 4th of July! 🎆", true)
-        m == 10 && d == 31 -> Celebration("🎃 Happy Halloween! 🎃", false)
-        m == 11 && date == thanksgiving -> Celebration("🦃 Happy Thanksgiving! 🦃", false)
-        m == 12 && d == 24 -> Celebration("🎄 Merry Christmas Eve! 🎄", false)
-        m == 12 && d == 25 -> Celebration("🎄 Merry Christmas! 🎁", true)
-        m == 12 && d == 31 -> Celebration("🥳 Happy New Year's Eve! 🥳", true)
+        m == 1 && d == 1 -> Celebration("Happy New Year", "🎆", 0xFFFFD54F)
+        m == 2 && d == 14 -> Celebration("Happy Valentine's Day", "❤️", 0xFFFF6B9A)
+        m == 3 && d == 17 -> Celebration("Happy St. Patrick's Day", "☘️", 0xFF4CD964)
+        m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFF64B5F6)
+        m == 10 && d == 31 -> Celebration("Happy Halloween", "🎃", 0xFFFF8C1A)
+        m == 11 && date == thanksgiving -> Celebration("Happy Thanksgiving", "🦃", 0xFFE0A050)
+        m == 12 && d == 24 -> Celebration("Merry Christmas Eve", "🎄", 0xFF66BB6A)
+        m == 12 && d == 25 -> Celebration("Merry Christmas", "🎄", 0xFF66BB6A)
+        m == 12 && d == 31 -> Celebration("Happy New Year's Eve", "🥳", 0xFFFFD54F)
         else -> null
     }
 }

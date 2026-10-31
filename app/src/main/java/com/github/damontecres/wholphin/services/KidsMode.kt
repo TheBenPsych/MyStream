@@ -3,11 +3,13 @@ package com.github.damontecres.wholphin.services
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import okhttp3.Interceptor
+import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Benflix Kids profile. It uses a grown-up's sign-in, but while it's on every list of movies & shows
@@ -24,6 +26,7 @@ object KidsMode {
 
     fun set(on: Boolean) {
         if (_active.value != on) Timber.i("Kids mode: %s", on)
+        seriesRatings.clear()
         _active.value = on
     }
 
@@ -51,17 +54,25 @@ object KidsMode {
             "FSK-6",
         )
 
-    /** Item types that are checked */
-    private val RATED_TYPES = setOf("Movie", "Series", "Episode", "Season", "Video", "Trailer", "MusicVideo")
+    /** Item types that are checked. Anything of these types without a kid rating is hidden. */
+    private val RATED_TYPES =
+        setOf("Movie", "Series", "Episode", "Season", "Video", "Trailer", "MusicVideo", "BoxSet")
 
-    /** Item types hidden when they have no rating at all */
-    private val MUST_BE_RATED = setOf("Movie", "Series", "Video", "MusicVideo")
+    /** Episodes & seasons often have no rating of their own, so they use their show's rating */
+    private val USES_SERIES_RATING = setOf("Episode", "Season")
 
     /** Server addresses that return lists of movies & shows */
     private val LIST_PATH =
         Regex(
-            "(?i)(/Items(/Latest|/Resume|/Suggestions)?|/Shows/NextUp|/Shows/Upcoming|/Similar|/Search/Hints)$",
+            "(?i)(Items(/Latest|/Resume|/Suggestions)?|/Shows/NextUp|/Shows/Upcoming|/Shows/[^/]+/(Episodes|Seasons)|" +
+                "/Similar|/Search/Hints)$",
         )
+
+    /** The part of a server address before the API path, e.g. "/jellyfin" */
+    private val API_PATH = Regex("(?i)/(Users/[^/]+/Items|UserItems|Items|Shows|Search)(/.*)?$")
+
+    /** Ratings of shows already looked up, by show id */
+    private val seriesRatings = ConcurrentHashMap<String, String>()
 
     val interceptor =
         Interceptor { chain ->
@@ -79,34 +90,81 @@ object KidsMode {
                     request.url
                 }
             val response = chain.proceed(request.newBuilder().url(url).build())
-            filterResponse(response)
+            filterResponse(chain, request, response)
         }
 
-    private fun filterResponse(response: Response): Response {
+    private fun filterResponse(
+        chain: Interceptor.Chain,
+        request: Request,
+        response: Response,
+    ): Response {
         val body = response.body
         val contentType = body.contentType()
         if (!response.isSuccessful || contentType?.subtype?.contains("json") != true) return response
         val text = body.string()
         val filtered =
             try {
-                filterJson(text)
+                filterJson(chain, request, text)
             } catch (ex: Exception) {
+                // When in doubt, show nothing rather than something that isn't for kids
                 Timber.w(ex, "Kids filter could not read response")
-                text
+                if (text.trimStart().startsWith("[")) "[]" else """{"Items":[],"TotalRecordCount":0}"""
             }
         return response.newBuilder().body(filtered.toResponseBody(contentType)).build()
     }
 
-    private fun filterJson(text: String): String {
+    private fun filterJson(
+        chain: Interceptor.Chain,
+        request: Request,
+        text: String,
+    ): String {
         val trimmed = text.trimStart()
         return if (trimmed.startsWith("[")) {
-            filterArray(JSONArray(trimmed)).toString()
+            val array = JSONArray(trimmed)
+            lookUpSeriesRatings(chain, request, listOf(array))
+            filterArray(array).toString()
         } else {
             val obj = JSONObject(trimmed)
-            for (key in listOf("Items", "SearchHints")) {
-                obj.optJSONArray(key)?.let { obj.put(key, filterArray(it)) }
-            }
+            val arrays = listOf("Items", "SearchHints").mapNotNull { key -> obj.optJSONArray(key)?.let { key to it } }
+            lookUpSeriesRatings(chain, request, arrays.map { it.second })
+            arrays.forEach { (key, array) -> obj.put(key, filterArray(array)) }
             obj.toString()
+        }
+    }
+
+    /**
+     * Ask the server for the ratings of the shows that unrated episodes & seasons belong to
+     */
+    private fun lookUpSeriesRatings(
+        chain: Interceptor.Chain,
+        request: Request,
+        arrays: List<JSONArray>,
+    ) {
+        val missing = mutableSetOf<String>()
+        arrays.forEach { array ->
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                if (item.optString("Type") in USES_SERIES_RATING && ratingOf(item) == null) {
+                    item.optString("SeriesId").takeIf { it.isNotBlank() && it !in seriesRatings }?.let(missing::add)
+                }
+            }
+        }
+        if (missing.isEmpty()) return
+        val basePath = request.url.encodedPath.replace(API_PATH, "")
+        val url =
+            request.url
+                .newBuilder()
+                .encodedPath("$basePath/Items")
+                .query(null)
+                .addQueryParameter("ids", missing.joinToString(","))
+                .build()
+        chain.proceed(request.newBuilder().url(url).build()).use { response ->
+            if (!response.isSuccessful) return
+            val items = JSONObject(response.body.string()).optJSONArray("Items") ?: return
+            for (i in 0 until items.length()) {
+                val item = items.optJSONObject(i) ?: continue
+                seriesRatings[item.optString("Id")] = ratingOf(item) ?: ""
+            }
         }
     }
 
@@ -119,15 +177,16 @@ object KidsMode {
         return result
     }
 
+    private fun ratingOf(item: JSONObject): String? =
+        if (item.isNull("OfficialRating")) null else item.optString("OfficialRating").trim().takeIf { it.isNotEmpty() }
+
     private fun isAllowed(item: JSONObject): Boolean {
         val type = item.optString("Type")
         if (type !in RATED_TYPES) return true
         val rating =
-            if (item.isNull("OfficialRating")) null else item.optString("OfficialRating").trim().takeIf { it.isNotEmpty() }
-        return if (rating == null) {
-            type !in MUST_BE_RATED
-        } else {
-            rating.uppercase() in ALLOWED_RATINGS
-        }
+            ratingOf(item)
+                ?: if (type in USES_SERIES_RATING) seriesRatings[item.optString("SeriesId")]?.takeIf { it.isNotEmpty() } else null
+        // No rating at all means the server can't tell what it is, so it stays out
+        return rating != null && rating.uppercase() in ALLOWED_RATINGS
     }
 }
