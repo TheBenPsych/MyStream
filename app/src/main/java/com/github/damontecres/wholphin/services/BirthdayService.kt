@@ -48,12 +48,28 @@ class BirthdayService
     }
 
 /**
- * A special day: a small emoji on the Benflix logo and a short line under it
+ * The little animation that plays around the Benflix logo on a special day
+ */
+enum class LogoEffect {
+    NONE,
+    FIREWORKS_GOLD,
+    FIREWORKS_USA,
+    HEART_FLOAT,
+    GREEN_SHIMMER,
+    GHOST_PEEK,
+    FALLING_LEAVES,
+    TWINKLE_LIGHTS,
+    CONFETTI,
+}
+
+/**
+ * A special day: a small animation on the Benflix logo and a short line under it
  */
 data class Celebration(
     val text: String,
     val emoji: String,
     val color: Long,
+    val effect: LogoEffect = LogoEffect.NONE,
 )
 
 /**
@@ -77,15 +93,15 @@ fun holidayFor(date: LocalDate): Celebration? {
     val thanksgiving =
         date.withDayOfMonth(1).with(TemporalAdjusters.dayOfWeekInMonth(4, java.time.DayOfWeek.THURSDAY))
     return when {
-        m == 1 && d == 1 -> Celebration("Happy New Year", "🎆", 0xFFFFD54F)
-        m == 2 && d == 14 -> Celebration("Happy Valentine's Day", "❤️", 0xFFFF6B9A)
-        m == 3 && d == 17 -> Celebration("Happy St. Patrick's Day", "☘️", 0xFF4CD964)
-        m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFF64B5F6)
-        m == 10 && d == 31 -> Celebration("Happy Halloween", "🎃", 0xFFFF8C1A)
-        m == 11 && date == thanksgiving -> Celebration("Happy Thanksgiving", "🦃", 0xFFE0A050)
-        m == 12 && d == 24 -> Celebration("Merry Christmas Eve", "🎄", 0xFF66BB6A)
-        m == 12 && d == 25 -> Celebration("Merry Christmas", "🎄", 0xFF66BB6A)
-        m == 12 && d == 31 -> Celebration("Happy New Year's Eve", "🥳", 0xFFFFD54F)
+        m == 1 && d == 1 -> Celebration("Happy New Year", "🎆", 0xFFFFD54F, LogoEffect.FIREWORKS_GOLD)
+        m == 2 && d == 14 -> Celebration("Happy Valentine's Day", "❤️", 0xFFFF6B9A, LogoEffect.HEART_FLOAT)
+        m == 3 && d == 17 -> Celebration("Happy St. Patrick's Day", "☘️", 0xFF4CD964, LogoEffect.GREEN_SHIMMER)
+        m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFF64B5F6, LogoEffect.FIREWORKS_USA)
+        m == 10 && d == 31 -> Celebration("Happy Halloween", "🎃", 0xFFFF8C1A, LogoEffect.GHOST_PEEK)
+        m == 11 && date == thanksgiving -> Celebration("Happy Thanksgiving", "🦃", 0xFFE0A050, LogoEffect.FALLING_LEAVES)
+        m == 12 && d == 24 -> Celebration("Merry Christmas Eve", "🎄", 0xFF66BB6A, LogoEffect.TWINKLE_LIGHTS)
+        m == 12 && d == 25 -> Celebration("Merry Christmas", "🎄", 0xFF66BB6A, LogoEffect.TWINKLE_LIGHTS)
+        m == 12 && d == 31 -> Celebration("Happy New Year's Eve", "🥳", 0xFFFFD54F, LogoEffect.FIREWORKS_GOLD)
         else -> null
     }
 }

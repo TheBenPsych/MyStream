@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.services.LogoEffect
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -247,18 +248,22 @@ fun topNavTitle(item: NavDrawerItem): String =
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
 
-/** The Benflix logo, with a small emoji and a short line underneath on holidays and birthdays */
+/** The Benflix logo, with a small animation and a short line underneath on holidays and birthdays */
 @Composable
 fun BenflixLogo(modifier: Modifier = Modifier) {
     val celebration by CelebrationNow.current.collectAsState()
-    // On a holiday or birthday the logo gets a small emoji and a short line underneath
+    val effect = celebration?.effect ?: LogoEffect.NONE
     Box(modifier = modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(R.drawable.benflix_logo),
-                contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.height(26.dp),
-            )
+            Box {
+                LogoEffectBehind(effect)
+                Image(
+                    painter = painterResource(R.drawable.benflix_logo),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.height(26.dp).logoShimmer(effect),
+                )
+                LogoEffectInFront(effect)
+            }
             celebration?.let {
                 Text(
                     text = it.text,
@@ -269,7 +274,8 @@ fun BenflixLogo(modifier: Modifier = Modifier) {
                 )
             }
         }
-        celebration?.let {
+        // Days without their own animation keep the small emoji on the corner
+        celebration?.takeIf { it.effect == LogoEffect.NONE }?.let {
             Text(
                 text = it.emoji,
                 fontSize = 14.sp,
