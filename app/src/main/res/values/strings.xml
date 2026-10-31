@@ -991,6 +991,8 @@
     <string name="featured_pick">Picked for you</string>
     <string name="top_10_trending">Top 10 trending this week</string>
     <string name="trending_not_on_server">Trending, not on your server</string>
+    <string name="new_episode">NEW EPISODE</string>
+    <string name="new_badge">NEW</string>
     <string name="theme_halloween">Halloween picks</string>
     <string name="theme_holiday">Holiday favorites</string>
     <string name="theme_date_night">Date night</string>

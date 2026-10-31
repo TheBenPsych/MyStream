@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -47,7 +48,10 @@ import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 /**
  * Displays an image as a card. If no image is available, the name will be shown instead
@@ -182,6 +186,20 @@ fun BannerCard(
                     fontFamily = FontAwesome,
                 )
             }
+            if (item?.isNew == true) {
+                Text(
+                    text = stringResource(if (item.type == BaseItemKind.SERIES) R.string.new_episode else R.string.new_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 8.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
             if (playPercent > 0 && playPercent < 100) {
                 Box(
                     modifier =
@@ -270,3 +288,28 @@ fun BannerCardWithTitle(
         }
     }
 }
+
+private const val NEW_DAYS = 7L
+
+/**
+ * Whether to show a "New" badge: a series with unwatched episodes added recently,
+ * or an unwatched episode added recently
+ */
+private val BaseItem.isNew: Boolean
+    get() {
+        val cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(NEW_DAYS)
+        return when (type) {
+            BaseItemKind.SERIES -> {
+                (data.userData?.unplayedItemCount ?: 0) > 0 &&
+                    data.dateLastMediaAdded?.isAfter(cutoff) == true
+            }
+
+            BaseItemKind.EPISODE -> {
+                data.userData?.played != true && data.dateCreated?.isAfter(cutoff) == true
+            }
+
+            else -> {
+                false
+            }
+        }
+    }

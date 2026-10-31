@@ -68,6 +68,9 @@ val SlimItemFields =
         ItemFields.SORT_NAME,
         ItemFields.MEDIA_SOURCE_COUNT,
         ItemFields.CAN_DELETE,
+        // For "new episode" badges
+        ItemFields.DATE_CREATED,
+        ItemFields.DATE_LAST_MEDIA_ADDED,
     )
 
 /**
@@ -79,6 +82,9 @@ val HomeItemFields =
     listOf(
         ItemFields.OVERVIEW,
         ItemFields.CAN_DELETE,
+        // For "new episode" badges
+        ItemFields.DATE_CREATED,
+        ItemFields.DATE_LAST_MEDIA_ADDED,
     )
 
 val PhotoItemFields =
