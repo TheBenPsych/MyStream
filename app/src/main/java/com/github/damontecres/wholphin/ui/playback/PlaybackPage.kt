@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -336,9 +337,25 @@ fun PlaybackPageContent(
         viewModel.updateSegment(state.currentSegment?.segment?.id, true)
     }
 
+    // Benflix ambient mode: artwork drifts across the screen after being paused for a while
+    var showAmbient by remember { mutableStateOf(false) }
+    var ambientKeyPresses by remember { mutableIntStateOf(0) }
+    LaunchedEffect(playPauseState.showPlay, state.nextUp, ambientKeyPresses, playbackDialog) {
+        showAmbient = false
+        if (playPauseState.showPlay && state.nextUp == null && playbackDialog == null) {
+            delay(AMBIENT_DELAY)
+            showAmbient = true
+        }
+    }
+
     Box(
         modifier
-            .background(if (state.nextUp == null) Color.Black else MaterialTheme.colorScheme.background),
+            .background(if (state.nextUp == null) Color.Black else MaterialTheme.colorScheme.background)
+            .onPreviewKeyEvent {
+                ambientKeyPresses++
+                // The first press only wakes the screen from ambient mode
+                showAmbient
+            },
     ) {
         val playerSize by animateFloatAsState(if (state.nextUp == null) 1f else .6f)
         Box(
@@ -602,6 +619,12 @@ fun PlaybackPageContent(
             )
         }
 
+        PauseAmbient(
+            visible = showAmbient,
+            item = state.currentPlayback?.item,
+            modifier = Modifier.fillMaxSize(),
+        )
+
         // Ask to skip intros, etc button
         AnimatedVisibility(
             showSegment,
@@ -794,3 +817,5 @@ fun PlaybackPageContent(
         )
     }
 }
+
+private val AMBIENT_DELAY = 15.seconds

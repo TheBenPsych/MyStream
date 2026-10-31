@@ -1019,4 +1019,5 @@
     <string name="mood_edge">Edge of My Seat</string>
     <string name="mood_family">Family Time</string>
     <string name="mood_nothing_found">Nothing found for that mood yet</string>
+    <string name="ambient_paused">PAUSED</string>
 </resources>
