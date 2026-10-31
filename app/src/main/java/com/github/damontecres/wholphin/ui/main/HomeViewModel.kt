@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
+import com.github.damontecres.wholphin.data.model.SeerrAvailability
+import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
@@ -18,6 +21,7 @@ import com.github.damontecres.wholphin.services.LatestNextUpService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
@@ -78,6 +82,7 @@ class HomeViewModel
         private val mediaManagementService: MediaManagementService,
         private val latestNextUpService: LatestNextUpService,
         private val api: ApiClient,
+        private val seerrService: SeerrService,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -190,6 +195,7 @@ class HomeViewModel
                 if (!refresh || state.featured.isEmpty()) {
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
+                viewModelScope.launchIO { loadTrending(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -344,6 +350,68 @@ class HomeViewModel
         }
 
         /**
+         * Load what's trending this week from Seerr: the top items already on the server,
+         * and, for admins, trending items that are not on the server yet
+         */
+        private suspend fun loadTrending(userDto: ServerUserConfig) {
+            try {
+                if (!seerrService.active.first()) {
+                    _state.update { it.copy(trending = emptyList(), trendingMissing = emptyList()) }
+                    return
+                }
+                val discovered =
+                    (1..TRENDING_PAGES)
+                        .flatMap { seerrService.trending(it) }
+                        .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                        .distinctBy { it.type to it.id }
+                val inLibraryIds =
+                    discovered
+                        .mapNotNull { it.jellyfinItemId }
+                        .distinct()
+                        .take(TRENDING_TOP)
+                val trending =
+                    if (inLibraryIds.isNotEmpty()) {
+                        val items =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userDto.id,
+                                        ids = inLibraryIds,
+                                        fields = HomeItemFields,
+                                    ),
+                                ).content.items
+                                .associateBy { it.id }
+                        // Keep the trending order
+                        inLibraryIds.mapNotNull { id -> items[id]?.let { BaseItem(it) } }
+                    } else {
+                        emptyList()
+                    }
+                val missing =
+                    if (userDto.policy?.isAdministrator == true) {
+                        discovered
+                            .filter {
+                                it.jellyfinItemId == null &&
+                                    it.availability != SeerrAvailability.AVAILABLE &&
+                                    it.availability != SeerrAvailability.BLOCKLISTED
+                            }.take(TRENDING_MISSING_MAX)
+                    } else {
+                        emptyList()
+                    }
+                _state.update { it.copy(trending = trending, trendingMissing = missing) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading trending items")
+            }
+        }
+
+        fun updateBackdrop(item: DiscoverItem) {
+            viewModelScope.launchIO {
+                backdropService.submit(item)
+            }
+        }
+
+        /**
          * Navigate to a random unwatched movie or show
          */
         fun surpriseMe() {
@@ -473,6 +541,8 @@ data class HomeState(
     val homeRows: List<HomeRowLoadingState>,
     val settings: HomePageResolvedSettings,
     val featured: List<FeaturedItem> = emptyList(),
+    val trending: List<BaseItem> = emptyList(),
+    val trendingMissing: List<DiscoverItem> = emptyList(),
 ) {
     companion object {
         val EMPTY =
@@ -487,6 +557,9 @@ data class HomeState(
 
 private const val FEATURED_NEWEST = 4
 private const val FEATURED_PICKS = 4
+private const val TRENDING_PAGES = 3
+private const val TRENDING_TOP = 10
+private const val TRENDING_MISSING_MAX = 20
 
 /**
  * Whether a row is a "is watching" type
