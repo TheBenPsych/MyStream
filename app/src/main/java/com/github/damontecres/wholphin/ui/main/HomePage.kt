@@ -110,6 +110,8 @@ fun HomePage(
     }
     val state by viewModel.state.collectAsState()
     val featured = state.featured
+    val trending = state.trending
+    val trendingMissing = state.trendingMissing
     val loading = state.loadingState
     val refreshing = state.refreshState
     val homeRows = state.homeRows
@@ -241,11 +243,11 @@ fun HomePage(
                 },
                 onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
                 onClickSurprise = viewModel::surpriseMe,
-                trending = state.trending,
+                trending = trending,
                 onClickTrending = { item ->
                     viewModel.navigationManager.navigateTo(item.destination())
                 },
-                trendingMissing = state.trendingMissing,
+                trendingMissing = trendingMissing,
                 onClickDiscover = { item ->
                     viewModel.navigationManager.navigateTo(item.destination)
                 },
