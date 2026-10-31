@@ -132,7 +132,7 @@
     <string name="voice_error_timeout">Voice recognition timed out</string>
     <string name="retry">Retry</string>
     <string name="select_server">Select Server</string>
-    <string name="select_user">Select User</string>
+    <string name="select_user">Who\'s watching?</string>
     <string name="show_debug_info">Show debug info</string>
     <string name="show_next_up_when">Show next up</string>
     <string name="show">Show</string>

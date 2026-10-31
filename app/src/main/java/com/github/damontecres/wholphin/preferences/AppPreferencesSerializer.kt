@@ -140,6 +140,7 @@ class AppPreferencesSerializer
                                     ScreensaverPreferences
                                         .newBuilder()
                                         .apply {
+                                            enabled = true
                                             startDelay = ScreensaverPreference.DEFAULT_START_DELAY
                                             duration = ScreensaverPreference.DEFAULT_DURATION
                                             animate = ScreensaverPreference.Animate.defaultValue
