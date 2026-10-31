@@ -208,13 +208,28 @@ class SwitchUserViewModel
                                 .content
                         _state.update { it.copy(quickConnectStatus = quickConnectStatus) }
 
+                        var networkFailures = 0
                         while (!quickConnectStatus.authenticated) {
                             delay(5_000L)
                             quickConnectStatus =
-                                api.quickConnectApi
-                                    .getQuickConnectState(
-                                        secret = quickConnectStatus.secret,
-                                    ).content
+                                try {
+                                    api.quickConnectApi
+                                        .getQuickConnectState(
+                                            secret = quickConnectStatus.secret,
+                                        ).content
+                                        .also { networkFailures = 0 }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: InvalidStatusException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    // Phones often cut network for apps in the background while you
+                                    // approve the code in another app, so keep trying for a while
+                                    networkFailures++
+                                    if (networkFailures > MAX_QUICK_CONNECT_NETWORK_FAILURES) throw ex
+                                    Timber.w(ex, "Quick Connect check failed, retrying")
+                                    continue
+                                }
                             _state.update { it.copy(quickConnectStatus = quickConnectStatus) }
                         }
                         val authenticationResult by api.userApi.authenticateWithQuickConnect(
@@ -358,3 +373,6 @@ sealed interface SwitchUserResult {
         val showLogin: Boolean,
     ) : SwitchUserResult
 }
+
+/** About 5 minutes of failed checks (one every 5 seconds) before Quick Connect gives up */
+private const val MAX_QUICK_CONNECT_NETWORK_FAILURES = 60
