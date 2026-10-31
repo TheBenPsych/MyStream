@@ -626,10 +626,12 @@ class HomeViewModel
                                     genres = theme.genres,
                                     searchTerm = theme.searchTerm,
                                     sortBy = listOf(ItemSortBy.RANDOM),
-                                    limit = THEMED_MAX,
+                                    limit = THEMED_FETCH,
                                     fields = HomeItemFields,
                                 ),
                             ).content.items
+                            .let { collapseIntoCollections(userDto.id, it) }
+                            .take(THEMED_MAX)
                             .map { BaseItem(it) }
                     Timber.d("Themed row %s found %s items", theme, items.size)
                     if (items.isNotEmpty()) {
@@ -643,6 +645,79 @@ class HomeViewModel
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading themed row")
+            }
+        }
+
+        /** Which collection each movie is in, so a franchise (e.g. all the Saw movies) shows as one tile */
+        private var collectionIndex: Pair<String, Map<UUID, BaseItemDto>>? = null
+
+        private suspend fun collectionsByMovie(userId: UUID): Map<UUID, BaseItemDto> {
+            val key = "$userId-${KidsMode.isActive}"
+            collectionIndex?.takeIf { it.first == key }?.let { return it.second }
+            val collections =
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userId,
+                            includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                            recursive = true,
+                            limit = COLLECTION_INDEX_MAX,
+                            fields = HomeItemFields,
+                        ),
+                    ).content.items
+            val permits = Semaphore(COLLECTION_INDEX_PARALLEL)
+            val index =
+                collections
+                    .map { collection ->
+                        viewModelScope.async(WholphinDispatchers.IO) {
+                            permits.withPermit {
+                                try {
+                                    api.itemsApi
+                                        .getItems(
+                                            GetItemsRequest(
+                                                userId = userId,
+                                                parentId = collection.id,
+                                                enableImages = false,
+                                                enableUserData = false,
+                                                limit = 200,
+                                            ),
+                                        ).content.items
+                                        .map { it.id to collection }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    Timber.w(ex, "Error reading collection %s", collection.name)
+                                    emptyList()
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                    .flatten()
+                    .toMap()
+            collectionIndex = key to index
+            return index
+        }
+
+        /**
+         * Swap movies that belong to a collection for the collection itself (once), keeping the order
+         */
+        private suspend fun collapseIntoCollections(
+            userId: UUID,
+            items: List<BaseItemDto>,
+        ): List<BaseItemDto> {
+            val byMovie =
+                try {
+                    collectionsByMovie(userId)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Error loading collections, showing single movies")
+                    emptyMap()
+                }
+            val shown = mutableSetOf<UUID>()
+            return items.mapNotNull { item ->
+                val tile = if (item.type == BaseItemKind.MOVIE) byMovie[item.id] ?: item else item
+                tile.takeIf { shown.add(it.id) }
             }
         }
 
@@ -1228,6 +1303,9 @@ private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
 private const val THEMED_MAX = 20
+private const val THEMED_FETCH = 60
+private const val COLLECTION_INDEX_MAX = 400
+private const val COLLECTION_INDEX_PARALLEL = 6
 private const val BECAUSE_MAX = 20
 private const val BECAUSE_MIN = 4
 private const val COLLECTIONS_FETCH = 100
