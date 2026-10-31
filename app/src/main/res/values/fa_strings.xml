@@ -66,4 +66,7 @@
     <string name="fa_circle_xmark" translatable="false">&#xf057;</string>
     <string name="fa_circle_info" translatable="false">&#xf05a;</string>
     <string name="fa_plus" translatable="false">&#xf067;</string>
+    <string name="fa_magnifying_glass" translatable="false">&#xf002;</string>
+    <string name="fa_bars" translatable="false">&#xf0c9;</string>
+    <string name="fa_gamepad" translatable="false">&#xf11b;</string>
 </resources>

@@ -96,36 +96,7 @@ fun TopNavBar(
                 },
     ) {
         val kidsBar by KidsMode.active.collectAsState()
-        val celebration by CelebrationNow.current.collectAsState()
-        // On a holiday or birthday the logo gets a small emoji and a short line underneath
-        Box(modifier = Modifier.padding(end = if (kidsBar) 8.dp else 16.dp)) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    painter = painterResource(R.drawable.benflix_logo),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.height(26.dp),
-                )
-                celebration?.let {
-                    Text(
-                        text = it.text,
-                        color = Color(it.color),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
-            }
-            celebration?.let {
-                Text(
-                    text = it.emoji,
-                    fontSize = 14.sp,
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 10.dp, y = (-8).dp),
-                )
-            }
-        }
+        BenflixLogo(modifier = Modifier.padding(end = if (kidsBar) 8.dp else 16.dp))
         if (kidsBar) {
             Text(
                 text = stringResource(R.string.kids_profile).uppercase(),
@@ -268,3 +239,38 @@ fun topNavTitle(item: NavDrawerItem): String =
     }
 
 val TopNavBarHeight = 64.dp
+
+/** The Benflix logo, with a small emoji and a short line underneath on holidays and birthdays */
+@Composable
+fun BenflixLogo(modifier: Modifier = Modifier) {
+    val celebration by CelebrationNow.current.collectAsState()
+    // On a holiday or birthday the logo gets a small emoji and a short line underneath
+    Box(modifier = modifier) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(R.drawable.benflix_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.height(26.dp),
+            )
+            celebration?.let {
+                Text(
+                    text = it.text,
+                    color = Color(it.color),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+        celebration?.let {
+            Text(
+                text = it.emoji,
+                fontSize = 14.sp,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 10.dp, y = (-8).dp),
+            )
+        }
+    }
+}

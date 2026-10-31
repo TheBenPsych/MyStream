@@ -1034,4 +1034,6 @@
     <string name="night_mode_on">Night mode: On</string>
     <string name="night_mode_off">Night mode: Off</string>
     <string name="night_mode_summary">Quieter booms, clearer voices</string>
+    <string name="phone_browse">Browse</string>
+    <string name="phone_profiles">Profiles</string>
 </resources>

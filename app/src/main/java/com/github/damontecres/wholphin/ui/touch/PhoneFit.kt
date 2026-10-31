@@ -55,3 +55,10 @@ fun dialogWidth(tvFraction: Float): Float {
 }
 
 private const val PORTRAIT_FRACTION = .92f
+
+/** True on Android TV / Google TV / Fire TV, false on phones and tablets */
+@Composable
+fun rememberIsTv(): Boolean {
+    val context = LocalContext.current
+    return remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+}
