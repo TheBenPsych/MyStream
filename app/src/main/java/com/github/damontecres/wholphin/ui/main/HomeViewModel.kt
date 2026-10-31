@@ -3,10 +3,14 @@ package com.github.damontecres.wholphin.ui.main
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
+import com.github.damontecres.wholphin.data.model.LocalTrailer
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
@@ -23,6 +27,7 @@ import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
+import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.HomeItemFields
@@ -43,6 +48,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -55,12 +61,14 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -83,13 +91,30 @@ class HomeViewModel
         private val latestNextUpService: LatestNextUpService,
         private val api: ApiClient,
         private val seerrService: SeerrService,
+        private val trailerService: TrailerService,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
 
+        /**
+         * A small muted player for the banner's trailer preview, created on first use
+         */
+        private var _previewPlayer: ExoPlayer? = null
+        val previewPlayer: Player?
+            get() = _previewPlayer
+
+        private val _previewPlaying = MutableStateFlow(false)
+        val previewPlaying: StateFlow<Boolean> = _previewPlaying
+
+        private var previewJob: Job? = null
+
         private var dataLoadingJob: Job? = null
 
         init {
+            addCloseable {
+                _previewPlayer?.release()
+                _previewPlayer = null
+            }
             datePlayedService.invalidateAll()
             serverRepository.currentUserDtoFlow
                 .combinePair(homeSettingsService.currentSettings)
@@ -196,6 +221,7 @@ class HomeViewModel
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
+                viewModelScope.launchIO { loadThemed(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -405,6 +431,81 @@ class HomeViewModel
             }
         }
 
+        /**
+         * Load the seasonal themed row, such as horror in October
+         */
+        private suspend fun loadThemed(userDto: ServerUserConfig) {
+            try {
+                val theme = HomeTheme.forDate(LocalDate.now())
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                genres = theme.genres,
+                                searchTerm = theme.searchTerm,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = THEMED_MAX,
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(themed = if (items.isNotEmpty()) ThemedRow(context.getString(theme.title, theme.titleArg), items) else null)
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading themed row")
+            }
+        }
+
+        /**
+         * Play the item's local trailer muted behind the banner after a short delay,
+         * or stop the preview if [item] is null
+         */
+        fun previewTrailer(item: BaseItem?) {
+            previewJob?.cancel()
+            _previewPlaying.value = false
+            _previewPlayer?.stop()
+            if (item == null) return
+            previewJob =
+                viewModelScope.launch(ExceptionHandler()) {
+                    delay(TRAILER_DELAY_MS)
+                    val trailer =
+                        withContext(WholphinDispatchers.IO) {
+                            trailerService
+                                .getLocalTrailers(item)
+                                .filterIsInstance<LocalTrailer>()
+                                .firstOrNull()
+                        } ?: return@launch
+                    val url = api.videosApi.getVideoStreamUrl(itemId = trailer.baseItem.id, static = true)
+                    val player =
+                        _previewPlayer ?: ExoPlayer.Builder(context).build().also { newPlayer ->
+                            newPlayer.volume = 0f
+                            newPlayer.addListener(
+                                object : Player.Listener {
+                                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                        if (isPlaying) _previewPlaying.value = true
+                                    }
+
+                                    override fun onPlaybackStateChanged(playbackState: Int) {
+                                        if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
+                                            _previewPlaying.value = false
+                                        }
+                                    }
+                                },
+                            )
+                            _previewPlayer = newPlayer
+                        }
+                    player.setMediaItem(MediaItem.fromUri(url))
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+        }
+
         fun updateBackdrop(item: DiscoverItem) {
             viewModelScope.launchIO {
                 backdropService.submit(item)
@@ -543,6 +644,7 @@ data class HomeState(
     val featured: List<FeaturedItem> = emptyList(),
     val trending: List<BaseItem> = emptyList(),
     val trendingMissing: List<DiscoverItem> = emptyList(),
+    val themed: ThemedRow? = null,
 ) {
     companion object {
         val EMPTY =
@@ -560,6 +662,8 @@ private const val FEATURED_PICKS = 4
 private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
+private const val THEMED_MAX = 20
+private const val TRAILER_DELAY_MS = 3_000L
 
 /**
  * Whether a row is a "is watching" type
