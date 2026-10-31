@@ -1,17 +1,24 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -32,9 +40,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -62,7 +74,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 /**
- * Layout for showing the next up episode during playback
+ * Benflix "Next episode" panel: a picture of the next episode, its name, and a big white
+ * "Next episode" button that fills up as the countdown runs, plus "Watch credits" to stay.
  */
 @Composable
 fun NextUpEpisode(
@@ -74,92 +87,158 @@ fun NextUpEpisode(
     modifier: Modifier = Modifier,
     aspectRatio: Float = AspectRatios.WIDE,
     runtime: Duration? = null,
+    totalCountdown: Duration? = null,
+    onWatchCredits: (() -> Unit)? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
-    Box(
-        modifier = modifier,
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .fillMaxHeight()
+                    .aspectRatio(aspectRatio.coerceAtLeast(AspectRatios.MIN))
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .weight(1f),
         ) {
             Text(
-                text = stringResource(R.string.next_up) + "...",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                text = stringResource(R.string.player_next_episode).uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(32.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(8.dp),
-            ) {
-                NextUpCard(
-                    imageUrl = imageUrl,
-                    onClick = onClick,
-                    timeLeft = timeLeft,
-                    interactionSource = interactionSource,
-                    modifier =
-                        Modifier
-                            .fillMaxHeight()
-                            .aspectRatio(aspectRatio.coerceAtLeast(AspectRatios.MIN))
-//                            .fillMaxSize()
-//                            .weight(1f)
-                            .focusRequester(focusRequester),
+            Text(
+                text = title ?: "",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = description ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            runtime?.let {
+                val context = LocalContext.current
+                val resources = LocalResources.current
+                val now by LocalClock.current.now
+                val text =
+                    remember(now, runtime) {
+                        buildAnnotatedString {
+                            append(resources.formatDuration(runtime))
+                            dot()
+                            val endsAt = now.plus(runtime.toJavaDuration())
+                            val endTimeStr = formatTime(context, endsAt)
+                            append(resources.getString(R.string.ends_at, endTimeStr))
+                        }
+                    }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            }
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val counting = timeLeft != null && timeLeft > Duration.ZERO
+                val fraction =
+                    if (counting && totalCountdown != null && totalCountdown > Duration.ZERO) {
+                        1f - (timeLeft!!.inWholeSeconds.toFloat() / totalCountdown.inWholeSeconds)
+                    } else {
+                        0f
+                    }
+                val animatedFraction by animateFloatAsState(
+                    targetValue = fraction,
+                    animationSpec = tween(1000, easing = LinearEasing),
+                    label = "next_up_fill",
+                )
+                Button(
+                    onClick = onClick,
+                    shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                    contentPadding = PaddingValues(0.dp),
+                    colors =
+                        ButtonDefaults.colors(
+                            containerColor = Color.White.copy(alpha = .75f),
+                            contentColor = Color.Black,
+                            focusedContainerColor = Color.White,
+                            focusedContentColor = Color.Black,
+                        ),
                     modifier =
                         Modifier
-                            .fillMaxHeight()
-                            .weight(1f),
+                            .height(44.dp)
+                            .focusRequester(focusRequester),
                 ) {
-                    Text(
-                        text = title ?: "",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier,
-                    )
-                    Text(
-                        text = description ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier,
-                    )
-                    runtime?.let {
-                        val context = LocalContext.current
-                        val resources = LocalResources.current
-                        val now by LocalClock.current.now
-                        val text =
-                            remember(now, runtime) {
-                                buildAnnotatedString {
-                                    append(resources.formatDuration(runtime))
-                                    dot()
-                                    val endsAt = now.plus(runtime.toJavaDuration())
-                                    val endTimeStr = formatTime(context, endsAt)
-                                    append(resources.getString(R.string.ends_at, endTimeStr))
-                                }
-                            }
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier =
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        // Countdown fill
+                        Box(Modifier.matchParentSize()) {
+                            Box(
                                 Modifier
-                                    .padding(top = 4.dp)
-                                    .align(Alignment.Start),
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedFraction)
+                                    .background(Color.Black.copy(alpha = .18f)),
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 14.dp, end = 20.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(26.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text =
+                                    if (counting) {
+                                        stringResource(R.string.player_next_episode_in, timeLeft!!.inWholeSeconds)
+                                    } else {
+                                        stringResource(R.string.player_next_episode)
+                                    },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+                if (counting && onWatchCredits != null) {
+                    Button(
+                        onClick = onWatchCredits,
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors =
+                            ButtonDefaults.colors(
+                                containerColor = Color.White.copy(alpha = .15f),
+                                contentColor = Color.White,
+                                focusedContainerColor = Color.White,
+                                focusedContentColor = Color.Black,
+                            ),
+                        modifier = Modifier.height(44.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.player_watch_credits),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
                         )
                     }
                 }

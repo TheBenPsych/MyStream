@@ -1005,4 +1005,6 @@
     <string name="player_subtitles">Subtitles</string>
     <string name="player_audio">Audio</string>
     <string name="player_speed">Speed</string>
+    <string name="player_next_episode_in">Next episode in %1$d</string>
+    <string name="player_watch_credits">Watch credits</string>
 </resources>
