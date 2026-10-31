@@ -150,7 +150,11 @@ fun GamesPage(
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text = if (isTv) "Quick games you can play with your TV remote. Your own game collection is coming here later." else "Quick games you can play by tapping. Your own game collection is coming here later.",
+            if (isTv) {
+                "Quick games you can play with your TV remote. Your own game collection is coming here later."
+            } else {
+                "Quick games you can play by tapping. Your own game collection is coming here later."
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
