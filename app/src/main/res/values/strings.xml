@@ -1001,4 +1001,8 @@
     <string name="theme_date_night">Date night</string>
     <string name="theme_summer">Summer blockbusters</string>
     <string name="theme_genre_of_week">Genre of the week: %1$s</string>
+    <string name="player_next_episode">Next episode</string>
+    <string name="player_subtitles">Subtitles</string>
+    <string name="player_audio">Audio</string>
+    <string name="player_speed">Speed</string>
 </resources>

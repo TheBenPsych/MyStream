@@ -320,7 +320,8 @@ sealed interface AppPreference<Pref, T> {
         val PassOutProtection =
             AppSliderPreference<AppPreferences>(
                 title = R.string.pass_out_protection,
-                defaultValue = 2,
+                // Benflix: keep playing until the user or TV stops it
+                defaultValue = 0,
                 min = 0,
                 max = 3,
                 interval = 1,

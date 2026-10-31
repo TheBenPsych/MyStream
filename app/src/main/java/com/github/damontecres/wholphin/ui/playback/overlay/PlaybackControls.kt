@@ -14,10 +14,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +28,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -49,7 +53,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +64,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
@@ -72,7 +79,6 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
-import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
@@ -91,6 +97,7 @@ import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import androidx.tv.material3.Button as TvButton
 
 /**
  * Possible actions the user can take during playback
@@ -186,53 +193,254 @@ fun PlaybackControls(
                     .padding(vertical = 0.dp)
                     .fillMaxWidth(.95f),
         )
-        Box(
+        NetflixControlRow(
+            player = player,
+            initialFocusRequester = initialFocusRequester,
+            onControllerInteraction = onControllerInteraction,
+            onPlaybackActionClick = onPlaybackActionClick,
+            onClickPlaybackDialogType = onClickPlaybackDialogType,
+            showPlay = showPlay,
+            nextEnabled = nextEnabled,
+            seekBack = seekBack,
+            seekForward = seekForward,
+            skipBackOnResume = skipBackOnResume,
+            currentSegment = currentSegment,
             modifier =
                 Modifier
-                    .padding(horizontal = 8.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth(.95f)
+                    .padding(top = 4.dp, bottom = 8.dp),
+        )
+    }
+}
+
+/**
+ * Benflix player buttons, laid out like a streaming service: round play & skip buttons on the left,
+ * labeled buttons (Next episode, Subtitles, Audio, Speed, Settings) on the right.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+fun NetflixControlRow(
+    player: Player,
+    initialFocusRequester: FocusRequester,
+    onControllerInteraction: () -> Unit,
+    onPlaybackActionClick: (PlaybackAction) -> Unit,
+    onClickPlaybackDialogType: (PlaybackDialogType) -> Unit,
+    showPlay: Boolean,
+    nextEnabled: Boolean,
+    seekBack: Duration,
+    seekForward: Duration,
+    skipBackOnResume: Duration?,
+    currentSegment: MediaSegmentDto?,
+    modifier: Modifier = Modifier,
+) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = modifier.focusGroup(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            LeftPlaybackButtons(
+            PlayerCircleButton(
+                faIcon = R.string.fa_rotate_left,
+                label = seekBack.inWholeSeconds.toString(),
+                size = 48.dp,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    player.seekBack(seekBack)
+                },
                 onControllerInteraction = onControllerInteraction,
-                onClickPlaybackDialogType = onClickPlaybackDialogType,
-                modifier = Modifier.align(Alignment.CenterStart),
             )
-
-            PlaybackButtons(
-                player = player,
-                initialFocusRequester = initialFocusRequester,
+            PlayerCircleButton(
+                faIcon = if (showPlay) R.string.fa_play else R.string.fa_pause,
+                label = null,
+                size = 60.dp,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    if (showPlay) {
+                        player.play()
+                        skipBackOnResume?.let {
+                            player.seekBack(it)
+                        }
+                    } else {
+                        player.pause()
+                    }
+                },
                 onControllerInteraction = onControllerInteraction,
-                onPlaybackActionClick = onPlaybackActionClick,
-                showPlay = showPlay,
-                previousEnabled = previousEnabled,
-                nextEnabled = nextEnabled,
-                seekBack = seekBack,
-                seekForward = seekForward,
-                skipBackOnResume = skipBackOnResume,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.focusRequester(initialFocusRequester),
             )
-
-            Row(
-                modifier = Modifier.align(Alignment.CenterEnd),
-            ) {
-                currentSegment?.let { segment ->
-                    TextButton(
-                        stringRes = segment.type.skipStringRes,
-                        onClick = {
-                            player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
-                        },
-                        modifier =
-                            Modifier
-                                .align(Alignment.CenterVertically)
-                                .padding(end = 32.dp),
-                    )
-                }
-                RightPlaybackButtons(
+            PlayerCircleButton(
+                faIcon = R.string.fa_rotate_right,
+                label = seekForward.inWholeSeconds.toString(),
+                size = 48.dp,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    player.seekForward(seekForward)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+            Spacer(Modifier.weight(1f))
+            currentSegment?.let { segment ->
+                PlayerPillButton(
+                    text = stringResource(segment.type.skipStringRes),
+                    faIcon = R.string.fa_arrow_right_long,
+                    onClick = {
+                        player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
+                    },
                     onControllerInteraction = onControllerInteraction,
-                    onClickPlaybackDialogType = onClickPlaybackDialogType,
-                    modifier = Modifier,
+                    highlighted = true,
                 )
             }
+            if (nextEnabled) {
+                PlayerPillButton(
+                    text = stringResource(R.string.player_next_episode),
+                    faIcon = R.string.fa_caret_right,
+                    onClick = {
+                        onControllerInteraction.invoke()
+                        onPlaybackActionClick.invoke(PlaybackAction.Next)
+                    },
+                    onControllerInteraction = onControllerInteraction,
+                )
+            }
+            PlayerPillButton(
+                text = stringResource(R.string.player_subtitles),
+                faIcon = R.string.fa_closed_captioning,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+            PlayerPillButton(
+                text = stringResource(R.string.player_audio),
+                faIcon = R.string.fa_volume_high,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+            PlayerPillButton(
+                text = stringResource(R.string.player_speed),
+                faIcon = R.string.fa_clock,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    onClickPlaybackDialogType.invoke(PlaybackDialogType.PLAYBACK_SPEED)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+            PlayerPillButton(
+                text = null,
+                faIcon = R.string.fa_sliders,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+        }
+    }
+}
+
+/**
+ * Round see-through button that turns white when selected, with an optional number (like "10") under the icon
+ */
+@Composable
+fun PlayerCircleButton(
+    @StringRes faIcon: Int,
+    label: String?,
+    size: Dp,
+    onClick: () -> Unit,
+    onControllerInteraction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TvButton(
+        onClick = onClick,
+        shape = ButtonDefaults.shape(CircleShape),
+        contentPadding = PaddingValues(0.dp),
+        colors =
+            ButtonDefaults.colors(
+                containerColor = Color.White.copy(alpha = .14f),
+                contentColor = Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+        scale = ButtonDefaults.scale(focusedScale = 1.1f),
+        modifier =
+            modifier
+                .size(size)
+                .onFocusChanged { onControllerInteraction.invoke() },
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Text(
+                text = stringResource(faIcon),
+                fontFamily = FontAwesome,
+                fontSize = (size.value * if (label == null) .42f else .36f).sp,
+                textAlign = TextAlign.Center,
+            )
+            label?.let {
+                Text(
+                    text = it,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Labeled button like "Subtitles" or "Next episode": see-through until selected, then white with black text
+ */
+@Composable
+fun PlayerPillButton(
+    text: String?,
+    @StringRes faIcon: Int,
+    onClick: () -> Unit,
+    onControllerInteraction: () -> Unit,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+) {
+    TvButton(
+        onClick = onClick,
+        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        contentPadding =
+            if (text == null) {
+                PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            } else {
+                PaddingValues(start = 14.dp, end = 18.dp, top = 8.dp, bottom = 8.dp)
+            },
+        colors =
+            ButtonDefaults.colors(
+                containerColor = if (highlighted) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
+                contentColor = if (highlighted) Color.Black else Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+        modifier =
+            modifier
+                .height(42.dp)
+                .onFocusChanged { onControllerInteraction.invoke() },
+    ) {
+        Text(
+            text = stringResource(faIcon),
+            fontFamily = FontAwesome,
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.CenterVertically),
+        )
+        text?.let {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = it,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
         }
     }
 }
