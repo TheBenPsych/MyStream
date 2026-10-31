@@ -95,7 +95,7 @@ enum class BuiltInGame(
     REEL_RUSH(
         title = "Reel Rush",
         tagline = "Fly the Benflix B through the gaps in the film strips.",
-        howTo = "Remote: OK · Controller: A · to flap · Phone: tap anywhere",
+        howTo = "Press OK on the remote or A on a controller to flap · Phone: tap anywhere",
         remoteOk = true,
         touchSteers = false,
         colors = listOf(Color(0xFF1B3F8A), Color(0xFF0D1B2A)),
