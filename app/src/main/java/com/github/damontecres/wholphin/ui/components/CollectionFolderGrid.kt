@@ -258,9 +258,11 @@ fun GridTitle(
     modifier: Modifier = Modifier,
 ) = Text(
     text = title,
-    style = MaterialTheme.typography.displaySmall,
+    // Benflix: page titles sit on the same left edge as the rows, in one bold size, like Netflix
+    style = MaterialTheme.typography.headlineLarge,
+    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
     color = MaterialTheme.colorScheme.onBackground,
-    textAlign = TextAlign.Center,
+    textAlign = TextAlign.Start,
     maxLines = 1,
     overflow = TextOverflow.Ellipsis,
     modifier = modifier.fillMaxWidth(),

@@ -163,7 +163,8 @@ fun MoodPage(
             // The title takes the space that's left, so the shuffle button always fits beside it
             Text(
                 text = stringResource(mood.title),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),

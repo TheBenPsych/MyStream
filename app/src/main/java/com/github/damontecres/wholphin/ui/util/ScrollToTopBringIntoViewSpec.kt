@@ -28,6 +28,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 class ScrollToTopBringIntoViewSpec(
     val spaceAbovePx: Float = 100f,
 ) : BringIntoViewSpec {
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float>
+        get() = SnappyScrollAnimationSpec
+
     override fun calculateScrollDistance(
         offset: Float,
         size: Float,

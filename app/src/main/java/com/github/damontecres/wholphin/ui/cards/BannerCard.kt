@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -115,6 +116,12 @@ fun BannerCard(
         colors =
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
+            ),
+        // Benflix: a quick pop with a soft white glow on the tile you're on
+        scale = CardDefaults.scale(focusedScale = 1.08f),
+        glow =
+            CardDefaults.glow(
+                focusedGlow = androidx.tv.material3.Glow(elevationColor = Color.White.copy(alpha = .28f), elevation = 14.dp),
             ),
     ) {
         Box(
@@ -234,8 +241,22 @@ fun BannerCardWithTitle(
     imageType: ImageType = ImageType.PRIMARY,
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = item?.useSeriesForPrimary ?: true,
+    titleOnlyWhenFocused: Boolean = false,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    // Benflix "clean tiles": the art already shows the name, so on TV the title only appears on the
+    // tile you're on, and on phones rows show only artwork
+    val titleAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (!titleOnlyWhenFocused || focused) 1f else 0f,
+        animationSpec =
+            androidx.compose.animation.core
+                .tween(150),
+        label = "titleAlpha",
+    )
+    val showText = !titleOnlyWhenFocused || isTv
     val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)
     val width = cardHeight * aspectRationToUse
@@ -260,31 +281,33 @@ fun BannerCardWithTitle(
             imageContentScale = imageContentScale,
             useSeriesForPrimary = useSeriesForPrimary,
         )
-        SlidingCardText(focused) {
-            Text(
-                text = title ?: "",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .enableMarquee(focusedAfterDelay),
-            )
-            Text(
-                text = subtitle ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .enableMarquee(focusedAfterDelay),
-            )
+        if (showText) {
+            SlidingCardText(focused, modifier = Modifier.alpha(titleAlpha)) {
+                Text(
+                    text = title ?: "",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                            .enableMarquee(focusedAfterDelay),
+                )
+                Text(
+                    text = subtitle ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                            .enableMarquee(focusedAfterDelay),
+                )
+            }
         }
     }
 }

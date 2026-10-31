@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -93,6 +95,7 @@ import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.DateTime
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
@@ -461,7 +464,21 @@ fun HomePageContent(
     LaunchedEffect(focusedDiscover) {
         focusedDiscover?.let { onUpdateDiscoverBackdrop.invoke(it) }
     }
-    Box(modifier = modifier) {
+    // Benflix: deep in the page, Back first jumps to the top. Pressing it again goes to the top menu
+    var contentHasFocus by remember { mutableStateOf(false) }
+    val backScope = rememberCoroutineScope()
+    val atTop = if (showHero) heroFocusedTv else position.row <= 0
+    BackHandler(enabled = isTv && contentHasFocus && !atTop) {
+        backScope.launch {
+            listState.scrollToItem(0)
+            if (showHero) {
+                heroFocusRequester.tryRequestFocus()
+            } else {
+                rowFocusRequesters.firstOrNull()?.tryRequestFocus()
+            }
+        }
+    }
+    Box(modifier = modifier.onFocusChanged { contentHasFocus = it.hasFocus }) {
         if (heroFocused && previewPlaying && previewPlayer != null) {
             HeroTrailer(
                 player = previewPlayer,
@@ -1034,7 +1051,7 @@ fun HomePageCardContent(
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
+                    cornerText = null,
                     played = item?.data?.userData?.played ?: false,
                     favorite = item?.favorite ?: false,
                     playPercent =
@@ -1045,6 +1062,7 @@ fun HomePageCardContent(
                     modifier = modifier,
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
+                    titleOnlyWhenFocused = true,
                 )
             } else {
                 BannerCard(
@@ -1053,7 +1071,7 @@ fun HomePageCardContent(
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
+                    cornerText = null,
                     played = item?.data?.userData?.played ?: false,
                     favorite = item?.favorite ?: false,
                     playPercent =
