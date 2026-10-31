@@ -75,7 +75,8 @@ configure<ApplicationExtension> {
     compileSdk = libs.versions.compileSdk.getInt()
 
     defaultConfig {
-        applicationId = "com.github.damontecres.wholphin"
+        // Own app id so Benflix never clashes with the real Wholphin app if both are on a TV
+        applicationId = "com.thebenpsych.benflix"
         minSdk = libs.versions.minSdk.getInt()
         targetSdk = libs.versions.targetSdk.getInt()
         // Benflix builds from GitHub Actions are numbered 1.0.<build number> so the in-app updater
