@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name" translatable="false">Wholphin</string>
-    <string name="app_name_long" translatable="false">Wholphin</string>
+    <string name="app_name" translatable="false">MyStream</string>
+    <string name="app_name_long" translatable="false">MyStream</string>
 
     <string name="about">About</string>
     <string name="active_recordings">Active Recordings</string>
@@ -627,6 +627,7 @@
     <string name="bold_blue">Bold Blue</string>
     <string name="black">Black</string>
     <string name="brown">Brown</string>
+    <string name="mystream_theme" translatable="false">MyStream</string>
     <string-array name="app_theme_colors">
         <item>@string/purple</item>
         <item>@string/blue</item>
@@ -636,6 +637,7 @@
         <item>@string/black</item>
         <item>@string/red</item>
         <item>@string/brown</item>
+        <item>@string/mystream_theme</item>
     </string-array>
 
     <string name="skip_ignore">Ignore</string>
@@ -981,4 +983,10 @@
     <string name="home_settings_source_web">User web client</string>
     <string name="managed_by_server">Managed by server</string>
     <string name="error">Error</string>
+    <string name="more_info">More info</string>
+    <string name="my_list">My List</string>
+    <string name="in_my_list">In My List</string>
+    <string name="surprise_me">Surprise me</string>
+    <string name="featured_new">New on your server</string>
+    <string name="featured_pick">Picked for you</string>
 </resources>
