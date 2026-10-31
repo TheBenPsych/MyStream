@@ -47,6 +47,7 @@ fun WatchedIconBackground(): Color =
         AppThemeColors.BOLD_BLUE,
         AppThemeColors.RED,
         AppThemeColors.BROWN,
+        AppThemeColors.MYSTREAM,
         -> MaterialTheme.colorScheme.border.copy(alpha = 1f)
 
         AppThemeColors.OLED_BLACK -> MaterialTheme.colorScheme.secondaryContainer
@@ -64,6 +65,7 @@ fun WatchedIconColor(): Color =
         AppThemeColors.OLED_BLACK,
         AppThemeColors.RED,
         AppThemeColors.BROWN,
+        AppThemeColors.MYSTREAM,
         -> Color.White // MaterialTheme.colorScheme.onSurface
     }
 

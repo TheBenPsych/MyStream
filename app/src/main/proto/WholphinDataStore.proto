@@ -128,6 +128,7 @@ enum AppThemeColors {
   OLED_BLACK = 5;
   RED = 6;
   BROWN = 7;
+  MYSTREAM = 8;
 }
 
 enum EdgeStyle{
