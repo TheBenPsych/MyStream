@@ -120,6 +120,7 @@ fun HomePage(
     val mood = state.mood
     val moodRow = state.moodRow
     val celebration = state.celebration
+    val studios = state.studios
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -271,6 +272,8 @@ fun HomePage(
                 moodRow = moodRow,
                 onClickMood = viewModel::pickMood,
                 celebration = celebration,
+                studios = studios,
+                onClickStudio = viewModel::openStudio,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
@@ -372,6 +375,8 @@ fun HomePageContent(
     moodRow: ThemedRow? = null,
     onClickMood: ((HomeMood) -> Unit)? = null,
     celebration: Celebration? = null,
+    studios: List<StudioTile> = emptyList(),
+    onClickStudio: (StudioTile) -> Unit = {},
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
     onHeroItemShown: (BaseItem?) -> Unit = {},
@@ -540,6 +545,13 @@ fun HomePageContent(
                                 onFocusChanged = { heroFocused = it },
                                 focusRequester = heroFocusRequester,
                             )
+                            if (studios.isNotEmpty()) {
+                                StudioRow(
+                                    tiles = studios,
+                                    onClick = onClickStudio,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                            }
                         }
                     }
                     homeRows.forEachIndexed { rowIndex, row ->
