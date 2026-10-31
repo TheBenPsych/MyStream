@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -250,21 +252,15 @@ private fun UserIconCard(
                                 .clip(ProfileTileShape),
                     )
                 } else {
-                    // Show big bold first letter of username
-                    val firstLetter =
-                        remember(user) {
-                            user.user.let {
-                                (it.name ?: it.id.toString()).firstOrNull()?.uppercase()
-                            } ?: "?"
-                        }
-                    Text(
-                        text = firstLetter,
-                        style =
-                            MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
+                    // Benflix picture for profiles without their own image
+                    Image(
+                        painter = painterResource(benflixAvatarFor(user.user.id, user.user.name)),
+                        contentDescription = user.user.name,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(ProfileTileShape),
                     )
                 }
             }
@@ -317,17 +313,15 @@ fun UserIconCardImage(
                         .clip(CircleShape),
             )
         } else {
-            val firstLetter =
-                remember(id, name) {
-                    (name ?: id.toString()).firstOrNull()?.uppercase() ?: "?"
-                }
-            Text(
-                text = firstLetter,
-                style = MaterialTheme.typography.bodyLarge,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
+            Image(
+                painter = painterResource(benflixAvatarFor(id, name)),
+                contentDescription = name,
+                contentScale = ContentScale.Crop,
+                alpha = alpha,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
             )
         }
     }
@@ -425,3 +419,29 @@ private fun AddUserCard(
 }
 
 private val ProfileTileShape = RoundedCornerShape(10.dp)
+
+private val BenflixAvatars =
+    listOf(
+        R.drawable.benflix_avatar_0,
+        R.drawable.benflix_avatar_1,
+        R.drawable.benflix_avatar_2,
+        R.drawable.benflix_avatar_3,
+        R.drawable.benflix_avatar_4,
+        R.drawable.benflix_avatar_5,
+        R.drawable.benflix_avatar_6,
+        R.drawable.benflix_avatar_7,
+    )
+
+/**
+ * The Benflix profile picture for a user without their own image. Each user always gets the same one,
+ * and a profile named Kids gets the rainbow.
+ */
+fun benflixAvatarFor(
+    id: UUID,
+    name: String?,
+): Int =
+    if (name?.trim().equals("kids", ignoreCase = true)) {
+        R.drawable.benflix_avatar_kids
+    } else {
+        BenflixAvatars[Math.floorMod(id.hashCode(), BenflixAvatars.size)]
+    }
