@@ -112,6 +112,7 @@ fun HomePage(
     val featured = state.featured
     val trending = state.trending
     val trendingMissing = state.trendingMissing
+    val themed = state.themed
     val loading = state.loadingState
     val refreshing = state.refreshState
     val homeRows = state.homeRows
@@ -252,6 +253,7 @@ fun HomePage(
                     viewModel.navigationManager.navigateTo(item.destination)
                 },
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
+                themed = themed,
                 modifier = modifier,
             )
             overviewDialog?.let { info ->
@@ -296,6 +298,7 @@ private const val HERO_ROTATE_MS = 8_000L
 // Which home rows the trending rows are shown after
 private const val TOP_10_AFTER_ROW = 0
 private const val MISSING_AFTER_ROW = 1
+private const val THEMED_AFTER_ROW = 2
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -339,6 +342,7 @@ fun HomePageContent(
     trending: List<BaseItem> = emptyList(),
     onClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
+    themed: ThemedRow? = null,
     onClickDiscover: (DiscoverItem) -> Unit = {},
     onUpdateDiscoverBackdrop: (DiscoverItem) -> Unit = {},
 ) {
@@ -400,7 +404,8 @@ fun HomePageContent(
                             listState.scrollToItem(
                                 it + heroOffset +
                                     (if (it > TOP_10_AFTER_ROW && trending.isNotEmpty()) 1 else 0) +
-                                    (if (it > MISSING_AFTER_ROW && trendingMissing.isNotEmpty()) 1 else 0),
+                                    (if (it > MISSING_AFTER_ROW && trendingMissing.isNotEmpty()) 1 else 0) +
+                                    (if (it > THEMED_AFTER_ROW && themed != null) 1 else 0),
                             )
                         }
                 }
@@ -647,6 +652,22 @@ fun HomePageContent(
                                             .padding(bottom = 8.dp)
                                             .onFocusChanged {
                                                 if (!it.hasFocus && extraFocus in trendingMissing) extraFocus = null
+                                            },
+                                )
+                            }
+                        }
+                        if (rowIndex == THEMED_AFTER_ROW.coerceAtMost(homeRows.lastIndex) && themed != null) {
+                            item(key = "themed") {
+                                PosterRow(
+                                    title = themed.title,
+                                    items = themed.items,
+                                    onClickItem = onClickTrending,
+                                    onFocusItem = { extraFocus = it },
+                                    modifier =
+                                        Modifier
+                                            .padding(bottom = 8.dp)
+                                            .onFocusChanged {
+                                                if (!it.hasFocus && extraFocus in themed.items) extraFocus = null
                                             },
                                 )
                             }

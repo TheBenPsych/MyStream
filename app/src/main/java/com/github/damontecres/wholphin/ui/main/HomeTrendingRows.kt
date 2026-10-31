@@ -72,6 +72,41 @@ fun Top10Row(
 }
 
 /**
+ * A plain row of posters, used for the seasonal themed row
+ */
+@Composable
+fun PosterRow(
+    title: String,
+    items: List<BaseItem>,
+    onClickItem: (BaseItem) -> Unit,
+    onFocusItem: (BaseItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ItemRow(
+        title = title,
+        items = items,
+        onClickItem = { _, item -> onClickItem(item) },
+        onLongClickItem = { _, _ -> },
+        modifier = modifier,
+        cardContent = { _, item, cardModifier, onClick, onLongClick ->
+            BannerCard(
+                name = item?.name,
+                item = item,
+                aspectRatio = AspectRatios.TALL,
+                cardHeight = Cards.height2x3,
+                played = item?.data?.userData?.played ?: false,
+                favorite = item?.favorite ?: false,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                modifier =
+                    cardModifier
+                        .onFocusChanged { if (it.isFocused && item != null) onFocusItem(item) },
+            )
+        },
+    )
+}
+
+/**
  * Trending items that are not on the server yet. Clicking one opens its page where it can be requested.
  */
 @Composable
