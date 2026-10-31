@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +57,7 @@ import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.detail.DetailsTrailer
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
@@ -321,8 +324,12 @@ fun MovieDetailsContent(
 
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
+    val listState = rememberLazyListState()
+    val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     Box(modifier = modifier) {
+        DetailsTrailer(item = movie, active = atTop)
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 8.dp),
             modifier = Modifier.fillMaxSize(),
@@ -391,6 +398,46 @@ fun MovieDetailsContent(
                     )
                 }
             }
+            // Netflix order: More like this right under the buttons
+            state.similar.letNotEmpty { similar ->
+                item {
+                    val imageHeight =
+                        remember(movie.type) {
+                            if (movie.type == BaseItemKind.MOVIE) {
+                                Cards.height2x3
+                            } else {
+                                Cards.heightEpisode
+                            }
+                        }
+                    ItemRow(
+                        title = stringResource(R.string.more_like_this),
+                        items = similar,
+                        onClickItem = { index, item ->
+                            position = SIMILAR_ROW
+                            onClickItem.invoke(index, item)
+                        },
+                        onLongClickItem = { index, similar ->
+                            position = SIMILAR_ROW
+                            onLongClickSimilar.invoke(index, similar)
+                        },
+                        cardContent = { index, item, mod, onClick, onLongClick ->
+                            SeasonCard(
+                                item = item,
+                                onClick = onClick,
+                                onLongClick = onLongClick,
+                                modifier = mod,
+                                showImageOverlay = true,
+                                imageHeight = imageHeight,
+                                imageWidth = Dp.Unspecified,
+                            )
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[SIMILAR_ROW]),
+                    )
+                }
+            }
             state.people.letNotEmpty { people ->
                 item {
                     PersonRow(
@@ -439,45 +486,6 @@ fun MovieDetailsContent(
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequesters[EXTRAS_ROW]),
-                    )
-                }
-            }
-            state.similar.letNotEmpty { similar ->
-                item {
-                    val imageHeight =
-                        remember(movie.type) {
-                            if (movie.type == BaseItemKind.MOVIE) {
-                                Cards.height2x3
-                            } else {
-                                Cards.heightEpisode
-                            }
-                        }
-                    ItemRow(
-                        title = stringResource(R.string.more_like_this),
-                        items = similar,
-                        onClickItem = { index, item ->
-                            position = SIMILAR_ROW
-                            onClickItem.invoke(index, item)
-                        },
-                        onLongClickItem = { index, similar ->
-                            position = SIMILAR_ROW
-                            onLongClickSimilar.invoke(index, similar)
-                        },
-                        cardContent = { index, item, mod, onClick, onLongClick ->
-                            SeasonCard(
-                                item = item,
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                                modifier = mod,
-                                showImageOverlay = true,
-                                imageHeight = imageHeight,
-                                imageWidth = Dp.Unspecified,
-                            )
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[SIMILAR_ROW]),
                     )
                 }
             }
