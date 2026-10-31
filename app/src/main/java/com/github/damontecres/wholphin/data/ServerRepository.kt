@@ -295,7 +295,8 @@ class ServerRepository
         }
 
         suspend fun switchServerOrUser() {
-            mostRecentServerProvider.clear()
+            // Forget who was watching, but keep the server so the next launch opens straight to "Who's watching?"
+            mostRecentServerProvider.clearUser()
         }
 
         suspend fun updateUserAuth(
