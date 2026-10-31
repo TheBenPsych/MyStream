@@ -30,20 +30,20 @@ object NightMode {
     private const val PREFS = "benflix_audio"
     private const val KEY = "night_mode"
 
-    private val _enabled = MutableStateFlow<Boolean?>(null)
+    private val nightState = MutableStateFlow<Boolean?>(null)
 
     fun enabled(context: Context): StateFlow<Boolean?> {
-        if (_enabled.value == null) {
-            _enabled.value =
+        if (nightState.value == null) {
+            nightState.value =
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
         }
-        return _enabled
+        return nightState
     }
 
     fun toggle(context: Context) {
         val on = !(enabled(context).value ?: false)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(KEY, on) }
-        _enabled.value = on
+        nightState.value = on
     }
 
     fun isOn(context: Context): Boolean = enabled(context).value ?: false
