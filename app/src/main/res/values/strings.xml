@@ -989,4 +989,6 @@
     <string name="surprise_me">Surprise me</string>
     <string name="featured_new">New on your server</string>
     <string name="featured_pick">Picked for you</string>
+    <string name="top_10_trending">Top 10 trending this week</string>
+    <string name="trending_not_on_server">Trending, not on your server</string>
 </resources>
