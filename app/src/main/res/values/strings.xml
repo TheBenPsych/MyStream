@@ -1007,4 +1007,6 @@
     <string name="player_speed">Speed</string>
     <string name="player_next_episode_in">Next episode in %1$d</string>
     <string name="player_watch_credits">Watch credits</string>
+    <string name="because_you_watched_row">Because you watched %1$s</string>
+    <string name="top_collections_row">Top collections</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
@@ -225,6 +226,8 @@ class HomeViewModel
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
                 viewModelScope.launchIO { loadThemed(userDto) }
+                viewModelScope.launchIO { loadBecause(userDto) }
+                viewModelScope.launchIO { loadCollections(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -584,6 +587,102 @@ class HomeViewModel
         }
 
         /**
+         * "Because you watched X": titles similar to the last movie or show watched
+         */
+        private suspend fun loadBecause(userDto: ServerUserConfig) {
+            try {
+                val lastWatched =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                recursive = true,
+                                isPlayed = true,
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = 1,
+                            ),
+                        ).content.items
+                        .firstOrNull()
+                val isEpisode = lastWatched?.type == BaseItemKind.EPISODE
+                val sourceId = if (isEpisode) lastWatched?.seriesId else lastWatched?.id
+                val sourceName = if (isEpisode) lastWatched?.seriesName else lastWatched?.name
+                if (sourceId == null || sourceName == null) {
+                    _state.update { it.copy(because = null) }
+                    return
+                }
+                val items =
+                    api.libraryApi
+                        .getSimilarItems(
+                            GetSimilarItemsRequest(
+                                userId = userDto.id,
+                                itemId = sourceId,
+                                fields = HomeItemFields,
+                                limit = BECAUSE_MAX,
+                            ),
+                        ).content.items
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(
+                        because =
+                            if (items.size >= BECAUSE_MIN) {
+                                ThemedRow(context.getString(R.string.because_you_watched_row, sourceName), items)
+                            } else {
+                                null
+                            },
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading because you watched row")
+            }
+        }
+
+        /**
+         * "Top collections": movie collections like Harry Potter or Marvel,
+         * the ones watched the most first
+         */
+        private suspend fun loadCollections(userDto: ServerUserConfig) {
+            try {
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                                recursive = true,
+                                imageTypes = listOf(ImageType.PRIMARY),
+                                enableUserData = true,
+                                sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = COLLECTIONS_FETCH,
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                        // Most watched first: collections people have seen the most of
+                        .sortedByDescending { it.userData?.playedPercentage ?: if (it.userData?.played == true) 100.0 else 0.0 }
+                        .take(COLLECTIONS_MAX)
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(
+                        collections =
+                            if (items.size >= COLLECTIONS_MIN) {
+                                ThemedRow(context.getString(R.string.top_collections_row), items)
+                            } else {
+                                null
+                            },
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading collections row")
+            }
+        }
+
+        /**
          * Play the item's local trailer muted behind the banner after a short delay,
          * or stop the preview if [item] is null
          */
@@ -766,6 +865,8 @@ data class HomeState(
     val trending: List<BaseItem> = emptyList(),
     val trendingMissing: List<DiscoverItem> = emptyList(),
     val themed: ThemedRow? = null,
+    val because: ThemedRow? = null,
+    val collections: ThemedRow? = null,
 ) {
     companion object {
         val EMPTY =
@@ -789,6 +890,11 @@ private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
 private const val THEMED_MAX = 20
+private const val BECAUSE_MAX = 20
+private const val BECAUSE_MIN = 4
+private const val COLLECTIONS_FETCH = 100
+private const val COLLECTIONS_MAX = 20
+private const val COLLECTIONS_MIN = 3
 private const val TRAILER_DELAY_MS = 3_000L
 
 /**
