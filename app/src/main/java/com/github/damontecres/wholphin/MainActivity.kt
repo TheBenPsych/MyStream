@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.playback.PlayExternalViewModel
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.colors.PurpleThemeColors
+import com.github.damontecres.wholphin.ui.touch.PhoneFit
 import com.github.damontecres.wholphin.ui.touch.touchTaps
 import com.github.damontecres.wholphin.ui.util.ProvideLocalClock
 import com.github.damontecres.wholphin.util.DebugLogTree
@@ -232,62 +233,64 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.appStart(intent)
         setContent {
-            MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
-                Surface(Modifier.fillMaxSize().touchTaps()) {
-                    val userPreferences by userPreferencesService.flow.collectAsState(null)
-                    // Benflix startup animation, once each time the app is opened
-                    var showIntro by rememberSaveable { mutableStateOf(true) }
-                    if (userPreferences == null) {
-                        // Show loading page if it is taking a while to get app preferences
-                        var showLoading by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            delay(500.milliseconds)
-                            Timber.i("Showing loading page")
-                            showLoading = true
-                        }
-                        if (showLoading) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black),
-                            ) {
-                                LoadingPage()
+            PhoneFit {
+                MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
+                    Surface(Modifier.fillMaxSize().touchTaps()) {
+                        val userPreferences by userPreferencesService.flow.collectAsState(null)
+                        // Benflix startup animation, once each time the app is opened
+                        var showIntro by rememberSaveable { mutableStateOf(true) }
+                        if (userPreferences == null) {
+                            // Show loading page if it is taking a while to get app preferences
+                            var showLoading by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) {
+                                delay(500.milliseconds)
+                                Timber.i("Showing loading page")
+                                showLoading = true
                             }
-                        }
-                    } else {
-                        userPreferences?.let { userPreferences ->
-                            val appPreferences = userPreferences.appPreferences
-                            CoilConfig(
-                                prefs = appPreferences,
-                                okHttpClient = okHttpClient,
-                                debugLogging = false,
-                                enableCache = true,
-                            )
-                            LaunchedEffect(appPreferences.debugLogging) {
-                                DebugLogTree.INSTANCE.enabled = appPreferences.debugLogging
-                            }
-                            CompositionLocalProvider(LocalImageUrlService provides imageUrlService) {
-                                WholphinTheme(
-                                    true,
-                                    appThemeColors = appPreferences.interfacePreferences.appThemeColors,
+                            if (showLoading) {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black),
                                 ) {
-                                    ProvideLocalClock {
-                                        MainContent(
-                                            backStack = setupNavigationManager.backStack,
-                                            navigationManager = navigationManager,
-                                            userPreferences = userPreferences,
-                                            backdropService = backdropService,
-                                            screensaverService = screensaverService,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
+                                    LoadingPage()
+                                }
+                            }
+                        } else {
+                            userPreferences?.let { userPreferences ->
+                                val appPreferences = userPreferences.appPreferences
+                                CoilConfig(
+                                    prefs = appPreferences,
+                                    okHttpClient = okHttpClient,
+                                    debugLogging = false,
+                                    enableCache = true,
+                                )
+                                LaunchedEffect(appPreferences.debugLogging) {
+                                    DebugLogTree.INSTANCE.enabled = appPreferences.debugLogging
+                                }
+                                CompositionLocalProvider(LocalImageUrlService provides imageUrlService) {
+                                    WholphinTheme(
+                                        true,
+                                        appThemeColors = appPreferences.interfacePreferences.appThemeColors,
+                                    ) {
+                                        ProvideLocalClock {
+                                            MainContent(
+                                                backStack = setupNavigationManager.backStack,
+                                                navigationManager = navigationManager,
+                                                userPreferences = userPreferences,
+                                                backdropService = backdropService,
+                                                screensaverService = screensaverService,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    if (showIntro) {
-                        BenflixIntro(onFinished = { showIntro = false })
+                        if (showIntro) {
+                            BenflixIntro(onFinished = { showIntro = false })
+                        }
                     }
                 }
             }
