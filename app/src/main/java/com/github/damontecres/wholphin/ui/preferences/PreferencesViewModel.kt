@@ -19,6 +19,7 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.resetSubtitles
 import com.github.damontecres.wholphin.preferences.updateSubtitlePreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.Release
 import com.github.damontecres.wholphin.services.ScreensaverService
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import org.jellyfin.sdk.api.client.ApiClient
 import timber.log.Timber
+import java.time.MonthDay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -56,6 +58,7 @@ class PreferencesViewModel
         private val seerrServerRepository: SeerrServerRepository,
         private val updateChecker: UpdateChecker,
         private val serverReportService: ServerReportService,
+        private val birthdayService: BirthdayService,
     ) : ViewModel() {
         val currentUser =
             serverRepository.currentUserFlow.stateIn(
@@ -110,6 +113,23 @@ class PreferencesViewModel
                         identifier = "",
                     )
                 this@PreferencesViewModel.externalPlayers.update { listOf(systemDefault) + externalPlayers }
+            }
+        }
+
+        val birthday = MutableStateFlow<MonthDay?>(null)
+
+        fun loadBirthday() {
+            viewModelScope.launchIO {
+                serverRepository.currentUser?.id?.let { birthday.value = birthdayService.get(it) }
+            }
+        }
+
+        fun setBirthday(day: MonthDay?) {
+            viewModelScope.launchIO(ExceptionHandler(autoToast = true)) {
+                serverRepository.currentUser?.id?.let {
+                    birthdayService.set(it, day)
+                    birthday.value = day
+                }
             }
         }
 

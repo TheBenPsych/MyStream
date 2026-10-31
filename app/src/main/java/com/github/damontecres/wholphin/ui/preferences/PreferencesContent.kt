@@ -90,6 +90,7 @@ import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
@@ -127,6 +128,7 @@ fun PreferencesContent(
     var seerrDialogMode by remember { mutableStateOf<SeerrDialogMode>(SeerrDialogMode.None) }
     var showQuickConnectDialog by remember { mutableStateOf(false) }
     var showLocaleChoiceDialog by remember { mutableStateOf(false) }
+    var showBirthdayDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.preferenceDataStore.data.collect {
@@ -446,6 +448,22 @@ fun PreferencesContent(
                                         modifier = focusModifier,
                                         summary = pref.summary(context, null),
                                         onLongClick = {},
+                                        interactionSource = interactionSource,
+                                    )
+                                }
+
+                                AppPreference.BirthdayPreference -> {
+                                    LaunchedEffect(Unit) { viewModel.loadBirthday() }
+                                    val birthday by viewModel.birthday.collectAsState()
+                                    ClickPreference(
+                                        title = stringResource(pref.title),
+                                        onClick = { showBirthdayDialog = true },
+                                        modifier = focusModifier,
+                                        summary =
+                                            birthday?.let {
+                                                it.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + " " + it.dayOfMonth
+                                            } ?: stringResource(R.string.not_set),
+                                        onLongClick = null,
                                         interactionSource = interactionSource,
                                     )
                                 }
@@ -791,6 +809,12 @@ fun PreferencesContent(
     if (showLocaleChoiceDialog) {
         LocaleChoiceDialog(
             onDismissRequest = { showLocaleChoiceDialog = false },
+        )
+    }
+    if (showBirthdayDialog) {
+        BirthdayDialog(
+            onPick = { viewModel.setBirthday(it) },
+            onDismissRequest = { showBirthdayDialog = false },
         )
     }
 }
