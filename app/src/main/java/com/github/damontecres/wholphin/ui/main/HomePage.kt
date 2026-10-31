@@ -338,7 +338,7 @@ fun HomePageContent(
         HomePageHeader(
             item = focusedItem,
             showLogo = showLogo,
-            modifier = HeaderUtils.modifier,
+            modifier = HomeHeaderModifier,
         )
     },
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit = { _, _ -> },
@@ -461,7 +461,7 @@ fun HomePageContent(
                     endsAt = null,
                     showLogo = showLogo,
                     logoImageUrl = focusedDiscover.logoUrl,
-                    modifier = HeaderUtils.modifier,
+                    modifier = HomeHeaderModifier,
                 )
             } else {
                 val currentFeatured = if (heroFocused) featured.getOrNull(heroIndex) else null
@@ -946,3 +946,12 @@ fun HomePageViewMoreCard(
         showTitle = viewOptions.showTitles,
     )
 }
+
+/**
+ * A shorter header than other pages, since the top bar already gives space above it,
+ * so the next row of cards peeks in below the focused row
+ */
+private val HomeHeaderModifier =
+    Modifier
+        .padding(top = 4.dp, bottom = 12.dp, start = HeaderUtils.startPadding)
+        .height(150.dp)

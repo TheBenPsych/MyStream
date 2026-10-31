@@ -261,11 +261,11 @@ data class HomeRowViewOptions(
 ) {
     companion object {
         /**
-         * Wide landscape cards (like a streaming service) for continue watching & next up
+         * Wide landscape cards (like a streaming service) for continue watching, next up, and movie & show rows
          */
         val continueWatchingDefault =
             HomeRowViewOptions(
-                heightDp = Cards.HEIGHT_EPISODE,
+                heightDp = WIDE_ROW_HEIGHT_DP,
                 aspectRatio = AspectRatio.WIDE,
                 imageType = ViewOptionImageType.THUMB,
                 useSeries = true,
@@ -338,3 +338,8 @@ data class HomeGetItemsFilter(
             genreIds = genreIds,
         )
 }
+
+/**
+ * Card height for the wide home rows, small enough that the next row peeks in below
+ */
+const val WIDE_ROW_HEIGHT_DP = 112

@@ -694,6 +694,11 @@ fun viewOptionsForCollectionType(collectionType: CollectionType?): HomeRowViewOp
         CollectionType.MOVIES,
         CollectionType.TVSHOWS,
         CollectionType.BOXSETS,
+        -> {
+            // Wide landscape cards so more rows fit on screen, like a streaming service
+            HomeRowViewOptions.continueWatchingDefault
+        }
+
         CollectionType.BOOKS,
         CollectionType.PLAYLISTS,
         CollectionType.FOLDERS,
