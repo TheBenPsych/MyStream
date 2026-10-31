@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,6 +56,7 @@ import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.UserSwitchListener
 import com.github.damontecres.wholphin.services.hilt.AuthOkHttpClient
 import com.github.damontecres.wholphin.services.tvprovider.TvProviderSchedulerService
+import com.github.damontecres.wholphin.ui.BenflixIntro
 import com.github.damontecres.wholphin.ui.CoilConfig
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.collectLatestIn
@@ -232,6 +234,8 @@ class MainActivity : AppCompatActivity() {
             MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
                 Surface(Modifier.fillMaxSize()) {
                     val userPreferences by userPreferencesService.flow.collectAsState(null)
+                    // Benflix startup animation, once each time the app is opened
+                    var showIntro by rememberSaveable { mutableStateOf(true) }
                     if (userPreferences == null) {
                         // Show loading page if it is taking a while to get app preferences
                         var showLoading by remember { mutableStateOf(false) }
@@ -280,6 +284,9 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
+                    }
+                    if (showIntro) {
+                        BenflixIntro(onFinished = { showIntro = false })
                     }
                 }
             }
