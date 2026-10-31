@@ -27,6 +27,7 @@ import com.github.damontecres.wholphin.services.HomePageResolvedSettings
 import com.github.damontecres.wholphin.services.HomeSettingsService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LatestNextUpService
+import com.github.damontecres.wholphin.services.LogoEffect
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -658,6 +659,7 @@ class HomeViewModel
                         listOfNotNull("Happy Birthday", userDto.name?.takeIf { it.isNotBlank() }).joinToString(", "),
                         "🎂",
                         0xFFFF5CA8,
+                        LogoEffect.CONFETTI,
                     )
                 } else {
                     holidayFor(today)
