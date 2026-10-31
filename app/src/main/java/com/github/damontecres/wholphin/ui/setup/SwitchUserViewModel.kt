@@ -36,12 +36,17 @@ import org.jellyfin.sdk.api.client.HttpClientOptions
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.authenticateUserByName
 import org.jellyfin.sdk.api.client.extensions.imageApi
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.quickConnectApi
 import org.jellyfin.sdk.api.client.extensions.systemApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.ServerVersion
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.QuickConnectDto
 import org.jellyfin.sdk.model.api.QuickConnectResult
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import kotlin.time.Duration.Companion.seconds
 
@@ -94,6 +99,7 @@ class SwitchUserViewModel
                             serverVersionSupported = supported,
                         )
                     }
+                    loadPosterWall(serverUsers.map { it.user })
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error fetching users for server $server")
                     _state.update {
@@ -125,6 +131,44 @@ class SwitchUserViewModel
                     Timber.w(ex, "Error checking quick connect for server ${server.url}")
                     _state.update { it.copy(quickConnectEnabled = false) }
                 }
+            }
+        }
+
+        /**
+         * Posters for the sliding wall behind "Who's watching?", fetched with a saved sign-in on this device.
+         * Only titles rated PG-13 or lower, so nothing scary shows up for the kids.
+         */
+        private suspend fun loadPosterWall(users: List<JellyfinUser>) {
+            val user = users.firstOrNull { it.accessToken != null && !it.requireLogin } ?: return
+            try {
+                val api = jellyfin.createApi(server.url, accessToken = user.accessToken)
+                val posters =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = user.id,
+                                recursive = true,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                imageTypes = listOf(ImageType.PRIMARY),
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                maxOfficialRating = "PG-13",
+                                hasParentalRating = true,
+                                limit = POSTER_WALL_COUNT,
+                            ),
+                        ).content.items
+                        .map { item ->
+                            api.imageApi.getItemImageUrl(
+                                itemId = item.id,
+                                imageType = ImageType.PRIMARY,
+                                fillHeight = POSTER_WALL_HEIGHT,
+                                quality = 80,
+                            )
+                        }
+                _state.update { it.copy(posterWall = posters) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not load posters for the profile screen")
             }
         }
 
@@ -360,7 +404,12 @@ data class SwitchUserState(
     val loginAttempts: Int = 0,
     val serverVersion: ServerVersion? = null,
     val serverVersionSupported: ServerVersionSupported = ServerVersionSupported.UNKNOWN,
+    // Poster image addresses for the sliding wall behind the profiles
+    val posterWall: List<String> = emptyList(),
 )
+
+private const val POSTER_WALL_COUNT = 40
+private const val POSTER_WALL_HEIGHT = 360
 
 /**
  * Result of trying to switch users via [SwitchUserViewModel.trySwitchUser]

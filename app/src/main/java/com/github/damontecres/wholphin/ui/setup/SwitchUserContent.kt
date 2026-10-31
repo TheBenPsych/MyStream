@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,16 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
@@ -52,7 +55,6 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
-import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
@@ -142,22 +144,19 @@ fun SwitchUserContent(
         }
 
         LoadingState.Success -> {
-            // On a holiday the profile screen gets a soft glow and a greeting in the holiday's color
+            // A drawn holiday scene on holidays, otherwise a slow wall of the server's posters
             val holiday = remember { holidayFor(LocalDate.now()) }
             Box(
                 modifier =
                     modifier
                         .background(MaterialTheme.colorScheme.background)
-                        .ifElse(
-                            holiday != null,
-                            Modifier.background(
-                                Brush.radialGradient(
-                                    listOf(Color(holiday?.color ?: 0).copy(alpha = .22f), Color.Transparent),
-                                    radius = 1400f,
-                                ),
-                            ),
-                        ).dimAndBlur(showAddUser || switchUserWithPin != null),
+                        .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
+                if (holiday != null) {
+                    HolidayScene(holiday.effect, Modifier.fillMaxSize())
+                } else {
+                    PosterWall(state.posterWall, Modifier.fillMaxSize())
+                }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -171,6 +170,20 @@ fun SwitchUserContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        // The holiday greeting, big and in the holiday's own lettering
+                        holiday?.let {
+                            Text(
+                                text = it.text,
+                                fontFamily = holidayFont(it.effect),
+                                fontSize = 52.sp,
+                                color = Color(it.color),
+                                textAlign = TextAlign.Center,
+                                style =
+                                    TextStyle(
+                                        shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
+                                    ),
+                            )
+                        }
                         Text(
                             text = stringResource(R.string.select_user),
                             style = MaterialTheme.typography.displaySmall,
@@ -181,13 +194,6 @@ fun SwitchUserContent(
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        holiday?.let {
-                            Text(
-                                text = "${it.emoji} ${it.text} ${it.emoji}",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color(it.color),
-                            )
-                        }
                     }
                     UserList(
                         users = state.users,
