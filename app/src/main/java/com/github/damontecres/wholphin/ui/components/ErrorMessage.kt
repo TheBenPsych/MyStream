@@ -41,6 +41,14 @@ fun ErrorMessage(
     modifier: Modifier = Modifier,
     viewModel: ErrorViewModel = hiltViewModel(),
 ) {
+    // Benflix: can't reach the server? Show a clean "You're offline" screen instead of a red error
+    if (com.github.damontecres.wholphin.ui.downloads
+            .isOfflineError(exception)
+    ) {
+        com.github.damontecres.wholphin.ui.downloads
+            .OfflineScreen(exception, modifier)
+        return
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier.padding(16.dp),
@@ -49,10 +57,6 @@ fun ErrorMessage(
             text = stringResource(R.string.compose_error_message_title),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.titleMedium,
-        )
-        // Benflix on phones: when the server can't be reached, downloads can still be watched
-        com.github.damontecres.wholphin.ui.downloads.OfflineDownloadsButton(
-            showWhenEmpty = true,
         )
         TextButton(
             stringRes = R.string.send_app_logs,
