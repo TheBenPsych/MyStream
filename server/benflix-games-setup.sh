@@ -38,6 +38,7 @@ RA=$H/.config/retroarch
 SYS=$RA/system
 echo "Found: $H"
 mkdir -p "$ROMS/psp" "$ROMS/dc" "$RA/cores" "$SYS/pcsx2/bios" "$H/ES-DE/custom_systems" "$BIOS/psx" "$BIOS/ps2" "$BIOS/saturn" "$BIOS/segacd" "$BIOS/pcengine" "$BIOS/neogeo" "$BIOS/dreamcast"
+chown nobody:users "$ROMS/psp" "$ROMS/dc" "$BIOS" "$BIOS"/* 2>/dev/null
 
 say "Downloading emulators (cores)"
 TMP=$(mktemp -d)
