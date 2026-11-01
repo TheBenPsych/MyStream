@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui
 
+import android.content.Context
 import android.media.MediaPlayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -24,16 +25,34 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import com.github.damontecres.wholphin.R
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.LocalDate
 
 /**
  * Benflix startup animation: the red B grows in with a "ta-dum" sound, the name fades in,
- * then the B zooms toward the screen and everything fades away. About 2 seconds.
+ * then the B zooms toward the screen and everything fades away. About 4 seconds.
+ *
+ * It only plays on the first launch of each day, so opening Benflix again later is instant.
  */
+object BenflixIntroSchedule {
+    private const val PREFS = "benflix_intro"
+    private const val KEY_LAST_DAY = "last_day"
+
+    /** True the first time this is asked on a given day (and remembers that it was asked) */
+    fun shouldShowToday(context: Context): Boolean {
+        val today = LocalDate.now().toString()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_LAST_DAY, null) == today) return false
+        prefs.edit { putString(KEY_LAST_DAY, today) }
+        return true
+    }
+}
+
 @Composable
 fun BenflixIntro(
     onFinished: () -> Unit,
@@ -56,17 +75,17 @@ fun BenflixIntro(
         }
         try {
             coroutineScope {
-                launch { markAlpha.animateTo(1f, tween(300)) }
-                markScale.animateTo(1f, tween(650, easing = FastOutSlowInEasing))
+                launch { markAlpha.animateTo(1f, tween(600)) }
+                markScale.animateTo(1f, tween(1300, easing = FastOutSlowInEasing))
             }
-            wordAlpha.animateTo(1f, tween(300))
-            delay(450)
+            wordAlpha.animateTo(1f, tween(600))
+            delay(1300)
             coroutineScope {
-                launch { wordAlpha.animateTo(0f, tween(150)) }
-                launch { markScale.animateTo(9f, tween(550, easing = FastOutLinearInEasing)) }
+                launch { wordAlpha.animateTo(0f, tween(250)) }
+                launch { markScale.animateTo(9f, tween(850, easing = FastOutLinearInEasing)) }
                 launch {
-                    delay(200)
-                    screenAlpha.animateTo(0f, tween(350))
+                    delay(350)
+                    screenAlpha.animateTo(0f, tween(500))
                 }
             }
         } finally {

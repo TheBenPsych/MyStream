@@ -5,12 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
+import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.LocalTrailer
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
@@ -21,6 +24,7 @@ import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.DatePlayedService
+import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
 import com.github.damontecres.wholphin.services.HomePageResolvedSettings
@@ -46,6 +50,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
+import com.github.damontecres.wholphin.ui.util.StringProvider
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
@@ -68,6 +73,8 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.genresApi
@@ -114,6 +121,7 @@ class HomeViewModel
         private val seerrService: SeerrService,
         private val trailerService: TrailerService,
         private val birthdayService: BirthdayService,
+        private val diskCache: DiskCache,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -225,6 +233,14 @@ class HomeViewModel
                 val refresh =
                     state.loadingState == LoadingState.Success && state.settings == settings &&
                         state.kids == KidsMode.isActive
+                // Opening the app: show what Home looked like last time straight away, then swap
+                // in fresh rows as they arrive
+                val snapshot =
+                    if (!refresh && state.featured.isEmpty()) {
+                        readHomeSnapshot(userDto.id)?.takeIf { it.rows.size == settings.rows.size }
+                    } else {
+                        null
+                    }
                 Timber.v(
                     "refresh=%s, state.loadingState=%s, %s rows",
                     refresh,
@@ -232,40 +248,32 @@ class HomeViewModel
                     settings.rows.size,
                 )
                 _state.update {
-                    it.copy(
-                        loadingState = if (refresh) LoadingState.Success else LoadingState.Loading,
-                        refreshState = LoadingState.Loading,
-                        settings = settings,
-                        kids = KidsMode.isActive,
-                        homeRows =
-                            if (refresh) {
-                                it.homeRows
-                            } else {
-                                List(settings.rows.size) {
-                                    HomeRowLoadingState.Pending(EmptyStringProvider)
-                                }
-                            },
-                    )
+                    val updated =
+                        it.copy(
+                            loadingState =
+                                if (refresh || snapshot != null) LoadingState.Success else LoadingState.Loading,
+                            refreshState = LoadingState.Loading,
+                            settings = settings,
+                            kids = KidsMode.isActive,
+                            homeRows =
+                                if (refresh) {
+                                    it.homeRows
+                                } else {
+                                    snapshot?.rows?.map { row -> row.toState() }
+                                        ?: List(settings.rows.size) {
+                                            HomeRowLoadingState.Pending(EmptyStringProvider)
+                                        }
+                                },
+                        )
+                    snapshot?.applyTo(updated) ?: updated
                 }
 
+                // The top of the screen loads first: the banner, Top 10 and Continue watching.
+                // Rows further down start a moment later, so they don't slow down what you see first.
                 if (!refresh || state.featured.isEmpty()) {
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
-                // Random rows are picked once per visit, so they don't reshuffle (and move the
-                // focused row) every time you come back from watching something
-                if (!refresh || state.themed == null) {
-                    viewModelScope.launchIO { loadThemed(userDto) }
-                }
-                viewModelScope.launchIO { loadBecause(userDto) }
-                viewModelScope.launchIO { loadNewest(userDto) }
-                viewModelScope.launchIO { loadMyList(userDto) }
-                if (!refresh || state.genreRows.isEmpty()) {
-                    viewModelScope.launchIO { loadGenreRows(userDto) }
-                }
-                viewModelScope.launchIO { loadCollections(userDto) }
-                viewModelScope.launchIO { loadStudios(userDto) }
-                viewModelScope.launchIO { loadCelebration(userDto) }
 
                 val semaphore = Semaphore(4)
 
@@ -315,7 +323,32 @@ class HomeViewModel
                             }
                         }
 
-                if (refresh) {
+                viewModelScope.launchIO {
+                    // Wait for the top rows (or at most a couple of seconds), then load the rest
+                    withTimeoutOrNull(SECOND_WAVE_MAX_WAIT_MS) { deferred.awaitAll() }
+                    // Random rows are picked once per visit, so they don't reshuffle (and move the
+                    // focused row) every time you come back from watching something
+                    if (!refresh || state.themed == null) {
+                        viewModelScope.launchIO { loadThemed(userDto) }
+                    }
+                    viewModelScope.launchIO { loadBecause(userDto) }
+                    viewModelScope.launchIO { loadNewest(userDto) }
+                    viewModelScope.launchIO { loadMyList(userDto) }
+                    viewModelScope.launchIO { loadCelebration(userDto) }
+                    delay(THIRD_WAVE_DELAY_MS)
+                    if (!refresh || state.genreRows.isEmpty()) {
+                        viewModelScope.launchIO { loadGenreRows(userDto) }
+                    }
+                    viewModelScope.launchIO { loadCollections(userDto) }
+                    // Studio tiles are no longer on Home; which movies belong to which collection
+                    // is worked out quietly in the background and saved for a day
+                    viewModelScope.launchIO { buildCollectionIndex(userDto.id) }
+                    // Once everything has had time to load, remember this Home for next time
+                    delay(SNAPSHOT_SAVE_DELAY_MS)
+                    saveHomeSnapshot(userDto.id)
+                }
+
+                if (refresh || snapshot != null) {
                     // Replace rows as they complete
                     val remaining = deferred.withIndex().toMutableList()
                     while (remaining.isNotEmpty()) {
@@ -369,6 +402,54 @@ class HomeViewModel
                         it.copy(loadingState = LoadingState.Error(ex))
                     }
                 }
+            }
+        }
+
+        private fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.isActive}-${BuildConfig.VERSION_CODE}"
+
+        private fun readHomeSnapshot(userId: UUID): HomeSnapshot? =
+            diskCache.read(homeSnapshotKey(userId), HomeSnapshot.serializer(), HOME_SNAPSHOT_MAX_AGE_MS)
+
+        private fun saveHomeSnapshot(userId: UUID) {
+            val current = state.value
+            if (current.kids != KidsMode.isActive) return
+
+            fun ThemedRow?.snap() = this?.let { SnapshotRow(it.title, it.items.take(SNAPSHOT_ROW_MAX)) }
+            val rows =
+                current.homeRows.map { row ->
+                    when (row) {
+                        is HomeRowLoadingState.Success -> {
+                            SnapshotServerRow(
+                                title = row.title,
+                                items = row.items.take(SNAPSHOT_ROW_MAX).filterNotNull(),
+                                viewOptions = row.viewOptions,
+                                rowType = row.rowType,
+                                showViewMore = row.showViewMore,
+                            )
+                        }
+
+                        else -> {
+                            SnapshotServerRow(title = row.title, items = emptyList())
+                        }
+                    }
+                }
+            val snapshot =
+                HomeSnapshot(
+                    rows = rows,
+                    featured = current.featured.map { SnapshotFeatured(it.item, it.reason, it.becauseOf) },
+                    trending = current.trending.take(SNAPSHOT_ROW_MAX),
+                    themed = current.themed.snap(),
+                    because = current.because.snap(),
+                    becauseMore = current.becauseMore.snap(),
+                    collections = current.collections.snap(),
+                    newest = current.newest.snap(),
+                    myList = current.myList.snap(),
+                    genreRows = current.genreRows.mapNotNull { it.snap() },
+                )
+            try {
+                diskCache.write(homeSnapshotKey(userId), HomeSnapshot.serializer(), snapshot)
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not save home snapshot")
             }
         }
 
@@ -652,10 +733,42 @@ class HomeViewModel
 
         /** Which collection each movie is in, so a franchise (e.g. all the Saw movies) shows as one tile */
         private var collectionIndex: Pair<String, Map<UUID, BaseItemDto>>? = null
+        private var collectionIndexJob: Job? = null
+
+        private fun collectionIndexKey(userId: UUID) = "collections-$userId-${KidsMode.isActive}"
+
+        /**
+         * The saved collection index, from memory or from the saved file (up to a day old).
+         * Null when it hasn't been built yet: building it asks the server about every collection,
+         * so that only happens in the background ([buildCollectionIndex]).
+         */
+        private fun cachedCollectionIndex(userId: UUID): Map<UUID, BaseItemDto>? {
+            val key = collectionIndexKey(userId)
+            collectionIndex?.takeIf { it.first == key }?.let { return it.second }
+            val saved = diskCache.read(key, CollectionIndexFile.serializer(), COLLECTION_INDEX_MAX_AGE_MS) ?: return null
+            val byId = saved.collections.associateBy { it.id }
+            val index =
+                saved.byMovie
+                    .mapNotNull { (movie, collection) ->
+                        val col = byId[UUID.fromString(collection)] ?: return@mapNotNull null
+                        UUID.fromString(movie) to col
+                    }.toMap()
+            collectionIndex = key to index
+            return index
+        }
+
+        /** Build the collection index in the background (once) and save it for next time */
+        private suspend fun buildCollectionIndex(userId: UUID) {
+            if (cachedCollectionIndex(userId) != null) return
+            if (collectionIndexJob?.isActive == true) return
+            val job = viewModelScope.launchIO { collectionsByMovie(userId) }
+            collectionIndexJob = job
+            job.join()
+        }
 
         private suspend fun collectionsByMovie(userId: UUID): Map<UUID, BaseItemDto> {
-            val key = "$userId-${KidsMode.isActive}"
-            collectionIndex?.takeIf { it.first == key }?.let { return it.second }
+            val key = collectionIndexKey(userId)
+            cachedCollectionIndex(userId)?.let { return it }
             val collections =
                 api.itemsApi
                     .getItems(
@@ -697,6 +810,14 @@ class HomeViewModel
                     .flatten()
                     .toMap()
             collectionIndex = key to index
+            diskCache.write(
+                key,
+                CollectionIndexFile.serializer(),
+                CollectionIndexFile(
+                    byMovie = index.map { (movie, col) -> movie.toString() to col.id.toString() }.toMap(),
+                    collections = index.values.distinctBy { it.id },
+                ),
+            )
             return index
         }
 
@@ -707,15 +828,8 @@ class HomeViewModel
             userId: UUID,
             items: List<BaseItemDto>,
         ): List<BaseItemDto> {
-            val byMovie =
-                try {
-                    collectionsByMovie(userId)
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Error loading collections, showing single movies")
-                    emptyMap()
-                }
+            // Only use the index if it's already saved: never make the row wait for it
+            val byMovie = cachedCollectionIndex(userId) ?: emptyMap()
             val shown = mutableSetOf<UUID>()
             return items.mapNotNull { item ->
                 val tile = if (item.type == BaseItemKind.MOVIE) byMovie[item.id] ?: item else item
@@ -1148,33 +1262,44 @@ class HomeViewModel
             if (item == null) return
             previewJob =
                 viewModelScope.launch(ExceptionHandler()) {
-                    delay(TRAILER_DELAY_MS)
-                    val trailer =
-                        withContext(WholphinDispatchers.IO) {
+                    // Look up the trailer while waiting, so it can start the moment the wait is over
+                    val lookup =
+                        async(WholphinDispatchers.IO) {
                             trailerService
                                 .getLocalTrailers(item)
                                 .filterIsInstance<LocalTrailer>()
                                 .firstOrNull()
-                        } ?: return@launch
+                        }
+                    delay(TRAILER_DELAY_MS)
+                    val trailer = lookup.await() ?: return@launch
                     val url = api.videosApi.getVideoStreamUrl(itemId = trailer.baseItem.id, static = true)
                     val player =
-                        _previewPlayer ?: ExoPlayer.Builder(context).build().also { newPlayer ->
-                            newPlayer.volume = 0f
-                            newPlayer.addListener(
-                                object : Player.Listener {
-                                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                                        if (isPlaying) _previewPlaying.value = true
-                                    }
-
-                                    override fun onPlaybackStateChanged(playbackState: Int) {
-                                        if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
-                                            _previewPlaying.value = false
+                        _previewPlayer ?: ExoPlayer
+                            .Builder(context)
+                            // Start after half a second of video instead of the usual 2.5 seconds
+                            .setLoadControl(
+                                DefaultLoadControl
+                                    .Builder()
+                                    .setBufferDurationsMs(8_000, 30_000, 500, 1_500)
+                                    .build(),
+                            ).build()
+                            .also { newPlayer ->
+                                newPlayer.volume = 0f
+                                newPlayer.addListener(
+                                    object : Player.Listener {
+                                        override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                            if (isPlaying) _previewPlaying.value = true
                                         }
-                                    }
-                                },
-                            )
-                            _previewPlayer = newPlayer
-                        }
+
+                                        override fun onPlaybackStateChanged(playbackState: Int) {
+                                            if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
+                                                _previewPlaying.value = false
+                                            }
+                                        }
+                                    },
+                                )
+                                _previewPlayer = newPlayer
+                            }
                     player.setMediaItem(MediaItem.fromUri(url))
                     player.prepare()
                     player.playWhenReady = true
@@ -1371,7 +1496,74 @@ private const val COLLECTIONS_MAX = 20
 private const val COLLECTIONS_MIN = 3
 private const val STUDIO_MIN_ITEMS = 3
 private const val STUDIO_MAX_TILES = 20
-private const val TRAILER_DELAY_MS = 3_000L
+private const val TRAILER_DELAY_MS = 1_500L
+private const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
+private const val THIRD_WAVE_DELAY_MS = 400L
+private const val COLLECTION_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000L
+private const val HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
+private const val SNAPSHOT_SAVE_DELAY_MS = 15_000L
+private const val SNAPSHOT_ROW_MAX = 20
+
+/** What Home looked like last time, saved so it can be shown instantly when the app opens */
+@Serializable
+private data class HomeSnapshot(
+    val rows: List<SnapshotServerRow>,
+    val featured: List<SnapshotFeatured> = emptyList(),
+    val trending: List<BaseItem> = emptyList(),
+    val themed: SnapshotRow? = null,
+    val because: SnapshotRow? = null,
+    val becauseMore: SnapshotRow? = null,
+    val collections: SnapshotRow? = null,
+    val newest: SnapshotRow? = null,
+    val myList: SnapshotRow? = null,
+    val genreRows: List<SnapshotRow> = emptyList(),
+) {
+    fun applyTo(state: HomeState): HomeState {
+        fun SnapshotRow?.row() = this?.let { ThemedRow(it.title, it.items) }
+        return state.copy(
+            featured = featured.map { FeaturedItem(it.item, it.reason, it.becauseOf) },
+            trending = trending,
+            themed = themed.row(),
+            because = because.row(),
+            becauseMore = becauseMore.row(),
+            collections = collections.row(),
+            newest = newest.row(),
+            myList = myList.row(),
+            genreRows = genreRows.mapNotNull { it.row() },
+        )
+    }
+}
+
+@Serializable
+private data class SnapshotServerRow(
+    val title: StringProvider,
+    val items: List<BaseItem>,
+    val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
+    val rowType: HomeRowConfig? = null,
+    val showViewMore: Boolean = true,
+) {
+    fun toState(): HomeRowLoadingState = HomeRowLoadingState.Success(title, items, viewOptions, rowType, showViewMore)
+}
+
+@Serializable
+private data class SnapshotRow(
+    val title: String,
+    val items: List<BaseItem>,
+)
+
+@Serializable
+private data class SnapshotFeatured(
+    val item: BaseItem,
+    val reason: FeaturedReason,
+    val becauseOf: String? = null,
+)
+
+/** The collection index as saved on disk: movie id to collection id, plus the collections */
+@Serializable
+private data class CollectionIndexFile(
+    val byMovie: Map<String, String>,
+    val collections: List<BaseItemDto>,
+)
 
 /**
  * Whether a row is a "is watching" type
