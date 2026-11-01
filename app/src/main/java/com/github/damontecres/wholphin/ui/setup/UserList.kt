@@ -221,6 +221,8 @@ private fun AvatarPickerDialog(
     name: String?,
     onDismissRequest: () -> Unit,
 ) {
+    // Make sure the pick is saved on the device, even if no picture has been drawn yet
+    AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val current = AvatarChoices.get(userId)
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
         Column(
@@ -337,6 +339,10 @@ private fun UserIconCard(
     // Card dimensions - circular card
     val cardSize = Cards.serverUserCircle
 
+    // A picture picked in Benflix wins, and shows right away when it changes
+    AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
+    val chosen = AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -372,7 +378,7 @@ private fun UserIconCard(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                if (user.imageUrl.isNotNullOrBlank() && !imageError) {
+                if (chosen == null && user.imageUrl.isNotNullOrBlank() && !imageError) {
                     AsyncImage(
                         model = user.imageUrl,
                         contentDescription = user.user.name,
@@ -386,7 +392,7 @@ private fun UserIconCard(
                 } else {
                     // Benflix picture for profiles without their own image
                     Image(
-                        painter = painterResource(benflixAvatarFor(user.user.id, user.user.name)),
+                        painter = painterResource(chosen ?: benflixAvatarFor(user.user.id, user.user.name)),
                         contentDescription = user.user.name,
                         contentScale = ContentScale.Crop,
                         modifier =
