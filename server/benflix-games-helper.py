@@ -170,7 +170,11 @@ def cover(game_id):
     g = romm_get(f"/api/roms/{game_id}")
     path = g.get("path_cover_large") or g.get("path_cover_small")
     if path:
-        return romm_get("/assets/romm/resources/" + path.lstrip("/"), raw=True)
+        # RomM may give "roms/2/308/cover/big.png" or the full "/assets/romm/resources/roms/...?ts=2026-11-01 03:24:05"
+        path = path.split("?")[0].lstrip("/")
+        if not path.startswith("assets/"):
+            path = "assets/romm/resources/" + path
+        return romm_get("/" + urllib.parse.quote(path), raw=True)
     url = g.get("url_cover")
     if url:
         if url.startswith("//"):
