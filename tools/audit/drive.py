@@ -356,10 +356,17 @@ def main():
                     sh(f"input text {USER}")
                 typed_user = True
                 shot("typed-user")
-            n = find(dump(), r"^Login$")
-            if n is not None:
-                tap(n)
-            time.sleep(4)
+            if MODE == "tv":
+                key("ENTER", wait=4)  # the keyboard's Go button on the password box
+                if find(dump(), r"^Username$") is not None:
+                    key("ESCAPE", wait=1)
+                    key("DPAD_DOWN", wait=0.5)
+                    key("DPAD_CENTER", wait=4)
+            else:
+                n = find(dump(), r"^Login$")
+                if n is not None:
+                    tap(n)
+                time.sleep(4)
             continue
         n = find(root, r"Username or password|username/password")
         if n is not None and find(root, r"Quick Connect") is not None:
