@@ -29,12 +29,13 @@ import com.github.damontecres.wholphin.ui.cards.ItemRow
 @Composable
 fun Top10Row(
     items: List<BaseItem>,
+    title: String = stringResource(R.string.top_10_trending),
     onClickItem: (BaseItem) -> Unit,
     onFocusItem: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ItemRow(
-        title = stringResource(R.string.top_10_trending),
+        title = title,
         items = items,
         onClickItem = { _, item -> onClickItem(item) },
         onLongClickItem = { _, _ -> },

@@ -144,6 +144,10 @@ class HomeViewModel
 
         private var dataLoadingJob: Job? = null
 
+        /** The Anime Movies / Anime Shows libraries (any library with "anime" in its name) */
+        @Volatile
+        private var animeLibraryIds: List<UUID> = emptyList()
+
         init {
             addCloseable {
                 _previewPlayer?.release()
@@ -226,6 +230,11 @@ class HomeViewModel
 
                 val libraries =
                     navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
+                // Anime Movies & Anime Shows get their own Top 10 and picks, and stay out of the main Top 10
+                animeLibraryIds =
+                    libraries
+                        .filter { it.name.contains("anime", ignoreCase = true) }
+                        .map { it.itemId }
 
                 if (state.value.kids != KidsMode.isActive) {
                     // Switched to or from Kids: start from a clean page so no grown-up rows linger
@@ -342,6 +351,9 @@ class HomeViewModel
                     viewModelScope.launchIO { loadNewest(userDto) }
                     viewModelScope.launchIO { loadMyList(userDto) }
                     viewModelScope.launchIO { loadCelebration(userDto) }
+                    if (!refresh || state.animeRows.isEmpty()) {
+                        viewModelScope.launchIO { loadAnimeRows(userDto) }
+                    }
                     delay(THIRD_WAVE_DELAY_MS)
                     if (!refresh || state.genreRows.isEmpty()) {
                         viewModelScope.launchIO { loadGenreRows(userDto) }
@@ -452,6 +464,8 @@ class HomeViewModel
                     newest = current.newest.snap(),
                     myList = current.myList.snap(),
                     genreRows = current.genreRows.mapNotNull { it.snap() },
+                    animeTop = current.animeTop.take(SNAPSHOT_ROW_MAX),
+                    animeRows = current.animeRows.mapNotNull { it.snap() },
                 )
             try {
                 diskCache.write(homeSnapshotKey(userId), HomeSnapshot.serializer(), snapshot)
@@ -650,7 +664,13 @@ class HomeViewModel
         private suspend fun loadTrending(userDto: ServerUserConfig) {
             try {
                 if (!seerrService.active.first()) {
-                    _state.update { it.copy(trending = loadServerTop(userDto), trendingMissing = emptyList()) }
+                    _state.update {
+                        it.copy(
+                            trending = loadServerTop(userDto),
+                            trendingMissing = emptyList(),
+                            animeTop = loadAnimeTop(userDto, emptyList()),
+                        )
+                    }
                     return
                 }
                 val discovered =
@@ -658,11 +678,14 @@ class HomeViewModel
                         .flatMap { seerrService.trending(it) }
                         .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
                         .distinctBy { it.type to it.id }
-                val inLibraryIds =
+                val allInLibraryIds =
                     discovered
                         .mapNotNull { it.jellyfinItemId }
                         .distinct()
-                        .take(TRENDING_TOP)
+                // Anime trending titles go to the Top 10 anime row instead
+                val animeIds = animeIdsAmong(userDto.id, allInLibraryIds)
+                val inLibraryIds = allInLibraryIds.filter { it !in animeIds }.take(TRENDING_TOP)
+                val animeTrending = allInLibraryIds.filter { it in animeIds }
                 val trending =
                     if (inLibraryIds.isNotEmpty()) {
                         val items =
@@ -694,11 +717,13 @@ class HomeViewModel
                 // Too few trending titles on the server to fill the row, so use the server's own top titles
                 val top = if (trending.size < TRENDING_MIN) loadServerTop(userDto) else trending
                 _state.update { it.copy(trending = top, trendingMissing = missing) }
+                val anime = loadAnimeTop(userDto, animeTrending)
+                _state.update { it.copy(animeTop = anime) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading trending items")
-                _state.update { it.copy(trending = loadServerTop(userDto)) }
+                _state.update { it.copy(trending = loadServerTop(userDto), animeTop = loadAnimeTop(userDto, emptyList())) }
             }
         }
 
@@ -719,10 +744,15 @@ class HomeViewModel
                             imageTypes = listOf(ImageType.PRIMARY),
                             sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
                             sortOrder = listOf(SortOrder.DESCENDING),
-                            limit = TRENDING_TOP,
+                            // Extra, because anime is taken out below
+                            limit = TRENDING_TOP * 4,
                             fields = HomeItemFields,
                         ),
                     ).content.items
+                    .let { items ->
+                        val anime = animeIdsAmong(userDto.id, items.map { it.id })
+                        items.filter { it.id !in anime }
+                    }.take(TRENDING_TOP)
                     .map { BaseItem(it) }
             } catch (ex: CancellationException) {
                 throw ex
@@ -730,6 +760,270 @@ class HomeViewModel
                 Timber.e(ex, "Error loading server top items")
                 emptyList()
             }
+
+        /**
+         * Which of these items are in the anime libraries
+         */
+        private suspend fun animeIdsAmong(
+            userId: UUID,
+            ids: List<UUID>,
+        ): Set<UUID> {
+            val libs = animeLibraryIds
+            if (libs.isEmpty() || ids.isEmpty()) return emptySet()
+            return libs
+                .flatMap { libraryId ->
+                    try {
+                        ids.chunked(ANIME_ID_CHUNK).flatMap { chunk ->
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        parentId = libraryId,
+                                        recursive = true,
+                                        ids = chunk,
+                                    ),
+                                ).content.items
+                                .map { it.id }
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Error checking anime library %s", libraryId)
+                        emptyList()
+                    }
+                }.toSet()
+        }
+
+        /**
+         * Movies & shows from both anime libraries together. Each library is asked separately
+         * (the server only takes one library at a time) and the answers are merged.
+         */
+        private suspend fun animeItems(
+            userId: UUID,
+            request: GetItemsRequest,
+        ): List<BaseItemDto> =
+            animeLibraryIds.flatMap { libraryId ->
+                try {
+                    api.itemsApi
+                        .getItems(
+                            request.copy(
+                                userId = userId,
+                                parentId = libraryId,
+                                recursive = true,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Error loading from anime library %s", libraryId)
+                    emptyList()
+                }
+            }
+
+        /**
+         * "Top 10 anime": anime trending this week first (from Seerr), then the best rated
+         * anime from this year and last year, then the best rated anime of all time
+         */
+        private suspend fun loadAnimeTop(
+            userDto: ServerUserConfig,
+            trendingIds: List<UUID>,
+        ): List<BaseItem> {
+            if (animeLibraryIds.isEmpty()) return emptyList()
+            return try {
+                val trending =
+                    if (trendingIds.isNotEmpty()) {
+                        val byId =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userDto.id,
+                                        ids = trendingIds.take(TRENDING_TOP),
+                                        fields = HomeItemFields,
+                                    ),
+                                ).content.items
+                                .associateBy { it.id }
+                        trendingIds.mapNotNull { byId[it] }
+                    } else {
+                        emptyList()
+                    }
+                val year = LocalDate.now().year
+                val bestRated =
+                    GetItemsRequest(
+                        imageTypes = listOf(ImageType.PRIMARY),
+                        sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                        sortOrder = listOf(SortOrder.DESCENDING),
+                        limit = TRENDING_TOP,
+                    )
+                val recent =
+                    if (trending.size < TRENDING_TOP) {
+                        animeItems(userDto.id, bestRated.copy(years = listOf(year, year - 1)))
+                            .sortedByDescending { it.communityRating ?: 0f }
+                    } else {
+                        emptyList()
+                    }
+                val allTime =
+                    if (trending.size + recent.size < TRENDING_TOP) {
+                        animeItems(userDto.id, bestRated)
+                            .sortedByDescending { it.communityRating ?: 0f }
+                    } else {
+                        emptyList()
+                    }
+                (trending + recent + allTime)
+                    .distinctBy { it.id }
+                    .take(TRENDING_TOP)
+                    .map { BaseItem(it) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading top 10 anime")
+                emptyList()
+            }
+        }
+
+        /**
+         * Anime picks: "Because you watched <last anime>", "Hidden gem anime" (well rated,
+         * not watched yet) and two anime genre rows, like "Action anime"
+         */
+        private suspend fun loadAnimeRows(userDto: ServerUserConfig) {
+            if (animeLibraryIds.isEmpty()) {
+                _state.update { it.copy(animeRows = emptyList()) }
+                return
+            }
+            try {
+                val taste = loadTaste(userDto.id)
+                val rows = mutableListOf<ThemedRow>()
+                val shown = mutableSetOf<UUID>()
+
+                fun add(
+                    title: String,
+                    items: List<BaseItemDto>,
+                ) {
+                    val fresh =
+                        items
+                            .filter { it.id !in shown && taste.keep(it) }
+                            .distinctBy { it.id }
+                            .take(EXTRA_ROW_MAX)
+                    if (fresh.size >= ANIME_ROW_MIN) {
+                        rows.add(ThemedRow(title, fresh.map { BaseItem(it) }))
+                        shown.addAll(fresh.map { it.id })
+                    }
+                }
+
+                // Because you watched <anime>: the last anime watched, then similar anime
+                val lastWatched =
+                    animeLibraryIds
+                        .flatMap { libraryId ->
+                            try {
+                                api.itemsApi
+                                    .getItems(
+                                        GetItemsRequest(
+                                            userId = userDto.id,
+                                            parentId = libraryId,
+                                            recursive = true,
+                                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                            isPlayed = true,
+                                            sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                            sortOrder = listOf(SortOrder.DESCENDING),
+                                            limit = 1,
+                                        ),
+                                    ).content.items
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Error loading last watched anime")
+                                emptyList()
+                            }
+                        }.maxByOrNull { it.userData?.lastPlayedDate?.toEpochSecond(java.time.ZoneOffset.UTC) ?: 0L }
+                val source =
+                    lastWatched?.let {
+                        if (it.type == BaseItemKind.EPISODE) {
+                            it.seriesId?.let { id -> it.seriesName?.let { name -> id to name } }
+                        } else {
+                            it.name?.let { name -> it.id to name }
+                        }
+                    }
+                if (source != null) {
+                    val similar =
+                        api.libraryApi
+                            .getSimilarItems(
+                                GetSimilarItemsRequest(
+                                    userId = userDto.id,
+                                    itemId = source.first,
+                                    fields = HomeItemFields,
+                                    limit = ANIME_SIMILAR_FETCH,
+                                ),
+                            ).content.items
+                    // Keep only anime, so this row is all anime
+                    val anime = animeIdsAmong(userDto.id, similar.map { it.id })
+                    shown.add(source.first)
+                    add(
+                        context.getString(R.string.because_you_watched_row, source.second),
+                        similar.filter { it.id in anime },
+                    )
+                }
+
+                // Hidden gem anime: well rated, not watched yet
+                add(
+                    context.getString(R.string.hidden_gem_anime),
+                    animeItems(
+                        userDto.id,
+                        GetItemsRequest(
+                            isPlayed = false,
+                            minCommunityRating = ANIME_GEM_MIN_RATING,
+                            sortBy = listOf(ItemSortBy.RANDOM),
+                            limit = EXTRA_ROW_MAX,
+                        ),
+                    ).shuffled(),
+                )
+
+                // Two anime genre rows, picked at random each visit
+                val genres =
+                    animeLibraryIds
+                        .flatMap { libraryId ->
+                            try {
+                                api.genresApi
+                                    .getGenres(
+                                        userId = userDto.id,
+                                        parentId = libraryId,
+                                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    ).content.items
+                                    .mapNotNull { it.name }
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Error loading anime genres")
+                                emptyList()
+                            }
+                        }.distinct()
+                        // "Anime" itself is often a genre on anime, which would make an "Anime anime" row
+                        .filterNot { it.contains("anime", ignoreCase = true) || it.contains("animation", ignoreCase = true) }
+                        .shuffled()
+                var genreCount = 0
+                for (genre in genres) {
+                    if (genreCount >= ANIME_GENRE_ROWS) break
+                    val before = rows.size
+                    add(
+                        context.getString(R.string.anime_genre_row, genre),
+                        animeItems(
+                            userDto.id,
+                            GetItemsRequest(
+                                genres = listOf(genre),
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = EXTRA_ROW_MAX,
+                            ),
+                        ).shuffled(),
+                    )
+                    if (rows.size > before) genreCount++
+                }
+                _state.update { it.copy(animeRows = rows) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading anime rows")
+            }
+        }
 
         /**
          * Load the seasonal themed row, such as horror in October
@@ -1498,6 +1792,10 @@ data class HomeState(
     val newest: ThemedRow? = null,
     val myList: ThemedRow? = null,
     val genreRows: List<ThemedRow> = emptyList(),
+    /** "Top 10 anime": Anime Movies and Anime Shows together */
+    val animeTop: List<BaseItem> = emptyList(),
+    /** Anime picks: because you watched an anime, hidden gems, anime by genre */
+    val animeRows: List<ThemedRow> = emptyList(),
     /** Whether these rows were loaded for the Kids profile */
     val kids: Boolean = false,
 ) {
@@ -1513,6 +1811,11 @@ data class HomeState(
 }
 
 private const val TASTE_MAX = 300
+private const val ANIME_ID_CHUNK = 100
+private const val ANIME_ROW_MIN = 5
+private const val ANIME_SIMILAR_FETCH = 40
+private const val ANIME_GEM_MIN_RATING = 7.5
+private const val ANIME_GENRE_ROWS = 2
 private const val BECAUSE_LOOKBACK = 30
 private const val BECAUSE_TRIES = 6
 private const val EXTRA_ROW_MAX = 20
@@ -1563,6 +1866,8 @@ private data class HomeSnapshot(
     val newest: SnapshotRow? = null,
     val myList: SnapshotRow? = null,
     val genreRows: List<SnapshotRow> = emptyList(),
+    val animeTop: List<BaseItem> = emptyList(),
+    val animeRows: List<SnapshotRow> = emptyList(),
 ) {
     fun applyTo(state: HomeState): HomeState {
         fun SnapshotRow?.row() = this?.let { ThemedRow(it.title, it.items) }
@@ -1576,6 +1881,8 @@ private data class HomeSnapshot(
             newest = newest.row(),
             myList = myList.row(),
             genreRows = genreRows.mapNotNull { it.row() },
+            animeTop = animeTop,
+            animeRows = animeRows.mapNotNull { it.row() },
         )
     }
 }

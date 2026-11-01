@@ -1000,6 +1000,9 @@
     <string name="featured_tonight">Tonight\'s pick</string>
     <string name="featured_tonight_for">Tonight\'s pick for %1$s</string>
     <string name="top_10_trending">Top 10 this week</string>
+    <string name="top_10_anime">Top 10 anime</string>
+    <string name="hidden_gem_anime">Hidden gem anime</string>
+    <string name="anime_genre_row">%1$s anime</string>
     <string name="trending_not_on_server">Trending, not on your server</string>
     <string name="new_episode">NEW EPISODE</string>
     <string name="new_badge">NEW</string>
