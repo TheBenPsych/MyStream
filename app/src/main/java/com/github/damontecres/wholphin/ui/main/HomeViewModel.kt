@@ -1092,7 +1092,9 @@ class HomeViewModel
                 suspend fun query(request: GetItemsRequest): List<BaseItemDto> =
                     limiter.withPermit {
                         try {
-                            api.itemsApi.getItems(request).content.items
+                            api.itemsApi
+                                .getItems(request)
+                                .content.items
                         } catch (ex: CancellationException) {
                             throw ex
                         } catch (ex: Exception) {
