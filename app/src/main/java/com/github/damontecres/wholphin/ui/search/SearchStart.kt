@@ -98,6 +98,16 @@ fun SearchStart(
             }
         }
         item {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                StartButton("Watching together? Take the mood quiz") { navigationManager.navigateTo(Destination.MoodQuiz) }
+                StartButton("Watch in order: Marvel, Star Wars and more") { navigationManager.navigateTo(Destination.WatchOrder) }
+            }
+        }
+        item {
             MoodRow(
                 selected = null,
                 onClickMood = { navigationManager.navigateTo(Destination.Mood(it.name)) },
@@ -134,3 +144,24 @@ private fun SectionLabel(text: String) =
         color = Color(0xFFA69C9D),
         modifier = Modifier.padding(start = 8.dp),
     )
+
+@Composable
+private fun StartButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+        colors =
+            ButtonDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = .25f),
+                contentColor = Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+    ) {
+        Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    }
+}

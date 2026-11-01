@@ -357,6 +357,29 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.Channels -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .ChannelsPage(modifier)
+        }
+
+        Destination.WatchOrder -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .WatchOrderPage(modifier)
+        }
+
+        Destination.TrailerShuffle -> {
+            com.github.damontecres.wholphin.ui.main
+                .TrailerShufflePage(modifier)
+        }
+
+        Destination.MoodQuiz -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .MoodQuizPage(modifier)
+        }
+
         Destination.MyBenflix -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

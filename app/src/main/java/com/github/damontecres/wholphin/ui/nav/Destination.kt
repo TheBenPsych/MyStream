@@ -169,6 +169,22 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** A TV guide of Benflix channels made from your library */
+    @Serializable
+    data object Channels : Destination(false)
+
+    /** Big franchises in story or release order */
+    @Serializable
+    data object WatchOrder : Destination(false)
+
+    /** Full-screen trailers on the TV, one after another */
+    @Serializable
+    data object TrailerShuffle : Destination(true)
+
+    /** Two quick questions for a group, then picks everyone will like */
+    @Serializable
+    data object MoodQuiz : Destination(false)
+
     /** Your own page on the TV: continue watching, My List, liked, watch history */
     @Serializable
     data object MyBenflix : Destination(false)

@@ -194,6 +194,8 @@ class NavDrawerViewModel
                             GAMES_INDEX
                         } else if (key is Destination.MyBenflix) {
                             MY_BENFLIX_INDEX
+                        } else if (key is Destination.Channels) {
+                            CHANNELS_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -279,6 +281,7 @@ private const val SEARCH_INDEX = -2
 private const val NOW_PLAYING_INDEX = -3
 private const val GAMES_INDEX = -4
 private const val MY_BENFLIX_INDEX = -5
+private const val CHANNELS_INDEX = -6
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -365,6 +368,10 @@ fun NavDrawer(
             )
         }
 
+    val onClickChannels = {
+        viewModel.setIndex(CHANNELS_INDEX)
+        viewModel.navigationManager.navigateToFromDrawer(Destination.Channels)
+    }
     val onClickSearch = {
         viewModel.setIndex(SEARCH_INDEX)
         viewModel.navigationManager.navigateToFromDrawer(Destination.Search())
@@ -471,7 +478,12 @@ fun NavDrawer(
                     clipsOpen = false
                     downloadsOpen = true
                 },
-                gamesTitle = stringResource(R.string.games),
+                channelsSelected = selectedIndex == CHANNELS_INDEX && !clipsOpen && !downloadsOpen,
+                onClickChannels = {
+                    clipsOpen = false
+                    downloadsOpen = false
+                    onClickChannels()
+                },
                 user = user,
                 userImageUrl = userImageUrl,
                 searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen && !downloadsOpen,
@@ -486,21 +498,28 @@ fun NavDrawer(
         }
         return
     }
-    // TV: one slim line. Home, Movies, Shows, Games and My Benflix are always there;
-    // every other library (Anime, Stand up, Now playing...) sits under More
+    // TV: one slim line. Home, Browse (every library in one list), Channels, Games, My Benflix and More
+    // (Now playing and the extras like the mood quiz)
     val allItems = serviceState.items + serviceState.moreItems
     val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
     val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
     val myListIndex = allItems.indexOfFirst { it is NavDrawerItem.Favorites }
     // tabs = Home, (Now playing), every library in order, Games
     val libraryOffset = if (serviceState.nowPlayingEnabled) 2 else 1
-    val libraryTab = { index: Int -> tabs.getOrNull(libraryOffset + index) }
     val myBenflixTitle = stringResource(R.string.my_benflix)
+    val libraryTabs =
+        tabs.filterIndexed { i, _ -> i >= libraryOffset && i != tabs.lastIndex && i - libraryOffset != myListIndex }
+    val firstLibraries =
+        listOf(moviesIndex, showsIndex).filter { it >= 0 }.mapNotNull { tabs.getOrNull(libraryOffset + it) }
+    val browseTabs = firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }
     val mainTabs =
-        listOfNotNull(
+        listOf(
             tabs.first(),
-            moviesIndex.takeIf { it >= 0 }?.let(libraryTab),
-            showsIndex.takeIf { it >= 0 }?.let(libraryTab),
+            TopNavTab(
+                title = stringResource(R.string.channels),
+                selected = selectedIndex == CHANNELS_INDEX,
+                onClick = onClickChannels,
+            ),
             tabs.last(),
             TopNavTab(
                 title = myBenflixTitle,
@@ -512,14 +531,29 @@ fun NavDrawer(
             ),
         )
     val moreTabs =
-        tabs.filterIndexed { i, _ ->
-            i != 0 && i != tabs.lastIndex &&
-                i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
-        }
+        tabs.filterIndexed { i, _ -> i in 1 until libraryOffset } +
+            listOf(
+                TopNavTab(
+                    title = stringResource(R.string.trailer_shuffle),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.TrailerShuffle) },
+                ),
+                TopNavTab(
+                    title = stringResource(R.string.watch_in_order),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.WatchOrder) },
+                ),
+                TopNavTab(
+                    title = stringResource(R.string.mood_quiz),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
+                ),
+            )
     Column(modifier = modifier) {
         TopNavBar(
             tabs = mainTabs,
             moreTabs = moreTabs,
+            browseTabs = browseTabs,
             user = user,
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,

@@ -87,8 +87,11 @@ fun TopNavBar(
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     moreTabs: List<TopNavTab> = emptyList(),
+    browseTabs: List<TopNavTab> = emptyList(),
 ) {
     val moreSelected = moreTabs.any { it.selected }
+    val browseSelected = browseTabs.any { it.selected }
+    var showBrowse by remember { mutableStateOf(false) }
     val selectedIndex = tabs.indexOfFirst { it.selected }
     val kids by KidsMode.active.collectAsState()
     var showMore by remember { mutableStateOf(false) }
@@ -130,10 +133,22 @@ fun TopNavBar(
                 tab = tab,
                 modifier =
                     Modifier.ifElse(
-                        index == selectedIndex || (selectedIndex < 0 && !moreSelected && index == 0),
+                        index == selectedIndex || (selectedIndex < 0 && !moreSelected && !browseSelected && index == 0),
                         Modifier.focusRequester(focusRequester),
                     ),
             )
+            // Browse (every library in one list) sits right after Home
+            if (index == 0 && browseTabs.isNotEmpty()) {
+                TopNavTabButton(
+                    tab =
+                        TopNavTab(
+                            title = browseTitle(browseTabs),
+                            selected = browseSelected,
+                            onClick = { showBrowse = true },
+                        ),
+                    modifier = Modifier.ifElse(browseSelected, Modifier.focusRequester(focusRequester)),
+                )
+            }
         }
         if (moreTabs.isNotEmpty()) {
             TopNavTabButton(
@@ -187,6 +202,22 @@ fun TopNavBar(
             )
         }
     }
+    if (showBrowse) {
+        DialogPopup(
+            showDialog = true,
+            title = stringResource(R.string.browse),
+            dialogItems =
+                browseTabs.map { tab ->
+                    DialogItem(
+                        headlineContent = { Text(text = tab.title) },
+                        onClick = tab.onClick,
+                        selected = tab.selected,
+                    )
+                },
+            onDismissRequest = { showBrowse = false },
+            waitToLoad = false,
+        )
+    }
     if (showMore) {
         DialogPopup(
             showDialog = true,
@@ -204,6 +235,11 @@ fun TopNavBar(
         )
     }
 }
+
+/** "Browse ▾", or the library you're in, like "Movies ▾" */
+@Composable
+private fun browseTitle(browseTabs: List<TopNavTab>): String =
+    (browseTabs.firstOrNull { it.selected }?.title ?: stringResource(R.string.browse)) + "  ▾"
 
 @Composable
 private fun TopNavTabButton(
