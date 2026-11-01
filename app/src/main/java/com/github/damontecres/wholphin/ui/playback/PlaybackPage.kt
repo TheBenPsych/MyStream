@@ -86,6 +86,8 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixTip
+import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -107,6 +109,7 @@ import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.MediaSegmentType
 import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
 import kotlin.time.Duration
@@ -706,6 +709,13 @@ fun PlaybackPageContent(
                 )
             }
         }
+
+        // Benflix first-time tip, the first time a Skip intro button shows
+        BenflixTip(
+            tip = BenflixTipId.SKIP_INTRO,
+            show = showSegment && state.currentSegment?.segment?.type == MediaSegmentType.INTRO,
+            alignment = Alignment.BottomStart,
+        )
 
         // Next up episode
         BackHandler(state.nextUp != null) {

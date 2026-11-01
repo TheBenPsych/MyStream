@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.services.BenflixPeople
 import com.github.damontecres.wholphin.services.CheckupItem
 import com.github.damontecres.wholphin.services.CheckupSection
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.NoteKind
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
@@ -34,6 +35,7 @@ import javax.inject.Inject
 /** What the Server page's tools show: the note, people and the library checkup */
 data class ServerToolsState(
     val note: BenflixNote? = null,
+    val welcome: BenflixNote? = null,
     val people: List<UserDto> = emptyList(),
     val checkup: List<CheckupSection>? = null,
     val checkupHidden: Int = 0,
@@ -63,6 +65,7 @@ class ServerToolsViewModel
                 _state.value =
                     _state.value.copy(
                         note = notes.read(id),
+                        welcome = notes.read(id, NoteKind.WELCOME),
                         people = people.list(),
                     )
             }
@@ -80,6 +83,22 @@ class ServerToolsViewModel
                                 "Note removed" to "It won't show on Home any more."
                             } else {
                                 "Note sent" to "It will show at the top of Home for $count people."
+                            },
+                    )
+            }
+
+        fun publishWelcome(text: String) =
+            work {
+                notes.publish(text, NoteKind.WELCOME)
+                val id = userId
+                _state.value =
+                    _state.value.copy(
+                        welcome = id?.let { notes.read(it, NoteKind.WELCOME) },
+                        message =
+                            if (text.isBlank()) {
+                                "Welcome note removed" to "New people won't see a welcome note."
+                            } else {
+                                "Welcome note saved" to "Everyone sees it once, on their first Home screen."
                             },
                     )
             }
@@ -176,6 +195,8 @@ class ServerToolsViewModel
 sealed interface ServerToolsDialog {
     data object WriteNote : ServerToolsDialog
 
+    data object WriteWelcome : ServerToolsDialog
+
     data object AddPerson : ServerToolsDialog
 
     data class Person(
@@ -211,6 +232,24 @@ fun LazyListScope.serverToolsItems(
                         "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
                     } else {
                         "Showing on Home now. Click to change it, or save it empty to remove it."
+                    },
+                )
+            },
+        )
+    }
+
+    // The welcome note (shown once to each person)
+    item {
+        ListItem(
+            selected = false,
+            onClick = { showDialog(ServerToolsDialog.WriteWelcome) },
+            headlineContent = { Text(state.welcome?.text ?: "Write a welcome note") },
+            supportingContent = {
+                Text(
+                    if (state.welcome == null) {
+                        "Everyone sees it once, on their first Home screen. Like \"Welcome to Benflix! Ask me if you can't find something.\""
+                    } else {
+                        "Welcome note. Click to change it, or save it empty to remove it."
                     },
                 )
             },
@@ -322,6 +361,28 @@ fun ServerToolsDialogs(
                 onSave = {
                     onDismiss()
                     viewModel.publishNote(it)
+                },
+                onDismissRequest = onDismiss,
+            )
+        }
+
+        ServerToolsDialog.WriteWelcome -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "Welcome note (shown once to each person)",
+                        value = state.welcome?.text,
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Done,
+                            ),
+                        onSubmit = {},
+                        maxLines = 3,
+                    ),
+                onSave = {
+                    onDismiss()
+                    viewModel.publishWelcome(it)
                 },
                 onDismissRequest = onDismiss,
             )

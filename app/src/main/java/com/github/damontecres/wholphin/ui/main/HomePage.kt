@@ -68,6 +68,8 @@ import com.github.damontecres.wholphin.ui.cards.StudioCard
 import com.github.damontecres.wholphin.ui.cards.ViewMoreCard
 import com.github.damontecres.wholphin.ui.cards.canGrow
 import com.github.damontecres.wholphin.ui.cards.rememberGrowOnFocus
+import com.github.damontecres.wholphin.ui.components.BenflixTip
+import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
@@ -117,6 +119,8 @@ fun HomePage(
         viewModel.init()
         onStopOrDispose { }
     }
+    // Benflix: the welcome setup, the first time a person uses Benflix
+    WelcomeGate()
     val state by viewModel.state.collectAsState()
     val featured = state.featured
     val trending = state.trending
@@ -976,6 +980,10 @@ fun HomePageContent(
             }
 
             else -> {}
+        }
+        // Benflix first-time tip (only on the real Home page)
+        if (showNote) {
+            BenflixTip(tip = if (isTv) BenflixTipId.HOME_TV else BenflixTipId.HOME_PHONE)
         }
     }
 }

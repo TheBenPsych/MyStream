@@ -81,7 +81,7 @@ fun WholphinTheme(
     // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
     val density = LocalDensity.current
     val readDensity =
-        if (easyRead) Density(density.density, density.fontScale * EASY_READ_SCALE) else density
+        if (easyRead) Density(density.density, (density.fontScale * EASY_READ_SCALE).coerceAtMost(EASY_READ_MAX_SCALE)) else density
     val finalScheme = if (easyRead) colorScheme.copy(onSurfaceVariant = Color(0xFFE8E8EA)) else colorScheme
     CompositionLocalProvider(
         LocalTheme provides appThemeColors,
@@ -101,7 +101,10 @@ fun WholphinTheme(
     }
 }
 
-private const val EASY_READ_SCALE = 1.25f
+private const val EASY_READ_SCALE = 1.15f
+
+/** Never bigger than this, even if the TV's own text size is already big, so nothing gets cut off */
+private const val EASY_READ_MAX_SCALE = 1.3f
 
 private val KidsYellow = Color(0xFFFFC400)
 private val KidsBlue = Color(0xFF0E2A63)

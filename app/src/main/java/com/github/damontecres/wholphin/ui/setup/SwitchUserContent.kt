@@ -56,12 +56,14 @@ import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.EditTextBox
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.QrCode
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.touch.dialogWidth
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -282,7 +284,7 @@ fun SwitchUserContent(
                     Modifier
                         .focusGroup()
                         .padding(16.dp)
-                        .fillMaxWidth(dialogWidth(.4f)),
+                        .fillMaxWidth(dialogWidth(if (useQuickConnect) .6f else .4f)),
             ) {
                 if (useQuickConnect) {
                     if (state.quickConnectStatus == null && state.switchUserState !is LoadingState.Error) {
@@ -304,19 +306,54 @@ fun SwitchUserContent(
                             )
                         }
                     } else if (state.quickConnectStatus != null) {
+                        // Benflix: "Sign in with your phone", with a QR code to scan on TVs
+                        val isTv = rememberIsTv()
+                        val code = state.quickConnectStatus?.code
                         Text(
-                            text = "Use Quick Connect on your device to authenticate to ${server.name ?: server.url}",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Sign in with your phone",
+                            style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        Text(
-                            text = state.quickConnectStatus?.code ?: "Failed to get code",
-                            style = MaterialTheme.typography.displayMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
                             modifier = Modifier.align(Alignment.CenterHorizontally),
-                        )
+                        ) {
+                            if (isTv) {
+                                QrCode(
+                                    text = server.url.trimEnd('/') + "/web/#/quickconnect",
+                                    modifier = Modifier.size(180.dp),
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (isTv) {
+                                    Text(
+                                        text = "1. Scan this with your phone's camera and sign in",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                                Text(
+                                    text =
+                                        (if (isTv) "2. " else "") +
+                                            "Type this code in Quick Connect (or in Benflix on a phone that's signed in: Settings, Quick Connect)",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = code?.chunked(3)?.joinToString(" ") ?: "Failed to get code",
+                                    style = MaterialTheme.typography.displayMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "Waiting for your phone…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                     UserStateError(state.switchUserState)
                     TextButton(

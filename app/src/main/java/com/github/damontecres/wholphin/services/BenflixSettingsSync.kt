@@ -14,6 +14,8 @@ import com.github.damontecres.wholphin.ui.showToast
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -42,11 +44,17 @@ class BenflixSettingsSync
         /** The user whose saved settings have been loaded on this device (uploads wait until then) */
         @Volatile private var readyUserId: UUID? = null
 
+        private val _ready = MutableStateFlow<UUID?>(null)
+
+        /** The person whose saved settings have finished loading (the welcome setup waits for this) */
+        val ready: StateFlow<UUID?> = _ready
+
         @Volatile private var lastSynced: String? = null
 
         /** Called when someone signs in or a profile is picked */
         suspend fun restoreFor(userId: UUID) {
             readyUserId = null
+            _ready.value = null
             try {
                 val saved =
                     displayPreferencesService
@@ -77,6 +85,7 @@ class BenflixSettingsSync
                 lastSynced = null
             }
             readyUserId = userId
+            _ready.value = userId
             // Save this device's settings as theirs if they have none saved yet
             upload(preferencesDataStore.data.first())
         }

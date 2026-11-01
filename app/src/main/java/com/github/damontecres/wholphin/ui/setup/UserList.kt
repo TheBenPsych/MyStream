@@ -562,7 +562,7 @@ private fun AddUserCard(
 
 private val ProfileTileShape = RoundedCornerShape(10.dp)
 
-private val BenflixAvatars =
+internal val BenflixAvatars =
     listOf(
         R.drawable.benflix_avatar_0,
         R.drawable.benflix_avatar_1,
