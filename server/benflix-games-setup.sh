@@ -171,7 +171,7 @@ mkdir -p "$BF"
 
 say "Downloading the Benflix play helper"
 ok=1
-for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh benflix-skip-setup.sh benflix-hints.cfg benflix-hints.png; do
+for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh benflix-skip-setup.sh benflix-hints.cfg benflix-hints.png benflix-hints-top.cfg benflix-hints-top.png; do
   curl -fsSL "$RAW/$f" -o "$BF/$f" || { echo "  --  couldn't download $f"; ok=0; }
 done
 [ $ok = 1 ] && echo "  ok"
@@ -201,6 +201,8 @@ input_overlay_hide_when_gamepad_connected = "false"
 input_overlay_show_inputs = "0"
 input_overlay_auto_scale = "false"
 EOF
+# The same, as a slim bar on top for wide consoles (GBA, PSP, Wii...)
+sed 's|benflix-hints.cfg|benflix-hints-top.cfg|' "$BF/retroarch-hints.cfg" >"$BF/retroarch-hints-top.cfg"
 
 say "RomM login for the helper"
 ENV=$BF/helper.env
