@@ -1,12 +1,18 @@
 package com.github.damontecres.wholphin.ui.util
 
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 
-/** How long rows and pages take to slide to the focused tile. Netflix feels about this quick. */
-val SnappyScrollAnimationSpec: AnimationSpec<Float> = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+/**
+ * How rows and pages slide to the focused tile: quick, with no bounce.
+ *
+ * This must be a spring. Compose re-starts the scroll animation from where it is on every frame, which
+ * suits a spring, but turns a timed animation (a "tween") into a slow crawl that eases in over and over
+ * again. That crawl was the slow scrolling between rows.
+ */
+val SnappyScrollAnimationSpec: AnimationSpec<Float> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 3000f)
 
 /**
  * Keeps the [base] scrolling position rules, but slides there quickly instead of with a slow, floaty spring.
