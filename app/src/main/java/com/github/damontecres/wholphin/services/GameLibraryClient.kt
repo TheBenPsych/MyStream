@@ -63,7 +63,11 @@ class GameLibraryClient
         val address: String
             get() {
                 customAddress.takeIf { it.isNotBlank() }?.let { return it }
-                val host = serverRepository.currentServer?.url?.toHttpUrlOrNull()?.host ?: return ""
+                val host =
+                    serverRepository.currentServer
+                        ?.url
+                        ?.toHttpUrlOrNull()
+                        ?.host ?: return ""
                 return "http://$host:$PORT"
             }
 
