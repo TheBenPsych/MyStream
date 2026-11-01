@@ -333,7 +333,7 @@ fun GamesPage(
                 if (state.consoles.isEmpty()) {
                     InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                 }
-                InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit.")
+                InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit: you come right back here.")
                 state.consoles.forEach { console ->
                     Text(
                         text = "${console.name} (${console.games.size})",
@@ -501,7 +501,9 @@ private fun openGameStream(
         Intent()
             .setClassName(MOONLIGHT_PACKAGE, "$MOONLIGHT_PACKAGE.ShortcutTrampoline")
             .putExtra("AppName", target.appName)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // A fresh Moonlight task holding only the game, so when the game ends you land back in Benflix
+            // (not on Moonlight's own screens left over from opening Moonlight by hand)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     target.computerUuid?.let { direct.putExtra("UUID", it) }
     target.computerName?.let { direct.putExtra("Name", it) }
     try {
