@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -59,6 +60,9 @@ class ScreensaverService
 
         val keepScreenOn = MutableStateFlow(false)
 
+        /** Benflix: the screensaver is TV-only, phones and tablets use their own screen timeout */
+        private val isTv = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+
         private var waitJob: Job? = null
         private var dimJob: Job? = null
 
@@ -67,14 +71,14 @@ class ScreensaverService
                 .onEach { prefs ->
                     _state.update {
                         val enabled =
-                            prefs.appPreferences.interfacePreferences.screensaverPreference.enabled
+                            isTv && prefs.appPreferences.interfacePreferences.screensaverPreference.enabled
                         keepScreenOnInternal(enabled)
                         ScreensaverState(
                             enabled = enabled,
                             enabledTemp = false,
                             active = false,
                             paused = false,
-                            dimEnabled = prefs.appPreferences.interfacePreferences.screensaverPreference.dimEnabled,
+                            dimEnabled = isTv && prefs.appPreferences.interfacePreferences.screensaverPreference.dimEnabled,
                             dimActive = false,
                         )
                     }
@@ -142,6 +146,7 @@ class ScreensaverService
          * Immediately start the in-app screensaver
          */
         fun start() {
+            if (!isTv) return
             _state.update {
                 it.copy(
                     enabledTemp = true,
