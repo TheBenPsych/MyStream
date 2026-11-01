@@ -5,7 +5,7 @@
 # What it does:
 #  1. Downloads the RetroArch "cores" (emulators) for every console we support
 #  2. Downloads the extra files some cores need (Dolphin, PPSSPP)
-#  3. Tells EmulationStation that GameCube games live in roms/ngc, and to use the
+#  3. Tells EmulationStation that GameCube and Dreamcast games live in roms/ngc and roms/dc, and to use the
 #     RetroArch emulators for GameCube, Wii and PS2
 #  4. Groups multi-disc PS1 games into one entry each (Game.m3u folders)
 #  5. Copies BIOS files from Games/bios/<console> to where the emulators look
@@ -37,7 +37,7 @@ OWNER=$(stat -c %u:%g "$H")
 RA=$H/.config/retroarch
 SYS=$RA/system
 echo "Found: $H"
-mkdir -p "$RA/cores" "$SYS/pcsx2/bios" "$H/ES-DE/custom_systems" "$BIOS/psx" "$BIOS/ps2" "$BIOS/saturn" "$BIOS/segacd" "$BIOS/pcengine" "$BIOS/neogeo" "$BIOS/dreamcast"
+mkdir -p "$ROMS/psp" "$ROMS/dc" "$RA/cores" "$SYS/pcsx2/bios" "$H/ES-DE/custom_systems" "$BIOS/psx" "$BIOS/ps2" "$BIOS/saturn" "$BIOS/segacd" "$BIOS/pcengine" "$BIOS/neogeo" "$BIOS/dreamcast"
 
 say "Downloading emulators (cores)"
 TMP=$(mktemp -d)
@@ -59,10 +59,10 @@ for a in Dolphin PPSSPP; do
 done
 rm -rf "$TMP"
 
-say "Telling EmulationStation about GameCube, Wii and PS2"
+say "Telling EmulationStation about GameCube, Wii, Dreamcast and PS2"
 cat >"$H/ES-DE/custom_systems/es_systems.xml" <<'EOF'
 <?xml version="1.0"?>
-<!-- Written by benflix-games-setup.sh. GameCube games are in roms/ngc (RomM's name for it). -->
+<!-- Written by benflix-games-setup.sh. GameCube and Dreamcast use RomM folder names (roms/ngc, roms/dc). -->
 <systemList>
     <system>
         <name>gc</name>
@@ -81,6 +81,15 @@ cat >"$H/ES-DE/custom_systems/es_systems.xml" <<'EOF'
         <command label="Dolphin (RetroArch)">%EMULATOR_RETROARCH% -L %CORE_RETROARCH%/dolphin_libretro.so %ROM%</command>
         <platform>wii</platform>
         <theme>wii</theme>
+    </system>
+    <system>
+        <name>dreamcast</name>
+        <fullname>Sega Dreamcast</fullname>
+        <path>%ROMPATH%/dc</path>
+        <extension>.cdi .CDI .chd .CHD .cue .CUE .gdi .GDI .m3u .M3U .7z .7Z .zip .ZIP</extension>
+        <command label="Flycast (RetroArch)">%EMULATOR_RETROARCH% -L %CORE_RETROARCH%/flycast_libretro.so %ROM%</command>
+        <platform>dreamcast</platform>
+        <theme>dreamcast</theme>
     </system>
     <system>
         <name>ps2</name>
