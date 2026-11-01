@@ -91,7 +91,7 @@ jobs:
           sdkmanager --list 2>/dev/null | grep -E "system-images;android-3[0-9];(android-tv|google-tv|google_apis);x86" | awk '{print $1}' | sort -u > images.txt
           cat images.txt
           if [ "${{ matrix.mode }}" = tv ]; then
-            want="android-34;android-tv;x86_64 android-34;google-tv;x86_64 android-33;android-tv;x86_64 android-31;android-tv;x86_64 android-34;android-tv;x86 android-33;android-tv;x86 android-30;android-tv;x86"
+            want="android-36;android-tv;x86_64 android-36;google-tv;x86_64"
             device=tv_1080p
           else
             want="android-34;google_apis;x86_64 android-33;google_apis;x86_64"
@@ -102,8 +102,12 @@ jobs:
           echo "Using $img"
           echo "IMG=$img" >> $GITHUB_ENV
           sdkmanager "emulator" "platform-tools" "$img" >/dev/null
-          echo no | avdmanager create avd -n audit -k "$img" -d $device --force
-          printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> ~/.android/avd/audit.avd/config.ini
+          mkdir -p "$HOME/avd"
+          echo "ANDROID_AVD_HOME=$HOME/avd" >> $GITHUB_ENV
+          export ANDROID_AVD_HOME="$HOME/avd"
+          echo no | avdmanager create avd -n audit -k "$img" -d $device -p "$HOME/avd/audit.avd" --force
+          printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> "$HOME/avd/audit.avd/config.ini"
+          ls "$HOME/avd"
       - name: Run the robot
         run: |
           SDK=$ANDROID_HOME
@@ -158,6 +162,7 @@ jobs:
           path: results
       - name: Save results to the audit-results branch
         run: |
+          mkdir -p results
           cd results
           git init -q -b audit-results
           git config user.name "audit robot"
