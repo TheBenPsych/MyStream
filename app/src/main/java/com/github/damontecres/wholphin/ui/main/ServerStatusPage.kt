@@ -267,10 +267,18 @@ class ServerStatusViewModel
 fun ServerStatusPage(
     modifier: Modifier = Modifier,
     viewModel: ServerStatusViewModel = hiltViewModel(),
+    toolsViewModel: ServerToolsViewModel = hiltViewModel(),
 ) {
     val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
     val isAdmin = userDto?.policy?.isAdministrator == true
-    LaunchedEffect(isAdmin) { if (isAdmin) viewModel.keepRefreshing() }
+    LaunchedEffect(isAdmin) {
+        if (isAdmin) {
+            viewModel.keepRefreshing()
+            toolsViewModel.load()
+        }
+    }
+    val toolsState by toolsViewModel.state.collectAsState()
+    var toolsDialog by remember { mutableStateOf<ServerToolsDialog?>(null) }
     val status by viewModel.status.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
     val firstFocus = remember { FocusRequester() }
@@ -360,7 +368,19 @@ fun ServerStatusPage(
                 supportingContent = { Text(p.time) },
             )
         }
+        serverToolsItems(
+            state = toolsState,
+            viewModel = toolsViewModel,
+            showDialog = { toolsDialog = it },
+            sectionTitle = { SectionTitle(it) },
+        )
     }
+    ServerToolsDialogs(
+        state = toolsState,
+        viewModel = toolsViewModel,
+        dialog = toolsDialog,
+        onDismiss = { toolsDialog = null },
+    )
     stopping?.let { w ->
         ConfirmDialog(
             title = "Stop ${w.who}'s stream?",

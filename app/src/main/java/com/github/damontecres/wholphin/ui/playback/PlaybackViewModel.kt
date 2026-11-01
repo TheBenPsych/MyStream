@@ -1022,12 +1022,44 @@ class PlaybackViewModel
             }
         }
 
-        fun changeSubtitleStream(index: Int): Job =
+        private var whatDidTheySayJob: Job? = null
+
+        /**
+         * Benflix "What did they say?": after two quick rewinds, if subtitles are off,
+         * turn them on for a few seconds and then off again. Not saved as a choice.
+         */
+        fun whatDidTheySay() {
+            val currentPlayback = state.value.currentPlayback ?: return
+            if (currentPlayback.subtitleIndex >= 0 || whatDidTheySayJob?.isActive == true) return
+            val subtitles =
+                currentPlayback.mediaSourceInfo.mediaStreams
+                    .orEmpty()
+                    .filter { it.type == MediaStreamType.SUBTITLE && it.isForced != true }
+            val pick =
+                subtitles.firstOrNull { it.language?.lowercase() in listOf("eng", "en", "english") }
+                    ?: subtitles.firstOrNull()
+                    ?: return
+            val offIndex = currentPlayback.subtitleIndex
+            whatDidTheySayJob =
+                viewModelScope.launchIO {
+                    showToast(context, "Subtitles on for a moment", Toast.LENGTH_SHORT)
+                    changeSubtitleStream(pick.index, remember = false).join()
+                    delay(WHAT_DID_THEY_SAY_MS)
+                    if (state.value.currentPlayback?.subtitleIndex == pick.index) {
+                        changeSubtitleStream(offIndex, remember = false).join()
+                    }
+                }
+        }
+
+        fun changeSubtitleStream(
+            index: Int,
+            remember: Boolean = true,
+        ): Job =
             viewModelScope.launchIO {
                 val currentPlayback = state.value.currentPlayback
                 if (currentPlayback != null) {
                     Timber.d("Changing subtitle track to %s", index)
-                    saveTrackSelection(index, MediaStreamType.SUBTITLE)
+                    if (remember) saveTrackSelection(index, MediaStreamType.SUBTITLE)
                     _state.update {
                         it.copy(
                             currentPlayback = it.currentPlayback?.copy(subtitleIndex = index),
@@ -1786,3 +1818,5 @@ class PlaybackViewModel
             }
         }
     }
+
+private const val WHAT_DID_THEY_SAY_MS = 12_000L

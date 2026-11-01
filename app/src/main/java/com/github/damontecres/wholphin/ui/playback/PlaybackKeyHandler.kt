@@ -35,7 +35,21 @@ class PlaybackKeyHandler(
     private val dpadSeekMode: DpadSeekMode,
     private val onSeekToNext: () -> Unit,
     private val onPSeekToPrevious: () -> Unit,
+    private val onDoubleSkipBack: () -> Unit = {},
 ) {
+    private var lastSkipBackAt = 0L
+
+    /** Benflix "What did they say?": two quick rewinds in a row */
+    private fun noteSkipBack() {
+        val now = System.currentTimeMillis()
+        if (now - lastSkipBackAt < DOUBLE_SKIP_BACK_MS) {
+            lastSkipBackAt = 0L
+            onDoubleSkipBack.invoke()
+        } else {
+            lastSkipBackAt = now
+        }
+    }
+
     private var leftHandledByRepeat = false
     private var rightHandledByRepeat = false
 
@@ -55,6 +69,7 @@ class PlaybackKeyHandler(
             if (!controllerViewState.controlsVisible) {
                 if (skipWithLeftRight && isSkipBack(it)) {
                     seekBy(-seekBack)
+                    noteSkipBack()
                 } else if (skipWithLeftRight && isSkipForward(it)) {
                     seekBy(seekForward)
                 } else if (isEnterKey(it) && isDpadSeekVisible()) {
@@ -88,6 +103,7 @@ class PlaybackKeyHandler(
                 Key.MediaRewind, Key.MediaSkipBackward -> {
                     player.seekBack(seekBack)
                     updateSkipIndicator(-seekBack.inWholeMilliseconds)
+                    noteSkipBack()
                 }
 
                 Key.MediaNext -> {
@@ -218,3 +234,5 @@ class PlaybackKeyHandler(
 
     private fun normalizedDurationMs(): Long = getDurationMs().coerceAtLeast(0L)
 }
+
+private const val DOUBLE_SKIP_BACK_MS = 1_200L
