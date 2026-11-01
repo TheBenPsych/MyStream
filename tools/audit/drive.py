@@ -414,14 +414,23 @@ def sign_in():
             shot(f"login-{step}")
         edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
         if find(root, r"Enter Server IP or URL") is not None and edit:
-            if not typed_server:
+            if not typed_server or (edit[0].get("text") or "") != SERVER:
                 if MODE != "tv":  # on TV the box already has focus; pressing OK would open the keyboard
                     tap(edit[0])
                 time.sleep(1)
-                sh("input text '%s'" % SERVER)
+                # clear whatever is there, then type in small pieces (a slow emulator drops letters)
+                sh("input keyevent MOVE_END; " + "input keyevent DEL; " * 5)
+                sh("input keyevent " + " ".join(["DEL"] * 60))
+                for i in range(0, len(SERVER), 6):
+                    sh("input text '%s'" % SERVER[i : i + 6])
+                    time.sleep(0.4)
                 time.sleep(1)
                 typed_server = True
+                field = [n for n in nodes(dump()) if n.get("class", "").endswith("EditText")]
                 shot("typed-server")
+                if field and (field[0].get("text") or "") != SERVER:
+                    log("server address came out wrong, typing again")
+                    continue
             if MODE == "tv":
                 key("ENTER", wait=3)  # the keyboard's Go button
                 if find(dump(), r"Enter Server IP or URL") is not None:
