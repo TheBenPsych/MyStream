@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,8 @@ import com.github.damontecres.wholphin.ui.cards.GenreCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.StudioCard
 import com.github.damontecres.wholphin.ui.cards.ViewMoreCard
+import com.github.damontecres.wholphin.ui.cards.canGrow
+import com.github.damontecres.wholphin.ui.cards.rememberGrowOnFocus
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
@@ -1099,8 +1102,11 @@ fun HomePageCardContent(
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
                     titleOnlyWhenFocused = true,
+                    growOnFocus = true,
                 )
             } else {
+                val interactionSource = remember { MutableInteractionSource() }
+                val grown by rememberGrowOnFocus(interactionSource, canGrow(item, ratio))
                 BannerCard(
                     name = item?.data?.seriesName ?: item?.name,
                     item = item,
@@ -1116,9 +1122,10 @@ fun HomePageCardContent(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     modifier = modifier,
-                    interactionSource = null,
+                    interactionSource = interactionSource,
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
+                    grown = grown,
                 )
             }
         }

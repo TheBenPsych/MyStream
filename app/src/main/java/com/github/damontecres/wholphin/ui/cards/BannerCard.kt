@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,6 +75,7 @@ fun BannerCard(
     imageType: ImageType = ImageType.PRIMARY,
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = true,
+    grown: Boolean = false,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -108,8 +110,31 @@ fun BannerCard(
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongClick by rememberUpdatedState(onLongClick)
 
+    // Benflix: a poster you rest on widens into a picture from the movie with its logo
+    val cardWidth by androidx.compose.animation.core.animateDpAsState(
+        targetValue = cardHeight * if (grown) AspectRatios.WIDE else aspectRatio,
+        animationSpec =
+            androidx.compose.animation.core
+                .tween(GROW_MS),
+        label = "cardWidth",
+    )
+    val bringIntoView =
+        remember {
+            androidx.compose.foundation.relocation
+                .BringIntoViewRequester()
+        }
+    androidx.compose.runtime.LaunchedEffect(grown) {
+        if (grown) {
+            // Once it's wide, scroll the row a little if the bigger tile runs off the screen
+            kotlinx.coroutines.delay(GROW_MS + 30L)
+            bringIntoView.bringIntoView()
+        }
+    }
     Card(
-        modifier = modifier.size(cardHeight * aspectRatio, cardHeight),
+        modifier =
+            modifier
+                .bringIntoViewRequester(bringIntoView)
+                .size(cardWidth, cardHeight),
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
         interactionSource = interactionSource,
@@ -149,6 +174,24 @@ fun BannerCard(
                             .padding(16.dp)
                             .align(Alignment.Center),
                 )
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = grown && item != null,
+                enter =
+                    androidx.compose.animation
+                        .fadeIn(
+                            androidx.compose.animation.core
+                                .tween(GROW_MS),
+                        ),
+                exit =
+                    androidx.compose.animation
+                        .fadeOut(
+                            androidx.compose.animation.core
+                                .tween(100),
+                        ),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (item != null) GrownPreview(item, cardHeight)
             }
             if (played || cornerText != null) {
                 Row(
@@ -242,15 +285,17 @@ fun BannerCardWithTitle(
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = item?.useSeriesForPrimary ?: true,
     titleOnlyWhenFocused: Boolean = false,
+    growOnFocus: Boolean = false,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
+    val grown by rememberGrowOnFocus(interactionSource, growOnFocus && canGrow(item, aspectRatio))
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()
     // Benflix "clean tiles": the art already shows the name, so on TV the title only appears on the
     // tile you're on, and on phones rows show only artwork
     val titleAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (!titleOnlyWhenFocused || focused) 1f else 0f,
+        targetValue = if ((!titleOnlyWhenFocused || focused) && !grown) 1f else 0f,
         animationSpec =
             androidx.compose.animation.core
                 .tween(150),
@@ -259,7 +304,13 @@ fun BannerCardWithTitle(
     val showText = !titleOnlyWhenFocused || isTv
     val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)
-    val width = cardHeight * aspectRationToUse
+    val width by androidx.compose.animation.core.animateDpAsState(
+        targetValue = cardHeight * if (grown) AspectRatios.WIDE else aspectRationToUse,
+        animationSpec =
+            androidx.compose.animation.core
+                .tween(GROW_MS),
+        label = "columnWidth",
+    )
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.width(width),
@@ -280,6 +331,7 @@ fun BannerCardWithTitle(
             imageType = imageType,
             imageContentScale = imageContentScale,
             useSeriesForPrimary = useSeriesForPrimary,
+            grown = grown,
         )
         if (showText) {
             SlidingCardText(focused, modifier = Modifier.alpha(titleAlpha)) {
@@ -313,6 +365,121 @@ fun BannerCardWithTitle(
 }
 
 private const val NEW_DAYS = 7L
+
+/** How long the grow animation takes */
+private const val GROW_MS = 220
+
+/** How long you rest on a poster before it grows */
+private const val GROW_DELAY_MS = 900L
+
+/** Only movie and show posters grow; tiles that are already wide stay as they are */
+fun canGrow(
+    item: BaseItem?,
+    aspectRatio: Float,
+): Boolean = item != null && aspectRatio < 1f && (item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.SERIES)
+
+/**
+ * True once a tile has had focus for a moment (TV only). Moving on right away doesn't grow anything,
+ * so scrolling quickly along a row stays smooth.
+ */
+@Composable
+fun rememberGrowOnFocus(
+    interactionSource: MutableInteractionSource,
+    enabled: Boolean,
+): androidx.compose.runtime.State<Boolean> {
+    val focused by interactionSource.collectIsFocusedAsState()
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    val state = remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(focused, enabled, isTv) {
+        if (!focused || !enabled || !isTv) {
+            state.value = false
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(GROW_DELAY_MS)
+        state.value = true
+    }
+    return state
+}
+
+/** The inside of a grown tile: a wide picture from the movie, its logo, and year, rating and length */
+@Composable
+private fun GrownPreview(
+    item: BaseItem,
+    cardHeight: Dp,
+) {
+    val imageUrlService = LocalImageUrlService.current
+    val backdrop =
+        remember(item.id) {
+            imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = 780)
+        }
+    val details =
+        remember(item.id) {
+            listOfNotNull(
+                item.data.productionYear?.toString(),
+                item.data.officialRating,
+                item.data.runTimeTicks
+                    ?.takeIf { item.type == BaseItemKind.MOVIE }
+                    ?.let { ticks ->
+                        val minutes = ticks / 600_000_000L
+                        if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
+                    },
+                item.data.childCount
+                    ?.takeIf { item.type == BaseItemKind.SERIES && it > 0 }
+                    ?.let { if (it == 1) "1 season" else "$it seasons" },
+            ).joinToString("  ·  ")
+        }
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+    ) {
+        AsyncImage(
+            model = backdrop,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            0.35f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = .85f),
+                        ),
+                    ),
+        )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            com.github.damontecres.wholphin.ui.components.TitleOrLogo(
+                title = item.title,
+                logoImageUrl =
+                    com.github.damontecres.wholphin.ui.components
+                        .rememberLogoUrl(item),
+                showLogo = true,
+                logoHeight = cardHeight * .3f,
+                logoMaxWidth = cardHeight,
+            )
+            if (details.isNotEmpty()) {
+                Text(
+                    text = details,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = .85f),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
 
 /**
  * Whether to show a "New" badge: a series with unwatched episodes added recently,
