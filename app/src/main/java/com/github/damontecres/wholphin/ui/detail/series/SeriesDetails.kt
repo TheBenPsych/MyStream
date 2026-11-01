@@ -571,6 +571,12 @@ fun SeriesDetailsContent(
                         }
                     }
                 }
+                item {
+                    PreviouslyOn(
+                        seriesId = series.id,
+                        modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                    )
+                }
                 // Netflix-style: pick a season, its episodes show right here
                 if (inlineEpisodes.isNotEmpty()) {
                     item {
