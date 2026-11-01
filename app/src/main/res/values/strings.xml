@@ -1048,6 +1048,7 @@
     <string name="downloaded_play">Downloaded · Play</string>
     <string name="download_failed">Download failed · Tap to try again</string>
     <string name="download_failed_short">Download failed</string>
+    <string name="downloads_whos_watching">Whose downloads?</string>
     <string name="download_delete_title">Delete this download?</string>
     <string name="downloads_none">Nothing downloaded yet. Tap Download on a movie or episode to save it on this phone and watch it without internet. Downloads only happen on Wi-Fi.</string>
     <string name="phone_my_benflix">My Benflix</string>

@@ -134,6 +134,14 @@ fun MainContent(
                     }
                 },
             )
+            // Benflix on phones: watch downloads from the start screens, even with no internet
+            if (backStack.lastOrNull() !is SetupDestination.AppContent) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    com.github.damontecres.wholphin.ui.downloads.OfflineDownloadsButton(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
             val screenSaverState by screensaverService.state.collectAsState()
             if (screenSaverState.enabled || screenSaverState.enabledTemp) {
                 AnimatedVisibility(
