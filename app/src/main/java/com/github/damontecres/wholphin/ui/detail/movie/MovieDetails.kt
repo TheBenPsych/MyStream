@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +59,9 @@ import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.detail.DetailsTrailer
+import com.github.damontecres.wholphin.ui.detail.contentAlpha
+import com.github.damontecres.wholphin.ui.detail.rememberTrailerCinemaState
+import com.github.damontecres.wholphin.ui.detail.wakeOnInput
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
@@ -326,13 +330,18 @@ fun MovieDetailsContent(
 
     val listState = rememberLazyListState()
     val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
-    Box(modifier = modifier) {
-        DetailsTrailer(item = movie, active = atTop)
+    val cinema = rememberTrailerCinemaState()
+    val contentAlpha = cinema.contentAlpha()
+    Box(modifier = modifier.wakeOnInput(cinema)) {
+        DetailsTrailer(item = movie, active = atTop, cinemaState = cinema)
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 8.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = contentAlpha },
         ) {
             item {
                 Column(

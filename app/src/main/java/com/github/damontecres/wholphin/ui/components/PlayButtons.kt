@@ -54,6 +54,7 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.data.model.LocalTrailer
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
@@ -442,7 +443,7 @@ fun TrailerButton(
         title =
             if (trailers.isEmpty()) {
                 R.string.no_trailers
-            } else if (trailers.size == 1) {
+            } else if (trailers.size == 1 || trailers.any { it is LocalTrailer }) {
                 R.string.play_trailer
             } else {
                 R.string.trailers_title
@@ -450,7 +451,11 @@ fun TrailerButton(
         iconStringRes = R.string.fa_film,
         enabled = trailers.isNotEmpty(),
         onClick = {
-            if (trailers.size == 1) {
+            // A downloaded (Trailarr) trailer plays straight away, no "local or YouTube" pop-up
+            val local = trailers.firstOrNull { it is LocalTrailer }
+            if (local != null) {
+                trailerOnClick.invoke(local)
+            } else if (trailers.size == 1) {
                 trailerOnClick.invoke(trailers.first())
             } else {
                 showDialog = true
