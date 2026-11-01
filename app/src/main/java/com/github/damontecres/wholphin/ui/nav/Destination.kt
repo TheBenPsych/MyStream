@@ -169,6 +169,10 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Full-screen trailers on the TV, one after another */
+    @Serializable
+    data object TrailerShuffle : Destination(true)
+
     /** Two quick questions for a group, then picks everyone will like */
     @Serializable
     data object MoodQuiz : Destination(false)

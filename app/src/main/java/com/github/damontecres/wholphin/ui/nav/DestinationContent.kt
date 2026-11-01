@@ -357,6 +357,11 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.TrailerShuffle -> {
+            com.github.damontecres.wholphin.ui.main
+                .TrailerShufflePage(modifier)
+        }
+
         Destination.MoodQuiz -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

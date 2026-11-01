@@ -515,7 +515,19 @@ fun NavDrawer(
         tabs.filterIndexed { i, _ ->
             i != 0 && i != tabs.lastIndex &&
                 i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
-        }
+        } +
+            listOf(
+                TopNavTab(
+                    title = stringResource(R.string.trailer_shuffle),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.TrailerShuffle) },
+                ),
+                TopNavTab(
+                    title = stringResource(R.string.mood_quiz),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
+                ),
+            )
     Column(modifier = modifier) {
         TopNavBar(
             tabs = mainTabs,
