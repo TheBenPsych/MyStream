@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,11 +26,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +71,8 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -86,6 +95,7 @@ import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.abs
 
 /** One clip in the feed: a movie or show and its downloaded (Trailarr) trailer */
 data class Clip(
@@ -141,10 +151,17 @@ fun ClipsPage(
             onPauseOrDispose { viewModel.pause() }
         }
         DisposableEffect(Unit) { onDispose { viewModel.pause() } }
+        val scope = rememberCoroutineScope()
         VerticalPager(
             state = pagerState,
             beyondViewportPageCount = 1,
-            modifier = Modifier.fillMaxSize(),
+            // The feed handles the finger itself (see clipSwipes), so the buttons and video on a clip
+            // can never swallow the swipe
+            userScrollEnabled = false,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .clipSwipes(pagerState, scope),
         ) { page ->
             val clip = state.clips[page]
             ClipCard(
@@ -159,6 +176,57 @@ fun ClipsPage(
         }
     }
 }
+
+/**
+ * Swipe up for the next clip, down for the one before, like TikTok.
+ * The finger is watched before anything on the clip sees it, so a swipe that starts on the
+ * picture, the video or a button still moves the feed. A plain tap is left alone (mute, Play, My List...).
+ */
+internal fun Modifier.clipSwipes(
+    pagerState: PagerState,
+    scope: CoroutineScope,
+): Modifier =
+    pointerInput(pagerState) {
+        var settle: Job? = null
+        val flingSpeed = CLIPS_FLING_DP_PER_SEC.dp.toPx()
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            // Grabbing the feed while it is still sliding stops it where it is
+            settle?.cancel()
+            val startPage = pagerState.currentPage
+            val tracker = VelocityTracker()
+            tracker.addPosition(down.uptimeMillis, down.position)
+            var dragging = false
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                tracker.addPosition(change.uptimeMillis, change.position)
+                val moved = change.position - down.position
+                if (!dragging && abs(moved.y) > viewConfiguration.touchSlop && abs(moved.y) > abs(moved.x)) {
+                    dragging = true
+                }
+                if (dragging) {
+                    pagerState.dispatchRawDelta(-(change.position.y - change.previousPosition.y))
+                    change.consume()
+                }
+                if (!change.pressed) break
+            }
+            if (dragging) {
+                val speed = tracker.calculateVelocity().y
+                val pulled = pagerState.currentPage + pagerState.currentPageOffsetFraction - startPage
+                val target =
+                    when {
+                        speed < -flingSpeed || pulled > CLIPS_SWIPE_FRACTION -> startPage + 1
+                        speed > flingSpeed || pulled < -CLIPS_SWIPE_FRACTION -> startPage - 1
+                        else -> startPage
+                    }.coerceIn(0, (pagerState.pageCount - 1).coerceAtLeast(0))
+                settle = scope.launch { pagerState.animateScrollToPage(target) }
+            } else if (pagerState.currentPageOffsetFraction != 0f) {
+                // A tap while the feed was half-way: finish the slide
+                settle = scope.launch { pagerState.animateScrollToPage(pagerState.currentPage) }
+            }
+        }
+    }
 
 @Composable
 private fun ClipCard(
@@ -478,6 +546,10 @@ class ClipsViewModel
     }
 
 private const val CLIPS_FETCH = 80
+
+// A quick flick this fast moves to the next clip, or a slow drag past a quarter of the screen
+private const val CLIPS_FLING_DP_PER_SEC = 300
+private const val CLIPS_SWIPE_FRACTION = .25f
 private const val CLIPS_FIRST = 4
 private const val CLIPS_PARALLEL = 8
 private const val CLIPS_MIN_BUFFER_MS = 8_000
