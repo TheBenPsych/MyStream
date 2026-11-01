@@ -8,11 +8,13 @@ import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
+import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.updateSearchPreferences
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.KeyValueService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LiveTvService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
@@ -45,6 +47,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
@@ -81,8 +84,9 @@ class SearchViewModel
         private val navDrawerService: NavDrawerService,
     ) : ViewModel(),
         ContextMenuProvider {
+        // Benflix: never offer requests on the Kids profile
         val seerrActive =
-            seerrService.active.stateIn(
+            seerrService.active.combine(KidsMode.active) { active, kids -> active && !kids }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
                 initialValue = false,
@@ -348,11 +352,13 @@ class SearchViewModel
             viewModelScope.launchIO {
                 if (seerrActive.first() && state.value.discoverEnabled) {
                     _state.update { it.copy(seerrResults = SearchResult.Searching) }
+                    // Benflix "Ask for it": only things that are not on Benflix yet
                     val results =
                         seerrService
                             .search(query)
                             .map { seerrService.createDiscoverItem(it) }
                             .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                            .filter { it.availability != SeerrAvailability.AVAILABLE }
                     _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
                 }
             }

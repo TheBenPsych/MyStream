@@ -28,6 +28,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -198,6 +199,22 @@ fun MyBenflixPage(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+        val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
+        if (!kids) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                if (userDto?.policy?.isAdministrator == true) {
+                    Button(onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) }) {
+                        Text("Server")
+                    }
+                }
+                Button(onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) }) {
+                    Text("How to use Benflix")
+                }
             }
         }
         when (val list = rows) {

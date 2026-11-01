@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +39,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -175,9 +177,47 @@ fun PreferencesContent(
 
     // Benflix: the screensaver is TV-only, so its settings are hidden on phones
     val isTv = rememberIsTv()
+    val currentUserDto by viewModel.currentUserDto.collectAsState()
+    val isAdmin = currentUserDto?.policy?.isAdministrator == true
+
+    // Benflix: settings search (type a word, see every matching setting from all sections)
+    var settingsQuery by rememberSaveable { mutableStateOf("") }
+    var showSettingsSearch by remember { mutableStateOf(false) }
+    val showSearchBox = preferenceScreenOption == PreferenceScreenOption.BASIC
+
+    fun isShown(pref: AppPreference<AppPreferences, *>): Boolean =
+        (isTv || pref != AppPreference.ScreensaverSettings) &&
+            (!isTv || pref != AppPreference.MobileDataQualityPref) &&
+            (isAdmin || pref != AppPreference.ServerPage)
+
+    val searchResults =
+        remember(settingsQuery, preferences, isTv, isAdmin) {
+            if (settingsQuery.isBlank()) {
+                null
+            } else {
+                val all =
+                    (basicPreferences + advancedPreferences)
+                        .flatMap { group ->
+                            group.preferences +
+                                group.conditionalPreferences
+                                    .filter { it.condition.invoke(preferences) }
+                                    .flatMap { it.preferences }
+                        }.distinct()
+                listOf(
+                    PreferenceGroup(
+                        title = R.string.benflix_settings_search_results,
+                        preferences =
+                            all.filter { pref ->
+                                isShown(pref) &&
+                                    resources.getString(pref.title).contains(settingsQuery.trim(), ignoreCase = true)
+                            },
+                    ),
+                )
+            }
+        }
     val prefList =
         when (preferenceScreenOption) {
-            PreferenceScreenOption.BASIC -> basicPreferences
+            PreferenceScreenOption.BASIC -> searchResults ?: basicPreferences
             PreferenceScreenOption.ADVANCED -> advancedPreferences
             PreferenceScreenOption.EXO_PLAYER -> ExoPlayerPreferences
             PreferenceScreenOption.MPV -> MpvPreferences
@@ -304,7 +344,35 @@ fun PreferencesContent(
                     }
                 }
 
+                if (showSearchBox) {
+                    item {
+                        ClickPreference(
+                            title = stringResource(R.string.benflix_settings_search),
+                            onClick = { showSettingsSearch = true },
+                            summary = settingsQuery.ifBlank { null },
+                            onLongClick = { settingsQuery = "" },
+                        )
+                    }
+                    if (searchResults != null && searchResults.first().preferences.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.benflix_settings_no_results),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                            )
+                        }
+                    }
+                }
                 prefList.forEachIndexed { groupIndex, group ->
+                    val groupPreferences =
+                        (
+                            group.preferences +
+                                group.conditionalPreferences
+                                    .filter { it.condition.invoke(preferences) }
+                                    .map { it.preferences }
+                                    .flatten()
+                        ).filter { isShown(it) }
+                    if (groupPreferences.isEmpty()) return@forEachIndexed
                     item {
                         Text(
                             text = stringResource(group.title),
@@ -317,17 +385,9 @@ fun PreferencesContent(
                                     .padding(top = 8.dp, bottom = 4.dp),
                         )
                     }
-                    val groupPreferences =
-                        (
-                            group.preferences +
-                                group.conditionalPreferences
-                                    .filter { it.condition.invoke(preferences) }
-                                    .map { it.preferences }
-                                    .flatten()
-                        ).filter { isTv || it != AppPreference.ScreensaverSettings }
                     groupPreferences.forEachIndexed { prefIndex, pref ->
                         pref as AppPreference<AppPreferences, Any>
-                        val isFirst = groupIndex == 0 && prefIndex == 0 && !showUpdate
+                        val isFirst = groupIndex == 0 && prefIndex == 0 && !showUpdate && !showSearchBox
                         val isLast =
                             groupIndex == prefList.lastIndex && prefIndex == groupPreferences.lastIndex
                         item {
@@ -840,6 +900,22 @@ fun PreferencesContent(
                 SpeedMeter(ping = ping)
             }
         }
+    }
+    if (showSettingsSearch) {
+        StringInputDialog(
+            input =
+                StringInput(
+                    title = stringResource(R.string.benflix_settings_search),
+                    value = settingsQuery,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    onSubmit = {},
+                ),
+            onSave = {
+                showSettingsSearch = false
+                settingsQuery = it
+            },
+            onDismissRequest = { showSettingsSearch = false },
+        )
     }
     if (showLocaleChoiceDialog) {
         LocaleChoiceDialog(

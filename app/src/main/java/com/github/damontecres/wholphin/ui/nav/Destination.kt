@@ -206,6 +206,14 @@ sealed class Destination(
         val gameName: String,
     ) : Destination(true)
 
+    /** Benflix: simple help page (remote buttons and tips) */
+    @Serializable
+    data object HowTo : Destination(false)
+
+    /** Benflix: admin-only page showing who's watching and how the server is doing */
+    @Serializable
+    data object ServerStatus : Destination(false)
+
     @Serializable
     data object UpdateApp : Destination(true)
 

@@ -28,6 +28,7 @@ import androidx.media3.session.MediaSession
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.size.Size
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ItemPlaybackDao
 import com.github.damontecres.wholphin.data.ItemPlaybackRepository
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -44,6 +45,7 @@ import com.github.damontecres.wholphin.preferences.ShowNextUpWhen
 import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.enabled
+import com.github.damontecres.wholphin.services.BenflixMobileData
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -54,6 +56,7 @@ import com.github.damontecres.wholphin.services.PlaylistCreationResult
 import com.github.damontecres.wholphin.services.PlaylistCreator
 import com.github.damontecres.wholphin.services.RefreshRateService
 import com.github.damontecres.wholphin.services.ScreensaverService
+import com.github.damontecres.wholphin.services.SmartResume
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.formatBitrate
@@ -293,9 +296,18 @@ class PlaybackViewModel
         private suspend fun init() {
             musicService.stop()
             this.preferences = userPreferencesService.getCurrent()
-            val maxBitrate =
+            val settingsMaxBitrate =
                 preferences.appPreferences.playbackPreferences.maxBitrate
                     .takeIf { it > 0 } ?: AppPreference.DEFAULT_BITRATE
+            // Benflix: on mobile data (not Wi-Fi), use a lower quality to save data
+            val mobileCap = BenflixMobileData.bitrateCap(context, preferences.appPreferences.benflixPreferences)
+            val maxBitrate =
+                if (mobileCap != null && mobileCap < settingsMaxBitrate) {
+                    showToast(context, context.getString(R.string.benflix_data_saver_toast), Toast.LENGTH_SHORT)
+                    mobileCap
+                } else {
+                    settingsMaxBitrate
+                }
             _state.update {
                 it.copy(
                     nextUp = null,
@@ -332,6 +344,21 @@ class PlaybackViewModel
                 }
             this.itemId = itemId
             val queriedItem = api.userLibraryApi.getItem(itemId).content
+            // Benflix Smart resume: when coming back to something, start a few seconds early
+            val smartRewindMs =
+                if (positionMs > 0 && !preferences.appPreferences.benflixPreferences.smartResumeOff) {
+                    SmartResume.rewindMs(queriedItem.userData?.lastPlayedDate)
+                } else {
+                    0L
+                }
+            val startPositionMs = (positionMs - smartRewindMs).coerceAtLeast(0L)
+            if (smartRewindMs > 0 && startPositionMs > 0) {
+                showToast(
+                    context,
+                    context.getString(R.string.benflix_smart_resume_toast, (smartRewindMs / 1000).toInt()),
+                    Toast.LENGTH_SHORT,
+                )
+            }
             val playlistItem =
                 if (queriedItem.type.playable) {
                     PlaylistItem.Media(BaseItem(queriedItem, false))
@@ -410,7 +437,7 @@ class PlaybackViewModel
             val played =
                 play(
                     firstItem,
-                    positionMs,
+                    startPositionMs,
                     forceTranscoding,
                 )
             if (!played) {

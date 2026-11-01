@@ -50,12 +50,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
@@ -73,6 +76,7 @@ import com.github.damontecres.wholphin.ui.detail.GridItemDetails
 import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
+import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -463,10 +467,24 @@ fun SearchPage(
                             )
                         }
 
+                        if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
+                            // Benflix "Ask for it": point people to switching on requests
+                            item {
+                                ListItem(
+                                    selected = false,
+                                    onClick = {
+                                        viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
+                                    },
+                                    headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
+                                    supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
+                                    modifier = Modifier.padding(top = 12.dp),
+                                )
+                            }
+                        }
                         if (seerrActive && state.discoverEnabled) {
                             item {
                                 SearchRowResult(
-                                    title = R.string.discover,
+                                    title = R.string.benflix_not_on_benflix,
                                     result = state.seerrResults,
                                     rowIndex = SEERR_ROW,
                                     position = position,

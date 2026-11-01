@@ -262,4 +262,34 @@ message AppPreferences {
   PhotoPreferences photo_preferences = 12;
   MusicPreferences music_preferences = 13;
   ExperimentalPreferences experimental_preferences = 14;
+  BenflixPreferences benflix_preferences = 15;
+}
+
+// Benflix: personal settings. They are saved to the person's Jellyfin account too,
+// so they follow them to other TVs and phones (see BenflixSettingsSync).
+message BenflixPreferences {
+  BenflixAccent accent = 1;
+  bool late_night_look = 2;
+  // 0 means the default (22 = 10 PM)
+  int32 late_night_start_hour = 3;
+  // Smart resume is on unless this is set
+  bool smart_resume_off = 4;
+  MobileDataQuality mobile_data_quality = 5;
+}
+
+enum BenflixAccent {
+  ACCENT_RED = 0;
+  ACCENT_BLUE = 1;
+  ACCENT_GREEN = 2;
+  ACCENT_GOLD = 3;
+  ACCENT_PURPLE = 4;
+  ACCENT_PINK = 5;
+  ACCENT_TEAL = 6;
+  ACCENT_ORANGE = 7;
+}
+
+enum MobileDataQuality {
+  MOBILE_BALANCED = 0;
+  MOBILE_SAVE_DATA = 1;
+  MOBILE_BEST = 2;
 }

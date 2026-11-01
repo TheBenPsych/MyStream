@@ -2,12 +2,15 @@ package com.github.damontecres.wholphin.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.preferences.AppThemeColors
+import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.theme.colors.BlueThemeColors
 import com.github.damontecres.wholphin.ui.theme.colors.BoldBlueThemeColors
@@ -40,6 +43,7 @@ fun getThemeColors(appThemeColors: AppThemeColors): ThemeColors =
 fun WholphinTheme(
     darkTheme: Boolean = true,
     appThemeColors: AppThemeColors = AppThemeColors.PURPLE,
+    accent: BenflixAccent = BenflixAccent.ACCENT_RED,
     content: @Composable () -> Unit,
 ) {
     val themeColors = getThemeColors(appThemeColors)
@@ -64,10 +68,17 @@ fun WholphinTheme(
                 onSurface = Color.White,
                 onSurfaceVariant = Color(0xFFDDE6FF),
             )
+        } else if (accent != BenflixAccent.ACCENT_RED && accent != BenflixAccent.UNRECOGNIZED) {
+            // Benflix profile colour: buttons and highlights use the person's own colour
+            baseScheme.copy(primary = accent.toColor(), onPrimary = Color.White)
         } else {
             baseScheme
         }
-    CompositionLocalProvider(LocalTheme provides appThemeColors) {
+    val accentColor = if (kids) KidsYellow else accent.toColor()
+    CompositionLocalProvider(
+        LocalTheme provides appThemeColors,
+        LocalBenflixAccent provides accentColor,
+    ) {
         androidx.compose.material3.MaterialTheme(
             colorScheme = if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial,
             typography = AppMaterialTypography,
@@ -85,5 +96,26 @@ private val KidsYellow = Color(0xFFFFC400)
 private val KidsBlue = Color(0xFF0E2A63)
 private val KidsBlueLight = Color(0xFF1B3F8A)
 
-/** Benflix red, used for watch progress bars everywhere (cards, banners, player). */
-val BenflixRed = Color(0xFFE50914)
+/** Benflix red, the default profile colour */
+val BenflixRedBase = Color(0xFFE50914)
+
+/** The current profile's colour (Benflix red unless they picked another one) */
+val LocalBenflixAccent = staticCompositionLocalOf { BenflixRedBase }
+
+/** Used for watch progress bars everywhere (cards, banners, player). Follows the profile colour. */
+val BenflixRed: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalBenflixAccent.current
+
+fun BenflixAccent.toColor(): Color =
+    when (this) {
+        BenflixAccent.ACCENT_RED, BenflixAccent.UNRECOGNIZED -> BenflixRedBase
+        BenflixAccent.ACCENT_BLUE -> Color(0xFF2F7DF6)
+        BenflixAccent.ACCENT_GREEN -> Color(0xFF2FB862)
+        BenflixAccent.ACCENT_GOLD -> Color(0xFFE8A92B)
+        BenflixAccent.ACCENT_PURPLE -> Color(0xFF8B5CF6)
+        BenflixAccent.ACCENT_PINK -> Color(0xFFE5488F)
+        BenflixAccent.ACCENT_TEAL -> Color(0xFF14A8A0)
+        BenflixAccent.ACCENT_ORANGE -> Color(0xFFF26B1D)
+    }

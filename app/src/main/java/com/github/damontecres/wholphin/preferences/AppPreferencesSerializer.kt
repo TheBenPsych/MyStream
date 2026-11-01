@@ -208,6 +208,11 @@ class AppPreferencesSerializer
 
 inline fun AppPreferences.update(block: AppPreferences.Builder.() -> Unit): AppPreferences = toBuilder().apply(block).build()
 
+inline fun AppPreferences.updateBenflixPreferences(block: BenflixPreferences.Builder.() -> Unit): AppPreferences =
+    update {
+        benflixPreferences = benflixPreferences.toBuilder().apply(block).build()
+    }
+
 inline fun AppPreferences.updatePlaybackPreferences(block: PlaybackPreferences.Builder.() -> Unit): AppPreferences =
     update {
         playbackPreferences = playbackPreferences.toBuilder().apply(block).build()

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings sections -->
+    <string name="benflix_settings_profile">Profile</string>
+    <string name="benflix_settings_watching">Watching</string>
+    <string name="benflix_settings_look">Look</string>
+    <string name="benflix_settings_phone">Phone &amp; mobile data</string>
+    <string name="benflix_settings_help">Help</string>
+    <string name="benflix_settings_search">Search settings</string>
+    <string name="benflix_settings_search_results">Matching settings</string>
+    <string name="benflix_settings_no_results">No settings match that</string>
+
+    <!-- Profile colour -->
+    <string name="benflix_profile_color">Profile colour</string>
+    <string name="benflix_profile_color_summary">Used for progress bars and buttons</string>
+    <string name="benflix_color_red">Benflix red</string>
+    <string name="benflix_color_blue">Blue</string>
+    <string name="benflix_color_green">Green</string>
+    <string name="benflix_color_gold">Gold</string>
+    <string name="benflix_color_purple">Purple</string>
+    <string name="benflix_color_pink">Pink</string>
+    <string name="benflix_color_teal">Teal</string>
+    <string name="benflix_color_orange">Orange</string>
+    <string-array name="benflix_accent_colors">
+        <item>@string/benflix_color_red</item>
+        <item>@string/benflix_color_blue</item>
+        <item>@string/benflix_color_green</item>
+        <item>@string/benflix_color_gold</item>
+        <item>@string/benflix_color_purple</item>
+        <item>@string/benflix_color_pink</item>
+        <item>@string/benflix_color_teal</item>
+        <item>@string/benflix_color_orange</item>
+    </string-array>
+
+    <!-- Late-night look -->
+    <string name="benflix_late_night_look">Late-night look</string>
+    <string name="benflix_late_night_look_on">Menus dim a little at night (not the movie itself)</string>
+    <string name="benflix_late_night_look_off">Off</string>
+    <string name="benflix_late_night_start">Late-night look starts at</string>
+    <string-array name="benflix_late_night_hours">
+        <item>8 PM</item>
+        <item>9 PM</item>
+        <item>10 PM</item>
+        <item>11 PM</item>
+        <item>Midnight</item>
+    </string-array>
+
+    <!-- Smart resume -->
+    <string name="benflix_smart_resume">Smart resume</string>
+    <string name="benflix_smart_resume_on">Starts a few seconds early when you come back to something</string>
+    <string name="benflix_smart_resume_toast">Rewound %1$d seconds so you can catch up</string>
+
+    <!-- Mobile data -->
+    <string name="benflix_mobile_data_quality">Quality on mobile data</string>
+    <string name="benflix_mobile_data_quality_summary">Used when the phone is not on Wi-Fi</string>
+    <string-array name="benflix_mobile_data_quality_options">
+        <item>Save data (about 0.7 GB an hour)</item>
+        <item>Balanced (about 1.4 GB an hour)</item>
+        <item>Best (full quality, uses a lot of data)</item>
+    </string-array>
+    <string name="benflix_data_saver_toast">On mobile data, so Benflix is using a lower quality to save data</string>
+
+    <!-- How to -->
+    <string name="benflix_how_to">How to use Benflix</string>
+    <string name="benflix_how_to_summary">What the remote buttons do, and handy tips</string>
+
+    <!-- Server page -->
+    <string name="benflix_server_page">Server</string>
+    <string name="benflix_server_page_summary">Who\'s watching now and how the server is doing (admin only)</string>
+
+    <!-- Settings follow you -->
+    <string name="benflix_settings_restored">Your Benflix settings came with you</string>
+
+    <!-- Ask for it -->
+    <string name="benflix_not_on_benflix">Not on Benflix yet</string>
+    <string name="benflix_ask_to_add">Ask Ben to add it</string>
+    <string name="benflix_connect_requests">Can\'t find it? Turn on requests</string>
+    <string name="benflix_connect_requests_summary">Sign in to requests once (Settings, More, Seerr) and you can ask for any movie or show</string>
+</resources>
