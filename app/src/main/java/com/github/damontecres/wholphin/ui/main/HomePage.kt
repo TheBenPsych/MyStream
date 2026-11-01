@@ -131,6 +131,8 @@ fun HomePage(
     val newest = state.newest
     val myList = state.myList
     val genreRows = state.genreRows
+    val animeTop = state.animeTop
+    val animeRows = state.animeRows
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     LifecycleStartEffect(Unit) {
         onStopOrDispose { viewModel.previewTrailer(null) }
@@ -286,6 +288,8 @@ fun HomePage(
                 newest = newest,
                 myList = myList,
                 genreRows = genreRows,
+                animeTop = animeTop,
+                animeRows = animeRows,
                 onClickStudio = viewModel::openStudio,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
@@ -384,6 +388,8 @@ fun HomePageContent(
     newest: ThemedRow? = null,
     myList: ThemedRow? = null,
     genreRows: List<ThemedRow> = emptyList(),
+    animeTop: List<BaseItem> = emptyList(),
+    animeRows: List<ThemedRow> = emptyList(),
     onClickStudio: (StudioTile) -> Unit = {},
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
@@ -742,6 +748,23 @@ fun HomePageContent(
                             )
                         }
                     }
+                    // Top 10 anime: the Anime Movies and Anime Shows libraries together
+                    if (animeTop.isNotEmpty()) {
+                        item(key = "animeTop10") {
+                            Top10Row(
+                                title = stringResource(R.string.top_10_anime),
+                                items = animeTop,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in animeTop) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
                     if (trendingMissing.isNotEmpty()) {
                         item(key = "trendingMissing") {
                             TrendingMissingRow(
@@ -848,6 +871,23 @@ fun HomePageContent(
                     }
                     myList?.let { row ->
                         item(key = "myList") {
+                            PosterRow(
+                                title = row.title,
+                                items = row.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    // Anime picks: because you watched an anime, hidden gems, anime by genre
+                    animeRows.forEachIndexed { index, row ->
+                        item(key = "anime$index") {
                             PosterRow(
                                 title = row.title,
                                 items = row.items,
