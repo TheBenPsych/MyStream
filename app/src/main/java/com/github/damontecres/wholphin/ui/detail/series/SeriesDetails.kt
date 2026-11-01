@@ -36,6 +36,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +90,9 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.detail.DetailsTrailer
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
+import com.github.damontecres.wholphin.ui.detail.contentAlpha
+import com.github.damontecres.wholphin.ui.detail.rememberTrailerCinemaState
+import com.github.damontecres.wholphin.ui.detail.wakeOnInput
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
 import com.github.damontecres.wholphin.ui.letNotEmpty
@@ -390,14 +394,17 @@ fun SeriesDetailsContent(
 
     val listState = rememberLazyListState()
     val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val cinema = rememberTrailerCinemaState()
+    val contentAlpha = cinema.contentAlpha()
     Box(
-        modifier = modifier,
+        modifier = modifier.wakeOnInput(cinema),
     ) {
-        DetailsTrailer(item = series, active = atTop)
+        DetailsTrailer(item = series, active = atTop, cinemaState = cinema)
         Column(
             modifier =
                 Modifier
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = contentAlpha },
         ) {
             LazyColumn(
                 state = listState,

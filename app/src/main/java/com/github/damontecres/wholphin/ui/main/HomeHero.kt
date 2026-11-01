@@ -227,13 +227,16 @@ fun HeroPillButton(
 fun HeroTrailer(
     player: Player,
     modifier: Modifier = Modifier,
+    expand: Float = 0f,
 ) {
+    // expand goes 0 -> 1 to grow the trailer to full screen and fade its dark edges away
     val background = MaterialTheme.colorScheme.background
+    val scrim = 1f - expand
     Box(
         modifier =
             modifier
-                .fillMaxWidth(BACKDROP_WIDTH_FRACTION)
-                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION),
+                .fillMaxWidth(BACKDROP_WIDTH_FRACTION + (1f - BACKDROP_WIDTH_FRACTION) * expand)
+                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION + (1f - BACKDROP_HEIGHT_FRACTION) * expand),
     ) {
         PlayerSurface(
             player = player,
@@ -246,8 +249,8 @@ fun HeroTrailer(
                     .fillMaxSize()
                     .background(
                         Brush.horizontalGradient(
-                            0f to background,
-                            .35f to background.copy(alpha = .4f),
+                            0f to background.copy(alpha = scrim),
+                            .35f to background.copy(alpha = .4f * scrim),
                             .6f to Color.Transparent,
                         ),
                     ),
@@ -259,7 +262,7 @@ fun HeroTrailer(
                     .background(
                         Brush.verticalGradient(
                             .6f to Color.Transparent,
-                            1f to background,
+                            1f to background.copy(alpha = .3f + .7f * scrim),
                         ),
                     ),
         )

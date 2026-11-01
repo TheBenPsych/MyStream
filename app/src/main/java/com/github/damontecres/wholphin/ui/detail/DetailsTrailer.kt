@@ -1,12 +1,22 @@
 package com.github.damontecres.wholphin.ui.detail
 
 import android.content.Context
+import android.os.SystemClock
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -33,6 +43,45 @@ import org.jellyfin.sdk.api.client.extensions.videosApi
 import javax.inject.Inject
 
 /**
+ * Lets the trailer take over the screen, Netflix-style: a few seconds after the trailer starts
+ * (and nothing was pressed), the page text fades away and the trailer grows to full screen.
+ * Any remote button brings everything back.
+ */
+@Stable
+class TrailerCinemaState {
+    var playing by mutableStateOf(false)
+    var cinema by mutableStateOf(false)
+    var lastInput by mutableLongStateOf(0L)
+}
+
+@Composable
+fun rememberTrailerCinemaState(): TrailerCinemaState {
+    val state = remember { TrailerCinemaState() }
+    LaunchedEffect(state.playing, state.lastInput) {
+        state.cinema = false
+        if (state.playing) {
+            delay(CINEMA_DELAY_MS)
+            state.cinema = true
+        }
+    }
+    return state
+}
+
+/** Put on the page's outer Box so any button press wakes the page back up */
+fun Modifier.wakeOnInput(state: TrailerCinemaState): Modifier =
+    onPreviewKeyEvent {
+        state.lastInput = SystemClock.uptimeMillis()
+        false
+    }
+
+/** How visible the page text should be (fades out while the trailer is full screen) */
+@Composable
+fun TrailerCinemaState.contentAlpha(): Float {
+    val alpha by animateFloatAsState(if (cinema) 0f else 1f, tween(CINEMA_FADE_MS), label = "cinemaContent")
+    return alpha
+}
+
+/**
  * Netflix-style: after a few seconds on a movie or show page, its local trailer plays muted
  * behind the title. Stops when [active] turns false (scrolled down or left the page).
  */
@@ -40,6 +89,7 @@ import javax.inject.Inject
 fun BoxScope.DetailsTrailer(
     item: BaseItem?,
     active: Boolean,
+    cinemaState: TrailerCinemaState? = null,
     viewModel: DetailsTrailerViewModel = hiltViewModel(),
 ) {
     val playing by viewModel.playing.collectAsState()
@@ -48,9 +98,17 @@ fun BoxScope.DetailsTrailer(
         viewModel.preview(if (active) item else null)
         onPauseOrDispose { viewModel.preview(null) }
     }
-    if (active && playing) {
+    val showing = active && playing
+    LaunchedEffect(showing) { cinemaState?.playing = showing }
+    val expand by animateFloatAsState(
+        if (cinemaState?.cinema == true) 1f else 0f,
+        tween(CINEMA_FADE_MS),
+        label = "cinemaTrailer",
+    )
+    if (showing) {
         HeroTrailer(
             player = viewModel.player ?: return,
+            expand = expand,
             modifier = Modifier.align(Alignment.TopEnd),
         )
     }
@@ -118,3 +176,5 @@ class DetailsTrailerViewModel
     }
 
 private const val DELAY_MS = 4_000L
+private const val CINEMA_DELAY_MS = 3_000L
+private const val CINEMA_FADE_MS = 700
