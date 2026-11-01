@@ -11,7 +11,10 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -217,7 +220,7 @@ fun PlaybackControls(
  * Benflix player buttons, laid out like a streaming service: round play & skip buttons on the left,
  * labeled buttons (Next episode, Subtitles, Audio, Speed, Settings) on the right.
  */
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun NetflixControlRow(
     player: Player,
@@ -233,112 +236,147 @@ fun NetflixControlRow(
     currentSegment: MediaSegmentDto?,
     modifier: Modifier = Modifier,
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            modifier = modifier.focusGroup(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            PlayerCircleButton(
-                faIcon = R.string.fa_rotate_left,
-                label = seekBack.inWholeSeconds.toString(),
-                size = 48.dp,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekBack(seekBack)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlayerCircleButton(
-                faIcon = if (showPlay) R.string.fa_play else R.string.fa_pause,
-                label = null,
-                size = 60.dp,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    if (showPlay) {
-                        player.play()
-                        skipBackOnResume?.let {
-                            player.seekBack(it)
-                        }
-                    } else {
-                        player.pause()
+    val roundButtons: @Composable () -> Unit = {
+        PlayerCircleButton(
+            faIcon = R.string.fa_rotate_left,
+            label = seekBack.inWholeSeconds.toString(),
+            size = 48.dp,
+            onClick = {
+                onControllerInteraction.invoke()
+                player.seekBack(seekBack)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+        PlayerCircleButton(
+            faIcon = if (showPlay) R.string.fa_play else R.string.fa_pause,
+            label = null,
+            size = 60.dp,
+            onClick = {
+                onControllerInteraction.invoke()
+                if (showPlay) {
+                    player.play()
+                    skipBackOnResume?.let {
+                        player.seekBack(it)
                     }
-                },
-                onControllerInteraction = onControllerInteraction,
-                modifier = Modifier.focusRequester(initialFocusRequester),
-            )
-            PlayerCircleButton(
-                faIcon = R.string.fa_rotate_right,
-                label = seekForward.inWholeSeconds.toString(),
-                size = 48.dp,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekForward(seekForward)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            Spacer(Modifier.weight(1f))
-            currentSegment?.let { segment ->
-                PlayerPillButton(
-                    text = stringResource(segment.type.skipStringRes),
-                    faIcon = R.string.fa_arrow_right_long,
-                    onClick = {
-                        player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
-                    },
-                    onControllerInteraction = onControllerInteraction,
-                    highlighted = true,
-                )
-            }
-            if (nextEnabled) {
-                PlayerPillButton(
-                    text = stringResource(R.string.player_next_episode),
-                    faIcon = R.string.fa_caret_right,
-                    onClick = {
-                        onControllerInteraction.invoke()
-                        onPlaybackActionClick.invoke(PlaybackAction.Next)
-                    },
-                    onControllerInteraction = onControllerInteraction,
-                )
-            }
+                } else {
+                    player.pause()
+                }
+            },
+            onControllerInteraction = onControllerInteraction,
+            modifier = Modifier.focusRequester(initialFocusRequester),
+        )
+        PlayerCircleButton(
+            faIcon = R.string.fa_rotate_right,
+            label = seekForward.inWholeSeconds.toString(),
+            size = 48.dp,
+            onClick = {
+                onControllerInteraction.invoke()
+                player.seekForward(seekForward)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+    }
+    val pillButtons: @Composable () -> Unit = {
+        currentSegment?.let { segment ->
             PlayerPillButton(
-                text = stringResource(R.string.player_subtitles),
-                faIcon = R.string.fa_closed_captioning,
+                text = stringResource(segment.type.skipStringRes),
+                faIcon = R.string.fa_arrow_right_long,
                 onClick = {
-                    onControllerInteraction.invoke()
-                    onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
+                    player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
                 },
                 onControllerInteraction = onControllerInteraction,
+                highlighted = true,
             )
+        }
+        if (nextEnabled) {
             PlayerPillButton(
-                text = stringResource(R.string.player_audio),
-                faIcon = R.string.fa_volume_high,
+                text = stringResource(R.string.player_next_episode),
+                faIcon = R.string.fa_caret_right,
                 onClick = {
                     onControllerInteraction.invoke()
-                    onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlayerPillButton(
-                text = stringResource(R.string.player_speed),
-                faIcon = R.string.fa_clock,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onClickPlaybackDialogType.invoke(PlaybackDialogType.PLAYBACK_SPEED)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlayerPillButton(
-                text = null,
-                faIcon = R.string.fa_sliders,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
+                    onPlaybackActionClick.invoke(PlaybackAction.Next)
                 },
                 onControllerInteraction = onControllerInteraction,
             )
         }
+        PlayerPillButton(
+            text = stringResource(R.string.player_subtitles),
+            faIcon = R.string.fa_closed_captioning,
+            onClick = {
+                onControllerInteraction.invoke()
+                onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+        PlayerPillButton(
+            text = stringResource(R.string.player_audio),
+            faIcon = R.string.fa_volume_high,
+            onClick = {
+                onControllerInteraction.invoke()
+                onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+        PlayerPillButton(
+            text = stringResource(R.string.player_speed),
+            faIcon = R.string.fa_clock,
+            onClick = {
+                onControllerInteraction.invoke()
+                onClickPlaybackDialogType.invoke(PlaybackDialogType.PLAYBACK_SPEED)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+        PlayerPillButton(
+            text = null,
+            faIcon = R.string.fa_sliders,
+            onClick = {
+                onControllerInteraction.invoke()
+                onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+    }
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(modifier = modifier.focusGroup()) {
+            if (maxWidth >= WIDE_CONTROLS_MIN_WIDTH) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    roundButtons()
+                    Spacer(Modifier.weight(1f))
+                    pillButtons()
+                }
+            } else {
+                // Benflix on narrow screens (phones): the buttons don't fit on one line, so
+                // play & skip go in the middle and the labeled buttons wrap onto lines below.
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        roundButtons()
+                    }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        pillButtons()
+                    }
+                }
+            }
+        }
     }
 }
+
+/** Narrower than this, the player buttons go on several lines instead of one */
+private val WIDE_CONTROLS_MIN_WIDTH = 820.dp
 
 /**
  * Round see-through button that turns white when selected, with an optional number (like "10") under the icon
