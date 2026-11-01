@@ -11,11 +11,11 @@ val SnappyScrollAnimationSpec: AnimationSpec<Float> = tween(durationMillis = 200
 /**
  * Keeps the [base] scrolling position rules, but slides there quickly instead of with a slow, floaty spring.
  *
- * On TV, pages that scroll up and down (Games, a show's details, collections, ...) also scroll early
- * and in one decisive step: once the selection leaves the comfortable middle of the screen, the page
- * moves so the selection sits about a third of the way down. Without this the page only crept along
- * once the selection had already reached the bottom edge, so it always felt a step behind.
- * Rows that scroll sideways (wider than [sidewaysFromPx]) keep the [base] rules.
+ * On TV, pages that scroll up and down (Games, a movie's or show's page, collections, ...) move like
+ * Home: when you go down to another row of tiles, that row slides up to the same spot near the top of
+ * the page every time, instead of the page only creeping along once the selection reaches the bottom.
+ * Small things like buttons and list lines keep the [base] rules, and rows that scroll sideways
+ * (wider than [sidewaysFromPx]) are left alone.
  */
 class SnappyBringIntoViewSpec(
     private val base: BringIntoViewSpec,
@@ -31,22 +31,18 @@ class SnappyBringIntoViewSpec(
         size: Float,
         containerSize: Float,
     ): Float {
-        if (!isTv || containerSize <= 0f || containerSize >= sidewaysFromPx) {
+        if (!isTv || containerSize <= 0f || containerSize >= sidewaysFromPx || size < containerSize * TILE_MIN) {
             return base.calculateScrollDistance(offset, size, containerSize)
         }
-        val comfortTop = containerSize * COMFORT_TOP
-        val comfortBottom = containerSize * COMFORT_BOTTOM
-        val end = offset + size
-        // Already comfortably on screen: stay put
-        if (offset >= comfortTop && end <= comfortBottom) return 0f
-        // Something taller than most of the screen: line its top up with the top of the comfortable area
-        if (size > containerSize * (COMFORT_BOTTOM - PIVOT)) return offset - comfortTop
-        return offset - containerSize * PIVOT
+        // A tile (or a whole row of them): line it up just below the row's title, like Home
+        return offset - containerSize * SPACE_ABOVE
     }
 
     private companion object {
-        const val COMFORT_TOP = .1f
-        const val COMFORT_BOTTOM = .85f
-        const val PIVOT = .3f
+        /** Anything at least this tall (as a share of the page) counts as a tile */
+        const val TILE_MIN = .14f
+
+        /** Room left above the tile for its row's title */
+        const val SPACE_ABOVE = .1f
     }
 }
