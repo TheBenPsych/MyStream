@@ -59,6 +59,10 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.LogoEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -69,10 +73,6 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
 
 /*
  * The moving backgrounds behind "Who's watching?": a slow wall of the server's posters on
@@ -314,7 +314,8 @@ fun HolidayScene(
                 painter.draw(
                     Density(1f),
                     LayoutDirection.Ltr,
-                    androidx.compose.ui.graphics.Canvas(picture),
+                    androidx.compose.ui.graphics
+                        .Canvas(picture),
                     Size(SCENE_W.toFloat(), SCENE_H.toFloat()),
                 ) {
                     drawRect(Color.Black)

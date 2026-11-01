@@ -274,7 +274,9 @@ class MainActivity : AppCompatActivity() {
                                     DebugLogTree.INSTANCE.enabled = appPreferences.debugLogging
                                 }
                                 val baseBringIntoView = androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
-                                val isTvDevice = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+                                val isTvDevice =
+                                    com.github.damontecres.wholphin.ui.touch
+                                        .rememberIsTv()
                                 val screenWidthPx =
                                     androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
                                 val snappyBringIntoView =
