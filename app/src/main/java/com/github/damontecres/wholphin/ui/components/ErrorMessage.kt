@@ -50,6 +50,10 @@ fun ErrorMessage(
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.titleMedium,
         )
+        // Benflix on phones: when the server can't be reached, downloads can still be watched
+        com.github.damontecres.wholphin.ui.downloads.OfflineDownloadsButton(
+            showWhenEmpty = true,
+        )
         TextButton(
             stringRes = R.string.send_app_logs,
             onClick = {
