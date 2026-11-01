@@ -224,48 +224,35 @@ fun BannerCard(
                 }
             }
             val reasonTag = remember(item) { item?.reasonTag() }
-            if (!favorite && !grown && reasonTag != null) {
-                // A small, easy-to-read note on why this one is worth a look
-                Text(
-                    text = reasonTag,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = .5.sp,
-                    color = Color.White,
-                    maxLines = 1,
+            val isNew = item?.isNew == true
+            val showReason = !grown && reasonTag != null
+            if (favorite || isNew || showReason) {
+                // Every badge lives in the top-left corner, stacked neatly:
+                // heart first, then "New episode", then a reason like "TOP RATED"
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    horizontalAlignment = Alignment.Start,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
-                            .padding(6.dp)
-                            .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(3.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-            if (favorite) {
-                Text(
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp),
-                    color = colorResource(android.R.color.holo_red_light),
-                    text = stringResource(R.string.fa_heart),
-                    fontSize = 16.sp,
-                    fontFamily = FontAwesome,
-                )
-            }
-            if (item?.isNew == true) {
-                Text(
-                    text = stringResource(if (item.type == BaseItemKind.SERIES) R.string.new_episode else R.string.new_badge),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 8.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                )
+                            .padding(6.dp),
+                ) {
+                    if (favorite) {
+                        Text(
+                            color = colorResource(android.R.color.holo_red_light),
+                            text = stringResource(R.string.fa_heart),
+                            fontSize = 16.sp,
+                            fontFamily = FontAwesome,
+                        )
+                    }
+                    if (isNew) {
+                        CardBadge(
+                            text = stringResource(if (item?.type == BaseItemKind.SERIES) R.string.new_episode else R.string.new_badge),
+                            background = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    if (!grown) reasonTag?.let { CardBadge(text = it) }
+                }
             }
             if (playPercent > 0 && playPercent < 100) {
                 Box(
@@ -519,6 +506,26 @@ private val BaseItem.isNew: Boolean
             }
         }
     }
+
+/**
+ * One small badge in a card's top-left corner. Every badge uses this so they all look the same.
+ */
+@Composable
+private fun CardBadge(
+    text: String,
+    background: Color = Color.Black.copy(alpha = .78f),
+) = Text(
+    text = text,
+    fontSize = 10.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = .5.sp,
+    color = Color.White,
+    maxLines = 1,
+    modifier =
+        Modifier
+            .background(background, RoundedCornerShape(3.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+)
 
 /**
  * A short reason tag for a tile, like "CRITICS 94%" or "TOP RATED", or null when nothing stands out.

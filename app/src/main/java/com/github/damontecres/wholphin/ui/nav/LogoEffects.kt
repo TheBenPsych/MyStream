@@ -23,16 +23,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.LogoEffect
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 /**
@@ -88,6 +93,38 @@ fun BoxScope.LogoEffectBehind(effect: LogoEffect) {
             RisingEmbers()
         }
 
+        LogoEffect.BLOSSOMS -> {
+            BlossomPetals()
+        }
+
+        LogoEffect.HYPERSPACE -> {
+            Hyperspace()
+        }
+
+        LogoEffect.COIN -> {
+            CoinPop()
+        }
+
+        LogoEffect.FIRE_TRAILS -> {
+            FireTrails()
+        }
+
+        LogoEffect.SUNSET -> {
+            SettingSun()
+        }
+
+        LogoEffect.GROUNDHOG -> {
+            GroundhogPeek()
+        }
+
+        LogoEffect.HARVEST_MOON -> {
+            HarvestMoon()
+        }
+
+        LogoEffect.CAT_TAIL -> {
+            CatTail()
+        }
+
         else -> {}
     }
 }
@@ -126,7 +163,60 @@ fun BoxScope.LogoEffectInFront(effect: LogoEffect) {
             StarPair()
         }
 
+        LogoEffect.ZAPS -> {
+            Zaps()
+        }
+
+        LogoEffect.FLOWER_BLOOM -> {
+            FlowerBloom()
+        }
+
+        LogoEffect.SPROUTS -> {
+            Sprouts()
+        }
+
+        LogoEffect.SPOOKY_CAT -> {
+            WalkingCat()
+        }
+
+        LogoEffect.POPCORN -> {
+            PopcornPop()
+        }
+
+        LogoEffect.GAME_BUTTONS -> {
+            GameButtons()
+        }
+
+        LogoEffect.PAW_PRINTS -> {
+            PawPrints()
+        }
+
+        LogoEffect.PIRATE_FLAG -> {
+            PirateFlag()
+        }
+
         else -> {}
+    }
+}
+
+/** Friday the 13th: the logo flickers now and then like a bad light bulb */
+@Composable
+private fun Modifier.logoFlicker(): Modifier {
+    val t by loop(3000)
+    return graphicsLayer {
+        val x = t * 2 * PI.toFloat() * 3
+        alpha = if (sin(x * 7.7f) > -.3f && sin(x * 1.8f) > -.8f) 1f else .3f
+    }
+}
+
+/** Pirate Day: the logo bobs gently like it's on the waves */
+@Composable
+private fun Modifier.logoBob(): Modifier {
+    val t by loop(4000)
+    return graphicsLayer {
+        val x = t * 2 * PI.toFloat()
+        translationY = sin(x) * 2.dp.toPx()
+        rotationZ = sin(x * 2 + 1) * 1.5f
     }
 }
 
@@ -135,6 +225,8 @@ fun BoxScope.LogoEffectInFront(effect: LogoEffect) {
  */
 @Composable
 fun Modifier.logoShimmer(effect: LogoEffect): Modifier {
+    if (effect == LogoEffect.SPOOKY_CAT) return logoFlicker()
+    if (effect == LogoEffect.PIRATE_FLAG) return logoBob()
     if (effect != LogoEffect.GREEN_SHIMMER) return this
     val t by loop(2800)
     return this
@@ -460,3 +552,417 @@ private fun BoxScope.StarPair() {
         }
     }
 }
+
+/**
+ * Draws in a small 300 x 90 sketch space where the logo sits in the middle (about x 75..225, y 26..70),
+ * so the logo touches can be drawn the same way they were in the mockups
+ */
+private fun DrawScope.inLogoSpace(block: DrawScope.() -> Unit) {
+    val k = size.height / 44f
+    withTransform({
+        translate(size.width / 2 - 150f * k, -26f * k)
+        scale(k, k, pivot = Offset.Zero)
+    }, block)
+}
+
+private fun DrawScope.dot(
+    x: Float,
+    y: Float,
+    rx: Float,
+    ry: Float,
+    color: Color,
+    alpha: Float = 1f,
+) = drawOval(color, topLeft = Offset(x - rx, y - ry), size = Size(rx * 2, ry * 2), alpha = alpha)
+
+private fun DrawScope.halo(
+    x: Float,
+    y: Float,
+    r: Float,
+    color: Color,
+    alpha: Float,
+) = drawCircle(
+    Brush.radialGradient(0f to color.copy(alpha = alpha), 1f to color.copy(alpha = 0f), center = Offset(x, y), radius = r),
+    radius = r,
+    center = Offset(x, y),
+)
+
+private fun hash(
+    a: Int,
+    b: Int,
+): Float {
+    var x = a * 73856093 xor b * 19349663
+    x = x xor (x ushr 13)
+    x *= 1274126177
+    x = x xor (x ushr 16)
+    return (x and 0xFFFFFF) / 16777216f
+}
+
+/** Easter: pink blossom petals drift down past the logo */
+@Composable
+private fun BoxScope.BlossomPetals() {
+    val t by loop(4000)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            for (k in 0 until 9) {
+                val p = frac(t - k / 9f)
+                val x = 60f + ((k * 5) % 9) / 9f * 180f + sin(p * 2 * PI * 1.5 + k).toFloat() * 8f
+                val y = -6f + p * 100f
+                val a = (p * 8).coerceAtMost(1f) * (1 - ((p - .75f) * 4).coerceIn(0f, 1f))
+                rotate((p * 5 + k) * 57f, Offset(x, y)) { dot(x, y, 5f, 3f, Color(0xFFFFC4D6), a) }
+            }
+        }
+    }
+}
+
+/** Star Wars Day: lightspeed streaks fly out from behind the logo */
+@Composable
+private fun BoxScope.Hyperspace() {
+    val t by loop(1700)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            for (i in 0 until 24) {
+                val a = hash(91, i) * 2 * PI.toFloat()
+                val p = frac(t + hash(92, i))
+                val d = 10f + p * 150f
+                val x = 150f + cos(a) * d
+                val y = 48f + sin(a) * d * .45f
+                drawLine(
+                    Color(0xFFC8E1FF),
+                    Offset(x, y),
+                    Offset(x + cos(a) * p * 30f, y + sin(a) * p * 14f),
+                    strokeWidth = 1.5f,
+                    alpha = (1 - p) * .9f,
+                )
+            }
+        }
+    }
+}
+
+/** Pokémon Day: tiny yellow lightning zaps crackle around the logo */
+@Composable
+private fun BoxScope.Zaps() {
+    val t by loop(3300)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            listOf(52f to 30f, 250f to 64f, 240f to 18f).forEachIndexed { i, (x, y) ->
+                if (frac(t * 3 + i * .33f) < .35f) {
+                    halo(x + 2f, y, 20f, Color(0xFFFFE63C), .5f)
+                    drawPath(
+                        Path().apply {
+                            moveTo(x, y - 12f)
+                            lineTo(x + 7f, y - 2f)
+                            lineTo(x - 2f, y)
+                            lineTo(x + 6f, y + 12f)
+                        },
+                        Color(0xFFFFDE00),
+                        style = Stroke(3f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Mario Day: a pixel gold coin pops up out of the logo and spins */
+@Composable
+private fun BoxScope.CoinPop() {
+    val t by loop(2200)
+    val spin by loop(800)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val y = 48f - sin((t * 1.6f).coerceAtMost(1f) * PI).toFloat() * 46f
+            val a = if (t < .62f) 1f else (1 - (t - .62f) * 4).coerceAtLeast(0f)
+            val w = abs(cos(spin * 2 * PI).toFloat()) * 14f + 3f
+            drawRect(Color(0xFFFBD000), Offset(150f - w / 2, y - 10f), Size(w, 20f), alpha = a)
+            drawRect(Color(0xFFFFF6A0), Offset(150f - w / 5, y - 6f), Size(max(2f, w / 3), 12f), alpha = a)
+        }
+    }
+}
+
+/** Back to the Future Day: two fire trails streak under the logo */
+@Composable
+private fun BoxScope.FireTrails() {
+    val t by loop(2400)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val hx = -40f + t * 400f
+            listOf(72f, 82f).forEach { y ->
+                drawRect(
+                    Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0xFFFFD27A), startX = hx - 160f, endX = hx),
+                    topLeft = Offset(hx - 160f, y),
+                    size = Size(160f, 3f),
+                )
+            }
+        }
+    }
+}
+
+/** Mother's Day: a little flower blooms at the end of the logo */
+@Composable
+private fun BoxScope.FlowerBloom() {
+    val t by loop(4000)
+    val turn by loop(20000)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val p = (t * 2.5f).coerceAtMost(1f)
+            val x = 236f
+            val y = 26f
+            drawPath(
+                Path().apply {
+                    moveTo(x - 6f, y + 18f)
+                    quadraticTo(x, y + 10f, x, y)
+                },
+                Color(0xFF4F9A3E),
+                style = Stroke(2f),
+            )
+            val r = p * 10f
+            for (k in 0 until 5) {
+                val a = k * 2 * PI.toFloat() / 5 + turn * 6f
+                dot(x + cos(a) * r * .7f, y + sin(a) * r * .7f, r * .5f, r * .5f, Color(0xFFFF9EC7))
+            }
+            dot(x, y, r * .35f, r * .35f, Color(0xFFFFE08A))
+        }
+    }
+}
+
+/** Father's Day: a warm sun sets slowly behind the logo */
+@Composable
+private fun BoxScope.SettingSun() {
+    val t by loop(6000)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val y = 30f + t * 36f
+            clipRect(0f, -40f, 300f, 72f) {
+                halo(150f, y, 70f, Color(0xFFFFB45A), .7f)
+                dot(150f, y, 22f, 22f, Color(0xFFFFB35C), .9f)
+            }
+            drawRect(Color(0xFFFFB45A), Offset(70f, 72f), Size(160f, 1.5f), alpha = .35f)
+        }
+    }
+}
+
+/** Earth Day: two small green leaves sprout from the logo and sway */
+@Composable
+private fun BoxScope.Sprouts() {
+    val t by loop(3100)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            listOf(Triple(64f, 22f, -1f), Triple(236f, 22f, 1f)).forEachIndexed { i, (x, y, side) ->
+                val sw = sin((t + i * .5f) * 2 * PI).toFloat() * .25f
+                rotate((side * .6f + sw) * 57f, Offset(x, y + 8f)) {
+                    drawPath(
+                        Path().apply {
+                            moveTo(x, y + 8f)
+                            quadraticTo(x + 8f * side, y + 2f, x + 16f * side, y + 8f)
+                            quadraticTo(x + 8f * side, y + 14f, x, y + 8f)
+                            close()
+                        },
+                        Color(0xFF6CC06A),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Friday the 13th: a black cat walks along the top of the logo (the logo itself flickers, see [logoShimmer]) */
+@Composable
+private fun BoxScope.WalkingCat() {
+    val t by loop(7000)
+    val step by loop(600)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val x = 40f + t * 220f
+            val y = 19f
+            val st = sin(step * 2 * PI).toFloat()
+            val c = Color(0xFF111111)
+            dot(x, y, 12f, 7f, c)
+            dot(x + 12f, y - 5f, 6f, 6f, c)
+            drawPath(poly(x + 8f, y - 10f, x + 10f, y - 15f, x + 12f, y - 10f), c)
+            drawPath(poly(x + 14f, y - 10f, x + 16f, y - 15f, x + 18f, y - 9f), c)
+            drawPath(
+                Path().apply {
+                    moveTo(x - 12f, y)
+                    quadraticTo(x - 20f, y - 10f, x - 16f, y - 16f)
+                },
+                c,
+                style = Stroke(2f),
+            )
+            drawRect(c, Offset(x - 7f + st * 2f, y + 5f), Size(2f, 7f))
+            drawRect(c, Offset(x + 6f - st * 2f, y + 5f), Size(2f, 7f))
+            dot(x + 14f, y - 6f, 1.5f, 1.5f, Color(0xFFFFE14D))
+        }
+    }
+}
+
+/** Groundhog Day: a little groundhog pops up behind the logo, looks left and right, then hides */
+@Composable
+private fun BoxScope.GroundhogPeek() {
+    val c by loop(3500)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val up =
+                when {
+                    c < .15f -> c / .15f
+                    c < .7f -> 1f
+                    c < .8f -> 1 - (c - .7f) / .1f
+                    else -> 0f
+                }
+            val look = if (c > .15f && c < .7f) sin((c - .15f) / .55f * 2 * PI * 1.5).toFloat() * 3f else 0f
+            val x = 220f
+            val y = 30f - up * 24f
+            clipRect(0f, -40f, 300f, 30f) {
+                dot(x, y + 14f, 13f, 16f, Color(0xFF8A5A3A))
+                dot(x - 9f, y + 1f, 3f, 3f, Color(0xFF7A4A2A))
+                dot(x + 9f, y + 1f, 3f, 3f, Color(0xFF7A4A2A))
+                dot(x - 4f + look, y + 8f, 2f, 2.4f, Color(0xFF111111))
+                dot(x + 4f + look, y + 8f, 2f, 2.4f, Color(0xFF111111))
+            }
+        }
+    }
+}
+
+/** Mid-Autumn Festival: a round golden moon rises behind the logo, with a tiny lantern beside it */
+@Composable
+private fun BoxScope.HarvestMoon() {
+    val t by loop(6000)
+    val bob by loop(4200)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val y = 70f - (t * 1.6f).coerceAtMost(1f) * 40f
+            halo(150f, y, 70f, Color(0xFFFFD278), .6f)
+            dot(150f, y, 26f, 26f, Color(0xFFFFD36B))
+            val ly = 40f + sin(bob * 2 * PI).toFloat() * 3f
+            halo(242f, ly, 20f, Color(0xFFFF783C), .6f)
+            dot(242f, ly, 7f, 6f, Color(0xFFFF5A3A))
+            drawRect(Color(0xFFFFD36B), Offset(237f, ly - 7f), Size(10f, 2f))
+            drawRect(Color(0xFFFFD36B), Offset(237f, ly + 5f), Size(10f, 2f))
+        }
+    }
+}
+
+/** Popcorn Day: little popcorn pieces pop up out of the logo and fall back down */
+@Composable
+private fun BoxScope.PopcornPop() {
+    val t by loop(1800)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            for (i in 0 until 6) {
+                val p = frac(t + i / 6f)
+                if (p > .95f) continue
+                val x = 70f + i * 32f
+                val y = 46f - sin(p * PI).toFloat() * 44f
+                rotate((p * 4 + i) * 57f, Offset(x, y)) {
+                    for (k in 0 until 3) dot(x + cos(k * 2.1f) * 3f, y + sin(k * 2.1f) * 3f, 4f, 3.6f, Color(0xFFFFF7E0))
+                    dot(x, y, 2.4f, 2.4f, Color(0xFFFFD56B))
+                }
+            }
+        }
+    }
+}
+
+/** Video Games Day: four colored game buttons pulse under the logo */
+@Composable
+private fun BoxScope.GameButtons() {
+    val t by loop(1600)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            listOf(0xFFFF4081, 0xFFFFD740, 0xFF76FF03, 0xFF00E5FF).forEachIndexed { i, c ->
+                val pu = (sin(t * 2 * PI.toFloat() - i * 1.2f) + 1) / 2
+                val x = 114f + i * 24f
+                halo(x, 82f, 10f + pu * 6f, Color(c), .5f * pu)
+                dot(x, 82f, 5f, 5f, Color(c))
+            }
+        }
+    }
+}
+
+/** Cat Day: a cat tail swishes out from behind the logo, and its ears peek over the top */
+@Composable
+private fun BoxScope.CatTail() {
+    val t by loop(2900)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val c = Color(0xFFF0A35E)
+            val sw = sin(t * 2 * PI).toFloat() * 10f
+            drawPath(
+                Path().apply {
+                    moveTo(222f, 58f)
+                    quadraticTo(254f, 62f, 250f + sw * .4f, 36f + sw)
+                },
+                c,
+                style = Stroke(5f, cap = StrokeCap.Round),
+            )
+            drawPath(poly(82f, 27f, 88f, 13f, 96f, 27f), c)
+            drawPath(poly(100f, 27f, 108f, 13f, 114f, 27f), c)
+        }
+    }
+}
+
+/** Dog Day: little paw prints walk across under the logo */
+@Composable
+private fun BoxScope.PawPrints() {
+    val t by loop(3500)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val c = Color(0xFFC68642)
+            for (k in 0 until 7) {
+                val ph = frac(t - k / 7f)
+                if (ph > .7f) continue
+                val a = 1 - ph / .7f
+                val x = 60f + k * 30f
+                val y = if (k % 2 == 1) 80f else 86f
+                dot(x, y, 4f, 3.5f, c, a)
+                listOf(-4f, -1.5f, 1.5f, 4f).forEachIndexed { j, o -> dot(x + o, y - 4f - if (j % 3 != 0) 1.5f else 0f, 1.4f, 1.6f, c, a) }
+            }
+        }
+    }
+}
+
+/** Pirate Day: a small black flag on the logo and waves underneath (the logo itself bobs, see [logoShimmer]) */
+@Composable
+private fun BoxScope.PirateFlag() {
+    val t by loop(4000)
+    val wave by loop(1000)
+    Canvas(Modifier.matchParentSize()) {
+        inLogoSpace {
+            val b = sin(t * 2 * PI).toFloat() * 3f
+            drawRect(Color(0xFFD8C9A0), Offset(222f, 10f + b), Size(2f, 18f))
+            drawPath(
+                Path().apply {
+                    moveTo(224f, 10f + b)
+                    for (k in 0..5) lineTo(224f + k * 3f, 10f + b + sin(wave * 2 * PI - k).toFloat() * 1.5f)
+                    for (k in 5 downTo 0) lineTo(224f + k * 3f, 18f + b + sin(wave * 2 * PI - k).toFloat() * 1.5f)
+                    close()
+                },
+                Color(0xFF111111),
+            )
+            for (k in 0 until 3) {
+                drawPath(
+                    Path().apply {
+                        var x = 60f
+                        while (x <= 240f) {
+                            val y = 76f + k * 4f + sin(x * .08f + t * 12f + k) * 1.5f
+                            if (x == 60f) moveTo(x, y) else lineTo(x, y)
+                            x += 6f
+                        }
+                    },
+                    Color(0xFF78B4FF),
+                    alpha = .5f,
+                    style = Stroke(1.5f),
+                )
+            }
+        }
+    }
+}
+
+private fun poly(vararg pts: Float): Path =
+    Path().apply {
+        moveTo(pts[0], pts[1])
+        var i = 2
+        while (i < pts.size) {
+            lineTo(pts[i], pts[i + 1])
+            i += 2
+        }
+        close()
+    }

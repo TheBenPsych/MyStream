@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -162,17 +163,21 @@ fun DiscoverItemCard(
                         }
                     text?.let {
                         Text(
-                            text = pluralStringResource(it, 1),
-                            style = MaterialTheme.typography.bodySmall,
+                            text = pluralStringResource(it, 1).uppercase(),
                             fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = .5.sp,
+                            color = Color.White,
+                            maxLines = 1,
+                            // Same look as the badges on every other card
                             modifier =
                                 Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(4.dp)
+                                    .padding(6.dp)
                                     .background(
                                         color = color,
-                                        shape = CircleShape,
-                                    ).padding(4.dp),
+                                        shape = RoundedCornerShape(3.dp),
+                                    ).padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
                 }

@@ -65,6 +65,22 @@ enum class LogoEffect {
     DIYAS,
     EMBERS,
     STAR_PAIR,
+    BLOSSOMS,
+    HYPERSPACE,
+    ZAPS,
+    COIN,
+    FIRE_TRAILS,
+    FLOWER_BLOOM,
+    SUNSET,
+    SPROUTS,
+    SPOOKY_CAT,
+    GROUNDHOG,
+    HARVEST_MOON,
+    POPCORN,
+    GAME_BUTTONS,
+    CAT_TAIL,
+    PAW_PRINTS,
+    PIRATE_FLAG,
 }
 
 /**
@@ -112,6 +128,22 @@ fun holidayFor(date: LocalDate): Celebration? {
         m == 7 && d == 7 -> Celebration("Happy Tanabata", "🎋", 0xFF9FB8FF, LogoEffect.STAR_PAIR)
         date == lunarNewYear(date.year) -> Celebration("Happy Lunar New Year", "🏮", 0xFFFF3B30, LogoEffect.LANTERNS)
         date == diwali(date.year) -> Celebration("Happy Diwali", "🪔", 0xFFFFC14D, LogoEffect.DIYAS)
+        date == easter(date.year) -> Celebration("Happy Easter", "🐣", 0xFFFFB3C7, LogoEffect.BLOSSOMS)
+        date == midAutumn(date.year) -> Celebration("Happy Mid-Autumn Festival", "🥮", 0xFFFFC94D, LogoEffect.HARVEST_MOON)
+        date == nthSunday(date, 5, 2) -> Celebration("Happy Mother's Day", "💐", 0xFFFF9EC7, LogoEffect.FLOWER_BLOOM)
+        date == nthSunday(date, 6, 3) -> Celebration("Happy Father's Day", "🎣", 0xFFE0A050, LogoEffect.SUNSET)
+        m == 1 && d == 19 -> Celebration("Happy National Popcorn Day", "🍿", 0xFFFFCF4D, LogoEffect.POPCORN)
+        m == 2 && d == 2 -> Celebration("Happy Groundhog Day", "🦫", 0xFFC79A72, LogoEffect.GROUNDHOG)
+        m == 2 && d == 27 -> Celebration("Happy Pokémon Day", "⚡", 0xFFFFDE00, LogoEffect.ZAPS)
+        m == 3 && d == 10 -> Celebration("Happy Mario Day", "🍄", 0xFFFBD000, LogoEffect.COIN)
+        m == 4 && d == 22 -> Celebration("Happy Earth Day", "🌍", 0xFF6CC06A, LogoEffect.SPROUTS)
+        m == 5 && d == 4 -> Celebration("May the 4th be with you", "✨", 0xFFFFD54F, LogoEffect.HYPERSPACE)
+        m == 8 && d == 8 -> Celebration("Happy International Cat Day", "🐈", 0xFFF0A35E, LogoEffect.CAT_TAIL)
+        m == 8 && d == 26 -> Celebration("Happy International Dog Day", "🐕", 0xFFC68642, LogoEffect.PAW_PRINTS)
+        m == 9 && d == 12 -> Celebration("Happy Video Games Day", "🎮", 0xFF7C4DFF, LogoEffect.GAME_BUTTONS)
+        m == 9 && d == 19 -> Celebration("Ahoy! Talk Like a Pirate Day", "🏴‍☠️", 0xFFC9A227, LogoEffect.PIRATE_FLAG)
+        m == 10 && d == 21 -> Celebration("Back to the Future Day", "⚡", 0xFFFF6A00, LogoEffect.FIRE_TRAILS)
+        d == 13 && date.dayOfWeek == java.time.DayOfWeek.FRIDAY -> Celebration("Friday the 13th", "🔪", 0xFFB71C1C, LogoEffect.SPOOKY_CAT)
         else -> null
     }
 }
@@ -141,3 +173,48 @@ fun diwali(year: Int): LocalDate? =
         2032 -> LocalDate.of(2032, 11, 2)
         else -> null
     }
+
+/** Easter Sunday (Western), worked out with the usual Gregorian formula */
+fun easter(year: Int): LocalDate {
+    val a = year % 19
+    val b = year / 100
+    val c = year % 100
+    val d = b / 4
+    val e = b % 4
+    val f = (b + 8) / 25
+    val g = (b - f + 1) / 3
+    val h = (19 * a + b - d - g + 15) % 30
+    val i = c / 4
+    val k = c % 4
+    val l = (32 + 2 * e + 2 * i - h - k) % 7
+    val m = (a + 11 * h + 22 * l) / 451
+    val month = (h + l - 7 * m + 114) / 31
+    val day = ((h + l - 7 * m + 114) % 31) + 1
+    return LocalDate.of(year, month, day)
+}
+
+/** The Mid-Autumn Festival follows the moon, so its dates are listed */
+fun midAutumn(year: Int): LocalDate? =
+    when (year) {
+        2026 -> LocalDate.of(2026, 9, 25)
+        2027 -> LocalDate.of(2027, 9, 15)
+        2028 -> LocalDate.of(2028, 10, 3)
+        2029 -> LocalDate.of(2029, 9, 22)
+        2030 -> LocalDate.of(2030, 9, 12)
+        2031 -> LocalDate.of(2031, 10, 1)
+        2032 -> LocalDate.of(2032, 9, 19)
+        else -> null
+    }
+
+/** The [n]th Sunday of [month] in [date]'s year (Mother's Day = 2nd Sunday of May) */
+fun nthSunday(
+    date: LocalDate,
+    month: Int,
+    n: Int,
+): LocalDate =
+    LocalDate
+        .of(date.year, month, 1)
+        .with(TemporalAdjusters.dayOfWeekInMonth(n, java.time.DayOfWeek.SUNDAY))
+
+/** True on a Friday the 13th */
+fun isFriday13(date: LocalDate): Boolean = date.dayOfMonth == 13 && date.dayOfWeek == java.time.DayOfWeek.FRIDAY
