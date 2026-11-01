@@ -65,6 +65,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -649,7 +650,15 @@ private fun GameTile(
                     Badge(PlayWith.PHONE, "Phone")
                 }
                 Text(game.title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
-                Text(game.tagline, fontSize = 13.sp, color = Color.White.copy(alpha = .9f), modifier = Modifier.fillMaxWidth(.7f))
+                // At most two lines, so the score at the bottom never gets cut off
+                Text(
+                    game.tagline,
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = .9f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(.85f),
+                )
                 Box(Modifier.weight(1f))
                 Text(
                     text = if (best > 0) "Your best: $best" else "No score yet",

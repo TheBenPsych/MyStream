@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFilter
@@ -57,6 +59,9 @@ class MyBenflixViewModel
         val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** The profile picture, the same one the top bar shows */
+        fun userImageUrl(userId: java.util.UUID): String = api.imageApi.getUserImageUrl(userId)
+
         private val _rows = MutableStateFlow<List<HubRow>?>(null)
         val rows: StateFlow<List<HubRow>?> = _rows
 
@@ -176,7 +181,7 @@ fun MyBenflixPage(
                 UserIconCardImage(
                     id = it.id,
                     name = if (kids) "Kids" else it.name,
-                    imageUrl = null,
+                    imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
                     modifier = Modifier.size(56.dp),
                 )
             }

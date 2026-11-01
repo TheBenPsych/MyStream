@@ -180,7 +180,7 @@ def tap(n):
     label = n.get("text") or n.get("content-desc") or ""
     n = resolve(n)
     tx, ty = center(n)
-    for _ in range(14):
+    for _ in range(30):
         root = LAST_ROOT[0] if _ == 0 else dump(dismiss=False)
         f = focused_node(root)
         if f is None:
@@ -272,7 +272,16 @@ def focus_sweep(name, max_moves=60):
                     seen.add(c.get("bounds"))
 
     record()
-    # snake: right across, down one, left across, down one ...
+    # the top menu first: up into it, then all the way right and back
+    key("DPAD_UP", 8, wait=0.2)
+    record()
+    for _ in range(12):
+        key("DPAD_RIGHT", wait=0.25)
+        record()
+    for _ in range(12):
+        key("DPAD_LEFT", wait=0.2)
+    record()
+    # then the page: snake right across, down one, left across, down one ...
     for row in range(6):
         for _ in range(8):
             key("DPAD_RIGHT" if row % 2 == 0 else "DPAD_LEFT", wait=0.25)
@@ -432,7 +441,7 @@ def main():
         start = time.time()
         if not press(tab, timeout=8):
             continue
-        time.sleep(2)
+        time.sleep(6)
         name = re.sub(r"[^A-Za-z ]", "", tab).strip() or "tab"
         root = shot(f"tab-{name}")
         if tab in (r"Browse", r"^More$"):
@@ -498,7 +507,7 @@ def main():
     log("monkey test")
     args = "--pct-nav 35 --pct-majornav 35 --pct-syskeys 5 --pct-appswitch 0 --pct-anyevent 0"
     if MODE == "tv":
-        args += " --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
+        args += " -c android.intent.category.LEANBACK_LAUNCHER --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
     else:
         args = "--pct-touch 45 --pct-motion 20 --pct-nav 10 --pct-majornav 15 --pct-syskeys 5 --pct-appswitch 0 --pct-rotation 0 --pct-anyevent 0 --pct-permission 0"
     mk = sh(f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500", timeout=900)
