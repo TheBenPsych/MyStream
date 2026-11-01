@@ -356,8 +356,6 @@ def main():
                     sh(f"input text {USER}")
                 typed_user = True
                 shot("typed-user")
-            if MODE == "tv":
-                key("ESCAPE", wait=1)  # hide the on-screen keyboard
             n = find(dump(), r"^Login$")
             if n is not None:
                 tap(n)
