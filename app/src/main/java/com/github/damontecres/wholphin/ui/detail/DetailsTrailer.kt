@@ -116,9 +116,12 @@ fun BoxScope.DetailsTrailer(
             animationSpec = tween(if (cinema) VOLUME_FADE_IN_MS else VOLUME_FADE_OUT_MS),
         ) { value, _ -> p.volume = value }
     }
+    // The dark shading behind the title & description fades away together with the text
+    val clear by animateFloatAsState(if (cinema) 1f else 0f, tween(CINEMA_FADE_MS), label = "cinemaShade")
     if (showing) {
         HeroTrailer(
             player = viewModel.player ?: return,
+            clear = clear,
             modifier = Modifier.align(Alignment.TopEnd),
         )
     }
