@@ -287,6 +287,15 @@ def focus_sweep(name, max_moves=60):
 
 
 def back_to_home():
+    if MODE != "tv":
+        for _ in range(3):
+            n = find(dump(), r"^Home$")
+            if n is not None:
+                tap(n)
+                time.sleep(2)
+                return
+            key("BACK", wait=1)
+        return
     for _ in range(6):
         if find(dump(), r"^Home$") is not None:
             return
@@ -319,23 +328,30 @@ def main():
         edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
         if find(root, r"Enter Server IP or URL") is not None and edit:
             if not typed_server:
-                tap(edit[0])
+                if MODE != "tv":  # on TV the box already has focus; pressing OK would open the keyboard
+                    tap(edit[0])
                 time.sleep(1)
                 sh("input text '%s'" % SERVER)
                 time.sleep(1)
                 typed_server = True
                 shot("typed-server")
             if MODE == "tv":
-                key("ESCAPE", wait=1)
-            n = find(dump(), r"^Submit$")
-            if n is not None:
-                tap(n)
+                key("ENTER", wait=3)  # the keyboard's Go button
+                if find(dump(), r"Enter Server IP or URL") is not None:
+                    key("ESCAPE", wait=1)
+                    key("DPAD_DOWN", wait=0.5)
+                    key("DPAD_CENTER", wait=3)
+            else:
+                n = find(dump(), r"^Submit$")
+                if n is not None:
+                    tap(n)
             time.sleep(4)
             continue
         if find(root, r"^Username$") is not None and edit:
             if not typed_user:
                 if find(root, rf"^{USER}$") is None:
-                    tap(edit[0])
+                    if MODE != "tv":
+                        tap(edit[0])
                     time.sleep(1)
                     sh(f"input text {USER}")
                 typed_user = True
