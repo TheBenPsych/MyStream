@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [tv, phone]
+        mode: [tv, phone, speed]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/download-artifact@v5
@@ -94,7 +94,7 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --list 2>/dev/null | grep -E "system-images;android-3[0-9];(android-tv|google-tv|google_apis);x86" | awk '{print $1}' | sort -u > images.txt
           cat images.txt
-          if [ "${{ matrix.mode }}" = tv ]; then
+          if [ "${{ matrix.mode }}" != phone ]; then
             want="android-36;android-tv;x86_64 android-36;google-tv;x86_64"
             device=tv_1080p
           else
@@ -122,7 +122,7 @@ jobs:
           export ADB_VENDOR_KEYS=~/.android/adbkey
           adb start-server
           GPU=swiftshader_indirect
-          [ "${{ matrix.mode }}" = tv ] && GPU=swangle_indirect
+          [ "${{ matrix.mode }}" != phone ] && GPU=swangle_indirect
           boot() {
             booted=0
             for attempt in 1 2 3; do
@@ -156,6 +156,27 @@ jobs:
           PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
           echo "Package $PKG"
           adb shell getprop ro.product.cpu.abilist
+          if [ "${{ matrix.mode }}" = speed ]; then
+            # Speed comparison: Benflix vs plain Wholphin on the same TV emulator, animations on like a real TV
+            mkdir -p results/speed
+            adb shell settings put global window_animation_scale 1 || true
+            adb shell settings put global transition_animation_scale 1 || true
+            adb shell settings put global animator_duration_scale 1 || true
+            url=$(curl -fsSL https://api.github.com/repos/damontecres/Wholphin/releases/latest | python3 -c "
+          import json,sys
+          a=[x['browser_download_url'] for x in json.load(sys.stdin)['assets'] if x['name'].endswith('.apk')]
+          pick=[u for u in a if 'x86_64' in u] or [u for u in a if 'universal' in u] or [u for u in a if 'debug' not in u] or a
+          print(pick[0] if pick else '')")
+            echo "Wholphin: $url"
+            echo "$url" > results/speed/wholphin-url.txt
+            curl -fsSL -o wholphin.apk "$url" && timeout 300 adb install -r -g wholphin.apk || echo "could not install Wholphin"
+            cd tools/audit
+            timeout 900 python3 speed.py "$PKG" benflix ../../results/speed || echo "benflix speed run failed"
+            timeout 900 python3 speed.py com.github.damontecres.wholphin wholphin ../../results/speed || echo "wholphin speed run failed"
+            cd ../..
+            mv tools/audit/*.png results/speed/ 2>/dev/null || true
+            exit 0
+          fi
           # The emulator itself sometimes crashes on these cloud computers; if so, start it again and carry on
           for run in 1 2 3; do
             timeout 2700 python3 tools/audit/drive.py ${{ matrix.mode }} "$PKG" results/${{ matrix.mode }} && break

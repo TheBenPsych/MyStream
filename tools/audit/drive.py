@@ -73,6 +73,8 @@ def log(msg):
         save_report()
 
 
+# text that only shows once you are on the home screen (Benflix rows, or plain Wholphin's rows)
+HOME_RE = r"Continue watching|Top 10|New on Benflix|My List|Because you watched|^Home$|Next Up|Recently Added|Continue Watching"
 PKG_LABEL = re.compile(r"Benflix|MyStream", re.I)
 SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
 
@@ -402,7 +404,7 @@ def sign_in():
     while time.time() < end:
         step += 1
         root = dump()
-        if find(root, r"Continue watching|Top 10|New on Benflix|My List|Because you watched|^Home$") is not None:
+        if find(root, HOME_RE) is not None:
             log("signed in")
             break
         if root is None:
