@@ -93,6 +93,7 @@ fun ExpandablePlayButtons(
     modifier: Modifier = Modifier,
     likes: Boolean? = null,
     rateOnClick: ((Boolean?) -> Unit)? = null,
+    downloadItem: com.github.damontecres.wholphin.data.model.BaseItem? = null,
 ) {
     val resources = LocalResources.current
     val firstFocus = remember { FocusRequester() }
@@ -149,6 +150,11 @@ fun ExpandablePlayButtons(
                         modifier = Modifier.padding(start = 6.dp),
                     )
                 }
+            }
+            // Benflix: save it on the phone to watch without internet
+            downloadItem?.let {
+                com.github.damontecres.wholphin.ui.downloads
+                    .DownloadButton(it)
             }
         }
         LazyRow(

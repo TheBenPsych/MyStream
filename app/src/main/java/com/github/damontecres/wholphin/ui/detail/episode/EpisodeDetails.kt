@@ -265,6 +265,7 @@ fun EpisodeDetailsContent(
                                 .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
                     ExpandablePlayButtons(
+                        downloadItem = ep,
                         title = ep.title ?: "",
                         resumePosition = resumePosition,
                         watched = dto.userData?.played ?: false,

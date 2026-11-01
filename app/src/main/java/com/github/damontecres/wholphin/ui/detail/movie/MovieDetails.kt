@@ -363,6 +363,7 @@ fun MovieDetailsContent(
                                 .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
                     ExpandablePlayButtons(
+                        downloadItem = movie,
                         title = movie.title ?: "",
                         resumePosition = resumePosition,
                         watched = dto.userData?.played ?: false,
