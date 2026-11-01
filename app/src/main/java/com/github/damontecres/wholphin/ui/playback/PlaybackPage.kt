@@ -15,6 +15,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -49,10 +51,14 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -93,6 +99,7 @@ import com.github.damontecres.wholphin.ui.playback.overlay.rememberSeekBarState
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.applyTo
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.seasonEpisode
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.LoadingState
@@ -338,6 +345,8 @@ fun PlaybackPageContent(
         viewModel.updateSegment(state.currentSegment?.segment?.id, true)
     }
 
+    val isTv = rememberIsTv()
+
     // Benflix ambient mode: artwork drifts across the screen after being paused for a while
     var showAmbient by remember { mutableStateOf(false) }
     var ambientKeyPresses by remember { mutableIntStateOf(0) }
@@ -366,7 +375,36 @@ fun PlaybackPageContent(
                     .align(Alignment.TopCenter)
                     .onKeyEvent(keyHandler::onKeyEvent)
                     .focusRequester(focusRequester)
-                    .focusable(),
+                    .focusable()
+                    .then(
+                        if (isTv) {
+                            Modifier
+                        } else {
+                            // Benflix on phones: the controls only listened to the remote, so a finger
+                            // could never bring them up. Tap the video to show or hide them, and
+                            // any touch while they're up keeps them from hiding.
+                            Modifier
+                                .pointerInput(Unit) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        if (controllerViewState.controlsVisible) {
+                                            controllerViewState.pulseControls()
+                                        }
+                                    }
+                                }.semantics {
+                                    onClick {
+                                        ambientKeyPresses++
+                                        if (controllerViewState.controlsVisible) {
+                                            controllerViewState.hideControls()
+                                        } else {
+                                            viewModel.reportInteraction()
+                                            controllerViewState.showControls()
+                                        }
+                                        true
+                                    }
+                                }
+                        },
+                    ),
         ) {
             var playerSurfaceSize by remember { mutableStateOf(IntSize.Zero) }
             PlayerSurface(
