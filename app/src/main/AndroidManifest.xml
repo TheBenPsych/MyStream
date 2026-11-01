@@ -29,6 +29,8 @@
 
     <!-- Required for Android 11+ to query voice recognition availability -->
     <queries>
+        <!-- Moonlight streams your own games from the server -->
+        <package android:name="com.limelight" />
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>

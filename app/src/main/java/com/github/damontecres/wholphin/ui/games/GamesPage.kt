@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -22,9 +25,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,29 +50,47 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import coil3.compose.AsyncImage
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.RommClient
+import com.github.damontecres.wholphin.services.RommConsole
+import com.github.damontecres.wholphin.services.RommException
+import com.github.damontecres.wholphin.services.RommGame
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.preferences.StringInput
+import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -103,6 +126,23 @@ enum class BuiltInGame(
     ),
 }
 
+/** What the "Your games" part of the Games tab is showing */
+sealed interface LibraryState {
+    data object KidsHidden : LibraryState
+
+    data object NotSetUp : LibraryState
+
+    data object Loading : LibraryState
+
+    data class Failed(
+        val message: String,
+    ) : LibraryState
+
+    data class Ready(
+        val consoles: List<RommConsole>,
+    ) : LibraryState
+}
+
 /**
  * Best scores, kept on this device for each profile (the Kids tile has its own)
  */
@@ -113,8 +153,52 @@ class GamesViewModel
         @param:ApplicationContext private val context: Context,
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
+        private val romm: RommClient,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
+
+        private val _library = MutableStateFlow<LibraryState>(LibraryState.Loading)
+        val library: StateFlow<LibraryState> = _library
+
+        val rommAddress: String get() = romm.address
+        val rommUsername: String get() = romm.username
+        val rommAuthHeader: String get() = romm.authHeader
+
+        init {
+            reload()
+        }
+
+        fun reload() {
+            if (KidsMode.isActive) {
+                _library.value = LibraryState.KidsHidden
+                return
+            }
+            if (!romm.isConfigured) {
+                _library.value = LibraryState.NotSetUp
+                return
+            }
+            _library.value = LibraryState.Loading
+            viewModelScope.launch {
+                _library.value =
+                    try {
+                        LibraryState.Ready(romm.loadLibrary())
+                    } catch (e: RommException) {
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.")
+                    } catch (e: Exception) {
+                        Timber.w(e, "Loading RomM library failed")
+                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).")
+                    }
+            }
+        }
+
+        fun connect(
+            address: String,
+            username: String,
+            password: String,
+        ) {
+            romm.save(address, username, password)
+            reload()
+        }
 
         private fun key(game: BuiltInGame): String {
             val profile = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
@@ -135,7 +219,7 @@ class GamesViewModel
     }
 
 /**
- * The Games tab: built-in games for now, ROMs from the server later
+ * The Games tab: quick built-in games, plus your own game collection from RomM on the server
  */
 @Composable
 fun GamesPage(
@@ -145,9 +229,23 @@ fun GamesPage(
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
     val isTv = rememberIsTv()
+    val context = LocalContext.current
+    val library by viewModel.library.collectAsState()
+    var setupStep by remember { mutableIntStateOf(0) }
+    var draftAddress by remember { mutableStateOf("") }
+    var draftUser by remember { mutableStateOf("") }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = modifier.padding(start = if (isTv) 48.dp else 0.dp, end = if (isTv) 48.dp else 8.dp, top = if (isTv) 24.dp else 8.dp),
+        modifier =
+            modifier
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = if (isTv) 48.dp else 0.dp,
+                    end = if (isTv) 48.dp else 8.dp,
+                    top = if (isTv) 24.dp else 8.dp,
+                    bottom = 24.dp,
+                ),
     ) {
         Text(
             text = "Benflix Games",
@@ -155,11 +253,7 @@ fun GamesPage(
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            if (isTv) {
-                "Quick games you can play with your TV remote. Your own game collection is coming here later."
-            } else {
-                "Quick games you can play by tapping. Your own game collection is coming here later."
-            },
+            if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -180,28 +274,254 @@ fun GamesPage(
             }
         } else {
             // Phones: one big tile per game, stacked
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            BuiltInGame.entries.forEach { game ->
+                GameTile(
+                    game = game,
+                    best = viewModel.best(game),
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                )
+            }
+        }
+
+        // Your own games, from the RomM game library on the server
+        Text(
+            text = "Your games",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        when (val state = library) {
+            LibraryState.KidsHidden -> {
+                InfoText("Your game collection isn't shown on the Kids profile.")
+            }
+
+            LibraryState.NotSetUp -> {
+                InfoText("Connect your game library (RomM) once, and your games show up here with box art.")
+                ActionTile(
+                    title = "Connect game library",
+                    subtitle = "Type your RomM address and login",
+                    onClick = { setupStep = 1 },
+                )
+            }
+
+            LibraryState.Loading -> {
+                InfoText("Loading your games…")
+            }
+
+            is LibraryState.Failed -> {
+                InfoText(state.message)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
+                    ActionTile(title = "Change library", subtitle = "Fix the address or login", onClick = { setupStep = 1 })
+                }
+            }
+
+            is LibraryState.Ready -> {
+                if (state.consoles.isEmpty()) {
+                    InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
+                }
+                InfoText(
+                    "Press a game to open the game stream (Moonlight). For now, pick it there: Wolf UI → your profile → EmulationStation.",
+                )
+                state.consoles.forEach { console ->
+                    Text(
+                        text = "${console.name} (${console.games.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                    ) {
+                        items(console.games, key = { it.id }) { game ->
+                            ServerGameCard(
+                                game = game,
+                                authHeader = viewModel.rommAuthHeader,
+                                onClick = { openGameStream(context, game) },
+                                modifier = Modifier.size(width = if (isTv) 150.dp else 110.dp, height = if (isTv) 210.dp else 154.dp),
+                            )
+                        }
+                    }
+                }
+                ActionTile(title = "Game library settings", subtitle = "Change or reload", onClick = { setupStep = 1 })
+            }
+        }
+    }
+
+    when (setupStep) {
+        1 -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "RomM address (for example 10.0.0.58:8095)",
+                        value = viewModel.rommAddress.removePrefix("http://"),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        onSubmit = {},
+                    ),
+                onSave = {
+                    draftAddress = it
+                    setupStep = if (it.isBlank()) 0 else 2
+                },
+                onDismissRequest = { setupStep = 0 },
+            )
+        }
+
+        2 -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "RomM username",
+                        value = viewModel.rommUsername,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        onSubmit = {},
+                    ),
+                onSave = {
+                    draftUser = it
+                    setupStep = if (it.isBlank()) 0 else 3
+                },
+                onDismissRequest = { setupStep = 0 },
+            )
+        }
+
+        3 -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "RomM password",
+                        value = "",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        onSubmit = {},
+                    ),
+                onSave = {
+                    viewModel.connect(draftAddress, draftUser, it)
+                    setupStep = 0
+                },
+                onDismissRequest = { setupStep = 0 },
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** A simple wide button-like tile, e.g. "Connect game library" */
+@Composable
+private fun ActionTile(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+            ),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
+        modifier = Modifier.size(width = 280.dp, height = 84.dp),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(subtitle, fontSize = 13.sp, color = Color.White.copy(alpha = .8f))
+        }
+    }
+}
+
+/** A box art card for one of your own games */
+@Composable
+private fun ServerGameCard(
+    game: RommGame,
+    authHeader: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    val context = LocalContext.current
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+            ),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1F1F1F), focusedContainerColor = Color(0xFF1F1F1F)),
+        modifier = modifier,
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            // The name sits underneath, so it shows when there's no box art
+            Text(
+                text = game.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
                 modifier =
                     Modifier
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 16.dp),
-            ) {
-                BuiltInGame.entries.forEach { game ->
-                    GameTile(
-                        game = game,
-                        best = viewModel.best(game),
-                        onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(180.dp),
-                    )
-                }
+                        .align(Alignment.Center)
+                        .padding(10.dp),
+            )
+            if (game.coverUrl != null) {
+                AsyncImage(
+                    model =
+                        remember(game.coverUrl) {
+                            ImageRequest
+                                .Builder(context)
+                                .data(game.coverUrl)
+                                .httpHeaders(NetworkHeaders.Builder().set("Authorization", authHeader).build())
+                                .build()
+                        },
+                    contentDescription = game.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
 }
+
+/**
+ * Opens Moonlight, which streams the game from the server. If Moonlight isn't installed, opens its store page.
+ */
+private fun openGameStream(
+    context: Context,
+    game: RommGame,
+) {
+    val pm = context.packageManager
+    val launch = pm.getLeanbackLaunchIntentForPackage(MOONLIGHT_PACKAGE) ?: pm.getLaunchIntentForPackage(MOONLIGHT_PACKAGE)
+    if (launch != null) {
+        Toast.makeText(context, "Opening ${game.name}: choose Wolf UI → EmulationStation", Toast.LENGTH_LONG).show()
+        context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return
+    }
+    Toast.makeText(context, "Install the free Moonlight app to play your games", Toast.LENGTH_LONG).show()
+    try {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$MOONLIGHT_PACKAGE")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    } catch (_: Exception) {
+        // No app store on this device; the message above explains what to do
+    }
+}
+
+private const val MOONLIGHT_PACKAGE = "com.limelight"
 
 @Composable
 private fun GameTile(
