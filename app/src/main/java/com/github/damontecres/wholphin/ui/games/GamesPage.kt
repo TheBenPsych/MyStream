@@ -17,14 +17,17 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -105,6 +108,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -279,9 +283,28 @@ class GamesViewModel
             }
         }
 
-        private fun key(game: BuiltInGame): String {
-            val profile = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
-            return "${profile}_${game.name}"
+        private val profile: String
+            get() = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
+
+        private fun key(game: BuiltInGame): String = "${profile}_${game.name}"
+
+        /** The built-in game this profile played last, if any */
+        fun lastPlayed(): BuiltInGame? =
+            prefs.getString("last_$profile", null)?.let { name -> BuiltInGame.entries.firstOrNull { it.name == name } }
+
+        /** The game on the big tile: the one you played last, or else a "game of the day" */
+        fun featured(): BuiltInGame = lastPlayed() ?: BuiltInGame.entries[LocalDate.now().dayOfYear % BuiltInGame.entries.size]
+
+        /** Opens a built-in game, remembering it for the big tile next time */
+        fun open(game: BuiltInGame) {
+            prefs.edit().putString("last_$profile", game.name).apply()
+            navigationManager.navigateTo(Destination.PlayGame(game.name))
+        }
+
+        /** Opens a random game (not the one on the big tile, when there's a choice) */
+        fun surprise(featured: BuiltInGame) {
+            val choices = BuiltInGame.entries.filter { it != featured }.ifEmpty { BuiltInGame.entries }
+            open(choices.random())
         }
 
         fun best(game: BuiltInGame): Int = prefs.getInt(key(game), 0)
@@ -335,35 +358,7 @@ fun GamesPage(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (isTv) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                contentPadding = PaddingValues(vertical = 16.dp, horizontal = 8.dp),
-                modifier = Modifier.focusRequester(focusRequester),
-            ) {
-                items(BuiltInGame.entries) { game ->
-                    GameTile(
-                        game = game,
-                        best = viewModel.best(game),
-                        onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
-                        modifier = Modifier.size(width = 320.dp, height = 190.dp),
-                    )
-                }
-            }
-        } else {
-            // Phones: one big tile per game, stacked
-            BuiltInGame.entries.forEach { game ->
-                GameTile(
-                    game = game,
-                    best = viewModel.best(game),
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.PlayGame(game.name)) },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(180.dp),
-                )
-            }
-        }
+        ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {
@@ -595,18 +590,151 @@ private fun openGameStream(
 
 private const val MOONLIGHT_PACKAGE = "com.limelight"
 
+/** One spot on the Arcade wall next to (or below) the big tile */
+private sealed interface WallItem {
+    data class Game(
+        val game: BuiltInGame,
+    ) : WallItem
+
+    data object Surprise : WallItem
+}
+
+/**
+ * The Arcade wall: a collage with one big tile for the game you played last (or a game of the day),
+ * smaller tiles packed around it, a "Surprise me" tile, and your best scores.
+ *
+ * TV: a grid six small tiles wide. The big tile takes 2 x 2, three columns of small tiles sit next to it,
+ * and the scores card takes the last column. More games than fit flow into rows of six underneath.
+ * Phone: the big tile across the top, then two small tiles per row, then the scores.
+ */
+@Composable
+private fun ArcadeWall(
+    viewModel: GamesViewModel,
+    isTv: Boolean,
+    focusRequester: FocusRequester,
+) {
+    val featured = remember { viewModel.featured() }
+    val label = remember { if (viewModel.lastPlayed() != null) "Play again" else "Game of the day" }
+    val tiles =
+        remember(featured) {
+            BuiltInGame.entries.filter { it != featured }.map { WallItem.Game(it) } + WallItem.Surprise
+        }
+    val gap = if (isTv) 16.dp else 10.dp
+
+    @Composable
+    fun Small(
+        item: WallItem,
+        modifier: Modifier,
+    ) {
+        when (item) {
+            is WallItem.Game -> {
+                GameTile(
+                    game = item.game,
+                    best = viewModel.best(item.game),
+                    big = false,
+                    isTv = isTv,
+                    onClick = { viewModel.open(item.game) },
+                    modifier = modifier,
+                )
+            }
+
+            WallItem.Surprise -> {
+                SurpriseTile(isTv = isTv, onClick = { viewModel.surprise(featured) }, modifier = modifier)
+            }
+        }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (isTv) {
+            val unit = (maxWidth - gap * 5) / 6
+            val smallHeight = unit * .78f
+            val bigHeight = smallHeight * 2 + gap
+            val besideBig = tiles.take(6)
+            val below = tiles.drop(6)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(gap),
+                modifier = Modifier.padding(vertical = 12.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    GameTile(
+                        game = featured,
+                        best = viewModel.best(featured),
+                        big = true,
+                        isTv = true,
+                        label = label,
+                        onClick = { viewModel.open(featured) },
+                        modifier =
+                            Modifier
+                                .size(width = unit * 2 + gap, height = bigHeight)
+                                .focusRequester(focusRequester),
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(gap),
+                        modifier = Modifier.width(unit * 3 + gap * 2),
+                    ) {
+                        besideBig.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                row.forEach { Small(it, Modifier.size(width = unit, height = smallHeight)) }
+                            }
+                        }
+                    }
+                    ScoresCard(viewModel, isTv = true, modifier = Modifier.size(width = unit, height = bigHeight))
+                }
+                below.chunked(6).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        row.forEach { Small(it, Modifier.size(width = unit, height = smallHeight)) }
+                    }
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                GameTile(
+                    game = featured,
+                    best = viewModel.best(featured),
+                    big = true,
+                    isTv = false,
+                    label = label,
+                    onClick = { viewModel.open(featured) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                )
+                tiles.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        row.forEach {
+                            Small(
+                                it,
+                                Modifier
+                                    .weight(1f)
+                                    .height(112.dp),
+                            )
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                ScoresCard(viewModel, isTv = false, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+/** A built-in game's tile: big (with the "works with" chips and the description) or small (just the name) */
 @Composable
 private fun GameTile(
     game: BuiltInGame,
     best: Int,
+    big: Boolean,
+    isTv: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String? = null,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(if (big) 14.dp else 10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = if (big) 1.04f else 1.08f),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
@@ -625,50 +753,159 @@ private fun GameTile(
                 preview.preparePreview(size.width, size.height)
                 with(preview) { draw(textMeasurer) }
             }
-            // Fade the picture on the left so the words stay easy to read
+            // Fade the picture behind the words so they stay easy to read
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.horizontalGradient(
-                            0f to game.colors[1].copy(alpha = .92f),
-                            0.5f to game.colors[1].copy(alpha = .55f),
-                            1f to Color.Transparent,
-                        ),
+                        if (big) {
+                            Brush.horizontalGradient(
+                                0f to game.colors[1].copy(alpha = .92f),
+                                0.55f to game.colors[1].copy(alpha = .5f),
+                                1f to Color.Transparent,
+                            )
+                        } else {
+                            Brush.verticalGradient(
+                                0f to game.colors[1].copy(alpha = .9f),
+                                0.6f to game.colors[1].copy(alpha = .25f),
+                                1f to Color.Black.copy(alpha = .35f),
+                            )
+                        },
                     ),
             )
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(if (big) 8.dp else 4.dp),
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(if (big) 18.dp else 10.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
-                    Badge(PlayWith.CONTROLLER, "Controller")
-                    Badge(PlayWith.PHONE, "Phone")
+                if (big) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
+                        Badge(PlayWith.CONTROLLER, "Controller")
+                        Badge(PlayWith.PHONE, "Phone")
+                    }
                 }
-                Text(game.title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
-                // At most two lines, so the score at the bottom never gets cut off
                 Text(
-                    game.tagline,
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = .9f),
+                    game.title,
+                    fontSize =
+                        if (big) {
+                            32.sp
+                        } else if (isTv) {
+                            17.sp
+                        } else {
+                            18.sp
+                        },
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
                     maxLines = 2,
+                    lineHeight = if (big) 34.sp else 19.sp,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(.85f),
                 )
+                if (big) {
+                    Text(
+                        game.tagline,
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = .9f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(.6f),
+                    )
+                }
                 Box(Modifier.weight(1f))
+                val scoreText =
+                    when {
+                        big && label != null && best > 0 -> "$label · Best $best"
+                        big && label != null -> label
+                        best > 0 -> "Best $best"
+                        else -> "New"
+                    }
                 Text(
-                    text = if (best > 0) "Your best: $best" else "No score yet",
-                    fontSize = 13.sp,
+                    text = scoreText,
+                    fontSize = if (big) 14.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     modifier =
                         Modifier
                             .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = if (big) 10.dp else 6.dp, vertical = if (big) 5.dp else 2.dp),
+                )
+            }
+        }
+    }
+}
+
+/** The "Surprise me" tile: starts a random built-in game */
+@Composable
+private fun SurpriseTile(
+    isTv: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .25f)), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+            ),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C21), focusedContainerColor = Color(0xFF2A2A31)),
+        modifier = modifier,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+        ) {
+            Text(stringResource(R.string.fa_shuffle), fontFamily = FontAwesome, fontSize = 22.sp, color = Color(0xFFE50914))
+            Text("Surprise me", fontSize = if (isTv) 16.sp else 17.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text("A random game", fontSize = 11.sp, color = Color.White.copy(alpha = .7f))
+        }
+    }
+}
+
+/** "Your best scores": every built-in game with this profile's best, highest first */
+@Composable
+private fun ScoresCard(
+    viewModel: GamesViewModel,
+    isTv: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val scores =
+        BuiltInGame.entries
+            .map { it to viewModel.best(it) }
+            .sortedByDescending { it.second }
+    val shown = if (isTv) scores.take(7) else scores
+    Column(
+        verticalArrangement = Arrangement.spacedBy(if (isTv) 6.dp else 8.dp),
+        modifier =
+            modifier
+                .background(Color(0xFF16161A), RoundedCornerShape(10.dp))
+                .padding(if (isTv) 12.dp else 16.dp),
+    ) {
+        Text("Your best scores", fontSize = if (isTv) 15.sp else 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+        shown.forEachIndexed { i, (game, best) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    game.title,
+                    fontSize = if (isTv) 11.sp else 14.sp,
+                    color = Color.White.copy(alpha = .75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    if (best > 0) "%,d".format(best) else "—",
+                    fontSize = if (isTv) 12.sp else 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (i == 0 && best > 0) Color(0xFFFFD54F) else Color.White,
                 )
             }
         }
