@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,7 +69,7 @@ fun PhoneHeader(modifier: Modifier = Modifier) {
 
 /**
  * Benflix on phones: the menu sits along the bottom of the screen where your thumb is.
- * Home, Search, Browse (your libraries + settings), Games, and your profile.
+ * Home, Search, Games, and My Benflix, which holds your profile, My List, the libraries and settings.
  */
 @Composable
 fun PhoneNavBar(
@@ -86,7 +87,8 @@ fun PhoneNavBar(
     val home = tabs.firstOrNull()
     val games = tabs.firstOrNull { it.title == gamesTitle }
     val libraries = tabs.filter { it !== home && it !== games }
-    var showBrowse by remember { mutableStateOf(false) }
+    var showMine by remember { mutableStateOf(false) }
+    val name = if (kids) "Kids" else user.name
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -100,51 +102,85 @@ fun PhoneNavBar(
             PhoneNavItem(R.string.fa_house, it.title, it.selected && !searchSelected, it.onClick)
         }
         PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
-        PhoneNavItem(
-            R.string.fa_bars,
-            stringResource(R.string.phone_browse),
-            libraries.any { it.selected },
-        ) { showBrowse = true }
         games?.let {
             PhoneNavItem(R.string.fa_gamepad, it.title, it.selected, it.onClick)
         }
+        val mineSelected = libraries.any { it.selected }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier =
                 Modifier
                     .weight(1f)
-                    .clickable(onClick = onClickProfile)
+                    .clickable { showMine = true }
                     .padding(vertical = 6.dp),
         ) {
             UserIconCardImage(
                 id = user.id,
-                name = if (kids) "Kids" else user.name,
+                name = name,
                 imageUrl = if (kids) null else userImageUrl,
-                modifier = Modifier.size(24.dp),
+                modifier =
+                    Modifier
+                        .size(26.dp)
+                        .then(
+                            if (mineSelected) {
+                                Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
+                            } else {
+                                Modifier
+                            },
+                        ),
             )
             Text(
-                text = stringResource(R.string.phone_profiles),
+                text = stringResource(R.string.phone_my_benflix),
                 fontSize = 12.sp,
-                color = UNSELECTED,
+                color = if (mineSelected) Color.White else UNSELECTED,
+                fontWeight = if (mineSelected) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
             )
         }
     }
 
-    if (showBrowse) {
-        BasicDialog(onDismissRequest = { showBrowse = false }) {
+    if (showMine) {
+        BasicDialog(onDismissRequest = { showMine = false }) {
             LazyColumn(modifier = Modifier.padding(vertical = 8.dp)) {
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showMine = false
+                                    onClickProfile.invoke()
+                                }.padding(horizontal = 24.dp, vertical = 12.dp),
+                    ) {
+                        UserIconCardImage(
+                            id = user.id,
+                            name = name,
+                            imageUrl = if (kids) null else userImageUrl,
+                            modifier = Modifier.size(40.dp),
+                        )
+                        Column {
+                            Text(text = name.orEmpty(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                text = stringResource(R.string.phone_switch_profile),
+                                fontSize = 14.sp,
+                                color = UNSELECTED,
+                            )
+                        }
+                    }
+                }
                 items(libraries) { tab ->
                     BrowseRow(tab.title, tab.selected) {
-                        showBrowse = false
+                        showMine = false
                         tab.onClick.invoke()
                     }
                 }
                 if (!kids) {
                     item {
                         BrowseRow(stringResource(R.string.settings), false) {
-                            showBrowse = false
+                            showMine = false
                             onClickSettings.invoke()
                         }
                     }

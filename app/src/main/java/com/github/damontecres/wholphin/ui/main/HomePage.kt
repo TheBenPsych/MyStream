@@ -949,10 +949,13 @@ fun HomePageHeader(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier,
     ) {
+        // Benflix: a big title logo on the banner, like Netflix's billboard
         TitleOrLogo(
             title = title,
             logoImageUrl = logoImageUrl,
             showLogo = showLogo,
+            logoHeight = if (rememberIsTv()) 100.dp else 72.dp,
+            logoMaxWidth = 420.dp,
             modifier = Modifier.fillMaxWidth(.75f),
         )
         Column(

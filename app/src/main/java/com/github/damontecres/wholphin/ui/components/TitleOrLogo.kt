@@ -31,10 +31,13 @@ fun TitleOrLogo(
     logoImageUrl: String?,
     showLogo: Boolean,
     modifier: Modifier = Modifier,
+    logoHeight: androidx.compose.ui.unit.Dp = HeaderUtils.logoHeight,
+    logoMaxWidth: androidx.compose.ui.unit.Dp = 320.dp,
 ) {
-    var imageError by remember { mutableStateOf(false) }
+    // Reset for each logo, so one broken logo doesn't turn every later one back into typed text
+    var imageError by remember(logoImageUrl) { mutableStateOf(false) }
     Box(
-        modifier = modifier.heightIn(max = HeaderUtils.logoHeight),
+        modifier = modifier.heightIn(max = logoHeight),
     ) {
         if (showLogo && logoImageUrl != null && !imageError) {
             AsyncImage(
@@ -45,10 +48,11 @@ fun TitleOrLogo(
                     logCoilError(logoImageUrl, it.result)
                     imageError = true
                 },
+                alignment = Alignment.CenterStart,
                 modifier =
                     Modifier
-                        .height(HeaderUtils.logoHeight)
-                        .widthIn(max = 320.dp),
+                        .height(logoHeight)
+                        .widthIn(max = logoMaxWidth),
             )
         } else {
             Title(title, Modifier)
