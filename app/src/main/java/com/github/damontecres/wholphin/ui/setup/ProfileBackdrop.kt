@@ -161,6 +161,11 @@ fun holidayFont(effect: LogoEffect): FontFamily? =
         LogoEffect.FIREWORKS_USA -> FontFamily(Font(R.font.holiday_bungee))
         LogoEffect.FALLING_LEAVES -> FontFamily(Font(R.font.holiday_playfair_italic, style = FontStyle.Italic))
         LogoEffect.CONFETTI -> FontFamily(Font(R.font.holiday_pacifico))
+        LogoEffect.MARIGOLDS -> FontFamily(Font(R.font.holiday_sancreek))
+        LogoEffect.LANTERNS -> FontFamily(Font(R.font.holiday_kaushan))
+        LogoEffect.DIYAS -> FontFamily(Font(R.font.holiday_yatra))
+        LogoEffect.EMBERS -> FontFamily(Font(R.font.holiday_rye))
+        LogoEffect.STAR_PAIR -> FontFamily(Font(R.font.holiday_caveatbrush))
         LogoEffect.NONE -> null
     }
 
@@ -226,6 +231,26 @@ fun HolidayScene(
 
                 LogoEffect.CONFETTI -> {
                     birthday(t)
+                }
+
+                LogoEffect.MARIGOLDS -> {
+                    dayOfTheDead(t, statics)
+                }
+
+                LogoEffect.LANTERNS -> {
+                    lunarNewYear(t, statics)
+                }
+
+                LogoEffect.DIYAS -> {
+                    diwali(t)
+                }
+
+                LogoEffect.EMBERS -> {
+                    bonfireNight(t, statics)
+                }
+
+                LogoEffect.STAR_PAIR -> {
+                    tanabata(t, statics)
                 }
 
                 LogoEffect.NONE -> {}
@@ -959,5 +984,399 @@ private fun DrawScope.birthday(t: Float) {
         }) {
             box(-w / 2, -ht / 2, w, ht, hex(conf[i % conf.size]), .95f)
         }
+    }
+}
+
+// ---- Day of the Dead: twilight sky, swaying papel picado, candlelit ofrenda, falling marigold petals
+
+private fun DrawScope.marigold(
+    x: Float,
+    y: Float,
+    r: Float,
+) {
+    for (k in 0 until 10) {
+        val a = k * TAU / 10
+        drawCircle(hex(0xFFE8740C), r * .45f, Offset(x + cos(a) * r * .55f, y + sin(a) * r * .55f))
+    }
+    drawCircle(hex(0xFFFF9F1C), r * .62f, Offset(x, y))
+    drawCircle(hex(0xFFFFC233), r * .32f, Offset(x, y))
+}
+
+private fun DrawScope.dayOfTheDead(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF1B0B33), .55f to hex(0xFF5B1B5E), 1f to hex(0xFFE86A2A))
+    stars(50, 21, 380f, t)
+    glow(Offset(800f, 780f), 520f, hex(0xFFFFA24D), .45f)
+    drawPath(s.hill(760f, 60f, 22), hex(0xFF2A0F2E))
+    // Papel picado: two strings of colored paper flags that sway in the breeze
+    val flagColors = listOf(0xFFFF4F9A, 0xFFFFC233, 0xFF3DD6C6, 0xFF9B5CFF, 0xFFFF7A1A, 0xFF66D16E)
+    listOf(110f to 0f, 210f to 1.7f).forEachIndexed { row, (top, phase) ->
+        val n = 13
+        drawPath(
+            Path().apply {
+                moveTo(-20f, top)
+                quadraticTo(VW / 2, top + 60f, VW + 20f, top)
+            },
+            hex(0xFFF5E6C8),
+            style = Stroke(2f),
+            alpha = .7f,
+        )
+        for (i in 0 until n) {
+            val fx = i / (n - 1f)
+            val x = -20f + fx * (VW + 40f)
+            val y = top + 4 * 60f * fx * (1 - fx) / 2 + 2
+            val sway = sin(t * 1.6f + i * .7f + phase) * 6f
+            withTransform({
+                translate(x, y)
+                rotate(sway, pivot = Offset.Zero)
+            }) {
+                val c = hex(flagColors[(i + row * 3) % flagColors.size])
+                drawPath(
+                    poly(-38f, 0f, 38f, 0f, 38f, 70f, 28f, 80f, 18f, 70f, 8f, 80f, -2f, 70f, -12f, 80f, -22f, 70f, -32f, 80f, -38f, 70f),
+                    c,
+                    alpha = .92f,
+                )
+                // Cut-out holes: a little flower and dots
+                val hole = hex(0xFF2A0F2E)
+                drawCircle(hole, 9f, Offset(0f, 34f), alpha = .55f)
+                for (k in 0 until 6) {
+                    val a = k * TAU / 6
+                    drawCircle(hole, 5f, Offset(cos(a) * 17f, 34f + sin(a) * 17f), alpha = .55f)
+                }
+                drawCircle(hole, 3.5f, Offset(-26f, 12f), alpha = .55f)
+                drawCircle(hole, 3.5f, Offset(26f, 12f), alpha = .55f)
+            }
+        }
+    }
+    // Ofrenda: a dark stepped altar with candles and marigolds
+    box(380f, 740f, 840f, 160f, hex(0xFF1A0718))
+    box(460f, 680f, 680f, 70f, hex(0xFF230A22))
+    box(560f, 630f, 480f, 60f, hex(0xFF2C0E2B))
+    listOf(
+        420f to 740f,
+        520f to 680f,
+        620f to 630f,
+        980f to 630f,
+        1080f to 680f,
+        1180f to 740f,
+        700f to 740f,
+        900f to 740f,
+    ).forEachIndexed {
+        i,
+        (x, base),
+        ->
+        val ht = 40f + h(23, i) * 30f
+        box(x - 9f, base - ht, 18f, ht, hex(0xFFF3E3C3))
+        val f = flicker(t, i * 1.3f)
+        glow(Offset(x, base - ht - 14f), 90f, hex(0xFFFFB347), .45f * f)
+        drawPath(
+            Path().apply {
+                moveTo(x, base - ht - 30f * f)
+                quadraticTo(x + 9f, base - ht - 6f, x, base - ht)
+                quadraticTo(x - 9f, base - ht - 6f, x, base - ht - 30f * f)
+                close()
+            },
+            hex(0xFFFFD36B),
+        )
+    }
+    for (i in 0 until 14) {
+        marigold(400f + i * 62f + h(24, i) * 20f, 735f + h(25, i) * 8f, 16f + h(26, i) * 6f)
+    }
+    marigold(600f, 626f, 20f)
+    marigold(1000f, 626f, 20f)
+    marigold(800f, 626f, 24f)
+    // Petals drifting down
+    for (i in 0 until 70) {
+        val y = (frac(h(27, i) + t * (.02f + h(28, i) * .03f)) * 1.1f - .05f) * VH
+        val x = h(29, i) * VW + sin(t * .8f + i) * 30f
+        withTransform({ rotate(t * 90f * (h(30, i) - .5f) + i * 40f, pivot = Offset(x, y)) }) {
+            oval(x, y, 9f, 5f, if (i % 3 == 0) hex(0xFFFFC233) else hex(0xFFFF8A1C), .85f)
+        }
+    }
+}
+
+// ---- Lunar New Year: deep red night, a pagoda silhouette, swaying red lanterns, gold sparks and fireworks
+
+private fun DrawScope.lantern(
+    x: Float,
+    y: Float,
+    s: Float,
+    swing: Float,
+    t: Float,
+) = withTransform({
+    translate(x, y)
+    rotate(swing, pivot = Offset.Zero)
+    scale(s, s, pivot = Offset.Zero)
+}) {
+    drawLine(hex(0xFFE0B04A), Offset(0f, -200f), Offset(0f, 0f), strokeWidth = 2f)
+    glow(Offset(0f, 60f), 150f, hex(0xFFFF4A2E), .45f + .1f * sin(t * 2 + x))
+    box(-26f, 0f, 52f, 12f, hex(0xFFE0B04A))
+    oval(0f, 60f, 62f, 50f, hex(0xFFD81E1E))
+    oval(0f, 60f, 40f, 50f, hex(0xFFEE3B2B))
+    oval(0f, 60f, 16f, 50f, hex(0xFFFF5A3C), .8f)
+    box(-26f, 108f, 52f, 12f, hex(0xFFE0B04A))
+    for (k in 0 until 5) {
+        drawLine(hex(0xFFE0B04A), Offset(-10f + k * 5f, 120f), Offset(-10f + k * 5f + sin(t * 3 + k) * 3f, 168f), strokeWidth = 2.5f)
+    }
+}
+
+private fun DrawScope.lunarNewYear(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF14030A), .6f to hex(0xFF4A0A14), 1f to hex(0xFF8A1A1A))
+    stars(40, 31, 420f, t)
+    fireworks(t, listOf(hex(0xFFFFD54F), hex(0xFFFF4D4D), hex(0xFFFFE9A8), hex(0xFFFF8A65)))
+    glow(Offset(800f, 830f), 500f, hex(0xFFFF7A3D), .35f)
+    drawPath(s.hill(800f, 50f, 32), hex(0xFF1E0408))
+    // Pagoda
+    withTransform({ translate(1220f, 800f) }) {
+        val dark = hex(0xFF12020A)
+        for (tier in 0 until 4) {
+            val w = 220f - tier * 40f
+            val y = -tier * 90f
+            box(-w * .35f, y - 70f, w * .7f, 70f, dark)
+            drawPath(
+                Path().apply {
+                    moveTo(-w / 2 - 30f, y - 60f)
+                    quadraticTo(-w / 4, y - 76f, 0f, y - 96f)
+                    quadraticTo(w / 4, y - 76f, w / 2 + 30f, y - 60f)
+                    quadraticTo(w / 2, y - 72f, w / 2 - 10f, y - 70f)
+                    lineTo(-w / 2 + 10f, y - 70f)
+                    quadraticTo(-w / 2, y - 72f, -w / 2 - 30f, y - 60f)
+                    close()
+                },
+                dark,
+            )
+            for (wnd in -1..1) {
+                box(wnd * w * .18f - 6f, y - 50f, 12f, 22f, hex(0xFFFFB347), .45f + .3f * flicker(t, tier * 3f + wnd))
+            }
+        }
+        box(-3f, -420f, 6f, 70f, dark)
+    }
+    // A row of lanterns hanging from the top
+    listOf(160f to 1f, 400f to .8f, 640f to 1.1f, 900f to .75f, 1460f to .95f).forEachIndexed { i, (x, sc) ->
+        lantern(x, 40f + h(33, i) * 90f, sc, sin(t * 1.2f + i * 1.3f) * 5f, t)
+    }
+    // Gold sparks floating up
+    for (i in 0 until 50) {
+        val y = (1.05f - frac(h(34, i) + t * (.02f + h(35, i) * .03f)) * 1.1f) * VH
+        val x = h(36, i) * VW + sin(t + i) * 20f
+        val tw = (sin(t * 4 + i) + 1) / 2
+        drawCircle(hex(0xFFFFD54F), 2f + tw * 2.5f, Offset(x, y), alpha = .3f + tw * .6f)
+    }
+}
+
+// ---- Diwali: indigo night, a row of glowing diyas reflected in water, rising sky lanterns and fireworks
+
+private fun DrawScope.diya(
+    x: Float,
+    y: Float,
+    s: Float,
+    t: Float,
+    seed: Float,
+) {
+    val f = flicker(t, seed)
+    glow(Offset(x, y - 30f * s), 120f * s, hex(0xFFFFB300), .5f * f)
+    drawArc(
+        hex(0xFFB5541F),
+        startAngle = 0f,
+        sweepAngle = 180f,
+        useCenter = true,
+        topLeft = Offset(x - 44f * s, y - 24f * s),
+        size = Size(88f * s, 48f * s),
+    )
+    oval(x, y, 44f * s, 8f * s, hex(0xFFD97A3A))
+    drawPath(
+        Path().apply {
+            moveTo(x, y - 46f * s * f)
+            quadraticTo(x + 13f * s, y - 10f * s, x, y - 4f * s)
+            quadraticTo(x - 13f * s, y - 10f * s, x, y - 46f * s * f)
+            close()
+        },
+        hex(0xFFFFD54F),
+    )
+    oval(x, y - 14f * s, 4f * s, 9f * s, Color.White, .8f)
+}
+
+private fun DrawScope.diwali(t: Float) {
+    sky(0f to hex(0xFF070723), .6f to hex(0xFF1D1050), 1f to hex(0xFF4A1E6A))
+    stars(80, 41, 520f, t)
+    fireworks(t, listOf(hex(0xFFFFD54F), hex(0xFFFF80AB), hex(0xFF7CF5FF), hex(0xFFFFB74D), Color.White))
+    // Sky lanterns drifting up
+    for (i in 0 until 12) {
+        val p = frac(h(42, i) + t * (.012f + h(43, i) * .01f))
+        val y = 760f - p * 820f
+        val x = h(44, i) * VW + sin(t * .5f + i) * 25f
+        val sc = .5f + h(45, i) * .6f
+        val a = (1 - p) * .9f + .1f
+        glow(Offset(x, y), 70f * sc, hex(0xFFFFA040), .5f * a)
+        drawPath(
+            poly(x - 16f * sc, y - 24f * sc, x + 16f * sc, y - 24f * sc, x + 12f * sc, y + 22f * sc, x - 12f * sc, y + 22f * sc),
+            hex(0xFFFFB55C),
+            alpha = a,
+        )
+        box(x - 8f * sc, y + 14f * sc, 16f * sc, 6f * sc, hex(0xFFFFF0B0), a)
+    }
+    // Ground and water
+    box(0f, 740f, VW, 40f, hex(0xFF1A0B26))
+    drawRect(
+        Brush.verticalGradient(0f to hex(0xFF1A1040), 1f to hex(0xFF06061A), startY = 780f, endY = VH),
+        topLeft = Offset(0f, 780f),
+        size = Size(VW, VH - 780f),
+    )
+    for (i in 0 until 9) {
+        val x = 120f + i * 170f
+        diya(x, 750f, 1f, t, i * 1.7f)
+        // Shimmering reflection
+        for (k in 0 until 4) {
+            val w = 30f - k * 5f + sin(t * 3 + i + k) * 6f
+            box(x - w / 2, 800f + k * 22f, w, 4f, hex(0xFFFFC14D), (.35f - k * .07f) * flicker(t, i * 1.7f))
+        }
+    }
+    // Rangoli-style sparkles along the ground
+    for (i in 0 until 40) {
+        val x = h(46, i) * VW
+        val y = 690f + h(47, i) * 40f
+        val tw = (sin(t * 3 + i * 1.1f) + 1) / 2
+        drawCircle(hex(0xFFFFE29A), 1.5f + tw * 2f, Offset(x, y), alpha = tw)
+    }
+}
+
+// ---- Bonfire Night: dark hills, a big crackling bonfire, rising embers and rockets bursting overhead
+
+private fun DrawScope.bonfireNight(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF04050C), .6f to hex(0xFF111426), 1f to hex(0xFF2A1A20))
+    stars(70, 51, 480f, t)
+    fireworks(t, listOf(hex(0xFFFFB74D), Color.White, hex(0xFF82B1FF), hex(0xFFFF5252), hex(0xFF69F0AE)))
+    drawPath(s.hill(700f, 80f, 52), hex(0xFF0B0D16))
+    drawPath(s.hill(790f, 50f, 53), hex(0xFF07080F))
+    val cx = 800f
+    val base = 820f
+    glow(Offset(cx, base - 120f), 520f, hex(0xFFFF6A1A), .4f + .08f * sin(t * 6))
+    // Logs
+    listOf(-30f, 30f, -12f, 14f).forEachIndexed { i, ang ->
+        withTransform({ rotate(ang, pivot = Offset(cx, base)) }) {
+            box(cx - 10f, base - 180f + i * 10f, 20f, 190f, hex(0xFF2A160C))
+        }
+    }
+    // Layered flames
+    listOf(
+        Triple(260f, 110f, hex(0xFFE0360F)),
+        Triple(210f, 85f, hex(0xFFFF7A1A)),
+        Triple(150f, 60f, hex(0xFFFFB13B)),
+        Triple(90f, 35f, hex(0xFFFFE08A)),
+    ).forEachIndexed { layer, (ht, w, c) ->
+        for (k in -2..2) {
+            val x = cx + k * w * .45f
+            val f = flicker(t * 1.4f, layer * 5f + k * 2f)
+            val tall = ht * (1f - abs(k) * .22f) * f
+            val lean = sin(t * 3 + k + layer) * 18f
+            drawPath(
+                Path().apply {
+                    moveTo(x - w * .5f, base)
+                    quadraticTo(x - w * .6f, base - tall * .5f, x + lean, base - tall)
+                    quadraticTo(x + w * .6f, base - tall * .5f, x + w * .5f, base)
+                    close()
+                },
+                c,
+                alpha = .9f,
+            )
+        }
+    }
+    // Embers rising and drifting
+    for (i in 0 until 80) {
+        val p = frac(h(54, i) + t * (.08f + h(55, i) * .1f))
+        val y = base - 80f - p * 700f
+        val x = cx + (h(56, i) - .5f) * 260f + sin(t * 2 + i) * 30f * p + (h(57, i) - .5f) * 300f * p
+        val a = (1 - p) * (.5f + .5f * abs(sin(t * 8 + i)))
+        drawCircle(if (i % 4 == 0) hex(0xFFFFE08A) else hex(0xFFFF8A2A), 2.5f + (1 - p) * 2.5f, Offset(x, y), alpha = a)
+    }
+    // Ground
+    drawRect(
+        Brush.verticalGradient(0f to hex(0xFF1A0E0A), 1f to hex(0xFF050304), startY = base, endY = VH),
+        topLeft = Offset(0f, base),
+        size = Size(VW, VH - base),
+    )
+}
+
+// ---- Tanabata: the Milky Way, the two star lovers Vega and Altair, bamboo with wishes on paper strips, fireflies
+
+private fun DrawScope.tanabata(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF030616), .6f to hex(0xFF0B1638), 1f to hex(0xFF1C2E5C))
+    stars(140, 61, 700f, t)
+    // Milky Way: a soft diagonal band of light and tiny stars
+    withTransform({ rotate(-28f, pivot = Offset(800f, 380f)) }) {
+        drawRect(
+            Brush.verticalGradient(
+                0f to Color.Transparent,
+                .5f to hex(0xFFB9C8FF).copy(alpha = .22f),
+                1f to Color.Transparent,
+                startY = 300f,
+                endY = 460f,
+            ),
+            topLeft = Offset(-300f, 300f),
+            size = Size(VW + 600f, 160f),
+        )
+        for (i in 0 until 160) {
+            val x = -300f + h(62, i) * (VW + 600f)
+            val y = 380f + (h(63, i) + h(64, i) - 1f) * 70f
+            drawCircle(Color.White, .6f + h(65, i) * 1.2f, Offset(x, y), alpha = .3f + .5f * h(66, i))
+        }
+    }
+    // Vega and Altair on either side of the river of stars
+    listOf(Offset(520f, 170f) to 0f, Offset(1120f, 560f) to 1.6f).forEach { (c, ph) ->
+        val tw = (sin(t * 1.8f + ph) + 1) / 2
+        glow(c, 90f, hex(0xFF9FB8FF), .4f + tw * .3f)
+        drawCircle(Color.White, 5f + tw * 2f, c)
+        val r = 26f + tw * 12f
+        drawLine(Color.White, c - Offset(r, 0f), c + Offset(r, 0f), strokeWidth = 1.5f, alpha = .7f)
+        drawLine(Color.White, c - Offset(0f, r), c + Offset(0f, r), strokeWidth = 1.5f, alpha = .7f)
+    }
+    drawPath(s.hill(800f, 50f, 67), hex(0xFF050A18))
+    // Bamboo stalk with leaves and wish strips
+    val bx = 240f
+    for (seg in 0 until 8) {
+        val y = 860f - seg * 95f
+        box(bx - 10f, y - 92f, 20f, 92f, hex(0xFF1F5A3A))
+        box(bx - 12f, y - 4f, 24f, 6f, hex(0xFF174A2E))
+    }
+    val strips = listOf(0xFFFF6B8B, 0xFFFFD166, 0xFF6BD3FF, 0xFFB28DFF, 0xFF7CF29A, 0xFFFFA05C)
+    for (i in 0 until 9) {
+        val side = if (i % 2 == 0) 1f else -1f
+        val y = 180f + i * 70f
+        val sway = sin(t * 1.3f + i * .9f) * 6f
+        withTransform({ rotate(sway * side, pivot = Offset(bx, y)) }) {
+            drawPath(
+                Path().apply {
+                    moveTo(bx, y)
+                    quadraticTo(bx + side * 90f, y - 30f, bx + side * 180f, y + 10f)
+                    quadraticTo(bx + side * 90f, y - 6f, bx, y)
+                    close()
+                },
+                hex(0xFF2E7A4E),
+            )
+            val sx = bx + side * (60f + h(68, i) * 70f)
+            withTransform({ rotate(sin(t * 2f + i) * 8f, pivot = Offset(sx, y)) }) {
+                drawLine(hex(0xFFDDDDDD), Offset(sx, y - 6f), Offset(sx, y + 6f), strokeWidth = 1f)
+                box(sx - 11f, y + 6f, 22f, 64f, hex(strips[i % strips.size]), .92f)
+            }
+        }
+    }
+    // Fireflies
+    for (i in 0 until 30) {
+        val x = h(69, i) * VW + sin(t * .7f + i) * 40f
+        val y = 620f + h(70, i) * 240f + cos(t * .9f + i * 2) * 25f
+        val tw = (sin(t * 2.5f + i * 1.7f) + 1) / 2
+        glow(Offset(x, y), 18f, hex(0xFFD8FF7A), .6f * tw)
+        drawCircle(hex(0xFFF2FFB0), 2.5f, Offset(x, y), alpha = tw)
     }
 }

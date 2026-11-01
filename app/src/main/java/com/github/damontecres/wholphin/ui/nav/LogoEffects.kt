@@ -80,6 +80,14 @@ fun BoxScope.LogoEffectBehind(effect: LogoEffect) {
             FallingLeaves()
         }
 
+        LogoEffect.MARIGOLDS -> {
+            MarigoldPetals()
+        }
+
+        LogoEffect.EMBERS -> {
+            RisingEmbers()
+        }
+
         else -> {}
     }
 }
@@ -104,6 +112,18 @@ fun BoxScope.LogoEffectInFront(effect: LogoEffect) {
 
         LogoEffect.CONFETTI -> {
             Confetti()
+        }
+
+        LogoEffect.LANTERNS -> {
+            HangingLanterns()
+        }
+
+        LogoEffect.DIYAS -> {
+            DiyaFlames()
+        }
+
+        LogoEffect.STAR_PAIR -> {
+            StarPair()
         }
 
         else -> {}
@@ -307,6 +327,136 @@ private fun BoxScope.Confetti() {
                     alpha = alpha,
                 )
             }
+        }
+    }
+}
+
+/** Day of the Dead: orange and gold marigold petals drifting down past the logo */
+@Composable
+private fun BoxScope.MarigoldPetals() {
+    val t by loop(4200)
+    val colors = listOf(Color(0xFFFF9F1C), Color(0xFFFFC233), Color(0xFFFF7A00), Color(0xFFFFD166))
+    Canvas(modifier = Modifier.matchParentSize()) {
+        for (k in 0 until 8) {
+            val p = frac(t - k / 8f)
+            val x = size.width * (.05f + (k * 5 % 8) / 8f * .9f) + sin(p * 2 * PI * 1.5 + k).toFloat() * 4.dp.toPx()
+            val y = -8.dp.toPx() + 42.dp.toPx() * p
+            val alpha = smooth(0f, .1f, p) * (1 - smooth(.72f, 1f, p))
+            rotate(degrees = p * 300f + k * 45f, pivot = Offset(x, y)) {
+                drawOval(
+                    color = colors[k % colors.size],
+                    topLeft = Offset(x - 2.dp.toPx(), y - 1.2.dp.toPx()),
+                    size = Size(4.dp.toPx(), 2.4.dp.toPx()),
+                    alpha = alpha,
+                )
+            }
+        }
+    }
+}
+
+/** Bonfire Night: little orange embers floating up from under the logo */
+@Composable
+private fun BoxScope.RisingEmbers() {
+    val t by loop(2600)
+    Canvas(modifier = Modifier.matchParentSize()) {
+        for (k in 0 until 10) {
+            val p = frac(t - k / 10f)
+            val x = size.width * (.06f + (k * 7 % 10) / 10f * .88f) + sin(p * 2 * PI * 2 + k).toFloat() * 3.dp.toPx()
+            val y = size.height + 6.dp.toPx() - 40.dp.toPx() * p
+            val alpha = smooth(0f, .1f, p) * (1 - smooth(.5f, 1f, p))
+            val c = if (k % 3 == 0) Color(0xFFFFD54F) else Color(0xFFFF7A1A)
+            drawCircle(c.copy(alpha = alpha * .35f), radius = 3.dp.toPx(), center = Offset(x, y))
+            drawCircle(c, radius = (1.4f - p * .6f).dp.toPx(), center = Offset(x, y), alpha = alpha)
+        }
+    }
+}
+
+/** Lunar New Year: two small red lanterns with gold trim swinging from the logo */
+@Composable
+private fun BoxScope.HangingLanterns() {
+    val t by loop(2400)
+    Canvas(modifier = Modifier.matchParentSize()) {
+        listOf(-.02f to 0f, 1.02f to .5f).forEach { (fx, delay) ->
+            val swing = sin(frac(t + delay) * 2 * PI).toFloat() * 10f
+            val top = Offset(fx * size.width, -2.dp.toPx())
+            rotate(degrees = swing, pivot = top) {
+                val cord = 5.dp.toPx()
+                drawLine(Color(0xFFFFC94D), top, top + Offset(0f, cord), strokeWidth = .8.dp.toPx())
+                val w = 9.dp.toPx()
+                val hgt = 10.dp.toPx()
+                val c = top + Offset(0f, cord + hgt / 2)
+                drawCircle(Color(0xFFFF3B30).copy(alpha = .35f), radius = 9.dp.toPx(), center = c)
+                drawOval(Color(0xFFE0201B), topLeft = c - Offset(w / 2, hgt / 2), size = Size(w, hgt))
+                drawOval(Color(0xFFFF5A47), topLeft = c - Offset(w / 4, hgt / 2), size = Size(w / 2, hgt), alpha = .7f)
+                drawRect(Color(0xFFFFC94D), topLeft = c - Offset(w / 3, hgt / 2 + 1.dp.toPx()), size = Size(w * 2 / 3, 1.5.dp.toPx()))
+                drawRect(Color(0xFFFFC94D), topLeft = c + Offset(-w / 3, hgt / 2 - .5.dp.toPx()), size = Size(w * 2 / 3, 1.5.dp.toPx()))
+                drawLine(
+                    Color(0xFFFFC94D),
+                    c + Offset(0f, hgt / 2 + 1.dp.toPx()),
+                    c + Offset(0f, hgt / 2 + 5.dp.toPx()),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+        }
+    }
+}
+
+/** Diwali: a row of tiny clay lamps with flickering flames under the logo */
+@Composable
+private fun BoxScope.DiyaFlames() {
+    val t by loop(900)
+    Canvas(modifier = Modifier.matchParentSize()) {
+        val y = size.height + 3.dp.toPx()
+        for (k in 0 until 5) {
+            val x = size.width * (.1f + k * .2f)
+            val flick = (sin((t + k * .37f) * 2 * PI).toFloat() + sin((t * 2 + k) * 2 * PI).toFloat() * .5f) * .5f
+            drawCircle(Color(0xFFFFB300).copy(alpha = .3f + flick * .08f), radius = 6.dp.toPx(), center = Offset(x, y - 3.dp.toPx()))
+            drawArc(
+                Color(0xFFB5541F),
+                startAngle = 0f,
+                sweepAngle = 180f,
+                useCenter = true,
+                topLeft = Offset(x - 4.dp.toPx(), y - 2.dp.toPx()),
+                size = Size(8.dp.toPx(), 4.dp.toPx()),
+            )
+            val fh = (4.5f + flick * .8f).dp.toPx()
+            val flame =
+                Path().apply {
+                    moveTo(x, y - fh)
+                    quadraticTo(x + 2.dp.toPx(), y - 1.dp.toPx(), x, y)
+                    quadraticTo(x - 2.dp.toPx(), y - 1.dp.toPx(), x, y - fh)
+                    close()
+                }
+            drawPath(flame, Color(0xFFFFD54F))
+        }
+    }
+}
+
+/** Tanabata: two stars, Vega and Altair, twinkling across a faint Milky Way over the logo */
+@Composable
+private fun BoxScope.StarPair() {
+    val t by loop(2200)
+    Canvas(modifier = Modifier.matchParentSize()) {
+        drawLine(
+            Brush.linearGradient(
+                0f to Color.Transparent,
+                .5f to Color(0x55B9C8FF),
+                1f to Color.Transparent,
+                start = Offset(size.width * .2f, -6.dp.toPx()),
+                end = Offset(size.width * .8f, size.height + 6.dp.toPx()),
+            ),
+            Offset(size.width * .2f, -6.dp.toPx()),
+            Offset(size.width * .8f, size.height + 6.dp.toPx()),
+            strokeWidth = 6.dp.toPx(),
+        )
+        listOf(Offset(.04f, -.2f) to 0f, Offset(.96f, 1.1f) to .5f).forEach { (spot, delay) ->
+            val tw = (sin(frac(t + delay) * 2 * PI).toFloat() + 1) / 2
+            val c = Offset(spot.x * size.width, spot.y * size.height)
+            drawCircle(Color(0xFF9FB8FF).copy(alpha = .25f + tw * .2f), radius = 5.dp.toPx(), center = c)
+            drawCircle(Color.White, radius = (1.2f + tw * .6f).dp.toPx(), center = c)
+            val r = (3.5f + tw * 1.5f).dp.toPx()
+            drawLine(Color.White.copy(alpha = .6f), c - Offset(r, 0f), c + Offset(r, 0f), strokeWidth = .6.dp.toPx())
+            drawLine(Color.White.copy(alpha = .6f), c - Offset(0f, r), c + Offset(0f, r), strokeWidth = .6.dp.toPx())
         }
     }
 }
