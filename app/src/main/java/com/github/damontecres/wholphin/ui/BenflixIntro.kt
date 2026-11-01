@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui
 
-import android.content.Context
 import android.media.MediaPlayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -25,61 +24,58 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import com.github.damontecres.wholphin.R
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDate
 
 /**
- * Benflix startup animation: the red B grows in with a "ta-dum" sound, the name fades in,
- * then the B zooms toward the screen and everything fades away. About 4 seconds.
- *
- * It only plays on the first launch of each day, so opening Benflix again later is instant.
+ * Benflix startup animation. The logo shows still for about 2 seconds while the app loads
+ * behind it (so nothing lags), then the "ta-dum" sound plays, the B pops, and it zooms
+ * toward the screen as everything fades away. It plays every time Benflix is opened fresh.
  */
-object BenflixIntroSchedule {
-    private const val PREFS = "benflix_intro"
-    private const val KEY_LAST_DAY = "last_day"
-
-    /** True the first time this is asked on a given day (and remembers that it was asked) */
-    fun shouldShowToday(context: Context): Boolean {
-        val today = LocalDate.now().toString()
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getString(KEY_LAST_DAY, null) == today) return false
-        prefs.edit { putString(KEY_LAST_DAY, today) }
-        return true
-    }
-}
-
 @Composable
 fun BenflixIntro(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val markScale = remember { Animatable(0.55f) }
+    val markScale = remember { Animatable(1f) }
     val markAlpha = remember { Animatable(0f) }
     val wordAlpha = remember { Animatable(0f) }
     val screenAlpha = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
-        try {
-            MediaPlayer.create(context, R.raw.benflix_intro)?.apply {
-                setVolume(.7f, .7f)
-                setOnCompletionListener { it.release() }
-                start()
+        // Get the sound ready while the still logo is showing
+        val player =
+            try {
+                MediaPlayer.create(context, R.raw.benflix_intro)?.apply {
+                    setVolume(.7f, .7f)
+                    setOnCompletionListener { it.release() }
+                }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not load intro sound")
+                null
             }
-        } catch (ex: Exception) {
-            Timber.w(ex, "Could not play intro sound")
-        }
+        var started = false
         try {
+            // 1) Still logo for about 2 seconds while the app loads in the background
             coroutineScope {
-                launch { markAlpha.animateTo(1f, tween(600)) }
-                markScale.animateTo(1f, tween(1300, easing = FastOutSlowInEasing))
+                launch { markAlpha.animateTo(1f, tween(300)) }
+                launch { wordAlpha.animateTo(1f, tween(300)) }
             }
-            wordAlpha.animateTo(1f, tween(600))
-            delay(1300)
+            delay(1700)
+            // 2) Sound + the B pops
+            try {
+                player?.start()
+                started = player != null
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not play intro sound")
+            }
+            markScale.animateTo(1.12f, tween(450, easing = FastOutSlowInEasing))
+            markScale.animateTo(1f, tween(450, easing = FastOutSlowInEasing))
+            delay(500)
+            // 3) Zoom toward the screen and fade away
             coroutineScope {
                 launch { wordAlpha.animateTo(0f, tween(250)) }
                 launch { markScale.animateTo(9f, tween(850, easing = FastOutLinearInEasing)) }
@@ -89,6 +85,7 @@ fun BenflixIntro(
                 }
             }
         } finally {
+            if (!started) player?.release()
             onFinished()
         }
     }
