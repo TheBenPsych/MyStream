@@ -1040,6 +1040,7 @@
     <string name="choose_picture_for">Choose a picture for %1$s</string>
     <string name="use_automatic_picture">Use the automatic picture</string>
     <string name="more_of_genre">More %1$s</string>
+    <string name="clips_none">No trailers yet. Trailers downloaded to your server (for example by Trailarr) show up here.</string>
     <string name="phone_my_benflix">My Benflix</string>
     <string name="phone_switch_profile">Switch profile</string>
     <string name="mood_shuffle">Show me different ones</string>

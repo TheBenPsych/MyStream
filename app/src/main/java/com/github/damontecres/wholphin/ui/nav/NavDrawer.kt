@@ -382,7 +382,22 @@ fun NavDrawer(
         // Phones: logo on top, menu along the bottom.
         // The logo bar slides away while you scroll down and comes back as soon as you scroll up.
         var headerVisible by remember { mutableStateOf(true) }
-        LaunchedEffect(destination) { headerVisible = true }
+        // Clips (the trailer feed) covers the page above the bottom menu until you leave it
+        var clipsOpen by remember { mutableStateOf(false) }
+        LaunchedEffect(destination) {
+            headerVisible = true
+            clipsOpen = false
+        }
+        val phoneTabs =
+            tabs.map { tab ->
+                tab.copy(
+                    selected = tab.selected && !clipsOpen,
+                    onClick = {
+                        clipsOpen = false
+                        tab.onClick()
+                    },
+                )
+            }
         val headerScroll =
             remember {
                 object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -400,31 +415,47 @@ fun NavDrawer(
                 }
             }
         Column(modifier = modifier) {
+            if (clipsOpen) {
+                com.github.damontecres.wholphin.ui.main.ClipsPage(
+                    onClose = { clipsOpen = false },
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                )
+            }
             AnimatedVisibility(
-                visible = headerVisible,
+                visible = headerVisible && !clipsOpen,
                 enter = expandVertically(),
                 exit = shrinkVertically(),
             ) {
                 PhoneHeader()
             }
-            DestinationContent(
-                destination = destination,
-                preferences = preferences,
-                onClearBackdrop = onClearBackdrop,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .nestedScroll(headerScroll)
-                        .padding(start = 16.dp, end = 8.dp),
-            )
+            if (!clipsOpen) {
+                DestinationContent(
+                    destination = destination,
+                    preferences = preferences,
+                    onClearBackdrop = onClearBackdrop,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .nestedScroll(headerScroll)
+                            .padding(start = 16.dp, end = 8.dp),
+                )
+            }
             PhoneNavBar(
-                tabs = tabs,
+                tabs = phoneTabs,
+                clipsSelected = clipsOpen,
+                onClickClips = { clipsOpen = true },
                 gamesTitle = stringResource(R.string.games),
                 user = user,
                 userImageUrl = userImageUrl,
-                searchSelected = selectedIndex == SEARCH_INDEX,
-                onClickSearch = onClickSearch,
+                searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen,
+                onClickSearch = {
+                    clipsOpen = false
+                    onClickSearch()
+                },
                 onClickSettings = onClickSettings,
                 onClickProfile = onClickProfile,
             )
