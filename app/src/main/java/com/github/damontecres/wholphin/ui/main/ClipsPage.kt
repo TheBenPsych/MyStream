@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
+import android.media.audiofx.LoudnessEnhancer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -78,6 +79,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -163,6 +165,7 @@ fun ClipsPage(
             viewModel.play(state.clips.getOrNull(current))
             // Start loading the next trailer now, so swiping to it plays right away
             viewModel.preload(state.clips.getOrNull(current + 1))
+            viewModel.loadMoreIfNear(current)
             onPauseOrDispose { viewModel.pause() }
         }
         DisposableEffect(Unit) { onDispose { viewModel.pause() } }
@@ -411,7 +414,7 @@ class ClipsViewModel
                     it.copy(
                         loading = false,
                         clips =
-                            saved.shuffled().take(CLIPS_FROM_CACHE).map { c ->
+                            saved.shuffled().map { c ->
                                 Clip(
                                     c.item,
                                     c.trailerId,
@@ -424,22 +427,7 @@ class ClipsViewModel
                 SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
             }
             try {
-                val items =
-                    withContext(WholphinDispatchers.IO) {
-                        api.itemsApi
-                            .getItems(
-                                GetItemsRequest(
-                                    userId = userId,
-                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                    recursive = true,
-                                    hasTrailer = true,
-                                    sortBy = listOf(ItemSortBy.RANDOM),
-                                    limit = CLIPS_FETCH,
-                                    fields = HomeItemFields,
-                                ),
-                            ).content.items
-                            .filter { (it.localTrailerCount ?: 1) > 0 }
-                    }
+                val items = withContext(WholphinDispatchers.IO) { findItemsWithTrailers(userId) }
                 val known =
                     _state.value.clips
                         .map { it.item.id }
@@ -475,6 +463,76 @@ class ClipsViewModel
             }
         }
 
+        private var loadingMore = false
+        private var emptyBatches = 0
+
+        /**
+         * Call as you move through the trailers: when only a few are left, quietly find another
+         * batch, so the shuffle keeps going through your whole library
+         */
+        fun loadMoreIfNear(index: Int) {
+            val clips = _state.value.clips
+            if (loadingMore || _state.value.loading || emptyBatches >= 2 || index < clips.size - CLIPS_MORE_WHEN_LEFT) return
+            loadingMore = true
+            viewModelScope.launch(ExceptionHandler()) {
+                try {
+                    val userId = serverRepository.currentUser?.id
+                    val known =
+                        _state.value.clips
+                            .map { it.item.id }
+                            .toSet()
+                    val more =
+                        withContext(WholphinDispatchers.IO) {
+                            resolveClips(findItemsWithTrailers(userId).filter { it.id !in known })
+                        }
+                    if (more.isEmpty()) emptyBatches++ else emptyBatches = 0
+                    _state.update { st ->
+                        val have = st.clips.map { it.trailerId }.toSet()
+                        st.copy(clips = st.clips + more.filter { it.trailerId !in have })
+                    }
+                } finally {
+                    loadingMore = false
+                }
+            }
+        }
+
+        /**
+         * Random movies & shows that have a trailer. The server can be slow to answer the very
+         * first time (it has to check the whole library), so try again a couple of times, and if it
+         * still finds nothing, just take random titles and look for their trailers one by one.
+         */
+        private suspend fun findItemsWithTrailers(userId: UUID?): List<BaseItemDto> {
+            fun request(onlyWithTrailers: Boolean) =
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    hasTrailer = if (onlyWithTrailers) true else null,
+                    sortBy = listOf(ItemSortBy.RANDOM),
+                    limit = CLIPS_FETCH,
+                    fields = HomeItemFields,
+                )
+            repeat(CLIPS_TRIES) { attempt ->
+                try {
+                    val found =
+                        api.itemsApi
+                            .getItems(request(true))
+                            .content.items
+                            .filter { (it.localTrailerCount ?: 1) > 0 }
+                    if (found.isNotEmpty()) return found
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Looking for trailers failed (try %d)", attempt + 1)
+                }
+                delay(CLIPS_RETRY_MS * (attempt + 1))
+            }
+            return api.itemsApi
+                .getItems(request(false))
+                .content.items
+                .filter { (it.localTrailerCount ?: 1) > 0 }
+        }
+
         /** Look up the downloaded trailer of each item, a few at a time */
         private suspend fun resolveClips(items: List<BaseItemDto>): List<Clip> =
             coroutineScope {
@@ -502,6 +560,19 @@ class ClipsViewModel
                     .filterNotNull()
             }
 
+        private val boosts = mutableListOf<LoudnessEnhancer?>()
+
+        private fun boost(audioSessionId: Int): LoudnessEnhancer? =
+            try {
+                LoudnessEnhancer(audioSessionId).apply {
+                    setTargetGain(CLIPS_BOOST_MB)
+                    enabled = true
+                }
+            } catch (ex: Exception) {
+                Timber.w(ex, "No loudness boost for trailers")
+                null
+            }
+
         private fun newPlayer(): ExoPlayer =
             ExoPlayer
                 .Builder(context)
@@ -516,7 +587,12 @@ class ClipsViewModel
                             CLIPS_REBUFFER_MS,
                         ).build(),
                 ).build()
-                .also { it.repeatMode = Player.REPEAT_MODE_ONE }
+                .also { p ->
+                    p.repeatMode = Player.REPEAT_MODE_ONE
+                    // Trailers are often mixed for surround sound and come out quiet on TV speakers:
+                    // give them a small boost so they play at a normal level
+                    boosts += boost(p.audioSessionId)
+                }
 
         private fun mediaItem(clip: Clip): MediaItem =
             MediaItem.fromUri(api.videosApi.getVideoStreamUrl(itemId = clip.trailerId, static = true))
@@ -595,6 +671,8 @@ class ClipsViewModel
         }
 
         override fun onCleared() {
+            boosts.forEach { it?.release() }
+            boosts.clear()
             player?.release()
             player = null
             nextPlayer?.release()
@@ -603,15 +681,20 @@ class ClipsViewModel
     }
 
 private const val CLIPS_FETCH = 80
+private const val CLIPS_TRIES = 3
+private const val CLIPS_RETRY_MS = 1_500L
+
+// +5 dB
+private const val CLIPS_BOOST_MB = 500
 
 // A quick flick this fast moves to the next clip, or a slow drag past a quarter of the screen
 private const val CLIPS_FLING_DP_PER_SEC = 300
 private const val CLIPS_SWIPE_FRACTION = .25f
 private const val CLIPS_FIRST = 2
 
-// How many saved trailers to start with, and how many to remember
-private const val CLIPS_FROM_CACHE = 40
-private const val CLIPS_CACHE_MAX = 300
+// How many trailers to remember on the device, and when to fetch more (trailers left to go)
+private const val CLIPS_CACHE_MAX = 600
+private const val CLIPS_MORE_WHEN_LEFT = 10
 private const val CLIPS_CACHE_MAX_AGE_MS = 14L * 24 * 3_600_000L
 private const val CLIPS_PARALLEL = 8
 private const val CLIPS_MIN_BUFFER_MS = 8_000

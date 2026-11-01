@@ -75,15 +75,17 @@ fun TrailerShufflePage(
         delay(50)
         focus.tryRequestFocus()
     }
-    LaunchedEffect(pokes, index) {
+    val clip = state.clips.getOrNull(index)
+    // The title and description show for a few seconds on each new trailer (the first one too)
+    LaunchedEffect(pokes, clip?.trailerId) {
         showInfo = true
         delay(INFO_SHOW_MS)
         showInfo = false
     }
-    val clip = state.clips.getOrNull(index)
     LifecycleResumeEffect(clip?.trailerId) {
         viewModel.play(clip)
         viewModel.preload(state.clips.getOrNull(index + 1))
+        viewModel.loadMoreIfNear(index)
         onPauseOrDispose { viewModel.pause() }
     }
     DisposableEffect(Unit) { onDispose { viewModel.pause() } }
@@ -189,7 +191,7 @@ fun TrailerShufflePage(
                         Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
-                            .padding(start = 48.dp, end = 48.dp, bottom = 40.dp),
+                            .padding(start = 48.dp, end = 48.dp, bottom = 84.dp),
                 ) {
                     TitleOrLogo(
                         title = clip.item.title,
@@ -208,14 +210,27 @@ fun TrailerShufflePage(
                             modifier = Modifier.widthIn(max = 720.dp),
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Hint("OK", "Watch")
-                        Hint("▼ ▶", "Next")
-                        Hint("▲ ◀", "Previous")
-                        Hint("☰", "More info")
-                    }
                 }
             }
+        }
+        // The buttons stay on screen the whole time, on a soft shadow so they're easy to read
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = .6f),
+                        ),
+                    ).padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 32.dp),
+        ) {
+            Hint("OK", "Watch")
+            Hint("▼ ▶", "Next")
+            Hint("▲ ◀", "Previous")
+            Hint("☰", "More info")
         }
     }
 }
