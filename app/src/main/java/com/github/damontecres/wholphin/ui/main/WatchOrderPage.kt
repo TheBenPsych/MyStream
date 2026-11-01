@@ -329,7 +329,11 @@ fun WatchOrderPage(
                     } else {
                         // By the day each came out (so 2021's Black Widow comes before Shang-Chi)
                         items.sortedWith(
-                            compareBy<OrderedItem>({ it.releaseDay ?: java.time.LocalDate.of(it.year, 12, 31).toEpochDay() })
+                            compareBy<OrderedItem>({
+                                it.releaseDay ?: java.time.LocalDate
+                                    .of(it.year, 12, 31)
+                                    .toEpochDay()
+                            })
                                 .thenBy { it.storyNumber },
                         )
                     }

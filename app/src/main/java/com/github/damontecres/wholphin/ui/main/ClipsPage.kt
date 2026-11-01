@@ -412,7 +412,12 @@ class ClipsViewModel
                         loading = false,
                         clips =
                             saved.shuffled().take(CLIPS_FROM_CACHE).map { c ->
-                                Clip(c.item, c.trailerId, c.item.data.userData?.isFavorite == true)
+                                Clip(
+                                    c.item,
+                                    c.trailerId,
+                                    c.item.data.userData
+                                        ?.isFavorite == true,
+                                )
                             },
                     )
                 }
@@ -435,7 +440,10 @@ class ClipsViewModel
                             ).content.items
                             .filter { (it.localTrailerCount ?: 1) > 0 }
                     }
-                val known = _state.value.clips.map { it.item.id }.toSet()
+                val known =
+                    _state.value.clips
+                        .map { it.item.id }
+                        .toSet()
                 val fresh = items.filter { it.id !in known }
                 // Find the trailers for the first couple right away so the first clip starts fast,
                 // then the rest in the background while you watch
