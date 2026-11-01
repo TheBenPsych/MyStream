@@ -384,16 +384,20 @@ fun NavDrawer(
         var headerVisible by remember { mutableStateOf(true) }
         // Clips (the trailer feed) covers the page above the bottom menu until you leave it
         var clipsOpen by remember { mutableStateOf(false) }
+        // Downloads (saved on this phone) also covers the page in the same way
+        var downloadsOpen by remember { mutableStateOf(false) }
         LaunchedEffect(destination) {
             headerVisible = true
             clipsOpen = false
+            downloadsOpen = false
         }
         val phoneTabs =
             tabs.map { tab ->
                 tab.copy(
-                    selected = tab.selected && !clipsOpen,
+                    selected = tab.selected && !clipsOpen && !downloadsOpen,
                     onClick = {
                         clipsOpen = false
+                        downloadsOpen = false
                         tab.onClick()
                     },
                 )
@@ -415,6 +419,15 @@ fun NavDrawer(
                 }
             }
         Column(modifier = modifier) {
+            if (downloadsOpen && !clipsOpen) {
+                com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
+                    onClose = { downloadsOpen = false },
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                )
+            }
             if (clipsOpen) {
                 com.github.damontecres.wholphin.ui.main.ClipsPage(
                     onClose = { clipsOpen = false },
@@ -425,13 +438,13 @@ fun NavDrawer(
                 )
             }
             AnimatedVisibility(
-                visible = headerVisible && !clipsOpen,
+                visible = headerVisible && !clipsOpen && !downloadsOpen,
                 enter = expandVertically(),
                 exit = shrinkVertically(),
             ) {
                 PhoneHeader()
             }
-            if (!clipsOpen) {
+            if (!clipsOpen && !downloadsOpen) {
                 DestinationContent(
                     destination = destination,
                     preferences = preferences,
@@ -447,13 +460,21 @@ fun NavDrawer(
             PhoneNavBar(
                 tabs = phoneTabs,
                 clipsSelected = clipsOpen,
-                onClickClips = { clipsOpen = true },
+                onClickClips = {
+                    downloadsOpen = false
+                    clipsOpen = true
+                },
+                onClickDownloads = {
+                    clipsOpen = false
+                    downloadsOpen = true
+                },
                 gamesTitle = stringResource(R.string.games),
                 user = user,
                 userImageUrl = userImageUrl,
-                searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen,
+                searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen && !downloadsOpen,
                 onClickSearch = {
                     clipsOpen = false
+                    downloadsOpen = false
                     onClickSearch()
                 },
                 onClickSettings = onClickSettings,

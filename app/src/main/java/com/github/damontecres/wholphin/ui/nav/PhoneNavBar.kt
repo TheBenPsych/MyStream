@@ -83,6 +83,7 @@ fun PhoneNavBar(
     onClickSearch: () -> Unit,
     onClickSettings: () -> Unit,
     onClickProfile: () -> Unit,
+    onClickDownloads: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val kids by KidsMode.active.collectAsState()
@@ -172,6 +173,12 @@ fun PhoneNavBar(
                                 color = UNSELECTED,
                             )
                         }
+                    }
+                }
+                item {
+                    BrowseRow(stringResource(R.string.downloads_title), false) {
+                        showMine = false
+                        onClickDownloads.invoke()
                     }
                 }
                 items(libraries) { tab ->
