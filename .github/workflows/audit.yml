@@ -148,7 +148,9 @@ jobs:
             # Move the clock off holidays so the robot sees the everyday screens (the animated holiday
             # scene keeps the screen reader from ever settling on the TV emulator)
             if adb root >/dev/null 2>&1; then sleep 3; adb wait-for-device; fi
+            adb shell getprop ro.build.type || true
             adb shell "settings put global auto_time 0; date 111012002026.00" || true
+            adb shell "su 0 date 111012002026.00" || adb shell "su root date 111012002026.00" || true
             adb shell date || true
             timeout 300 adb install -r -g app.apk
           }

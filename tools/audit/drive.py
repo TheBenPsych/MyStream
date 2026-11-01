@@ -472,7 +472,7 @@ def sign_in():
             time.sleep(2)
             continue
         n = find(root, rf"^{USER}$")
-        if n is not None and find(root, r"Who's watching") is not None:
+        if n is not None and find(root, r"Who's watching|Select User") is not None:
             tap(n)
             time.sleep(4)
             continue
