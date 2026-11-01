@@ -6,7 +6,7 @@
 #  1. Downloads the RetroArch "cores" (emulators) for every console we support
 #  2. Downloads the extra files some cores need (Dolphin, PPSSPP)
 #  3. Tells EmulationStation that GameCube and Dreamcast games live in roms/ngc and roms/dc, and to use the
-#     RetroArch emulators for GameCube, Wii and PS2
+#     RetroArch emulators for PS1 (SwanStation), PS2, GameCube and Wii
 #  4. Groups multi-disc PS1 games into one entry each (Game.m3u folders)
 #  5. Copies BIOS files from Games/bios/<console> to where the emulators look
 #
@@ -60,7 +60,7 @@ for a in Dolphin PPSSPP; do
 done
 rm -rf "$TMP"
 
-say "Telling EmulationStation about GameCube, Wii, Dreamcast and PS2"
+say "Telling EmulationStation about PS1, PS2, GameCube, Wii and Dreamcast"
 cat >"$H/ES-DE/custom_systems/es_systems.xml" <<'EOF'
 <?xml version="1.0"?>
 <!-- Written by benflix-games-setup.sh. GameCube and Dreamcast use RomM folder names (roms/ngc, roms/dc). -->
@@ -91,6 +91,15 @@ cat >"$H/ES-DE/custom_systems/es_systems.xml" <<'EOF'
         <command label="Flycast (RetroArch)">%EMULATOR_RETROARCH% -L %CORE_RETROARCH%/flycast_libretro.so %ROM%</command>
         <platform>dreamcast</platform>
         <theme>dreamcast</theme>
+    </system>
+    <system>
+        <name>psx</name>
+        <fullname>Sony PlayStation</fullname>
+        <path>%ROMPATH%/psx</path>
+        <extension>.bin .BIN .cbn .CBN .ccd .CCD .chd .CHD .cue .CUE .ecm .ECM .exe .EXE .img .IMG .iso .ISO .m3u .M3U .mds .MDS .pbp .PBP .psexe .PSEXE .psf .PSF .toc .TOC .z .Z .znx .ZNX .7z .7Z .zip .ZIP</extension>
+        <command label="SwanStation (RetroArch)">%EMULATOR_RETROARCH% -L %CORE_RETROARCH%/swanstation_libretro.so %ROM%</command>
+        <platform>psx</platform>
+        <theme>psx</theme>
     </system>
     <system>
         <name>ps2</name>
@@ -139,8 +148,15 @@ have() {
     echo "  MISSING  $2 -> put it in \\\\TOWER\\Homelab\\Games\\bios\\$3"
   fi
 }
-have "$SYS/scph5501.bin" "PS1 BIOS (scph5501.bin)" psx
+have "$SYS/scph[15]00[0-2].bin" "PS1 BIOS (scph1001.bin or scph5501.bin)" psx
 have "$SYS/pcsx2/bios/*" "PS2 BIOS (any scph*.bin)" ps2
+
+say "Pointing RetroArch at the BIOS and system files folder"
+CFG=$RA/retroarch.cfg
+touch "$CFG"
+sed -i '/^system_directory/d' "$CFG"
+echo 'system_directory = "~/.config/retroarch/system"' >>"$CFG"
+echo "  ok"
 
 chown -R "$OWNER" "$H/.config" "$H/ES-DE"
 
