@@ -34,6 +34,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -403,9 +405,13 @@ fun InstallUpdatePageContent(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+            // Start on the Download button, so one OK press on the remote starts the update
+            val downloadFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { downloadFocus.requestFocusWhenReady() }
             TextButton(
                 stringRes = R.string.download_and_update,
                 onClick = onInstallRelease,
+                modifier = Modifier.focusRequester(downloadFocus),
             )
             TextButton(
                 stringRes = R.string.cancel,
