@@ -1,0 +1,4 @@
+  [750,156][1170,241] Select Server
+  [778,257][1142,309] Server placeholder
+  [909,467][1012,570] Add Server
+  [839,695][1081,733] Add Server

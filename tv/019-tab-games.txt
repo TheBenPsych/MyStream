@@ -1,0 +1,36 @@
+  [80,26][328,78] Benflix
+  [110,78][298,103] Día de los Muertos
+  [404,45][486,83] Home
+  [550,44][675,85] Browse  ▾
+  [739,45][866,83] Channels
+  [930,45][1030,83] Games
+  [1094,45][1236,83] My Benflix
+  [1300,45][1372,83] More
+  [1454,42][1498,86] Search
+  [1542,42][1586,86] Settings
+  [1628,44][1736,84] 7:11 PM
+  [1768,32][1832,96] demo
+  [176,180][535,251] Benflix Games
+  [176,283][895,323] Quick games you can play with your TV remote.
+  [954,427][1046,457] Remote
+  [1090,429][1124,456] 
+  [1134,427][1259,457] Controller
+  [1303,429][1324,456] 
+  [1334,427][1409,457] Phone
+  [912,477][1152,543] Reel Rush
+  [912,555][1402,636] Fly the Benflix B through the gaps in the film strips.
+  [928,694][1087,727] No score yet
+  [1642,427][1734,457] Remote
+  [1778,429][1792,456] 
+  [1600,477][1792,543] Snack Catch
+  [1600,555][1792,636] Catch the falling snacks in your popcorn bucket. Watch out for spilled sodas!
+  [1616,694][1775,727] No score yet
+* [192,387][832,767] 
+  [251,418][349,450] Remote
+  [395,420][431,449] 
+  [442,418][575,450] Controller
+  [621,420][643,449] 
+  [654,418][734,450] Phone
+  [207,471][541,541] Popcorn Pop
+  [207,554][726,640] Bounce a popcorn kernel up a tower of soda cups and film reels. Grab the tickets!
+  [224,701][392,736] No score yet

@@ -1,0 +1,23 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Select Server | Server placeholder | Add Server | Add Server",
+  "screen typed-server: Enter Server IP or URL | https://demo.jellyfin.org/stable | Submit",
+  "screen login-4: D\u00eda de los Muertos | Who's watching? | Stable Demo | demo | demo | Add profile | Add profile | \uf0ec | Switch servers",
+  "screen typed-user: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "signed in",
+  "screen benflix-first: Benflix | D\u00eda de los Muertos | Browse  \u25be | Channels | Games | My Benflix | More | Search | Settings | 6:56 PM | demo | Home | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  8m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:04 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to ",
+  "screen login-1: ",
+  "signed in",
+  "screen benflix-start0: Benflix | D\u00eda de los Muertos | Home | Browse  \u25be | Channels | Games | My Benflix | More | Search | Settings | 6:57 PM | demo | FROM MY LIST | Caminandes: Gran Dillama | 2013  \u2022  2m |   \u2022  7.3\ufffd |   \u2022  Ends at 6:59 PM | A young llama named Koro discovers that the grass is always greener on the other si",
+  "screen login-1: ",
+  "signed in",
+  "screen benflix-start1: Benflix | D\u00eda de los Muertos | Home | Browse  \u25be | Channels | Games | My Benflix | More | Search | Settings | 6:58 PM | demo | FROM MY LIST | Caminandes: Gran Dillama | 2013  \u2022  2m |   \u2022  7.3\ufffd |   \u2022  Ends at 7:00 PM | A young llama named Koro discovers that the grass is always greener on the other si",
+  "screen login-1: D\u00eda de los Muertos | Who's watching? | Stable Demo | demo | demo | Kids | Kids | Add profile | Add profile | \uf0ec | Switch servers",
+  "signed in",
+  "screen benflix-start2: Benflix | D\u00eda de los Muertos | Home | Browse  \u25be | Channels | Games | My Benflix | More | Search | Settings | 6:59 PM | demo | FROM MY LIST | Caminandes: Gran Dillama | 2013  \u2022  2m |   \u2022  7.3\ufffd |   \u2022  Ends at 7:01 PM | A young llama named Koro discovers that the grass is always greener on the other si"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}

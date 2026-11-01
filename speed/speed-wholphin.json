@@ -1,0 +1,33 @@
+{
+ "app": "wholphin",
+ "package": "com.github.damontecres.wholphin",
+ "starts": [
+  11.3,
+  11.2,
+  4.7
+ ],
+ "scroll": {
+  "frames": 28,
+  "janky": 28,
+  "p50_ms": 750,
+  "p90_ms": 1150,
+  "p95_ms": 1250,
+  "p99_ms": 1450,
+  "slow_ui_thread": 20,
+  "slow_bitmap_uploads": 1,
+  "seconds": 17.2
+ },
+ "memory_kb": 84781,
+ "notes": [],
+ "first_start_incl_sign_in_s": 83.3,
+ "open_item": {
+  "frames": 13,
+  "janky": 12,
+  "p50_ms": 150,
+  "p90_ms": 650,
+  "p95_ms": 700,
+  "p99_ms": 700,
+  "slow_ui_thread": 7,
+  "slow_bitmap_uploads": 0
+ }
+}

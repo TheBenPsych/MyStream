@@ -1,0 +1,33 @@
+{
+ "app": "benflix",
+ "package": "com.thebenpsych.benflix",
+ "starts": [
+  36.6,
+  34.6,
+  33.5
+ ],
+ "scroll": {
+  "frames": 241,
+  "janky": 235,
+  "p50_ms": 200,
+  "p90_ms": 300,
+  "p95_ms": 400,
+  "p99_ms": 550,
+  "slow_ui_thread": 146,
+  "slow_bitmap_uploads": 3,
+  "seconds": 23.8
+ },
+ "memory_kb": 104584,
+ "notes": [],
+ "first_start_incl_sign_in_s": 93.9,
+ "open_item": {
+  "frames": 125,
+  "janky": 119,
+  "p50_ms": 250,
+  "p90_ms": 400,
+  "p95_ms": 500,
+  "p99_ms": 700,
+  "slow_ui_thread": 71,
+  "slow_bitmap_uploads": 3
+ }
+}

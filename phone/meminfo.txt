@@ -1,0 +1,63 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 499807 Realtime: 499807
+
+** MEMINFO in pid 7696 [com.thebenpsych.benflix] **
+                   Pss  Private  Private     Swap      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap    74485    74456        0        0    77700    90184    81259     4648
+  Dalvik Heap    15287    15192        0        0    22980    18528     9264     9264
+ Dalvik Other     6865     2712        0        0    11696                           
+        Stack     2664     2664        0        0     2668                           
+       Ashmem     2029     1864        0        0     2796                           
+    Other dev       42        0       40        0      316                           
+     .so mmap     3402      344      212        0    50956                           
+    .jar mmap     1466        0       60        0    35632                           
+    .apk mmap      869      140      392        0     3488                           
+    .ttf mmap      121        0        0        0      736                           
+    .dex mmap    13571        4    13560        0    14368                           
+    .oat mmap      452        0        0        0    14588                           
+    .art mmap     3483     3116       20        0    29532                           
+   Other mmap      422        8      140        0     3308                           
+      Unknown      542      540        0        0     1108                           
+        TOTAL   125700   101040    14424        0   271872   108712    90523    13912
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    18328                          52512
+         Native Heap:    74456                          77700
+                Code:    14732                         128100
+               Stack:     2664                           2668
+            Graphics:        0                              0
+       Private Other:     5284
+              System:    10236
+             Unknown:                                   10892
+ 
+           TOTAL PSS:   125700            TOTAL RSS:   271872      TOTAL SWAP (KB):        0
+ 
+ Objects
+               Views:       26         ViewRootImpl:        2
+         AppContexts:        5           Activities:        1
+              Assets:       18        AssetManagers:        0
+       Local Binders:       28        Proxy Binders:       44
+       Parcel memory:       11         Parcel count:       46
+    Death Recipients:        2             WebViews:        0
+ 
+ SQL
+         MEMORY_USED:      800
+  PAGECACHE_OVERFLOW:      269          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4      140             97    15    46     8  /data/user/0/com.thebenpsych.benflix/databases/wholphin
+         4        8                    0     0     0    (attached) temp
+         4      140            123    92    35    11  /data/user/0/com.thebenpsych.benflix/databases/wholphin (1)
+         4      104            113   206   143    25  /data/user/0/com.thebenpsych.benflix/no_backup/androidx.work.workdb
+         4        8                    0     0     0    (attached) temp
+         4      104            123    24    31    11  /data/user/0/com.thebenpsych.benflix/no_backup/androidx.work.workdb (1)
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+            107            85           192  /data/user/0/com.thebenpsych.benflix/databases/wholphin
+            230           178           408  /data/user/0/com.thebenpsych.benflix/no_backup/androidx.work.workdb

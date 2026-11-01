@@ -1,0 +1,6 @@
+  [589,377][1331,415] Enter username/password to login to Stable Demo
+  [595,452][749,490] Username
+  [765,423][1325,519] demo
+  [597,548][747,586] Password
+* [763,519][1323,615] 
+  [924,647][996,680] Login

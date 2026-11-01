@@ -1,0 +1,23 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Select Server | Server placeholder | Add Server | Add Server",
+  "screen login-4: Enter Server IP or URL | Submit",
+  "screen typed-server: Enter Server IP or URL | https://demo.jellyfin.org/stable | Submit",
+  "screen login-7: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "screen typed-user: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "signed in",
+  "screen wholphin-first: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:07 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?",
+  "screen login-1: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:08 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?",
+  "signed in",
+  "screen wholphin-start0: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:08 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?",
+  "screen login-1: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:08 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?",
+  "signed in",
+  "screen wholphin-start1: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:08 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?",
+  "signed in",
+  "screen wholphin-start2: demo | \uf004 | \uf008 | \uf001 | \uf26c | Pioneer One | The Man From Mars | S1 E2  \u2022  Jun 25, 2010  \u2022  39m  \u2022  6m left |   \u2022  4.0\ufffd |   \u2022  Ends at 7:09 PM | Hired Mars expert Dr. Zachary Walzer (Jack Haley) fights to prove the validity of the Mars story. Can he convince the government to mount a manned mission to Mars?"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}
