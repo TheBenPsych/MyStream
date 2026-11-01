@@ -87,6 +87,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.GameLibraryException
+import com.github.damontecres.wholphin.services.GameStreamReturn
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlayTarget
@@ -392,7 +393,7 @@ fun GamesPage(
                     if (state.consoles.isEmpty()) {
                         InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                     }
-                    InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit: you come right back here.")
+                    InfoText("Press a game to play it. Start + Select together quits and saves your spot. Hold Start for the game menu.")
                     state.consoles.forEach { console ->
                         Text(
                             text = "${console.name} (${console.games.size})",
@@ -567,9 +568,11 @@ private fun openGameStream(
     target.computerUuid?.let { direct.putExtra("UUID", it) }
     target.computerName?.let { direct.putExtra("Name", it) }
     try {
+        GameStreamReturn.pending = true
         context.startActivity(direct)
         return
     } catch (e: Exception) {
+        GameStreamReturn.pending = false
         Timber.w(e, "Couldn't open Moonlight directly")
     }
     val pm = context.packageManager

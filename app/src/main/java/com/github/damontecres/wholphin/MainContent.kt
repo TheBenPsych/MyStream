@@ -30,6 +30,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.GameStreamReturn
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SetupDestination
@@ -105,7 +106,7 @@ fun MainContent(
                                     mutableStateOf(true)
                                 }
                                 LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-                                    if (!userPreferences.appPreferences.signInAutomatically) {
+                                    if (!userPreferences.appPreferences.signInAutomatically && !GameStreamReturn.pending) {
                                         showContent = false
                                     }
                                 }

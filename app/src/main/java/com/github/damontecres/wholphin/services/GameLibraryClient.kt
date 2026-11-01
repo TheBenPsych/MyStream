@@ -179,3 +179,12 @@ class GameLibraryException(
 ) : Exception(message, cause)
 
 private fun JSONObject.optStringOrNull(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
+
+/**
+ * Set while a game is streaming in Moonlight, so coming back to Benflix afterwards returns to the Games tab
+ * instead of the "Who's watching?" screen
+ */
+object GameStreamReturn {
+    @Volatile
+    var pending: Boolean = false
+}
