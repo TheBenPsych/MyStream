@@ -52,6 +52,8 @@ class UpdatePromptViewModel
         }
 
         fun notNow(release: Release) = updater.snooze(release)
+
+        val installedVersion = updater.getInstalledVersion()
     }
 
 /**
@@ -85,12 +87,18 @@ fun UpdatePrompt(viewModel: UpdatePromptViewModel = hiltViewModel()) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Version ${current.version}",
+                text = "You have ${viewModel.installedVersion}, the newest is ${current.version}",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (current.notes.isNotEmpty()) {
-                Text(text = "What's new", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            // Only what changed since the version on this device, grouped by update with its release date
+            val groups = remember(current) { current.changesSince(viewModel.installedVersion) }
+            if (groups.isNotEmpty()) {
+                Text(
+                    text = if (groups.size > 1) "What's new (${groups.size} updates)" else "What's new",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
                 Column(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier =
@@ -98,8 +106,17 @@ fun UpdatePrompt(viewModel: UpdatePromptViewModel = hiltViewModel()) {
                             .heightIn(max = 240.dp)
                             .verticalScroll(rememberScrollState()),
                 ) {
-                    current.notes.forEach { note ->
-                        Text(text = "•  $note", fontSize = 15.sp)
+                    groups.forEachIndexed { index, group ->
+                        Text(
+                            text = "Version ${group.version}" + (group.dateText?.let { "  ·  $it" } ?: ""),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = if (index == 0) 0.dp else 8.dp),
+                        )
+                        group.titles.forEach { note ->
+                            Text(text = "•  $note", fontSize = 15.sp)
+                        }
                     }
                 }
             }

@@ -81,21 +81,57 @@ jobs:
       - name: Publish to the "latest-build" release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: 1.0.${{ github.run_number }}
         run: |
-          gh release delete latest-build --cleanup-tag -y || true
-          echo "Newest Benflix build (version 1.0.${{ github.run_number }}) from \`main\` (commit ${GITHUB_SHA::7}).
+          # Read the build history saved in the previous release, before it is replaced
+          gh release view latest-build --json body --jq .body > old-notes.txt 2>/dev/null || : > old-notes.txt
+          prev_sha=$(grep -oE '<!-- app-sha:[0-9a-f]+ -->' old-notes.txt | head -1 | sed -E 's/.*app-sha:([0-9a-f]+).*/\1/' || true)
+          if [ -z "$prev_sha" ]; then
+            # Releases made before the history existed only name the commit in their text
+            prev_sha=$(grep -oE '\(commit [0-9a-f]{7,}\)' old-notes.txt | head -1 | grep -oE '[0-9a-f]{7,}' || true)
+          fi
+          if [ -n "$prev_sha" ] && git cat-file -e "$prev_sha^{commit}" 2>/dev/null && git merge-base --is-ancestor "$prev_sha" "$GITHUB_SHA"; then
+            range="$prev_sha..$GITHUB_SHA"
+          else
+            range="-1 $GITHUB_SHA"
+          fi
+          echo "Changes in this build come from: $range"
 
-          Install **MyStream-universal.apk** on your TV if you are not sure which one to pick." > notes.txt
-          # The app's "Update available" pop-up lists the newest changes (the titles of the last merged pull requests)
-          for sha in $(git log --merges -n 8 --format=%H); do
-            title=$(git log -1 --format=%b "$sha" | sed '/^$/d' | head -1 | sed 's/-->//g')
+          # One friendly title per pull request that landed since the last published build
+          : > new-titles.txt
+          for sha in $(git rev-list --first-parent $range); do
+            if [ "$(git log -1 --format=%P "$sha" | wc -w)" -gt 1 ]; then
+              # "Merge pull request" commits keep the PR title on the first line of the message body
+              title=$(git log -1 --format=%b "$sha" | sed '/^$/d' | head -1)
+            else
+              # Squash merges keep it as the subject, ending in " (#123)"
+              title=$(git log -1 --format=%s "$sha" | sed -E 's/ \(#[0-9]+\)$//')
+            fi
+            title=$(echo "$title" | sed 's/-->//g; s/|/-/g')
             if [ -n "$title" ]; then
-              echo "<!-- app-note:$title -->" >> notes.txt
+              echo "$title" >> new-titles.txt
             fi
           done
+          [ -s new-titles.txt ] || echo "Small fixes and improvements" > new-titles.txt
+          cat new-titles.txt
+
+          gh release delete latest-build --cleanup-tag -y || true
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          {
+            echo "Newest Benflix build (version $VERSION) from \`main\` (commit ${GITHUB_SHA::7})."
+            echo
+            echo "Install **MyStream-universal.apk** on your TV if you are not sure which one to pick."
+            echo "<!-- app-sha:$GITHUB_SHA -->"
+            # Older app versions show these lines: just this build's own changes
+            while IFS= read -r t; do echo "<!-- app-note:$t -->"; done < new-titles.txt
+            # Newer app versions show every build newer than the one installed, each with its date
+            while IFS= read -r t; do echo "<!-- app-change:$VERSION|$now|$t -->"; done < new-titles.txt
+            grep -oE '<!-- app-change:[^>]*-->' old-notes.txt | head -n 150 || true
+          } > notes.txt
+          cat notes.txt
           gh release create latest-build \
             --prerelease --latest=false \
-            --title "v1.0.${{ github.run_number }}" \
+            --title "v$VERSION" \
             --target "$GITHUB_SHA" \
             -F notes.txt \
             out/*.apk

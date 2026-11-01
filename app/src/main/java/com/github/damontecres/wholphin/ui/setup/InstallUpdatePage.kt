@@ -380,7 +380,7 @@ fun InstallUpdatePageContent(
                     },
         ) {
             item {
-                ReleaseNotes(release)
+                ReleaseNotes(release, installed = currentVersion)
             }
         }
         Column(
@@ -425,9 +425,10 @@ fun InstallUpdatePageContent(
 fun ReleaseNotes(
     release: Release,
     modifier: Modifier = Modifier,
+    installed: Version? = null,
 ) {
     Markdown(
-        content = release.content,
+        content = release.content(installed),
         typography =
             markdownTypography(
                 h1 = MaterialTheme.typography.headlineLarge,

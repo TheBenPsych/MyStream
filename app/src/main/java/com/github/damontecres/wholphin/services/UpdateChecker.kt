@@ -44,7 +44,11 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.hours
@@ -216,7 +220,8 @@ class UpdateChecker
                             } else {
                                 emptyList()
                             }
-                        return@use Release(version, downloadUrl, publishedAt, body, notes)
+                        val changes = if (body.isNotNullOrBlank()) parseReleaseChanges(body) else emptyList()
+                        return@use Release(version, downloadUrl, publishedAt, body, notes, changes)
                     } else {
                         Timber.w("Update version parsing failed. name=$name")
                     }
@@ -399,6 +404,55 @@ class UpdateChecker
         }
     }
 
+/** One change (a merged pull request's title) and the build it first shipped in */
+@Serializable
+data class ReleaseChange(
+    val version: Version,
+    /** When that build was published, for example "2026-11-01T23:40:00Z" (null if unknown) */
+    val publishedAt: String?,
+    val title: String,
+)
+
+/** All the changes that shipped in one build, with the day it came out */
+data class VersionChanges(
+    val version: Version,
+    val publishedAt: String?,
+    val titles: List<String>,
+) {
+    /** For example "Nov 1, 2026", in the TV's own time zone */
+    val dateText: String? get() = formatReleaseDate(publishedAt)
+}
+
+private val CHANGE_REGEX = Regex("<!-- app-change:(.+?) -->")
+
+/**
+ * Reads the build history the GitHub build writes into the release notes, one line per change:
+ * `<!-- app-change:1.0.105|2026-11-01T23:40:00Z|Friendly change title -->`
+ */
+fun parseReleaseChanges(body: String): List<ReleaseChange> =
+    CHANGE_REGEX
+        .findAll(body)
+        .mapNotNull { m ->
+            val parts = m.groupValues[1].split("|", limit = 3)
+            if (parts.size < 3) return@mapNotNull null
+            val version = Version.tryFromString(parts[0].trim()) ?: return@mapNotNull null
+            val title = parts[2].trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            ReleaseChange(version, parts[1].trim().takeIf { it.isNotEmpty() }, title)
+        }.toList()
+
+/** "2026-11-01T23:40:00Z" -> "Nov 1, 2026" in the device's time zone (null if it can't be read) */
+fun formatReleaseDate(publishedAt: String?): String? {
+    if (publishedAt.isNullOrBlank()) return null
+    return try {
+        Instant
+            .parse(publishedAt)
+            .atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault()))
+    } catch (ex: Exception) {
+        null
+    }
+}
+
 @Serializable
 data class Release(
     val version: Version,
@@ -406,18 +460,40 @@ data class Release(
     val publishedAt: String?,
     val body: String?,
     val notes: List<String>,
+    /** Every recent build's changes (newest first), so the app can show just what's new since the installed version */
+    val changes: List<ReleaseChange> = emptyList(),
 ) {
-    val content =
-        "# ${version}\n" +
-            (
-                (notes.joinToString("\n", postfix = "\n\n") { "- $it" }.takeIf { notes.isNotEmpty() } ?: "") +
-                    (body ?: "")
-            ).replace(
-                Regex("https://github.com/\\w*/\\w+/pull/(\\d+)"),
-                "#$1",
-            )
-                // Remove the last line for full changelog since it's just a link
-                .replace(Regex("\\*\\*Full Changelog\\*\\*.*"), "")
+    /**
+     * The changes newer than [installed], grouped by build, newest build first.
+     * Pass null to get the whole recent history.
+     * Older releases without a build history fall back to the newest build's own list.
+     */
+    fun changesSince(installed: Version?): List<VersionChanges> {
+        if (changes.isEmpty()) {
+            return if (notes.isEmpty()) emptyList() else listOf(VersionChanges(version, publishedAt, notes))
+        }
+        return changes
+            .filter { installed == null || it.version.isGreaterThan(installed) }
+            .groupBy { it.version }
+            .map { (v, list) -> VersionChanges(v, list.first().publishedAt, list.map { it.title }.distinct()) }
+            .sortedWith { a, b ->
+                when {
+                    a.version.isGreaterThan(b.version) -> -1
+                    b.version.isGreaterThan(a.version) -> 1
+                    else -> 0
+                }
+            }
+    }
+
+    /** Markdown for the update page: each build since [installed] with its date and what changed */
+    fun content(installed: Version? = null): String {
+        val groups = changesSince(installed)
+        if (groups.isEmpty()) return "# $version\n\nSmall fixes and improvements."
+        return groups.joinToString("\n\n") { g ->
+            val header = "### Version ${g.version}" + (g.dateText?.let { " · $it" } ?: "")
+            header + "\n" + g.titles.joinToString("\n") { "- $it" }
+        }
+    }
 }
 
 /** The update file could not be downloaded (for example a 404 while GitHub is publishing a new build) */
