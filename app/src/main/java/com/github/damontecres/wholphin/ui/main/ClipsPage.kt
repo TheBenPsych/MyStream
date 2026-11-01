@@ -50,7 +50,9 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -311,6 +313,7 @@ class ClipsViewModel
 
         private suspend fun load() {
             val userId = serverRepository.currentUser?.id
+            val loadStart = System.currentTimeMillis()
             try {
                 val items =
                     withContext(WholphinDispatchers.IO) {
@@ -334,6 +337,7 @@ class ClipsViewModel
                 val rest = items.drop(CLIPS_FIRST)
                 val firstClips = withContext(WholphinDispatchers.IO) { resolveClips(first) }
                 _state.update { it.copy(loading = rest.isNotEmpty() && firstClips.isEmpty(), clips = firstClips) }
+                SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
                 if (rest.isNotEmpty()) {
                     val restClips = withContext(WholphinDispatchers.IO) { resolveClips(rest) }
                     _state.update { it.copy(loading = false, clips = it.clips + restClips) }
@@ -423,7 +427,7 @@ class ClipsViewModel
 
         /** Quietly start loading [clip] so it plays instantly when you swipe to it */
         fun preload(clip: Clip?) {
-            if (clip == null || clip.trailerId == playingId || clip.trailerId == nextId) return
+            if (clip == null || clip.trailerId == playingId || clip.trailerId == nextId || LiteMode.isOn(context)) return
             val p = nextPlayer ?: newPlayer().also { nextPlayer = it }
             nextId = clip.trailerId
             p.playWhenReady = false

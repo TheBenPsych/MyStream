@@ -31,12 +31,14 @@ import com.github.damontecres.wholphin.services.HomePageResolvedSettings
 import com.github.damontecres.wholphin.services.HomeSettingsService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LatestNextUpService
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.LogoEffect
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
+import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
@@ -323,9 +325,12 @@ class HomeViewModel
                             }
                         }
 
+                val loadStart = System.currentTimeMillis()
+                SpeedStats.homeFromSaved = snapshot != null
                 viewModelScope.launchIO {
                     // Wait for the top rows (or at most a couple of seconds), then load the rest
                     withTimeoutOrNull(SECOND_WAVE_MAX_WAIT_MS) { deferred.awaitAll() }
+                    SpeedStats.homeTopRowsMs = System.currentTimeMillis() - loadStart
                     // Random rows are picked once per visit, so they don't reshuffle (and move the
                     // focused row) every time you come back from watching something
                     if (!refresh || state.themed == null) {
@@ -1259,7 +1264,7 @@ class HomeViewModel
             previewJob?.cancel()
             _previewPlaying.value = false
             _previewPlayer?.stop()
-            if (item == null) return
+            if (item == null || LiteMode.isOn(context)) return
             previewJob =
                 viewModelScope.launch(ExceptionHandler()) {
                     // Look up the trailer while waiting, so it can start the moment the wait is over

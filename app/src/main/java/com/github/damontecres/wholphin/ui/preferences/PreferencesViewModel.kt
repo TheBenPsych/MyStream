@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.systemApi
 import timber.log.Timber
 import java.time.MonthDay
 import javax.inject.Inject
@@ -113,6 +114,24 @@ class PreferencesViewModel
                         identifier = "",
                     )
                 this@PreferencesViewModel.externalPlayers.update { listOf(systemDefault) + externalPlayers }
+            }
+        }
+
+        /** Round trip to the server for the hidden speed meter, in milliseconds (-1 = failed) */
+        val serverPingMs = MutableStateFlow<Long?>(null)
+
+        fun measureServerPing() {
+            serverPingMs.value = null
+            viewModelScope.launchIO {
+                val start = System.currentTimeMillis()
+                serverPingMs.value =
+                    try {
+                        api.systemApi.getPingSystem()
+                        System.currentTimeMillis() - start
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Ping failed")
+                        -1L
+                    }
             }
         }
 
