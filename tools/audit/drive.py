@@ -70,6 +70,7 @@ def dump(dismiss=True):
                             break
                     continue
             if root is not None:
+                LAST_ROOT[0] = root
                 return root
         time.sleep(1)
     return None
@@ -119,8 +120,36 @@ def key(k, times=1, wait=0.35):
         time.sleep(wait)
 
 
+LAST_ROOT = [None]
+
+
+def bounds(n):
+    return tuple(map(int, re.findall(r"\d+", n.get("bounds"))))
+
+
 def tap(n):
-    x, y = center(n)
+    """Taps the thing itself, or the closest button to it when the label sits outside its button"""
+    target = n
+    if n.get("clickable") != "true" and LAST_ROOT[0] is not None:
+        x, y = center(n)
+        best = None
+        for c in nodes(LAST_ROOT[0]):
+            if c.get("clickable") != "true":
+                continue
+            a, b, cc, d = bounds(c)
+            if a <= x <= cc and b <= y <= d:
+                area = (cc - a) * (d - b)
+                dist = -1e9 + area  # containing: prefer the smallest
+            else:
+                cx, cy = (a + cc) / 2, (b + d) / 2
+                dist = ((cx - x) ** 2 + (cy - y) ** 2) ** 0.5
+                if dist > 250:
+                    continue
+            if best is None or dist < best[0]:
+                best = (dist, c)
+        if best is not None:
+            target = best[1]
+    x, y = center(target)
     sh(f"input tap {x} {y}")
 
 
