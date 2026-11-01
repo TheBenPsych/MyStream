@@ -81,6 +81,9 @@ fun GridCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
+            scale = CardDefaults.scale(focusedScale = 1.06f),
+            shape = CardDefaults.shape(Cards.focusShape),
+            border = Cards.focusBorder(),
         ) {
             ItemCardImage(
                 item = item,

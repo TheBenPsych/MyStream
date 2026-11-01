@@ -483,9 +483,33 @@ fun NavDrawer(
         }
         return
     }
+    // TV: one slim line. Home, Movies, Shows, Games and My Benflix are always there;
+    // every other library (Anime, Stand up, Now playing...) sits under More
+    val allItems = serviceState.items + serviceState.moreItems
+    val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
+    val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
+    val myListIndex = allItems.indexOfFirst { it is NavDrawerItem.Favorites }
+    // tabs = Home, (Now playing), every library in order, Games
+    val libraryOffset = if (serviceState.nowPlayingEnabled) 2 else 1
+    val libraryTab = { index: Int -> tabs.getOrNull(libraryOffset + index) }
+    val myBenflixTitle = stringResource(R.string.my_benflix)
+    val mainTabs =
+        listOfNotNull(
+            tabs.first(),
+            moviesIndex.takeIf { it >= 0 }?.let(libraryTab),
+            showsIndex.takeIf { it >= 0 }?.let(libraryTab),
+            tabs.last(),
+            myListIndex.takeIf { it >= 0 }?.let(libraryTab)?.copy(title = myBenflixTitle),
+        )
+    val moreTabs =
+        tabs.filterIndexed { i, _ ->
+            i != 0 && i != tabs.lastIndex &&
+                i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
+        }
     Column(modifier = modifier) {
         TopNavBar(
-            tabs = tabs,
+            tabs = mainTabs,
+            moreTabs = moreTabs,
             user = user,
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,

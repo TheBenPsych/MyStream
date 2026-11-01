@@ -142,12 +142,10 @@ fun BannerCard(
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
             ),
-        // Benflix: a quick pop with a soft white glow on the tile you're on
-        scale = CardDefaults.scale(focusedScale = 1.08f),
-        glow =
-            CardDefaults.glow(
-                focusedGlow = androidx.tv.material3.Glow(elevationColor = Color.White.copy(alpha = .28f), elevation = 14.dp),
-            ),
+        // Benflix: the tile you're on grows a little and gets a thin white outline
+        scale = CardDefaults.scale(focusedScale = 1.06f),
+        shape = CardDefaults.shape(Cards.focusShape),
+        border = Cards.focusBorder(),
     ) {
         Box(
             modifier =

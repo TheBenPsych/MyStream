@@ -1,12 +1,17 @@
 package com.github.damontecres.wholphin.ui
 
 import android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
+import androidx.tv.material3.CardDefaults
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.ImageUrlService
 import org.jellyfin.sdk.model.api.ItemFields
@@ -104,6 +109,21 @@ object Cards {
     val heightEpisode = HEIGHT_EPISODE.dp
     val playedPercentHeight = 6.dp
     val serverUserCircle = height2x3 * .75f
+
+    /** Benflix tiles: rounded corners, and a thin white outline on the one you're on */
+    val focusShape = RoundedCornerShape(8.dp)
+
+    @Composable
+    fun focusBorder() =
+        CardDefaults.border(
+            border = Border.None,
+            focusedBorder =
+                Border(
+                    border = BorderStroke(2.dp, Color.White),
+                    inset = 0.dp,
+                    shape = focusShape,
+                ),
+        )
 }
 
 object AspectRatios {

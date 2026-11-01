@@ -8,8 +8,6 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -54,6 +54,8 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LogoEffect
+import com.github.damontecres.wholphin.ui.components.DialogItem
+import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -72,7 +74,6 @@ data class TopNavTab(
  * A streaming-service style navigation bar across the top of the screen: brand name, page tabs, search,
  * settings, the clock, and the current profile
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TopNavBar(
     tabs: List<TopNavTab>,
@@ -85,102 +86,122 @@ fun TopNavBar(
     onClickProfile: () -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    moreTabs: List<TopNavTab> = emptyList(),
 ) {
+    val moreSelected = moreTabs.any { it.selected }
     val selectedIndex = tabs.indexOfFirst { it.selected }
     val kids by KidsMode.active.collectAsState()
+    var showMore by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { TopBarInset.heightPx = 0 } }
-    // Two lines: the logo and buttons on top, then every tab on its own full-width line so none are hidden
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+    // One slim line: logo, the main tabs and More, then search, settings, the clock and the profile
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
                 .onSizeChanged { TopBarInset.heightPx = it.height }
                 // A dark shade behind the bar so the logo, tabs and icons stay easy to read over bright artwork
                 .background(TopNavBarShade)
-                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 10.dp)
+                .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 12.dp)
+                .height(TopNavBarHeight)
                 .focusGroup()
                 .focusProperties {
                     // Entering the bar from the page lands on the current tab
                     onEnter = { focusRequester.tryRequestFocus() }
                 },
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(TopNavBarHeight),
-        ) {
-            BenflixLogo(modifier = Modifier.padding(end = 8.dp))
-            if (kids) {
-                Text(
-                    text = stringResource(R.string.kids_profile).uppercase(),
-                    color = Color.Black,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier =
-                        Modifier
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            TopNavIconButton(
-                icon = Icons.Default.Search,
-                contentDescription = stringResource(R.string.search),
-                selected = searchSelected,
-                onClick = onClickSearch,
+        BenflixLogo(modifier = Modifier.padding(end = 20.dp))
+        if (kids) {
+            Text(
+                text = stringResource(R.string.kids_profile).uppercase(),
+                color = Color.Black,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                modifier =
+                    Modifier
+                        .padding(end = 8.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
             )
-            if (!kids) {
-                TopNavIconButton(
-                    icon = Icons.Default.Settings,
-                    contentDescription = stringResource(R.string.settings),
-                    selected = false,
-                    onClick = onClickSettings,
-                )
-            }
-            if (showClock) {
-                val timeString by LocalClock.current.timeString
-                Text(
-                    text = timeString,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-            }
-            IconButton(
-                onClick = onClickProfile,
-                colors =
-                    IconButtonDefaults.colors(
-                        containerColor = Color.Transparent,
-                        focusedContainerColor = Color.White,
+        }
+        tabs.forEachIndexed { index, tab ->
+            TopNavTabButton(
+                tab = tab,
+                modifier =
+                    Modifier.ifElse(
+                        index == selectedIndex || (selectedIndex < 0 && !moreSelected && index == 0),
+                        Modifier.focusRequester(focusRequester),
                     ),
-                modifier = Modifier.size(40.dp),
-            ) {
-                UserIconCardImage(
-                    id = user.id,
-                    name = if (kids) "Kids" else user.name,
-                    imageUrl = if (kids) null else userImageUrl,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
+            )
         }
-        // If there are ever more tabs than fit on one line, they wrap onto another line instead of hiding
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.fillMaxWidth().offset(x = (-14).dp),
+        if (moreTabs.isNotEmpty()) {
+            TopNavTabButton(
+                tab =
+                    TopNavTab(
+                        title = stringResource(R.string.more),
+                        selected = moreSelected,
+                        onClick = { showMore = true },
+                    ),
+                modifier = Modifier.ifElse(moreSelected, Modifier.focusRequester(focusRequester)),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        TopNavIconButton(
+            icon = Icons.Default.Search,
+            contentDescription = stringResource(R.string.search),
+            selected = searchSelected,
+            onClick = onClickSearch,
+        )
+        if (!kids) {
+            TopNavIconButton(
+                icon = Icons.Default.Settings,
+                contentDescription = stringResource(R.string.settings),
+                selected = false,
+                onClick = onClickSettings,
+            )
+        }
+        if (showClock) {
+            val timeString by LocalClock.current.timeString
+            Text(
+                text = timeString,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+        IconButton(
+            onClick = onClickProfile,
+            colors =
+                IconButtonDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedContainerColor = Color.White,
+                ),
+            modifier = Modifier.size(40.dp),
         ) {
-            tabs.forEachIndexed { index, tab ->
-                TopNavTabButton(
-                    tab = tab,
-                    modifier =
-                        Modifier.ifElse(
-                            index == selectedIndex || (selectedIndex < 0 && index == 0),
-                            Modifier.focusRequester(focusRequester),
-                        ),
-                )
-            }
+            UserIconCardImage(
+                id = user.id,
+                name = if (kids) "Kids" else user.name,
+                imageUrl = if (kids) null else userImageUrl,
+                modifier = Modifier.size(32.dp),
+            )
         }
+    }
+    if (showMore) {
+        DialogPopup(
+            showDialog = true,
+            title = stringResource(R.string.more),
+            dialogItems =
+                moreTabs.map { tab ->
+                    DialogItem(
+                        headlineContent = { Text(text = tab.title) },
+                        onClick = tab.onClick,
+                        selected = tab.selected,
+                    )
+                },
+            onDismissRequest = { showMore = false },
+            waitToLoad = false,
+        )
     }
 }
 
