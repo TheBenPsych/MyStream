@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,12 +14,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.components.BenflixTips
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -122,6 +125,25 @@ fun HowToPage(modifier: Modifier = Modifier) {
                             ),
                 )
             }
+        }
+        item {
+            val context = LocalContext.current
+            ListItem(
+                selected = false,
+                onClick = {
+                    BenflixTips.reset(context)
+                    Toast.makeText(context, "Tips will show again", Toast.LENGTH_SHORT).show()
+                },
+                headlineContent = { Text("Show tips again", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+                supportingContent = {
+                    Text(
+                        "The small first-time tips on Home, Search and in episodes",
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+            )
         }
     }
 }

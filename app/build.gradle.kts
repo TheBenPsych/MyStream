@@ -305,6 +305,7 @@ tasks.named("preBuild") {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.zxing.core)
     implementation(libs.androidx.appcompat)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

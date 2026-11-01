@@ -143,6 +143,10 @@ class StreamChoiceService
             val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.SUBTITLE)
             return source.mediaStreams?.letNotEmpty { streams ->
                 val candidates = streams.filter { it.type == MediaStreamType.AUDIO }
+                // Benflix: anime plays in Japanese unless this person picked something else before
+                if (itemPlayback?.audioIndexEnabled != true && stc.isEmpty() && BenflixAnimeTracks.isAnime(item)) {
+                    BenflixAnimeTracks.japaneseAudio(candidates)?.let { return@letNotEmpty it with StreamChoiceReason.UserPreferences }
+                }
                 chooseAudioStream(candidates, itemPlayback, stc, prefs)
             }
         }
@@ -209,6 +213,16 @@ class StreamChoiceService
             source.mediaStreams?.letNotEmpty { streams ->
                 val candidates = streams.filter { it.type == MediaStreamType.SUBTITLE }
                 val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.SUBTITLE)
+                // Benflix: Japanese anime gets the full English subtitles (not just Signs & Songs)
+                if ((itemPlayback == null || itemPlayback.subtitleIndex == TrackIndex.UNSPECIFIED) &&
+                    stc.isEmpty() &&
+                    BenflixAnimeTracks.isJapanese(audioStream?.language) &&
+                    BenflixAnimeTracks.isAnime(item)
+                ) {
+                    BenflixAnimeTracks.fullEnglishSubtitles(candidates)?.let {
+                        return@letNotEmpty it with StreamChoiceReason.UserPreferences
+                    }
+                }
                 chooseSubtitleStream(
                     audioStream?.language,
                     candidates,
@@ -680,6 +694,50 @@ data class ScoredMediaStream(
 )
 
 private infix fun MediaStream?.with(reason: StreamChoiceReason) = StreamChoiceResult(this, reason)
+
+/**
+ * Benflix anime tracks: anime plays in Japanese with the full English subtitles.
+ * Anime often has a "Signs & Songs" English track marked as the default, which only translates
+ * on-screen signs and song lyrics, so the full dialogue track is picked instead.
+ */
+object BenflixAnimeTracks {
+    private val JAPANESE = setOf("jpn", "ja", "jap", "japanese")
+    private val ENGLISH = setOf("eng", "en", "english")
+
+    /** Words in a track name that mean it is not the full subtitles */
+    private val NOT_FULL = listOf("sign", "song", "s&s", "forced", "commentary", "karaoke", "lyrics", "op/ed")
+
+    /** Words in a track name that mean it is the full subtitles */
+    private val FULL = listOf("full", "dialog", "complete")
+
+    /** Anime = it lives in a folder or library with "anime" in its name, or has the Anime genre */
+    fun isAnime(item: BaseItemDto): Boolean =
+        item.path?.contains("anime", ignoreCase = true) == true ||
+            item.genres.orEmpty().any { it.equals("anime", ignoreCase = true) }
+
+    fun isJapanese(language: String?): Boolean = language?.lowercase() in JAPANESE
+
+    private fun isEnglishOrUnknown(language: String?): Boolean =
+        language.isNullOrBlank() || language.lowercase() in ENGLISH || language.isUnknown
+
+    fun japaneseAudio(candidates: List<MediaStream>): MediaStream? =
+        candidates
+            .filter { isJapanese(it.language) }
+            .sortedWith(compareByDescending<MediaStream> { it.isDefault }.thenByDescending { it.channels })
+            .firstOrNull()
+
+    fun fullEnglishSubtitles(candidates: List<MediaStream>): MediaStream? {
+        fun name(track: MediaStream) = listOfNotNull(track.title, track.displayTitle).joinToString(" ").lowercase()
+        return candidates
+            .filter { isEnglishOrUnknown(it.language) && !it.isForced && NOT_FULL.none { word -> name(it).contains(word) } }
+            .sortedWith(
+                compareByDescending<MediaStream> { it.language?.lowercase() in ENGLISH }
+                    .thenByDescending { track -> FULL.any { name(track).contains(it) } }
+                    .thenByDescending { it.isDefault }
+                    .thenBy { it.isExternal },
+            ).firstOrNull()
+    }
+}
 
 /**
  * Why a particular [MediaStream] was chosen

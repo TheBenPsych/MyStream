@@ -23,6 +23,14 @@ data class BenflixNote(
     val text: String,
 )
 
+/** Which note: the everyday note on Home, or the welcome note new people see once */
+enum class NoteKind(
+    val key: String,
+) {
+    NOTE("benflix.note"),
+    WELCOME("benflix.welcome"),
+}
+
 /**
  * Benflix "Notes from Ben": the note is saved into every person's Jellyfin display settings
  * (only an admin is allowed to do that), so each person's Benflix can read it back.
@@ -36,11 +44,14 @@ class BenflixNotes
         private val api: ApiClient,
         private val displayPreferencesService: DisplayPreferencesService,
     ) {
-        suspend fun read(userId: UUID): BenflixNote? =
+        suspend fun read(
+            userId: UUID,
+            kind: NoteKind = NoteKind.NOTE,
+        ): BenflixNote? =
             try {
                 displayPreferencesService
                     .getDisplayPreferences(userId)
-                    .customPrefs[KEY]
+                    .customPrefs[kind.key]
                     ?.let { decode(it) }
             } catch (ex: CancellationException) {
                 throw ex
@@ -52,15 +63,31 @@ class BenflixNotes
         fun isDismissed(
             userId: UUID,
             note: BenflixNote,
-        ): Boolean = prefs().getString("dismissed_$userId", null) == note.id
+            kind: NoteKind = NoteKind.NOTE,
+        ): Boolean =
+            when (kind) {
+                NoteKind.NOTE -> prefs().getString("dismissed_$userId", null) == note.id
+
+                // The welcome note shows once per person, whichever note it was
+                NoteKind.WELCOME -> prefs().getBoolean("welcomed_$userId", false)
+            }
 
         fun dismiss(
             userId: UUID,
             note: BenflixNote,
-        ) = prefs().edit { putString("dismissed_$userId", note.id) }
+            kind: NoteKind = NoteKind.NOTE,
+        ) = prefs().edit {
+            when (kind) {
+                NoteKind.NOTE -> putString("dismissed_$userId", note.id)
+                NoteKind.WELCOME -> putBoolean("welcomed_$userId", true)
+            }
+        }
 
         /** Puts a new note on everyone's Home (empty text removes it). Returns how many people got it. */
-        suspend fun publish(text: String): Int =
+        suspend fun publish(
+            text: String,
+            kind: NoteKind = NoteKind.NOTE,
+        ): Int =
             withContext(WholphinDispatchers.IO) {
                 val users = api.userApi.getUsers().content
                 val encoded = text.trim().takeIf { it.isNotEmpty() }?.let { encode(BenflixNote(System.currentTimeMillis().toString(), it)) }
@@ -68,7 +95,7 @@ class BenflixNotes
                 users.forEach { user ->
                     try {
                         displayPreferencesService.updateDisplayPreferences(user.id) {
-                            if (encoded == null) remove(KEY) else put(KEY, encoded)
+                            if (encoded == null) remove(kind.key) else put(kind.key, encoded)
                         }
                         count++
                     } catch (ex: CancellationException) {
@@ -92,7 +119,6 @@ class BenflixNotes
         }
 
         companion object {
-            private const val KEY = "benflix.note"
             private const val PREFS = "benflix_notes"
         }
     }

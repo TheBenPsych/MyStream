@@ -63,6 +63,8 @@ import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
+import com.github.damontecres.wholphin.ui.components.BenflixTip
+import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.components.TabDetails
@@ -261,248 +263,252 @@ fun SearchPage(
             }
         }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxWidth(),
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            var isSearchActive by remember { mutableStateOf(false) }
-            var isTextFieldFocused by remember { mutableStateOf(false) }
-            val textFieldFocusRequester = remember { FocusRequester() }
-
-            BackHandler(isTextFieldFocused) {
-                when {
-                    isSearchActive -> {
-                        isSearchActive = false
-                        keyboardController?.hide()
-                    }
-
-                    else -> {
-                        focusManager.moveFocus(FocusDirection.Next)
-                    }
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier =
-                    Modifier
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-                        .focusGroup()
-                        .focusRestorer(textFieldFocusRequester)
-                        .focusRequester(focusRequesters[SEARCH_ROW]),
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                AnimatedVisibility(
-                    visible = voiceSearchButtonVisible,
-                    enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
-                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
-                ) {
-                    VoiceSearchButton(
-                        onSpeechResult = { spokenText ->
-                            query = spokenText
-                            triggerImmediateSearch(spokenText)
-                        },
-                        voiceInputManager = viewModel.voiceInputManager,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
+                var isSearchActive by remember { mutableStateOf(false) }
+                var isTextFieldFocused by remember { mutableStateOf(false) }
+                val textFieldFocusRequester = remember { FocusRequester() }
+
+                BackHandler(isTextFieldFocused) {
+                    when {
+                        isSearchActive -> {
+                            isSearchActive = false
+                            keyboardController?.hide()
+                        }
+
+                        else -> {
+                            focusManager.moveFocus(FocusDirection.Next)
+                        }
+                    }
                 }
 
-                SearchEditTextBox(
-                    value = query,
-                    onValueChange = {
-                        isSearchActive = true
-                        query = it
-                    },
-                    onSearchClick = { triggerImmediateSearch(query) },
-                    readOnly = !isSearchActive,
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier =
                         Modifier
-                            .focusRequester(textFieldFocusRequester)
-                            .onFocusChanged { state ->
-                                isTextFieldFocused = state.isFocused
-                                if (!state.isFocused) isSearchActive = false
-                            }.onPreviewKeyEvent { event ->
-                                val isActivationKey =
-                                    event.key in listOf(Key.DirectionCenter, Key.Enter)
-                                if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
-                                    isSearchActive = true
-                                    keyboardController?.show()
-                                    true
-                                } else {
-                                    false
-                                }
+                            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                            .focusGroup()
+                            .focusRestorer(textFieldFocusRequester)
+                            .focusRequester(focusRequesters[SEARCH_ROW]),
+                ) {
+                    AnimatedVisibility(
+                        visible = voiceSearchButtonVisible,
+                        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+                        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
+                    ) {
+                        VoiceSearchButton(
+                            onSpeechResult = { spokenText ->
+                                query = spokenText
+                                triggerImmediateSearch(spokenText)
+                            },
+                            voiceInputManager = viewModel.voiceInputManager,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
+                    }
+
+                    SearchEditTextBox(
+                        value = query,
+                        onValueChange = {
+                            isSearchActive = true
+                            query = it
+                        },
+                        onSearchClick = { triggerImmediateSearch(query) },
+                        readOnly = !isSearchActive,
+                        modifier =
+                            Modifier
+                                .focusRequester(textFieldFocusRequester)
+                                .onFocusChanged { state ->
+                                    isTextFieldFocused = state.isFocused
+                                    if (!state.isFocused) isSearchActive = false
+                                }.onPreviewKeyEvent { event ->
+                                    val isActivationKey =
+                                        event.key in listOf(Key.DirectionCenter, Key.Enter)
+                                    if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
+                                        isSearchActive = true
+                                        keyboardController?.show()
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                    )
+
+                    ExpandableFaButton(
+                        title = R.string.view_options,
+                        iconStringRes = R.string.fa_sliders,
+                        onClick = { showViewOptions = true },
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                }
+            }
+            AnimatedVisibility(
+                visible = showTabs,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    tabs = tabs,
+                    onClick = {
+                        selectedTab = it
+                        val row =
+                            when (selectedTab) {
+                                0 -> COMBINED_ROW
+                                else -> SEERR_ROW
+                            }
+                        setPosition(RowColumn(row, 0))
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp)
+                            .onFocusChanged {
+                                if (it.hasFocus) setPosition(RowColumn(TAB_ROW, 0))
                             },
                 )
-
-                ExpandableFaButton(
-                    title = R.string.view_options,
-                    iconStringRes = R.string.fa_sliders,
-                    onClick = { showViewOptions = true },
-                    modifier = Modifier.padding(start = 12.dp),
-                )
             }
-        }
-        AnimatedVisibility(
-            visible = showTabs,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                tabs = tabs,
-                onClick = {
-                    selectedTab = it
-                    val row =
-                        when (selectedTab) {
-                            0 -> COMBINED_ROW
-                            else -> SEERR_ROW
-                        }
-                    setPosition(RowColumn(row, 0))
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .onFocusChanged {
-                            if (it.hasFocus) setPosition(RowColumn(TAB_ROW, 0))
+            Box(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (query.isBlank()) {
+                    // Nothing typed yet: recent searches, moods and genres to browse
+                    SearchStart(
+                        navigationManager = viewModel.navigationManager,
+                        onClickRecent = {
+                            query = it
+                            triggerImmediateSearch(it)
                         },
-            )
-        }
-        Box(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            if (query.isBlank()) {
-                // Nothing typed yet: recent searches, moods and genres to browse
-                SearchStart(
-                    navigationManager = viewModel.navigationManager,
-                    onClickRecent = {
-                        query = it
-                        triggerImmediateSearch(it)
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                return@Box
-            }
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    return@Box
+                }
 //            SideEffect {
 //                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
 //            }
-            when {
-                isLibraryTab && combinedMode -> {
-                    SearchCombinedResults(
-                        result = state.combinedResults,
-                        focusRequester = focusRequesters[COMBINED_ROW],
-                        onClickItem = onClickItem,
-                        onLongClickItem = { index, item ->
-                            onLongClickItem(COMBINED_ROW, index, item)
-                        },
-                        onPlayItem = onPlayItem,
-                        onClickPosition = { setPosition(it) },
-                        onClickDiscover = onClickDiscover,
-                        positionCallback = positionCallback,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                when {
+                    isLibraryTab && combinedMode -> {
+                        SearchCombinedResults(
+                            result = state.combinedResults,
+                            focusRequester = focusRequesters[COMBINED_ROW],
+                            onClickItem = onClickItem,
+                            onLongClickItem = { index, item ->
+                                onLongClickItem(COMBINED_ROW, index, item)
+                            },
+                            onPlayItem = onPlayItem,
+                            onClickPosition = { setPosition(it) },
+                            onClickDiscover = onClickDiscover,
+                            positionCallback = positionCallback,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                !isLibraryTab && combinedMode -> {
-                    SearchCombinedResults(
-                        result = state.seerrResults,
-                        focusRequester = focusRequesters[SEERR_ROW],
-                        onClickItem = onClickItem,
-                        onLongClickItem = { _, _ -> },
-                        onPlayItem = onPlayItem,
-                        onClickPosition = { setPosition(it) },
-                        onClickDiscover = onClickDiscover,
-                        positionCallback = positionCallback,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                    !isLibraryTab && combinedMode -> {
+                        SearchCombinedResults(
+                            result = state.seerrResults,
+                            focusRequester = focusRequesters[SEERR_ROW],
+                            onClickItem = onClickItem,
+                            onLongClickItem = { _, _ -> },
+                            onPlayItem = onPlayItem,
+                            onClickPosition = { setPosition(it) },
+                            onClickDiscover = onClickDiscover,
+                            positionCallback = positionCallback,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                isLibraryTab -> {
-                    LazyColumn(
-                        contentPadding =
-                            PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 8.dp,
-                                bottom = 44.dp,
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
-                        modifier = Modifier.focusGroup(),
-                    ) {
-                        itemsIndexed(state.includedSearchableTypes) { index, type ->
-                            val rowIndex = RESULTS_START + index
-                            val result = state.results.getOrDefault(type, SearchResult.Searching)
-                            val focusRequester =
-                                remember(state.includedSearchableTypes.size) {
-                                    focusRequesters.getOrNull(rowIndex) ?: FocusRequester()
-                                }
-                            SearchRowResult(
-                                title = type.titleStringRes,
-                                result = result,
-                                rowIndex = rowIndex,
-                                position = position,
-                                focusRequester = focusRequester,
-                                onClickItem = onClickItem,
-                                onLongClickItem = { index, item ->
-                                    onLongClickItem(rowIndex, index, item)
-                                },
-                                onClickPosition = { setPosition(it) },
-                                modifier = Modifier.fillMaxWidth(),
-                                cardContent = { index, item, mod, onClick, onLongClick ->
-                                    SearchPageCard(
-                                        item = item,
-                                        type = type,
-                                        onClick = {
-                                            setPosition(RowColumn(rowIndex, index))
-                                            onClick.invoke()
-                                        },
-                                        onLongClick = onLongClick,
-                                        modifier = mod,
-                                    )
-                                },
-                            )
-                        }
-
-                        if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
-                            // Benflix "Ask for it": point people to switching on requests
-                            item {
-                                ListItem(
-                                    selected = false,
-                                    onClick = {
-                                        viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
+                    isLibraryTab -> {
+                        LazyColumn(
+                            contentPadding =
+                                PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 8.dp,
+                                    bottom = 44.dp,
+                                ),
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
+                            modifier = Modifier.focusGroup(),
+                        ) {
+                            itemsIndexed(state.includedSearchableTypes) { index, type ->
+                                val rowIndex = RESULTS_START + index
+                                val result = state.results.getOrDefault(type, SearchResult.Searching)
+                                val focusRequester =
+                                    remember(state.includedSearchableTypes.size) {
+                                        focusRequesters.getOrNull(rowIndex) ?: FocusRequester()
+                                    }
+                                SearchRowResult(
+                                    title = type.titleStringRes,
+                                    result = result,
+                                    rowIndex = rowIndex,
+                                    position = position,
+                                    focusRequester = focusRequester,
+                                    onClickItem = onClickItem,
+                                    onLongClickItem = { index, item ->
+                                        onLongClickItem(rowIndex, index, item)
                                     },
-                                    headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
-                                    supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
-                                    modifier = Modifier.padding(top = 12.dp),
+                                    onClickPosition = { setPosition(it) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    cardContent = { index, item, mod, onClick, onLongClick ->
+                                        SearchPageCard(
+                                            item = item,
+                                            type = type,
+                                            onClick = {
+                                                setPosition(RowColumn(rowIndex, index))
+                                                onClick.invoke()
+                                            },
+                                            onLongClick = onLongClick,
+                                            modifier = mod,
+                                        )
+                                    },
                                 )
                             }
-                        }
-                        if (seerrActive && state.discoverEnabled) {
-                            item {
-                                SearchRowResult(
-                                    title = R.string.benflix_not_on_benflix,
-                                    result = state.seerrResults,
-                                    rowIndex = SEERR_ROW,
-                                    position = position,
-                                    focusRequester = focusRequesters[SEERR_ROW],
-                                    onClickItem = onClickItem,
-                                    onLongClickItem = { _, _ -> },
-                                    onClickDiscover = onClickDiscover,
-                                    onClickPosition = { setPosition(it) },
-                                    cardContent = { _, _, _, _, _ -> },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+
+                            if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
+                                // Benflix "Ask for it": point people to switching on requests
+                                item {
+                                    ListItem(
+                                        selected = false,
+                                        onClick = {
+                                            viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
+                                        },
+                                        headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
+                                        supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
+                                        modifier = Modifier.padding(top = 12.dp),
+                                    )
+                                }
+                            }
+                            if (seerrActive && state.discoverEnabled) {
+                                item {
+                                    SearchRowResult(
+                                        title = R.string.benflix_not_on_benflix,
+                                        result = state.seerrResults,
+                                        rowIndex = SEERR_ROW,
+                                        position = position,
+                                        focusRequester = focusRequesters[SEERR_ROW],
+                                        onClickItem = onClickItem,
+                                        onLongClickItem = { _, _ -> },
+                                        onClickDiscover = onClickDiscover,
+                                        onClickPosition = { setPosition(it) },
+                                        cardContent = { _, _, _, _, _ -> },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+            contextMenu.Compose()
         }
-        contextMenu.Compose()
+        // Benflix first-time tip
+        BenflixTip(tip = BenflixTipId.SEARCH)
     }
 
     if (showViewOptions) {

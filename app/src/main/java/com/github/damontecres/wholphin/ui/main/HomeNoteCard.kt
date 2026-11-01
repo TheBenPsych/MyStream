@@ -24,6 +24,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixNote
 import com.github.damontecres.wholphin.services.BenflixNotes
+import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.services.NoteKind
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,20 +40,37 @@ class HomeNoteViewModel
         private val notes: BenflixNotes,
         private val serverRepository: ServerRepository,
     ) : ViewModel() {
-        private val _note = MutableStateFlow<BenflixNote?>(null)
-        val note: StateFlow<BenflixNote?> = _note
+        private val _note = MutableStateFlow<Pair<BenflixNote, NoteKind>?>(null)
+        val note: StateFlow<Pair<BenflixNote, NoteKind>?> = _note
 
         init {
             viewModelScope.launch {
                 val userId = serverRepository.currentUser?.id ?: return@launch
-                _note.value = notes.read(userId)?.takeUnless { notes.isDismissed(userId, it) }
+                if (KidsMode.isActive) return@launch
+                // The welcome note comes first (only once per person), then the everyday note
+                _note.value =
+                    notes
+                        .read(userId, NoteKind.WELCOME)
+                        ?.takeUnless { notes.isDismissed(userId, it, NoteKind.WELCOME) }
+                        ?.let { it to NoteKind.WELCOME }
+                        ?: notes
+                            .read(userId)
+                            ?.takeUnless { notes.isDismissed(userId, it) }
+                            ?.let { it to NoteKind.NOTE }
             }
         }
 
         fun dismiss() {
             val userId = serverRepository.currentUser?.id ?: return
-            _note.value?.let { notes.dismiss(userId, it) }
+            val (note, kind) = _note.value ?: return
+            notes.dismiss(userId, note, kind)
             _note.value = null
+            // After the welcome note, show the everyday note if there is one
+            if (kind == NoteKind.WELCOME) {
+                viewModelScope.launch {
+                    _note.value = notes.read(userId)?.takeUnless { notes.isDismissed(userId, it) }?.let { it to NoteKind.NOTE }
+                }
+            }
         }
     }
 
@@ -62,7 +81,7 @@ fun HomeNoteCard(
     viewModel: HomeNoteViewModel = hiltViewModel(),
 ) {
     val note by viewModel.note.collectAsState()
-    val current = note ?: return
+    val (current, kind) = note ?: return
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -74,7 +93,7 @@ fun HomeNoteCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "A note from Ben",
+                text = if (kind == NoteKind.WELCOME) "Welcome from Ben" else "A note from Ben",
                 color = BenflixRed,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -86,7 +105,7 @@ fun HomeNoteCard(
             )
         }
         Button(onClick = viewModel::dismiss) {
-            Text("Got it")
+            Text(if (kind == NoteKind.WELCOME) "Start watching" else "Got it")
         }
     }
 }
