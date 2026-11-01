@@ -407,7 +407,7 @@ private fun UserIconCard(
         // Username below the card
         Text(
             text = user.user.name ?: user.user.id.toString(),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(shadow = ReadableTextShadow),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -546,6 +546,7 @@ private fun AddUserCard(
             style =
                 MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    shadow = ReadableTextShadow,
                 ),
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -631,7 +632,7 @@ private fun KidsProfileCard(
         }
         Text(
             text = stringResource(R.string.kids_profile),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(shadow = ReadableTextShadow),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -651,3 +652,15 @@ private fun profileBorderColor(): Color {
     val holiday = remember { holidayFor(LocalDate.now()) }
     return holiday?.let { Color(it.color) } ?: MaterialTheme.colorScheme.onSurface
 }
+
+/** A strong dark shadow so names stay easy to read on top of the moving backgrounds */
+val ReadableTextShadow =
+    androidx.compose.ui.graphics.Shadow(
+        color =
+            androidx.compose.ui.graphics.Color.Black
+                .copy(alpha = .9f),
+        offset =
+            androidx.compose.ui.geometry
+                .Offset(0f, 2f),
+        blurRadius = 16f,
+    )
