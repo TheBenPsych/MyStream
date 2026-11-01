@@ -612,28 +612,56 @@ private fun GameTile(
             ),
         modifier = modifier,
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier =
+        val textMeasurer = rememberTextMeasurer()
+        // A still picture of the game, drawn by the game itself
+        val preview = remember(game) { game.create() }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(game.colors)),
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                preview.preparePreview(size.width, size.height)
+                with(preview) { draw(textMeasurer) }
+            }
+            // Fade the picture on the left so the words stay easy to read
+            Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Brush.linearGradient(game.colors))
-                    .padding(16.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
-                Badge(PlayWith.CONTROLLER, "Controller")
-                Badge(PlayWith.PHONE, "Phone")
-            }
-            Text(game.title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
-            Text(game.tagline, fontSize = 13.sp, color = Color.White.copy(alpha = .9f))
-            Box(Modifier.weight(1f))
-            Text(
-                text = if (best > 0) "Your best: $best" else "No score yet",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to game.colors[1].copy(alpha = .92f),
+                            0.5f to game.colors[1].copy(alpha = .55f),
+                            1f to Color.Transparent,
+                        ),
+                    ),
             )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
+                    Badge(PlayWith.CONTROLLER, "Controller")
+                    Badge(PlayWith.PHONE, "Phone")
+                }
+                Text(game.title, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Text(game.tagline, fontSize = 13.sp, color = Color.White.copy(alpha = .9f), modifier = Modifier.fillMaxWidth(.7f))
+                Box(Modifier.weight(1f))
+                Text(
+                    text = if (best > 0) "Your best: $best" else "No score yet",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier =
+                        Modifier
+                            .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
     }
 }

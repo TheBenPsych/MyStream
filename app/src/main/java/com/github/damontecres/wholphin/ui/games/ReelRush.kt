@@ -128,6 +128,15 @@ class ReelRush : MiniGame() {
         }
     }
 
+    override fun setupPreview() {
+        strips.add(Strip(width * 0.45f, height * 0.42f, 0f, 0f))
+        strips.add(Strip(width * 0.72f, height * 0.6f, 0f, 0f).apply { ticket = true })
+        strips.add(Strip(width * 0.99f, height * 0.35f, 0f, 0f))
+        by = height * 0.45f
+        vy = -flap * 0.5f
+        for (i in 0 until 8) trail.addLast(Offset(bx - i * 2.5f * u, by + i * i * 0.15f * u))
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         drawRect(Brush.verticalGradient(listOf(Color(0xFF0D1B2A), Color(0xFF1B263B), Color(0xFF3A1F2B))))
         strips.forEach { s ->

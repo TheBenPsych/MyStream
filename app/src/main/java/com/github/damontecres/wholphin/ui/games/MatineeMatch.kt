@@ -202,6 +202,19 @@ class MatineeMatch : MiniGame() {
         return Offset(left + c * (cardW + gap) + cardW / 2f, areaTop + r * (cardH + gap) + cardH / 2f)
     }
 
+    override fun setupPreview() {
+        // A few cards already matched and one pair being checked
+        val first = cards.indices.first()
+        cards.indices.filter { cards[it].icon == cards[first].icon }.forEach {
+            cards[it].matched = true
+            cards[it].flip = 1f
+        }
+        cards.indices.filter { !cards[it].matched }.take(2).forEach {
+            cards[it].shown = true
+            cards[it].flip = 1f
+        }
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         // Red theater curtains on both sides
         drawRect(Brush.verticalGradient(listOf(Color(0xFF1A0B12), Color(0xFF0B0B10))))
