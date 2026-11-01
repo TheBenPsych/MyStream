@@ -206,6 +206,10 @@ sealed class Destination(
         val gameName: String,
     ) : Destination(true)
 
+    /** Benflix: "Guess the movie" game made from your own library */
+    @Serializable
+    data object GuessTheMovie : Destination(true)
+
     /** Benflix: simple help page (remote buttons and tips) */
     @Serializable
     data object HowTo : Destination(false)

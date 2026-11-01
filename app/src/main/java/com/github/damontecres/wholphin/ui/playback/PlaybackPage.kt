@@ -280,6 +280,7 @@ fun PlaybackPageContent(
                 dpadSeekMode = prefs.dpadSeekMode,
                 onSeekToNext = viewModel::playNextUp,
                 onPSeekToPrevious = viewModel::playPrevious,
+                onDoubleSkipBack = viewModel::whatDidTheySay,
             )
         }
 

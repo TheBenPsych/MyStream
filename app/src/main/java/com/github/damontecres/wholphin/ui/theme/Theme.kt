@@ -8,6 +8,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.BenflixAccent
@@ -44,6 +46,7 @@ fun WholphinTheme(
     darkTheme: Boolean = true,
     appThemeColors: AppThemeColors = AppThemeColors.PURPLE,
     accent: BenflixAccent = BenflixAccent.ACCENT_RED,
+    easyRead: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val themeColors = getThemeColors(appThemeColors)
@@ -75,22 +78,30 @@ fun WholphinTheme(
             baseScheme
         }
     val accentColor = if (kids) KidsYellow else accent.toColor()
+    // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
+    val density = LocalDensity.current
+    val readDensity =
+        if (easyRead) Density(density.density, density.fontScale * EASY_READ_SCALE) else density
+    val finalScheme = if (easyRead) colorScheme.copy(onSurfaceVariant = Color(0xFFE8E8EA)) else colorScheme
     CompositionLocalProvider(
         LocalTheme provides appThemeColors,
         LocalBenflixAccent provides accentColor,
+        LocalDensity provides readDensity,
     ) {
         androidx.compose.material3.MaterialTheme(
             colorScheme = if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial,
             typography = AppMaterialTypography,
         ) {
             MaterialTheme(
-                colorScheme = colorScheme,
+                colorScheme = finalScheme,
                 typography = AppTypography,
                 content = content,
             )
         }
     }
 }
+
+private const val EASY_READ_SCALE = 1.25f
 
 private val KidsYellow = Color(0xFFFFC400)
 private val KidsBlue = Color(0xFF0E2A63)

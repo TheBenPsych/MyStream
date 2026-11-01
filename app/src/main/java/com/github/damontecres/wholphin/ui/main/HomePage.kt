@@ -294,6 +294,7 @@ fun HomePage(
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
+                showNote = true,
                 modifier = modifier,
             )
             overviewDialog?.let { info ->
@@ -396,6 +397,7 @@ fun HomePageContent(
     onHeroItemShown: (BaseItem?) -> Unit = {},
     onClickDiscover: (DiscoverItem) -> Unit = {},
     onUpdateDiscoverBackdrop: (DiscoverItem) -> Unit = {},
+    showNote: Boolean = false,
 ) {
     // An item focused in the trending rows, which aren't part of homeRows
     var extraFocus by remember { mutableStateOf<Any?>(null) }
@@ -565,27 +567,38 @@ fun HomePageContent(
                         item(key = "header") {
                             if (showHero && phoneFeatured != null) {
                                 // Phones: the banner is a rounded card with the whole wide picture
-                                PhoneHeroCard(
-                                    featured = phoneFeatured,
-                                    onClick = { onClickFeaturedInfo(phoneFeatured.item) },
-                                )
+                                Column {
+                                    PhoneHeroCard(
+                                        featured = phoneFeatured,
+                                        onClick = { onClickFeaturedInfo(phoneFeatured.item) },
+                                    )
+                                    if (showNote) HomeNoteCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                                }
                             } else {
-                                Column { pageHeader() }
+                                Column {
+                                    pageHeader()
+                                    if (showNote) HomeNoteCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                                }
                             }
                         }
                     }
                     if (showHero) {
                         item(key = "hero") {
-                            HomeHero(
-                                featured = featured,
-                                index = heroIndex.coerceIn(0, featured.lastIndex),
-                                onClickPlay = onClickFeaturedPlay,
-                                onClickInfo = onClickFeaturedInfo,
-                                onClickFavorite = onClickFeaturedFavorite,
-                                onClickSurprise = onClickSurprise,
-                                onFocusChanged = { heroFocusedTv = it },
-                                focusRequester = heroFocusRequester,
-                            )
+                            Column {
+                                HomeHero(
+                                    featured = featured,
+                                    index = heroIndex.coerceIn(0, featured.lastIndex),
+                                    onClickPlay = onClickFeaturedPlay,
+                                    onClickInfo = onClickFeaturedInfo,
+                                    onClickFavorite = onClickFeaturedFavorite,
+                                    onClickSurprise = onClickSurprise,
+                                    onFocusChanged = { heroFocusedTv = it },
+                                    focusRequester = heroFocusRequester,
+                                )
+                                if (showNote && isTv) {
+                                    HomeNoteCard(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp))
+                                }
+                            }
                         }
                     }
                     homeRows.forEachIndexed { rowIndex, row ->

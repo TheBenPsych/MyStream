@@ -35,6 +35,7 @@ private val remoteTips =
         HowToTip("Arrows", "Move around the menus. While watching, Left and Right skip back and forward."),
         HowToTip("Up and Down while watching Channels", "Flips to the next or previous channel, like a normal TV."),
         HowToTip("Play / Pause", "Pauses or plays, if your remote has that button."),
+        HowToTip("Missed a line?", "While watching, press Left twice quickly. It jumps back and shows subtitles for a few seconds."),
     )
 
 private val phoneTips =
@@ -54,6 +55,7 @@ private val generalTips =
         HowToTip("Kids", "Pick the Kids profile on the Who's watching screen. It only shows titles rated PG or lower."),
         HowToTip("Switch profile", "Press your profile picture at the top (TV) or in My Benflix (phone)."),
         HowToTip("Something to watch, fast", "Try Channels, Trailer shuffle or the Mood quiz under More."),
+        HowToTip("Bigger text", "Turn on Easy-read mode in Settings, Look, for bigger and brighter text."),
         HowToTip("Getting a new version", "When there's an update, Settings shows Install update at the top."),
     )
 

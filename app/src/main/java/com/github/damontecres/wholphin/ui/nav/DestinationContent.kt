@@ -406,6 +406,11 @@ fun DestinationContent(
             PlayGamePage(destination.gameName, modifier)
         }
 
+        Destination.GuessTheMovie -> {
+            com.github.damontecres.wholphin.ui.games
+                .GuessTheMoviePage(modifier)
+        }
+
         Destination.HowTo -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

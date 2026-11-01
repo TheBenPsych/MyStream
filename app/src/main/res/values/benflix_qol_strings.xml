@@ -76,4 +76,9 @@
     <string name="benflix_ask_to_add">Ask Ben to add it</string>
     <string name="benflix_connect_requests">Can\'t find it? Turn on requests</string>
     <string name="benflix_connect_requests_summary">Sign in to requests once (Settings, More, Seerr) and you can ask for any movie or show</string>
+
+    <!-- Easy-read mode -->
+    <string name="benflix_easy_read">Easy-read mode</string>
+    <string name="benflix_easy_read_on">Bigger text and brighter grey text</string>
+    <string name="benflix_easy_read_off">Normal text size</string>
 </resources>

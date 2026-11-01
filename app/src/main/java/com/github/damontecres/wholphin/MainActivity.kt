@@ -291,6 +291,7 @@ class MainActivity : AppCompatActivity() {
                                         true,
                                         appThemeColors = appPreferences.interfacePreferences.appThemeColors,
                                         accent = appPreferences.benflixPreferences.accent,
+                                        easyRead = appPreferences.benflixPreferences.easyRead,
                                     ) {
                                         ProvideLocalClock {
                                             Box(modifier = Modifier.fillMaxSize()) {

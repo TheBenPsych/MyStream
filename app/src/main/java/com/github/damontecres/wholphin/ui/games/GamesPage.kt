@@ -269,6 +269,7 @@ class GamesViewModel
         ) {
             if (_starting.value != null) return
             _starting.value = game.id
+            rememberPlayed(game)
             viewModelScope.launch {
                 try {
                     openGameStream(context, game, games.prepare(game))
@@ -282,6 +283,28 @@ class GamesViewModel
                 }
             }
         }
+
+        /** Benflix "Continue playing": the last few streamed games, newest first, as "id:time" */
+        private fun recentKey() = "recent_${serverRepository.currentUser?.id ?: "guest"}"
+
+        private fun rememberPlayed(game: ServerGame) {
+            val now = System.currentTimeMillis()
+            val list =
+                listOf("${game.id}:$now") +
+                    recentPlayed().filter { it.first != game.id }.map { "${it.first}:${it.second}" }
+            prefs.edit().putString(recentKey(), list.take(RECENT_GAMES).joinToString(",")).apply()
+        }
+
+        /** (game id, when it was last played) pairs, newest first */
+        fun recentPlayed(): List<Pair<Int, Long>> =
+            prefs
+                .getString(recentKey(), null)
+                .orEmpty()
+                .split(',')
+                .mapNotNull { part ->
+                    val id = part.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
+                    id to (part.substringAfter(':').toLongOrNull() ?: 0L)
+                }
 
         private val profile: String
             get() = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
@@ -317,6 +340,10 @@ class GamesViewModel
             if (score <= best(game)) return false
             prefs.edit().putInt(key(game), score).apply()
             return true
+        }
+
+        companion object {
+            private const val RECENT_GAMES = 8
         }
     }
 
@@ -360,6 +387,13 @@ fun GamesPage(
         )
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
+        // Benflix "Guess the movie", made from your own movies
+        ActionTile(
+            title = "Guess the movie",
+            subtitle = "A blurry picture gets sharper. Guess it fast for more points!",
+            onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
+        )
+
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {
             Text(
@@ -390,6 +424,45 @@ fun GamesPage(
                         InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                     }
                     InfoText("Press a game to play it. Start + Select together quits and saves your spot. Hold Start for the game menu.")
+                    val recent =
+                        remember(state, starting) {
+                            val byId = state.consoles.flatMap { c -> c.games.map { it.id to (it to c.name) } }.toMap()
+                            viewModel.recentPlayed().mapNotNull { (id, time) -> byId[id]?.let { Triple(it.first, it.second, time) } }
+                        }
+                    if (recent.isNotEmpty()) {
+                        Text(
+                            text = "Continue playing",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                        ) {
+                            items(recent, key = { "recent-${it.first.id}" }) { (game, consoleName, time) ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    ServerGameCard(
+                                        game = game,
+                                        token = viewModel.gamesToken,
+                                        starting = starting == game.id,
+                                        onClick = { viewModel.play(context, game) },
+                                        modifier =
+                                            Modifier.size(
+                                                width = if (isTv) 150.dp else 110.dp,
+                                                height = if (isTv) 210.dp else 154.dp,
+                                            ),
+                                    )
+                                    Text(
+                                        text = "$consoleName · ${playedAgo(time)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        modifier = Modifier.width(if (isTv) 150.dp else 110.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                     state.consoles.forEach { console ->
                         Text(
                             text = "${console.name} (${console.games.size})",
@@ -589,6 +662,38 @@ private fun openGameStream(
 }
 
 private const val MOONLIGHT_PACKAGE = "com.limelight"
+
+/** "today", "yesterday", "3 days ago", "last week" or a date */
+private fun playedAgo(time: Long): String {
+    val days = ((System.currentTimeMillis() - time) / 86_400_000L).toInt()
+    return when {
+        days <= 0 -> {
+            "today"
+        }
+
+        days == 1 -> {
+            "yesterday"
+        }
+
+        days < 7 -> {
+            "$days days ago"
+        }
+
+        days < 14 -> {
+            "last week"
+        }
+
+        else -> {
+            java.time.Instant
+                .ofEpochMilli(time)
+                .atZone(java.time.ZoneId.systemDefault())
+                .format(
+                    java.time.format.DateTimeFormatter
+                        .ofPattern("MMM d"),
+                )
+        }
+    }
+}
 
 /** One spot on the Arcade wall next to (or below) the big tile */
 private sealed interface WallItem {

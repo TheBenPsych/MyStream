@@ -275,6 +275,10 @@ message BenflixPreferences {
   // Smart resume is on unless this is set
   bool smart_resume_off = 4;
   MobileDataQuality mobile_data_quality = 5;
+  // Easy-read mode: bigger text and brighter grey text
+  bool easy_read = 6;
+  // The first-run welcome has been shown to this person
+  bool welcome_done = 7;
 }
 
 enum BenflixAccent {
