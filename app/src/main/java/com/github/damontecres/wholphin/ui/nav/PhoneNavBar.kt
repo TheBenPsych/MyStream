@@ -162,7 +162,7 @@ fun PhoneNavBar(
                             modifier = Modifier.size(40.dp),
                         )
                         Column {
-                            Text(text = name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(text = name.orEmpty(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             Text(
                                 text = stringResource(R.string.phone_switch_profile),
                                 fontSize = 14.sp,
