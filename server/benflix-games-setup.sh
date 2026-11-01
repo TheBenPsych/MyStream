@@ -183,9 +183,12 @@ savestate_directory = "/es/.config/retroarch/states"
 libretro_directory = "/es/.config/retroarch/cores"
 joypad_autoconfig_dir = "/es/.config/retroarch/autoconfig"
 input_joypad_driver = "sdl2"
-input_menu_toggle_gamepad_combo = "4"
+input_quit_gamepad_combo = "4"
+input_menu_toggle_gamepad_combo = "7"
 quit_press_twice = "false"
 config_save_on_exit = "false"
+savestate_auto_save = "true"
+savestate_auto_load = "true"
 EOF
 
 say "RomM login for the helper"

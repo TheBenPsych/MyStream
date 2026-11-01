@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.services.AppUpgradeHandler
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.DatePlayedInvalidationService
 import com.github.damontecres.wholphin.services.DeviceProfileService
+import com.github.damontecres.wholphin.services.GameStreamReturn
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.IntentResult
 import com.github.damontecres.wholphin.services.IntentService
@@ -331,6 +332,11 @@ class MainActivity : AppCompatActivity() {
     override fun onRestart() {
         super.onRestart()
         Timber.d("onRestart")
+        if (GameStreamReturn.pending) {
+            // Back from playing a game in Moonlight: stay where we were (the Games tab)
+            GameStreamReturn.pending = false
+            return
+        }
         viewModel.appStart(null)
         if (!playExternalViewModel.launched.value) {
             // If restarting during playback that is not external, go back a page
