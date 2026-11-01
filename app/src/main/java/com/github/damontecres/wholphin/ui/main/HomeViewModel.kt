@@ -768,30 +768,50 @@ class HomeViewModel
             userId: UUID,
             ids: List<UUID>,
         ): Set<UUID> {
+            if (animeLibraryIds.isEmpty() || ids.isEmpty()) return emptySet()
+            val all = allAnimeIds(userId)
+            return ids.filter { it in all }.toSet()
+        }
+
+        /** Every movie & show id in the anime libraries, remembered for a while */
+        @Volatile
+        private var animeIdCache: Triple<List<UUID>, Long, Set<UUID>>? = null
+
+        /**
+         * All movie & show ids in the anime libraries. Asking the server "which of these ids are in
+         * this library" doesn't work (it ignores the library when ids are given), so the whole
+         * list of anime ids is fetched once and checked here instead.
+         */
+        private suspend fun allAnimeIds(userId: UUID): Set<UUID> {
             val libs = animeLibraryIds
-            if (libs.isEmpty() || ids.isEmpty()) return emptySet()
-            return libs
-                .flatMap { libraryId ->
-                    try {
-                        ids.chunked(ANIME_ID_CHUNK).flatMap { chunk ->
+            animeIdCache?.let { (cachedLibs, at, ids) ->
+                if (cachedLibs == libs && System.currentTimeMillis() - at < ANIME_ID_CACHE_MS) return ids
+            }
+            val ids =
+                libs
+                    .flatMap { libraryId ->
+                        try {
                             api.itemsApi
                                 .getItems(
                                     GetItemsRequest(
                                         userId = userId,
                                         parentId = libraryId,
                                         recursive = true,
-                                        ids = chunk,
+                                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                        enableImages = false,
+                                        enableUserData = false,
                                     ),
                                 ).content.items
                                 .map { it.id }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Error listing anime library %s", libraryId)
+                            emptyList()
                         }
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Error checking anime library %s", libraryId)
-                        emptyList()
-                    }
-                }.toSet()
+                    }.toSet()
+            animeIdCache = Triple(libs, System.currentTimeMillis(), ids)
+            return ids
         }
 
         /**
@@ -1811,7 +1831,7 @@ data class HomeState(
 }
 
 private const val TASTE_MAX = 300
-private const val ANIME_ID_CHUNK = 100
+private const val ANIME_ID_CACHE_MS = 60 * 60 * 1000L
 private const val ANIME_ROW_MIN = 5
 private const val ANIME_SIMILAR_FETCH = 40
 private const val ANIME_GEM_MIN_RATING = 7.5
