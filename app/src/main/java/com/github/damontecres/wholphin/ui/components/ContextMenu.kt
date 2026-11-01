@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.content.res.Resources
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
@@ -14,10 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.model.AudioItem
@@ -269,6 +273,9 @@ fun ContextMenu(
                 onClickPlayWith = { showPlayWithDialog = true },
             )
         }
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
     DialogPopup(
         showDialog = true,
         title = item.title ?: "",
@@ -276,6 +283,33 @@ fun ContextMenu(
         onDismissRequest = onDismissRequest,
         dismissOnClick = false,
         waitToLoad = contextMenu.fromLongClick,
+        // Benflix on phones: holding a poster shows quick info (rating, length, story) above the choices
+        header =
+            if (!isTv) {
+                {
+                    androidx.compose.foundation.layout.Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    ) {
+                        QuickDetails(
+                            details = item.ui.quickDetails,
+                            timeRemaining = item.timeRemainingOrRuntime,
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                        )
+                        item.data.overview?.takeIf { it.isNotBlank() }?.let {
+                            androidx.tv.material3.Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 4,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            } else {
+                null
+            },
     )
     if (chooseVersion != null) {
         chooseVersion?.let { params ->

@@ -212,6 +212,7 @@ fun DialogPopup(
     waitToLoad: Boolean = true,
     properties: DialogProperties = DialogProperties(),
     elevation: Dp = 1.dp,
+    header: (@Composable () -> Unit)? = null,
 ) {
     var waiting by remember { mutableStateOf(waitToLoad) }
     if (showDialog) {
@@ -235,6 +236,7 @@ fun DialogPopup(
                 MaterialTheme.colorScheme.surfaceColorAtElevation(elevation)
             DialogPopupContent(
                 title = title,
+                header = header,
                 dialogItems = dialogItems,
                 waiting = waiting,
                 onDismissRequest = onDismissRequest,
@@ -273,6 +275,7 @@ fun DialogPopupContent(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     dismissOnClick: Boolean = true,
+    header: (@Composable () -> Unit)? = null,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -283,6 +286,7 @@ fun DialogPopupContent(
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
+        header?.invoke()
         val scope = rememberCoroutineScope()
         val listState = rememberLazyListState()
         val focusRequesters = remember { List(dialogItems.size) { FocusRequester() } }
