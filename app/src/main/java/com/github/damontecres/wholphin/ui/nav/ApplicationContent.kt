@@ -70,12 +70,20 @@ fun ApplicationContent(
                     it
                 }
             }
-        Backdrop(
-            drawerIsOpen = drawerState.isOpen,
-            backdropStyle = backdropStyle,
-            enableTopScrim = enableTopScrim,
-            viewModel = viewModel,
-        )
+        // Benflix on phones: Home already shows its banner as a card, so the screen behind stays plain black.
+        // A big picture behind it doubled the banner and made the logo and labels hard to read.
+        val isTv =
+            com.github.damontecres.wholphin.ui.touch
+                .rememberIsTv()
+        val onPhoneHome = !isTv && navigationManager.backStack.lastOrNull() is Destination.Home
+        if (!onPhoneHome) {
+            Backdrop(
+                drawerIsOpen = drawerState.isOpen,
+                backdropStyle = backdropStyle,
+                enableTopScrim = enableTopScrim,
+                viewModel = viewModel,
+            )
+        }
         val navDrawerListState = rememberLazyListState()
         NavDisplay(
             backStack = navigationManager.backStack,
