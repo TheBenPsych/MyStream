@@ -3,6 +3,8 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.annotation.StringRes
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.diwali
+import com.github.damontecres.wholphin.services.lunarNewYear
 import java.time.LocalDate
 import java.time.temporal.IsoFields
 
@@ -44,9 +46,27 @@ data class HomeTheme(
         fun forDate(date: LocalDate): HomeTheme {
             val month = date.monthValue
             val day = date.dayOfMonth
+            val lny = lunarNewYear(date.year)
+            val diwaliDay = diwali(date.year)
             return when {
+                lny != null && !date.isBefore(lny.minusDays(3)) && !date.isAfter(lny.plusDays(3)) -> {
+                    HomeTheme(R.string.theme_lunar_new_year, genres = listOf("Action", "Adventure"))
+                }
+
                 month == 10 -> {
                     HomeTheme(R.string.theme_halloween, genres = listOf("Horror"))
+                }
+
+                month == 11 && day <= 2 -> {
+                    HomeTheme(R.string.theme_day_of_the_dead, genres = listOf("Animation", "Fantasy"))
+                }
+
+                diwaliDay != null && !date.isBefore(diwaliDay.minusDays(2)) && !date.isAfter(diwaliDay.plusDays(2)) -> {
+                    HomeTheme(R.string.theme_diwali, genres = listOf("Family", "Music", "Romance"))
+                }
+
+                month == 7 && day <= 7 -> {
+                    HomeTheme(R.string.theme_tanabata, genres = listOf("Animation", "Romance"))
                 }
 
                 month == 12 || (month == 11 && day >= 25) -> {

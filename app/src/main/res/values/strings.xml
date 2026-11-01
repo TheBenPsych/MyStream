@@ -1010,6 +1010,10 @@
     <string name="theme_holiday">Holiday favorites</string>
     <string name="theme_date_night">Date night</string>
     <string name="theme_summer">Summer blockbusters</string>
+    <string name="theme_day_of_the_dead">Día de los Muertos picks</string>
+    <string name="theme_lunar_new_year">Lunar New Year adventures</string>
+    <string name="theme_diwali">Festival of Lights favorites</string>
+    <string name="theme_tanabata">Tanabata: wish upon a star</string>
     <string name="theme_genre_of_week">Genre of the week: %1$s</string>
     <string name="player_next_episode">Next episode</string>
     <string name="player_subtitles">Subtitles</string>
