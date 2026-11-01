@@ -228,42 +228,72 @@ def main():
     for i in range(6):
         time.sleep(3)
         shot(f"start-{i}")
-    # Sign in to the demo server
-    root = dump()
-    if find(root, r"Add Server|Enter server") is not None:
-        press(r"Add Server")
-        shot("add-server")
-        press(r"Enter server address|Enter Server IP")
-        shot("enter-address")
-        time.sleep(1)
-        sh("input text '%s'" % SERVER.replace(":", "\\:"))
-        time.sleep(1)
-        shot("typed-address")
-        key("ENTER", wait=2)
-        if find(dump(), r"^Submit$") is not None:
-            press(r"^Submit$")
-        time.sleep(4)
-        shot("after-server")
-    root = dump()
-    if find(root, r"Add profile|Who's watching|Username") is not None:
-        if find(root, r"Username") is None:
-            press(r"Add profile")
+    # Sign in to the demo server: look at the screen and do the next sensible thing, for up to 4 minutes
+    typed_server = typed_user = False
+    end = time.time() + 240
+    step = 0
+    while time.time() < end:
+        step += 1
+        root = dump()
+        if find(root, r"Continue watching|Top 10|New on Benflix|My List|Because you watched|^Home$") is not None:
+            log("signed in")
+            break
+        if step % 3 == 1:
+            shot(f"login-{step}")
+        edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
+        if find(root, r"Enter Server IP or URL") is not None and edit:
+            if not typed_server:
+                tap(edit[0])
+                time.sleep(1)
+                sh("input text '%s'" % SERVER)
+                time.sleep(1)
+                typed_server = True
+                shot("typed-server")
+            key("ENTER", wait=2)
+            n = find(dump(), r"^Submit$")
+            if n is not None:
+                tap(n)
+            time.sleep(4)
+            continue
+        if find(root, r"^Username$") is not None and edit:
+            if not typed_user:
+                tap(edit[0])
+                time.sleep(1)
+                sh(f"input text {USER}")
+                typed_user = True
+                shot("typed-user")
+            n = find(dump(), r"^Login$")
+            if n is not None:
+                tap(n)
+            time.sleep(4)
+            continue
+        n = find(root, r"Username or password|username/password")
+        if n is not None and find(root, r"Quick Connect") is not None:
+            tap(n)
             time.sleep(2)
-            shot("add-profile")
-        press(r"^Username$")
-        sh(f"input text {USER}")
-        key("ENTER", wait=1)
-        shot("typed-user")
-        if find(dump(), r"^Login$|Sign in|Submit") is not None:
-            press(r"^Login$|^Sign in$|^Submit$")
-        t = time.time()
-        time.sleep(3)
-        shot("after-login")
-    # Who's watching -> pick the demo profile
-    root = dump()
-    if find(root, r"Who's watching") is not None:
-        press(rf"^{USER}$")
+            continue
+        n = find(root, rf"^{USER}$")
+        if n is not None and find(root, r"Who's watching") is not None:
+            tap(n)
+            time.sleep(4)
+            continue
+        n = find(root, r"^Add profile$")
+        if n is not None:
+            tap(n)
+            time.sleep(2)
+            continue
+        n = find(root, r"^Enter server address$")
+        if n is not None:
+            tap(n)
+            time.sleep(2)
+            continue
+        n = find(root, r"^Add Server$")
+        if n is not None:
+            tap(n)
+            time.sleep(3)
+            continue
         time.sleep(2)
+    shot("after-login")
     for name in ["update", "close", "later", "not now", "dismiss", "ok"]:
         n = find(dump(), rf"^{name}$")
         if n is not None:
