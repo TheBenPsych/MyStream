@@ -274,10 +274,13 @@ class MainActivity : AppCompatActivity() {
                                     DebugLogTree.INSTANCE.enabled = appPreferences.debugLogging
                                 }
                                 val baseBringIntoView = androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
+                                val isTvDevice = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+                                val screenWidthPx =
+                                    androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
                                 val snappyBringIntoView =
-                                    remember(baseBringIntoView) {
+                                    remember(baseBringIntoView, isTvDevice, screenWidthPx) {
                                         com.github.damontecres.wholphin.ui.util
-                                            .SnappyBringIntoViewSpec(baseBringIntoView)
+                                            .SnappyBringIntoViewSpec(baseBringIntoView, isTvDevice, screenWidthPx * .7f)
                                     }
                                 CompositionLocalProvider(
                                     LocalImageUrlService provides imageUrlService,
