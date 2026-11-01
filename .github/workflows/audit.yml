@@ -1,0 +1,168 @@
+name: Benflix audit (emulator robot)
+
+# Runs Benflix on an Android TV emulator and a phone emulator, signs in to the public Jellyfin demo
+# server, visits every screen, checks every button can be reached with the remote, times loading,
+# and does a random stress test to find crashes. Screenshots and the report go to the "audit-results" branch.
+on:
+  workflow_dispatch:
+    inputs:
+      apk:
+        description: "Which app to test: 'latest' (the newest published build) or 'branch' (build this branch)"
+        default: latest
+  push:
+    branches:
+      - 'claude/project-thread-bhgjhc'
+    paths:
+      - 'tools/audit/**'
+      - '.github/workflows/audit.yml'
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Decide
+        id: decide
+        run: |
+          src="${{ github.event.inputs.apk }}"
+          if [ -z "$src" ]; then src=$(cat tools/audit/APK_SOURCE 2>/dev/null || echo latest); fi
+          echo "src=$src" >> "$GITHUB_OUTPUT"
+          echo "Testing: $src"
+      - name: Setup
+        if: steps.decide.outputs.src == 'branch'
+        uses: ./.github/actions/setup
+      - name: Build this branch
+        if: steps.decide.outputs.src == 'branch'
+        env:
+          BENFLIX_BUILD: ${{ github.run_number }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          EXTENSIONS_USERNAME: ${{ secrets.EXTENSIONS_USERNAME }}
+          EXTENSIONS_PASSWORD: ${{ secrets.EXTENSIONS_PASSWORD }}
+        run: |
+          if [ -n "$EXTENSIONS_USERNAME" ]; then
+            export ORG_GRADLE_PROJECT_WholphinExtensionsUsername="$EXTENSIONS_USERNAME"
+            export ORG_GRADLE_PROJECT_WholphinExtensionsPassword="$EXTENSIONS_PASSWORD"
+          fi
+          ./gradlew assembleDefaultRelease --no-daemon
+          cp "$(find app/build/outputs/apk -name '*x86_64*.apk' | head -1)" app.apk
+      - name: Download the newest published build
+        if: steps.decide.outputs.src != 'branch'
+        run: curl -fsSL -o app.apk https://github.com/${{ github.repository }}/releases/download/latest-build/MyStream-x86_64.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk
+          path: app.apk
+
+  robot:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [tv, phone]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@v5
+        with:
+          name: apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Set up the emulator
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --list 2>/dev/null | grep -E "system-images;android-3[0-9];(android-tv|google-tv|google_apis);x86" | awk '{print $1}' | sort -u > images.txt
+          cat images.txt
+          if [ "${{ matrix.mode }}" = tv ]; then
+            want="android-34;android-tv;x86_64 android-34;google-tv;x86_64 android-33;android-tv;x86_64 android-31;android-tv;x86_64 android-34;android-tv;x86 android-33;android-tv;x86 android-30;android-tv;x86"
+            device=tv_1080p
+          else
+            want="android-34;google_apis;x86_64 android-33;google_apis;x86_64"
+            device=pixel_6
+          fi
+          img=""
+          for w in $want; do if grep -qx "system-images;$w" images.txt; then img="system-images;$w"; break; fi; done
+          echo "Using $img"
+          echo "IMG=$img" >> $GITHUB_ENV
+          sdkmanager "emulator" "platform-tools" "$img" >/dev/null
+          echo no | avdmanager create avd -n audit -k "$img" -d $device --force
+          printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> ~/.android/avd/audit.avd/config.ini
+      - name: Run the robot
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
+          nohup emulator -avd audit -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -camera-back none > emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell input keyevent 82 || true
+          adb install -r -g app.apk
+          PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
+          echo "Package $PKG"
+          adb shell getprop ro.product.cpu.abilist
+          python3 tools/audit/drive.py ${{ matrix.mode }} "$PKG" results/${{ matrix.mode }} || echo "robot exited with $?"
+          adb shell dumpsys meminfo "$PKG" > results/${{ matrix.mode }}/meminfo.txt || true
+          adb shell dumpsys gfxinfo "$PKG" > results/${{ matrix.mode }}/gfxinfo.txt || true
+          cp emulator.log results/${{ matrix.mode }}/ || true
+          echo "$IMG" > results/${{ matrix.mode }}/image.txt
+      - name: Shrink screenshots
+        run: |
+          pip install pillow >/dev/null
+          python3 - <<'PY'
+          import glob, os
+          from PIL import Image
+          for p in glob.glob("results/*/*.png"):
+              try:
+                  im = Image.open(p).convert("RGB")
+                  im.thumbnail((960, 960))
+                  im.save(p[:-4] + ".jpg", quality=70)
+              except Exception as e:
+                  print(p, e)
+              os.remove(p)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: results-${{ matrix.mode }}
+          path: results
+
+  publish:
+    needs: robot
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: results-*
+          merge-multiple: true
+          path: results
+      - name: Save results to the audit-results branch
+        run: |
+          cd results
+          git init -q -b audit-results
+          git config user.name "audit robot"
+          git config user.email "audit@users.noreply.github.com"
+          echo "Run ${{ github.run_id }} on ${{ github.sha }}" > RUN.txt
+          git add -A
+          git commit -qm "Audit run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" audit-results

@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""
+Benflix audit robot. Drives the app on an emulator with adb (like a person with a remote or a finger),
+takes a screenshot of every screen, checks every button can be reached with the D-pad (TV),
+times how long screens take to load, then does a random "monkey" stress test and collects any crashes.
+
+Usage: drive.py <tv|phone> <package> <results dir>
+Server: the public Jellyfin demo server (no password), so no private server is needed.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+MODE, PKG, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+SERVER = os.environ.get("AUDIT_SERVER", "https://demo.jellyfin.org/stable")
+USER = os.environ.get("AUDIT_USER", "demo")
+os.makedirs(OUT, exist_ok=True)
+REPORT = {"mode": MODE, "steps": [], "timings": {}, "unreachable": {}, "problems": []}
+shot_no = [0]
+
+
+def adb(*args, check=False, timeout=60):
+    try:
+        r = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=timeout)
+        return r.stdout
+    except subprocess.TimeoutExpired:
+        return ""
+
+
+def sh(cmd, timeout=60):
+    return adb("shell", cmd, timeout=timeout)
+
+
+def log(msg):
+    print(f"[{MODE}] {msg}", flush=True)
+    REPORT["steps"].append(msg)
+
+
+def dump():
+    """Returns the screen's UI tree, or None when the screen never settled"""
+    for _ in range(3):
+        out = sh("uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml", timeout=40)
+        if "<hierarchy" in out:
+            try:
+                return ET.fromstring(out[out.index("<?xml") if "<?xml" in out else out.index("<hierarchy"):])
+            except ET.ParseError:
+                pass
+        time.sleep(1)
+    return None
+
+
+def nodes(root):
+    return [] if root is None else list(root.iter("node"))
+
+
+def texts(root):
+    return [n.get("text") or n.get("content-desc") or "" for n in nodes(root)]
+
+
+def find(root, pattern):
+    rx = re.compile(pattern, re.I)
+    for n in nodes(root):
+        if rx.search(n.get("text") or "") or rx.search(n.get("content-desc") or ""):
+            return n
+    return None
+
+
+def center(n):
+    a, b, c, d = map(int, re.findall(r"\d+", n.get("bounds")))
+    return (a + c) // 2, (b + d) // 2
+
+
+def shot(name):
+    shot_no[0] += 1
+    base = f"{OUT}/{shot_no[0]:03d}-{re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')}"
+    adb("exec-out", "screencap", "-p")  # warm up
+    with open(base + ".png", "wb") as f:
+        f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
+    root = dump()
+    if root is not None:
+        with open(base + ".txt", "w") as f:
+            for n in nodes(root):
+                t = n.get("text") or n.get("content-desc")
+                if t or n.get("focused") == "true":
+                    f.write(f"{'*' if n.get('focused') == 'true' else ' '} {n.get('bounds')} {t}\n")
+    check_crash(name)
+    return root
+
+
+def key(k, times=1, wait=0.35):
+    for _ in range(times):
+        sh(f"input keyevent {k}")
+        time.sleep(wait)
+
+
+def tap(n):
+    x, y = center(n)
+    sh(f"input tap {x} {y}")
+
+
+def press(pattern, timeout=15):
+    """Taps (phone) or focuses + presses OK (TV) the thing whose text matches"""
+    end = time.time() + timeout
+    while time.time() < end:
+        root = dump()
+        n = find(root, pattern)
+        if n is not None:
+            tap(n)  # a tap also works on TV emulators for things the remote would press
+            time.sleep(1.5)
+            return True
+        time.sleep(1)
+    log(f"could not find '{pattern}'")
+    return False
+
+
+def wait_for(pattern, timeout=40):
+    """Seconds until text matching pattern shows, or None"""
+    start = time.time()
+    while time.time() - start < timeout:
+        if find(dump(), pattern) is not None:
+            return round(time.time() - start, 1)
+        time.sleep(0.5)
+    return None
+
+
+def app_running():
+    return bool(sh(f"pidof {PKG}").strip())
+
+
+crash_seen = set()
+
+
+def check_crash(where):
+    out = adb("logcat", "-d", "-b", "crash")
+    for block in re.split(r"(?=FATAL EXCEPTION)", out):
+        if "FATAL EXCEPTION" in block and PKG in block:
+            sig = block[:600]
+            if sig not in crash_seen:
+                crash_seen.add(sig)
+                REPORT["problems"].append({"type": "crash", "where": where, "trace": block[:4000]})
+                log(f"CRASH near '{where}'")
+    anr = sh("ls /data/anr 2>/dev/null")
+    if anr.strip() and "anr" not in crash_seen:
+        crash_seen.add("anr")
+        REPORT["problems"].append({"type": "anr", "where": where, "files": anr})
+
+
+def focus_sweep(name, max_moves=60):
+    """TV: walks the D-pad over the screen and lists clickable things that never got focus"""
+    root = dump()
+    clickable = {}
+    for n in nodes(root):
+        if n.get("clickable") == "true" or n.get("focusable") == "true":
+            label = n.get("text") or n.get("content-desc") or ""
+            if not label:
+                for c in n.iter("node"):
+                    label = c.get("text") or c.get("content-desc") or ""
+                    if label:
+                        break
+            if label:
+                clickable[n.get("bounds")] = label
+    seen = set()
+
+    def record():
+        r = dump()
+        for n in nodes(r):
+            if n.get("focused") == "true":
+                seen.add(n.get("bounds"))
+                for c in n.iter("node"):
+                    seen.add(c.get("bounds"))
+
+    record()
+    # snake: right across, down one, left across, down one ...
+    for row in range(6):
+        for _ in range(8):
+            key("DPAD_RIGHT" if row % 2 == 0 else "DPAD_LEFT", wait=0.25)
+            record()
+        key("DPAD_DOWN", wait=0.3)
+        record()
+    key("DPAD_UP", 12, wait=0.15)
+    record()
+    missed = sorted({v for b, v in clickable.items() if b not in seen})
+    REPORT["unreachable"][name] = missed
+    log(f"focus sweep '{name}': {len(clickable)} buttons, {len(missed)} never focused")
+
+
+def back_to_home():
+    for _ in range(6):
+        if find(dump(), r"^Home$") is not None:
+            return
+        key("BACK", wait=1)
+
+
+def main():
+    sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
+    adb("logcat", "-c")
+    adb("logcat", "-b", "crash", "-c")
+    t0 = time.time()
+    out = sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
+    m = re.search(r"TotalTime: (\d+)", out)
+    REPORT["timings"]["cold start (ms, first frame)"] = int(m.group(1)) if m else None
+    for i in range(6):
+        time.sleep(3)
+        shot(f"start-{i}")
+    # Sign in to the demo server
+    root = dump()
+    if find(root, r"Add Server|Enter server") is not None:
+        press(r"Add Server")
+        shot("add-server")
+        press(r"Enter server address|Enter Server IP")
+        shot("enter-address")
+        time.sleep(1)
+        sh("input text '%s'" % SERVER.replace(":", "\\:"))
+        time.sleep(1)
+        shot("typed-address")
+        key("ENTER", wait=2)
+        if find(dump(), r"^Submit$") is not None:
+            press(r"^Submit$")
+        time.sleep(4)
+        shot("after-server")
+    root = dump()
+    if find(root, r"Add profile|Who's watching|Username") is not None:
+        if find(root, r"Username") is None:
+            press(r"Add profile")
+            time.sleep(2)
+            shot("add-profile")
+        press(r"^Username$")
+        sh(f"input text {USER}")
+        key("ENTER", wait=1)
+        shot("typed-user")
+        if find(dump(), r"^Login$|Sign in|Submit") is not None:
+            press(r"^Login$|^Sign in$|^Submit$")
+        t = time.time()
+        time.sleep(3)
+        shot("after-login")
+    # Who's watching -> pick the demo profile
+    root = dump()
+    if find(root, r"Who's watching") is not None:
+        press(rf"^{USER}$")
+        time.sleep(2)
+    for name in ["update", "close", "later", "not now", "dismiss", "ok"]:
+        n = find(dump(), rf"^{name}$")
+        if n is not None:
+            tap(n)
+            time.sleep(1)
+    t = wait_for(r"Continue watching|Top 10|New on Benflix|My List|Because you watched", 60)
+    REPORT["timings"]["home rows visible (s)"] = t
+    shot("home")
+    home = dump()
+    REPORT["home_texts"] = [x for x in texts(home) if x][:200]
+    if MODE == "tv":
+        focus_sweep("home")
+        shot("home-after-sweep")
+    else:
+        for i in range(5):
+            sh("input swipe 500 1500 500 500 400")
+            time.sleep(1.2)
+            shot(f"home-scroll-{i}")
+        sh("input swipe 500 500 500 2000 300")
+
+    # Visit every tab in the top bar / bottom bar
+    tabs = (
+        [r"^Home$", r"Browse", r"^Channels$", r"^Games$", r"My Benflix", r"^More$", r"Search"]
+        if MODE == "tv"
+        else [r"^Home$", r"^Search$", r"^Clips$", r"^Channels$", r"My Benflix"]
+    )
+    for tab in tabs:
+        back_to_home()
+        start = time.time()
+        if not press(tab, timeout=8):
+            continue
+        time.sleep(2)
+        name = re.sub(r"[^A-Za-z ]", "", tab).strip() or "tab"
+        root = shot(f"tab-{name}")
+        if tab in (r"Browse", r"^More$"):
+            # a pop-up list: open each entry
+            entries = [n.get("text") for n in nodes(root) if n.get("text") and n.get("clickable") != "false"]
+            entries = [e for e in entries if e not in ("Browse", "More")][:8]
+            for e in entries:
+                if not press(re.escape(e), timeout=5):
+                    continue
+                time.sleep(3)
+                shot(f"{name}-{e}")
+                if MODE == "tv":
+                    focus_sweep(f"{name}/{e}")
+                key("BACK", wait=1.5)
+                back_to_home()
+                press(tab, timeout=6)
+                time.sleep(1.5)
+            key("BACK", wait=1)
+            continue
+        REPORT["timings"][f"open {name} (s)"] = round(time.time() - start, 1)
+        if MODE == "tv":
+            focus_sweep(name)
+
+    # Open a movie's details, then play it for a bit
+    back_to_home()
+    if MODE == "tv":
+        key("DPAD_DOWN", 2)
+        key("DPAD_CENTER", wait=1)
+    else:
+        sh("input swipe 500 1500 500 900 300")
+        time.sleep(1)
+        root = dump()
+        posters = [n for n in nodes(root) if n.get("clickable") == "true" and center(n)[1] > 900]
+        if posters:
+            tap(posters[0])
+    t = wait_for(r"^Play$|Resume|Episodes|More like this", 30)
+    REPORT["timings"]["details page (s)"] = t
+    shot("details")
+    if MODE == "tv":
+        focus_sweep("details")
+    time.sleep(4)
+    shot("details-trailer")
+    if press(r"^Play$|^Resume$", timeout=8):
+        time.sleep(10)
+        shot("playing")
+        key("DPAD_CENTER", wait=1)
+        shot("player-controls")
+        key("BACK", 2, wait=1.5)
+        shot("after-player")
+
+    # Settings
+    back_to_home()
+    if MODE == "tv":
+        press(r"^Settings$", timeout=6)
+    else:
+        press(r"My Benflix", timeout=6)
+    time.sleep(2)
+    shot("settings")
+
+    # Random stress: thousands of remote presses / taps
+    back_to_home()
+    log("monkey test")
+    args = "--pct-nav 35 --pct-majornav 35 --pct-syskeys 5 --pct-appswitch 0 --pct-anyevent 0"
+    if MODE == "tv":
+        args += " --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
+    else:
+        args = "--pct-touch 45 --pct-motion 20 --pct-nav 10 --pct-majornav 15 --pct-syskeys 5 --pct-appswitch 0 --pct-rotation 0 --pct-anyevent 0 --pct-permission 0"
+    mk = sh(f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500", timeout=900)
+    with open(f"{OUT}/monkey.txt", "w") as f:
+        f.write(mk)
+    shot("after-monkey")
+    check_crash("monkey")
+    if not app_running():
+        REPORT["problems"].append({"type": "not running after monkey"})
+
+    # Save the app's log
+    with open(f"{OUT}/logcat.txt", "w") as f:
+        f.write(adb("logcat", "-d", "-v", "time", timeout=120))
+    with open(f"{OUT}/report.json", "w") as f:
+        json.dump(REPORT, f, indent=1)
+    print(json.dumps({k: REPORT[k] for k in ("timings", "unreachable", "problems")}, indent=1)[:20000])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    finally:
+        with open(f"{OUT}/report.json", "w") as f:
+            json.dump(REPORT, f, indent=1)
