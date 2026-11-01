@@ -58,6 +58,7 @@ enum class FeaturedReason {
     RESUME,
     FAVORITE,
     BECAUSE,
+    TONIGHT,
 }
 
 /**
@@ -79,11 +80,30 @@ fun FeaturedReasonLabel(
 ) {
     val text =
         when (featured.reason) {
-            FeaturedReason.NEW -> stringResource(R.string.featured_new)
-            FeaturedReason.PICK -> stringResource(R.string.featured_pick)
-            FeaturedReason.RESUME -> stringResource(R.string.featured_resume)
-            FeaturedReason.FAVORITE -> stringResource(R.string.featured_favorite)
-            FeaturedReason.BECAUSE -> stringResource(R.string.featured_because, featured.becauseOf.orEmpty())
+            FeaturedReason.NEW -> {
+                stringResource(R.string.featured_new)
+            }
+
+            FeaturedReason.PICK -> {
+                stringResource(R.string.featured_pick)
+            }
+
+            FeaturedReason.RESUME -> {
+                stringResource(R.string.featured_resume)
+            }
+
+            FeaturedReason.FAVORITE -> {
+                stringResource(R.string.featured_favorite)
+            }
+
+            FeaturedReason.BECAUSE -> {
+                stringResource(R.string.featured_because, featured.becauseOf.orEmpty())
+            }
+
+            FeaturedReason.TONIGHT -> {
+                featured.becauseOf?.let { stringResource(R.string.featured_tonight_for, it) }
+                    ?: stringResource(R.string.featured_tonight)
+            }
         }
     Text(
         text = text.uppercase(),
