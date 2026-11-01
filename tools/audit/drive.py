@@ -21,6 +21,11 @@ USER = os.environ.get("AUDIT_USER", "demo")
 os.makedirs(OUT, exist_ok=True)
 REPORT = {"mode": MODE, "steps": [], "timings": {}, "unreachable": {}, "problems": []}
 shot_no = [0]
+DEADLINE = time.time() + 40 * 60
+
+
+def out_of_time():
+    return time.time() > DEADLINE
 
 
 def adb(*args, check=False, timeout=60):
@@ -40,15 +45,32 @@ def log(msg):
     REPORT["steps"].append(msg)
 
 
-def dump():
+PKG_LABEL = re.compile(r"Benflix|MyStream", re.I)
+SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
+
+
+def dump(dismiss=True):
     """Returns the screen's UI tree, or None when the screen never settled"""
     for _ in range(3):
-        out = sh("uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml", timeout=40)
+        out = sh("rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml", timeout=20)
         if "<hierarchy" in out:
             try:
-                return ET.fromstring(out[out.index("<?xml") if "<?xml" in out else out.index("<hierarchy"):])
+                root = ET.fromstring(out[out.index("<?xml") if "<?xml" in out else out.index("<hierarchy"):])
             except ET.ParseError:
-                pass
+                root = None
+            if root is not None and dismiss:
+                popup = [n.get("text") or "" for n in root.iter("node") if SYSTEM_POPUPS.search(n.get("text") or "")]
+                if popup:
+                    if PKG_LABEL.search(popup[0]):
+                        REPORT["problems"].append({"type": "system popup", "text": popup[0]})
+                    for n in root.iter("node"):
+                        if (n.get("text") or "") in ("Wait", "Close app", "OK"):
+                            tap(n)
+                            time.sleep(2)
+                            break
+                    continue
+            if root is not None:
+                return root
         time.sleep(1)
     return None
 
@@ -250,6 +272,10 @@ def main():
     t = wait_for(r"Continue watching|Top 10|New on Benflix|My List|Because you watched", 60)
     REPORT["timings"]["home rows visible (s)"] = t
     shot("home")
+    if t is None and find(dump(), r"^Home$") is None:
+        log("never got signed in; stopping here")
+        REPORT["problems"].append({"type": "robot could not sign in"})
+        return
     home = dump()
     REPORT["home_texts"] = [x for x in texts(home) if x][:200]
     if MODE == "tv":
@@ -269,6 +295,8 @@ def main():
         else [r"^Home$", r"^Search$", r"^Clips$", r"^Channels$", r"My Benflix"]
     )
     for tab in tabs:
+        if out_of_time():
+            break
         back_to_home()
         start = time.time()
         if not press(tab, timeout=8):
