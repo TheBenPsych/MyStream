@@ -458,7 +458,10 @@ fun HomePageContent(
         }
     }
     LaunchedEffect(onUpdateBackdrop, focusedItem) {
-        focusedItem?.let { onUpdateBackdrop.invoke(it) }
+        // On phones the banner card shows its own picture, so the page background stays dark
+        if (isTv || !(showHero && heroFocused)) {
+            focusedItem?.let { onUpdateBackdrop.invoke(it) }
+        }
     }
     val focusedDiscover = if (heroFocused) null else extraFocus as? DiscoverItem
     LaunchedEffect(focusedDiscover) {
@@ -546,7 +549,18 @@ fun HomePageContent(
                             .focusRestorer(),
                 ) {
                     if (!isTv) {
-                        item(key = "header") { Column { pageHeader() } }
+                        val phoneFeatured = featured.getOrNull(heroIndex.coerceIn(0, (featured.size - 1).coerceAtLeast(0)))
+                        item(key = "header") {
+                            if (showHero && phoneFeatured != null) {
+                                // Phones: the banner is a rounded card with the whole wide picture
+                                PhoneHeroCard(
+                                    featured = phoneFeatured,
+                                    onClick = { onClickFeaturedInfo(phoneFeatured.item) },
+                                )
+                            } else {
+                                Column { pageHeader() }
+                            }
+                        }
                     }
                     if (showHero) {
                         item(key = "hero") {

@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.main
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -261,5 +263,71 @@ fun HeroTrailer(
                         ),
                     ),
         )
+    }
+}
+
+/**
+ * Benflix on phones: the banner is a rounded card holding the whole wide wallpaper picture,
+ * with the title logo on it, like the Netflix phone app. Tap it to open the details.
+ */
+@Composable
+fun PhoneHeroCard(
+    featured: FeaturedItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val item = featured.item
+    val imageUrlService = com.github.damontecres.wholphin.ui.LocalImageUrlService.current
+    val backdropUrl =
+        androidx.compose.runtime.remember(item.id) {
+            imageUrlService.getItemImageUrl(item, org.jellyfin.sdk.model.api.ImageType.BACKDROP, fillWidth = 1280)
+        }
+    val logoUrl =
+        com.github.damontecres.wholphin.ui.components
+            .rememberLogoUrl(item)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
+    ) {
+        FeaturedReasonLabel(featured = featured)
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1C1C22))
+                    .clickable(onClick = onClick),
+        ) {
+            coil3.compose.AsyncImage(
+                model = backdropUrl,
+                contentDescription = item.title,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.45f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = .85f),
+                            ),
+                        ),
+            )
+            com.github.damontecres.wholphin.ui.components.TitleOrLogo(
+                title = item.title,
+                logoImageUrl = logoUrl,
+                showLogo = true,
+                logoHeight = 56.dp,
+                logoMaxWidth = 240.dp,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(12.dp)
+                        .fillMaxWidth(.7f),
+            )
+        }
     }
 }
