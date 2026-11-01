@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -68,11 +70,19 @@ fun rememberTrailerCinemaState(): TrailerCinemaState {
     return state
 }
 
-/** Put on the page's outer Box so any button press wakes the page back up */
+/** Put on the page's outer Box so any button press (or, on a phone, any touch) wakes the page back up */
 fun Modifier.wakeOnInput(state: TrailerCinemaState): Modifier =
     onPreviewKeyEvent {
         state.lastInput = SystemClock.uptimeMillis()
         false
+    }.pointerInput(state) {
+        // Phones: a tap or scroll anywhere brings the page text back. Only watches, never takes the touch
+        awaitPointerEventScope {
+            while (true) {
+                awaitPointerEvent(PointerEventPass.Initial)
+                state.lastInput = SystemClock.uptimeMillis()
+            }
+        }
     }
 
 /** How visible the page text should be (fades out while the trailer is full screen) */

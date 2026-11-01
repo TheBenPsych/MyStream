@@ -1094,6 +1094,9 @@
     <string name="downloads_none">Nothing downloaded yet. Tap Download on a movie or episode to save it on this phone and watch it without internet. Downloads only happen on Wi-Fi.</string>
     <string name="phone_my_benflix">My Benflix</string>
     <string name="phone_switch_profile">Switch profile</string>
+    <string name="phone_my_page">My page (My List, Liked, history)</string>
+    <string name="phone_browse">Browse</string>
+    <string name="phone_extras">Extras</string>
     <string name="mood_shuffle">Show me different ones</string>
     <string name="mood_page_subtitle">A random handful from your library that fits the mood. New picks every time you open it.</string>
 </resources>

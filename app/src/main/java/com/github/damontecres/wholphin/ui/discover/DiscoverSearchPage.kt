@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.search.SearchCombinedResults
 import com.github.damontecres.wholphin.ui.search.SearchResult
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -176,9 +177,11 @@ fun DiscoverSearchPage(
             modifier = Modifier.fillMaxWidth(),
         ) {
             var isSearchActive by remember { mutableStateOf(false) }
+            // Phones type as soon as you tap the box; TVs wait for the OK button
+            val isTv = rememberIsTv()
             var isTextFieldFocused by remember { mutableStateOf(false) }
 
-            BackHandler(isTextFieldFocused) {
+            BackHandler(isTv && isTextFieldFocused) {
                 when {
                     isSearchActive -> {
                         isSearchActive = false
@@ -223,7 +226,7 @@ fun DiscoverSearchPage(
                         query = it
                     },
                     onSearchClick = { triggerImmediateSearch(query) },
-                    readOnly = !isSearchActive,
+                    readOnly = isTv && !isSearchActive,
                     modifier =
                         Modifier
                             .onFocusChanged { state ->

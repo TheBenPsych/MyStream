@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.components.VoiceSearchButton
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
 
@@ -125,10 +126,12 @@ fun SearchForContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             var isSearchActive by remember { mutableStateOf(false) }
+            // Phones type as soon as you tap the box; TVs wait for the OK button
+            val isTv = rememberIsTv()
             var isTextFieldFocused by remember { mutableStateOf(false) }
             val textFieldFocusRequester = remember { FocusRequester() }
 
-            BackHandler(isTextFieldFocused) {
+            BackHandler(isTv && isTextFieldFocused) {
                 when {
                     isSearchActive -> {
                         isSearchActive = false
@@ -165,7 +168,7 @@ fun SearchForContent(
                         query = it
                     },
                     onSearchClick = { triggerImmediateSearch(query) },
-                    readOnly = !isSearchActive,
+                    readOnly = isTv && !isSearchActive,
                     modifier =
                         Modifier
                             .focusRequester(textFieldFocusRequester)

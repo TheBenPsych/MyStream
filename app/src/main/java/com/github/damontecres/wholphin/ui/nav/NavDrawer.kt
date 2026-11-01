@@ -308,7 +308,9 @@ fun NavDrawer(
 
     // If the user presses back while on the home page, move to the top bar, another back press will quit the app
     var topBarFocused by remember { mutableStateOf(false) }
-    BackHandler(enabled = (!topBarFocused && destination is Destination.Home)) {
+    // (TV only: phones have no top bar, so Back on Home just leaves the app like any other phone app)
+    val isTv = rememberIsTv()
+    BackHandler(enabled = (isTv && !topBarFocused && destination is Destination.Home)) {
         focusRequester.tryRequestFocus()
     }
     val serviceState by viewModel.serviceState.collectAsState()
@@ -388,7 +390,7 @@ fun NavDrawer(
             SetupDestination.UserList(server),
         )
     }
-    if (!rememberIsTv()) {
+    if (!isTv) {
         // Phones: logo on top, menu along the bottom.
         // The logo bar slides away while you scroll down and comes back as soon as you scroll up.
         var headerVisible by remember { mutableStateOf(true) }
@@ -494,6 +496,47 @@ fun NavDrawer(
                 },
                 onClickSettings = onClickSettings,
                 onClickProfile = onClickProfile,
+                // The same extras the TV has under My Benflix and More
+                extras =
+                    listOf(
+                        TopNavTab(
+                            title = stringResource(R.string.phone_my_page),
+                            selected = selectedIndex == MY_BENFLIX_INDEX && !clipsOpen && !downloadsOpen,
+                            onClick = {
+                                clipsOpen = false
+                                downloadsOpen = false
+                                viewModel.setIndex(MY_BENFLIX_INDEX)
+                                viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+                            },
+                        ),
+                        TopNavTab(
+                            title = stringResource(R.string.mood_quiz),
+                            selected = false,
+                            onClick = {
+                                clipsOpen = false
+                                downloadsOpen = false
+                                viewModel.navigationManager.navigateTo(Destination.MoodQuiz)
+                            },
+                        ),
+                        TopNavTab(
+                            title = stringResource(R.string.watch_in_order),
+                            selected = false,
+                            onClick = {
+                                clipsOpen = false
+                                downloadsOpen = false
+                                viewModel.navigationManager.navigateTo(Destination.WatchOrder)
+                            },
+                        ),
+                        TopNavTab(
+                            title = stringResource(R.string.benflix_how_to),
+                            selected = false,
+                            onClick = {
+                                clipsOpen = false
+                                downloadsOpen = false
+                                viewModel.navigationManager.navigateTo(Destination.HowTo)
+                            },
+                        ),
+                    ),
             )
         }
         return
