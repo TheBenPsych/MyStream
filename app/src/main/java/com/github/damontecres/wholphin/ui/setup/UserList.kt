@@ -84,6 +84,7 @@ fun UserList(
     onKids: (JellyfinUser) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
+    var pickPictureFor by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
 
     Column(
         modifier = modifier,
@@ -176,6 +177,14 @@ fun UserList(
                             onSwitchUser.invoke(user.user)
                         },
                     )
+                    add(
+                        DialogItem(
+                            stringResource(R.string.change_picture),
+                            R.string.fa_user,
+                        ) {
+                            pickPictureFor = user
+                        },
+                    )
                     if (user.known) {
                         add(
                             DialogItem(
@@ -193,6 +202,120 @@ fun UserList(
             waitToLoad = true,
             properties = DialogProperties(),
         )
+    }
+    pickPictureFor?.let { user ->
+        AvatarPickerDialog(
+            userId = user.user.id,
+            name = user.user.name,
+            onDismissRequest = { pickPictureFor = null },
+        )
+    }
+}
+
+/**
+ * Pick a Benflix profile picture. Saved on this device.
+ */
+@Composable
+private fun AvatarPickerDialog(
+    userId: UUID,
+    name: String?,
+    onDismissRequest: () -> Unit,
+) {
+    val current = AvatarChoices.get(userId)
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                Modifier
+                    .background(Color(0xFF181818), RoundedCornerShape(12.dp))
+                    .padding(24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.choose_picture_for, name.orEmpty()),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            val firstFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
+            BenflixAvatars.chunked(4).forEachIndexed { rowIndex, row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    row.forEachIndexed { col, res ->
+                        val index = rowIndex * 4 + col
+                        Surface(
+                            onClick = {
+                                AvatarChoices.set(userId, index)
+                                onDismissRequest.invoke()
+                            },
+                            shape = ClickableSurfaceDefaults.shape(CircleShape),
+                            border =
+                                ClickableSurfaceDefaults.border(
+                                    border =
+                                        androidx.tv.material3.Border(
+                                            androidx.compose.foundation.BorderStroke(
+                                                3.dp,
+                                                if (index == current) Color.White else Color.Transparent,
+                                            ),
+                                        ),
+                                    focusedBorder =
+                                        androidx.tv.material3.Border(
+                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                        ),
+                                ),
+                            modifier =
+                                Modifier
+                                    .size(72.dp)
+                                    .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
+                        ) {
+                            Image(
+                                painter = painterResource(res),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            )
+                        }
+                    }
+                }
+            }
+            Button(onClick = {
+                AvatarChoices.set(userId, null)
+                onDismissRequest.invoke()
+            }) {
+                Text(stringResource(R.string.use_automatic_picture))
+            }
+        }
+    }
+}
+
+/**
+ * Profile pictures picked in Benflix, kept on this device by profile id
+ */
+object AvatarChoices {
+    private val choices = androidx.compose.runtime.mutableStateMapOf<UUID, Int>()
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun init(context: android.content.Context) {
+        if (prefs != null) return
+        val p = context.applicationContext.getSharedPreferences("benflix_avatars", android.content.Context.MODE_PRIVATE)
+        prefs = p
+        p.all.forEach { (key, value) ->
+            val id = runCatching { UUID.fromString(key) }.getOrNull()
+            if (id != null && value is Int) choices[id] = value
+        }
+    }
+
+    fun get(id: UUID): Int? = choices[id]
+
+    fun set(
+        id: UUID,
+        index: Int?,
+    ) {
+        if (index == null) {
+            choices.remove(id)
+            prefs?.edit()?.remove(id.toString())?.apply()
+        } else {
+            choices[id] = index
+            prefs?.edit()?.putInt(id.toString(), index)?.apply()
+        }
     }
 }
 
@@ -302,6 +425,9 @@ fun UserIconCardImage(
 ) {
     var imageError by remember { mutableStateOf(false) }
     val userColor = rememberIdColor(id, alpha)
+    AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
+    // A picture picked in Benflix wins over the automatic one and the Jellyfin one
+    val chosen = AvatarChoices.get(id)?.let { BenflixAvatars.getOrNull(it) }
     Box(
         modifier =
             modifier.background(
@@ -310,7 +436,7 @@ fun UserIconCardImage(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (imageUrl.isNotNullOrBlank() && !imageError) {
+        if (chosen == null && imageUrl.isNotNullOrBlank() && !imageError) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = name,
@@ -323,7 +449,7 @@ fun UserIconCardImage(
             )
         } else {
             Image(
-                painter = painterResource(benflixAvatarFor(id, name)),
+                painter = painterResource(chosen ?: benflixAvatarFor(id, name)),
                 contentDescription = name,
                 contentScale = ContentScale.Crop,
                 alpha = alpha,
