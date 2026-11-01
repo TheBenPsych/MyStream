@@ -477,7 +477,10 @@ class ClipsViewModel
             viewModelScope.launch(ExceptionHandler()) {
                 try {
                     val userId = serverRepository.currentUser?.id
-                    val known = _state.value.clips.map { it.item.id }.toSet()
+                    val known =
+                        _state.value.clips
+                            .map { it.item.id }
+                            .toSet()
                     val more =
                         withContext(WholphinDispatchers.IO) {
                             resolveClips(findItemsWithTrailers(userId).filter { it.id !in known })
