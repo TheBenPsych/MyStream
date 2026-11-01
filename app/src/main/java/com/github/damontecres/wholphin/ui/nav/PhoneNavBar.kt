@@ -69,11 +69,13 @@ fun PhoneHeader(modifier: Modifier = Modifier) {
 
 /**
  * Benflix on phones: the menu sits along the bottom of the screen where your thumb is.
- * Home, Search, Games, and My Benflix, which holds your profile, My List, the libraries and settings.
+ * Home, Search, Clips (a feed of trailers), Games, and My Benflix, which holds your profile, My List, the libraries and settings.
  */
 @Composable
 fun PhoneNavBar(
     tabs: List<TopNavTab>,
+    clipsSelected: Boolean,
+    onClickClips: () -> Unit,
     gamesTitle: String,
     user: JellyfinUser,
     userImageUrl: String?,
@@ -102,6 +104,7 @@ fun PhoneNavBar(
             PhoneNavItem(R.string.fa_house, it.title, it.selected && !searchSelected, it.onClick)
         }
         PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
+        PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.clips_title), clipsSelected, onClickClips)
         games?.let {
             PhoneNavItem(R.string.fa_gamepad, it.title, it.selected, it.onClick)
         }
