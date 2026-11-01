@@ -169,6 +169,10 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Your own page on the TV: continue watching, My List, liked, watch history */
+    @Serializable
+    data object MyBenflix : Destination(false)
+
     /** A page for one genre: its best, hidden gems, what's new and shorter picks */
     @Serializable
     data class GenreHub(

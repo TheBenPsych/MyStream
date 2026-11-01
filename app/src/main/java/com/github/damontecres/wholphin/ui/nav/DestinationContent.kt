@@ -357,6 +357,12 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.MyBenflix -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .MyBenflixPage(modifier)
+        }
+
         is Destination.GenreHub -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

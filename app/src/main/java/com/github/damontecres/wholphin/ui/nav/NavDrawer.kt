@@ -192,6 +192,8 @@ class NavDrawerViewModel
                             NOW_PLAYING_INDEX
                         } else if (key is Destination.Games) {
                             GAMES_INDEX
+                        } else if (key is Destination.MyBenflix) {
+                            MY_BENFLIX_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -276,6 +278,7 @@ private const val HOME_INDEX = -1
 private const val SEARCH_INDEX = -2
 private const val NOW_PLAYING_INDEX = -3
 private const val GAMES_INDEX = -4
+private const val MY_BENFLIX_INDEX = -5
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -499,7 +502,14 @@ fun NavDrawer(
             moviesIndex.takeIf { it >= 0 }?.let(libraryTab),
             showsIndex.takeIf { it >= 0 }?.let(libraryTab),
             tabs.last(),
-            myListIndex.takeIf { it >= 0 }?.let(libraryTab)?.copy(title = myBenflixTitle),
+            TopNavTab(
+                title = myBenflixTitle,
+                selected = selectedIndex == MY_BENFLIX_INDEX,
+                onClick = {
+                    viewModel.setIndex(MY_BENFLIX_INDEX)
+                    viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+                },
+            ),
         )
     val moreTabs =
         tabs.filterIndexed { i, _ ->

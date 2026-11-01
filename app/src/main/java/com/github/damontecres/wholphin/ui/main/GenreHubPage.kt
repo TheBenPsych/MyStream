@@ -186,7 +186,6 @@ fun GenreHubPage(
     LaunchedEffect(genre) { viewModel.load(genre) }
     val rows by viewModel.rows.collectAsState()
     val known = remember(genre) { BenflixGenre.entries.firstOrNull { it.serverName == genre } }
-    val firstFocus = remember { FocusRequester() }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -211,41 +210,64 @@ fun GenreHubPage(
                         modifier = Modifier.padding(top = 32.dp, start = 8.dp),
                     )
                 } else {
-                    LaunchedEffect(list) { firstFocus.tryRequestFocus() }
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 48.dp),
+                    HubRows(
+                        rows = list,
+                        onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
                         modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Rows of posters, used by the genre hubs and My Benflix. The first poster takes focus.
+ */
+@Composable
+fun HubRows(
+    rows: List<HubRow>,
+    onClickItem: (BaseItem) -> Unit,
+    modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(rows) {
+        // Wait a frame so the first poster is on screen before it takes focus
+        kotlinx.coroutines.delay(80)
+        firstFocus.tryRequestFocus()
+    }
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 48.dp),
+        modifier = modifier,
+    ) {
+        header?.let { item { it() } }
+        rows.forEachIndexed { rowIndex, row ->
+            item(key = row.title) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ItemRowTitle(row.title)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     ) {
-                        list.forEachIndexed { rowIndex, row ->
-                            item(key = row.title) {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    ItemRowTitle(row.title)
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                                    ) {
-                                        items(row.items, key = { it.id }) { item ->
-                                            GridCard(
-                                                item = item,
-                                                onClick = { viewModel.navigationManager.navigateTo(item.destination()) },
-                                                onLongClick = {},
-                                                showTitle = false,
-                                                modifier =
-                                                    Modifier
-                                                        .width(HUB_CARD_WIDTH)
-                                                        .then(
-                                                            if (rowIndex == 0 && item == row.items.first()) {
-                                                                Modifier.focusRequester(firstFocus)
-                                                            } else {
-                                                                Modifier
-                                                            },
-                                                        ),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                        items(row.items, key = { it.id }) { item ->
+                            GridCard(
+                                item = item,
+                                onClick = { onClickItem(item) },
+                                onLongClick = {},
+                                showTitle = false,
+                                modifier =
+                                    Modifier
+                                        .width(HUB_CARD_WIDTH)
+                                        .then(
+                                            if (rowIndex == 0 && item == row.items.first()) {
+                                                Modifier.focusRequester(firstFocus)
+                                            } else {
+                                                Modifier
+                                            },
+                                        ),
+                            )
                         }
                     }
                 }
