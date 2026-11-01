@@ -86,6 +86,7 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -172,6 +173,8 @@ fun PreferencesContent(
             updateState.release?.version?.isGreaterThan(installedVersion) ?: false
         }
 
+    // Benflix: the screensaver is TV-only, so its settings are hidden on phones
+    val isTv = rememberIsTv()
     val prefList =
         when (preferenceScreenOption) {
             PreferenceScreenOption.BASIC -> basicPreferences
@@ -315,11 +318,13 @@ fun PreferencesContent(
                         )
                     }
                     val groupPreferences =
-                        group.preferences +
-                            group.conditionalPreferences
-                                .filter { it.condition.invoke(preferences) }
-                                .map { it.preferences }
-                                .flatten()
+                        (
+                            group.preferences +
+                                group.conditionalPreferences
+                                    .filter { it.condition.invoke(preferences) }
+                                    .map { it.preferences }
+                                    .flatten()
+                        ).filter { isTv || it != AppPreference.ScreensaverSettings }
                     groupPreferences.forEachIndexed { prefIndex, pref ->
                         pref as AppPreference<AppPreferences, Any>
                         val isFirst = groupIndex == 0 && prefIndex == 0 && !showUpdate
