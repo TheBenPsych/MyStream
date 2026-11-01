@@ -60,7 +60,6 @@ import com.github.damontecres.wholphin.services.UserSwitchListener
 import com.github.damontecres.wholphin.services.hilt.AuthOkHttpClient
 import com.github.damontecres.wholphin.services.tvprovider.TvProviderSchedulerService
 import com.github.damontecres.wholphin.ui.BenflixIntro
-import com.github.damontecres.wholphin.ui.BenflixIntroSchedule
 import com.github.damontecres.wholphin.ui.CoilConfig
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.collectLatestIn
@@ -241,8 +240,8 @@ class MainActivity : AppCompatActivity() {
                 MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
                     Surface(Modifier.fillMaxSize().touchTaps()) {
                         val userPreferences by userPreferencesService.flow.collectAsState(null)
-                        // Benflix startup animation, only on the first launch of each day
-                        var showIntro by rememberSaveable { mutableStateOf(BenflixIntroSchedule.shouldShowToday(this@MainActivity)) }
+                        // Benflix startup animation, every time the app is opened fresh
+                        var showIntro by rememberSaveable { mutableStateOf(true) }
                         if (userPreferences == null) {
                             // Show loading page if it is taking a while to get app preferences
                             var showLoading by remember { mutableStateOf(false) }
