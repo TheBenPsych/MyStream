@@ -406,6 +406,18 @@ fun DestinationContent(
             PlayGamePage(destination.gameName, modifier)
         }
 
+        Destination.HowTo -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .HowToPage(modifier)
+        }
+
+        Destination.ServerStatus -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .ServerStatusPage(modifier)
+        }
+
         Destination.UpdateApp -> {
             InstallUpdatePage(preferences, modifier)
         }

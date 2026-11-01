@@ -277,6 +277,10 @@ fun DiscoverSeriesDetailsContent(
                                     .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                         )
                         ExpandableDiscoverButtons(
+                            isAdmin =
+                                viewModel.serverRepository.currentUserDto
+                                    ?.policy
+                                    ?.isAdministrator == true,
                             availability = availability,
                             requestOnClick = requestOnClick,
                             pendingOnClick = requestOnClick,

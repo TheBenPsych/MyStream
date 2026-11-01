@@ -548,6 +548,11 @@ fun NavDrawer(
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
                 ),
+                TopNavTab(
+                    title = stringResource(R.string.benflix_how_to),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) },
+                ),
             )
     Column(modifier = modifier) {
         TopNavBar(

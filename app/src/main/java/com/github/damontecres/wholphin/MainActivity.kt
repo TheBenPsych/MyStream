@@ -290,16 +290,23 @@ class MainActivity : AppCompatActivity() {
                                     WholphinTheme(
                                         true,
                                         appThemeColors = appPreferences.interfacePreferences.appThemeColors,
+                                        accent = appPreferences.benflixPreferences.accent,
                                     ) {
                                         ProvideLocalClock {
-                                            MainContent(
-                                                backStack = setupNavigationManager.backStack,
-                                                navigationManager = navigationManager,
-                                                userPreferences = userPreferences,
-                                                backdropService = backdropService,
-                                                screensaverService = screensaverService,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
+                                            Box(modifier = Modifier.fillMaxSize()) {
+                                                MainContent(
+                                                    backStack = setupNavigationManager.backStack,
+                                                    navigationManager = navigationManager,
+                                                    userPreferences = userPreferences,
+                                                    backdropService = backdropService,
+                                                    screensaverService = screensaverService,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                )
+                                                com.github.damontecres.wholphin.ui.theme.LateNightLookLayer(
+                                                    prefs = appPreferences.benflixPreferences,
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
+                                            }
                                         }
                                     }
                                 }

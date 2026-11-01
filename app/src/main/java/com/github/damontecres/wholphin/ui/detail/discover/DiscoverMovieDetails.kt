@@ -236,6 +236,10 @@ fun DiscoverMovieDetailsContent(
                                 .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
                     ExpandableDiscoverButtons(
+                        isAdmin =
+                            viewModel.serverRepository.currentUserDto
+                                ?.policy
+                                ?.isAdministrator == true,
                         availability =
                             SeerrAvailability.from(movie.mediaInfo?.status)
                                 ?: SeerrAvailability.UNKNOWN,

@@ -38,6 +38,7 @@ fun ExpandableDiscoverButtons(
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     pendingOnClick: () -> Unit = {},
+    isAdmin: Boolean = true,
 ) {
     val firstFocus = remember { FocusRequester() }
     LazyRow(
@@ -50,7 +51,8 @@ fun ExpandableDiscoverButtons(
     ) {
         val text =
             when (availability) {
-                SeerrAvailability.UNKNOWN -> R.string.request
+                // Benflix: family members "ask Ben", the admin just requests
+                SeerrAvailability.UNKNOWN -> if (isAdmin) R.string.request else R.string.benflix_ask_to_add
 
                 SeerrAvailability.PENDING,
                 SeerrAvailability.PROCESSING,

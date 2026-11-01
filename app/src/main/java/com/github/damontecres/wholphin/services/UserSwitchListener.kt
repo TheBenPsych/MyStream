@@ -38,9 +38,14 @@ class UserSwitchListener
         private val seerrApi: SeerrApi,
         private val homeSettingsService: HomeSettingsService,
         private val serverPluginApi: ServerPluginApi,
+        private val benflixSettingsSync: BenflixSettingsSync,
     ) {
         init {
             context as AppCompatActivity
+            // Benflix: save the person's own settings to their account when they change
+            context.lifecycleScope.launchDefault {
+                benflixSettingsSync.watchForChanges()
+            }
             context.lifecycleScope.launchDefault {
                 serverRepository.currentUserFlow
                     .distinctUntilChanged { old, new ->
@@ -65,6 +70,11 @@ class UserSwitchListener
                 Timber.i("Switching locale to %s", localeList)
                 withContext(WholphinDispatchers.Main) {
                     AppCompatDelegate.setApplicationLocales(localeList)
+                }
+
+                // Benflix: bring back this person's own settings (Settings follow you)
+                launchIO {
+                    benflixSettingsSync.restoreFor(user.id)
                 }
 
                 // Check if plugin is installed, then for home settings & seerr settings

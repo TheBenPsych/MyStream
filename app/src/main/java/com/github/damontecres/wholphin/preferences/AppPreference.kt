@@ -1171,58 +1171,161 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.screensaver_settings,
                 destination = Destination.Settings(PreferenceScreenOption.SCREENSAVER),
             )
+
+        // ---- Benflix personal settings (saved to Jellyfin so they follow the person) ----
+
+        val ProfileColor =
+            AppChoicePreference<AppPreferences, BenflixAccent>(
+                title = R.string.benflix_profile_color,
+                defaultValue = BenflixAccent.ACCENT_RED,
+                getter = { it.benflixPreferences.accent },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { accent = value }
+                },
+                displayValues = R.array.benflix_accent_colors,
+                indexToValue = { BenflixAccent.forNumber(it) ?: BenflixAccent.ACCENT_RED },
+                valueToIndex = { if (it != BenflixAccent.UNRECOGNIZED) it.number else 0 },
+            )
+
+        val LateNightLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_late_night_look,
+                defaultValue = false,
+                getter = { it.benflixPreferences.lateNightLook },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { lateNightLook = value }
+                },
+                summaryOn = R.string.benflix_late_night_look_on,
+                summaryOff = R.string.benflix_late_night_look_off,
+            )
+
+        val LateNightStart =
+            AppChoicePreference<AppPreferences, Int>(
+                title = R.string.benflix_late_night_start,
+                defaultValue = LATE_NIGHT_DEFAULT_HOUR,
+                getter = { it.benflixPreferences.lateNightStartHour.takeIf { h -> h > 0 } ?: LATE_NIGHT_DEFAULT_HOUR },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { lateNightStartHour = value }
+                },
+                displayValues = R.array.benflix_late_night_hours,
+                indexToValue = { LATE_NIGHT_HOURS.getOrElse(it) { LATE_NIGHT_DEFAULT_HOUR } },
+                valueToIndex = { LATE_NIGHT_HOURS.indexOf(it).coerceAtLeast(0) },
+            )
+
+        val SmartResume =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_smart_resume,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.smartResumeOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { smartResumeOff = !value }
+                },
+                summaryOn = R.string.benflix_smart_resume_on,
+                summaryOff = R.string.disabled,
+            )
+
+        val MobileDataQualityPref =
+            AppChoicePreference<AppPreferences, MobileDataQuality>(
+                title = R.string.benflix_mobile_data_quality,
+                defaultValue = MobileDataQuality.MOBILE_BALANCED,
+                getter = { it.benflixPreferences.mobileDataQuality },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { mobileDataQuality = value }
+                },
+                displayValues = R.array.benflix_mobile_data_quality_options,
+                indexToValue = { MOBILE_DATA_ORDER.getOrElse(it) { MobileDataQuality.MOBILE_BALANCED } },
+                valueToIndex = { MOBILE_DATA_ORDER.indexOf(it).coerceAtLeast(0) },
+            )
+
+        val HowToUse =
+            AppDestinationPreference<AppPreferences>(
+                title = R.string.benflix_how_to,
+                summary = R.string.benflix_how_to_summary,
+                destination = Destination.HowTo,
+            )
+
+        val ServerPage =
+            AppDestinationPreference<AppPreferences>(
+                title = R.string.benflix_server_page,
+                summary = R.string.benflix_server_page_summary,
+                destination = Destination.ServerStatus,
+            )
+
+        const val LATE_NIGHT_DEFAULT_HOUR = 22
+        val LATE_NIGHT_HOURS = listOf(20, 21, 22, 23, 24)
+
+        /** Order shown in the list: Save data, Balanced, Best */
+        val MOBILE_DATA_ORDER =
+            listOf(
+                MobileDataQuality.MOBILE_SAVE_DATA,
+                MobileDataQuality.MOBILE_BALANCED,
+                MobileDataQuality.MOBILE_BEST,
+            )
     }
 }
 
+/**
+ * Benflix: Settings in five plain sections. All the technical player and server options live under
+ * Advanced at the bottom. A search box at the top finds any setting by name.
+ */
 val basicPreferences =
     listOf(
         PreferenceGroup(
-            title = R.string.ui_interface,
-            preferences =
-                listOf(
-                    AppPreference.SignInAuto,
-                    AppPreference.RememberSelectedTab,
-                    AppPreference.PlayThemeMusic,
-                    AppPreference.SubtitleStyle,
-                    AppPreference.ThemeColors,
-                    AppPreference.ScreensaverSettings,
-                ),
-        ),
-        PreferenceGroup(
-            title = R.string.playback,
-            preferences =
-                listOf(
-                    AppPreference.SkipForward,
-                    AppPreference.SkipBack,
-                    AppPreference.SkipBackOnResume,
-                ),
-        ),
-        PreferenceGroup(
-            title = R.string.next_up,
-            preferences =
-                listOf(
-                    AppPreference.ShowNextUpTiming,
-                    AppPreference.AutoPlayNextUp,
-                    AppPreference.AutoPlayNextDelay,
-                    AppPreference.PassOutProtection,
-                ),
-        ),
-        PreferenceGroup(
-            title = R.string.profile_specific_settings,
+            title = R.string.benflix_settings_profile,
             preferences =
                 listOf(
                     AppPreference.ProtectProfilePreference,
+                    AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
                     AppPreference.CustomizeHome,
                     AppPreference.UserPinnedNavDrawerItems,
                     AppPreference.UserInterfaceLanguage,
-                    AppPreference.UserProfileSettings,
+                    AppPreference.SignInAuto,
                 ),
         ),
         PreferenceGroup(
-            title = R.string.about,
+            title = R.string.benflix_settings_watching,
+            preferences =
+                listOf(
+                    AppPreference.SubtitleStyle,
+                    AppPreference.UserProfileSettings,
+                    AppPreference.AutoPlayNextUp,
+                    AppPreference.AutoPlayNextDelay,
+                    AppPreference.ShowNextUpTiming,
+                    AppPreference.SmartResume,
+                    AppPreference.SkipForward,
+                    AppPreference.SkipBack,
+                    AppPreference.SkipBackOnResume,
+                    AppPreference.PassOutProtection,
+                ),
+        ),
+        PreferenceGroup(
+            title = R.string.benflix_settings_look,
+            preferences =
+                listOf(
+                    AppPreference.LateNightLook,
+                    AppPreference.ThemeColors,
+                    AppPreference.PlayThemeMusic,
+                    AppPreference.RememberSelectedTab,
+                    AppPreference.ScreensaverSettings,
+                ),
+            conditionalPreferences =
+                listOf(
+                    ConditionalPreferences(
+                        { it.benflixPreferences.lateNightLook },
+                        listOf(AppPreference.LateNightStart),
+                    ),
+                ),
+        ),
+        PreferenceGroup(
+            title = R.string.benflix_settings_phone,
+            preferences = listOf(AppPreference.MobileDataQualityPref),
+        ),
+        PreferenceGroup(
+            title = R.string.benflix_settings_help,
             preferences =
                 buildList {
+                    add(AppPreference.HowToUse)
                     add(AppPreference.InstalledVersion)
                     if (UpdateChecker.ACTIVE) {
                         add(AppPreference.Update)
@@ -1233,6 +1336,7 @@ val basicPreferences =
             title = R.string.more,
             preferences =
                 buildList {
+                    add(AppPreference.ServerPage)
                     if (BuildConfig.DISCOVER_ENABLED) {
                         add(AppPreference.SeerrIntegration)
                     }
