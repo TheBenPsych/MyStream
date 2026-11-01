@@ -15,4 +15,4 @@ CORE=$(sed -n 1p "$NEXT")
 ROM=$(sed -n 2p "$NEXT")
 gow_log "[benflix] Starting $ROM with $CORE"
 printf '%s\n%s\n' "$CORE" "$ROM" >/tmp/benflix-game
-launcher /benflix/run-game.sh
+launcher /benflix/benflix-run-game.sh
