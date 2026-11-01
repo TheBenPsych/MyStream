@@ -127,7 +127,7 @@ def bounds(n):
     return tuple(map(int, re.findall(r"\d+", n.get("bounds"))))
 
 
-def tap(n):
+def touch_tap(n):
     """Taps the thing itself, or the closest button to it when the label sits outside its button"""
     target = n
     if n.get("clickable") != "true" and LAST_ROOT[0] is not None:
@@ -151,6 +151,47 @@ def tap(n):
             target = best[1]
     x, y = center(target)
     sh(f"input tap {x} {y}")
+
+
+def focused_node(root):
+    found = None
+    for n in nodes(root):
+        if n.get("focused") == "true":
+            found = n  # deepest wins
+    return found
+
+
+def contains(outer, inner):
+    a, b, c, d = bounds(outer)
+    x, y = center(inner)
+    return a <= x <= c and b <= y <= d
+
+
+def tap(n):
+    """Phone: a finger tap. TV: walk the focus to it with the D-pad, then press OK"""
+    if MODE != "tv":
+        touch_tap(n)
+        return
+    label = n.get("text") or n.get("content-desc") or ""
+    tx, ty = center(n)
+    for _ in range(14):
+        root = LAST_ROOT[0] if _ == 0 else dump(dismiss=False)
+        f = focused_node(root)
+        if f is None:
+            key("DPAD_DOWN", wait=0.4)
+            continue
+        # is the target inside the focused thing (or the focused thing inside the target)?
+        if contains(f, n) or contains(n, f):
+            key("DPAD_CENTER", wait=0.8)
+            return
+        fx, fy = center(f)
+        dx, dy = tx - fx, ty - fy
+        if abs(dy) > 40 and abs(dy) >= abs(dx) / 3:
+            key("DPAD_DOWN" if dy > 0 else "DPAD_UP", wait=0.4)
+        else:
+            key("DPAD_RIGHT" if dx > 0 else "DPAD_LEFT", wait=0.4)
+    log(f"TV: could not move focus to '{label}'")
+    REPORT["problems"].append({"type": "could not reach with remote", "text": label})
 
 
 def press(pattern, timeout=15):
@@ -278,7 +319,8 @@ def main():
                 time.sleep(1)
                 typed_server = True
                 shot("typed-server")
-            key("ENTER", wait=2)
+            if MODE == "tv":
+                key("BACK", wait=1)
             n = find(dump(), r"^Submit$")
             if n is not None:
                 tap(n)
@@ -286,11 +328,14 @@ def main():
             continue
         if find(root, r"^Username$") is not None and edit:
             if not typed_user:
-                tap(edit[0])
-                time.sleep(1)
-                sh(f"input text {USER}")
+                if find(root, rf"^{USER}$") is None:
+                    tap(edit[0])
+                    time.sleep(1)
+                    sh(f"input text {USER}")
                 typed_user = True
                 shot("typed-user")
+            if MODE == "tv":
+                key("BACK", wait=1)  # hide the on-screen keyboard
             n = find(dump(), r"^Login$")
             if n is not None:
                 tap(n)

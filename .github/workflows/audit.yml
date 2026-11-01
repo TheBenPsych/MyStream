@@ -168,7 +168,7 @@ jobs:
 
   publish:
     needs: robot
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
