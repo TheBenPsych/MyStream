@@ -169,6 +169,10 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Two quick questions for a group, then picks everyone will like */
+    @Serializable
+    data object MoodQuiz : Destination(false)
+
     /** Your own page on the TV: continue watching, My List, liked, watch history */
     @Serializable
     data object MyBenflix : Destination(false)

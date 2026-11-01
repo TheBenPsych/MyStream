@@ -357,6 +357,12 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.MoodQuiz -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .MoodQuizPage(modifier)
+        }
+
         Destination.MyBenflix -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

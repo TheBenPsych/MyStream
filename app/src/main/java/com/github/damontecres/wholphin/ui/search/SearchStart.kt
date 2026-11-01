@@ -98,6 +98,27 @@ fun SearchStart(
             }
         }
         item {
+            Button(
+                onClick = { navigationManager.navigateTo(Destination.MoodQuiz) },
+                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+                colors =
+                    ButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = .25f),
+                        contentColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black,
+                    ),
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                Text(
+                    text = "Watching together? Take the mood quiz",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        item {
             MoodRow(
                 selected = null,
                 onClickMood = { navigationManager.navigateTo(Destination.Mood(it.name)) },
