@@ -29,6 +29,7 @@ import com.github.damontecres.wholphin.ui.main.GenreTile
 import com.github.damontecres.wholphin.ui.main.MoodRow
 import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /** The last few things searched for on this device */
 object RecentSearches {
@@ -120,13 +121,20 @@ fun SearchStart(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(start = 8.dp),
                 )
+                // Phones: two tiles side by side (a fixed tile width left only one per line on most phones)
+                val isTv = rememberIsTv()
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
+                    maxItemsInEachRow = if (isTv) Int.MAX_VALUE else 2,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 ) {
                     BenflixGenre.entries.forEach { genre ->
-                        GenreTile(genre = genre, onClick = { navigationManager.openGenreHub(genre) })
+                        GenreTile(
+                            genre = genre,
+                            onClick = { navigationManager.openGenreHub(genre) },
+                            modifier = if (isTv) Modifier else Modifier.weight(1f),
+                        )
                     }
                 }
             }
