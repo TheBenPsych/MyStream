@@ -995,10 +995,6 @@ class HomeViewModel
         }
 
         /**
-         * A few genre rows ("Comedy", "Action"...), picked at random each visit
-         */
-
-        /**
          * "More musicals": right under "Because you watched", more titles from the main genre of
          * whatever was watched last, so the home page reacts the same day
          */
@@ -1051,6 +1047,9 @@ class HomeViewModel
             }
         }
 
+        /**
+         * A few genre rows ("Comedy", "Action"...), picked at random each visit
+         */
         private suspend fun loadGenreRows(userDto: ServerUserConfig) {
             try {
                 val taste = loadTaste(userDto.id)
