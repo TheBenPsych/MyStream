@@ -171,7 +171,7 @@ mkdir -p "$BF"
 
 say "Downloading the Benflix play helper"
 ok=1
-for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh benflix-skip-setup.sh; do
+for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh benflix-skip-setup.sh benflix-hints.cfg benflix-hints.png; do
   curl -fsSL "$RAW/$f" -o "$BF/$f" || { echo "  --  couldn't download $f"; ok=0; }
 done
 [ $ok = 1 ] && echo "  ok"
@@ -189,6 +189,17 @@ quit_press_twice = "false"
 config_save_on_exit = "false"
 savestate_auto_save = "true"
 savestate_auto_load = "true"
+EOF
+# Button hints shown in the black bars beside 4:3 games (only added for those consoles, see benflix-run-game.sh)
+cat >"$BF/retroarch-hints.cfg" <<'EOF'
+input_overlay_enable = "true"
+input_overlay = "/benflix/benflix-hints.cfg"
+input_overlay_opacity = "1.000000"
+input_overlay_scale = "1.000000"
+input_overlay_hide_in_menu = "true"
+input_overlay_hide_when_gamepad_connected = "false"
+input_overlay_show_inputs = "0"
+input_overlay_auto_scale = "false"
 EOF
 
 say "RomM login for the helper"
