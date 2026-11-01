@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSizeIn
@@ -105,125 +106,176 @@ fun ExpandablePlayButtons(
     }
 
     var chooseVersion by remember { mutableStateOf<DialogParams?>(null) }
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
 
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(8.dp),
-        modifier =
-            modifier
-                .focusGroup()
-                .focusRestorer(firstFocus),
-    ) {
-        item("play") {
-            ExpandablePlayButton(
-                title = if (resumePosition > Duration.ZERO) R.string.resume else R.string.play,
-                resume = resumePosition,
-                icon = Icons.Default.PlayArrow,
-                onClick = playOnClick,
+    // Benflix on phones: a big full-width Play button, like the Netflix phone app
+    androidx.compose.foundation.layout.Column(modifier = if (isTv) Modifier else modifier) {
+        if (!isTv) {
+            androidx.tv.material3.Button(
+                onClick = { playOnClick.invoke(resumePosition) },
+                colors =
+                    androidx.tv.material3.ButtonDefaults.colors(
+                        containerColor = androidx.compose.ui.graphics.Color.White,
+                        contentColor = androidx.compose.ui.graphics.Color.Black,
+                    ),
+                shape =
+                    androidx.tv.material3.ButtonDefaults
+                        .shape(
+                            androidx.compose.foundation.shape
+                                .RoundedCornerShape(6.dp),
+                        ),
                 modifier =
                     Modifier
-                        .onFocusChanged(buttonOnFocusChanged)
-                        .focusRequester(firstFocus),
-            )
-        }
-        if (resumePosition > Duration.ZERO) {
-            item("restart") {
-                ExpandablePlayButton(
-                    title = R.string.restart,
-                    resume = Duration.ZERO,
-                    icon = Icons.Default.Refresh,
-                    onClick = playOnClick,
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-                    mirrorIcon = true,
-                    interactionSource = restartInteractionSource,
-                )
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    androidx.tv.material3.Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                    )
+                    androidx.tv.material3.Text(
+                        text =
+                            androidx.compose.ui.res.stringResource(
+                                if (resumePosition > Duration.ZERO) R.string.resume else R.string.play,
+                            ),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
             }
         }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(8.dp),
+            modifier =
+                if (isTv) {
+                    modifier
+                        .focusGroup()
+                        .focusRestorer(firstFocus)
+                } else {
+                    Modifier
+                },
+        ) {
+            if (isTv) {
+                item("play") {
+                    ExpandablePlayButton(
+                        title = if (resumePosition > Duration.ZERO) R.string.resume else R.string.play,
+                        resume = resumePosition,
+                        icon = Icons.Default.PlayArrow,
+                        onClick = playOnClick,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(buttonOnFocusChanged)
+                                .focusRequester(firstFocus),
+                    )
+                }
+            }
+            if (resumePosition > Duration.ZERO) {
+                item("restart") {
+                    ExpandablePlayButton(
+                        title = R.string.restart,
+                        resume = Duration.ZERO,
+                        icon = Icons.Default.Refresh,
+                        onClick = playOnClick,
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                        mirrorIcon = true,
+                        interactionSource = restartInteractionSource,
+                    )
+                }
+            }
 
-        if (chooseVersionParams != null && chooseVersionParams.mediaSources.size > 1) {
-            item {
+            if (chooseVersionParams != null && chooseVersionParams.mediaSources.size > 1) {
+                item {
+                    ExpandableFaButton(
+                        title = R.string.version,
+                        iconStringRes = R.string.fa_file_video,
+                        onClick = {
+                            chooseVersion =
+                                chooseVersionParams(
+                                    resources,
+                                    chooseVersionParams.mediaSources.orEmpty(),
+                                    chooseVersionParams.chosenStreams
+                                        ?.source
+                                        ?.id
+                                        ?.toUUIDOrNull(),
+                                ) { idx ->
+                                    val source = chooseVersionParams.mediaSources[idx]
+                                    chooseVersionParams.onChooseVersion.invoke(source)
+                                }
+                        },
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+
+            // Watched button
+            item("watched") {
                 ExpandableFaButton(
-                    title = R.string.version,
-                    iconStringRes = R.string.fa_file_video,
-                    onClick = {
-                        chooseVersion =
-                            chooseVersionParams(
-                                resources,
-                                chooseVersionParams.mediaSources.orEmpty(),
-                                chooseVersionParams.chosenStreams
-                                    ?.source
-                                    ?.id
-                                    ?.toUUIDOrNull(),
-                            ) { idx ->
-                                val source = chooseVersionParams.mediaSources[idx]
-                                chooseVersionParams.onChooseVersion.invoke(source)
-                            }
-                    },
+                    title = if (watched) R.string.mark_unwatched else R.string.mark_watched,
+                    iconStringRes = if (watched) R.string.fa_eye else R.string.fa_eye_slash,
+                    onClick = watchOnClick,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
 
-        // Watched button
-        item("watched") {
-            ExpandableFaButton(
-                title = if (watched) R.string.mark_unwatched else R.string.mark_watched,
-                iconStringRes = if (watched) R.string.fa_eye else R.string.fa_eye_slash,
-                onClick = watchOnClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Favorite button
-        item("favorite") {
-            ExpandableFaButton(
-                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                onClick = favoriteOnClick,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        if (rateOnClick != null) {
-            item("like") {
-                LikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
-            }
-            item("dislike") {
-                DislikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
-            }
-        }
-
-        if (trailers != null) {
-            item("trailers") {
-                TrailerButton(
-                    trailers = trailers,
-                    trailerOnClick = trailerOnClick,
+            // Favorite button
+            item("favorite") {
+                ExpandableFaButton(
+                    title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                    iconStringRes = R.string.fa_heart,
+                    onClick = favoriteOnClick,
+                    iconColor = if (favorite) Color.Red else Color.Unspecified,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
-        if (canDelete) {
-            item("delete") {
-                DeleteButton(
-                    title = title,
-                    onConfirmDelete = onConfirmDelete,
-                    modifier =
-                        Modifier
-                            .onFocusChanged(buttonOnFocusChanged),
+
+            if (rateOnClick != null) {
+                item("like") {
+                    LikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
+                }
+                item("dislike") {
+                    DislikeButton(likes, rateOnClick, Modifier.onFocusChanged(buttonOnFocusChanged))
+                }
+            }
+
+            if (trailers != null) {
+                item("trailers") {
+                    TrailerButton(
+                        trailers = trailers,
+                        trailerOnClick = trailerOnClick,
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+            if (canDelete) {
+                item("delete") {
+                    DeleteButton(
+                        title = title,
+                        onConfirmDelete = onConfirmDelete,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+
+            // More button
+            item("more") {
+                ExpandablePlayButton(
+                    title = R.string.more,
+                    resume = Duration.ZERO,
+                    icon = Icons.Default.MoreVert,
+                    onClick = { moreOnClick.invoke() },
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
-
-        // More button
-        item("more") {
-            ExpandablePlayButton(
-                title = R.string.more,
-                resume = Duration.ZERO,
-                icon = Icons.Default.MoreVert,
-                onClick = { moreOnClick.invoke() },
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
         }
     }
     chooseVersion?.let { params ->

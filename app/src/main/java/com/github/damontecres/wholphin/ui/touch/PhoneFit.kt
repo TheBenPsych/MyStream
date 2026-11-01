@@ -64,3 +64,7 @@ fun rememberIsTv(): Boolean {
     val context = LocalContext.current
     return remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 }
+
+/** How much of the width a details page's text uses: a narrow column on TV, the full width on phones */
+@Composable
+fun detailsTextFraction(): Float = if (rememberIsTv()) .6f else 1f
