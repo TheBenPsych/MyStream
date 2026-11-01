@@ -357,6 +357,12 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.WatchOrder -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .WatchOrderPage(modifier)
+        }
+
         Destination.TrailerShuffle -> {
             com.github.damontecres.wholphin.ui.main
                 .TrailerShufflePage(modifier)

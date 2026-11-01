@@ -523,6 +523,11 @@ fun NavDrawer(
                     onClick = { viewModel.navigationManager.navigateTo(Destination.TrailerShuffle) },
                 ),
                 TopNavTab(
+                    title = stringResource(R.string.watch_in_order),
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.WatchOrder) },
+                ),
+                TopNavTab(
                     title = stringResource(R.string.mood_quiz),
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },

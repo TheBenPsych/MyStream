@@ -169,6 +169,10 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Big franchises in story or release order */
+    @Serializable
+    data object WatchOrder : Destination(false)
+
     /** Full-screen trailers on the TV, one after another */
     @Serializable
     data object TrailerShuffle : Destination(true)
