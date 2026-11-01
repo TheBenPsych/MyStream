@@ -124,7 +124,9 @@ fun ExpandablePlayButtons(
                         focusedContentColor = androidx.compose.ui.graphics.Color.Black,
                     ),
                 // Phones have no remote focus: don't let the button grow wider than the page
-                scale = androidx.tv.material3.ButtonDefaults.scale(focusedScale = 1f),
+                scale =
+                    androidx.tv.material3.ButtonDefaults
+                        .scale(focusedScale = 1f),
                 shape =
                     androidx.tv.material3.ButtonDefaults
                         .shape(
