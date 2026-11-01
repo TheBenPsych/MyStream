@@ -56,7 +56,9 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SpeedStats
@@ -83,6 +85,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -92,6 +95,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.UUIDSerializer
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -102,6 +106,17 @@ data class Clip(
     val item: BaseItem,
     val trailerId: UUID,
     val favorite: Boolean,
+)
+
+@Serializable
+private data class SavedClip(
+    val item: BaseItem,
+    @Serializable(with = UUIDSerializer::class) val trailerId: UUID,
+)
+
+@Serializable
+private data class SavedClips(
+    val clips: List<SavedClip>,
 )
 
 data class ClipsState(
@@ -362,6 +377,7 @@ class ClipsViewModel
         private val serverRepository: ServerRepository,
         private val navigationManager: NavigationManager,
         private val favoriteWatchManager: FavoriteWatchManager,
+        private val diskCache: DiskCache,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ClipsState())
         val state: StateFlow<ClipsState> = _state
@@ -379,9 +395,29 @@ class ClipsViewModel
             viewModelScope.launch(ExceptionHandler()) { load() }
         }
 
+        private fun cacheName(userId: UUID?) = "clips-$userId-${KidsMode.isActive}-v1"
+
         private suspend fun load() {
             val userId = serverRepository.currentUser?.id
             val loadStart = System.currentTimeMillis()
+            // Trailers found last time are saved on the device: start one of those right away,
+            // then look for new ones in the background
+            val saved =
+                withContext(WholphinDispatchers.IO) {
+                    diskCache.read(cacheName(userId), SavedClips.serializer(), CLIPS_CACHE_MAX_AGE_MS)
+                }?.clips.orEmpty()
+            if (saved.isNotEmpty()) {
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        clips =
+                            saved.shuffled().take(CLIPS_FROM_CACHE).map { c ->
+                                Clip(c.item, c.trailerId, c.item.data.userData?.isFavorite == true)
+                            },
+                    )
+                }
+                SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
+            }
             try {
                 val items =
                     withContext(WholphinDispatchers.IO) {
@@ -399,16 +435,29 @@ class ClipsViewModel
                             ).content.items
                             .filter { (it.localTrailerCount ?: 1) > 0 }
                     }
-                // Find the trailers for the first few right away so the first clip starts fast,
+                val known = _state.value.clips.map { it.item.id }.toSet()
+                val fresh = items.filter { it.id !in known }
+                // Find the trailers for the first couple right away so the first clip starts fast,
                 // then the rest in the background while you watch
-                val first = items.take(CLIPS_FIRST)
-                val rest = items.drop(CLIPS_FIRST)
-                val firstClips = withContext(WholphinDispatchers.IO) { resolveClips(first) }
-                _state.update { it.copy(loading = rest.isNotEmpty() && firstClips.isEmpty(), clips = firstClips) }
-                SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
+                val first = if (known.isEmpty()) fresh.take(CLIPS_FIRST) else emptyList()
+                val rest = fresh.drop(first.size)
+                if (first.isNotEmpty()) {
+                    val firstClips = withContext(WholphinDispatchers.IO) { resolveClips(first) }
+                    _state.update { it.copy(loading = rest.isNotEmpty() && firstClips.isEmpty(), clips = it.clips + firstClips) }
+                    SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
+                }
                 if (rest.isNotEmpty()) {
                     val restClips = withContext(WholphinDispatchers.IO) { resolveClips(rest) }
                     _state.update { it.copy(loading = false, clips = it.clips + restClips) }
+                }
+                _state.update { it.copy(loading = false) }
+                // Remember what was found (new ones first) for next time
+                val pool =
+                    (_state.value.clips.map { SavedClip(it.item, it.trailerId) } + saved)
+                        .distinctBy { it.trailerId }
+                        .take(CLIPS_CACHE_MAX)
+                withContext(WholphinDispatchers.IO) {
+                    diskCache.write(cacheName(userId), SavedClips.serializer(), SavedClips(pool))
                 }
             } catch (ex: CancellationException) {
                 throw ex
@@ -550,7 +599,12 @@ private const val CLIPS_FETCH = 80
 // A quick flick this fast moves to the next clip, or a slow drag past a quarter of the screen
 private const val CLIPS_FLING_DP_PER_SEC = 300
 private const val CLIPS_SWIPE_FRACTION = .25f
-private const val CLIPS_FIRST = 4
+private const val CLIPS_FIRST = 2
+
+// How many saved trailers to start with, and how many to remember
+private const val CLIPS_FROM_CACHE = 40
+private const val CLIPS_CACHE_MAX = 300
+private const val CLIPS_CACHE_MAX_AGE_MS = 14L * 24 * 3_600_000L
 private const val CLIPS_PARALLEL = 8
 private const val CLIPS_MIN_BUFFER_MS = 8_000
 private const val CLIPS_MAX_BUFFER_MS = 30_000

@@ -325,7 +325,8 @@ private fun QuizResults(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(6),
+                    // About 6 across on a TV, 2 or 3 on a phone
+                    columns = GridCells.Adaptive(140.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(8.dp),
@@ -337,7 +338,9 @@ private fun QuizResults(
                                 item = result.item,
                                 onClick = { viewModel.navigationManager.navigateTo(result.item.destination()) },
                                 onLongClick = {},
-                                showTitle = false,
+                                // The poster plus its name underneath
+                                showTitle = true,
+                                fillWidth = QUIZ_POSTER_WIDTH_PX,
                                 modifier = if (result == list.first()) Modifier.focusRequester(firstFocus) else Modifier,
                             )
                             if (result.matchesAll) {
@@ -394,3 +397,4 @@ private fun QuizChip(
 
 private const val QUIZ_FETCH = 300
 private const val QUIZ_MAX = 48
+private const val QUIZ_POSTER_WIDTH_PX = 320
