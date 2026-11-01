@@ -21,6 +21,8 @@ package com.github.damontecres.wholphin.ui.playback.overlay
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,13 +46,16 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.calculateSeekAccelerationMultiplier
 import com.github.damontecres.wholphin.ui.playback.isDpadLeft
 import com.github.damontecres.wholphin.ui.playback.isDpadRight
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import kotlin.time.Duration
 
@@ -100,6 +106,10 @@ fun SteppedSeekBarImpl(
             seekProgress = (progressToUse + offset * multiplier).coerceAtMost(1f)
             hasSeeked = true
             seek(seekProgress)
+        },
+        onTouchSeek = { percent ->
+            controllerViewState.pulseControls()
+            seek(percent)
         },
         interactionSource = interactionSource,
         modifier = modifier,
@@ -178,6 +188,10 @@ fun IntervalSeekBarImpl(
             hasSeeked = true
             onSeek(seekPositionMs)
         },
+        onTouchSeek = { percent ->
+            controllerViewState.pulseControls()
+            onSeek((percent * durationMs).toLong())
+        },
         interactionSource = interactionSource,
         modifier = modifier,
     )
@@ -199,6 +213,7 @@ private fun SeekBarDisplay(
     interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onTouchSeek: ((Float) -> Unit)? = null,
 ) {
     // Benflix red progress, like a streaming service
     val color = MaterialTheme.colorScheme.primary
@@ -211,12 +226,57 @@ private fun SeekBarDisplay(
         targetValue = 6.dp.times((if (isFocused) 2f else 1f)),
     )
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // Benflix on phones: tap or drag along the bar to jump to that spot.
+    // While the finger is down (and shortly after, until the player catches up) the bar shows the finger's spot.
+    val isTv = rememberIsTv()
+    val touchEnabled = !isTv && enabled && onTouchSeek != null && durationMs > 0
+    var touchProgress by remember { mutableStateOf<Float?>(null) }
+    var touchReleases by remember { mutableIntStateOf(0) }
+    LaunchedEffect(touchReleases) {
+        if (touchReleases > 0) {
+            delay(1500)
+            touchProgress = null
+        }
+    }
+    val shownProgress = touchProgress ?: progress
+    val dragging = touchProgress != null
+
+    Column(
+        modifier =
+            modifier.then(
+                if (!touchEnabled) {
+                    Modifier
+                } else {
+                    Modifier
+                        .pointerInput(durationMs) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                down.consume()
+                                val width = size.width.toFloat().coerceAtLeast(1f)
+                                touchProgress = (down.position.x / width).coerceIn(0f, 1f)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    change.consume()
+                                    touchProgress = (change.position.x / width).coerceIn(0f, 1f)
+                                    if (!change.pressed) break
+                                }
+                                touchProgress?.let { onTouchSeek?.invoke(it) }
+                                touchReleases++
+                            }
+                        }
+                        // A bigger area for the finger than the thin bar itself
+                        .padding(vertical = 12.dp)
+                },
+            ),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        val barHeight = if (touchEnabled && dragging) 12.dp else animatedIndicatorHeight
         Canvas(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(animatedIndicatorHeight)
+                    .height(barHeight)
                     .padding(horizontal = 4.dp)
                     .onPreviewKeyEvent { event ->
                         if (!isDpadLeft(event) && !isDpadRight(event)) {
@@ -308,7 +368,7 @@ private fun SeekBarDisplay(
                     start = Offset(x = 0f, y = yOffset),
                     end =
                         Offset(
-                            x = size.width.times(progress),
+                            x = size.width.times(shownProgress),
                             y = yOffset,
                         ),
                     strokeWidth = size.height,
@@ -319,7 +379,7 @@ private fun SeekBarDisplay(
                     radius = size.height + 2,
                     center =
                         Offset(
-                            x = size.width.times(progress),
+                            x = size.width.times(shownProgress),
                             y = yOffset,
                         ),
                 )
