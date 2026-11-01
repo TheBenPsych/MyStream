@@ -64,8 +64,10 @@ import com.github.damontecres.wholphin.preferences.experimentalPreferences
 import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.preferences.screensaverPreferences
 import com.github.damontecres.wholphin.preferences.updatePlaybackPreferences
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.Release
 import com.github.damontecres.wholphin.services.SeerrConnectionStatus
+import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
@@ -88,6 +90,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.LoadingState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.TextStyle
@@ -116,6 +119,16 @@ fun PreferencesContent(
     val currentUser by viewModel.currentUser.collectAsState()
     var showPinFlow by remember { mutableStateOf(false) }
     var showVersionDialog by remember { mutableStateOf(false) }
+    // Tapping "Installed version" 5 times quickly opens the hidden speed meter
+    var versionTaps by remember { mutableStateOf(0) }
+    var lastVersionTap by remember { mutableStateOf(0L) }
+    var showSpeedMeter by remember { mutableStateOf(false) }
+    LaunchedEffect(lastVersionTap) {
+        // A single tap (or a few) still opens the version notes, just a moment later
+        delay(1_500)
+        if (versionTaps in 1..4) showVersionDialog = true
+        versionTaps = 0
+    }
     val players by viewModel.externalPlayers.collectAsState()
     val serverSupported by viewModel.serverSupported.collectAsState()
     val serverVersionMessage =
@@ -340,7 +353,14 @@ fun PreferencesContent(
                                     ClickPreference(
                                         title = stringResource(R.string.installed_version),
                                         onClick = {
-                                            showVersionDialog = true
+                                            val now = System.currentTimeMillis()
+                                            versionTaps = if (now - lastVersionTap < 1_500) versionTaps + 1 else 1
+                                            lastVersionTap = now
+                                            if (versionTaps >= 5) {
+                                                versionTaps = 0
+                                                showSpeedMeter = true
+                                                viewModel.measureServerPing()
+                                            }
                                         },
                                         onLongClick = {
                                             viewModel.navigationManager.navigateTo(Destination.Debug)
@@ -806,6 +826,16 @@ fun PreferencesContent(
             }
         }
     }
+    if (showSpeedMeter) {
+        val ping by viewModel.serverPingMs.collectAsState()
+        ScrollableDialog(
+            onDismissRequest = { showSpeedMeter = false },
+        ) {
+            item {
+                SpeedMeter(ping = ping)
+            }
+        }
+    }
     if (showLocaleChoiceDialog) {
         LocaleChoiceDialog(
             onDismissRequest = { showLocaleChoiceDialog = false },
@@ -856,3 +886,51 @@ data class CacheUsage(
     val imageMemoryMax: Long,
     val imageDiskUsed: Long,
 )
+
+/** The hidden speed meter: a few plain numbers that show where time goes */
+@Composable
+private fun SpeedMeter(ping: Long?) {
+    val context = LocalContext.current
+    var lite by remember { mutableStateOf(LiteMode.isOn(context)) }
+
+    fun ms(value: Long?) = value?.let { if (it < 0) "failed" else "$it ms" } ?: "not measured yet"
+    val lines =
+        listOf(
+            "Server reply" to (ping?.let { ms(it) } ?: "measuring..."),
+            "Home top rows" to ms(SpeedStats.homeTopRowsMs),
+            "Home shown from last time" to if (SpeedStats.homeFromSaved) "yes" else "no",
+            "First Clips video" to ms(SpeedStats.clipsFirstMs),
+        )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(16.dp),
+    ) {
+        Text(
+            text = "Speed meter",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        lines.forEach { (label, value) ->
+            Text(
+                text = "$label: $value",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        Text(
+            text = "Under 100 ms server reply is great at home. Over 500 ms means the server or Wi-Fi is slow.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SwitchPreference(
+            title = "Lite mode",
+            value = lite,
+            onClick = {
+                lite = !lite
+                LiteMode.set(context, lite)
+            },
+            summaryOn = "On: no trailer previews or clip preloading, for slower TVs",
+            summaryOff = "Off",
+        )
+    }
+}

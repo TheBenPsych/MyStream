@@ -233,7 +233,7 @@ class ImageUrlService
             fillWidth: Int? = null,
             fillHeight: Int? = null,
             tag: String? = null,
-            format: ImageFormat? = null,
+            format: ImageFormat? = ImageFormat.WEBP,
             percentPlayed: Double? = null,
             unplayedCount: Int? = null,
             blur: Int? = null,
@@ -281,6 +281,7 @@ class ImageUrlService
         }
 
         companion object {
-            private const val QUALITY = 96
+            // Lighter pictures load faster. WebP at 85 looks the same on a TV but is much smaller.
+            private const val QUALITY = 85
         }
     }

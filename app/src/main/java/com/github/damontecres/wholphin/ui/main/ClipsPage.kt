@@ -21,7 +21,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -38,6 +40,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
@@ -47,7 +50,9 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -61,15 +66,19 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
@@ -88,7 +97,8 @@ data class Clip(
 data class ClipsState(
     val loading: Boolean = true,
     val clips: List<Clip> = emptyList(),
-    val muted: Boolean = true,
+    // Clips always opens with sound on (the speaker button can still mute it)
+    val muted: Boolean = false,
 )
 
 /**
@@ -126,6 +136,8 @@ fun ClipsPage(
         // Play the clip that's on screen; stop while the app is in the background
         LifecycleResumeEffect(current, state.clips.size) {
             viewModel.play(state.clips.getOrNull(current))
+            // Start loading the next trailer now, so swiping to it plays right away
+            viewModel.preload(state.clips.getOrNull(current + 1))
             onPauseOrDispose { viewModel.pause() }
         }
         DisposableEffect(Unit) { onDispose { viewModel.pause() } }
@@ -286,9 +298,14 @@ class ClipsViewModel
         private val _state = MutableStateFlow(ClipsState())
         val state: StateFlow<ClipsState> = _state
 
-        var player: ExoPlayer? = null
+        // The player for the clip on screen. Compose state, so the screen switches to it when it changes
+        var player by mutableStateOf<ExoPlayer?>(null)
             private set
         private var playingId: UUID? = null
+
+        // A second player that quietly loads the next clip while you watch this one
+        private var nextPlayer: ExoPlayer? = null
+        private var nextId: UUID? = null
 
         init {
             viewModelScope.launch(ExceptionHandler()) { load() }
@@ -296,44 +313,35 @@ class ClipsViewModel
 
         private suspend fun load() {
             val userId = serverRepository.currentUser?.id
+            val loadStart = System.currentTimeMillis()
             try {
-                val clips =
+                val items =
                     withContext(WholphinDispatchers.IO) {
-                        val items =
-                            api.itemsApi
-                                .getItems(
-                                    GetItemsRequest(
-                                        userId = userId,
-                                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                        recursive = true,
-                                        hasTrailer = true,
-                                        sortBy = listOf(ItemSortBy.RANDOM),
-                                        limit = CLIPS_FETCH,
-                                        fields = HomeItemFields,
-                                    ),
-                                ).content.items
-                        items
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    recursive = true,
+                                    hasTrailer = true,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = CLIPS_FETCH,
+                                    fields = HomeItemFields,
+                                ),
+                            ).content.items
                             .filter { (it.localTrailerCount ?: 1) > 0 }
-                            .map { dto ->
-                                async {
-                                    try {
-                                        api.userLibraryApi
-                                            .getLocalTrailers(dto.id)
-                                            .content
-                                            .firstOrNull()
-                                            ?.let { trailer ->
-                                                Clip(BaseItem(dto), trailer.id, dto.userData?.isFavorite == true)
-                                            }
-                                    } catch (ex: CancellationException) {
-                                        throw ex
-                                    } catch (ex: Exception) {
-                                        null
-                                    }
-                                }
-                            }.awaitAll()
-                            .filterNotNull()
                     }
-                _state.update { it.copy(loading = false, clips = clips) }
+                // Find the trailers for the first few right away so the first clip starts fast,
+                // then the rest in the background while you watch
+                val first = items.take(CLIPS_FIRST)
+                val rest = items.drop(CLIPS_FIRST)
+                val firstClips = withContext(WholphinDispatchers.IO) { resolveClips(first) }
+                _state.update { it.copy(loading = rest.isNotEmpty() && firstClips.isEmpty(), clips = firstClips) }
+                SpeedStats.clipsFirstMs = System.currentTimeMillis() - loadStart
+                if (rest.isNotEmpty()) {
+                    val restClips = withContext(WholphinDispatchers.IO) { resolveClips(rest) }
+                    _state.update { it.copy(loading = false, clips = it.clips + restClips) }
+                }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -342,21 +350,90 @@ class ClipsViewModel
             }
         }
 
+        /** Look up the downloaded trailer of each item, a few at a time */
+        private suspend fun resolveClips(items: List<BaseItemDto>): List<Clip> =
+            coroutineScope {
+                val permits = Semaphore(CLIPS_PARALLEL)
+                items
+                    .map { dto ->
+                        async {
+                            permits.withPermit {
+                                try {
+                                    api.userLibraryApi
+                                        .getLocalTrailers(dto.id)
+                                        .content
+                                        .firstOrNull()
+                                        ?.let { trailer ->
+                                            Clip(BaseItem(dto), trailer.id, dto.userData?.isFavorite == true)
+                                        }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                    .filterNotNull()
+            }
+
+        private fun newPlayer(): ExoPlayer =
+            ExoPlayer
+                .Builder(context)
+                // Start playing after half a second of video instead of the usual 2.5 seconds
+                .setLoadControl(
+                    DefaultLoadControl
+                        .Builder()
+                        .setBufferDurationsMs(
+                            CLIPS_MIN_BUFFER_MS,
+                            CLIPS_MAX_BUFFER_MS,
+                            CLIPS_START_BUFFER_MS,
+                            CLIPS_REBUFFER_MS,
+                        ).build(),
+                ).build()
+                .also { it.repeatMode = Player.REPEAT_MODE_ONE }
+
+        private fun mediaItem(clip: Clip): MediaItem =
+            MediaItem.fromUri(api.videosApi.getVideoStreamUrl(itemId = clip.trailerId, static = true))
+
         fun play(clip: Clip?) {
             if (clip == null) return
-            val p =
-                player ?: ExoPlayer.Builder(context).build().also {
-                    it.repeatMode = Player.REPEAT_MODE_ONE
-                    player = it
-                }
-            p.volume = if (_state.value.muted) 0f else 1f
             if (playingId != clip.trailerId) {
-                playingId = clip.trailerId
-                val url = api.videosApi.getVideoStreamUrl(itemId = clip.trailerId, static = true)
-                p.setMediaItem(MediaItem.fromUri(url))
-                p.prepare()
+                val ready = nextPlayer
+                if (ready != null && nextId == clip.trailerId) {
+                    // The next clip was already loading in the background: swap it in
+                    val old = player
+                    player = ready
+                    playingId = nextId
+                    nextPlayer = old
+                    nextId = null
+                    old?.let {
+                        it.playWhenReady = false
+                        it.stop()
+                        it.clearMediaItems()
+                    }
+                } else {
+                    val p = player ?: newPlayer().also { player = it }
+                    playingId = clip.trailerId
+                    p.setMediaItem(mediaItem(clip))
+                    p.prepare()
+                }
             }
-            p.playWhenReady = true
+            player?.let {
+                it.volume = if (_state.value.muted) 0f else 1f
+                it.playWhenReady = true
+            }
+        }
+
+        /** Quietly start loading [clip] so it plays instantly when you swipe to it */
+        fun preload(clip: Clip?) {
+            if (clip == null || clip.trailerId == playingId || clip.trailerId == nextId || LiteMode.isOn(context)) return
+            val p = nextPlayer ?: newPlayer().also { nextPlayer = it }
+            nextId = clip.trailerId
+            p.playWhenReady = false
+            p.volume = 0f
+            p.setMediaItem(mediaItem(clip))
+            p.prepare()
         }
 
         fun pause() {
@@ -395,7 +472,15 @@ class ClipsViewModel
         override fun onCleared() {
             player?.release()
             player = null
+            nextPlayer?.release()
+            nextPlayer = null
         }
     }
 
 private const val CLIPS_FETCH = 80
+private const val CLIPS_FIRST = 4
+private const val CLIPS_PARALLEL = 8
+private const val CLIPS_MIN_BUFFER_MS = 8_000
+private const val CLIPS_MAX_BUFFER_MS = 30_000
+private const val CLIPS_START_BUFFER_MS = 500
+private const val CLIPS_REBUFFER_MS = 1_500
