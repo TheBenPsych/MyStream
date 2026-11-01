@@ -151,6 +151,13 @@ have() {
 have "$SYS/scph[15]00[0-2].bin" "PS1 BIOS (scph1001.bin or scph5501.bin)" psx
 have "$SYS/pcsx2/bios/*" "PS2 BIOS (any scph*.bin)" ps2
 
+say "Pointing RetroArch at the BIOS and system files folder"
+CFG=$RA/retroarch.cfg
+touch "$CFG"
+sed -i '/^system_directory/d' "$CFG"
+echo 'system_directory = "~/.config/retroarch/system"' >>"$CFG"
+echo "  ok"
+
 chown -R "$OWNER" "$H/.config" "$H/ES-DE"
 
 say "Done"
