@@ -70,30 +70,49 @@ private const val TAU = (2 * PI).toFloat()
 
 /**
  * Seconds since the screen opened. Ticks about 30 times a second (plenty for these slow scenes and
- * half the work of every frame on older TVs); stands still in Lite mode.
+ * half the work of every frame on older TVs). Stands still in Lite mode, and also stops by itself
+ * when the TV can't keep up, so picking a profile never feels sluggish.
  */
 @Composable
 private fun rememberSeconds(): State<Float> {
     val seconds = remember { mutableFloatStateOf(STILL_SECONDS) }
     val lite = LiteMode.isOn(LocalContext.current)
-    if (!lite) {
+    if (!lite && !sceneTooSlow) {
         LaunchedEffect(Unit) {
             val start = withFrameMillis { it }
             var last = 0L
+            val gaps = ArrayList<Long>()
             while (true) {
-                withFrameMillis {
-                    if (it - last >= FRAME_MS) {
+                val keepGoing =
+                    withFrameMillis {
+                        if (it - last < FRAME_MS) return@withFrameMillis true
+                        if (last > 0 && it - start > WARM_UP_MS) gaps += it - last
                         last = it
                         seconds.floatValue = STILL_SECONDS + (it - start) / 1000f
+                        if (gaps.size == SAMPLE_TICKS) {
+                            // Too slow for smooth movement: hold the picture still from here on
+                            val typical = gaps.sorted()[gaps.size / 2]
+                            if (typical > SLOW_TICK_MS) {
+                                sceneTooSlow = true
+                                return@withFrameMillis false
+                            }
+                        }
+                        true
                     }
-                }
+                if (!keepGoing) break
             }
         }
     }
     return seconds
 }
 
+/** Set once this device proved too slow for the moving scenes; stays until the app restarts */
+@Volatile private var sceneTooSlow = false
+
 private const val FRAME_MS = 33L
+private const val WARM_UP_MS = 1_000L
+private const val SAMPLE_TICKS = 45
+private const val SLOW_TICK_MS = 70L
 
 /** Where a still (Lite mode) scene stops, so it isn't empty */
 private const val STILL_SECONDS = 4f
