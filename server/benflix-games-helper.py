@@ -127,6 +127,9 @@ def check_signed_in(token):
     policy = user.get("Policy") or {}
     if policy.get("MaxParentalRating") is not None or user.get("Name", "").lower() == "kids":
         raise HelperError(403, "Games aren't available on kids accounts.")
+    # For now only the server admin can stream games (home upload speed is limited)
+    if not policy.get("IsAdministrator"):
+        raise HelperError(403, "Streaming games is only on for the server admin for now.")
     with _lock:
         _tokens[token] = time.time()
 

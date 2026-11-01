@@ -130,7 +130,8 @@ enum class BuiltInGame(
 
 /** What the "Your games" part of the Games tab is showing */
 sealed interface LibraryState {
-    data object KidsHidden : LibraryState
+    /** Kids profile, or not the server admin: streamed games are admin-only for now (home upload speed) */
+    data object Hidden : LibraryState
 
     data object Loading : LibraryState
 
@@ -173,8 +174,9 @@ class GamesViewModel
         }
 
         fun reload() {
-            if (KidsMode.isActive) {
-                _library.value = LibraryState.KidsHidden
+            val isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true
+            if (KidsMode.isActive || !isAdmin) {
+                _library.value = LibraryState.Hidden
                 return
             }
             _library.value = LibraryState.Loading
@@ -303,59 +305,59 @@ fun GamesPage(
             }
         }
 
-        // Your own games, from the RomM game library on the server
-        Text(
-            text = "Your games",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        when (val state = library) {
-            LibraryState.KidsHidden -> {
-                InfoText("Your game collection isn't shown on the Kids profile.")
-            }
+        // Your own games, from the RomM game library on the server (admin only for now)
+        if (library != LibraryState.Hidden) {
+            Text(
+                text = "Your games",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            when (val state = library) {
+                LibraryState.Hidden -> {}
 
-            LibraryState.Loading -> {
-                InfoText("Loading your games…")
-            }
-
-            is LibraryState.Failed -> {
-                InfoText(state.message)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
-                    if (state.askAddress) {
-                        ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
-                    }
+                LibraryState.Loading -> {
+                    InfoText("Loading your games…")
                 }
-            }
 
-            is LibraryState.Ready -> {
-                if (state.consoles.isEmpty()) {
-                    InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
-                }
-                InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit: you come right back here.")
-                state.consoles.forEach { console ->
-                    Text(
-                        text = "${console.name} (${console.games.size})",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                    ) {
-                        items(console.games, key = { it.id }) { game ->
-                            ServerGameCard(
-                                game = game,
-                                token = viewModel.gamesToken,
-                                starting = starting == game.id,
-                                onClick = { viewModel.play(context, game) },
-                                modifier = Modifier.size(width = if (isTv) 150.dp else 110.dp, height = if (isTv) 210.dp else 154.dp),
-                            )
+                is LibraryState.Failed -> {
+                    InfoText(state.message)
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
+                        if (state.askAddress) {
+                            ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
                         }
                     }
                 }
-                ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
+
+                is LibraryState.Ready -> {
+                    if (state.consoles.isEmpty()) {
+                        InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
+                    }
+                    InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit: you come right back here.")
+                    state.consoles.forEach { console ->
+                        Text(
+                            text = "${console.name} (${console.games.size})",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                        ) {
+                            items(console.games, key = { it.id }) { game ->
+                                ServerGameCard(
+                                    game = game,
+                                    token = viewModel.gamesToken,
+                                    starting = starting == game.id,
+                                    onClick = { viewModel.play(context, game) },
+                                    modifier = Modifier.size(width = if (isTv) 150.dp else 110.dp, height = if (isTv) 210.dp else 154.dp),
+                                )
+                            }
+                        }
+                    }
+                    ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
+                }
             }
         }
     }
