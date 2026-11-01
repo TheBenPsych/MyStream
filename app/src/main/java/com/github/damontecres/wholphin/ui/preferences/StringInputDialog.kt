@@ -7,17 +7,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,6 +33,9 @@ import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.EditTextBox
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.touch.Dialog
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.tryRequestFocus
+import kotlinx.coroutines.delay
 
 @Composable
 fun StringInputDialog(
@@ -49,6 +55,23 @@ fun StringInputDialog(
         }
     }
     var showConfirm by remember { mutableStateOf(false) }
+    // Phones: the typing box is ready straight away, so the keyboard pops up without an extra tap
+    val isTv = rememberIsTv()
+    val textFocus = remember { FocusRequester() }
+    if (!isTv) {
+        LaunchedEffect(Unit) {
+            delay(150)
+            textFocus.tryRequestFocus()
+        }
+    }
+    // Whatever the keyboard's enter key says (Done, Search, Go...), it saves
+    val keyboardActions =
+        KeyboardActions(
+            onDone = { onDone.invoke() },
+            onSearch = { onDone.invoke() },
+            onGo = { onDone.invoke() },
+            onSend = { onDone.invoke() },
+        )
     Dialog(
         properties =
             DialogProperties(
@@ -67,7 +90,9 @@ fun StringInputDialog(
             modifier =
                 Modifier
                     .padding(16.dp)
-                    .width(512.dp)
+                    // Fits a phone screen, but never wider than on a TV
+                    .widthIn(max = 512.dp)
+                    .fillMaxWidth()
                     .background(
                         color = MaterialTheme.colorScheme.surfaceColorAtElevation(elevation),
                         shape = RoundedCornerShape(8.dp),
@@ -95,22 +120,17 @@ fun StringInputDialog(
                         leadingIcon = null,
                         isInputValid = { true },
                         maxLines = input.maxLines,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(textFocus),
                     )
                 } else {
                     EditTextBox(
                         value = mutableText,
                         onValueChange = { mutableText = it },
                         keyboardOptions = input.keyboardOptions,
-                        keyboardActions =
-                            KeyboardActions(
-                                onDone = {
-                                    onDone.invoke()
-                                },
-                            ),
+                        keyboardActions = keyboardActions,
                         leadingIcon = null,
                         isInputValid = { true },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(textFocus),
                     )
                 }
 

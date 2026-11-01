@@ -80,6 +80,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.titleStringRes
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.delay
@@ -273,10 +274,12 @@ fun SearchPage(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 var isSearchActive by remember { mutableStateOf(false) }
+                // Phones type as soon as you tap the box; TVs wait for the OK button
+                val isTv = rememberIsTv()
                 var isTextFieldFocused by remember { mutableStateOf(false) }
                 val textFieldFocusRequester = remember { FocusRequester() }
 
-                BackHandler(isTextFieldFocused) {
+                BackHandler(isTv && isTextFieldFocused) {
                     when {
                         isSearchActive -> {
                             isSearchActive = false
@@ -321,7 +324,7 @@ fun SearchPage(
                             query = it
                         },
                         onSearchClick = { triggerImmediateSearch(query) },
-                        readOnly = !isSearchActive,
+                        readOnly = isTv && !isSearchActive,
                         modifier =
                             Modifier
                                 .focusRequester(textFieldFocusRequester)

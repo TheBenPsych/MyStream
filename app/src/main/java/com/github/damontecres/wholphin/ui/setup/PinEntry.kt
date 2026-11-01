@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.setup
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -37,6 +40,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.playback.isEnterKey
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 @Composable
 fun PinEntry(
@@ -45,6 +49,7 @@ fun PinEntry(
     modifier: Modifier = Modifier,
 ) {
     var input by remember { mutableStateOf("") }
+    val isTv = rememberIsTv()
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -55,8 +60,19 @@ fun PinEntry(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
-        PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
+        if (isTv) PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
         PinEntryDots(input.length, Modifier.align(Alignment.CenterHorizontally))
+        if (!isTv) {
+            // Phones have no remote, so the PIN is typed on these buttons
+            PhonePinPad(
+                onKey = { key ->
+                    input = if (key == null) input.dropLast(1) else input + key
+                    onTextChange.invoke(input)
+                },
+                onConfirm = null,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
 
         TextButton(
             onClick = onClickServerAuth,
@@ -115,6 +131,7 @@ fun PinEntryCreate(
     modifier: Modifier = Modifier,
 ) {
     var input by remember { mutableStateOf("") }
+    val isTv = rememberIsTv()
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
@@ -158,9 +175,19 @@ fun PinEntryCreate(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
-        PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
+        if (isTv) PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
         PinEntryDots(input.length, Modifier.align(Alignment.CenterHorizontally))
-        if (onConfirm != null) {
+        if (!isTv) {
+            // Phones have no remote, so the PIN is typed on these buttons
+            PhonePinPad(
+                onKey = { key ->
+                    input = if (key == null) input.dropLast(1) else input + key
+                    onTextChange.invoke(input)
+                },
+                onConfirm = onConfirm?.let { { it.invoke(input) } },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        } else if (onConfirm != null) {
             Text(
                 text = stringResource(R.string.press_enter_to_confirm),
                 style = MaterialTheme.typography.headlineSmall,
@@ -170,6 +197,88 @@ fun PinEntryCreate(
         }
     }
 }
+
+/**
+ * Benflix on phones: number buttons for the PIN, plus the four arrows so a PIN made with
+ * the TV remote's arrows still works. [onKey] gets null for Delete.
+ */
+@Composable
+private fun PhonePinPad(
+    onKey: (String?) -> Unit,
+    onConfirm: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val rows =
+        listOf(
+            listOf("1", "2", "3"),
+            listOf("4", "5", "6"),
+            listOf("7", "8", "9"),
+            listOf("DEL", "0", if (onConfirm != null) "OK" else ""),
+        )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(top = 8.dp),
+    ) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { key ->
+                    when (key) {
+                        "" -> Box(Modifier.size(PAD_KEY))
+                        "DEL" -> PadKey(label = "Delete", small = true) { onKey(null) }
+                        "OK" -> PadKey(label = "OK", small = true, highlight = true) { onConfirm?.invoke() }
+                        else -> PadKey(label = key) { onKey(key) }
+                    }
+                }
+            }
+        }
+        // The TV remote's arrows, for a PIN that was made on the TV
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            listOf(
+                R.string.fa_arrow_left_long to "L",
+                R.string.fa_arrow_up_long to "U",
+                R.string.fa_arrow_right_long to "R",
+                R.string.fa_arrow_down_long to "D",
+            ).forEach { (icon, key) ->
+                PadKey(label = stringResource(icon), small = true, icon = true, size = PAD_ARROW) { onKey(key) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PadKey(
+    label: String,
+    small: Boolean = false,
+    highlight: Boolean = false,
+    icon: Boolean = false,
+    size: androidx.compose.ui.unit.Dp = PAD_KEY,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(size)
+                .clip(RoundedCornerShape(50))
+                .background(if (highlight) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f))
+                .clickable(onClick = onClick),
+    ) {
+        Text(
+            text = label,
+            fontSize = if (small) 16.sp else 26.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = if (icon) FontAwesome else null,
+            color = if (highlight) MaterialTheme.colorScheme.onPrimary else Color.White,
+        )
+    }
+}
+
+private val PAD_KEY = 64.dp
+private val PAD_ARROW = 48.dp
 
 @Composable
 fun PinArrowRow(modifier: Modifier = Modifier) {

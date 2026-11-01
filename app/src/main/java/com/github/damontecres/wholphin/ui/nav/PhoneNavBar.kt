@@ -87,6 +87,7 @@ fun PhoneNavBar(
     onClickProfile: () -> Unit,
     onClickDownloads: () -> Unit,
     modifier: Modifier = Modifier,
+    extras: List<TopNavTab> = emptyList(),
 ) {
     val kids by KidsMode.active.collectAsState()
     val home = tabs.firstOrNull()
@@ -109,7 +110,7 @@ fun PhoneNavBar(
         PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
         PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.clips_title), clipsSelected, onClickClips)
         PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, onClickChannels)
-        val mineSelected = libraries.any { it.selected }
+        val mineSelected = libraries.any { it.selected } || extras.any { it.selected }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -175,16 +176,35 @@ fun PhoneNavBar(
                         }
                     }
                 }
+                // My page (Continue watching, My List, Liked, Server) first, then Downloads
+                extras.firstOrNull()?.let { tab ->
+                    item {
+                        BrowseRow(tab.title, tab.selected) {
+                            showMine = false
+                            tab.onClick.invoke()
+                        }
+                    }
+                }
                 item {
                     BrowseRow(stringResource(R.string.downloads_title), false) {
                         showMine = false
                         onClickDownloads.invoke()
                     }
                 }
+                item { SectionTitle(stringResource(R.string.phone_browse)) }
                 items(libraries) { tab ->
                     BrowseRow(tab.title, tab.selected) {
                         showMine = false
                         tab.onClick.invoke()
+                    }
+                }
+                if (extras.size > 1) {
+                    item { SectionTitle(stringResource(R.string.phone_extras)) }
+                    items(extras.drop(1)) { tab ->
+                        BrowseRow(tab.title, tab.selected) {
+                            showMine = false
+                            tab.onClick.invoke()
+                        }
                     }
                 }
                 if (!kids) {
@@ -253,6 +273,18 @@ private fun BrowseRow(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         )
     }
+}
+
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        text = title.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+        color = UNSELECTED,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 2.dp),
+    )
 }
 
 private val BAR_HEIGHT = 64.dp

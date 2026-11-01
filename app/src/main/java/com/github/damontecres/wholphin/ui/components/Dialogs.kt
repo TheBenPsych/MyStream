@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -389,7 +390,10 @@ fun ScrollableDialog(
             content = content,
             modifier =
                 Modifier
-                    .width(width)
+                    // Never wider than the phone screen
+                    .padding(horizontal = 12.dp)
+                    .widthIn(max = width)
+                    .fillMaxWidth()
                     .heightIn(max = maxHeight)
                     .focusable()
                     .shadow(elevation = 8.dp, shape = RoundedCornerShape(8.dp))
