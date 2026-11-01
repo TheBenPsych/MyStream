@@ -319,6 +319,29 @@ def back_to_home():
         key("BACK", wait=1)
 
 
+def tv_stress(presses=1500):
+    """TV: random remote presses (arrows, OK, now and then Back), like a toddler with the remote"""
+    import random
+
+    rnd = random.Random(42)
+    keys = ["DPAD_UP"] * 20 + ["DPAD_DOWN"] * 25 + ["DPAD_LEFT"] * 20 + ["DPAD_RIGHT"] * 25 + ["DPAD_CENTER"] * 8 + ["BACK"] * 2
+    out = []
+    relaunches = 0
+    for i in range(0, presses, 25):
+        batch = " ".join(f"input keyevent {rnd.choice(keys)};" for _ in range(25))
+        sh(batch, timeout=120)
+        if i % 100 == 0:
+            top = sh("dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity'")
+            if PKG not in top:
+                relaunches += 1
+                out.append(f"left the app after ~{i} presses: {top.strip()[:160]}")
+                sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity")
+                time.sleep(4)
+            check_crash(f"stress {i}")
+    out.append(f"done: {presses} presses, {relaunches} relaunches")
+    return "\n".join(out)
+
+
 def monkey():
     """Random stress: thousands of remote presses / taps"""
     back_to_home()
@@ -328,31 +351,26 @@ def monkey():
         args += " -c android.intent.category.LEANBACK_LAUNCHER --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
     else:
         args = "--pct-touch 45 --pct-motion 20 --pct-nav 10 --pct-majornav 15 --pct-syskeys 5 --pct-appswitch 0 --pct-rotation 0 --pct-anyevent 0 --pct-permission 0"
-    mk = sh(f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500", timeout=900)
+    if MODE == "tv":
+        mk = tv_stress()
+    else:
+        mk = adb("shell", f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500 2>&1", timeout=900)
     with open(f"{OUT}/monkey.txt", "w") as f:
         f.write(mk)
     shot("after-monkey")
     check_crash("monkey")
     if not app_running():
         REPORT["problems"].append({"type": "not running after monkey"})
-    # back into the app for the guided tour
+    # a fresh start of the app for the guided tour (still signed in)
+    sh(f"am force-stop {PKG}")
     sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity")
-    time.sleep(6)
+    time.sleep(8)
+    sign_in()
 
 
 
-def main():
-    sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
-    adb("logcat", "-c")
-    adb("logcat", "-b", "crash", "-c")
-    t0 = time.time()
-    out = sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
-    m = re.search(r"TotalTime: (\d+)", out)
-    REPORT["timings"]["cold start (ms, first frame)"] = int(m.group(1)) if m else None
-    for i in range(6):
-        time.sleep(3)
-        shot(f"start-{i}")
-    # Sign in to the demo server: look at the screen and do the next sensible thing, for up to 4 minutes
+def sign_in():
+    """Sign in to the demo server (or pick the profile again): look at the screen and do the next sensible thing"""
     typed_server = typed_user = False
     end = time.time() + 240
     step = 0
@@ -433,6 +451,20 @@ def main():
             time.sleep(3)
             continue
         time.sleep(2)
+
+
+def main():
+    sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
+    adb("logcat", "-c")
+    adb("logcat", "-b", "crash", "-c")
+    t0 = time.time()
+    out = sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
+    m = re.search(r"TotalTime: (\d+)", out)
+    REPORT["timings"]["cold start (ms, first frame)"] = int(m.group(1)) if m else None
+    for i in range(6):
+        time.sleep(3)
+        shot(f"start-{i}")
+    sign_in()
     shot("after-login")
     for name in ["close", "later", "not now", "dismiss", "ok", "skip"]:
         n = find(dump(), rf"^{name}$")
