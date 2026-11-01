@@ -1,6 +1,10 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -35,6 +39,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,11 +74,13 @@ import com.mikepenz.markdown.m3.markdownTypography
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -116,19 +123,45 @@ class UpdateViewModel
         private var downloadJob: Job? = null
 
         fun installRelease(release: Release) {
+            // Ignore a second press while a download is already running
+            if (downloadJob?.isActive == true) return
             downloadJob =
                 viewModelScope.launchIO {
                     try {
-                        _bytesDownloaded.value = 0L
-                        _state.update { it.copy(downloading = true) }
-                        updater.installRelease(release, this@UpdateViewModel)
+                        _state.update { it.copy(downloading = true, retryMessage = null) }
+                        var attempt = 0
+                        while (true) {
+                            try {
+                                _bytesDownloaded.value = 0L
+                                updater.installRelease(release, this@UpdateViewModel)
+                                break
+                            } catch (ex: IOException) {
+                                // A new build replaces the old one on GitHub every time a change is merged.
+                                // For a minute or two the file is missing (or the connection drops), so wait and try again
+                                // instead of making you press Download a second time.
+                                if (attempt >= RETRY_DELAYS_SECONDS.size) throw ex
+                                val wait = RETRY_DELAYS_SECONDS[attempt]
+                                attempt++
+                                Timber.w(ex, "Download failed, retry %d in %ds", attempt, wait)
+                                for (left in wait downTo 1) {
+                                    _state.update {
+                                        it.copy(
+                                            contentLength = -1L,
+                                            retryMessage = "A newer build is still uploading. Trying again in ${left}s...",
+                                        )
+                                    }
+                                    delay(1000)
+                                }
+                                _state.update { it.copy(retryMessage = null) }
+                            }
+                        }
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
                         Timber.e(ex, "Error downloading")
                         _state.update { it.copy(loading = LoadingState.Error(ex)) }
                     } finally {
-                        _state.update { it.copy(downloading = false) }
+                        _state.update { it.copy(downloading = false, retryMessage = null) }
                     }
                 }
         }
@@ -152,6 +185,11 @@ class UpdateViewModel
         override fun bytesDownloaded(bytes: Long) {
             _bytesDownloaded.value = bytes
         }
+
+        companion object {
+            /** Waits between download tries, about 3 minutes in total, long enough for a new build to finish uploading */
+            private val RETRY_DELAYS_SECONDS = listOf(5, 10, 15, 30, 30, 30, 30, 30)
+        }
     }
 
 data class InstallUpdateState(
@@ -159,6 +197,7 @@ data class InstallUpdateState(
     val downloading: Boolean = false,
     val release: Release? = null,
     val contentLength: Long = -1L,
+    val retryMessage: String? = null,
 )
 
 @Composable
@@ -170,17 +209,67 @@ fun InstallUpdatePage(
     OneTimeLaunchedEffect { viewModel.init() }
 
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
     var permissions by remember { mutableStateOf(viewModel.updater.hasPermissions()) }
+    var pendingRelease by remember { mutableStateOf<Release?>(null) }
+
+    // Step 3: back from the "Install unknown apps" screen, carry on with the download
+    val unknownSourcesLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            pendingRelease?.let { viewModel.installRelease(it) }
+            pendingRelease = null
+        }
+
+    // Step 2: Android needs "Install unknown apps" switched on for Benflix before the installer can open
+    fun afterStoragePermission(release: Release) {
+        if (viewModel.updater.canInstallPackages()) {
+            viewModel.installRelease(release)
+            return
+        }
+        pendingRelease = release
+        try {
+            unknownSourcesLauncher.launch(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${context.packageName}"),
+                ),
+            )
+        } catch (ex: ActivityNotFoundException) {
+            // Some TVs don't have this screen, the installer will ask instead
+            Timber.w(ex, "No unknown sources settings screen")
+            pendingRelease = null
+            viewModel.installRelease(release)
+        }
+    }
+
+    // Step 1 (only older Android, like Fire OS 7): permission to save the file. Once allowed, keep going
+    // straight to the download instead of making you press the button again
     val launcher =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                permissions = true
-            } else {
-                // TODO
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { results ->
+            permissions = viewModel.updater.hasPermissions() || results.values.all { it }
+            val release = pendingRelease
+            pendingRelease = null
+            if (permissions && release != null) {
+                afterStoragePermission(release)
             }
         }
+
+    fun startUpdate(release: Release) {
+        if (permissions) {
+            afterStoragePermission(release)
+        } else {
+            pendingRelease = release
+            launcher.launch(
+                arrayOf(
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                ),
+            )
+        }
+    }
+
     when (val st = state.loading) {
         is LoadingState.Error -> {
             ErrorMessage(st, modifier)
@@ -199,23 +288,13 @@ fun InstallUpdatePage(
                 LaunchedEffect(release) {
                     if (viewModel.updater.installWhenOpened) {
                         viewModel.updater.installWhenOpened = false
-                        if (permissions) {
-                            viewModel.installRelease(release)
-                        } else {
-                            launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        }
+                        startUpdate(release)
                     }
                 }
                 InstallUpdatePageContent(
                     currentVersion = viewModel.currentVersion,
                     release = release,
-                    onInstallRelease = {
-                        if (!permissions) {
-                            launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        } else {
-                            viewModel.installRelease(release)
-                        }
-                    },
+                    onInstallRelease = { startUpdate(release) },
                     onCancel = {
                         viewModel.navigationManager.goBack()
                     },
@@ -231,6 +310,7 @@ fun InstallUpdatePage(
                 DownloadDialog(
                     contentLength = state.contentLength,
                     bytesDownloaded = bytesDownloaded,
+                    retryMessage = state.retryMessage,
                     onDismissRequest = {
                         viewModel.cancelDownload()
                     },
@@ -358,6 +438,7 @@ fun DownloadDialog(
     contentLength: Long,
     bytesDownloaded: Long,
     onDismissRequest: () -> Unit,
+    retryMessage: String? = null,
 ) {
     val progress =
         if (contentLength > 0) {
@@ -403,7 +484,13 @@ fun DownloadDialog(
                     )
                 }
             }
-            if (progress != null) {
+            if (retryMessage != null) {
+                Text(
+                    text = retryMessage,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (progress != null) {
                 val bytes = formatBytes(bytesDownloaded)
                 val size = formatBytes(contentLength)
                 Text(

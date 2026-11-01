@@ -40,6 +40,7 @@ import okhttp3.Request
 import okhttp3.Response
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.Date
@@ -307,7 +308,8 @@ class UpdateChecker
                         }
                     } else {
                         Timber.v("Request failed for ${release.downloadUrl}: ${it.code}")
-                        showToast(context, "Error downloading the apk: ${it.code}")
+                        // Usually a 404 while a new build is being published, so the caller tries again
+                        throw DownloadFailedException(it.code)
                     }
                 }
             }
@@ -328,6 +330,13 @@ class UpdateChecker
             }
             return targetFile
         }
+
+        /**
+         * Whether Android lets Benflix open the installer ("Install unknown apps" switched on for Benflix)
+         */
+        fun canInstallPackages(): Boolean =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                context.packageManager.canRequestPackageInstalls()
 
         /**
          * Check if the app has permission to write the download
@@ -409,6 +418,11 @@ data class Release(
                 // Remove the last line for full changelog since it's just a link
                 .replace(Regex("\\*\\*Full Changelog\\*\\*.*"), "")
 }
+
+/** The update file could not be downloaded (for example a 404 while GitHub is publishing a new build) */
+class DownloadFailedException(
+    val code: Int,
+) : IOException("Error downloading the update: HTTP $code")
 
 interface DownloadCallback {
     fun contentLength(contentLength: Long)
