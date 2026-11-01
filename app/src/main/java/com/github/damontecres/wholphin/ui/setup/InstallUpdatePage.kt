@@ -169,6 +169,7 @@ class UpdateViewModel
         fun cancelDownload() {
             viewModelScope.launchIO {
                 downloadJob?.cancel()
+                downloadJob = null
                 _state.update {
                     it.copy(
                         downloading = false,

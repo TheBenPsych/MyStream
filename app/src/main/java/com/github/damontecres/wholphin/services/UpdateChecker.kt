@@ -26,6 +26,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -441,6 +442,8 @@ suspend fun copyTo(
         val buffer = ByteArray(bufferSize)
         var bytes = input.read(buffer)
         while (bytes >= 0) {
+            // Stop right away when the download is cancelled, instead of finishing it in the background
+            ensureActive()
             out.write(buffer, 0, bytes)
             bytesCopied += bytes
             callback.bytesDownloaded(bytesCopied)
