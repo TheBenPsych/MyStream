@@ -402,6 +402,15 @@ def sign_in():
         if find(root, r"Continue watching|Top 10|New on Benflix|My List|Because you watched|^Home$") is not None:
             log("signed in")
             break
+        if root is None:
+            # the screen never "settles" for the reader while something animates (e.g. a holiday scene);
+            # the focused button on every sign-in screen is the right next step, so just press OK
+            shot(f"login-blind-{step}")
+            if MODE == "tv":
+                key("DPAD_CENTER", wait=4)
+            else:
+                key("ENTER", wait=4)
+            continue
         if step % 3 == 1:
             shot(f"login-{step}")
         edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
