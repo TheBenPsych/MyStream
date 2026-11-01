@@ -10,7 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -164,11 +166,15 @@ class MyBenflixViewModel
 fun MyBenflixPage(
     modifier: Modifier = Modifier,
     viewModel: MyBenflixViewModel = hiltViewModel(),
+    bedtimeViewModel: BedtimeViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) { viewModel.load() }
     val rows by viewModel.rows.collectAsState()
     val user by viewModel.serverRepository.currentUserFlow.collectAsState(null)
     val kids by KidsMode.active.collectAsState()
+    val hasParentPin by bedtimeViewModel.hasPin.collectAsState()
+    var showParentPin by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { bedtimeViewModel.refreshPin() }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -215,7 +221,19 @@ fun MyBenflixPage(
                 Button(onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) }) {
                     Text("How to use Benflix")
                 }
+                // Benflix: optional parent PIN, which turns on Kids bedtime at 9 PM
+                Button(onClick = { showParentPin = true }) {
+                    Text(if (hasParentPin) "Parent PIN: on" else "Parent PIN: off")
+                }
             }
+        }
+        if (showParentPin) {
+            ParentPinDialog(
+                hasPin = hasParentPin,
+                checkPin = bedtimeViewModel::checkPin,
+                setPin = bedtimeViewModel::setPin,
+                onDone = { showParentPin = false },
+            )
         }
         when (val list = rows) {
             null -> {

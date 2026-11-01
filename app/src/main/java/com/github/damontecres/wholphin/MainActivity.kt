@@ -307,6 +307,10 @@ class MainActivity : AppCompatActivity() {
                                                     prefs = appPreferences.benflixPreferences,
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix: Kids bedtime (only when a parent PIN is set)
+                                                com.github.damontecres.wholphin.ui.main.BedtimeLayer(
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
                                             }
                                         }
                                     }

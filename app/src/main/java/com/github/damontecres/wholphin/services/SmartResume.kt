@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.github.damontecres.wholphin.preferences.BenflixPreferences
 import com.github.damontecres.wholphin.preferences.MobileDataQuality
+import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -70,4 +72,16 @@ object BenflixMobileData {
             else -> BALANCED_BITRATE
         }
     }
+}
+
+/**
+ * Benflix: movies with a bonus scene during or after the credits. TMDB marks these with the
+ * keywords "aftercreditsstinger" and "duringcreditsstinger", which Jellyfin keeps as tags.
+ */
+object BenflixAfterCredits {
+    private val MARKS = listOf("aftercreditsstinger", "duringcreditsstinger", "after credits", "post-credits", "post credits")
+
+    fun has(item: BaseItemDto): Boolean =
+        item.type == BaseItemKind.MOVIE &&
+            item.tags.orEmpty().any { tag -> MARKS.any { tag.replace(" ", "").contains(it.replace(" ", ""), ignoreCase = true) } }
 }

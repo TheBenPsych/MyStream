@@ -25,6 +25,10 @@ data class PlaybackState(
     val playlistIndex: Int = 0,
     val playlist: Playlist = Playlist(emptyList()),
     val maxBitrate: Long = -1L,
+    /** Benflix: show "Stay! There's a scene after the credits" */
+    val afterCreditsScene: Boolean = false,
+    /** Benflix: "It's been a while" card shown before the next episode starts */
+    val recap: BenflixRecap? = null,
 ) {
     val hasNext: Boolean get() = (playlistIndex + 1) < playlist.items.size
     val hasPrevious: Boolean get() = playlistIndex > 0
@@ -58,4 +62,11 @@ data class AnalyticsState(
 data class SubtitleSearchState(
     val status: SubtitleSearchStatus = SubtitleSearchStatus.Inactive,
     val language: String = Locale.current.language,
+)
+
+/** Benflix: what happened last time, for someone coming back to a show after a while */
+data class BenflixRecap(
+    val label: String,
+    val name: String?,
+    val overview: String?,
 )
