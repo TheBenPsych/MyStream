@@ -54,6 +54,8 @@ import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
+import com.github.damontecres.wholphin.ui.components.TabDetails
+import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
@@ -328,6 +330,32 @@ fun MovieDetailsContent(
 
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
+    // The sections below the buttons, shown one at a time as tabs
+    val detailSections =
+        buildList {
+            if (state.similar.isNotEmpty()) add(SIMILAR_ROW)
+            if (state.people.isNotEmpty()) add(PEOPLE_ROW)
+            if (state.chapters.isNotEmpty()) add(CHAPTER_ROW)
+            if (state.extras.isNotEmpty()) add(EXTRAS_ROW)
+            if (state.discovered.isNotEmpty()) add(DISCOVER_ROW)
+        }
+    var selectedSection by rememberInt(SIMILAR_ROW)
+    val currentSection = if (selectedSection in detailSections) selectedSection else detailSections.firstOrNull() ?: -1
+    val sectionTabs =
+        remember(detailSections) {
+            detailSections.map {
+                TabDetails(
+                    when (it) {
+                        SIMILAR_ROW -> R.string.more_like_this
+                        PEOPLE_ROW -> R.string.cast_and_crew
+                        CHAPTER_ROW -> R.string.chapters
+                        EXTRAS_ROW -> R.string.extras_title
+                        else -> R.string.discover
+                    },
+                )
+            }
+        }
+
     val listState = rememberLazyListState()
     val atTop by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val cinema = rememberTrailerCinemaState()
@@ -408,8 +436,19 @@ fun MovieDetailsContent(
                     )
                 }
             }
+            // Tabs under the buttons: one section at a time keeps the page calm
+            if (detailSections.size > 1) {
+                item {
+                    TabRow(
+                        selectedTabIndex = detailSections.indexOf(currentSection).coerceAtLeast(0),
+                        tabs = sectionTabs,
+                        onClick = { selectedSection = detailSections[it] },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
             // Netflix order: More like this right under the buttons
-            state.similar.letNotEmpty { similar ->
+            state.similar.takeIf { currentSection == SIMILAR_ROW }.orEmpty().letNotEmpty { similar ->
                 item {
                     val imageHeight =
                         remember(movie.type) {
@@ -448,7 +487,7 @@ fun MovieDetailsContent(
                     )
                 }
             }
-            state.people.letNotEmpty { people ->
+            state.people.takeIf { currentSection == PEOPLE_ROW }.orEmpty().letNotEmpty { people ->
                 item {
                     PersonRow(
                         people = people,
@@ -467,7 +506,7 @@ fun MovieDetailsContent(
                     )
                 }
             }
-            state.chapters.letNotEmpty { chapters ->
+            state.chapters.takeIf { currentSection == CHAPTER_ROW }.orEmpty().letNotEmpty { chapters ->
                 item {
                     ChapterRow(
                         chapters = chapters,
@@ -483,7 +522,7 @@ fun MovieDetailsContent(
                     )
                 }
             }
-            state.extras.letNotEmpty { extras ->
+            state.extras.takeIf { currentSection == EXTRAS_ROW }.orEmpty().letNotEmpty { extras ->
                 item {
                     ExtrasRow(
                         extras = extras,
@@ -499,7 +538,7 @@ fun MovieDetailsContent(
                     )
                 }
             }
-            state.discovered.letNotEmpty { discovered ->
+            state.discovered.takeIf { currentSection == DISCOVER_ROW }.orEmpty().letNotEmpty { discovered ->
                 item {
                     DiscoverRow(
                         row =
