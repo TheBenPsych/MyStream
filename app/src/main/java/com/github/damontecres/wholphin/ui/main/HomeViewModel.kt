@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.DatePlayedService
+import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
@@ -124,6 +125,7 @@ class HomeViewModel
         private val trailerService: TrailerService,
         private val birthdayService: BirthdayService,
         private val diskCache: DiskCache,
+        private val detailsPrefetch: DetailsPrefetch,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -583,8 +585,42 @@ class HomeViewModel
                         ).content.items
                         .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
                 }
+            // From 6 PM: one well-rated movie you haven't seen leads the banner as Tonight's pick.
+            // It stays the same all evening (a new one each night) and skips thumbs-down titles.
+            val tonight =
+                if (java.time.LocalTime
+                        .now()
+                        .hour >= TONIGHT_FROM_HOUR
+                ) {
+                    featuredSource("tonight") {
+                        val candidates =
+                            api.itemsApi
+                                .getItems(
+                                    baseRequest.copy(
+                                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                        isPlayed = false,
+                                        minCommunityRating = TONIGHT_MIN_RATING,
+                                        sortBy = listOf(ItemSortBy.SORT_NAME),
+                                        limit = TONIGHT_POOL,
+                                    ),
+                                ).content.items
+                                .filter { it.userData?.likes != false }
+                        if (candidates.isEmpty()) {
+                            emptyList()
+                        } else {
+                            val day =
+                                java.time.LocalDate
+                                    .now()
+                                    .toEpochDay()
+                            val index = Math.floorMod(day * 31 + userDto.id.hashCode(), candidates.size.toLong()).toInt()
+                            listOf(FeaturedItem(BaseItem(candidates[index]), FeaturedReason.TONIGHT, becauseOf = userDto.name))
+                        }
+                    }
+                } else {
+                    emptyList()
+                }
             // Take turns between the sources so the banner mixes them
-            val sources = listOf(resume, because, liked, newest, favorites, picks)
+            val sources = listOf(tonight, resume, because, liked, newest, favorites, picks)
             val featured =
                 (0 until sources.maxOf { it.size })
                     .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
@@ -1395,6 +1431,8 @@ class HomeViewModel
             viewModelScope.launchIO {
                 backdropService.submit(item)
             }
+            // Resting on a poster: get its details ready in case OK is pressed
+            detailsPrefetch.prefetch(viewModelScope, item.id, item.type)
         }
 
         fun deleteItem(
@@ -1502,6 +1540,9 @@ private const val COLLECTIONS_MIN = 3
 private const val STUDIO_MIN_ITEMS = 3
 private const val STUDIO_MAX_TILES = 20
 private const val TRAILER_DELAY_MS = 1_500L
+private const val TONIGHT_FROM_HOUR = 18
+private const val TONIGHT_MIN_RATING = 7.0
+private const val TONIGHT_POOL = 200
 private const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
 private const val THIRD_WAVE_DELAY_MS = 400L
 private const val COLLECTION_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000L

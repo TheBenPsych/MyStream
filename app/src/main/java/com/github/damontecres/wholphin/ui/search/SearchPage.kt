@@ -157,8 +157,10 @@ fun SearchPage(
     LaunchedEffect(Unit) {
         focusRequesters.getOrNull(position.row)?.tryRequestFocus()
     }
+    val searchContext = LocalContext.current
     val onClickItem = { _: Int, item: BaseItem ->
         Timber.v("Clicked %s, type=%s", item.id, item.type)
+        RecentSearches.add(searchContext, query)
         if (item.type == BaseItemKind.TV_PROGRAM || item.type == BaseItemKind.PROGRAM || item.type == BaseItemKind.LIVE_TV_PROGRAM) {
             viewModel.fetchProgramForDialog(item.id)
             showProgramDialog = true
@@ -369,6 +371,18 @@ fun SearchPage(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
+            if (query.isBlank()) {
+                // Nothing typed yet: recent searches, moods and genres to browse
+                SearchStart(
+                    navigationManager = viewModel.navigationManager,
+                    onClickRecent = {
+                        query = it
+                        triggerImmediateSearch(it)
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@Box
+            }
 //            SideEffect {
 //                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
 //            }

@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.MediaManagementService
@@ -71,6 +72,7 @@ class MovieViewModel
         private val userPreferencesService: UserPreferencesService,
         private val backdropService: BackdropService,
         private val mediaManagementService: MediaManagementService,
+        private val detailsPrefetch: DetailsPrefetch,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -94,7 +96,7 @@ class MovieViewModel
 
         private suspend fun getMovie(): BaseItem {
             val item =
-                api.userLibraryApi.getItem(itemId).content.let {
+                (detailsPrefetch.take(itemId) ?: api.userLibraryApi.getItem(itemId).content).let {
                     BaseItem(it)
                 }
             return item

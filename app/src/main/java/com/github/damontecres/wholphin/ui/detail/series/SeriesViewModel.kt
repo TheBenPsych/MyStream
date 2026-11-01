@@ -15,6 +15,7 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.MediaManagementService
@@ -101,6 +102,7 @@ class SeriesViewModel
         private val backdropService: BackdropService,
         private val seerrService: SeerrService,
         private val mediaManagementService: MediaManagementService,
+        private val detailsPrefetch: DetailsPrefetch,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -125,9 +127,7 @@ class SeriesViewModel
                 addCloseable { themeSongPlayer.stop() }
                 val series =
                     try {
-                        api.userLibraryApi
-                            .getItem(seriesId)
-                            .content
+                        (detailsPrefetch.take(seriesId) ?: api.userLibraryApi.getItem(seriesId).content)
                             .let { BaseItem(it) }
                     } catch (ex: CancellationException) {
                         throw ex

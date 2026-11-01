@@ -192,6 +192,8 @@ class NavDrawerViewModel
                             NOW_PLAYING_INDEX
                         } else if (key is Destination.Games) {
                             GAMES_INDEX
+                        } else if (key is Destination.MyBenflix) {
+                            MY_BENFLIX_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -276,6 +278,7 @@ private const val HOME_INDEX = -1
 private const val SEARCH_INDEX = -2
 private const val NOW_PLAYING_INDEX = -3
 private const val GAMES_INDEX = -4
+private const val MY_BENFLIX_INDEX = -5
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -483,9 +486,40 @@ fun NavDrawer(
         }
         return
     }
+    // TV: one slim line. Home, Movies, Shows, Games and My Benflix are always there;
+    // every other library (Anime, Stand up, Now playing...) sits under More
+    val allItems = serviceState.items + serviceState.moreItems
+    val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
+    val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
+    val myListIndex = allItems.indexOfFirst { it is NavDrawerItem.Favorites }
+    // tabs = Home, (Now playing), every library in order, Games
+    val libraryOffset = if (serviceState.nowPlayingEnabled) 2 else 1
+    val libraryTab = { index: Int -> tabs.getOrNull(libraryOffset + index) }
+    val myBenflixTitle = stringResource(R.string.my_benflix)
+    val mainTabs =
+        listOfNotNull(
+            tabs.first(),
+            moviesIndex.takeIf { it >= 0 }?.let(libraryTab),
+            showsIndex.takeIf { it >= 0 }?.let(libraryTab),
+            tabs.last(),
+            TopNavTab(
+                title = myBenflixTitle,
+                selected = selectedIndex == MY_BENFLIX_INDEX,
+                onClick = {
+                    viewModel.setIndex(MY_BENFLIX_INDEX)
+                    viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+                },
+            ),
+        )
+    val moreTabs =
+        tabs.filterIndexed { i, _ ->
+            i != 0 && i != tabs.lastIndex &&
+                i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
+        }
     Column(modifier = modifier) {
         TopNavBar(
-            tabs = tabs,
+            tabs = mainTabs,
+            moreTabs = moreTabs,
             user = user,
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,

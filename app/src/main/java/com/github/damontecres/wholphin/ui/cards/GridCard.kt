@@ -29,6 +29,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AspectRatios
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.enableMarquee
 import kotlinx.coroutines.delay
@@ -81,6 +82,9 @@ fun GridCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
+            scale = CardDefaults.scale(focusedScale = 1.06f),
+            shape = CardDefaults.shape(Cards.focusShape),
+            border = Cards.focusBorder(),
         ) {
             ItemCardImage(
                 item = item,
