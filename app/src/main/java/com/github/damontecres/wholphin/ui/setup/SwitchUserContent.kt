@@ -24,10 +24,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -164,7 +167,20 @@ fun SwitchUserContent(
                         Modifier
                             .fillMaxWidth()
                             .align(Alignment.Center)
-                            .padding(16.dp),
+                            // A soft dark glow behind the text and profiles, with no hard edges
+                            .drawBehind {
+                                val glow =
+                                    Brush.radialGradient(
+                                        0f to Color.Black.copy(alpha = .6f),
+                                        .45f to Color.Black.copy(alpha = .4f),
+                                        .72f to Color.Transparent,
+                                        center = center,
+                                        radius = size.width / 2,
+                                    )
+                                scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
+                                    drawCircle(glow, radius = size.width / 2, center = center)
+                                }
+                            }.padding(16.dp),
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -186,12 +202,12 @@ fun SwitchUserContent(
                         }
                         Text(
                             text = stringResource(R.string.select_user),
-                            style = MaterialTheme.typography.displaySmall,
+                            style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             text = server.name ?: server.url,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
