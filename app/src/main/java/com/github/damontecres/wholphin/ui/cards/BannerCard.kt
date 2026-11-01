@@ -222,6 +222,24 @@ fun BannerCard(
                     }
                 }
             }
+            val reasonTag = remember(item) { item?.reasonTag() }
+            if (!favorite && !grown && reasonTag != null) {
+                // A small, easy-to-read note on why this one is worth a look
+                Text(
+                    text = reasonTag,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = .5.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
             if (favorite) {
                 Text(
                     modifier =
@@ -501,3 +519,24 @@ private val BaseItem.isNew: Boolean
             }
         }
     }
+
+/**
+ * A short reason tag for a tile, like "CRITICS 94%" or "TOP RATED", or null when nothing stands out.
+ * Kept to one tag per tile so rows stay calm.
+ */
+private fun BaseItem.reasonTag(): String? {
+    if (type != BaseItemKind.MOVIE && type != BaseItemKind.SERIES) return null
+    val critic = data.criticRating?.toInt()
+    val community = data.communityRating
+    val year = data.productionYear
+    val thisYear =
+        java.time.Year
+            .now()
+            .value
+    return when {
+        critic != null && critic >= 90 -> "CRITICS $critic%"
+        community != null && community >= 8.0f -> "TOP RATED"
+        year != null && year <= thisYear - 25 && community != null && community >= 7.3f -> "CLASSIC"
+        else -> null
+    }
+}
