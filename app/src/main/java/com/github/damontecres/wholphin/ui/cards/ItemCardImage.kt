@@ -23,6 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -42,6 +44,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.logCoilError
+import com.github.damontecres.wholphin.ui.util.BlurHash
 import org.jellyfin.sdk.model.api.ImageType
 
 /**
@@ -80,8 +83,10 @@ fun ItemCardImage(
                 null
             }
         }
+    val blurHash = remember(item, imageType) { item?.blurHashFor(imageType) }
     ItemCardImage(
         imageUrl = imageUrl,
+        blurHash = blurHash,
         name = name,
         showOverlay = showOverlay,
         favorite = favorite,
@@ -108,6 +113,7 @@ fun ItemCardImage(
     modifier: Modifier = Modifier,
     useFallbackText: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit,
+    blurHash: String? = null,
     fallback: @Composable BoxScope.() -> Unit = {
         ItemCardImageFallback(
             name = name,
@@ -117,6 +123,11 @@ fun ItemCardImage(
     },
 ) {
     var imageError by remember(imageUrl) { mutableStateOf(false) }
+    // A blurry version of the picture shows instantly while the real one loads
+    val placeholder =
+        remember(blurHash) {
+            blurHash?.let { BlurHash.decode(it) }?.let { BitmapPainter(it.asImageBitmap()) }
+        }
     Box(
         modifier = modifier,
     ) {
@@ -126,6 +137,7 @@ fun ItemCardImage(
                 contentDescription = name,
                 contentScale = contentScale,
                 alignment = Alignment.Center,
+                placeholder = placeholder,
                 onError = {
                     logCoilError(imageUrl, it.result)
                     imageError = true
@@ -291,3 +303,15 @@ fun FavoriteIndicator(
     fontFamily = FontAwesome,
     modifier = modifier,
 )
+
+/** The server's BlurHash for this item's picture of [imageType], if it sent one */
+private fun BaseItem.blurHashFor(imageType: ImageType): String? {
+    val hashes = data.imageBlurHashes?.get(imageType) ?: return null
+    val tag =
+        if (imageType == ImageType.PRIMARY && useSeriesForPrimary) {
+            data.seriesPrimaryImageTag
+        } else {
+            data.imageTags?.get(imageType)
+        }
+    return tag?.let { hashes[it] } ?: hashes.values.firstOrNull()
+}
