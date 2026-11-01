@@ -66,6 +66,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1046,32 +1047,22 @@ class HomeViewModel
         }
 
         /**
-         * Load the seasonal themed row, such as horror in October
+         * Load the seasonal themed row, such as horror in October.
+         * Holiday rows only use titles that fit the holiday (see [HomeTheme]); if too few are on the
+         * server the row falls back to the genre of the week instead of showing random picks.
          */
         private suspend fun loadThemed(userDto: ServerUserConfig) {
             try {
                 val today = LocalDate.now()
-                // If the seasonal theme has nothing on the server, fall back to the genre of the week
                 val themes = listOf(HomeTheme.forDate(today), HomeTheme.weekly(today)).distinct()
                 for (theme in themes) {
+                    val found = findThemeItems(userDto.id, theme)
+                    Timber.d("Themed row %s found %s items", theme.title, found.size)
+                    if (found.size < theme.minItems) continue
                     val items =
-                        api.itemsApi
-                            .getItems(
-                                GetItemsRequest(
-                                    userId = userDto.id,
-                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                    recursive = true,
-                                    genres = theme.genres,
-                                    searchTerm = theme.searchTerm,
-                                    sortBy = listOf(ItemSortBy.RANDOM),
-                                    limit = THEMED_FETCH,
-                                    fields = HomeItemFields,
-                                ),
-                            ).content.items
-                            .let { collapseIntoCollections(userDto.id, it) }
+                        collapseIntoCollections(userDto.id, found)
                             .take(THEMED_MAX)
                             .map { BaseItem(it) }
-                    Timber.d("Themed row %s found %s items", theme, items.size)
                     if (items.isNotEmpty()) {
                         val title = context.getString(theme.title, theme.titleArg)
                         _state.update { it.copy(themed = ThemedRow(title, items)) }
@@ -1085,6 +1076,95 @@ class HomeViewModel
                 Timber.e(ex, "Error loading themed row")
             }
         }
+
+        /**
+         * Everything on the server that fits [theme]: hand-picked titles, tagged titles and titles
+         * with a holiday word in the name come first (shuffled), then genre picks if the theme has a genre.
+         */
+        private suspend fun findThemeItems(
+            userId: UUID,
+            theme: HomeTheme,
+        ): List<BaseItemDto> =
+            coroutineScope {
+                val types = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
+                val limiter = Semaphore(THEMED_PARALLEL)
+
+                suspend fun query(request: GetItemsRequest): List<BaseItemDto> =
+                    limiter.withPermit {
+                        try {
+                            api.itemsApi.getItems(request).content.items
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Themed row lookup failed")
+                            emptyList()
+                        }
+                    }
+
+                fun search(term: String) =
+                    GetItemsRequest(
+                        userId = userId,
+                        includeItemTypes = types,
+                        recursive = true,
+                        searchTerm = term,
+                        limit = 10,
+                        fields = HomeItemFields,
+                    )
+
+                // Hand-picked titles: search by name, then keep only exact name matches
+                // (so "Coco" never brings in "Coco Before Chanel")
+                val picked =
+                    theme.titles
+                        .map { it.substringBefore(':').trimEnd('.', '!', '?').trim() }
+                        .distinct()
+                        .map { term ->
+                            async { query(search(term)).filter { theme.isPicked(it.name, it.originalTitle) } }
+                        }
+                // Titles with a holiday word in the name, such as "A Christmas Story"
+                val named =
+                    theme.nameWords.map { word ->
+                        async { query(search(word)).filter { theme.hasNameWord(it.name) || theme.hasNameWord(it.originalTitle) } }
+                    }
+                // TMDB keywords, which Jellyfin saves as tags
+                val tagged =
+                    async {
+                        if (theme.tags.isEmpty()) {
+                            emptyList()
+                        } else {
+                            query(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = types,
+                                    recursive = true,
+                                    tags = theme.tags,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = THEMED_FETCH,
+                                    fields = HomeItemFields,
+                                ),
+                            )
+                        }
+                    }
+                val byGenre =
+                    async {
+                        if (theme.genres.isNullOrEmpty()) {
+                            emptyList()
+                        } else {
+                            query(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = types,
+                                    recursive = true,
+                                    genres = theme.genres,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = THEMED_FETCH,
+                                    fields = HomeItemFields,
+                                ),
+                            )
+                        }
+                    }
+                val fitting = (picked.awaitAll().flatten() + named.awaitAll().flatten() + tagged.await()).shuffled()
+                (fitting + byGenre.await()).distinctBy { it.id }
+            }
 
         /** Which collection each movie is in, so a franchise (e.g. all the Saw movies) shows as one tile */
         private var collectionIndex: Pair<String, Map<UUID, BaseItemDto>>? = null
@@ -1853,6 +1933,9 @@ private const val TRENDING_TOP = 10
 private const val TRENDING_MISSING_MAX = 20
 private const val THEMED_MAX = 20
 private const val THEMED_FETCH = 60
+
+/** How many name searches the themed row runs at once */
+private const val THEMED_PARALLEL = 6
 private const val COLLECTION_INDEX_MAX = 400
 private const val COLLECTION_INDEX_PARALLEL = 6
 private const val BECAUSE_MAX = 20

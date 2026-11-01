@@ -1011,7 +1011,11 @@
     <string name="theme_date_night">Date night</string>
     <string name="theme_summer">Summer blockbusters</string>
     <string name="theme_day_of_the_dead">Día de los Muertos picks</string>
-    <string name="theme_lunar_new_year">Lunar New Year adventures</string>
+    <string name="theme_lunar_new_year">Lunar New Year picks</string>
+    <string name="theme_thanksgiving">Thanksgiving favorites</string>
+    <string name="theme_st_patricks">St. Patrick\'s Day picks</string>
+    <string name="theme_fourth_of_july">4th of July picks</string>
+    <string name="theme_bonfire_night">Bonfire Night picks</string>
     <string name="theme_diwali">Festival of Lights favorites</string>
     <string name="theme_tanabata">Tanabata: wish upon a star</string>
     <string name="theme_genre_of_week">Genre of the week: %1$s</string>
