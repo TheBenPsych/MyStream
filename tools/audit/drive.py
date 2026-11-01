@@ -127,28 +127,33 @@ def bounds(n):
     return tuple(map(int, re.findall(r"\d+", n.get("bounds"))))
 
 
-def touch_tap(n):
-    """Taps the thing itself, or the closest button to it when the label sits outside its button"""
-    target = n
-    if n.get("clickable") != "true" and LAST_ROOT[0] is not None:
-        x, y = center(n)
-        best = None
-        for c in nodes(LAST_ROOT[0]):
-            if c.get("clickable") != "true":
+def resolve(n):
+    """The button a label belongs to: the thing itself, the smallest button around it, or the closest button"""
+    def actionable(c):
+        return c.get("clickable") == "true" or c.get("focusable") == "true"
+
+    if actionable(n) or LAST_ROOT[0] is None:
+        return n
+    x, y = center(n)
+    best = None
+    for c in nodes(LAST_ROOT[0]):
+        if not actionable(c):
+            continue
+        a, b, cc, d = bounds(c)
+        if a <= x <= cc and b <= y <= d:
+            dist = -1e9 + (cc - a) * (d - b)  # containing: prefer the smallest
+        else:
+            cx, cy = (a + cc) / 2, (b + d) / 2
+            dist = ((cx - x) ** 2 + (cy - y) ** 2) ** 0.5
+            if dist > 250:
                 continue
-            a, b, cc, d = bounds(c)
-            if a <= x <= cc and b <= y <= d:
-                area = (cc - a) * (d - b)
-                dist = -1e9 + area  # containing: prefer the smallest
-            else:
-                cx, cy = (a + cc) / 2, (b + d) / 2
-                dist = ((cx - x) ** 2 + (cy - y) ** 2) ** 0.5
-                if dist > 250:
-                    continue
-            if best is None or dist < best[0]:
-                best = (dist, c)
-        if best is not None:
-            target = best[1]
+        if best is None or dist < best[0]:
+            best = (dist, c)
+    return best[1] if best is not None else n
+
+
+def touch_tap(n):
+    target = resolve(n)
     x, y = center(target)
     sh(f"input tap {x} {y}")
 
@@ -173,6 +178,7 @@ def tap(n):
         touch_tap(n)
         return
     label = n.get("text") or n.get("content-desc") or ""
+    n = resolve(n)
     tx, ty = center(n)
     for _ in range(14):
         root = LAST_ROOT[0] if _ == 0 else dump(dismiss=False)
@@ -435,12 +441,13 @@ def main():
         key("DPAD_DOWN", 2)
         key("DPAD_CENTER", wait=1)
     else:
-        sh("input swipe 500 1500 500 900 300")
-        time.sleep(1)
         root = dump()
-        posters = [n for n in nodes(root) if n.get("clickable") == "true" and center(n)[1] > 900]
-        if posters:
-            tap(posters[0])
+        heading = find(root, r"picks$|^New on|^Because you|^Top 10|^My List")
+        if heading is not None:
+            a, b, c, d = bounds(heading)
+            sh(f"input tap {a + 120} {d + 200}")
+        else:
+            log("no poster row found on phone Home")
     t = wait_for(r"^Play$|Resume|Episodes|More like this", 30)
     REPORT["timings"]["details page (s)"] = t
     shot("details")
