@@ -320,7 +320,7 @@ def main():
                 typed_server = True
                 shot("typed-server")
             if MODE == "tv":
-                key("BACK", wait=1)
+                key("ESCAPE", wait=1)
             n = find(dump(), r"^Submit$")
             if n is not None:
                 tap(n)
@@ -335,7 +335,7 @@ def main():
                 typed_user = True
                 shot("typed-user")
             if MODE == "tv":
-                key("BACK", wait=1)  # hide the on-screen keyboard
+                key("ESCAPE", wait=1)  # hide the on-screen keyboard
             n = find(dump(), r"^Login$")
             if n is not None:
                 tap(n)
