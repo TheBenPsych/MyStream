@@ -43,7 +43,7 @@ jobs:
       - name: Build this branch
         if: steps.decide.outputs.src == 'branch'
         env:
-          BENFLIX_BUILD: ${{ github.run_number }}
+          BENFLIX_BUILD: 99999  # newer than any real build, so the update pop-up stays away
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}

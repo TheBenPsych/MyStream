@@ -404,7 +404,7 @@ def main():
             continue
         time.sleep(2)
     shot("after-login")
-    for name in ["update", "close", "later", "not now", "dismiss", "ok"]:
+    for name in ["close", "later", "not now", "dismiss", "ok", "skip"]:
         n = find(dump(), rf"^{name}$")
         if n is not None:
             tap(n)
