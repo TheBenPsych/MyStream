@@ -1,24 +1,41 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -27,19 +44,33 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
-import coil3.compose.rememberAsyncImagePainter
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.LogoEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -53,18 +84,54 @@ private const val VW = 1600f
 private const val VH = 900f
 private const val TAU = (2 * PI).toFloat()
 
-/** Seconds since the screen opened, ticking every frame */
+/**
+ * Seconds since the screen opened. Ticks about 30 times a second (plenty for these slow scenes and
+ * half the work of every frame on older TVs). Stands still in Lite mode, and also stops by itself
+ * when the TV can't keep up, so picking a profile never feels sluggish.
+ */
 @Composable
 private fun rememberSeconds(): State<Float> {
-    val seconds = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        val start = withFrameMillis { it }
-        while (true) {
-            withFrameMillis { seconds.floatValue = (it - start) / 1000f }
+    val seconds = remember { mutableFloatStateOf(STILL_SECONDS) }
+    val lite = LiteMode.isOn(LocalContext.current)
+    if (!lite && !sceneTooSlow) {
+        LaunchedEffect(Unit) {
+            val start = withFrameMillis { it }
+            var last = 0L
+            val gaps = ArrayList<Long>()
+            while (true) {
+                val keepGoing =
+                    withFrameMillis {
+                        if (it - last < FRAME_MS) return@withFrameMillis true
+                        if (last > 0 && it - start > WARM_UP_MS) gaps += it - last
+                        last = it
+                        seconds.floatValue = STILL_SECONDS + (it - start) / 1000f
+                        if (gaps.size == SAMPLE_TICKS) {
+                            // Too slow for smooth movement: hold the picture still from here on
+                            val typical = gaps.sorted()[gaps.size / 2]
+                            if (typical > SLOW_TICK_MS) {
+                                sceneTooSlow = true
+                                return@withFrameMillis false
+                            }
+                        }
+                        true
+                    }
+                if (!keepGoing) break
+            }
         }
     }
     return seconds
 }
+
+/** Set once this device proved too slow for the moving scenes; stays until the app restarts */
+@Volatile private var sceneTooSlow = false
+
+private const val FRAME_MS = 33L
+private const val WARM_UP_MS = 1_000L
+private const val SAMPLE_TICKS = 45
+private const val SLOW_TICK_MS = 70L
+
+/** Where a still (Lite mode) scene stops, so it isn't empty */
+private const val STILL_SECONDS = 4f
 
 private fun frac(x: Float): Float = x - floor(x)
 
@@ -96,7 +163,10 @@ private fun hex(v: Long) = Color(v)
 // ---------------------------------------------------------------- poster wall
 
 /**
- * Rows of posters sliding slowly in opposite directions, tilted and dimmed so the profiles stand out
+ * Rows of posters sliding slowly in opposite directions, tilted and dimmed so the profiles stand out.
+ *
+ * Each row is drawn once and then only slid along by the graphics chip (no redrawing of the posters
+ * every frame), which keeps this screen light on older TVs.
  */
 @Composable
 fun PosterWall(
@@ -104,47 +174,73 @@ fun PosterWall(
     modifier: Modifier = Modifier,
 ) {
     if (posters.isEmpty()) return
-    val painters: List<Painter> = posters.map { rememberAsyncImagePainter(it) }
     val time = rememberSeconds()
-    Canvas(modifier = modifier.clipToBounds()) {
-        val t = time.value
-        val posterH = size.height / 3.6f
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = modifier.clipToBounds()) {
+        val posterH = maxHeight / 3.6f
         val posterW = posterH * 2f / 3f
         val gap = posterH * .06f
-        val rows = 5
-        val perRow = max(1, painters.size / 2)
-        val rowWidth = perRow * (posterW + gap)
-        withTransform({
-            rotate(-8f, pivot = center)
-            scale(1.15f, 1.15f, pivot = center)
-        }) {
-            for (r in 0 until rows) {
-                val y = -posterH * .9f + r * (posterH + gap)
+        val step = posterW + gap
+        val perRow = max(1, posters.size / 2)
+        val rowWidthPx = with(density) { (step * perRow).toPx() }
+        val stepPx = with(density) { step.toPx() }
+        // enough posters to cover the (tilted, enlarged) screen plus one full loop
+        val count = ceil((with(density) { (maxWidth * 1.5f).toPx() } + rowWidthPx) / stepPx).toInt() + 1
+        val shape = RoundedCornerShape(posterW * .06f)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(gap),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationZ = -8f
+                        scaleX = 1.15f
+                        scaleY = 1.15f
+                    }.offset(x = -posterW, y = -posterH * .9f),
+        ) {
+            repeat(5) { r ->
                 val dir = if (r % 2 == 0) -1f else 1f
-                val speed = posterW / (if (r % 2 == 0) 4.4f else 5.6f)
-                var x = -frac(t * speed / rowWidth) * rowWidth * -dir - rowWidth
-                if (dir < 0) x = -frac(t * speed / rowWidth) * rowWidth
-                var k = 0
-                while (x < size.width + posterW) {
-                    val p = painters[(r * 7 + k) % painters.size]
-                    val rr = RoundRect(Rect(x, y, x + posterW, y + posterH), CornerRadius(posterW * .06f))
-                    clipPath(Path().apply { addRoundRect(rr) }) {
-                        drawRect(Color(0xFF1C1C22), topLeft = Offset(x, y), size = Size(posterW, posterH))
-                        translate(x, y) { with(p) { draw(Size(posterW, posterH)) } }
+                val speedPx = stepPx / (if (r % 2 == 0) 4.4f else 5.6f)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(gap),
+                    modifier =
+                        Modifier
+                            .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                            .graphicsLayer {
+                                // Read the clock here, so only the slide changes each frame
+                                val shift = frac(time.value * speedPx / rowWidthPx) * rowWidthPx
+                                translationX = if (dir < 0) -shift else shift - rowWidthPx
+                            },
+                ) {
+                    repeat(count) { k ->
+                        AsyncImage(
+                            model = posters[(r * 7 + k % perRow) % posters.size],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(posterW, posterH)
+                                    .clip(shape)
+                                    .background(Color(0xFF1C1C22)),
+                        )
                     }
-                    x += posterW + gap
-                    k++
                 }
             }
         }
         // Dim everything, darker toward the edges, so the profiles pop
-        drawRect(
-            Brush.radialGradient(
-                0f to Color.Black.copy(alpha = .5f),
-                1f to Color.Black.copy(alpha = .92f),
-                center = center,
-                radius = size.maxDimension * .62f,
-            ),
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val brush =
+                        Brush.radialGradient(
+                            0f to Color.Black.copy(alpha = .5f),
+                            1f to Color.Black.copy(alpha = .92f),
+                            center = Offset(size.width / 2, size.height / 2),
+                            radius = size.maxDimension * .62f,
+                        )
+                    onDrawBehind { drawRect(brush) }
+                },
         )
     }
 }
@@ -187,155 +283,68 @@ fun holidayFont(effect: LogoEffect): FontFamily? =
     }
 
 /**
- * A drawn, moving scene for the holiday: haunted house and bats, snowy cabin, fireworks over the city, and so on
+ * A drawn, moving scene for the holiday: haunted house and bats, snowy cabin, fireworks over the city, and so on.
+ *
+ * The scene is painted on a background thread into a small picture about 25 times a second, and the
+ * screen only shows the latest picture. So however busy a scene is, the part of the app that reacts to
+ * the remote stays free, and picking a profile never lags.
  */
 @Composable
 fun HolidayScene(
     effect: LogoEffect,
     modifier: Modifier = Modifier,
 ) {
-    val statics = remember(effect) { SceneStatics() }
-    val time = rememberSeconds()
-    Canvas(modifier = modifier.clipToBounds()) {
-        val t = time.value
-        val sc = max(size.width / VW, size.height / VH)
-        val dx = (size.width - VW * sc) / 2
-        val dy = (size.height - VH * sc) / 2
-        withTransform({
-            translate(dx, dy)
-            scale(sc, sc, pivot = Offset.Zero)
-        }) {
-            when (effect) {
-                LogoEffect.GHOST_PEEK -> {
-                    halloween(t, statics)
+    val lite = LiteMode.isOn(LocalContext.current)
+    // The newest finished picture, and a counter that changes with each new one so the screen redraws
+    val frame = remember { mutableStateOf<ImageBitmap?>(null) }
+    val frameNo = remember { mutableIntStateOf(0) }
+    LaunchedEffect(effect, lite) {
+        withContext(Dispatchers.Default) {
+            val statics = SceneStatics()
+            // three pictures in turn, so the one on screen is never the one being painted
+            val pictures = List(3) { ImageBitmap(SCENE_W, SCENE_H) }
+            val painter = CanvasDrawScope()
+            val sceneScale = SCENE_W / VW
+            val start = System.nanoTime()
+            var n = 0
+            while (isActive) {
+                val began = System.nanoTime()
+                val t = STILL_SECONDS + if (lite) 0f else (began - start) / 1_000_000_000f
+                val picture = pictures[n % pictures.size]
+                painter.draw(
+                    Density(1f),
+                    LayoutDirection.Ltr,
+                    androidx.compose.ui.graphics
+                        .Canvas(picture),
+                    Size(SCENE_W.toFloat(), SCENE_H.toFloat()),
+                ) {
+                    drawRect(Color.Black)
+                    withTransform({ scale(sceneScale, sceneScale, pivot = Offset.Zero) }) {
+                        drawScene(effect, t, statics)
+                    }
                 }
-
-                LogoEffect.TWINKLE_LIGHTS -> {
-                    christmas(t, statics)
-                }
-
-                LogoEffect.FIREWORKS_GOLD -> {
-                    fireworksCity(
-                        t,
-                        statics,
-                        listOf(hex(0xFFFFD54F), Color.White, hex(0xFFFF80AB), hex(0xFFB388FF), hex(0xFFFFE9A8)),
-                        listOf(hex(0xFF030312), hex(0xFF140C2E), hex(0xFF2C1640)),
-                        42,
-                    )
-                }
-
-                LogoEffect.FIREWORKS_USA -> {
-                    fireworksCity(
-                        t,
-                        statics,
-                        listOf(hex(0xFFFF4D4D), Color.White, hex(0xFF4DA3FF), hex(0xFFFF8080), hex(0xFFBFE0FF)),
-                        listOf(hex(0xFF02040F), hex(0xFF0B1736), hex(0xFF1C2A55)),
-                        77,
-                    )
-                }
-
-                LogoEffect.HEART_FLOAT -> {
-                    valentine(t, statics)
-                }
-
-                LogoEffect.GREEN_SHIMMER -> {
-                    stPatricks(t, statics)
-                }
-
-                LogoEffect.FALLING_LEAVES -> {
-                    thanksgiving(t, statics)
-                }
-
-                LogoEffect.CONFETTI -> {
-                    birthday(t)
-                }
-
-                LogoEffect.MARIGOLDS -> {
-                    dayOfTheDead(t, statics)
-                }
-
-                LogoEffect.LANTERNS -> {
-                    lunarNewYear(t, statics)
-                }
-
-                LogoEffect.DIYAS -> {
-                    diwali(t)
-                }
-
-                LogoEffect.EMBERS -> {
-                    bonfireNight(t, statics)
-                }
-
-                LogoEffect.STAR_PAIR -> {
-                    tanabata(t, statics)
-                }
-
-                LogoEffect.BLOSSOMS -> {
-                    easter(t, statics)
-                }
-
-                LogoEffect.HYPERSPACE -> {
-                    spaceDay(t, statics)
-                }
-
-                LogoEffect.ZAPS -> {
-                    creatureDay(t, statics)
-                }
-
-                LogoEffect.COIN -> {
-                    pixelWorld(t)
-                }
-
-                LogoEffect.FIRE_TRAILS -> {
-                    timeTravel(t)
-                }
-
-                LogoEffect.FLOWER_BLOOM -> {
-                    mothersDay(t, statics)
-                }
-
-                LogoEffect.SUNSET -> {
-                    fathersDay(t, statics)
-                }
-
-                LogoEffect.SPROUTS -> {
-                    earthDay(t)
-                }
-
-                LogoEffect.SPOOKY_CAT -> {
-                    friday13(t)
-                }
-
-                LogoEffect.GROUNDHOG -> {
-                    groundhogDay(t, statics)
-                }
-
-                LogoEffect.HARVEST_MOON -> {
-                    midAutumn(t)
-                }
-
-                LogoEffect.POPCORN -> {
-                    popcornDay(t)
-                }
-
-                LogoEffect.GAME_BUTTONS -> {
-                    arcade(t)
-                }
-
-                LogoEffect.CAT_TAIL -> {
-                    catDay(t)
-                }
-
-                LogoEffect.PAW_PRINTS -> {
-                    dogDay(t, statics)
-                }
-
-                LogoEffect.PIRATE_FLAG -> {
-                    pirateDay(t)
-                }
-
-                LogoEffect.NONE -> {}
+                frame.value = picture
+                frameNo.intValue = ++n
+                if (lite) break
+                val tookMs = (System.nanoTime() - began) / 1_000_000
+                delay((SCENE_FRAME_MS - tookMs).coerceAtLeast(MIN_REST_MS))
             }
+        }
+    }
+    Canvas(modifier = modifier.clipToBounds()) {
+        if (frameNo.intValue < 0) return@Canvas // read the counter, so it redraws for every new picture
+        val picture = frame.value
+        if (picture != null) {
+            // Fill the screen, cropping the edges if its shape differs
+            val sc = max(size.width / SCENE_W, size.height / SCENE_H)
+            val w = (SCENE_W * sc).roundToInt()
+            val h = (SCENE_H * sc).roundToInt()
+            drawImage(
+                picture,
+                dstOffset = IntOffset(((size.width - w) / 2).roundToInt(), ((size.height - h) / 2).roundToInt()),
+                dstSize = IntSize(w, h),
+                filterQuality = FilterQuality.Low,
+            )
         }
         // Soft vignette so the profiles and text stay easy to read
         drawRect(
@@ -354,6 +363,152 @@ fun HolidayScene(
                 radius = size.maxDimension * .7f,
             ),
         )
+    }
+}
+
+/** The size of the painted scene picture (a quarter of a 1080p screen; it is soft and dimmed anyway) */
+private const val SCENE_W = 960
+private const val SCENE_H = 540
+
+/** About 25 pictures a second, always leaving the background thread a short rest */
+private const val SCENE_FRAME_MS = 40L
+private const val MIN_REST_MS = 8L
+
+private fun DrawScope.drawScene(
+    effect: LogoEffect,
+    t: Float,
+    statics: SceneStatics,
+) {
+    when (effect) {
+        LogoEffect.GHOST_PEEK -> {
+            halloween(t, statics)
+        }
+
+        LogoEffect.TWINKLE_LIGHTS -> {
+            christmas(t, statics)
+        }
+
+        LogoEffect.FIREWORKS_GOLD -> {
+            fireworksCity(
+                t,
+                statics,
+                listOf(hex(0xFFFFD54F), Color.White, hex(0xFFFF80AB), hex(0xFFB388FF), hex(0xFFFFE9A8)),
+                listOf(hex(0xFF030312), hex(0xFF140C2E), hex(0xFF2C1640)),
+                42,
+            )
+        }
+
+        LogoEffect.FIREWORKS_USA -> {
+            fireworksCity(
+                t,
+                statics,
+                listOf(hex(0xFFFF4D4D), Color.White, hex(0xFF4DA3FF), hex(0xFFFF8080), hex(0xFFBFE0FF)),
+                listOf(hex(0xFF02040F), hex(0xFF0B1736), hex(0xFF1C2A55)),
+                77,
+            )
+        }
+
+        LogoEffect.HEART_FLOAT -> {
+            valentine(t, statics)
+        }
+
+        LogoEffect.GREEN_SHIMMER -> {
+            stPatricks(t, statics)
+        }
+
+        LogoEffect.FALLING_LEAVES -> {
+            thanksgiving(t, statics)
+        }
+
+        LogoEffect.CONFETTI -> {
+            birthday(t)
+        }
+
+        LogoEffect.MARIGOLDS -> {
+            dayOfTheDead(t, statics)
+        }
+
+        LogoEffect.LANTERNS -> {
+            lunarNewYear(t, statics)
+        }
+
+        LogoEffect.DIYAS -> {
+            diwali(t)
+        }
+
+        LogoEffect.EMBERS -> {
+            bonfireNight(t, statics)
+        }
+
+        LogoEffect.STAR_PAIR -> {
+            tanabata(t, statics)
+        }
+
+        LogoEffect.BLOSSOMS -> {
+            easter(t, statics)
+        }
+
+        LogoEffect.HYPERSPACE -> {
+            spaceDay(t, statics)
+        }
+
+        LogoEffect.ZAPS -> {
+            creatureDay(t, statics)
+        }
+
+        LogoEffect.COIN -> {
+            pixelWorld(t)
+        }
+
+        LogoEffect.FIRE_TRAILS -> {
+            timeTravel(t)
+        }
+
+        LogoEffect.FLOWER_BLOOM -> {
+            mothersDay(t, statics)
+        }
+
+        LogoEffect.SUNSET -> {
+            fathersDay(t, statics)
+        }
+
+        LogoEffect.SPROUTS -> {
+            earthDay(t)
+        }
+
+        LogoEffect.SPOOKY_CAT -> {
+            friday13(t)
+        }
+
+        LogoEffect.GROUNDHOG -> {
+            groundhogDay(t, statics)
+        }
+
+        LogoEffect.HARVEST_MOON -> {
+            midAutumn(t)
+        }
+
+        LogoEffect.POPCORN -> {
+            popcornDay(t)
+        }
+
+        LogoEffect.GAME_BUTTONS -> {
+            arcade(t)
+        }
+
+        LogoEffect.CAT_TAIL -> {
+            catDay(t)
+        }
+
+        LogoEffect.PAW_PRINTS -> {
+            dogDay(t, statics)
+        }
+
+        LogoEffect.PIRATE_FLAG -> {
+            pirateDay(t)
+        }
+
+        LogoEffect.NONE -> {}
     }
 }
 

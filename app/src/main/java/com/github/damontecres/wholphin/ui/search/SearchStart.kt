@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +31,7 @@ import com.github.damontecres.wholphin.ui.main.GenreTile
 import com.github.damontecres.wholphin.ui.main.MoodRow
 import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /** The last few things searched for on this device */
 object RecentSearches {
@@ -120,13 +123,38 @@ fun SearchStart(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(start = 8.dp),
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                ) {
-                    BenflixGenre.entries.forEach { genre ->
-                        GenreTile(genre = genre, onClick = { navigationManager.openGenreHub(genre) })
+                // Phones: two tiles side by side, sharing the width (a fixed tile width left only one per line)
+                val isTv = rememberIsTv()
+                if (isTv) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    ) {
+                        BenflixGenre.entries.forEach { genre ->
+                            GenreTile(genre = genre, onClick = { navigationManager.openGenreHub(genre) })
+                        }
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    ) {
+                        BenflixGenre.entries.chunked(2).forEach { pair ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                pair.forEach { genre ->
+                                    GenreTile(
+                                        genre = genre,
+                                        onClick = { navigationManager.openGenreHub(genre) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (pair.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }

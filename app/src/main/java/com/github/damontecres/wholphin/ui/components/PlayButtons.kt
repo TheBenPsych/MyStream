@@ -120,7 +120,13 @@ fun ExpandablePlayButtons(
                     androidx.tv.material3.ButtonDefaults.colors(
                         containerColor = androidx.compose.ui.graphics.Color.White,
                         contentColor = androidx.compose.ui.graphics.Color.Black,
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        focusedContentColor = androidx.compose.ui.graphics.Color.Black,
                     ),
+                // Phones have no remote focus: don't let the button grow wider than the page
+                scale =
+                    androidx.tv.material3.ButtonDefaults
+                        .scale(focusedScale = 1f),
                 shape =
                     androidx.tv.material3.ButtonDefaults
                         .shape(
