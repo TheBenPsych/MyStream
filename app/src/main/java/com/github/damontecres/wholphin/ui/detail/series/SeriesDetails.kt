@@ -454,7 +454,7 @@ fun SeriesDetailsContent(
                                     },
                         )
                         ExpandableFaButton(
-                            title = R.string.shuffle,
+                            title = R.string.benflix_random_episodes,
                             iconStringRes = R.string.fa_shuffle,
                             onClick = {
                                 position = HEADER_ROW

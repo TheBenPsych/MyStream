@@ -162,6 +162,8 @@ fun ExpandablePlayButtons(
                 com.github.damontecres.wholphin.ui.downloads
                     .DownloadButton(it)
             }
+            // Benflix: send it to the TV instead
+            downloadItem?.let { PlayOnTvButton(item = it, position = resumePosition) }
         }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),

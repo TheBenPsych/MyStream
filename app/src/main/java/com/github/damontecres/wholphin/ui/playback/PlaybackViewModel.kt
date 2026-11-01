@@ -371,6 +371,13 @@ class PlaybackViewModel
                 if (queriedItem.type.playable) {
                     PlaylistItem.Media(BaseItem(queriedItem, false))
                 } else {
+                    // Benflix random episodes: keeps going until they back out
+                    shuffleSession =
+                        queriedItem.type == BaseItemKind.SERIES &&
+                        (
+                            (destination as? Destination.PlaybackList)?.shuffle == true ||
+                                (destination as? Destination.Playback)?.shuffle == true
+                        )
                     val playlistResult =
                         if (destination is Destination.PlaybackList) {
                             playlistCreator.createFrom(
@@ -1276,6 +1283,9 @@ class PlaybackViewModel
         // Benflix: movies with a scene during or after the credits
         @Volatile private var hasAfterCreditsScene = false
 
+        /** Benflix: playing random episodes of a show, which keep going until Back */
+        @Volatile private var shuffleSession = false
+
         @Volatile private var creditsReached = false
         private var afterCreditsJob: Job? = null
 
@@ -1481,7 +1491,7 @@ class PlaybackViewModel
                 // Benflix: at Kids bedtime, the next episode doesn't start by itself
                 !BenflixBedtime.lockedNow() &&
                     it.autoPlayNext &&
-                    if (it.passOutProtectionMs > 0) {
+                    if (it.passOutProtectionMs > 0 && !shuffleSession) {
                         (Date().time - lastInteractionDate.time) < it.passOutProtectionMs
                     } else {
                         true

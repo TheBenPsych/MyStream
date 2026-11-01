@@ -12,7 +12,9 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ActivityContext
 import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.CancellationException
@@ -22,12 +24,16 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.sockets.subscribe
 import org.jellyfin.sdk.model.api.GeneralCommandMessage
 import org.jellyfin.sdk.model.api.GeneralCommandType
 import org.jellyfin.sdk.model.api.MediaType
+import org.jellyfin.sdk.model.api.PlayCommand
+import org.jellyfin.sdk.model.api.PlayMessage
+import org.jellyfin.sdk.model.api.PlayRequest
 import org.jellyfin.sdk.model.api.UserUpdatedMessage
 import timber.log.Timber
 import javax.inject.Inject
@@ -42,6 +48,7 @@ class ServerEventListener
         @param:ActivityContext private val context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val navigationManager: NavigationManager,
     ) : DefaultLifecycleObserver {
         private val activity = (context as AppCompatActivity)
 
@@ -120,6 +127,14 @@ class ServerEventListener
                                     Timber.e(ex, "Error in general message websocket subscription")
                                 }.launchIn(this@coroutineScope)
 
+                            // Benflix "Play on TV": someone picked this TV from their phone
+                            api.webSocket
+                                .subscribe<PlayMessage>()
+                                .onEach { message -> onPlayRequest(message.data) }
+                                .catch { ex ->
+                                    Timber.e(ex, "Error in play websocket subscription")
+                                }.launchIn(this@coroutineScope)
+
                             api.webSocket
                                 .subscribe<UserUpdatedMessage>()
                                 .catch { ex ->
@@ -140,6 +155,20 @@ class ServerEventListener
                 }
         }
 
+        private suspend fun onPlayRequest(request: PlayRequest?) {
+            val itemId = request?.itemIds?.firstOrNull() ?: return
+            if (request.playCommand != PlayCommand.PLAY_NOW) return
+            if (KidsMode.isActive) {
+                // The Kids profile only plays kid-rated things, so a grown-up has to switch first
+                showToast(context, "Kids is on. Switch to your profile on the TV, then try again.", Toast.LENGTH_LONG)
+                return
+            }
+            val positionMs = (request.startPositionTicks ?: 0L) / TICKS_PER_MS
+            withContext(WholphinDispatchers.Main) {
+                navigationManager.navigateTo(Destination.Playback(itemId = itemId, positionMs = positionMs))
+            }
+        }
+
         override fun onResume(owner: LifecycleOwner) {
             serverRepository.current.value?.let { init(it.server, it.user) }
         }
@@ -154,3 +183,5 @@ class ServerEventListener
             listenJob?.cancel()
         }
     }
+
+private const val TICKS_PER_MS = 10_000L

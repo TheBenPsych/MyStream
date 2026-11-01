@@ -237,7 +237,9 @@ class PlaylistCreator
                                 limit = Playlist.MAX_SIZE,
                                 sortBy = ItemSortBy.RANDOM,
                                 fields = DetailItemFields,
+                                enableUserData = true,
                             ).content.items
+                            .freshFirst()
                             .convertAndAddParts()
                             .let {
                                 PlaylistCreationResult.Success(Playlist(it))
@@ -321,6 +323,19 @@ class PlaylistCreator
                     PlaylistCreationResult.Error(null, "Unsupported type: ${item.type}")
                 }
             }
+
+        /**
+         * Benflix random episodes: still random, but episodes watched in the last month go
+         * to the end, so it feels fresh.
+         */
+        private fun List<BaseItemDto>.freshFirst(): List<BaseItemDto> {
+            val monthAgo =
+                java.time.LocalDateTime
+                    .now()
+                    .minusDays(FRESH_DAYS)
+            val (recent, fresh) = partition { it.userData?.lastPlayedDate?.isAfter(monthAgo) == true }
+            return fresh + recent
+        }
 
         private suspend fun List<BaseItemDto>.convertAndAddParts(useSeriesForPrimary: Boolean = false): List<PlaylistItem> =
             buildList {
@@ -432,3 +447,5 @@ sealed interface PlaylistCreationResult {
         val message: String?,
     ) : PlaylistCreationResult
 }
+
+private const val FRESH_DAYS = 30L
