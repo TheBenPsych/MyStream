@@ -37,6 +37,22 @@ def adb(*args, check=False, timeout=60):
         return ""
 
 
+def reconnect():
+    """adb sometimes loses the emulator; get it back"""
+    state = subprocess.run(["adb", "get-state"], capture_output=True, text=True).stdout.strip()
+    if state == "device":
+        return
+    print(f"[{MODE}] adb lost the device ({state!r}), reconnecting", flush=True)
+    REPORT.setdefault("adb_reconnects", 0)
+    REPORT["adb_reconnects"] += 1
+    subprocess.run(["adb", "reconnect"], capture_output=True, timeout=30)
+    time.sleep(3)
+    if subprocess.run(["adb", "get-state"], capture_output=True, text=True).stdout.strip() != "device":
+        subprocess.run(["adb", "kill-server"], capture_output=True, timeout=30)
+        subprocess.run(["adb", "start-server"], capture_output=True, timeout=30)
+        subprocess.run(["adb", "wait-for-device"], capture_output=True, timeout=120)
+
+
 def sh(cmd, timeout=60):
     return adb("shell", cmd, timeout=timeout)
 
@@ -59,7 +75,9 @@ SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
 
 def dump(dismiss=True):
     """Returns the screen's UI tree, or None when the screen never settled"""
-    for _ in range(3):
+    for attempt in range(3):
+        if attempt:
+            reconnect()
         out = sh("rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml", timeout=20)
         if "<hierarchy" in out:
             try:
