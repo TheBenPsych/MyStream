@@ -25,8 +25,8 @@ shot_no = [0]
 
 def adb(*args, check=False, timeout=60):
     try:
-        r = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=timeout)
-        return r.stdout
+        r = subprocess.run(["adb", *args], capture_output=True, timeout=timeout)
+        return r.stdout.decode("utf-8", "replace")
     except subprocess.TimeoutExpired:
         return ""
 
@@ -77,7 +77,6 @@ def center(n):
 def shot(name):
     shot_no[0] += 1
     base = f"{OUT}/{shot_no[0]:03d}-{re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')}"
-    adb("exec-out", "screencap", "-p")  # warm up
     with open(base + ".png", "wb") as f:
         f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
     root = dump()
@@ -88,6 +87,7 @@ def shot(name):
                 if t or n.get("focused") == "true":
                     f.write(f"{'*' if n.get('focused') == 'true' else ' '} {n.get('bounds')} {t}\n")
     check_crash(name)
+    log(f"screen {name}: " + " | ".join(t for t in texts(root) if t)[:300])
     return root
 
 
