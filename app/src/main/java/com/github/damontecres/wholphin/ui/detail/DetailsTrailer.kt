@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.detail
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxScope
@@ -43,8 +44,8 @@ import org.jellyfin.sdk.api.client.extensions.videosApi
 import javax.inject.Inject
 
 /**
- * Lets the trailer take over the screen, Netflix-style: a few seconds after the trailer starts
- * (and nothing was pressed), the page text fades away and the trailer grows to full screen.
+ * Lets the trailer take over, Netflix-style: a few seconds after the trailer starts (and nothing
+ * was pressed), the page text fades away and the trailer's sound gently fades in.
  * Any remote button brings everything back.
  */
 @Stable
@@ -100,15 +101,24 @@ fun BoxScope.DetailsTrailer(
     }
     val showing = active && playing
     LaunchedEffect(showing) { cinemaState?.playing = showing }
-    val expand by animateFloatAsState(
-        if (cinemaState?.cinema == true) 1f else 0f,
-        tween(CINEMA_FADE_MS),
-        label = "cinemaTrailer",
-    )
+    // Sound: once the page text has faded away, the trailer's sound slowly rises to a gentle
+    // level (no jumpscare). Any button press brings the page back and quickly fades it out again.
+    val cinema = cinemaState?.cinema == true
+    LaunchedEffect(cinema, showing) {
+        val p = viewModel.player ?: return@LaunchedEffect
+        if (!showing) {
+            p.volume = 0f
+            return@LaunchedEffect
+        }
+        animate(
+            initialValue = p.volume,
+            targetValue = if (cinema) TRAILER_VOLUME else 0f,
+            animationSpec = tween(if (cinema) VOLUME_FADE_IN_MS else VOLUME_FADE_OUT_MS),
+        ) { value, _ -> p.volume = value }
+    }
     if (showing) {
         HeroTrailer(
             player = viewModel.player ?: return,
-            expand = expand,
             modifier = Modifier.align(Alignment.TopEnd),
         )
     }
@@ -178,3 +188,6 @@ class DetailsTrailerViewModel
 private const val DELAY_MS = 4_000L
 private const val CINEMA_DELAY_MS = 3_000L
 private const val CINEMA_FADE_MS = 700
+private const val TRAILER_VOLUME = .5f
+private const val VOLUME_FADE_IN_MS = 4_000
+private const val VOLUME_FADE_OUT_MS = 400
