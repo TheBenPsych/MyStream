@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.games
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +43,7 @@ abstract class MiniGame {
     var easy = false
 
     /** Seconds left on the 3-2-1 countdown */
-    var countdown = 0f
+    var countdown by mutableFloatStateOf(0f)
         private set
 
     /** Seconds since the game ended, so a last button mash doesn't instantly restart it */
@@ -167,6 +168,20 @@ abstract class MiniGame {
     ) {}
 
     abstract fun DrawScope.draw(textMeasurer: TextMeasurer)
+
+    /** Fill the screen with a typical moment of the game, for the picture on its tile */
+    open fun setupPreview() {}
+
+    /** Sets up the tile picture at this size (only the first time, or when the size changes) */
+    fun preparePreview(
+        w: Float,
+        h: Float,
+    ) {
+        if (w != width || h != height) {
+            setSize(w, h)
+            setupPreview()
+        }
+    }
 
     // ---- Little effects shared by every game ----
 

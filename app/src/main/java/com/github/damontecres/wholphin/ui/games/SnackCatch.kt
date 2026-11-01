@@ -177,6 +177,15 @@ class SnackCatch : MiniGame() {
         }
     }
 
+    override fun setupPreview() {
+        bucketX = width * 0.6f
+        drops.add(Drop(width * 0.58f, height * 0.62f, Kind.POPCORN, 0f, 0f))
+        drops.add(Drop(width * 0.35f, height * 0.3f, Kind.CANDY, 0f, 0f))
+        drops.add(Drop(width * 0.8f, height * 0.4f, Kind.SODA, 0f, 0f))
+        drops.add(Drop(width * 0.5f, height * 0.15f, Kind.TICKET, 0f, 0f))
+        drops.add(Drop(width * 0.2f, height * 0.55f, Kind.POPCORN, 0f, 0f))
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         // Theater seats in the dark, with the screen's glow on top
         drawRect(Brush.verticalGradient(listOf(Color(0xFF2B1036), Color(0xFF12081A), Color(0xFF07070A))))

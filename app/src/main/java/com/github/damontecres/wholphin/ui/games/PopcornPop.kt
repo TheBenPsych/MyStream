@@ -194,6 +194,12 @@ class PopcornPop : MiniGame() {
         }
     }
 
+    override fun setupPreview() {
+        // A ticket over the ledge just above the kernel, and the kernel mid-bounce
+        ledges.firstOrNull { it.y < height * 0.6f && it.kind != Kind.REEL }?.let { tickets.add(Ticket(it.x + ledgeW / 2f, it.y - 9f * u)) }
+        py = height * 0.65f
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         // Dark theater with a soft spotlight
         drawRect(Brush.verticalGradient(listOf(Color(0xFF1A0B12), Color(0xFF07070A))))

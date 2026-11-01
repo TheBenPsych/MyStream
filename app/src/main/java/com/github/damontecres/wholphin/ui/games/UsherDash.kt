@@ -30,6 +30,8 @@ class UsherDash : MiniGame() {
     private class Ticket(
         var x: Float,
         val y: Float,
+        /** Where in its gentle up-and-down float this ticket starts */
+        val bob: Float = Random.nextFloat() * 6f,
     )
 
     private val obstacles = mutableListOf<Obstacle>()
@@ -151,6 +153,15 @@ class UsherDash : MiniGame() {
         }
     }
 
+    override fun setupPreview() {
+        // The usher mid-jump over a popcorn spill, with a ticket and a lost shoe ahead
+        obstacles.add(Obstacle(ux - 5f * u, Kind.SPILL, 11f * u, 2.5f * u))
+        obstacles.add(Obstacle(width * 0.8f, Kind.SHOE, 5f * u, 4.5f * u))
+        tickets.add(Ticket(width * 0.55f, ground - bodyH - 16f * u))
+        uy = ground - 12f * u
+        onGround = false
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         // Dark auditorium with the movie screen glowing far away
         drawRect(Brush.verticalGradient(listOf(Color(0xFF101828), Color(0xFF0A0A12))))
@@ -185,7 +196,7 @@ class UsherDash : MiniGame() {
         }
 
         obstacles.forEach { drawObstacle(it) }
-        tickets.forEach { drawTicket(it.x, it.y + sin(runTime * 4f + it.x) * u, 2.4f * u) }
+        tickets.forEach { drawTicket(it.x, it.y + sin(runTime * 4f + it.bob) * u, 2.4f * u) }
         drawUsher()
     }
 

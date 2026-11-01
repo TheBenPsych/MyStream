@@ -145,6 +145,20 @@ class FilmCanStack : MiniGame() {
         if (down && input == GameInput.ACTION) drop()
     }
 
+    override fun setupPreview() {
+        // A tower of five cans that gets a little narrower, and the next one sliding in
+        var x = tower.last().x
+        var w = tower.last().w
+        for (i in 1..5) {
+            val cut = if (i % 2 == 0) 0f else 3f * u
+            x += if (i % 3 == 0) 0f else cut
+            w -= cut
+            tower.add(Can(x, w, labels[i % labels.size]))
+        }
+        movingW = w
+        movingX = width * 0.62f
+    }
+
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         // A projection booth: warm dark walls, and a light beam from the projector
         drawRect(Brush.verticalGradient(listOf(Color(0xFF1C1424), Color(0xFF0E0A12))))
