@@ -35,6 +35,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.dialogWidth
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -64,11 +65,13 @@ fun UpdatePrompt(viewModel: UpdatePromptViewModel = hiltViewModel()) {
     val current = release ?: return
     if (kids) return
     val updateFocus = remember { FocusRequester() }
-    LaunchedEffect(current) { updateFocus.tryRequestFocus() }
     BasicDialog(
         onDismissRequest = { viewModel.notNow(current) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Runs inside the pop-up, once its buttons exist. Asking for focus from outside ran too early and
+        // quietly failed, so the first OK press on the remote only selected "Update" and a second press was needed.
+        LaunchedEffect(current) { updateFocus.requestFocusWhenReady() }
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
@@ -123,5 +126,16 @@ fun UpdatePrompt(viewModel: UpdatePromptViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Focus a button that may not be on screen yet (for example inside a pop-up that is still opening).
+ * Tries for about half a second, so the first OK press on the remote presses the button instead of only selecting it.
+ */
+suspend fun FocusRequester.requestFocusWhenReady() {
+    repeat(10) {
+        if (tryRequestFocus()) return
+        delay(50)
     }
 }
