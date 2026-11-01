@@ -20,6 +20,10 @@ MODE, PKG, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 SERVER = os.environ.get("AUDIT_SERVER", "https://demo.jellyfin.org/stable")
 USER = os.environ.get("AUDIT_USER", "demo")
 os.makedirs(OUT, exist_ok=True)
+# keep the report of an earlier try (when the emulator crashed and was started again)
+if os.path.exists(f"{OUT}/report.json"):
+    n = len([f for f in os.listdir(OUT) if f.startswith("report-try")]) + 1
+    os.rename(f"{OUT}/report.json", f"{OUT}/report-try{n}.json")
 REPORT = {"mode": MODE, "steps": [], "timings": {}, "unreachable": {}, "problems": []}
 shot_no = [0]
 DEADLINE = time.time() + 36 * 60
