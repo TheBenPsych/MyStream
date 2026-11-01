@@ -61,7 +61,11 @@ fun MovieDetailsHeader(
 
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(.60f),
+            modifier =
+                Modifier.fillMaxWidth(
+                    com.github.damontecres.wholphin.ui.touch
+                        .detailsTextFraction(),
+                ),
         ) {
             QuickDetails(
                 movie.ui.quickDetails,

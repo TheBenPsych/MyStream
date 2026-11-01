@@ -205,7 +205,11 @@ fun SeriesOverviewContent(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(.6f),
+                    modifier =
+                        Modifier.fillMaxWidth(
+                            com.github.damontecres.wholphin.ui.touch
+                                .detailsTextFraction(),
+                        ),
                 )
 
 //                key(position.seasonTabIndex) {
