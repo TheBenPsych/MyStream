@@ -227,16 +227,17 @@ fun HeroPillButton(
 fun HeroTrailer(
     player: Player,
     modifier: Modifier = Modifier,
-    expand: Float = 0f,
+    clear: Float = 0f,
 ) {
-    // expand goes 0 -> 1 to grow the trailer to full screen and fade its dark edges away
+    // clear goes 0 -> 1 to shrink the dark shading to just a thin soft edge, so nothing sits over
+    // the picture while the page text is hidden
     val background = MaterialTheme.colorScheme.background
-    val scrim = 1f - expand
+    val shade = 1f - clear
     Box(
         modifier =
             modifier
-                .fillMaxWidth(BACKDROP_WIDTH_FRACTION + (1f - BACKDROP_WIDTH_FRACTION) * expand)
-                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION + (1f - BACKDROP_HEIGHT_FRACTION) * expand),
+                .fillMaxWidth(BACKDROP_WIDTH_FRACTION)
+                .fillMaxHeight(BACKDROP_HEIGHT_FRACTION),
     ) {
         PlayerSurface(
             player = player,
@@ -249,9 +250,9 @@ fun HeroTrailer(
                     .fillMaxSize()
                     .background(
                         Brush.horizontalGradient(
-                            0f to background.copy(alpha = scrim),
-                            .35f to background.copy(alpha = .4f * scrim),
-                            .6f to Color.Transparent,
+                            0f to background,
+                            (.06f + .29f * shade) to background.copy(alpha = .4f * shade),
+                            (.12f + .48f * shade) to Color.Transparent,
                         ),
                     ),
         )
@@ -261,8 +262,8 @@ fun HeroTrailer(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            .6f to Color.Transparent,
-                            1f to background.copy(alpha = .3f + .7f * scrim),
+                            (.88f - .28f * shade) to Color.Transparent,
+                            1f to background,
                         ),
                     ),
         )
