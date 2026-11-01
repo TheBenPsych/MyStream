@@ -169,6 +169,10 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** A TV guide of Benflix channels made from your library */
+    @Serializable
+    data object Channels : Destination(false)
+
     /** Big franchises in story or release order */
     @Serializable
     data object WatchOrder : Destination(false)

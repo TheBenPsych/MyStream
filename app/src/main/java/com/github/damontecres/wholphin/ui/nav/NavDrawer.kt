@@ -194,6 +194,8 @@ class NavDrawerViewModel
                             GAMES_INDEX
                         } else if (key is Destination.MyBenflix) {
                             MY_BENFLIX_INDEX
+                        } else if (key is Destination.Channels) {
+                            CHANNELS_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -279,6 +281,7 @@ private const val SEARCH_INDEX = -2
 private const val NOW_PLAYING_INDEX = -3
 private const val GAMES_INDEX = -4
 private const val MY_BENFLIX_INDEX = -5
+private const val CHANNELS_INDEX = -6
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -365,6 +368,10 @@ fun NavDrawer(
             )
         }
 
+    val onClickChannels = {
+        viewModel.setIndex(CHANNELS_INDEX)
+        viewModel.navigationManager.navigateToFromDrawer(Destination.Channels)
+    }
     val onClickSearch = {
         viewModel.setIndex(SEARCH_INDEX)
         viewModel.navigationManager.navigateToFromDrawer(Destination.Search())
@@ -471,7 +478,12 @@ fun NavDrawer(
                     clipsOpen = false
                     downloadsOpen = true
                 },
-                gamesTitle = stringResource(R.string.games),
+                channelsSelected = selectedIndex == CHANNELS_INDEX && !clipsOpen && !downloadsOpen,
+                onClickChannels = {
+                    clipsOpen = false
+                    downloadsOpen = false
+                    onClickChannels()
+                },
                 user = user,
                 userImageUrl = userImageUrl,
                 searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen && !downloadsOpen,
@@ -517,6 +529,11 @@ fun NavDrawer(
                 i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
         } +
             listOf(
+                TopNavTab(
+                    title = stringResource(R.string.channels),
+                    selected = selectedIndex == CHANNELS_INDEX,
+                    onClick = onClickChannels,
+                ),
                 TopNavTab(
                     title = stringResource(R.string.trailer_shuffle),
                     selected = false,

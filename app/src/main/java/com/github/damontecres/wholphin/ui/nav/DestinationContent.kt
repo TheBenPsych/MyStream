@@ -357,6 +357,12 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        Destination.Channels -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .ChannelsPage(modifier)
+        }
+
         Destination.WatchOrder -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

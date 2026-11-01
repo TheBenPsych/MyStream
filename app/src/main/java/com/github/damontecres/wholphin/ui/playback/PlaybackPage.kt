@@ -362,6 +362,16 @@ fun PlaybackPageContent(
         modifier
             .background(if (state.nextUp == null) Color.Black else MaterialTheme.colorScheme.background)
             .onPreviewKeyEvent {
+                // Watching a channel: Up/Down flips to the next or previous channel
+                if (com.github.damontecres.wholphin.services.ChannelSession.handlePlayerKey(
+                        it,
+                        controllerViewState.controlsVisible,
+                        (destination as? Destination.Playback)?.itemId,
+                        viewModel.navigationManager,
+                    )
+                ) {
+                    return@onPreviewKeyEvent true
+                }
                 ambientKeyPresses++
                 // The first press only wakes the screen from ambient mode
                 showAmbient
@@ -657,6 +667,13 @@ fun PlaybackPageContent(
                         },
             )
         }
+
+        com.github.damontecres.wholphin.ui.main.ChannelBanner(
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(40.dp),
+        )
 
         PauseAmbient(
             visible = showAmbient,

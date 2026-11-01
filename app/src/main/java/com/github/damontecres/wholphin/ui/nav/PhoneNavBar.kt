@@ -69,14 +69,16 @@ fun PhoneHeader(modifier: Modifier = Modifier) {
 
 /**
  * Benflix on phones: the menu sits along the bottom of the screen where your thumb is.
- * Home, Search, Clips (a feed of trailers), Games, and My Benflix, which holds your profile, My List, the libraries and settings.
+ * Home, Search, Clips (a feed of trailers), Channels (a TV guide), and My Benflix, which holds your profile,
+ * My List, the libraries, Games and settings.
  */
 @Composable
 fun PhoneNavBar(
     tabs: List<TopNavTab>,
     clipsSelected: Boolean,
     onClickClips: () -> Unit,
-    gamesTitle: String,
+    channelsSelected: Boolean,
+    onClickChannels: () -> Unit,
     user: JellyfinUser,
     userImageUrl: String?,
     searchSelected: Boolean,
@@ -88,8 +90,8 @@ fun PhoneNavBar(
 ) {
     val kids by KidsMode.active.collectAsState()
     val home = tabs.firstOrNull()
-    val games = tabs.firstOrNull { it.title == gamesTitle }
-    val libraries = tabs.filter { it !== home && it !== games }
+    // Games and every library live under My Benflix
+    val libraries = tabs.filter { it !== home }
     var showMine by remember { mutableStateOf(false) }
     val name = if (kids) "Kids" else user.name
 
@@ -106,9 +108,7 @@ fun PhoneNavBar(
         }
         PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
         PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.clips_title), clipsSelected, onClickClips)
-        games?.let {
-            PhoneNavItem(R.string.fa_gamepad, it.title, it.selected, it.onClick)
-        }
+        PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, onClickChannels)
         val mineSelected = libraries.any { it.selected }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
