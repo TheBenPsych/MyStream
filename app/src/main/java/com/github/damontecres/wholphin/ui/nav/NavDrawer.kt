@@ -498,21 +498,28 @@ fun NavDrawer(
         }
         return
     }
-    // TV: one slim line. Home, Movies, Shows, Games and My Benflix are always there;
-    // every other library (Anime, Stand up, Now playing...) sits under More
+    // TV: one slim line. Home, Browse (every library in one list), Channels, Games, My Benflix and More
+    // (Now playing and the extras like the mood quiz)
     val allItems = serviceState.items + serviceState.moreItems
     val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
     val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
     val myListIndex = allItems.indexOfFirst { it is NavDrawerItem.Favorites }
     // tabs = Home, (Now playing), every library in order, Games
     val libraryOffset = if (serviceState.nowPlayingEnabled) 2 else 1
-    val libraryTab = { index: Int -> tabs.getOrNull(libraryOffset + index) }
     val myBenflixTitle = stringResource(R.string.my_benflix)
+    val libraryTabs =
+        tabs.filterIndexed { i, _ -> i >= libraryOffset && i != tabs.lastIndex && i - libraryOffset != myListIndex }
+    val firstLibraries =
+        listOf(moviesIndex, showsIndex).filter { it >= 0 }.mapNotNull { tabs.getOrNull(libraryOffset + it) }
+    val browseTabs = firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }
     val mainTabs =
-        listOfNotNull(
+        listOf(
             tabs.first(),
-            moviesIndex.takeIf { it >= 0 }?.let(libraryTab),
-            showsIndex.takeIf { it >= 0 }?.let(libraryTab),
+            TopNavTab(
+                title = stringResource(R.string.channels),
+                selected = selectedIndex == CHANNELS_INDEX,
+                onClick = onClickChannels,
+            ),
             tabs.last(),
             TopNavTab(
                 title = myBenflixTitle,
@@ -524,16 +531,8 @@ fun NavDrawer(
             ),
         )
     val moreTabs =
-        tabs.filterIndexed { i, _ ->
-            i != 0 && i != tabs.lastIndex &&
-                i - libraryOffset !in setOf(moviesIndex, showsIndex, myListIndex).filter { it >= 0 }
-        } +
+        tabs.filterIndexed { i, _ -> i in 1 until libraryOffset } +
             listOf(
-                TopNavTab(
-                    title = stringResource(R.string.channels),
-                    selected = selectedIndex == CHANNELS_INDEX,
-                    onClick = onClickChannels,
-                ),
                 TopNavTab(
                     title = stringResource(R.string.trailer_shuffle),
                     selected = false,
@@ -554,6 +553,7 @@ fun NavDrawer(
         TopNavBar(
             tabs = mainTabs,
             moreTabs = moreTabs,
+            browseTabs = browseTabs,
             user = user,
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,
