@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.calculateSeekAccelerationMultiplier
 import com.github.damontecres.wholphin.ui.playback.isDpadLeft
 import com.github.damontecres.wholphin.ui.playback.isDpadRight
+import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -216,7 +217,7 @@ private fun SeekBarDisplay(
     onTouchSeek: ((Float) -> Unit)? = null,
 ) {
     // Benflix red progress, like a streaming service
-    val color = MaterialTheme.colorScheme.primary
+    val color = BenflixRed
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     val isFocused by interactionSource.collectIsFocusedAsState()
