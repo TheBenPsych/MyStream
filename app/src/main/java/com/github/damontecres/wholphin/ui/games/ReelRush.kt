@@ -16,69 +16,116 @@ import kotlin.random.Random
 
 /**
  * Reel Rush: the Benflix "B" flies through gaps between strips of film. One button flaps.
+ * Golden tickets in the gaps are worth +3, and after a while some strips start sliding up and down.
  */
 class ReelRush : MiniGame() {
     private class Strip(
         var x: Float,
-        val gapY: Float,
+        val baseY: Float,
+        /** How far the gap slides up and down (0 = it stays still) */
+        val swing: Float,
+        val wobble: Float,
         var passed: Boolean = false,
-    )
+        var ticket: Boolean = false,
+    ) {
+        var gapY = baseY
+    }
 
     private val strips = mutableListOf<Strip>()
     private var by = 0f
     private var vy = 0f
     private var spawnIn = 0f
+    private var time = 0f
+    private var bonus = 0
+    private var passedCount = 0
+    private val trail = ArrayDeque<Offset>()
 
     private val u get() = height / 100f
     private val bx get() = width * 0.25f
     private val bSize get() = 7f * u
-    private val gravity get() = 210f * u
-    private val flap get() = 62f * u
+    private val gravity get() = 210f * u * pace
+    private val flap get() = 62f * u * kotlin.math.sqrt(pace)
     private val stripW get() = 11f * u
-    private val gap get() = (34f - (score / 5f).coerceAtMost(8f)) * u
-    private val speed get() = (38f + (score * 0.6f).coerceAtMost(22f)) * u
+    private val gap get() = (34f - (passedCount / 5f).coerceAtMost(8f) + if (easy) 8f else 0f) * u
+    private val speed get() = (38f + (passedCount * 0.6f).coerceAtMost(22f)) * u * pace
 
     override fun reset() {
         strips.clear()
         score = 0
+        bonus = 0
+        passedCount = 0
+        time = 0f
+        trail.clear()
         by = height / 2f
         vy = 0f
         spawnIn = 0.6f
     }
 
     override fun step(dt: Float) {
+        time += dt
         vy += gravity * dt
         by += vy * dt
         spawnIn -= dt
         if (spawnIn <= 0f) {
-            val margin = gap / 2f + 8f * u
-            strips.add(Strip(width + stripW, margin + Random.nextFloat() * (height - 2 * margin)))
+            val swing = if (!easy && passedCount >= 15 && Random.nextFloat() < 0.45f) (6f + Random.nextFloat() * 8f) * u else 0f
+            val margin = gap / 2f + 8f * u + swing
+            val strip = Strip(width + stripW, margin + Random.nextFloat() * (height - 2 * margin), swing, Random.nextFloat() * 6f)
+            strip.ticket = Random.nextFloat() < 0.25f
+            strips.add(strip)
             spawnIn = (width * 0.42f) / speed
         }
-        strips.forEach { it.x -= speed * dt }
+        strips.forEach {
+            it.x -= speed * dt
+            if (it.swing > 0f) it.gapY = it.baseY + kotlin.math.sin(time * 1.6f + it.wobble) * it.swing
+        }
         strips.removeAll { it.x < -stripW }
+        trail.addFirst(Offset(bx, by))
+        while (trail.size > 8) trail.removeLast()
+        trail.forEachIndexed { i, o -> trail[i] = Offset(o.x - speed * dt, o.y) }
 
         val half = bSize / 2f
         if (by - half < 0f || by + half > height) {
-            gameOver()
+            crash()
             return
         }
         strips.forEach { s ->
             if (!s.passed && s.x + stripW < bx - half) {
                 s.passed = true
-                score++
+                passedCount++
+                sound(Sfx.POINT)
+            }
+            if (s.ticket && kotlin.math.abs(s.x + stripW / 2f - bx) < half + 2f * u && kotlin.math.abs(s.gapY - by) < half + 2f * u) {
+                s.ticket = false
+                bonus += 3
+                sound(Sfx.COIN)
+                popup(bx, by - bSize, "+3")
+                burst(bx, by, Color(0xFFFFD54F), count = 10, speed = 30f)
             }
             val overlapsX = bx + half * 0.8f > s.x && bx - half * 0.8f < s.x + stripW
             val inGap = by - half * 0.8f > s.gapY - gap / 2f && by + half * 0.8f < s.gapY + gap / 2f
-            if (overlapsX && !inGap) gameOver()
+            if (overlapsX && !inGap) {
+                crash()
+                return
+            }
         }
+        score = passedCount + bonus
+    }
+
+    private fun crash() {
+        burst(bx, by, Color(0xFFE50914), count = 18, speed = 50f, size = 1.2f)
+        burst(bx, by, Color.White, count = 8, speed = 35f)
+        gameOver()
     }
 
     override fun input(
         input: GameInput,
         down: Boolean,
     ) {
-        if (down && input == GameInput.ACTION) vy = -flap
+        if (down && input == GameInput.ACTION) {
+            vy = -flap
+            sound(Sfx.FLAP)
+            burst(bx - bSize / 2f, by + bSize / 3f, Color.White.copy(alpha = 0.7f), count = 3, speed = 12f, size = 0.6f)
+        }
     }
 
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
@@ -86,6 +133,15 @@ class ReelRush : MiniGame() {
         strips.forEach { s ->
             drawFilm(s.x, 0f, s.gapY - gap / 2f)
             drawFilm(s.x, s.gapY + gap / 2f, height)
+            if (s.ticket) drawTicket(s.x + stripW / 2f, s.gapY, 2.4f * u)
+        }
+        // A fading red trail behind the B
+        val half0 = bSize / 2f
+        trail.forEachIndexed { i, o ->
+            if (i == 0) return@forEachIndexed
+            val k = 1f - i / trail.size.toFloat()
+            val r = half0 * 0.7f * k
+            drawRoundRect(Color(0xFFE50914).copy(alpha = 0.35f * k), Offset(o.x - r, o.y - r), Size(r * 2, r * 2), CornerRadius(r * 0.3f))
         }
         // The B, tilting with its speed
         val half = bSize / 2f

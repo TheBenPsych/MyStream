@@ -6,24 +6,35 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.TextMeasurer
 import kotlin.random.Random
 
 /**
  * Popcorn Pop: a popcorn kernel bounces up a tower of soda cups and film reels.
- * Steer left and right; the kernel bounces by itself. Reels slide sideways, butter pats launch you higher.
+ * Steer left and right; the kernel bounces by itself. Reels slide sideways, butter pats launch you higher,
+ * glowing phones (someone's texting in the theater!) drop away after one bounce, and tickets are worth +5.
  */
 class PopcornPop : MiniGame() {
-    private enum class Kind { CUP, REEL, BUTTER }
+    private enum class Kind { CUP, REEL, BUTTER, PHONE }
 
     private class Ledge(
         var x: Float,
         var y: Float,
         val kind: Kind,
         var vx: Float,
+        var falling: Boolean = false,
+    )
+
+    private class Ticket(
+        var x: Float,
+        var y: Float,
     )
 
     private val ledges = mutableListOf<Ledge>()
+    private val tickets = mutableListOf<Ticket>()
+    private var bonus = 0
+    private var squash = 0f
     private var px = 0f
     private var py = 0f
     private var vy = 0f
@@ -36,13 +47,16 @@ class PopcornPop : MiniGame() {
     private val ledgeW get() = 16f * u
     private val ledgeH get() = 3f * u
     private val radius get() = 3.2f * u
-    private val gravity get() = 140f * u
-    private val bounce get() = 78f * u
-    private val steerSpeed get() = 70f * u
+    private val gravity get() = 140f * u * pace * pace
+    private val bounce get() = 78f * u * pace
+    private val steerSpeed get() = 70f * u * pace
 
     override fun reset() {
         ledges.clear()
+        tickets.clear()
         score = 0
+        bonus = 0
+        squash = 0f
         climbed = 0f
         steer = 0
         px = width / 2f
@@ -61,11 +75,15 @@ class PopcornPop : MiniGame() {
         val kind =
             when {
                 roll < 0.07f -> Kind.BUTTER
-                roll < 0.07f + (0.1f + score / 400f).coerceAtMost(0.35f) -> Kind.REEL
+                !easy && score > 50 && roll < 0.07f + (0.04f + score / 1500f).coerceAtMost(0.15f) -> Kind.PHONE
+                roll < 0.07f + (0.1f + score / 400f).coerceAtMost(if (easy) 0.2f else 0.35f) -> Kind.REEL
                 else -> Kind.CUP
             }
-        val vx = if (kind == Kind.REEL) (if (Random.nextBoolean()) 1 else -1) * (18f + Random.nextFloat() * 18f) * u else 0f
-        ledges.add(Ledge(Random.nextFloat() * (width - ledgeW), highestLedge, kind, vx))
+        val vx = if (kind == Kind.REEL) (if (Random.nextBoolean()) 1 else -1) * (18f + Random.nextFloat() * 18f) * u * pace else 0f
+        val x = Random.nextFloat() * (width - ledgeW)
+        ledges.add(Ledge(x, highestLedge, kind, vx))
+        // Now and then a ticket floats above a still ledge
+        if (kind != Kind.REEL && Random.nextFloat() < 0.12f) tickets.add(Ticket(x + ledgeW / 2f, highestLedge - 9f * u))
     }
 
     override fun step(dt: Float) {
@@ -79,8 +97,11 @@ class PopcornPop : MiniGame() {
         py += vy * dt
         val newBottom = py + radius
 
+        if (squash > 0f) squash -= dt
         ledges.forEach { l ->
-            if (l.vx != 0f) {
+            if (l.falling) {
+                l.y += 60f * u * dt
+            } else if (l.vx != 0f) {
                 l.x += l.vx * dt
                 if (l.x < 0f || l.x > width - ledgeW) l.vx = -l.vx
             }
@@ -90,11 +111,33 @@ class PopcornPop : MiniGame() {
         if (vy > 0f) {
             ledges
                 .firstOrNull { l ->
-                    oldBottom <= l.y && newBottom >= l.y && px in (l.x - radius * 0.6f)..(l.x + ledgeW + radius * 0.6f)
+                    !l.falling && oldBottom <= l.y && newBottom >= l.y && px in (l.x - radius * 0.6f)..(l.x + ledgeW + radius * 0.6f)
                 }?.let { l ->
                     py = l.y - radius
-                    vy = if (l.kind == Kind.BUTTER) -bounce * 1.6f else -bounce
+                    squash = 0.12f
+                    if (l.kind == Kind.BUTTER) {
+                        vy = -bounce * 1.6f
+                        sound(Sfx.BOOST)
+                        burst(px, l.y, Color(0xFFFFE082), count = 14, speed = 40f)
+                    } else {
+                        vy = -bounce
+                        sound(Sfx.POP)
+                        burst(px, l.y, Color(0xFFFFF4D6), count = 6, speed = 22f, size = 0.7f)
+                    }
+                    if (l.kind == Kind.PHONE) l.falling = true
                 }
+        }
+
+        // Grab tickets for bonus points
+        tickets.removeAll { t ->
+            val hit = kotlin.math.abs(t.x - px) < radius + 3f * u && kotlin.math.abs(t.y - py) < radius + 2.5f * u
+            if (hit) {
+                bonus += 5
+                sound(Sfx.COIN)
+                popup(t.x, t.y, "+5")
+                burst(t.x, t.y, Color(0xFFFFD54F), count = 10, speed = 30f)
+            }
+            hit
         }
 
         // Move the camera up when the kernel climbs past the top part of the screen
@@ -103,14 +146,21 @@ class PopcornPop : MiniGame() {
             val shift = line - py
             py = line
             ledges.forEach { it.y += shift }
+            tickets.forEach { it.y += shift }
+            shiftEffects(shift)
             highestLedge += shift
             climbed += shift
-            score = (climbed / (10f * u)).toInt()
         }
+        score = (climbed / (10f * u)).toInt() + bonus
         ledges.removeAll { it.y > height + ledgeH }
+        tickets.removeAll { it.y > height + ledgeH }
         while (highestLedge > -height * 0.2f) addLedge()
 
         if (py - radius > height) gameOver()
+    }
+
+    override fun releaseAll() {
+        steer = 0
     }
 
     override fun input(
@@ -140,7 +190,7 @@ class PopcornPop : MiniGame() {
                     }
             }
 
-            GameInput.ACTION -> {}
+            else -> {}
         }
     }
 
@@ -153,12 +203,16 @@ class PopcornPop : MiniGame() {
             center = Offset(width / 2f, 0f),
         )
         ledges.forEach { l -> drawLedge(l) }
-        // The kernel: a fluffy popped piece
+        tickets.forEach { t -> drawTicket(t.x, t.y, 2.6f * u) }
+        // The kernel: a fluffy popped piece that squashes a little when it lands
         val c = Offset(px, py)
-        drawCircle(Color(0xFFFFF4D6), radius, c)
-        drawCircle(Color(0xFFFFF4D6), radius * 0.7f, c + Offset(-radius * 0.7f, -radius * 0.3f))
-        drawCircle(Color(0xFFFFF4D6), radius * 0.7f, c + Offset(radius * 0.7f, -radius * 0.4f))
-        drawCircle(Color(0xFFFFC94D), radius * 0.45f, c + Offset(0f, radius * 0.45f))
+        val sq = (squash / 0.12f).coerceIn(0f, 1f) * 0.25f
+        scale(1f + sq, 1f - sq, c) {
+            drawCircle(Color(0xFFFFF4D6), radius, c)
+            drawCircle(Color(0xFFFFF4D6), radius * 0.7f, c + Offset(-radius * 0.7f, -radius * 0.3f))
+            drawCircle(Color(0xFFFFF4D6), radius * 0.7f, c + Offset(radius * 0.7f, -radius * 0.4f))
+            drawCircle(Color(0xFFFFC94D), radius * 0.45f, c + Offset(0f, radius * 0.45f))
+        }
     }
 
     private fun DrawScope.drawLedge(l: Ledge) {
@@ -181,10 +235,38 @@ class PopcornPop : MiniGame() {
                 drawCircle(Color(0xFFB8BCC4), h * 0.3f, Offset(l.x + w - h, l.y + h / 2f))
             }
 
+            Kind.PHONE -> {
+                // A phone lit up in the dark theater
+                drawRoundRect(Color(0xFF22252B), Offset(l.x, l.y), Size(w, h), CornerRadius(h / 3f))
+                drawRoundRect(
+                    Color(0xFF7FD3FF),
+                    Offset(l.x + h * 0.4f, l.y + h * 0.25f),
+                    Size(w - h * 0.8f, h * 0.5f),
+                    CornerRadius(h / 5f),
+                )
+                drawCircle(Color(0x337FD3FF), w * 0.6f, Offset(l.x + w / 2f, l.y + h / 2f))
+            }
+
             Kind.BUTTER -> {
                 drawRoundRect(Color(0xFFFFD54F), Offset(l.x, l.y), Size(w, h), CornerRadius(h / 2f))
                 drawRoundRect(Color(0xFFFFF59D), Offset(l.x + w * 0.15f, l.y + h * 0.2f), Size(w * 0.5f, h * 0.3f), CornerRadius(h / 4f))
             }
         }
     }
+}
+
+/** A little golden movie ticket, centered on x, y; [s] is about half its height */
+internal fun DrawScope.drawTicket(
+    x: Float,
+    y: Float,
+    s: Float,
+) {
+    val w = s * 3f
+    val h = s * 1.8f
+    drawRoundRect(Color(0xFFFFC107), Offset(x - w / 2f, y - h / 2f), Size(w, h), CornerRadius(s * 0.3f))
+    drawCircle(Color(0xFF07070A), s * 0.35f, Offset(x - w / 2f, y))
+    drawCircle(Color(0xFF07070A), s * 0.35f, Offset(x + w / 2f, y))
+    drawRect(Color(0xFFFF8F00), Offset(x - w * 0.2f, y - h * 0.3f), Size(w * 0.04f, h * 0.6f))
+    drawRect(Color(0xFFFFF8E1), Offset(x - w * 0.05f, y - h * 0.15f), Size(w * 0.3f, h * 0.1f))
+    drawRect(Color(0xFFFFF8E1), Offset(x - w * 0.05f, y + h * 0.05f), Size(w * 0.22f, h * 0.1f))
 }

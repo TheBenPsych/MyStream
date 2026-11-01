@@ -2,8 +2,12 @@ package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.net.Uri
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,6 +49,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -52,6 +58,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -61,7 +68,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -103,17 +113,17 @@ enum class BuiltInGame(
     val tagline: String,
     val howTo: String,
     val remoteOk: Boolean,
-    /** On a phone, tapping the left or right half steers (instead of any tap = button) */
-    val touchSteers: Boolean,
+    /** What a finger on a phone screen does in this game */
+    val touch: TouchMode,
     val colors: List<Color>,
     val create: () -> MiniGame,
 ) {
     POPCORN_POP(
         title = "Popcorn Pop",
-        tagline = "Bounce a popcorn kernel up a tower of soda cups and film reels.",
+        tagline = "Bounce a popcorn kernel up a tower of soda cups and film reels. Grab the tickets!",
         howTo = "Remote or controller: ◀ ▶ to steer · Phone: hold left or right side",
         remoteOk = true,
-        touchSteers = true,
+        touch = TouchMode.STEER,
         colors = listOf(Color(0xFFE50914), Color(0xFF5C0A10)),
         create = { PopcornPop() },
     ),
@@ -122,10 +132,58 @@ enum class BuiltInGame(
         tagline = "Fly the Benflix B through the gaps in the film strips.",
         howTo = "Press OK on the remote or A on a controller to flap · Phone: tap anywhere",
         remoteOk = true,
-        touchSteers = false,
+        touch = TouchMode.BUTTON,
         colors = listOf(Color(0xFF1B3F8A), Color(0xFF0D1B2A)),
         create = { ReelRush() },
     ),
+    SNACK_CATCH(
+        title = "Snack Catch",
+        tagline = "Catch the falling snacks in your popcorn bucket. Watch out for spilled sodas!",
+        howTo = "Remote or controller: ◀ ▶ to move · Phone: hold left or right side",
+        remoteOk = true,
+        touch = TouchMode.STEER,
+        colors = listOf(Color(0xFF7B1FA2), Color(0xFF2B1036)),
+        create = { SnackCatch() },
+    ),
+    USHER_DASH(
+        title = "Usher Dash",
+        tagline = "Run down the aisle and jump over popcorn spills and lost shoes.",
+        howTo = "Press OK or A to jump (hold for a higher jump) · Phone: tap anywhere",
+        remoteOk = true,
+        touch = TouchMode.BUTTON,
+        colors = listOf(Color(0xFFB0070F), Color(0xFF101828)),
+        create = { UsherDash() },
+    ),
+    FILM_CAN_STACK(
+        title = "Film Can Stack",
+        tagline = "Drop sliding film cans to build the tallest tower. Line them up perfectly!",
+        howTo = "Press OK or A to drop the can · Phone: tap anywhere",
+        remoteOk = true,
+        touch = TouchMode.BUTTON,
+        colors = listOf(Color(0xFF00838F), Color(0xFF1C1424)),
+        create = { FilmCanStack() },
+    ),
+    MATINEE_MATCH(
+        title = "Matinee Match",
+        tagline = "Flip the cards and find the matching movie pairs before time runs out.",
+        howTo = "Arrows to move, OK or A to flip a card · Phone: tap a card",
+        remoteOk = true,
+        touch = TouchMode.TAP,
+        colors = listOf(Color(0xFFF9A825), Color(0xFF5C3A00)),
+        create = { MatineeMatch() },
+    ),
+}
+
+/** What a finger on a phone screen does in a built-in game */
+enum class TouchMode {
+    /** Hold the left or right half of the screen to steer */
+    STEER,
+
+    /** Anywhere on the screen is the one button */
+    BUTTON,
+
+    /** Tap the exact thing you want (like a card) */
+    TAP,
 }
 
 /** What the "Your games" part of the Games tab is showing */
@@ -634,6 +692,8 @@ private fun RemoteIcon(modifier: Modifier = Modifier) {
 
 /**
  * Full screen game. Works with the TV remote, a controller, a keyboard, or touch.
+ *
+ * Back while playing pauses the game; Back again (or on the start / end card) leaves.
  */
 @Composable
 fun PlayGamePage(
@@ -642,12 +702,30 @@ fun PlayGamePage(
     viewModel: GamesViewModel = hiltViewModel(),
 ) {
     val info = remember(gameName) { BuiltInGame.entries.firstOrNull { it.name == gameName } ?: BuiltInGame.POPCORN_POP }
-    val game = remember(info) { info.create() }
+    val game = remember(info) { info.create().apply { easy = KidsMode.isActive } }
     var best by remember { mutableIntStateOf(viewModel.best(info)) }
     var newBest by remember { mutableStateOf(false) }
     val textMeasurer = rememberTextMeasurer()
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
+    val context = LocalContext.current
+    val view = LocalView.current
+    val isTv = rememberIsTv()
+    val sounds = remember { GameSounds(context) }
+    DisposableEffect(sounds) { onDispose { sounds.release() } }
+
+    // Pause when the app goes to the background (home button, a call, the TV's screensaver)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, game) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_PAUSE) game.pause()
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Back mid-game pauses instead of leaving
+    BackHandler(enabled = game.phase == GamePhase.PLAYING || game.phase == GamePhase.COUNTDOWN) { game.pause() }
 
     // Game loop: one step per screen frame
     LaunchedEffect(game) {
@@ -656,6 +734,14 @@ fun PlayGamePage(
             withFrameNanos { now ->
                 if (last != 0L) game.update(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
                 last = now
+            }
+            if (game.sounds.isNotEmpty()) {
+                game.sounds.forEach { sounds.play(it) }
+                game.sounds.clear()
+            }
+            if (game.buzz) {
+                game.buzz = false
+                if (!isTv) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
         }
     }
@@ -670,14 +756,29 @@ fun PlayGamePage(
         input: GameInput,
         down: Boolean,
     ) {
-        if (game.phase != GamePhase.PLAYING) {
-            if (down && (input == GameInput.ACTION || info.touchSteers)) {
-                newBest = false
-                game.start()
-                if (input != GameInput.ACTION) game.input(input, true)
+        when (game.phase) {
+            GamePhase.PLAYING -> {
+                game.input(input, down)
             }
-        } else {
-            game.input(input, down)
+
+            // Steering can be held during the countdown so you're ready to go; the main button waits
+            GamePhase.COUNTDOWN -> {
+                if (input != GameInput.ACTION) game.input(input, down)
+            }
+
+            GamePhase.PAUSED -> {
+                if (down && input == GameInput.ACTION) game.resume()
+            }
+
+            GamePhase.READY, GamePhase.OVER -> {
+                // A short wait after game over, so the button you were mashing doesn't restart right away
+                val ready = game.phase == GamePhase.READY || game.sinceOver > 0.7f
+                if (down && ready && (input == GameInput.ACTION || info.touch == TouchMode.STEER)) {
+                    newBest = false
+                    game.start()
+                    if (input != GameInput.ACTION) game.input(input, true)
+                }
+            }
         }
     }
 
@@ -691,20 +792,47 @@ fun PlayGamePage(
                 .onKeyEvent { event ->
                     val input =
                         when (event.key) {
-                            Key.DirectionLeft, Key.A -> GameInput.LEFT
+                            Key.DirectionLeft, Key.A -> {
+                                GameInput.LEFT
+                            }
 
-                            Key.DirectionRight, Key.D -> GameInput.RIGHT
+                            Key.DirectionRight, Key.D -> {
+                                GameInput.RIGHT
+                            }
+
+                            Key.DirectionUp, Key.W -> {
+                                if (game.upIsAction) GameInput.ACTION else GameInput.UP
+                            }
+
+                            Key.DirectionDown, Key.S -> {
+                                GameInput.DOWN
+                            }
 
                             Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar,
-                            Key.ButtonA, Key.DirectionUp, Key.W,
-                            -> GameInput.ACTION
+                            Key.ButtonA,
+                            -> {
+                                GameInput.ACTION
+                            }
 
-                            else -> null
+                            Key.MediaPlayPause, Key.MediaPause, Key.ButtonStart -> {
+                                if (event.type == KeyEventType.KeyDown) {
+                                    if (game.phase == GamePhase.PAUSED) game.resume() else game.pause()
+                                }
+                                return@onKeyEvent true
+                            }
+
+                            else -> {
+                                null
+                            }
                         } ?: return@onKeyEvent false
                     when (event.type) {
                         KeyEventType.KeyDown -> {
-                            // Holding a button repeats key presses; only the first one counts as a flap
-                            if (event.nativeKeyEvent.repeatCount == 0 || input != GameInput.ACTION) press(input, true)
+                            // Holding a button repeats key presses; only the first one counts as a press
+                            if (event.nativeKeyEvent.repeatCount == 0 || input == GameInput.LEFT ||
+                                input == GameInput.RIGHT
+                            ) {
+                                press(input, true)
+                            }
                         }
 
                         KeyEventType.KeyUp -> {
@@ -715,15 +843,21 @@ fun PlayGamePage(
                 }.pointerInput(info) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
+                        if (info.touch == TouchMode.TAP && game.phase == GamePhase.PLAYING) {
+                            game.tap(down.position.x, down.position.y)
+                            waitForUpOrCancellation()
+                            return@awaitEachGesture
+                        }
                         val input =
-                            if (!info.touchSteers) {
+                            if (info.touch != TouchMode.STEER) {
                                 GameInput.ACTION
                             } else if (down.position.x < size.width / 2f) {
                                 GameInput.LEFT
                             } else {
                                 GameInput.RIGHT
                             }
-                        press(input, true)
+                        // On the pause card a tap anywhere resumes
+                        press(if (game.phase == GamePhase.PAUSED) GameInput.ACTION else input, true)
                         waitForUpOrCancellation()
                         press(input, false)
                     }
@@ -733,9 +867,14 @@ fun PlayGamePage(
             game.setSize(size.width, size.height)
             // Reading frame makes the canvas redraw every frame
             game.frame
-            with(game) { draw(textMeasurer) }
+            translate(game.shakeOffset.x, game.shakeOffset.y) {
+                with(game) {
+                    draw(textMeasurer)
+                    drawEffects(textMeasurer)
+                }
+            }
         }
-        // Score in the corner
+        // Score at the top
         Text(
             text = "${game.score}",
             fontSize = 40.sp,
@@ -746,47 +885,145 @@ fun PlayGamePage(
                     .align(Alignment.TopCenter)
                     .padding(top = 16.dp),
         )
-        if (game.phase != GamePhase.PLAYING) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+        if (game.easy) {
+            Text(
+                text = "Kids speed",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = .7f),
                 modifier =
                     Modifier
-                        .align(Alignment.Center)
-                        .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 40.dp, vertical = 24.dp),
-            ) {
+                        .align(Alignment.TopEnd)
+                        .padding(top = 20.dp, end = 20.dp),
+            )
+        }
+        when (game.phase) {
+            GamePhase.PLAYING -> {}
+
+            GamePhase.COUNTDOWN -> {
                 Text(
-                    text = if (game.phase == GamePhase.OVER) "Game over" else info.title,
-                    fontSize = 34.sp,
+                    text = "${kotlin.math.ceil(game.countdown).toInt().coerceAtLeast(1)}",
+                    fontSize = 96.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White,
+                    modifier = Modifier.align(Alignment.Center),
                 )
-                if (game.phase == GamePhase.OVER) {
-                    Text(
-                        text = if (newBest) "New best: ${game.score}! 🎉" else "Score ${game.score} · Best $best",
-                        fontSize = 20.sp,
-                        color = if (newBest) Color(0xFFFFD54F) else Color.White,
-                    )
-                } else if (best > 0) {
-                    Text("Your best: $best", fontSize = 18.sp, color = Color.White)
-                }
-                Text(info.howTo, fontSize = 15.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
-                Text(
-                    text =
-                        if (game.phase ==
-                            GamePhase.OVER
-                        ) {
-                            "Press OK to play again · Back to leave"
-                        } else {
-                            "Press OK to start · Back to leave"
+            }
+
+            GamePhase.PAUSED -> {
+                GameCard(
+                    title = "Paused",
+                    lines = listOf("Score ${game.score}"),
+                    howTo = info.howTo,
+                    prompt = if (isTv) "Press OK to keep playing · Back to leave" else "Tap to keep playing · Back to leave",
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
+
+            GamePhase.READY, GamePhase.OVER -> {
+                val over = game.phase == GamePhase.OVER
+                GameCard(
+                    title = if (over) "Game over" else info.title,
+                    lines =
+                        when {
+                            over && newBest -> listOf("New best: ${game.score}! 🎉")
+                            over -> listOf("Score ${game.score} · Best $best")
+                            best > 0 -> listOf("Your best: $best")
+                            else -> emptyList()
                         },
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE50914),
-                    textAlign = TextAlign.Center,
+                    highlight = over && newBest,
+                    howTo = info.howTo,
+                    prompt =
+                        if (isTv) {
+                            if (over) "Press OK to play again · Back to leave" else "Press OK to start · Back to leave"
+                        } else {
+                            if (over) "Tap to play again · Back to leave" else "Tap to start · Back to leave"
+                        },
+                    modifier = Modifier.align(Alignment.Center),
                 )
             }
         }
+    }
+}
+
+/** The dark card in the middle of the screen: start, paused, or game over */
+@Composable
+private fun GameCard(
+    title: String,
+    lines: List<String>,
+    howTo: String,
+    prompt: String,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier =
+            modifier
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 40.dp, vertical = 24.dp),
+    ) {
+        Text(text = title, fontSize = 34.sp, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
+        lines.forEach {
+            Text(it, fontSize = 20.sp, color = if (highlight) Color(0xFFFFD54F) else Color.White, textAlign = TextAlign.Center)
+        }
+        Text(howTo, fontSize = 15.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
+        Text(
+            text = prompt,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFE50914),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
+ * Plays the little game sound effects. They're short, so they're all loaded up front.
+ */
+private class GameSounds(
+    context: Context,
+) {
+    private val pool =
+        SoundPool
+            .Builder()
+            .setMaxStreams(6)
+            .setAudioAttributes(
+                AudioAttributes
+                    .Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            ).build()
+
+    private val ids =
+        mapOf(
+            Sfx.POP to R.raw.game_pop,
+            Sfx.BOOST to R.raw.game_boost,
+            Sfx.FLAP to R.raw.game_flap,
+            Sfx.POINT to R.raw.game_point,
+            Sfx.COIN to R.raw.game_coin,
+            Sfx.CRASH to R.raw.game_crash,
+            Sfx.THUD to R.raw.game_thud,
+            Sfx.FLIP to R.raw.game_flip,
+            Sfx.TICK to R.raw.game_tick,
+            Sfx.GO to R.raw.game_go,
+            Sfx.MISS to R.raw.game_miss,
+        ).mapValues { (_, res) -> pool.load(context, res, 1) }
+
+    fun play(sfx: Sfx) {
+        val id = ids[sfx] ?: return
+        val volume = if (sfx == Sfx.FLAP || sfx == Sfx.POP) 0.45f else 0.7f
+        try {
+            pool.play(id, volume, volume, 1, 0, 1f)
+        } catch (e: Exception) {
+            Timber.w(e, "Couldn't play game sound")
+        }
+    }
+
+    fun release() {
+        pool.release()
     }
 }
