@@ -201,7 +201,7 @@ fun PosterWall(
                         Brush.radialGradient(
                             0f to Color.Black.copy(alpha = .5f),
                             1f to Color.Black.copy(alpha = .92f),
-                            center = center,
+                            center = Offset(size.width / 2, size.height / 2),
                             radius = size.maxDimension * .62f,
                         )
                     onDrawBehind { drawRect(brush) }
