@@ -1,18 +1,30 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -21,20 +33,24 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
-import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.LogoEffect
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
@@ -52,18 +68,35 @@ private const val VW = 1600f
 private const val VH = 900f
 private const val TAU = (2 * PI).toFloat()
 
-/** Seconds since the screen opened, ticking every frame */
+/**
+ * Seconds since the screen opened. Ticks about 30 times a second (plenty for these slow scenes and
+ * half the work of every frame on older TVs); stands still in Lite mode.
+ */
 @Composable
 private fun rememberSeconds(): State<Float> {
-    val seconds = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        val start = withFrameMillis { it }
-        while (true) {
-            withFrameMillis { seconds.floatValue = (it - start) / 1000f }
+    val seconds = remember { mutableFloatStateOf(STILL_SECONDS) }
+    val lite = LiteMode.isOn(LocalContext.current)
+    if (!lite) {
+        LaunchedEffect(Unit) {
+            val start = withFrameMillis { it }
+            var last = 0L
+            while (true) {
+                withFrameMillis {
+                    if (it - last >= FRAME_MS) {
+                        last = it
+                        seconds.floatValue = STILL_SECONDS + (it - start) / 1000f
+                    }
+                }
+            }
         }
     }
     return seconds
 }
+
+private const val FRAME_MS = 33L
+
+/** Where a still (Lite mode) scene stops, so it isn't empty */
+private const val STILL_SECONDS = 4f
 
 private fun frac(x: Float): Float = x - floor(x)
 
@@ -95,7 +128,10 @@ private fun hex(v: Long) = Color(v)
 // ---------------------------------------------------------------- poster wall
 
 /**
- * Rows of posters sliding slowly in opposite directions, tilted and dimmed so the profiles stand out
+ * Rows of posters sliding slowly in opposite directions, tilted and dimmed so the profiles stand out.
+ *
+ * Each row is drawn once and then only slid along by the graphics chip (no redrawing of the posters
+ * every frame), which keeps this screen light on older TVs.
  */
 @Composable
 fun PosterWall(
@@ -103,47 +139,73 @@ fun PosterWall(
     modifier: Modifier = Modifier,
 ) {
     if (posters.isEmpty()) return
-    val painters: List<Painter> = posters.map { rememberAsyncImagePainter(it) }
     val time = rememberSeconds()
-    Canvas(modifier = modifier.clipToBounds()) {
-        val t = time.value
-        val posterH = size.height / 3.6f
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = modifier.clipToBounds()) {
+        val posterH = maxHeight / 3.6f
         val posterW = posterH * 2f / 3f
         val gap = posterH * .06f
-        val rows = 5
-        val perRow = max(1, painters.size / 2)
-        val rowWidth = perRow * (posterW + gap)
-        withTransform({
-            rotate(-8f, pivot = center)
-            scale(1.15f, 1.15f, pivot = center)
-        }) {
-            for (r in 0 until rows) {
-                val y = -posterH * .9f + r * (posterH + gap)
+        val step = posterW + gap
+        val perRow = max(1, posters.size / 2)
+        val rowWidthPx = with(density) { (step * perRow).toPx() }
+        val stepPx = with(density) { step.toPx() }
+        // enough posters to cover the (tilted, enlarged) screen plus one full loop
+        val count = ceil((with(density) { (maxWidth * 1.5f).toPx() } + rowWidthPx) / stepPx).toInt() + 1
+        val shape = RoundedCornerShape(posterW * .06f)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(gap),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationZ = -8f
+                        scaleX = 1.15f
+                        scaleY = 1.15f
+                    }.offset(x = -posterW, y = -posterH * .9f),
+        ) {
+            repeat(5) { r ->
                 val dir = if (r % 2 == 0) -1f else 1f
-                val speed = posterW / (if (r % 2 == 0) 4.4f else 5.6f)
-                var x = -frac(t * speed / rowWidth) * rowWidth * -dir - rowWidth
-                if (dir < 0) x = -frac(t * speed / rowWidth) * rowWidth
-                var k = 0
-                while (x < size.width + posterW) {
-                    val p = painters[(r * 7 + k) % painters.size]
-                    val rr = RoundRect(Rect(x, y, x + posterW, y + posterH), CornerRadius(posterW * .06f))
-                    clipPath(Path().apply { addRoundRect(rr) }) {
-                        drawRect(Color(0xFF1C1C22), topLeft = Offset(x, y), size = Size(posterW, posterH))
-                        translate(x, y) { with(p) { draw(Size(posterW, posterH)) } }
+                val speedPx = stepPx / (if (r % 2 == 0) 4.4f else 5.6f)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(gap),
+                    modifier =
+                        Modifier
+                            .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                            .graphicsLayer {
+                                // Read the clock here, so only the slide changes each frame
+                                val shift = frac(time.value * speedPx / rowWidthPx) * rowWidthPx
+                                translationX = if (dir < 0) -shift else shift - rowWidthPx
+                            },
+                ) {
+                    repeat(count) { k ->
+                        AsyncImage(
+                            model = posters[(r * 7 + k % perRow) % posters.size],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(posterW, posterH)
+                                    .clip(shape)
+                                    .background(Color(0xFF1C1C22)),
+                        )
                     }
-                    x += posterW + gap
-                    k++
                 }
             }
         }
         // Dim everything, darker toward the edges, so the profiles pop
-        drawRect(
-            Brush.radialGradient(
-                0f to Color.Black.copy(alpha = .5f),
-                1f to Color.Black.copy(alpha = .92f),
-                center = center,
-                radius = size.maxDimension * .62f,
-            ),
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val brush =
+                        Brush.radialGradient(
+                            0f to Color.Black.copy(alpha = .5f),
+                            1f to Color.Black.copy(alpha = .92f),
+                            center = center,
+                            radius = size.maxDimension * .62f,
+                        )
+                    onDrawBehind { drawRect(brush) }
+                },
         )
     }
 }
