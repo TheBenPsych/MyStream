@@ -42,6 +42,7 @@ fun FocusedEpisodeFooter(
         modifier = modifier,
     ) {
         ExpandablePlayButtons(
+            downloadItem = ep,
             title = ep.title ?: "",
             resumePosition = resumePosition,
             watched = dto.userData?.played ?: false,
