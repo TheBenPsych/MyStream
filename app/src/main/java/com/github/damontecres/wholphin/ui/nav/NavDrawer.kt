@@ -49,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -378,9 +379,34 @@ fun NavDrawer(
         )
     }
     if (!rememberIsTv()) {
-        // Phones: logo on top, menu along the bottom
+        // Phones: logo on top, menu along the bottom.
+        // The logo bar slides away while you scroll down and comes back as soon as you scroll up.
+        var headerVisible by remember { mutableStateOf(true) }
+        LaunchedEffect(destination) { headerVisible = true }
+        val headerScroll =
+            remember {
+                object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                    override fun onPreScroll(
+                        available: androidx.compose.ui.geometry.Offset,
+                        source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
+                    ): androidx.compose.ui.geometry.Offset {
+                        if (available.y < -6f) {
+                            headerVisible = false
+                        } else if (available.y > 6f) {
+                            headerVisible = true
+                        }
+                        return androidx.compose.ui.geometry.Offset.Zero
+                    }
+                }
+            }
         Column(modifier = modifier) {
-            PhoneHeader()
+            AnimatedVisibility(
+                visible = headerVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                PhoneHeader()
+            }
             DestinationContent(
                 destination = destination,
                 preferences = preferences,
@@ -389,6 +415,7 @@ fun NavDrawer(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .nestedScroll(headerScroll)
                         .padding(start = 16.dp, end = 8.dp),
             )
             PhoneNavBar(
