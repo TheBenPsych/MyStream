@@ -41,14 +41,22 @@ object BenflixMobileData {
     private const val BALANCED_BITRATE = 3_000_000L
 
     /** True when the device is using mobile data right now */
-    fun onMobileData(context: Context): Boolean {
-        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        val wifiOrCable =
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-        return !wifiOrCable && caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-    }
+    fun onMobileData(context: Context): Boolean =
+        try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+            if (caps == null) {
+                false
+            } else {
+                val wifiOrCable =
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                        caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                !wifiOrCable && caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+            }
+        } catch (ex: Exception) {
+            // Can't tell (for example no permission), so don't limit anything
+            false
+        }
 
     /** The highest bitrate to use right now, or null for no limit */
     fun bitrateCap(
