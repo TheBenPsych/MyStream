@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -166,6 +167,22 @@ fun holidayFont(effect: LogoEffect): FontFamily? =
         LogoEffect.DIYAS -> FontFamily(Font(R.font.holiday_yatra))
         LogoEffect.EMBERS -> FontFamily(Font(R.font.holiday_rye))
         LogoEffect.STAR_PAIR -> FontFamily(Font(R.font.holiday_caveatbrush))
+        LogoEffect.BLOSSOMS -> FontFamily(Font(R.font.holiday_sniglet))
+        LogoEffect.HYPERSPACE -> FontFamily(Font(R.font.holiday_orbitron))
+        LogoEffect.ZAPS -> FontFamily(Font(R.font.holiday_luckiestguy))
+        LogoEffect.COIN -> FontFamily(Font(R.font.holiday_pressstart))
+        LogoEffect.FIRE_TRAILS -> FontFamily(Font(R.font.holiday_righteous))
+        LogoEffect.FLOWER_BLOOM -> FontFamily(Font(R.font.holiday_satisfy))
+        LogoEffect.SUNSET -> FontFamily(Font(R.font.holiday_alfaslab))
+        LogoEffect.SPROUTS -> FontFamily(Font(R.font.holiday_amatic))
+        LogoEffect.SPOOKY_CAT -> FontFamily(Font(R.font.holiday_specialelite))
+        LogoEffect.GROUNDHOG -> FontFamily(Font(R.font.holiday_chewy))
+        LogoEffect.HARVEST_MOON -> FontFamily(Font(R.font.holiday_mashanzheng))
+        LogoEffect.POPCORN -> FontFamily(Font(R.font.holiday_shrikhand))
+        LogoEffect.GAME_BUTTONS -> FontFamily(Font(R.font.holiday_audiowide))
+        LogoEffect.CAT_TAIL -> FontFamily(Font(R.font.holiday_patrickhand))
+        LogoEffect.PAW_PRINTS -> FontFamily(Font(R.font.holiday_fredoka))
+        LogoEffect.PIRATE_FLAG -> FontFamily(Font(R.font.holiday_pirata))
         LogoEffect.NONE -> null
     }
 
@@ -251,6 +268,70 @@ fun HolidayScene(
 
                 LogoEffect.STAR_PAIR -> {
                     tanabata(t, statics)
+                }
+
+                LogoEffect.BLOSSOMS -> {
+                    easter(t, statics)
+                }
+
+                LogoEffect.HYPERSPACE -> {
+                    spaceDay(t, statics)
+                }
+
+                LogoEffect.ZAPS -> {
+                    creatureDay(t, statics)
+                }
+
+                LogoEffect.COIN -> {
+                    pixelWorld(t)
+                }
+
+                LogoEffect.FIRE_TRAILS -> {
+                    timeTravel(t)
+                }
+
+                LogoEffect.FLOWER_BLOOM -> {
+                    mothersDay(t, statics)
+                }
+
+                LogoEffect.SUNSET -> {
+                    fathersDay(t, statics)
+                }
+
+                LogoEffect.SPROUTS -> {
+                    earthDay(t)
+                }
+
+                LogoEffect.SPOOKY_CAT -> {
+                    friday13(t)
+                }
+
+                LogoEffect.GROUNDHOG -> {
+                    groundhogDay(t, statics)
+                }
+
+                LogoEffect.HARVEST_MOON -> {
+                    midAutumn(t)
+                }
+
+                LogoEffect.POPCORN -> {
+                    popcornDay(t)
+                }
+
+                LogoEffect.GAME_BUTTONS -> {
+                    arcade(t)
+                }
+
+                LogoEffect.CAT_TAIL -> {
+                    catDay(t)
+                }
+
+                LogoEffect.PAW_PRINTS -> {
+                    dogDay(t, statics)
+                }
+
+                LogoEffect.PIRATE_FLAG -> {
+                    pirateDay(t)
                 }
 
                 LogoEffect.NONE -> {}
@@ -1378,5 +1459,873 @@ private fun DrawScope.tanabata(
         val tw = (sin(t * 2.5f + i * 1.7f) + 1) / 2
         glow(Offset(x, y), 18f, hex(0xFFD8FF7A), .6f * tw)
         drawCircle(hex(0xFFF2FFB0), 2.5f, Offset(x, y), alpha = tw)
+    }
+}
+
+// ---------------------------------------------------------------- more holidays
+// The main thing in each scene (cat, ship, moon...) sits at the sides or bottom so the profiles never cover it
+
+private fun DrawScope.at(
+    x: Float,
+    y: Float,
+    rot: Float = 0f,
+    s: Float = 1f,
+    block: DrawScope.() -> Unit,
+) = withTransform({
+    translate(x, y)
+    rotate(rot, pivot = Offset.Zero)
+    scale(s, s, pivot = Offset.Zero)
+}, block)
+
+private fun DrawScope.puffCloud(
+    x: Float,
+    y: Float,
+    r: Float,
+    color: Color = Color.White,
+) {
+    drawCircle(color, r, Offset(x, y))
+    drawCircle(color, r, Offset(x + r * 1.3f, y - r * .45f))
+    drawCircle(color, r, Offset(x + r * 2.6f, y))
+}
+
+private fun DrawScope.butterfly(
+    x: Float,
+    y: Float,
+    t: Float,
+    seed: Int,
+    color: Color,
+) {
+    val f = abs(sin(t * 10 + seed))
+    at(x, y, -23f) { oval(-12f * f, 0f, 14f * f + 2f, 10f, color) }
+    at(x, y, 23f) { oval(12f * f, 0f, 14f * f + 2f, 10f, color) }
+}
+
+// ---- Easter: sunrise over a spring meadow, blossom tree, eggs in swaying grass, butterflies, falling petals
+
+private fun DrawScope.easter(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF7EC8F2), .55f to hex(0xFFFFD6E0), 1f to hex(0xFFFFE9B8))
+    glow(Offset(1250f, 520f), 380f, hex(0xFFFFF3C4), .9f)
+    drawPath(s.hill(640f, 70f, 211), hex(0xFF9BD77A))
+    drawPath(s.hill(720f, 60f, 212), hex(0xFF7CC45E))
+    box(220f, 380f, 26f, 360f, hex(0xFF6B4A35))
+    for (i in 0 until 14) {
+        oval(
+            233f + (h(213, i) - .5f) * 300f,
+            370f - h(214, i) * 160f,
+            50f + h(215, i) * 30f,
+            40f,
+            if (i % 2 ==
+                0
+            ) {
+                hex(0xFFFFB0C8)
+            } else {
+                hex(0xFFFFC4D6)
+            },
+            .95f,
+        )
+    }
+    val eggs = listOf(0xFFFFB3C7, 0xFFB8E1FF, 0xFFFFF0A8, 0xFFC9F2C0, 0xFFE2C6FF)
+    for (i in 0 until 9) {
+        val x = 120f + i * 175f + h(216, i) * 40f
+        val y = 800f + h(217, i) * 30f
+        oval(x, y, 26f, 34f, hex(eggs[i % eggs.size]))
+        val zig =
+            Path().apply {
+                moveTo(x - 24f, y - 4f)
+                for (k in 1 until 6) lineTo(x - 24f + k * 10f, y - 4f + if (k % 2 == 1) 8f else -2f)
+            }
+        drawPath(zig, Color.White, alpha = .8f, style = Stroke(5f))
+    }
+    for (i in 0 until 160) {
+        val x = i * 10f + h(218, i) * 8f
+        val sw = sin(t * 1.5f + i * .3f) * 8f
+        drawPath(
+            Path().apply {
+                moveTo(x, VH)
+                quadraticTo(x + sw * .5f, 860f, x + sw, 820f - h(219, i) * 30f)
+            },
+            hex(0xFF5FAE47),
+            style = Stroke(5f),
+        )
+    }
+    listOf(0xFFFF8FB1, 0xFFFFD166, 0xFF9AD0FF, 0xFFC39BFF).forEachIndexed { i, c ->
+        butterfly(frac(t * .04f + i * .27f) * 1700f - 50f, 180f + i * 160f + sin(t * 1.3f + i) * 40f, t, i, hex(c))
+    }
+    for (i in 0 until 50) {
+        val y = (frac(h(220, i) + t * (.03f + h(221, i) * .03f)) * 1.1f - .05f) * VH
+        val x = h(222, i) * VW + sin(t + i) * 40f
+        oval(x, y, 7f, 4f, hex(0xFFFFC4D6), .9f)
+    }
+}
+
+// ---- Star Wars Day: a jump to lightspeed, then two suns setting over desert dunes
+
+private fun DrawScope.spaceDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    val p = frac(t / 9f)
+    box(0f, 0f, VW, VH, Color.Black)
+    if (p < .45f) {
+        val k = p / .45f
+        val len = (k * 2).coerceAtMost(1f) * (1 - ((k - .8f) / .2f).coerceAtLeast(0f))
+        for (i in 0 until 260) {
+            val a = h(231, i) * TAU
+            val d = 40f + h(232, i) * 900f
+            val x = 800f + cos(a) * d
+            val y = 450f + sin(a) * d * .6f
+            val l = len * d * .6f
+            drawLine(
+                Color(.78f + h(233, i) * .22f, .86f + h(234, i) * .14f, 1f),
+                Offset(x, y),
+                Offset(x + cos(a) * l, y + sin(a) * l * .6f),
+                strokeWidth = 2f,
+                alpha = .9f,
+            )
+        }
+        glow(Offset(800f, 450f), 300f, hex(0xFFA0C8FF), .4f * len)
+    } else {
+        val fade = ((p - .45f) / .1f).coerceAtMost(1f)
+        sky(0f to hex(0xFF1A0F2E), .55f to hex(0xFFA3452C), 1f to hex(0xFFF2A65A))
+        stars(60, 235, 300f, t)
+        val sy = 520f + (p - .45f) * 120f
+        glow(Offset(1330f, sy), 260f, hex(0xFFFFDC96), .8f)
+        oval(1330f, sy, 46f, 46f, hex(0xFFFFF3C4))
+        glow(Offset(1490f, sy + 30f), 200f, hex(0xFFFFAA6E), .7f)
+        oval(1490f, sy + 30f, 30f, 30f, hex(0xFFFFD2A0))
+        drawPath(s.hill(700f, 60f, 236), hex(0xFFC47A3E))
+        drawPath(s.hill(770f, 50f, 237), hex(0xFF9A5A2C))
+        drawPath(s.hill(840f, 40f, 238), hex(0xFF6E3D1F))
+        drawArc(hex(0xFF4A2A14), 180f, 180f, true, Offset(1160f, 730f), Size(120f, 120f))
+        box(1160f, 790f, 120f, 20f, hex(0xFF4A2A14))
+        if (fade < 1f) box(0f, 0f, VW, VH, Color.Black, 1 - fade)
+    }
+}
+
+// ---- Pokémon Day: a bright grassy route, rustling tall grass with eyes peeking out, little lightning zaps
+
+private fun DrawScope.creatureDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF58B8FF), .7f to hex(0xFFBFE7FF), 1f to hex(0xFFE8F8FF))
+    for (i in 0 until 4) puffCloud(frac(t * .015f + i * .27f) * 1900f - 150f, 110f + i * 60f, 50f)
+    drawPath(s.hill(600f, 80f, 241), hex(0xFF7DD36A))
+    drawPath(s.hill(700f, 50f, 242), hex(0xFF5CBF4D))
+    drawPath(
+        Path().apply {
+            moveTo(700f, VH)
+            quadraticTo(820f, 700f, 1000f, 600f)
+            lineTo(1060f, 600f)
+            quadraticTo(920f, 720f, 920f, VH)
+            close()
+        },
+        hex(0xFFD9B77A),
+    )
+    listOf(260f to 820f, 520f to 860f, 1240f to 830f, 1420f to 870f).forEachIndexed { pi, (x, y) ->
+        val cyc = frac(t / 6f + pi * .25f)
+        val rust = if (cyc < .2f) sin(t * 30f) * 6f else 0f
+        for (k in 0 until 14) {
+            val bx = x - 90f + k * 13f
+            drawPath(
+                poly(bx, y + 40f, bx + 7f + rust, y - 70f - h(243, k) * 20f, bx + 14f, y + 40f),
+                if (k % 2 ==
+                    1
+                ) {
+                    hex(0xFF2F9A3C)
+                } else {
+                    hex(0xFF3CB44A)
+                },
+            )
+        }
+        if (cyc < .5f) {
+            val a = (sin(cyc * TAU) * 3f).coerceIn(0f, 1f)
+            oval(x - 14f, y - 20f, 7f, 10f, Color.White, a)
+            oval(x + 14f, y - 20f, 7f, 10f, Color.White, a)
+            oval(x - 13f, y - 18f, 3.5f, 5f, hex(0xFF222222), a)
+            oval(x + 15f, y - 18f, 3.5f, 5f, hex(0xFF222222), a)
+        }
+    }
+    for (i in 0 until 3) {
+        val ph = frac(t * .7f + i * .33f)
+        if (ph < .2f) {
+            val n = floor(t * .7f + i * .33f).toInt()
+            val x = 100f + h(244, n * 7 + i) * 1400f
+            val y = 120f + h(245, i) * 120f
+            drawPath(
+                Path().apply {
+                    moveTo(x, y)
+                    lineTo(x + 30f, y + 40f)
+                    lineTo(x + 5f, y + 45f)
+                    lineTo(x + 40f, y + 100f)
+                },
+                hex(0xFFFFDE00),
+                style = Stroke(7f, join = androidx.compose.ui.graphics.StrokeJoin.Round),
+            )
+            glow(Offset(x + 20f, y + 50f), 90f, hex(0xFFFFE63C), .5f)
+        }
+    }
+}
+
+// ---- Mario Day: a pixel-art platform world with brick ledges, a pipe and spinning coins
+
+private fun DrawScope.pixelWorld(t: Float) {
+    box(0f, 0f, VW, VH, hex(0xFF5C94FC))
+    for (i in 0 until 4) {
+        val x = frac(t * .01f + i * .27f) * 1900f - 200f
+        val y = 90f + (i % 2) * 70f
+        box(x, y + 20f, 140f, 40f, Color.White)
+        box(x + 30f, y, 80f, 30f, Color.White)
+    }
+    drawPath(poly(80f, 800f, 260f, 620f, 440f, 800f), hex(0xFF00A800))
+    drawPath(poly(1100f, 800f, 1220f, 690f, 1340f, 800f), hex(0xFF00A800))
+    var gx = 0f
+    while (gx < VW) {
+        var gy = 800f
+        while (gy < VH) {
+            box(gx, gy, 58f, 48f, hex(0xFFC84C0C))
+            box(gx + 4f, gy + 4f, 50f, 6f, hex(0xFFFC9838))
+            gy += 50f
+        }
+        gx += 60f
+    }
+    listOf(Triple(60f, 300f, 3), Triple(1320f, 260f, 4)).forEach { (x, y, n) ->
+        for (k in 0 until n) {
+            box(x + k * 60f, y, 58f, 58f, hex(0xFFC84C0C))
+            box(x + k * 60f, y + 26f, 58f, 4f, Color.Black)
+            box(x + k * 60f + 28f, y, 4f, 26f, Color.Black)
+        }
+    }
+    box(1400f, 640f, 120f, 160f, hex(0xFF00A800))
+    box(1385f, 610f, 150f, 50f, hex(0xFF00C800))
+    box(1410f, 660f, 16f, 140f, hex(0xFF80F080))
+    for (i in 0 until 7) {
+        val left = i < 3
+        val x = if (left) 80f + i * 60f else 1340f + (i - 3) * 60f
+        val base = if (left) 240f else 200f
+        val by = base - abs(sin(t * 3 + i * .6f)) * 40f
+        val w = abs(cos(t * 4 + i)) * 30f + 6f
+        box(x + 20f - w / 2, by, w, 44f, hex(0xFFFBD000))
+        box(x + 20f - w / 4, by + 8f, max(4f, w / 3), 28f, hex(0xFFFFF6A0))
+    }
+}
+
+// ---- Back to the Future Day: 80s neon sunset, a glowing grid, lightning at the clock tower, fire trails racing by
+
+private fun DrawScope.timeTravel(t: Float) {
+    sky(0f to hex(0xFF0A0018), .55f to hex(0xFF2A0848), 1f to hex(0xFFFF3C8A))
+    stars(60, 251, 350f, t)
+    drawArc(
+        Brush.verticalGradient(0f to hex(0xFFFFE14D), 1f to hex(0xFFFF2BD6), startY = 320f, endY = 560f),
+        180f,
+        180f,
+        true,
+        Offset(560f, 320f),
+        Size(480f, 480f),
+    )
+    for (k in 0 until 6) box(540f, 450f + k * 22f, 520f, 4f + k * 2f, hex(0xFF2A0848))
+    box(1240f, 330f, 120f, 230f, hex(0xFF120022))
+    drawPath(poly(1230f, 330f, 1300f, 250f, 1370f, 330f), hex(0xFF120022))
+    oval(1300f, 390f, 34f, 34f, hex(0xFFFFE9B0))
+    drawLine(hex(0xFF120022), Offset(1300f, 390f), Offset(1300f, 364f), strokeWidth = 4f)
+    drawLine(hex(0xFF120022), Offset(1300f, 390f), Offset(1318f, 396f), strokeWidth = 4f)
+    if (frac(t / 5f) < .06f) {
+        drawPath(
+            Path().apply {
+                moveTo(1300f, 0f)
+                lineTo(1280f, 90f)
+                lineTo(1320f, 140f)
+                lineTo(1295f, 250f)
+            },
+            hex(0xFFE8F4FF),
+            style = Stroke(5f),
+        )
+        box(0f, 0f, VW, VH, hex(0xFFC8DCFF), .18f)
+    }
+    box(0f, 560f, VW, 340f, hex(0xFF0A0018))
+    for (k in -20..20) drawLine(hex(0xFF00E5FF), Offset(800f + k * 30f, 560f), Offset(800f + k * 220f, VH), strokeWidth = 2f)
+    val o = frac(t * .8f)
+    for (k in 0 until 10) {
+        val y = 560f + ((k + o) / 10f).let { it * it } * 340f
+        drawLine(hex(0xFF00E5FF), Offset(0f, y), Offset(VW, y), strokeWidth = 2f, alpha = .3f + .7f * (k / 10f))
+    }
+    val hx = -200f + frac(t / 3.5f) * 2200f
+    listOf(0f, 46f).forEach { off ->
+        drawRect(
+            Brush.horizontalGradient(
+                0f to Color.Transparent,
+                .8f to hex(0xFFFF7800).copy(alpha = .9f),
+                1f to hex(0xFFFFF2A0),
+                startX =
+                    hx - 900f,
+                endX = hx,
+            ),
+            topLeft = Offset(hx - 900f, 760f + off),
+            size = Size(900f, 14f + sin(t * 40 + off) * 3f),
+        )
+    }
+    glow(Offset(hx, 790f), 140f, hex(0xFF96DCFF), .6f)
+}
+
+// ---- Mother's Day: a pink garden at golden hour, flowers growing and blooming, floating hearts
+
+private fun DrawScope.mothersDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFFFFB6C9), .6f to hex(0xFFFFD9C2), 1f to hex(0xFFFFF1D6))
+    glow(Offset(800f, 600f), 520f, hex(0xFFFFF4D8), .9f)
+    drawPath(s.hill(700f, 40f, 261), hex(0xFFA8D68F))
+    drawPath(s.hill(780f, 30f, 262), hex(0xFF8CC276))
+    val cols = listOf(0xFFFF7AA8, 0xFFFF9EC7, 0xFFFFB36B, 0xFFC9A7FF, 0xFFFF6F91)
+    for (i in 0 until 11) {
+        val x = 120f + i * 136f
+        val grow = (frac(t / 12f + h(263, i) * .3f) * 2.2f).coerceAtMost(1f)
+        val stem = 140f + h(264, i) * 120f
+        val y = 880f - stem * grow
+        drawPath(
+            Path().apply {
+                moveTo(x, 880f)
+                quadraticTo(x + 10f * sin(t + i), 880f - stem * grow * .5f, x, y)
+            },
+            hex(0xFF4F9A3E),
+            style = Stroke(7f),
+        )
+        val r = grow * grow * 38f
+        for (k in 0 until 6) {
+            val a = k * TAU / 6 + t * .2f
+            oval(x + cos(a) * r * .7f, y + sin(a) * r * .7f, r * .55f, r * .55f, hex(cols[i % cols.size]))
+        }
+        oval(x, y, r * .4f, r * .4f, hex(0xFFFFE08A))
+    }
+    for (i in 0 until 24) {
+        val p = frac(h(265, i) + t * (.03f + h(266, i) * .02f))
+        val x = h(267, i) * VW + sin(t + i) * 30f
+        val y = VH - p * 950f
+        at(x, y, s = (10f + h(268, i) * 10f) / 30f) { drawPath(heart, hex(0xFFFF6F91), alpha = (1 - p) * .8f) }
+    }
+}
+
+// ---- Father's Day: sunset over a calm lake, a dock with a fishing line bobbing, birds and fireflies
+
+private fun DrawScope.fathersDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF1C2A52), .45f to hex(0xFFE0794A), .62f to hex(0xFFFFC070), 1f to hex(0xFFFFC070))
+    glow(Offset(800f, 560f), 360f, hex(0xFFFFC878), .8f)
+    oval(800f, 560f, 70f, 70f, hex(0xFFFFE0A0))
+    drawPath(s.hill(560f, 70f, 271), hex(0xFF2A2A40))
+    drawPath(s.hill(590f, 40f, 272), hex(0xFF1D1F33))
+    drawRect(
+        Brush.verticalGradient(0f to hex(0xFFE09060), 1f to hex(0xFF1A2440), startY = 590f, endY = VH),
+        topLeft = Offset(0f, 590f),
+        size =
+            Size(
+                VW,
+                VH - 590f,
+            ),
+    )
+    for (k in 0 until 14) {
+        val w = 200f - k * 8f + sin(t * 2 + k) * 20f
+        box(800f - w / 2, 610f + k * 20f, w, 3f, hex(0xFFFFDCA0), .5f)
+    }
+    box(0f, 700f, 360f, 26f, hex(0xFF3A2414))
+    for (k in 0 until 4) box(30f + k * 100f, 726f, 14f, 120f, hex(0xFF3A2414))
+    val bob = sin(t * 2) * 6f
+    drawLine(hex(0xFF2A1A0C), Offset(280f, 700f), Offset(430f, 470f), strokeWidth = 6f)
+    drawPath(
+        Path().apply {
+            moveTo(430f, 470f)
+            quadraticTo(470f, 560f, 480f, 650f + bob)
+        },
+        Color.White,
+        alpha = .7f,
+        style = Stroke(1.5f),
+    )
+    oval(480f, 652f + bob, 8f, 8f, hex(0xFFE53935))
+    val rr = frac(t * .5f) * 60f
+    drawOval(Color.White, Offset(480f - rr, 660f - rr * .3f), Size(rr * 2, rr * .6f), alpha = .35f * (1 - rr / 60f), style = Stroke(2f))
+    for (i in 0 until 3) {
+        val x = frac(t * .03f + i * .3f) * 1800f - 100f
+        val y = 200f + i * 40f
+        val f = sin(t * 6 + i) * 10f
+        drawPath(
+            Path().apply {
+                moveTo(x - 22f, y - f)
+                quadraticTo(x - 10f, y - 6f, x, y)
+                quadraticTo(x + 10f, y - 6f, x + 22f, y - f)
+            },
+            hex(0xFF1D1F33),
+            style = Stroke(4f),
+        )
+    }
+    for (i in 0 until 20) {
+        val tw = (sin(t * 2.5f + i * 1.7f) + 1) / 2
+        glow(Offset(h(273, i) * VW, 640f + h(274, i) * 220f + sin(t + i) * 20f), 16f, hex(0xFFDCFF78), .6f * tw)
+    }
+}
+
+// ---- Earth Day: the Earth rising from the corner of the screen, turning slowly, with leaves drifting by
+
+private fun DrawScope.earthDay(t: Float) {
+    box(0f, 0f, VW, VH, hex(0xFF02030C))
+    stars(140, 281, VH, t)
+    val c = Offset(1330f, 760f)
+    val r = 380f
+    glow(c, r * 1.35f, hex(0xFF5AAAFF), .35f)
+    val clip = Path().apply { addOval(Rect(c, r)) }
+    clipPath(clip) {
+        box(c.x - r, c.y - r, r * 2, r * 2, hex(0xFF1F5FAE))
+        val rot = t * .04f
+        for (i in 0 until 9) {
+            val x = c.x - r + frac(h(282, i) + rot) * r * 4 - r
+            val y = c.y - r * .7f + h(283, i) * r * 1.4f
+            val sz = 70f + h(284, i) * 80f
+            listOf(0f, -r * 4).forEach { off ->
+                oval(x + off, y, sz, sz * .6f, hex(0xFF3FA34D))
+                oval(x + off + 15f, y - 10f, sz * .5f, sz * .3f, hex(0xFF6CC06A))
+            }
+        }
+        for (i in 0 until 10) {
+            val x = c.x - r + frac(h(286, i) + rot * 1.6f) * r * 4 - r
+            oval(x, c.y - r * .8f + h(287, i) * r * 1.6f, 90f, 15f, Color.White, .7f)
+        }
+        drawRect(
+            Brush.radialGradient(
+                0f to Color.Transparent,
+                1f to hex(0xFF000014).copy(alpha = .75f),
+                center = c - Offset(r * .4f, r * .4f),
+                radius =
+                    r * 1.45f,
+            ),
+            topLeft = c - Offset(r, r),
+            size = Size(r * 2, r * 2),
+        )
+    }
+    glow(c - Offset(r * .75f, r * .75f), 160f, hex(0xFFFFF0C8), .6f + .2f * sin(t))
+    for (i in 0 until 14) {
+        val p = frac(h(288, i) + t * (.02f + h(289, i) * .02f))
+        at(-50f + p * 1700f, h(290, i) * VH + sin(t + i) * 40f, (t + i) * 57f) {
+            drawPath(
+                Path().apply {
+                    moveTo(0f, -16f)
+                    quadraticTo(12f, 0f, 0f, 16f)
+                    quadraticTo(-12f, 0f, 0f, -16f)
+                    close()
+                },
+                if (i % 2 == 1) hex(0xFF7CC45E) else hex(0xFFA3D977),
+            )
+        }
+    }
+}
+
+// ---- Friday the 13th: a misty summer camp, a big moon in the corner, a cabin light that flickers, rolling fog
+
+private fun DrawScope.friday13(t: Float) {
+    sky(0f to hex(0xFF02040A), .6f to hex(0xFF0A1420), 1f to hex(0xFF162330))
+    stars(50, 301, 400f, t)
+    val m = Offset(1360f, 190f)
+    glow(m, 320f, hex(0xFFDCE6FF), .35f)
+    oval(m.x, m.y, 120f, 120f, hex(0xFFEEF1F7))
+    oval(m.x - 32f, m.y - 24f, 22f, 16f, hex(0xFFD7DCE6))
+    oval(m.x + 40f, m.y + 32f, 28f, 20f, hex(0xFFD7DCE6))
+    val p = frac(t / 10f)
+    if (p < .25f) {
+        val x = m.x - 200f + p / .25f * 400f
+        box(x - 12f, m.y - 50f, 24f, 120f, hex(0xFF02040A))
+        oval(x, m.y - 66f, 17f, 20f, hex(0xFF02040A))
+    }
+    for (i in 0 until 22) {
+        val x = i * 76f + h(302, i) * 30f
+        val ht = 220f + h(303, i) * 160f
+        drawPath(poly(x, 560f - ht, x + 60f, 600f, x - 60f, 600f), hex(0xFF04070C))
+    }
+    box(0f, 600f, VW, 300f, hex(0xFF0A1724))
+    for (k in 0 until 10) {
+        val w = 130f - k * 8f + sin(t * 1.5f + k) * 20f
+        box(m.x - w / 2, 620f + k * 22f, w, 3f, hex(0xFFE6EBFF), .35f)
+    }
+    box(200f, 640f, 380f, 18f, hex(0xFF06090E))
+    for (k in 0 until 4) box(230f + k * 110f, 658f, 12f, 80f, hex(0xFF06090E))
+    box(40f, 470f, 200f, 140f, hex(0xFF06090E))
+    drawPath(poly(20f, 480f, 140f, 400f, 260f, 480f), hex(0xFF06090E))
+    val on = if (sin(t * 23f) > -.2f && sin(t * 7.7f) > -.6f) 1f else .15f
+    box(170f, 510f, 40f, 40f, hex(0xFFFFC86E), on)
+    glow(Offset(190f, 530f), 90f, hex(0xFFFFBE5A), .4f * on)
+    for (i in 0 until 8) {
+        val x = frac(t * .02f + i * .13f) * 2000f - 200f
+        oval(x, 640f + (i % 3) * 30f, 260f, 40f, hex(0xFFC9D4E0), .12f)
+    }
+}
+
+// ---- Groundhog Day: a snowy morning, a groundhog pops out, sees its shadow and ducks back in, again and again
+
+private fun DrawScope.groundhogDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF9FC9EF), .6f to hex(0xFFDBEAFA), 1f to hex(0xFFF6FBFF))
+    oval(300f, 170f, 60f, 60f, hex(0xFFFFF6D0))
+    glow(Offset(300f, 170f), 200f, hex(0xFFFFF5C8), .6f)
+    drawPath(s.hill(620f, 60f, 311), hex(0xFFEEF5FB))
+    drawPath(s.hill(700f, 40f, 312), Color.White)
+    for (i in 0 until 8) {
+        val x = 80f + i * 200f + h(313, i) * 60f
+        drawPath(poly(x, 460f, x + 50f, 640f, x - 50f, 640f), hex(0xFF3D5A3A))
+        drawPath(poly(x, 460f, x + 22f, 540f, x - 22f, 540f), Color.White)
+    }
+    val hx = 1250f
+    val hy = 800f
+    oval(hx, hy + 8f, 110f, 26f, hex(0xFF5A4030))
+    oval(hx, hy + 2f, 90f, 18f, hex(0xFF2A1C12))
+    val c = frac(t / 5f)
+    var up = 0f
+    var look = 0f
+    when {
+        c < .15f -> {
+            up = c / .15f
+        }
+
+        c < .6f -> {
+            up = 1f
+            look = sin((c - .15f) / .45f * TAU * 2)
+        }
+
+        c < .68f -> {
+            up = 1f
+        }
+
+        c < .78f -> {
+            up = 1 - (c - .68f) / .1f
+        }
+    }
+    if (up > 0f) {
+        val by = hy - up * 120f
+        if (c > .15f && c < .68f) oval(hx + 90f, hy + 14f, 70f, 10f, hex(0xFF333344), .25f)
+        clipRect(hx - 120f, 0f, hx + 120f, hy + 4f) {
+            oval(hx, by + 50f, 58f, 70f, hex(0xFF8A5A3A))
+            oval(hx, by + 60f, 36f, 50f, hex(0xFFC79A72))
+            oval(hx, by - 10f, 44f, 40f, hex(0xFF9A6A46))
+            oval(hx - 34f, by - 40f, 10f, 10f, hex(0xFF7A4A2A))
+            oval(hx + 34f, by - 40f, 10f, 10f, hex(0xFF7A4A2A))
+            val ex = look * 8f
+            oval(hx - 16f + ex, by - 16f, 6f, 7f, hex(0xFF111111))
+            oval(hx + 16f + ex, by - 16f, 6f, 7f, hex(0xFF111111))
+            oval(hx + ex, by, 10f, 7f, hex(0xFF3A2416))
+        }
+    }
+    for (i in 0 until 70) {
+        val y = (frac(h(314, i) + t * (.03f + h(315, i) * .03f)) * 1.1f - .05f) * VH
+        val r = 3f + h(316, i) * 3f
+        oval(h(317, i) * VW + sin(t + i) * 30f, y, r, r, Color.White, .9f)
+    }
+}
+
+// ---- Mid-Autumn Festival: a giant harvest moon in the corner over still water, floating lanterns, a rabbit on a hill
+
+private fun DrawScope.midAutumn(t: Float) {
+    sky(0f to hex(0xFF070A22), .6f to hex(0xFF1A1C4A), 1f to hex(0xFF3A2A5A))
+    stars(70, 321, 500f, t)
+    val m = Offset(1290f, 250f)
+    glow(m, 460f, hex(0xFFFFD278), .45f)
+    drawCircle(Brush.radialGradient(0f to hex(0xFFFFF2C2), 1f to hex(0xFFFFC94D), center = m - Offset(40f, 40f), radius = 200f), 180f, m)
+    oval(m.x - 55f, m.y - 30f, 40f, 28f, hex(0xFFC98A2A), .15f)
+    oval(m.x + 50f, m.y + 40f, 50f, 32f, hex(0xFFC98A2A), .15f)
+    box(0f, 640f, VW, 260f, hex(0xFF0C0F2C))
+    for (k in 0 until 14) {
+        val w = 260f - k * 12f + sin(t * 1.4f + k) * 30f
+        box(m.x - w / 2, 656f + k * 17f, w, 4f, hex(0xFFFFCD6E), .45f)
+    }
+    drawPath(
+        Path().apply {
+            moveTo(0f, 640f)
+            quadraticTo(260f, 470f, 560f, 640f)
+            close()
+        },
+        hex(0xFF080A1E),
+    )
+    oval(300f, 520f, 34f, 26f, hex(0xFF080A1E))
+    oval(322f, 494f, 16f, 16f, hex(0xFF080A1E))
+    at(322f, 480f, -11f + sin(t * .8f) * 3f) {
+        oval(-4f, -24f, 5f, 20f, hex(0xFF080A1E))
+        oval(6f, -22f, 5f, 18f, hex(0xFF080A1E))
+    }
+    for (i in 0 until 10) {
+        val p = frac(h(322, i) + t * (.012f + h(323, i) * .01f))
+        val x = h(324, i) * VW + sin(t * .6f + i) * 25f
+        val y = 880f - p * 900f
+        val sc = .6f + h(325, i) * .6f
+        glow(Offset(x, y), 70f * sc, hex(0xFFFF783C), .45f * (1 - p * .6f))
+        oval(x, y, 28f * sc, 24f * sc, if (i % 3 == 0) hex(0xFFFFA040) else hex(0xFFFF5A3A))
+        box(x - 12f * sc, y - 26f * sc, 24f * sc, 5f * sc, hex(0xFFFFD36B))
+        box(x - 12f * sc, y + 21f * sc, 24f * sc, 5f * sc, hex(0xFFFFD36B))
+    }
+}
+
+// ---- National Popcorn Day: a dark theater, a glowing screen, popcorn bursting from a striped bucket
+
+private fun DrawScope.popcorn(
+    x: Float,
+    y: Float,
+    r: Float,
+) {
+    for (k in 0 until 4) oval(x + cos(k * 1.6f) * r * .8f, y + sin(k * 1.6f) * r * .8f, r, r * .9f, hex(0xFFFFF7E0))
+    oval(x, y, r * .6f, r * .6f, hex(0xFFFFD56B))
+}
+
+private fun DrawScope.popcornDay(t: Float) {
+    box(0f, 0f, VW, VH, hex(0xFF0A0506))
+    glow(Offset(800f, 260f), 700f, hex(0xFFC8D2FF), .25f)
+    box(380f, 60f, 840f, 360f, hex(0xFFDFE6FF), .85f)
+    box(260f, 40f, 120f, 460f, hex(0xFF5A0B10))
+    box(1220f, 40f, 120f, 460f, hex(0xFF5A0B10))
+    for (r in 0 until 3) {
+        for (i in 0 until 14) {
+            val x = 40f + i * 115f + (r % 2) * 50f
+            val y = 560f + r * 110f
+            oval(x, y, 48f, 40f, hex(0xFF160809))
+            box(x - 48f, y, 96f, 70f, hex(0xFF160809))
+        }
+    }
+    val bx = 1340f
+    val by = 820f
+    for (i in 0 until 50) {
+        val p = frac(h(331, i) + t * .35f * (.7f + h(332, i) * .6f))
+        val x = bx + (h(333, i) - .7f) * 700f * p
+        val y = by - 200f - (600f + h(334, i) * 500f) * p + 900f * p * p
+        if (y > by - 180f && p > .5f) continue
+        at(x, y, (p * 6 + i) * 57f) { popcorn(0f, 0f, 11f) }
+    }
+    val bucket = poly(bx - 130f, by - 200f, bx + 130f, by - 200f, bx + 95f, by + 60f, bx - 95f, by + 60f)
+    clipPath(bucket) {
+        for (k in -4 until 4) box(bx + k * 36f, by - 210f, 36f, 280f, if (k % 2 != 0) hex(0xFFE50914) else Color.White)
+    }
+    for (i in 0 until 16) popcorn(bx - 110f + i * 14f, by - 206f - h(335, i) * 30f, 9f)
+}
+
+// ---- Video Games Day: a neon arcade with cabinets at the sides, a glowing floor grid and floating game buttons
+
+private fun DrawScope.arcade(t: Float) {
+    sky(0f to hex(0xFF0A0420), 1f to hex(0xFF200A3A))
+    for (k in -14..14) drawLine(hex(0xFFFF4081), Offset(800f + k * 30f, 640f), Offset(800f + k * 160f, VH), strokeWidth = 2f, alpha = .5f)
+    for (k in 0 until 8) {
+        val y = 640f + ((k + frac(t * .6f)) / 8f).let { it * it } * 260f
+        drawLine(hex(0xFFFF4081), Offset(0f, y), Offset(VW, y), strokeWidth = 2f, alpha = .5f)
+    }
+    val cols = listOf(hex(0xFFFF4081), hex(0xFFFFD740), hex(0xFF76FF03), hex(0xFF00E5FF))
+    listOf(150f to hex(0xFF7C4DFF), 1450f to hex(0xFF00E5FF)).forEachIndexed { i, (x, c) ->
+        box(x - 130f, 220f, 260f, 520f, hex(0xFF120826))
+        glow(Offset(x, 380f), 220f, c, .35f + .15f * sin(t * 3 + i))
+        box(x - 130f, 220f, 260f, 18f, c)
+        box(x - 105f, 270f, 210f, 220f, hex(0xFF05020C))
+        for (r in 0 until 3) {
+            for (cc in 0 until 5) {
+                if (h(341, r * 5 + cc + floor(t / 4f).toInt() * 40 + i * 7) < .25f) continue
+                box(x - 95f + cc * 40f, 285f + r * 26f, 34f, 18f, cols[r])
+            }
+        }
+        val sx = x + sin(t * 1.5f + i) * 70f
+        drawPath(poly(sx, 440f, sx + 18f, 475f, sx - 18f, 475f), Color.White)
+        for (k in 0 until 3) box(sx - 2f, 440f - frac(t * 1.5f + k / 3f) * 140f, 4f, 12f, hex(0xFFFFD740))
+        oval(x - 50f, 560f, 16f, 16f, cols[0])
+        oval(x + 10f, 560f, 16f, 16f, cols[1])
+        box(x - 90f, 550f, 10f, 30f, hex(0xFFDDDDDD))
+    }
+    cols.forEachIndexed { i, c ->
+        val x = 200f + i * 400f
+        val y = 110f + sin(t * 1.2f + i) * 20f
+        glow(Offset(x, y), 60f, c, .4f)
+        oval(x, y, 26f, 26f, c)
+    }
+}
+
+// ---- Cat Day: a cozy window at night and a big orange cat in the corner, tail swishing, a yarn ball rolling
+
+private fun DrawScope.catDay(t: Float) {
+    box(0f, 0f, VW, VH, hex(0xFF1A1420))
+    drawRect(
+        Brush.verticalGradient(0f to hex(0xFF0B1430), 1f to hex(0xFF2A3A70), startY = 120f, endY = 620f),
+        topLeft = Offset(420f, 120f),
+        size = Size(760f, 500f),
+    )
+    clipRect(420f, 120f, 1180f, 620f) {
+        stars(60, 351, VH, t)
+        oval(560f, 240f, 60f, 60f, hex(0xFFFFF3C4))
+        glow(Offset(560f, 240f), 180f, hex(0xFFFFF0BE), .4f)
+    }
+    box(790f, 120f, 20f, 500f, hex(0xFF3A2A30))
+    box(420f, 360f, 760f, 16f, hex(0xFF3A2A30))
+    drawRect(hex(0xFF3A2A30), Offset(420f, 120f), Size(760f, 500f), style = Stroke(24f))
+    drawPath(
+        Path().apply {
+            moveTo(340f, 90f)
+            quadraticTo(480f + sin(t) * 10f, 400f, 380f, 680f)
+            lineTo(300f, 680f)
+            lineTo(300f, 90f)
+            close()
+        },
+        hex(0xFF7A2A3A),
+    )
+    drawPath(
+        Path().apply {
+            moveTo(1260f, 90f)
+            quadraticTo(1120f + sin(t + 1) * 10f, 400f, 1220f, 680f)
+            lineTo(1300f, 680f)
+            lineTo(1300f, 90f)
+            close()
+        },
+        hex(0xFF7A2A3A),
+    )
+    box(380f, 620f, 840f, 30f, hex(0xFF4A3238))
+    val yx = 60f + frac(t / 8f) * 1100f
+    at(yx, 830f, yx / 40f * 57f) {
+        oval(0f, 0f, 36f, 36f, hex(0xFFE85A8A))
+        for (k in 0 until 4) {
+            at(0f, 0f, k * 57f) {
+                drawOval(hex(0xFFB83A6A), Offset(-36f, -12f - k * 6f), Size(72f, 24f + k * 12f), style = Stroke(3f))
+            }
+        }
+    }
+    box(0f, 866f, VW, 34f, hex(0xFF120E16))
+    val orange = hex(0xFFE0954A)
+    at(1400f, 866f, s = 1.25f) {
+        glow(Offset(0f, -120f), 220f, hex(0xFFFFC88C), .25f)
+        oval(0f, -70f, 70f, 80f, orange)
+        oval(10f, -170f, 46f, 42f, orange)
+        drawPath(poly(-24f, -200f, -18f, -240f, 2f, -206f), orange)
+        drawPath(poly(18f, -206f, 38f, -240f, 46f, -196f), orange)
+        val sw = sin(t * 2.2f) * 40f
+        drawPath(
+            Path().apply {
+                moveTo(60f, -20f)
+                quadraticTo(150f, -10f, 140f + sw * .5f, -110f + sw)
+            },
+            orange,
+            style = Stroke(18f, cap = StrokeCap.Round),
+        )
+        val blink = if (frac(t / 4f) < .04f) 1f else 7f
+        oval(-6f, -174f, 6f, blink, hex(0xFF2E5D1F))
+        oval(26f, -174f, 6f, blink, hex(0xFF2E5D1F))
+    }
+}
+
+// ---- Dog Day: a sunny park, a happy dog chasing a bouncing ball along the bottom, butterflies
+
+private fun DrawScope.dogDay(
+    t: Float,
+    s: SceneStatics,
+) {
+    sky(0f to hex(0xFF6FC3FF), .7f to hex(0xFFC9ECFF), 1f to hex(0xFFEAF8FF))
+    oval(1350f, 150f, 70f, 70f, hex(0xFFFFF3A0))
+    glow(Offset(1350f, 150f), 220f, hex(0xFFFFF5AA), .5f)
+    for (i in 0 until 3) puffCloud(frac(t * .012f + i * .33f) * 1900f - 150f, 120f + i * 70f, 45f)
+    drawPath(s.hill(600f, 60f, 361), hex(0xFF8FD96F))
+    drawPath(s.hill(690f, 40f, 362), hex(0xFF6CC456))
+    listOf(200f to 520f, 1450f to 540f).forEach { (x, y) ->
+        box(x - 12f, y, 24f, 160f, hex(0xFF6B4A35))
+        oval(x, y, 90f, 80f, hex(0xFF3F9A3A))
+        oval(x - 40f, y + 20f, 60f, 50f, hex(0xFF4FAE46))
+    }
+    val p = frac(t / 5f)
+    val ballX = -100f + p * 1900f
+    val ballY = 780f - abs(sin(p * TAU * 3)) * 200f
+    oval(ballX, ballY, 22f, 22f, hex(0xFFFFDE00))
+    val dx = ballX - 260f
+    val dy = 800f - abs(sin(t * 10)) * 18f
+    val leg = sin(t * 20) * 14f
+    val fur = hex(0xFFC68642)
+    listOf(-40f to leg, -20f to -leg, 30f to leg, 50f to -leg).forEach { (o, l) -> box(dx + o + l * .5f, dy - 14f, 14f, 36f, fur) }
+    at(dx - 66f, dy - 56f, (-.8f + sin(t * 25) * .5f) * 57f) { box(-6f, -36f, 12f, 40f, fur) }
+    oval(dx, dy - 40f, 70f, 38f, fur)
+    oval(dx + 70f, dy - 80f, 36f, 32f, fur)
+    oval(dx + 100f, dy - 70f, 22f, 16f, hex(0xFFD89A5A))
+    oval(dx + 118f, dy - 74f, 7f, 6f, hex(0xFF222222))
+    oval(dx + 80f, dy - 88f, 5f, 5f, hex(0xFF222222))
+    at(dx + 56f, dy - 100f, (.5f + sin(t * 20) * .2f) * 57f) { oval(0f, 14f, 12f, 24f, hex(0xFF6B4226)) }
+    listOf(0xFFFF8FB1, 0xFFFFD166, 0xFFC39BFF).forEachIndexed { i, c ->
+        butterfly(frac(t * .05f + i * .3f) * 1700f - 50f, 380f + i * 60f + sin(t * 1.3f + i) * 40f, t, i, hex(c))
+    }
+}
+
+// ---- Talk Like a Pirate Day: a pirate ship rocking on moonlit waves on the left, an island on the right
+
+private fun DrawScope.pirateDay(t: Float) {
+    sky(0f to hex(0xFF050A1A), .6f to hex(0xFF13264A), 1f to hex(0xFF2A4A6A))
+    stars(80, 371, 450f, t)
+    oval(1250f, 190f, 70f, 70f, hex(0xFFF3F0DC))
+    glow(Offset(1250f, 190f), 240f, hex(0xFFF0F0D2), .4f)
+    val dark = hex(0xFF0A1424)
+    drawPath(
+        Path().apply {
+            moveTo(1350f, 600f)
+            quadraticTo(1450f, 520f, 1580f, 600f)
+            close()
+        },
+        dark,
+    )
+    drawPath(
+        Path().apply {
+            moveTo(1460f, 560f)
+            quadraticTo(1470f, 480f, 1440f, 440f)
+        },
+        dark,
+        style = Stroke(8f),
+    )
+    for (k in 0 until 5) at(1440f, 440f, (k * 1.2f - 2.4f + sin(t + k) * .08f) * 57f) { oval(30f, 0f, 36f, 8f, dark) }
+    box(0f, 600f, VW, 300f, hex(0xFF0C1A30))
+    for (k in 0 until 12) {
+        val w = 140f - k * 8f + sin(t * 1.6f + k) * 20f
+        box(1250f - w / 2, 612f + k * 20f, w, 3f, hex(0xFFF0F0D2), .35f)
+    }
+    at(250f, 700f + sin(t * 1.1f + 1) * 10f, sin(t * 1.1f) * 4f, .75f) {
+        drawPath(poly(-300f, -60f, 320f, -60f, 240f, 40f, -240f, 40f), hex(0xFF2A1608))
+        box(-310f, -100f, 90f, 44f, hex(0xFF2A1608))
+        for (k in 0 until 6) box(-190f + k * 70f, -40f, 18f, 14f, hex(0xFFFFD36B))
+        box(-10f, -440f, 14f, 380f, hex(0xFF1A0E05))
+        box(-170f, -360f, 12f, 300f, hex(0xFF1A0E05))
+        val fill = 1 + sin(t * 1.7f) * .06f
+        listOf(Triple(-3f, -420f, 130f), Triple(-164f, -340f, 100f)).forEach { (x, y, w) ->
+            drawPath(
+                Path().apply {
+                    moveTo(x - w, y)
+                    quadraticTo(x + w * .15f * fill, y + 60f, x + w, y)
+                    lineTo(x + w * .9f, y + 150f)
+                    quadraticTo(x + w * .15f * fill, y + 190f, x - w * .9f, y + 150f)
+                    close()
+                },
+                hex(0xFFE8DCC0),
+            )
+        }
+        drawPath(
+            Path().apply {
+                moveTo(4f, -440f)
+                for (k in 0..8) lineTo(4f + k * 10f, -440f + sin(t * 6 - k * .8f) * 5f)
+                for (k in 8 downTo 0) lineTo(4f + k * 10f, -400f + sin(t * 6 - k * .8f) * 5f)
+                close()
+            },
+            hex(0xFF111111),
+        )
+        oval(40f, -424f, 8f, 8f, hex(0xFFEEEEEE))
+        drawLine(hex(0xFFEEEEEE), Offset(30f, -410f), Offset(52f, -404f), strokeWidth = 3f)
+        drawLine(hex(0xFFEEEEEE), Offset(52f, -410f), Offset(30f, -404f), strokeWidth = 3f)
+    }
+    for (k in 0 until 5) {
+        drawPath(
+            Path().apply {
+                var x = 0f
+                while (x <= VW) {
+                    val y = 700f + k * 40f + sin(x * .012f + t * 1.5f + k) * 10f
+                    if (x == 0f) moveTo(x, y) else lineTo(x, y)
+                    x += 20f
+                }
+            },
+            hex(0xFFB4D2FF),
+            alpha = .35f,
+            style = Stroke(3f),
+        )
     }
 }
