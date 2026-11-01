@@ -380,6 +380,9 @@ def monkey():
     with open(f"{OUT}/monkey.txt", "w") as f:
         f.write(mk)
     shot("after-monkey")
+    # random taps on a phone can open quick settings and turn off Wi-Fi; put the network back
+    sh("cmd statusbar collapse; svc wifi enable; svc data enable; cmd connectivity airplane-mode disable")
+    time.sleep(5)
     check_crash("monkey")
     if not app_running():
         REPORT["problems"].append({"type": "not running after monkey"})
@@ -403,13 +406,9 @@ def sign_in():
             log("signed in")
             break
         if root is None:
-            # the screen never "settles" for the reader while something animates (e.g. a holiday scene);
-            # the focused button on every sign-in screen is the right next step, so just press OK
-            shot(f"login-blind-{step}")
-            if MODE == "tv":
-                key("DPAD_CENTER", wait=4)
-            else:
-                key("ENTER", wait=4)
+            # the screen can't be read right now (it never "settles" while something animates); wait and look again
+            shot(f"login-unreadable-{step}")
+            time.sleep(3)
             continue
         if step % 3 == 1:
             shot(f"login-{step}")

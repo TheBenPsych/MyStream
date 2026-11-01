@@ -144,6 +144,11 @@ jobs:
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
             adb shell input keyevent 82 || true
+            # Move the clock off holidays so the robot sees the everyday screens (the animated holiday
+            # scene keeps the screen reader from ever settling on the TV emulator)
+            if adb root >/dev/null 2>&1; then sleep 3; adb wait-for-device; fi
+            adb shell "settings put global auto_time 0; date 111012002026.00" || true
+            adb shell date || true
             timeout 300 adb install -r -g app.apk
           }
           boot -wipe-data
