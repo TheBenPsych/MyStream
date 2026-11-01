@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.logCoilError
+import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.util.BlurHash
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -282,9 +283,8 @@ fun ItemCardImageOverlay(
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
-                        .background(
-                            MaterialTheme.colorScheme.tertiary,
-                        ).clip(RectangleShape)
+                        .background(BenflixRed)
+                        .clip(RectangleShape)
                         .height(Cards.playedPercentHeight)
                         .fillMaxWidth((watchedPercent / 100.0).toFloat()),
             )

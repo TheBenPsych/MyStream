@@ -84,3 +84,6 @@ fun WholphinTheme(
 private val KidsYellow = Color(0xFFFFC400)
 private val KidsBlue = Color(0xFF0E2A63)
 private val KidsBlueLight = Color(0xFF1B3F8A)
+
+/** Benflix red, used for watch progress bars everywhere (cards, banners, player). */
+val BenflixRed = Color(0xFFE50914)
