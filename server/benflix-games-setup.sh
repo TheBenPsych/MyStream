@@ -171,7 +171,7 @@ mkdir -p "$BF"
 
 say "Downloading the Benflix play helper"
 ok=1
-for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh; do
+for f in benflix-games-helper.py benflix-play-startup.sh benflix-run-game.sh benflix-skip-setup.sh; do
   curl -fsSL "$RAW/$f" -o "$BF/$f" || { echo "  --  couldn't download $f"; ok=0; }
 done
 [ $ok = 1 ] && echo "  ok"
@@ -274,7 +274,8 @@ if es is None:
     raise SystemExit("  PROBLEM  EmulationStation app not found in Wolf's settings")
 new, skip = [], False
 mounts = (f"'{os.environ['ROMS']}:/ROMs:rw', '{os.environ['ESHOME']}:/es:rw', '{os.environ['BF']}:/benflix:ro', "
-          f"'{os.environ['BF']}/benflix-play-startup.sh:/opt/gow/startup-app.sh:ro'")
+          f"'{os.environ['BF']}/benflix-play-startup.sh:/opt/gow/startup-app.sh:ro', "
+          f"'{os.environ['BF']}/benflix-skip-setup.sh:/etc/cont-init.d/setup-de.sh:ro'")
 for l in lines[es[0]:es[1]]:
     if skip:
         if "]" in l:
