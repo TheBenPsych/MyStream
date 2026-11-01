@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.DatePlayedService
+import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
@@ -124,6 +125,7 @@ class HomeViewModel
         private val trailerService: TrailerService,
         private val birthdayService: BirthdayService,
         private val diskCache: DiskCache,
+        private val detailsPrefetch: DetailsPrefetch,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -1395,6 +1397,8 @@ class HomeViewModel
             viewModelScope.launchIO {
                 backdropService.submit(item)
             }
+            // Resting on a poster: get its details ready in case OK is pressed
+            detailsPrefetch.prefetch(viewModelScope, item.id, item.type)
         }
 
         fun deleteItem(
