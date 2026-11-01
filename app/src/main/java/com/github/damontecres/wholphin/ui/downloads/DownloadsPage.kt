@@ -165,11 +165,19 @@ fun DownloadsPage(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DownloadsViewModel = hiltViewModel(),
+    offlineProfile: OfflineProfile? = null,
 ) {
     val service = viewModel.service
     BackHandler(onBack = onClose)
     val all by service.items.collectAsState()
-    val items = remember(all) { service.visibleItems(all) }
+    val items =
+        remember(all, offlineProfile) {
+            if (offlineProfile == null) {
+                service.visibleItems(all)
+            } else {
+                service.visibleItems(all, offlineProfile.userId, offlineProfile.kids)
+            }
+        }
     var playing by remember { mutableStateOf<DownloadedItem?>(null) }
     var confirmDelete by remember { mutableStateOf<DownloadedItem?>(null) }
     // Refresh progress once a second while anything is still downloading

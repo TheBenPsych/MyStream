@@ -78,11 +78,20 @@ class DownloadService
         fun posterFile(itemId: UUID): File = File(folder(), "$itemId.jpg")
 
         /** The downloads the current profile can see. Kids only see what was downloaded in Kids. */
-        fun visibleItems(all: List<DownloadedItem>): List<DownloadedItem> {
-            val userId = serverRepository.currentUser?.id
-            val kids = KidsMode.isActive
-            return all.filter { (it.userId == null || it.userId == userId) && (!kids || it.kids) }
-        }
+        fun visibleItems(all: List<DownloadedItem>): List<DownloadedItem> =
+            visibleItems(all, serverRepository.currentUser?.id, KidsMode.isActive)
+
+        /** Kids sees every download made in Kids; a grown-up sees their own */
+        fun visibleItems(
+            all: List<DownloadedItem>,
+            userId: UUID?,
+            kids: Boolean,
+        ): List<DownloadedItem> =
+            if (kids) {
+                all.filter { it.kids }
+            } else {
+                all.filter { it.userId == null || it.userId == userId }
+            }
 
         fun canDownload(item: BaseItem): Boolean = item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.EPISODE
 
