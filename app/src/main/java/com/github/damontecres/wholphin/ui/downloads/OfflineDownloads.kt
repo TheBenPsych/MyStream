@@ -99,11 +99,14 @@ class OfflineDownloadsViewModel
  * and profiles with a PIN still ask for it. Kids only sees what was downloaded in Kids.
  */
 @Composable
-fun OfflineDownloadsButton(modifier: Modifier = Modifier) {
+fun OfflineDownloadsButton(
+    modifier: Modifier = Modifier,
+    showWhenEmpty: Boolean = false,
+) {
     if (rememberIsTv()) return
     val viewModel: OfflineDownloadsViewModel = hiltViewModel()
     val all by viewModel.service.items.collectAsState()
-    if (all.isEmpty()) return
+    if (all.isEmpty() && !showWhenEmpty) return
     var open by remember { mutableStateOf(false) }
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -175,6 +178,14 @@ private fun OfflineDownloads(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 24.dp),
             )
+            if (all.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.downloads_none),
+                    fontSize = 15.sp,
+                    color = Color(0xFFB3B3B3),
+                    textAlign = TextAlign.Center,
+                )
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
