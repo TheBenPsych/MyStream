@@ -921,10 +921,11 @@ class HomeViewModel
                                 sourceName,
                             )
                         _state.update { it.copy(because = ThemedRow(title, items)) }
+                        loadMoreOfGenre(userDto, sourceId, items, taste)
                         return
                     }
                 }
-                _state.update { it.copy(because = null) }
+                _state.update { it.copy(because = null, becauseMore = null) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -996,6 +997,60 @@ class HomeViewModel
         /**
          * A few genre rows ("Comedy", "Action"...), picked at random each visit
          */
+
+        /**
+         * "More musicals": right under "Because you watched", more titles from the main genre of
+         * whatever was watched last, so the home page reacts the same day
+         */
+        private suspend fun loadMoreOfGenre(
+            userDto: ServerUserConfig,
+            sourceId: java.util.UUID,
+            becauseItems: List<BaseItem>,
+            taste: Taste,
+        ) {
+            try {
+                val genre =
+                    api.userLibraryApi
+                        .getItem(itemId = sourceId, userId = userDto.id)
+                        .content.genres
+                        ?.firstOrNull()
+                if (genre == null) {
+                    _state.update { it.copy(becauseMore = null) }
+                    return
+                }
+                val skip = becauseItems.map { it.id }.toSet() + sourceId
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                genres = listOf(genre),
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = EXTRA_ROW_MAX,
+                                fields = HomeItemFields,
+                            ),
+                        ).content.items
+                        .filter { it.id !in skip && taste.keep(it) }
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(
+                        becauseMore =
+                            if (items.size >= GENRE_MIN) {
+                                ThemedRow(context.getString(R.string.more_of_genre, genre), items)
+                            } else {
+                                null
+                            },
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading more-of-genre row")
+            }
+        }
+
         private suspend fun loadGenreRows(userDto: ServerUserConfig) {
             try {
                 val taste = loadTaste(userDto.id)
@@ -1266,6 +1321,7 @@ data class HomeState(
     val trendingMissing: List<DiscoverItem> = emptyList(),
     val themed: ThemedRow? = null,
     val because: ThemedRow? = null,
+    val becauseMore: ThemedRow? = null,
     val collections: ThemedRow? = null,
     val mood: HomeMood? = null,
     val moodRow: ThemedRow? = null,
