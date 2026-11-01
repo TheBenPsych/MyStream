@@ -103,6 +103,10 @@ fun DiscoverMovieDetails(
         is DataLoadingState.Success<MovieDetails> -> {
             val movie = st.data
             DiscoverMovieDetailsContent(
+                isAdmin =
+                    viewModel.serverRepository.currentUserDto
+                        ?.policy
+                        ?.isAdministrator == true,
                 preferences = preferences,
                 movie = movie,
                 userConfig = userConfig,
@@ -180,6 +184,7 @@ private const val RECOMMENDED_ROW = SIMILAR_ROW + 1
 
 @Composable
 fun DiscoverMovieDetailsContent(
+    isAdmin: Boolean,
     preferences: UserPreferences,
     userConfig: SeerrUserConfig?,
     movie: MovieDetails,
@@ -236,10 +241,7 @@ fun DiscoverMovieDetailsContent(
                                 .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
                     ExpandableDiscoverButtons(
-                        isAdmin =
-                            viewModel.serverRepository.currentUserDto
-                                ?.policy
-                                ?.isAdministrator == true,
+                        isAdmin = isAdmin,
                         availability =
                             SeerrAvailability.from(movie.mediaInfo?.status)
                                 ?: SeerrAvailability.UNKNOWN,

@@ -109,6 +109,10 @@ fun DiscoverSeriesDetails(
             val item = st.data
             val userConfig by viewModel.userConfig.collectAsState(null)
             DiscoverSeriesDetailsContent(
+                isAdmin =
+                    viewModel.serverRepository.currentUserDto
+                        ?.policy
+                        ?.isAdministrator == true,
                 preferences = preferences,
                 series = item,
                 availability = state.availability,
@@ -210,6 +214,7 @@ private const val RECOMMENDED_ROW = SIMILAR_ROW + 1
 
 @Composable
 fun DiscoverSeriesDetailsContent(
+    isAdmin: Boolean,
     preferences: UserPreferences,
     userConfig: SeerrUserConfig?,
     series: TvDetails,
@@ -277,10 +282,7 @@ fun DiscoverSeriesDetailsContent(
                                     .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                         )
                         ExpandableDiscoverButtons(
-                            isAdmin =
-                                viewModel.serverRepository.currentUserDto
-                                    ?.policy
-                                    ?.isAdministrator == true,
+                            isAdmin = isAdmin,
                             availability = availability,
                             requestOnClick = requestOnClick,
                             pendingOnClick = requestOnClick,
