@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,8 +38,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -458,23 +460,38 @@ fun WatchOrderPage(
 @Composable
 private fun MissingCard(entry: OrderEntry) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(
-            contentAlignment = Alignment.Center,
+        // Can be selected with the remote like the other cards, so the list scrolls all the way
+        // to the end even when the last row is only titles you don't have
+        Surface(
+            onClick = {},
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+            colors =
+                ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White.copy(alpha = .45f),
+                    focusedContainerColor = Color.White.copy(alpha = .12f),
+                    focusedContentColor = Color.White,
+                ),
+            border =
+                ClickableSurfaceDefaults.border(
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), shape = RoundedCornerShape(6.dp)),
+                    focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .aspectRatio(2f / 3f)
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), RoundedCornerShape(6.dp))
-                    .padding(8.dp),
+                    .aspectRatio(2f / 3f),
         ) {
-            Text(
-                text = "NOT ON\nBENFLIX",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                textAlign = TextAlign.Center,
-                color = Color.White.copy(alpha = .45f),
-            )
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                Text(
+                    text = "NOT ON\nBENFLIX",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
         Text(
             text = entry.title,
