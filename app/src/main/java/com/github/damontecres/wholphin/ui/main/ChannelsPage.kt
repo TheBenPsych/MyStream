@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
+import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.components.LoadingPage
@@ -75,6 +76,7 @@ class ChannelsViewModel
     constructor(
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val diskCache: DiskCache,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         /** null while loading */
@@ -85,7 +87,14 @@ class ChannelsViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 _channels.value =
                     try {
-                        ChannelSession.load(api, serverRepository.currentUser?.id, KidsMode.isActive)
+                        ChannelSession.load(
+                            api,
+                            serverRepository.currentUser?.id,
+                            KidsMode.isActive,
+                            diskCache,
+                            // The guide shows up as soon as the first channels are ready
+                            onProgress = { if (it.isNotEmpty()) _channels.value = it },
+                        )
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -158,45 +167,8 @@ private fun GuideGrid(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(top = 12.dp, start = 8.dp),
     ) {
-        // What the focused program is
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.height(110.dp),
-        ) {
-            Text(text = "CHANNELS", fontFamily = BenflixTitleFont, fontSize = 40.sp, letterSpacing = 1.sp)
-            focused?.let { (schedule, program) ->
-                val live = now >= program.startMs && now < program.endMs
-                Text(
-                    text =
-                        "${schedule.number}  ${schedule.channel.title.uppercase()}  ·  " +
-                            "${clock(program.startMs)} - ${clock(program.endMs)}" +
-                            if (live) "  ·  ON NOW" else "",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                    color = if (live) Color(0xFFE5303A) else Color(0xFFA69C9D),
-                )
-                Text(
-                    text =
-                        program.name() +
-                            if (program.item.type == BaseItemKind.EPISODE) "  ·  ${program.item.title.orEmpty()}" else "",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                program.item.data.overview?.let {
-                    Text(
-                        text = it,
-                        fontSize = 13.sp,
-                        color = Color.White.copy(alpha = .75f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 720.dp),
-                    )
-                }
-            }
-        }
+        // What the focused program is. Read only inside, so moving around the guide redraws just this part
+        GuideHeader(focused = { focused }, now = now)
         // Time ruler
         Row {
             Box(Modifier.width(CHANNEL_COL))
@@ -240,7 +212,8 @@ private fun GuideGrid(
                     }
                     Box(modifier = Modifier.width(4.dp))
                     Box(modifier = Modifier.width(widthFor(windowEnd - windowStart)).fillMaxHeight()) {
-                        schedule.between(windowStart, windowEnd).forEach { program ->
+                        val shownPrograms = remember(schedule, windowStart) { schedule.between(windowStart, windowEnd) }
+                        shownPrograms.forEach { program ->
                             val from = maxOf(program.startMs, windowStart)
                             val to = minOf(program.endMs, windowEnd)
                             val live = now >= program.startMs && now < program.endMs
@@ -300,6 +273,51 @@ private fun GuideGrid(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuideHeader(
+    focused: () -> Pair<ChannelSchedule, ChannelProgram>?,
+    now: Long,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.height(110.dp),
+    ) {
+        Text(text = "CHANNELS", fontFamily = BenflixTitleFont, fontSize = 40.sp, letterSpacing = 1.sp)
+        focused()?.let { (schedule, program) ->
+            val live = now >= program.startMs && now < program.endMs
+            Text(
+                text =
+                    "${schedule.number}  ${schedule.channel.title.uppercase()}  ·  " +
+                        "${clock(program.startMs)} - ${clock(program.endMs)}" +
+                        if (live) "  ·  ON NOW" else "",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+                color = if (live) Color(0xFFE5303A) else Color(0xFFA69C9D),
+            )
+            Text(
+                text =
+                    program.name() +
+                        if (program.item.type == BaseItemKind.EPISODE) "  ·  ${program.item.name.orEmpty()}" else "",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            program.item.data.overview?.let {
+                Text(
+                    text = it,
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = .75f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 720.dp),
+                )
             }
         }
     }

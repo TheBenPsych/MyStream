@@ -83,15 +83,16 @@ enum class Franchise(
     MARVEL(
         "Marvel",
         listOf(
+            // The official Disney+ timeline order
             e("Captain America: The First Avenger", 2011, true),
             e("Captain Marvel", 2019, true),
             e("Iron Man", 2008, true),
             e("Iron Man 2", 2010),
             e("The Incredible Hulk", 2008),
             e("Thor", 2011, true),
-            e("The Avengers", 2012, true),
-            e("Iron Man 3", 2013),
+            e("The Avengers", 2012, true, listOf("Marvel's The Avengers", "Avengers Assemble")),
             e("Thor: The Dark World", 2013),
+            e("Iron Man 3", 2013),
             e("Captain America: The Winter Soldier", 2014, true),
             e("Guardians of the Galaxy", 2014, true),
             e("Guardians of the Galaxy Vol. 2", 2017),
@@ -117,13 +118,20 @@ enum class Franchise(
             e("Hawkeye", 2021),
             e("Moon Knight", 2022),
             e("Black Panther: Wakanda Forever", 2022),
+            e("She-Hulk: Attorney at Law", 2022),
+            e("Ms. Marvel", 2022),
             e("Thor: Love and Thunder", 2022),
             e("Ant-Man and the Wasp: Quantumania", 2023),
             e("Guardians of the Galaxy Vol. 3", 2023, true),
+            e("Secret Invasion", 2023),
             e("The Marvels", 2023),
-            e("Deadpool & Wolverine", 2024, true),
+            e("Echo", 2024),
+            e("Agatha All Along", 2024),
+            e("Deadpool & Wolverine", 2024, true, listOf("Deadpool and Wolverine")),
+            e("Daredevil: Born Again", 2025),
             e("Captain America: Brave New World", 2025),
             e("Thunderbolts", 2025, alt = listOf("Thunderbolts*")),
+            e("Ironheart", 2025),
             e("The Fantastic Four: First Steps", 2025),
         ),
     ),
@@ -180,6 +188,8 @@ data class OrderedItem(
     val storyNumber: Int,
     val year: Int,
     val mustWatch: Boolean,
+    /** When it first came out (epoch day), for release order; null if the server doesn't know */
+    val releaseDay: Long? = null,
 )
 
 data class FranchiseList(
@@ -213,10 +223,13 @@ class WatchOrderViewModel
                                         userId = serverRepository.currentUser?.id,
                                         includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
                                         recursive = true,
+                                        // Every movie on its own, never bundled into its collection (like "Thor Collection")
+                                        collapseBoxSetItems = false,
                                         sortBy = listOf(ItemSortBy.SORT_NAME),
                                         fields = HomeItemFields,
                                     ),
                                 ).content.items
+                                .filter { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.SERIES }
                         val byName = all.groupBy { norm(it.name.orEmpty()) }
                         Franchise.entries.associateWith { franchise ->
                             val found =
@@ -228,11 +241,20 @@ class WatchOrderViewModel
                                         fun yearOk(y: Int?) = y == null || kotlin.math.abs(y - entry.year) <= 1
                                         val dto =
                                             keys.firstNotNullOfOrNull { k -> byName[k]?.firstOrNull { yearOk(it.productionYear) } }
+                                                // e.g. "Star Wars: Episode IV - A New Hope" for "A New Hope"
                                                 ?: all.firstOrNull {
-                                                    norm(it.name.orEmpty()).let { n -> n.endsWith(key) || n.startsWith(key) } &&
+                                                    norm(it.name.orEmpty()).endsWith(key) &&
                                                         it.productionYear?.let { y -> yearOk(y) } == true
                                                 }
-                                        dto?.let { OrderedItem(BaseItem(it), i + 1, entry.year, entry.mustWatch) }
+                                        dto?.let {
+                                            OrderedItem(
+                                                item = BaseItem(it),
+                                                storyNumber = i + 1,
+                                                year = it.productionYear ?: entry.year,
+                                                mustWatch = entry.mustWatch,
+                                                releaseDay = it.premiereDate?.toLocalDate()?.toEpochDay(),
+                                            )
+                                        }
                                     }.distinctBy { it.item.id }
                             FranchiseList(found, franchise.entries.size - found.size)
                         }
@@ -301,13 +323,28 @@ fun WatchOrderPage(
                 ?.found
                 .orEmpty()
                 .filter { !mustOnly || it.mustWatch }
-                .let { items -> if (storyOrder) items else items.sortedBy { it.year } }
+                .let { items ->
+                    if (storyOrder) {
+                        items
+                    } else {
+                        // By the day each came out (so 2021's Black Widow comes before Shang-Chi)
+                        items.sortedWith(
+                            compareBy<OrderedItem>({
+                                it.releaseDay ?: java.time.LocalDate
+                                    .of(it.year, 12, 31)
+                                    .toEpochDay()
+                            })
+                                .thenBy { it.storyNumber },
+                        )
+                    }
+                }
         if (shown.isEmpty()) {
             Text("None of these are on Benflix yet.", fontSize = 18.sp)
             return@Column
         }
         LazyVerticalGrid(
-            columns = GridCells.Fixed(6),
+            // About 6 across on a TV, 2 or 3 on a phone
+            columns = GridCells.Adaptive(140.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(8.dp),
@@ -320,7 +357,8 @@ fun WatchOrderPage(
                             item = entry.item,
                             onClick = { viewModel.navigationManager.navigateTo(entry.item.destination()) },
                             onLongClick = {},
-                            showTitle = false,
+                            showTitle = true,
+                            fillWidth = POSTER_WIDTH_PX,
                         )
                         Text(
                             text = "${shown.indexOf(entry) + 1}",
@@ -385,3 +423,5 @@ private fun OrderChip(
         Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+private const val POSTER_WIDTH_PX = 320
