@@ -357,6 +357,12 @@ fun DestinationContent(
             NowPlayingPage(modifier)
         }
 
+        is Destination.GenreHub -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .GenreHubPage(destination.genre, modifier)
+        }
+
         is Destination.Mood -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             MoodPage(destination.moodName, modifier)

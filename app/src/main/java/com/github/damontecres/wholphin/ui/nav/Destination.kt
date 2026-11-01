@@ -169,6 +169,12 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** A page for one genre: its best, hidden gems, what's new and shorter picks */
+    @Serializable
+    data class GenreHub(
+        val genre: String,
+    ) : Destination(false)
+
     /** A full page of picks for one "Pick a mood" tile */
     @Serializable
     data class Mood(
