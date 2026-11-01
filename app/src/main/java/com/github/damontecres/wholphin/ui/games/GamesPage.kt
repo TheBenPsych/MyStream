@@ -54,6 +54,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -73,12 +74,13 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.GameConsole
+import com.github.damontecres.wholphin.services.GameLibraryClient
+import com.github.damontecres.wholphin.services.GameLibraryException
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.RommClient
-import com.github.damontecres.wholphin.services.RommConsole
-import com.github.damontecres.wholphin.services.RommException
-import com.github.damontecres.wholphin.services.RommGame
+import com.github.damontecres.wholphin.services.PlayTarget
+import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
@@ -130,16 +132,15 @@ enum class BuiltInGame(
 sealed interface LibraryState {
     data object KidsHidden : LibraryState
 
-    data object NotSetUp : LibraryState
-
     data object Loading : LibraryState
 
     data class Failed(
         val message: String,
+        val askAddress: Boolean,
     ) : LibraryState
 
     data class Ready(
-        val consoles: List<RommConsole>,
+        val consoles: List<GameConsole>,
     ) : LibraryState
 }
 
@@ -153,16 +154,19 @@ class GamesViewModel
         @param:ApplicationContext private val context: Context,
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
-        private val romm: RommClient,
+        private val games: GameLibraryClient,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
 
         private val _library = MutableStateFlow<LibraryState>(LibraryState.Loading)
         val library: StateFlow<LibraryState> = _library
 
-        val rommAddress: String get() = romm.address
-        val rommUsername: String get() = romm.username
-        val rommAuthHeader: String get() = romm.authHeader
+        val gamesAddress: String get() = games.customAddress.ifBlank { games.address }
+        val gamesToken: String get() = games.token
+
+        /** The game being started right now, so a second press doesn't start two */
+        private val _starting = MutableStateFlow<Int?>(null)
+        val starting: StateFlow<Int?> = _starting
 
         init {
             reload()
@@ -173,31 +177,44 @@ class GamesViewModel
                 _library.value = LibraryState.KidsHidden
                 return
             }
-            if (!romm.isConfigured) {
-                _library.value = LibraryState.NotSetUp
-                return
-            }
             _library.value = LibraryState.Loading
             viewModelScope.launch {
                 _library.value =
                     try {
-                        LibraryState.Ready(romm.loadLibrary())
-                    } catch (e: RommException) {
-                        LibraryState.Failed(e.message ?: "Couldn't load your games.")
+                        LibraryState.Ready(games.loadLibrary())
+                    } catch (e: GameLibraryException) {
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress)
                     } catch (e: Exception) {
-                        Timber.w(e, "Loading RomM library failed")
-                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).")
+                        Timber.w(e, "Loading the game library failed")
+                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).", askAddress = false)
                     }
             }
         }
 
-        fun connect(
-            address: String,
-            username: String,
-            password: String,
-        ) {
-            romm.save(address, username, password)
+        fun setAddress(address: String) {
+            games.saveAddress(address)
             reload()
+        }
+
+        /** Tells the server which game to start, then opens it in Moonlight */
+        fun play(
+            context: Context,
+            game: ServerGame,
+        ) {
+            if (_starting.value != null) return
+            _starting.value = game.id
+            viewModelScope.launch {
+                try {
+                    openGameStream(context, game, games.prepare(game))
+                } catch (e: GameLibraryException) {
+                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Timber.w(e, "Starting a game failed")
+                    Toast.makeText(context, "Couldn't start ${game.name}.", Toast.LENGTH_LONG).show()
+                } finally {
+                    _starting.value = null
+                }
+            }
         }
 
         private fun key(game: BuiltInGame): String {
@@ -231,9 +248,8 @@ fun GamesPage(
     val isTv = rememberIsTv()
     val context = LocalContext.current
     val library by viewModel.library.collectAsState()
-    var setupStep by remember { mutableIntStateOf(0) }
-    var draftAddress by remember { mutableStateOf("") }
-    var draftUser by remember { mutableStateOf("") }
+    val starting by viewModel.starting.collectAsState()
+    var askAddress by remember { mutableStateOf(false) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -299,15 +315,6 @@ fun GamesPage(
                 InfoText("Your game collection isn't shown on the Kids profile.")
             }
 
-            LibraryState.NotSetUp -> {
-                InfoText("Connect your game library (RomM) once, and your games show up here with box art.")
-                ActionTile(
-                    title = "Connect game library",
-                    subtitle = "Type your RomM address and login",
-                    onClick = { setupStep = 1 },
-                )
-            }
-
             LibraryState.Loading -> {
                 InfoText("Loading your games…")
             }
@@ -316,7 +323,9 @@ fun GamesPage(
                 InfoText(state.message)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
-                    ActionTile(title = "Change library", subtitle = "Fix the address or login", onClick = { setupStep = 1 })
+                    if (state.askAddress) {
+                        ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
+                    }
                 }
             }
 
@@ -324,9 +333,7 @@ fun GamesPage(
                 if (state.consoles.isEmpty()) {
                     InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                 }
-                InfoText(
-                    "Press a game to open the game stream (Moonlight). For now, pick it there: Wolf UI → your profile → EmulationStation.",
-                )
+                InfoText("Press a game to play it. To stop, press Start + Select together and choose Quit.")
                 state.consoles.forEach { console ->
                     Text(
                         text = "${console.name} (${console.games.size})",
@@ -340,69 +347,34 @@ fun GamesPage(
                         items(console.games, key = { it.id }) { game ->
                             ServerGameCard(
                                 game = game,
-                                authHeader = viewModel.rommAuthHeader,
-                                onClick = { openGameStream(context, game) },
+                                token = viewModel.gamesToken,
+                                starting = starting == game.id,
+                                onClick = { viewModel.play(context, game) },
                                 modifier = Modifier.size(width = if (isTv) 150.dp else 110.dp, height = if (isTv) 210.dp else 154.dp),
                             )
                         }
                     }
                 }
-                ActionTile(title = "Game library settings", subtitle = "Change or reload", onClick = { setupStep = 1 })
+                ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
             }
         }
     }
 
-    when (setupStep) {
-        1 -> {
-            StringInputDialog(
-                input =
-                    StringInput(
-                        title = "RomM address (for example 10.0.0.58:8095)",
-                        value = viewModel.rommAddress.removePrefix("http://"),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        onSubmit = {},
-                    ),
-                onSave = {
-                    draftAddress = it
-                    setupStep = if (it.isBlank()) 0 else 2
-                },
-                onDismissRequest = { setupStep = 0 },
-            )
-        }
-
-        2 -> {
-            StringInputDialog(
-                input =
-                    StringInput(
-                        title = "RomM username",
-                        value = viewModel.rommUsername,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                        onSubmit = {},
-                    ),
-                onSave = {
-                    draftUser = it
-                    setupStep = if (it.isBlank()) 0 else 3
-                },
-                onDismissRequest = { setupStep = 0 },
-            )
-        }
-
-        3 -> {
-            StringInputDialog(
-                input =
-                    StringInput(
-                        title = "RomM password",
-                        value = "",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        onSubmit = {},
-                    ),
-                onSave = {
-                    viewModel.connect(draftAddress, draftUser, it)
-                    setupStep = 0
-                },
-                onDismissRequest = { setupStep = 0 },
-            )
-        }
+    if (askAddress) {
+        StringInputDialog(
+            input =
+                StringInput(
+                    title = "Games server address (for example 10.0.0.58). Leave empty for automatic.",
+                    value = viewModel.gamesAddress.removePrefix("http://"),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                    onSubmit = {},
+                ),
+            onSave = {
+                askAddress = false
+                viewModel.setAddress(it)
+            },
+            onDismissRequest = { askAddress = false },
+        )
     }
 }
 
@@ -447,8 +419,9 @@ private fun ActionTile(
 /** A box art card for one of your own games */
 @Composable
 private fun ServerGameCard(
-    game: RommGame,
-    authHeader: String,
+    game: ServerGame,
+    token: String,
+    starting: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -485,7 +458,7 @@ private fun ServerGameCard(
                             ImageRequest
                                 .Builder(context)
                                 .data(game.coverUrl)
-                                .httpHeaders(NetworkHeaders.Builder().set("Authorization", authHeader).build())
+                                .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
                                 .build()
                         },
                     contentDescription = game.name,
@@ -493,21 +466,54 @@ private fun ServerGameCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+            if (starting || !game.playable) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = .65f)),
+                ) {
+                    Text(
+                        text = if (starting) "Starting…" else "Can't play here yet",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * Opens Moonlight, which streams the game from the server. If Moonlight isn't installed, opens its store page.
+ * Opens the game in Moonlight, which streams it from the server. Moonlight goes straight to the "Benflix" app
+ * there, which starts the game the server was just told about. If Moonlight isn't installed, opens its store page.
  */
 private fun openGameStream(
     context: Context,
-    game: RommGame,
+    game: ServerGame,
+    target: PlayTarget,
 ) {
+    val direct =
+        Intent()
+            .setClassName(MOONLIGHT_PACKAGE, "$MOONLIGHT_PACKAGE.ShortcutTrampoline")
+            .putExtra("AppName", target.appName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    target.computerUuid?.let { direct.putExtra("UUID", it) }
+    target.computerName?.let { direct.putExtra("Name", it) }
+    try {
+        context.startActivity(direct)
+        return
+    } catch (e: Exception) {
+        Timber.w(e, "Couldn't open Moonlight directly")
+    }
     val pm = context.packageManager
     val launch = pm.getLeanbackLaunchIntentForPackage(MOONLIGHT_PACKAGE) ?: pm.getLaunchIntentForPackage(MOONLIGHT_PACKAGE)
     if (launch != null) {
-        Toast.makeText(context, "Opening ${game.name}: choose Wolf UI → EmulationStation", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "Opening ${game.name}: choose the Benflix app in Moonlight", Toast.LENGTH_LONG).show()
         context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         return
     }
