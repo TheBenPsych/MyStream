@@ -8,6 +8,7 @@ Usage: drive.py <tv|phone> <package> <results dir>
 Server: the public Jellyfin demo server (no password), so no private server is needed.
 """
 import json
+import signal
 import os
 import re
 import subprocess
@@ -21,7 +22,7 @@ USER = os.environ.get("AUDIT_USER", "demo")
 os.makedirs(OUT, exist_ok=True)
 REPORT = {"mode": MODE, "steps": [], "timings": {}, "unreachable": {}, "problems": []}
 shot_no = [0]
-DEADLINE = time.time() + 40 * 60
+DEADLINE = time.time() + 36 * 60
 
 
 def out_of_time():
@@ -40,9 +41,16 @@ def sh(cmd, timeout=60):
     return adb("shell", cmd, timeout=timeout)
 
 
+def save_report():
+    with open(f"{OUT}/report.json", "w") as f:
+        json.dump(REPORT, f, indent=1)
+
+
 def log(msg):
     print(f"[{MODE}] {msg}", flush=True)
     REPORT["steps"].append(msg)
+    if len(REPORT["steps"]) % 5 == 0:
+        save_report()
 
 
 PKG_LABEL = re.compile(r"Benflix|MyStream", re.I)
@@ -311,6 +319,28 @@ def back_to_home():
         key("BACK", wait=1)
 
 
+def monkey():
+    """Random stress: thousands of remote presses / taps"""
+    back_to_home()
+    log("monkey test")
+    args = "--pct-nav 35 --pct-majornav 35 --pct-syskeys 5 --pct-appswitch 0 --pct-anyevent 0"
+    if MODE == "tv":
+        args += " -c android.intent.category.LEANBACK_LAUNCHER --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
+    else:
+        args = "--pct-touch 45 --pct-motion 20 --pct-nav 10 --pct-majornav 15 --pct-syskeys 5 --pct-appswitch 0 --pct-rotation 0 --pct-anyevent 0 --pct-permission 0"
+    mk = sh(f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500", timeout=900)
+    with open(f"{OUT}/monkey.txt", "w") as f:
+        f.write(mk)
+    shot("after-monkey")
+    check_crash("monkey")
+    if not app_running():
+        REPORT["problems"].append({"type": "not running after monkey"})
+    # back into the app for the guided tour
+    sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity")
+    time.sleep(6)
+
+
+
 def main():
     sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
     adb("logcat", "-c")
@@ -416,6 +446,9 @@ def main():
         log("never got signed in; stopping here")
         REPORT["problems"].append({"type": "robot could not sign in"})
         return
+    save_report()
+    monkey()
+    save_report()
     home = dump()
     REPORT["home_texts"] = [x for x in texts(home) if x][:200]
     if MODE == "tv":
@@ -502,22 +535,6 @@ def main():
     time.sleep(2)
     shot("settings")
 
-    # Random stress: thousands of remote presses / taps
-    back_to_home()
-    log("monkey test")
-    args = "--pct-nav 35 --pct-majornav 35 --pct-syskeys 5 --pct-appswitch 0 --pct-anyevent 0"
-    if MODE == "tv":
-        args += " -c android.intent.category.LEANBACK_LAUNCHER --pct-touch 0 --pct-motion 0 --pct-trackball 0 --pct-flip 0 --pct-pinchzoom 0 --pct-rotation 0 --pct-permission 0"
-    else:
-        args = "--pct-touch 45 --pct-motion 20 --pct-nav 10 --pct-majornav 15 --pct-syskeys 5 --pct-appswitch 0 --pct-rotation 0 --pct-anyevent 0 --pct-permission 0"
-    mk = sh(f"monkey -p {PKG} -s 42 --throttle 120 {args} --ignore-security-exceptions -v 2500", timeout=900)
-    with open(f"{OUT}/monkey.txt", "w") as f:
-        f.write(mk)
-    shot("after-monkey")
-    check_crash("monkey")
-    if not app_running():
-        REPORT["problems"].append({"type": "not running after monkey"})
-
     # Save the app's log
     with open(f"{OUT}/logcat.txt", "w") as f:
         f.write(adb("logcat", "-d", "-v", "time", timeout=120))
@@ -525,6 +542,13 @@ def main():
         json.dump(REPORT, f, indent=1)
     print(json.dumps({k: REPORT[k] for k in ("timings", "unreachable", "problems")}, indent=1)[:20000])
 
+
+def on_term(*_):
+    save_report()
+    sys.exit(1)
+
+
+signal.signal(signal.SIGTERM, on_term)
 
 if __name__ == "__main__":
     try:

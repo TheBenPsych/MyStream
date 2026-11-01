@@ -99,7 +99,9 @@ fun GridCard(
                 numberOfVersions = dto?.mediaSourceCount ?: 0,
                 useFallbackText = false,
                 contentScale = imageContentScale,
-                fillWidth = fillWidth,
+                // Benflix: without a size the picture was never requested (blank posters on
+                // My Benflix, genre pages, the mood quiz and Watch in order), so ask for a poster-sized one
+                fillWidth = fillWidth ?: if (fillHeight == null) DEFAULT_GRID_IMAGE_WIDTH else null,
                 fillHeight = fillHeight,
                 modifier =
                     Modifier
@@ -139,3 +141,6 @@ fun GridCard(
         }
     }
 }
+
+/** Width in pixels of the poster asked for when the caller doesn't say */
+private const val DEFAULT_GRID_IMAGE_WIDTH = 320
