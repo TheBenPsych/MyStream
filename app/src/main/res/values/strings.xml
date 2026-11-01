@@ -1036,6 +1036,7 @@
     <string name="night_mode_summary">Quieter booms, clearer voices</string>
     <string name="phone_browse">Browse</string>
     <string name="phone_profiles">Profiles</string>
+    <string name="more_of_genre">More %1$s</string>
     <string name="phone_my_benflix">My Benflix</string>
     <string name="phone_switch_profile">Switch profile</string>
     <string name="mood_shuffle">Show me different ones</string>

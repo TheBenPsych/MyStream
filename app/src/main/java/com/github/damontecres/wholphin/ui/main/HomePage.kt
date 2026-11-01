@@ -120,6 +120,7 @@ fun HomePage(
     val trendingMissing = state.trendingMissing
     val themed = state.themed
     val because = state.because
+    val becauseMore = state.becauseMore
     val collections = state.collections
     val mood = state.mood
     val moodRow = state.moodRow
@@ -273,6 +274,7 @@ fun HomePage(
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
                 themed = themed,
                 because = because,
+                becauseMore = becauseMore,
                 collections = collections,
                 mood = mood,
                 moodRow = moodRow,
@@ -370,6 +372,7 @@ fun HomePageContent(
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
     because: ThemedRow? = null,
+    becauseMore: ThemedRow? = null,
     collections: ThemedRow? = null,
     mood: HomeMood? = null,
     moodRow: ThemedRow? = null,
@@ -458,7 +461,10 @@ fun HomePageContent(
         }
     }
     LaunchedEffect(onUpdateBackdrop, focusedItem) {
-        focusedItem?.let { onUpdateBackdrop.invoke(it) }
+        // On phones the banner card shows its own picture, so the page background stays dark
+        if (isTv || !(showHero && heroFocused)) {
+            focusedItem?.let { onUpdateBackdrop.invoke(it) }
+        }
     }
     val focusedDiscover = if (heroFocused) null else extraFocus as? DiscoverItem
     LaunchedEffect(focusedDiscover) {
@@ -546,7 +552,18 @@ fun HomePageContent(
                             .focusRestorer(),
                 ) {
                     if (!isTv) {
-                        item(key = "header") { Column { pageHeader() } }
+                        val phoneFeatured = featured.getOrNull(heroIndex.coerceIn(0, (featured.size - 1).coerceAtLeast(0)))
+                        item(key = "header") {
+                            if (showHero && phoneFeatured != null) {
+                                // Phones: the banner is a rounded card with the whole wide picture
+                                PhoneHeroCard(
+                                    featured = phoneFeatured,
+                                    onClick = { onClickFeaturedInfo(phoneFeatured.item) },
+                                )
+                            } else {
+                                Column { pageHeader() }
+                            }
+                        }
                     }
                     if (showHero) {
                         item(key = "hero") {
@@ -765,6 +782,22 @@ fun HomePageContent(
                                         .padding(bottom = 8.dp)
                                         .onFocusChanged {
                                             if (!it.hasFocus && extraFocus in because.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    if (becauseMore != null) {
+                        item(key = "becauseMore") {
+                            PosterRow(
+                                title = becauseMore.title,
+                                items = becauseMore.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in becauseMore.items) extraFocus = null
                                         },
                             )
                         }
