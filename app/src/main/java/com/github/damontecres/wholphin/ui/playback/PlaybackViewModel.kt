@@ -244,9 +244,13 @@ class PlaybackViewModel
             jobs.forEach { it.cancel() }
         }
 
+        /** Benflix: true while this video was moved to MPV for its styled subtitles */
+        private var autoMpvActive = false
+
         private suspend fun createPlayer(
             isHdr: Boolean,
             is4k: Boolean,
+            styledSubs: Boolean = false,
         ) {
             val softwareDecoding =
                 !preferences.appPreferences.playbackPreferences.mpvOptions.enableHardwareDecoding
@@ -264,6 +268,16 @@ class PlaybackViewModel
                     PlayerBackend.PREFER_MPV -> if (isHdr || (is4k && softwareDecoding)) PlayerBackend.EXO_PLAYER else PlayerBackend.MPV
 
                     PlayerBackend.EXTERNAL_PLAYER -> throw IllegalStateException("Cannot use this for external playback")
+                }.let { chosen ->
+                    // Benflix (opt-in): anime-style ASS/SSA subtitles look right in MPV
+                    val autoMpv =
+                        chosen == PlayerBackend.EXO_PLAYER &&
+                            styledSubs &&
+                            !isHdr &&
+                            (destination as? Destination.Playback)?.backend == null &&
+                            preferences.appPreferences.benflixPreferences.autoMpvStyledSubs
+                    autoMpvActive = autoMpv
+                    if (autoMpv) PlayerBackend.MPV else chosen
                 }
 
             Timber.d("Selected backend: %s", playerBackend)
@@ -550,7 +564,7 @@ class PlaybackViewModel
                 val subtitleStc =
                     streamChoiceService.getSeriesTrackChoices(
                         base,
-                        SeriesTrackChoiceType.AUDIO,
+                        SeriesTrackChoiceType.SUBTITLE,
                     )
 
                 if (mediaSource == null && !isLiveTv) {
@@ -574,9 +588,6 @@ class PlaybackViewModel
                             val is4k = (it.width ?: 0) > 2560 || (it.height ?: 0) > 1440
                             SimpleVideoStream(it.index, isHdr, is4k)
                         }
-
-                // Create the correct player for the media
-                createPlayer(videoStream?.hdr == true, videoStream?.is4k == true)
 
                 val subtitleStreams = mediaSource?.let { getSubtitleStreams(mediaSource) }.orEmpty()
                 val audioStreams = mediaSource?.let { getAudioStreams(mediaSource) }.orEmpty()
@@ -606,6 +617,16 @@ class PlaybackViewModel
                             )?.stream
                             ?.index
                     }
+                // Create the correct player for the media
+                val styledSubs =
+                    subtitleIndex != null &&
+                        mediaSource
+                            ?.mediaStreams
+                            ?.firstOrNull { it.type == MediaStreamType.SUBTITLE && it.index == subtitleIndex }
+                            ?.codec
+                            ?.lowercase() in setOf("ass", "ssa")
+                createPlayer(videoStream?.hdr == true, videoStream?.is4k == true, styledSubs)
+
                 Timber.d(
                     "Selected mediaSource=%s, audioIndex=%s, subtitleIndex=%s",
                     mediaSource?.id,
@@ -1598,6 +1619,10 @@ class PlaybackViewModel
 
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error, "Playback error")
+            if (autoMpvActive) {
+                fallBackFromAutoMpv()
+                return
+            }
             viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
                 state.value.currentPlayback?.let {
                     when (it.playMethod) {
@@ -1606,7 +1631,8 @@ class PlaybackViewModel
                                 it.copy(
                                     loading =
                                         LoadingState.Error(
-                                            "Error during playback",
+                                            // Benflix: both ways of playing it failed
+                                            context.getString(R.string.benflix_content_issue),
                                             error,
                                         ),
                                 )
@@ -1635,6 +1661,30 @@ class PlaybackViewModel
                         }
                     }
                 }
+            }
+        }
+
+        /** Benflix: MPV had trouble with this video, so play it in the normal player from the same spot */
+        private fun fallBackFromAutoMpv() {
+            autoMpvActive = false
+            viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
+                val currentPlayback = state.value.currentPlayback ?: return@launch
+                val positionMs = player.currentPosition
+                Timber.w("MPV could not play this, switching to the normal player")
+                withContext(WholphinDispatchers.IO) {
+                    val video = currentPlayback.mediaSourceInfo.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }
+                    createPlayer(isHdr = false, is4k = (video?.width ?: 0) > 2560)
+                }
+                _state.update { it.copy(currentPlayback = null) }
+                changeStreams(
+                    item = currentItem.item,
+                    sourceId = currentPlayback.mediaSourceInfo.id,
+                    audioIndex = currentPlayback.audioIndex,
+                    subtitleIndex = currentPlayback.subtitleIndex,
+                    positionMs = positionMs,
+                )
+                player.prepare()
+                player.play()
             }
         }
 
