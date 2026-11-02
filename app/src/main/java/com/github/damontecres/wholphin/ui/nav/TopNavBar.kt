@@ -1,19 +1,15 @@
 package com.github.damontecres.wholphin.ui.nav
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +36,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,7 +52,6 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.services.LogoEffect
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -361,42 +355,9 @@ private val TopNavBarShade =
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
 
-/** The Benflix logo, with a small animation and a short line underneath on holidays and birthdays */
+/** The Benflix logo. On holidays and birthdays the whole word wears that day's look (see HolidayLogo.kt) */
 @Composable
 fun BenflixLogo(modifier: Modifier = Modifier) {
     val celebration by CelebrationNow.current.collectAsState()
-    val effect = celebration?.effect ?: LogoEffect.NONE
-    Box(modifier = modifier) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box {
-                LogoEffectBehind(effect)
-                Image(
-                    painter = painterResource(R.drawable.benflix_logo),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.height(26.dp).logoShimmer(effect),
-                )
-                LogoEffectInFront(effect)
-            }
-            celebration?.let {
-                Text(
-                    text = it.text,
-                    color = Color(it.color),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            }
-        }
-        // Days without their own animation keep the small emoji on the corner
-        celebration?.takeIf { it.effect == LogoEffect.NONE }?.let {
-            Text(
-                text = it.emoji,
-                fontSize = 14.sp,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 10.dp, y = (-8).dp),
-            )
-        }
-    }
+    HolidayAwareLogo(celebration = celebration, modifier = modifier)
 }

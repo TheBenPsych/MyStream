@@ -260,7 +260,6 @@ fun holidayFont(effect: LogoEffect): FontFamily? =
         LogoEffect.CONFETTI -> FontFamily(Font(R.font.holiday_pacifico))
         LogoEffect.MARIGOLDS -> FontFamily(Font(R.font.holiday_sancreek))
         LogoEffect.LANTERNS -> FontFamily(Font(R.font.holiday_kaushan))
-        LogoEffect.DIYAS -> FontFamily(Font(R.font.holiday_yatra))
         LogoEffect.EMBERS -> FontFamily(Font(R.font.holiday_rye))
         LogoEffect.STAR_PAIR -> FontFamily(Font(R.font.holiday_caveatbrush))
         LogoEffect.BLOSSOMS -> FontFamily(Font(R.font.holiday_sniglet))
@@ -430,10 +429,6 @@ private fun DrawScope.drawScene(
 
         LogoEffect.LANTERNS -> {
             lunarNewYear(t, statics)
-        }
-
-        LogoEffect.DIYAS -> {
-            diwali(t)
         }
 
         LogoEffect.EMBERS -> {
@@ -1402,82 +1397,6 @@ private fun DrawScope.lunarNewYear(
         val x = h(36, i) * VW + sin(t + i) * 20f
         val tw = (sin(t * 4 + i) + 1) / 2
         drawCircle(hex(0xFFFFD54F), 2f + tw * 2.5f, Offset(x, y), alpha = .3f + tw * .6f)
-    }
-}
-
-// ---- Diwali: indigo night, a row of glowing diyas reflected in water, rising sky lanterns and fireworks
-
-private fun DrawScope.diya(
-    x: Float,
-    y: Float,
-    s: Float,
-    t: Float,
-    seed: Float,
-) {
-    val f = flicker(t, seed)
-    glow(Offset(x, y - 30f * s), 120f * s, hex(0xFFFFB300), .5f * f)
-    drawArc(
-        hex(0xFFB5541F),
-        startAngle = 0f,
-        sweepAngle = 180f,
-        useCenter = true,
-        topLeft = Offset(x - 44f * s, y - 24f * s),
-        size = Size(88f * s, 48f * s),
-    )
-    oval(x, y, 44f * s, 8f * s, hex(0xFFD97A3A))
-    drawPath(
-        Path().apply {
-            moveTo(x, y - 46f * s * f)
-            quadraticTo(x + 13f * s, y - 10f * s, x, y - 4f * s)
-            quadraticTo(x - 13f * s, y - 10f * s, x, y - 46f * s * f)
-            close()
-        },
-        hex(0xFFFFD54F),
-    )
-    oval(x, y - 14f * s, 4f * s, 9f * s, Color.White, .8f)
-}
-
-private fun DrawScope.diwali(t: Float) {
-    sky(0f to hex(0xFF070723), .6f to hex(0xFF1D1050), 1f to hex(0xFF4A1E6A))
-    stars(80, 41, 520f, t)
-    fireworks(t, listOf(hex(0xFFFFD54F), hex(0xFFFF80AB), hex(0xFF7CF5FF), hex(0xFFFFB74D), Color.White))
-    // Sky lanterns drifting up
-    for (i in 0 until 12) {
-        val p = frac(h(42, i) + t * (.012f + h(43, i) * .01f))
-        val y = 760f - p * 820f
-        val x = h(44, i) * VW + sin(t * .5f + i) * 25f
-        val sc = .5f + h(45, i) * .6f
-        val a = (1 - p) * .9f + .1f
-        glow(Offset(x, y), 70f * sc, hex(0xFFFFA040), .5f * a)
-        drawPath(
-            poly(x - 16f * sc, y - 24f * sc, x + 16f * sc, y - 24f * sc, x + 12f * sc, y + 22f * sc, x - 12f * sc, y + 22f * sc),
-            hex(0xFFFFB55C),
-            alpha = a,
-        )
-        box(x - 8f * sc, y + 14f * sc, 16f * sc, 6f * sc, hex(0xFFFFF0B0), a)
-    }
-    // Ground and water
-    box(0f, 740f, VW, 40f, hex(0xFF1A0B26))
-    drawRect(
-        Brush.verticalGradient(0f to hex(0xFF1A1040), 1f to hex(0xFF06061A), startY = 780f, endY = VH),
-        topLeft = Offset(0f, 780f),
-        size = Size(VW, VH - 780f),
-    )
-    for (i in 0 until 9) {
-        val x = 120f + i * 170f
-        diya(x, 750f, 1f, t, i * 1.7f)
-        // Shimmering reflection
-        for (k in 0 until 4) {
-            val w = 30f - k * 5f + sin(t * 3 + i + k) * 6f
-            box(x - w / 2, 800f + k * 22f, w, 4f, hex(0xFFFFC14D), (.35f - k * .07f) * flicker(t, i * 1.7f))
-        }
-    }
-    // Rangoli-style sparkles along the ground
-    for (i in 0 until 40) {
-        val x = h(46, i) * VW
-        val y = 690f + h(47, i) * 40f
-        val tw = (sin(t * 3 + i * 1.1f) + 1) / 2
-        drawCircle(hex(0xFFFFE29A), 1.5f + tw * 2f, Offset(x, y), alpha = tw)
     }
 }
 
