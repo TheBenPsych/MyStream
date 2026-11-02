@@ -1289,8 +1289,6 @@ val basicPreferences =
                     AppPreference.ProtectProfilePreference,
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
-                    AppPreference.CustomizeHome,
-                    AppPreference.UserPinnedNavDrawerItems,
                     AppPreference.UserInterfaceLanguage,
                     AppPreference.SignInAuto,
                 ),
@@ -1317,7 +1315,6 @@ val basicPreferences =
                 listOf(
                     AppPreference.EasyRead,
                     AppPreference.LateNightLook,
-                    AppPreference.ThemeColors,
                     AppPreference.PlayThemeMusic,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,
