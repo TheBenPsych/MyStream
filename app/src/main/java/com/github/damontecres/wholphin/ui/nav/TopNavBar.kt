@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,7 +36,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,12 +58,11 @@ import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LogoEffect
-import com.github.damontecres.wholphin.ui.components.DialogItem
-import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
+import java.util.UUID
 
 /**
  * One entry in the [TopNavBar]
@@ -69,6 +71,16 @@ data class TopNavTab(
     val title: String,
     val selected: Boolean,
     val onClick: () -> Unit,
+    /** The Jellyfin library behind this tab, if it is one */
+    val libraryId: UUID? = null,
+    /** Browse card picture and how many titles the library has */
+    val imageUrl: String? = null,
+    val count: Int? = null,
+    /** More menu: the short grey line under the name, and its icon */
+    val hint: String? = null,
+    val glyph: String? = null,
+    /** More menu: My Benflix, shown with your profile picture */
+    val isProfile: Boolean = false,
 )
 
 /**
@@ -96,6 +108,10 @@ fun TopNavBar(
     val selectedIndex = tabs.indexOfFirst { it.selected }
     val kids by KidsMode.active.collectAsState()
     var showMore by remember { mutableStateOf(false) }
+    // Where the Browse and More tabs are, so their menus drop down right under them
+    var browseX by remember { mutableFloatStateOf(0f) }
+    var moreX by remember { mutableFloatStateOf(0f) }
+    var barBottom by remember { mutableFloatStateOf(0f) }
     DisposableEffect(Unit) { onDispose { TopBarInset.heightPx = 0 } }
     // One slim line: logo, the main tabs and More, then search, settings, the clock and the profile
     Row(
@@ -105,6 +121,7 @@ fun TopNavBar(
             modifier
                 .fillMaxWidth()
                 .onSizeChanged { TopBarInset.heightPx = it.height }
+                .onGloballyPositioned { barBottom = it.positionInWindow().y + it.size.height }
                 // A dark shade behind the bar so the logo, tabs and icons stay easy to read over bright artwork
                 .background(TopNavBarShade)
                 .padding(start = 40.dp, end = 40.dp, top = 10.dp, bottom = 12.dp)
@@ -147,7 +164,10 @@ fun TopNavBar(
                             selected = browseSelected,
                             onClick = { showBrowse = true },
                         ),
-                    modifier = Modifier.ifElse(browseSelected, Modifier.focusRequester(focusRequester)),
+                    modifier =
+                        Modifier
+                            .onGloballyPositioned { browseX = it.positionInWindow().x }
+                            .ifElse(browseSelected, Modifier.focusRequester(focusRequester)),
                 )
             }
         }
@@ -159,7 +179,10 @@ fun TopNavBar(
                         selected = moreSelected,
                         onClick = { showMore = true },
                     ),
-                modifier = Modifier.ifElse(moreSelected, Modifier.focusRequester(focusRequester)),
+                modifier =
+                    Modifier
+                        .onGloballyPositioned { moreX = it.positionInWindow().x }
+                        .ifElse(moreSelected, Modifier.focusRequester(focusRequester)),
             )
         }
         Spacer(Modifier.weight(1f))
@@ -211,35 +234,29 @@ fun TopNavBar(
         }
     }
     if (showBrowse) {
-        DialogPopup(
-            showDialog = true,
-            title = stringResource(R.string.browse),
-            dialogItems =
-                browseTabs.map { tab ->
-                    DialogItem(
-                        headlineContent = { Text(text = tab.title) },
-                        onClick = tab.onClick,
-                        selected = tab.selected,
-                    )
-                },
+        BrowseMenu(
+            tabs = browseTabs,
+            anchorX = browseX,
+            top = barBottom,
             onDismissRequest = { showBrowse = false },
-            waitToLoad = false,
         )
     }
     if (showMore) {
-        DialogPopup(
-            showDialog = true,
-            title = stringResource(R.string.more),
-            dialogItems =
-                moreTabs.map { tab ->
-                    DialogItem(
-                        headlineContent = { Text(text = tab.title) },
-                        onClick = tab.onClick,
-                        selected = tab.selected,
-                    )
+        MoreMenu(
+            tabs = moreTabs,
+            userId = user.id,
+            userName =
+                if (kids) {
+                    KidsMode.displayName
+                } else if (GuestMode.isActive) {
+                    "Guest"
+                } else {
+                    user.name.orEmpty()
                 },
+            userImageUrl = if (kids) null else userImageUrl,
+            anchorX = moreX,
+            top = barBottom,
             onDismissRequest = { showMore = false },
-            waitToLoad = false,
         )
     }
 }
