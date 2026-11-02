@@ -124,6 +124,7 @@ import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.
 import com.github.damontecres.wholphin.ui.seasonEpisode
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.touch.swipeDownToClosePlayer
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.LoadingState
@@ -466,7 +467,10 @@ fun PlaybackPageContent(
                             // could never bring them up. Tap the video to show or hide them, and
                             // any touch while they're up keeps them from hiding.
                             Modifier
-                                .pointerInput(Unit) {
+                                .swipeDownToClosePlayer {
+                                    player.stop()
+                                    viewModel.navigationManager.goBack()
+                                }.pointerInput(Unit) {
                                     // Benflix: double-tap the left or right side to go back or forward 10 seconds
                                     var lastUpTime = 0L
                                     var lastUpX = -1f

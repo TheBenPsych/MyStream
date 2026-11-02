@@ -312,6 +312,8 @@ class MainActivity : AppCompatActivity() {
                                         accent = appPreferences.benflixPreferences.accent,
                                         easyRead = appPreferences.benflixPreferences.easyRead,
                                     ) {
+                                        com.github.damontecres.wholphin.ui.touch.Haptics.enabled =
+                                            !appPreferences.benflixPreferences.hapticsOff
                                         ProvideLocalClock {
                                             Box(modifier = Modifier.fillMaxSize()) {
                                                 MainContent(

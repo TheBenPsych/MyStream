@@ -248,66 +248,72 @@ fun HomePage(
                     }
                 }
 
-            HomePageContent(
-                homeRows = homeRows,
-                position = position,
-                onFocusPosition = onFocusPosition,
-                onClickItem = onClickItem,
-                onLongClickItem = onLongClickItem,
-                onClickPlay = onClickPlay,
-                loadingState = refreshing,
-                showClock = preferences.appPreferences.interfacePreferences.showClock,
-                onUpdateBackdrop = viewModel::updateBackdrop,
-                showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                showViewMore = true,
-                onClickViewMore = onClickViewMore,
-                featured = featured,
-                onClickFeaturedPlay = { item ->
-                    if (item.type.playable) {
-                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                    } else {
-                        viewModel.navigationManager.navigateTo(item.destination())
-                    }
-                },
-                onClickFeaturedInfo = { item ->
-                    viewModel.navigationManager.navigateTo(item.destination())
-                },
-                onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
-                onClickSurprise = viewModel::surpriseMe,
-                trending = trending,
-                onClickTrending = { item ->
-                    viewModel.navigationManager.navigateTo(item.destination())
-                },
-                trendingMissing = trendingMissing,
-                onClickDiscover = { item ->
-                    viewModel.navigationManager.navigateTo(item.destination)
-                },
-                onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
-                themed = themed,
-                monthly = monthly,
-                because = because,
-                kidsAgain = kidsAgain,
-                becauseMore = becauseMore,
-                collections = collections,
-                mood = mood,
-                moodRow = moodRow,
-                onClickMood = viewModel::pickMood,
-                newest = newest,
-                myList = myList,
-                comeBack = comeBack,
-                welcomeBack = welcomeBack,
-                world = world,
-                airing = airing,
-                spotlight = spotlight,
-                genreRows = genreRows,
-                animeTop = animeTop,
-                animeRows = animeRows,
-                previewPlayer = viewModel.previewPlayer,
-                previewPlaying = previewPlaying,
-                onHeroItemShown = viewModel::previewTrailer,
-                showNote = true,
+            // Benflix on phones: pull down at the top to load Home again
+            com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh(
+                refreshing = refreshing is LoadingState.Loading,
+                onRefresh = viewModel::init,
                 modifier = modifier,
-            )
+            ) {
+                HomePageContent(
+                    homeRows = homeRows,
+                    position = position,
+                    onFocusPosition = onFocusPosition,
+                    onClickItem = onClickItem,
+                    onLongClickItem = onLongClickItem,
+                    onClickPlay = onClickPlay,
+                    loadingState = refreshing,
+                    showClock = preferences.appPreferences.interfacePreferences.showClock,
+                    onUpdateBackdrop = viewModel::updateBackdrop,
+                    showLogo = preferences.appPreferences.interfacePreferences.showLogos,
+                    showViewMore = true,
+                    onClickViewMore = onClickViewMore,
+                    featured = featured,
+                    onClickFeaturedPlay = { item ->
+                        if (item.type.playable) {
+                            viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                        } else {
+                            viewModel.navigationManager.navigateTo(item.destination())
+                        }
+                    },
+                    onClickFeaturedInfo = { item ->
+                        viewModel.navigationManager.navigateTo(item.destination())
+                    },
+                    onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
+                    onClickSurprise = viewModel::surpriseMe,
+                    trending = trending,
+                    onClickTrending = { item ->
+                        viewModel.navigationManager.navigateTo(item.destination())
+                    },
+                    trendingMissing = trendingMissing,
+                    onClickDiscover = { item ->
+                        viewModel.navigationManager.navigateTo(item.destination)
+                    },
+                    onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
+                    themed = themed,
+                    monthly = monthly,
+                    because = because,
+                    kidsAgain = kidsAgain,
+                    becauseMore = becauseMore,
+                    collections = collections,
+                    mood = mood,
+                    moodRow = moodRow,
+                    onClickMood = viewModel::pickMood,
+                    newest = newest,
+                    myList = myList,
+                    comeBack = comeBack,
+                    welcomeBack = welcomeBack,
+                    world = world,
+                    airing = airing,
+                    spotlight = spotlight,
+                    genreRows = genreRows,
+                    animeTop = animeTop,
+                    animeRows = animeRows,
+                    previewPlayer = viewModel.previewPlayer,
+                    previewPlaying = previewPlaying,
+                    onHeroItemShown = viewModel::previewTrailer,
+                    showNote = true,
+                )
+            }
             overviewDialog?.let { info ->
                 ItemDetailsDialog(
                     info = info,
@@ -660,11 +666,13 @@ fun HomePageContent(
                         val phoneFeatured = featured.getOrNull(heroIndex.coerceIn(0, (featured.size - 1).coerceAtLeast(0)))
                         item(key = "header") {
                             if (showHero && phoneFeatured != null) {
-                                // Phones: the banner is a rounded card with the whole wide picture
+                                // Phones: the banner is a big poster carousel you swipe (Home look C)
                                 Column {
-                                    PhoneHeroCard(
-                                        featured = phoneFeatured,
-                                        onClick = { onClickFeaturedInfo(phoneFeatured.item) },
+                                    PhonePosterCarousel(
+                                        featured = featured,
+                                        index = heroIndex.coerceIn(0, featured.lastIndex),
+                                        onIndexChange = onSelectSlide,
+                                        onClick = { onClickFeaturedInfo(it.item) },
                                     )
                                     if (featured.size > 1) {
                                         SlideDots(

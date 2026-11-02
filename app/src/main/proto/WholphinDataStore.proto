@@ -283,6 +283,8 @@ message BenflixPreferences {
   int32 resume_minutes = 8;
   // Opt-in: play videos with styled (ASS/SSA) subtitles in MPV, falling back to the normal player
   bool auto_mpv_styled_subs = 9;
+  // Phones: a light buzz on taps is on unless this is set
+  bool haptics_off = 10;
 }
 
 enum BenflixAccent {

@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreference
 import com.github.damontecres.wholphin.ui.search.SearchPage
 import com.github.damontecres.wholphin.ui.setup.InstallUpdatePage
 import com.github.damontecres.wholphin.ui.slideshow.SlideshowPage
+import com.github.damontecres.wholphin.ui.touch.swipeDownToClose
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import timber.log.Timber
@@ -146,7 +147,7 @@ fun DestinationContent(
                     SeriesDetails(
                         preferences,
                         destination,
-                        modifier,
+                        modifier.swipeDownToClose(),
                     )
                 }
 
@@ -154,7 +155,7 @@ fun DestinationContent(
                     MovieDetails(
                         preferences,
                         destination,
-                        modifier,
+                        modifier.swipeDownToClose(),
                     )
                 }
 
@@ -165,7 +166,7 @@ fun DestinationContent(
                     MovieDetails(
                         preferences,
                         destination,
-                        modifier,
+                        modifier.swipeDownToClose(),
                     )
                 }
 
@@ -173,7 +174,7 @@ fun DestinationContent(
                     EpisodeDetails(
                         preferences,
                         destination,
-                        modifier,
+                        modifier.swipeDownToClose(),
                     )
                 }
 
