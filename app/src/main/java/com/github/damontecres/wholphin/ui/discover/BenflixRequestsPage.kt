@@ -179,14 +179,14 @@ class BenflixRequestsViewModel
         private val _rows = MutableStateFlow<Map<String, List<FindRow>>>(emptyMap())
 
         /** Titles someone asked for that aren't here yet, as "MOVIE-123" / "TV-456" */
-        private val _requestedIds = MutableStateFlow<Set<String>>(emptySet())
+        private val requestedIds = MutableStateFlow<Set<String>>(emptySet())
 
         /**
          * Benflix: the shelves, with anything already asked for marked as requested. Seerr doesn't always say so
          * itself (a pending show can still read as "unknown"), and the shelves are kept from before you asked.
          */
         val rows: StateFlow<Map<String, List<FindRow>>> =
-            combine(_rows, _requestedIds) { all, requested ->
+            combine(_rows, requestedIds) { all, requested ->
                 if (requested.isEmpty()) {
                     all
                 } else {
@@ -211,7 +211,7 @@ class BenflixRequestsViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
                     val myId = if (isAdmin) null else seerrServerRepository.currentUserId.first()
-                    _requestedIds.value =
+                    requestedIds.value =
                         seerrService.api.requestApi
                             .requestGet(take = 100, skip = 0, requestedBy = myId)
                             .results
