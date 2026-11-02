@@ -8,6 +8,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -253,12 +254,28 @@ fun TopNavBar(
             onClick = onClickSearch,
         )
         if (!kids) {
-            TopNavIconButton(
-                icon = Icons.Default.Settings,
-                contentDescription = stringResource(R.string.settings),
-                selected = false,
-                onClick = onClickSettings,
-            )
+            // Benflix: a red "!" on the cogwheel when an update is ready, plus a short tip under it
+            val updateAlert =
+                com.github.damontecres.wholphin.ui.components
+                    .rememberUpdateAlert()
+            Box {
+                TopNavIconButton(
+                    icon = Icons.Default.Settings,
+                    contentDescription = stringResource(R.string.settings),
+                    selected = false,
+                    onClick = onClickSettings,
+                )
+                if (updateAlert) {
+                    com.github.damontecres.wholphin.ui.components.UpdateBang(
+                        size = 14.dp,
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                    com.github.damontecres.wholphin.ui.components.UpdateTip(
+                        text = stringResource(R.string.benflix_update_tip_tv),
+                        above = false,
+                    )
+                }
+            }
         }
         if (showClock) {
             val timeString by LocalClock.current.timeString

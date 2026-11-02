@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -144,6 +146,9 @@ fun PhoneNavBar(
         PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.trailer_shuffle), clipsSelected, compact, onClickClips)
         PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, compact, onClickChannels)
         val mineSelected = libraries.any { it.selected } || extras.any { it.selected }
+        val updateAlert =
+            com.github.damontecres.wholphin.ui.components
+                .rememberUpdateAlert()
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -166,6 +171,17 @@ fun PhoneNavBar(
                     imageUrl = if (kids) null else userImageUrl,
                     modifier = Modifier.size(24.dp),
                 )
+                // Benflix: a red "!" when an update is ready (it's under My Benflix > Settings > Help)
+                if (updateAlert) {
+                    com.github.damontecres.wholphin.ui.components.UpdateBang(
+                        size = 14.dp,
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                    com.github.damontecres.wholphin.ui.components.UpdateTip(
+                        text = stringResource(R.string.benflix_update_tip_phone),
+                        above = true,
+                    )
+                }
             }
             if (!compact) {
                 Text(
@@ -298,7 +314,17 @@ private fun MyBenflixSheet(
                                     .clickable { go(onClickSettings) }
                                     .padding(horizontal = 16.dp),
                         ) {
-                            Text(text = stringResource(R.string.settings), fontSize = 14.sp, color = Color.White)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = stringResource(R.string.settings), fontSize = 14.sp, color = Color.White)
+                                // Update ready: the "!" leads on to Help inside Settings
+                                if (com.github.damontecres.wholphin.ui.components
+                                        .rememberUpdateAlert()
+                                ) {
+                                    Spacer(Modifier.width(8.dp))
+                                    com.github.damontecres.wholphin.ui.components
+                                        .UpdateBang()
+                                }
+                            }
                         }
                     }
                 }

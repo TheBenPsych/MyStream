@@ -167,6 +167,10 @@ fun BenflixSettingsPage(
     val sections =
         remember(isTv, isAdmin) { buildSections(isTv).filter { isAdmin || !it.adminOnly } }
     val groupSections = sections.filter { it.group != null }
+    // Benflix: an update is ready, so Help shows a red "!" (the update is inside Help)
+    val updateAlert =
+        com.github.damontecres.wholphin.ui.components
+            .rememberUpdateAlert()
 
     // TV starts on the first section; phones start on the list of sections
     var selected by rememberSaveable { mutableIntStateOf(if (isTv) 0 else -1) }
@@ -220,6 +224,7 @@ fun BenflixSettingsPage(
                         icon = section.icon,
                         selected = query.isBlank() && index >= 0 && index == selected,
                         badge = if (section.adminOnly) stringResource(R.string.benflix_settings_admin) else null,
+                        alert = updateAlert && section.title == R.string.benflix_settings_help,
                         onClick = { openSection(section) },
                         // Moving through the menu shows each section straight away
                         onFocused = { if (index >= 0 && query.isBlank()) selected = index },
@@ -313,6 +318,7 @@ fun BenflixSettingsPage(
                                 selected = false,
                                 supporting = stringResource(section.hint),
                                 chevron = true,
+                                alert = updateAlert && section.title == R.string.benflix_settings_help,
                                 onClick = { openSection(section) },
                             )
                         }
@@ -403,6 +409,7 @@ private fun MenuRow(
     supporting: String? = null,
     badge: String? = null,
     chevron: Boolean = false,
+    alert: Boolean = false,
     onFocused: () -> Unit = {},
 ) {
     ListItem(
@@ -431,6 +438,22 @@ private fun MenuRow(
         },
         trailingContent =
             when {
+                alert -> {
+                    {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            com.github.damontecres.wholphin.ui.components
+                                .UpdateBang(size = 18.dp)
+                            if (chevron) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(start = 6.dp).size(20.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
                 badge != null -> {
                     {
                         Text(text = badge, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

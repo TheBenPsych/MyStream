@@ -526,7 +526,7 @@ fun PreferencesContent(
                                             },
                                             summary =
                                                 if (updateAvailable) {
-                                                    release?.version?.toString()
+                                                    release?.version?.let { "Version $it is ready. See what's new and install it" }
                                                 } else {
                                                     null
                                                 },

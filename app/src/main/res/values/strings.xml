@@ -1117,4 +1117,6 @@
     <string name="player_play_this">Play it</string>
     <string name="player_episodes">Episodes</string>
     <string name="player_now_playing">Now playing</string>
+    <string name="benflix_update_tip_tv">New update ready! Find it in Settings, under Help.</string>
+    <string name="benflix_update_tip_phone">New update ready! Tap My Benflix, then Settings, then Help.</string>
 </resources>
