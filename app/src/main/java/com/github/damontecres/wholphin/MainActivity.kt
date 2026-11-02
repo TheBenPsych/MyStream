@@ -178,6 +178,13 @@ class MainActivity : AppCompatActivity() {
             .mark(com.github.damontecres.wholphin.util.StartupTimer.SCREEN)
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")
         lifecycle.addObserver(playbackLifecycleObserver)
+        if (savedInstanceState == null) {
+            // Delete the update file left in Downloads by the last update (once it's installed it isn't needed)
+            lifecycleScope.launch(WholphinDispatchers.IO) {
+                delay(UPDATE_CHECK_DELAY_MS)
+                updateChecker.cleanupLeftoverDownload()
+            }
+        }
 
         val backStackStr = savedInstanceState?.getString(KEY_BACK_STACK)
         val restoredBackStack =

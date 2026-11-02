@@ -241,6 +241,28 @@ class UpdateChecker
             callback: DownloadCallback,
         ): Uri =
             withContext(WholphinDispatchers.IO) {
+                downloading = true
+                try {
+                    downloadReleaseFile(release, callback)
+                } finally {
+                    downloading = false
+                }
+            }
+
+        /** True while an update is downloading, so the leftover-file cleanup doesn't delete it */
+        @Volatile
+        private var downloading = false
+
+        /** Delete the update file from the last update, unless an update is downloading right now */
+        fun cleanupLeftoverDownload() {
+            if (!downloading) cleanup()
+        }
+
+        private suspend fun downloadReleaseFile(
+            release: Release,
+            callback: DownloadCallback,
+        ): Uri =
+            run {
                 cleanup()
                 val request =
                     Request
