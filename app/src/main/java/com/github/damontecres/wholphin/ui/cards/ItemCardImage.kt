@@ -2,16 +2,12 @@ package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +33,6 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -69,6 +64,7 @@ fun ItemCardImage(
     contentScale: ContentScale = ContentScale.Fit,
     fillWidth: Int? = null,
     fillHeight: Int? = null,
+    focused: Boolean = false,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val imageUrl =
@@ -98,6 +94,8 @@ fun ItemCardImage(
         modifier = modifier,
         useFallbackText = useFallbackText,
         contentScale = contentScale,
+        badgeItem = item,
+        focused = focused,
     )
 }
 
@@ -115,6 +113,8 @@ fun ItemCardImage(
     useFallbackText: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit,
     blurHash: String? = null,
+    badgeItem: BaseItem? = null,
+    focused: Boolean = false,
     fallback: @Composable BoxScope.() -> Unit = {
         ItemCardImageFallback(
             name = name,
@@ -159,6 +159,8 @@ fun ItemCardImage(
                 watchedPercent = watchedPercent,
                 numberOfVersions = numberOfVersions,
                 modifier = Modifier,
+                badgeItem = badgeItem,
+                focused = focused,
             )
         }
     }
@@ -207,6 +209,12 @@ fun BoxScope.ItemCardImageFallback(
     }
 }
 
+/**
+ * Benflix: the same badges as the Home rows, so every card looks alike. One word badge
+ * top-left ("New episode" or a rating), a small white tick top-right when watched, and a red
+ * bar along the bottom when part-watched. The heart, versions count and unwatched count are
+ * no longer shown (Ben's picks, 2026-11-02); those parameters are kept so callers don't change.
+ */
 @Composable
 fun ItemCardImageOverlay(
     favorite: Boolean,
@@ -215,67 +223,24 @@ fun ItemCardImageOverlay(
     watchedPercent: Double?,
     numberOfVersions: Int,
     modifier: Modifier = Modifier,
+    badgeItem: BaseItem? = null,
+    focused: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        CardWordBadge(
+            item = badgeItem,
+            focused = focused,
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
-                    .padding(4.dp),
-        ) {
-            if (numberOfVersions > 1) {
-                Box(
-                    modifier =
-                        Modifier
-                            .background(
-                                AppColors.TransparentBlack50,
-                                shape = RoundedCornerShape(25),
-                            ),
-                ) {
-                    Text(
-                        text = numberOfVersions.toString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyMedium,
-//                            fontSize = 16.sp,
-                        modifier = Modifier.padding(4.dp),
-                    )
-                }
-            }
-            if (favorite) {
-                FavoriteIndicator()
-            }
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
+                    .padding(6.dp),
+        )
+        if (watched && (watchedPercent == null || watchedPercent <= 0.0 || watchedPercent >= 100.0)) {
+            CardWatchedTick(
                 Modifier
-                    .padding(4.dp)
-                    .align(Alignment.TopEnd),
-        ) {
-            if (watched && (watchedPercent == null || watchedPercent <= 0.0 || watchedPercent >= 100.0)) {
-                WatchedIcon(Modifier.size(24.dp))
-            }
-            if (unwatchedCount > 0) {
-                Box(
-                    modifier =
-                        Modifier
-                            .background(
-                                AppColors.TransparentBlack50,
-                                shape = RoundedCornerShape(25),
-                            ),
-                ) {
-                    Text(
-                        text = unwatchedCount.toString(),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyMedium,
-//                            fontSize = 16.sp,
-                        modifier = Modifier.padding(4.dp),
-                    )
-                }
-            }
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp),
+            )
         }
 
         if (watchedPercent != null && watchedPercent > 0 && watchedPercent < 100) {

@@ -29,8 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -42,19 +40,15 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
-import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 /**
  * Displays an image as a card. If no image is available, the name will be shown instead
@@ -106,6 +100,8 @@ fun BannerCard(
             }
         }
     var imageError by remember(imageUrl) { mutableStateOf(false) }
+    val cardInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
+    val focused by cardInteractionSource.collectIsFocusedAsState()
 
     // Stabilize callbacks to prevent AsyncImage from recomposing
     val currentOnClick by rememberUpdatedState(onClick)
@@ -138,7 +134,7 @@ fun BannerCard(
                 .size(cardWidth, cardHeight),
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
-        interactionSource = interactionSource,
+        interactionSource = cardInteractionSource,
         colors =
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
@@ -202,7 +198,7 @@ fun BannerCard(
                             .padding(4.dp),
                 ) {
                     if (played && (playPercent <= 0 || playPercent >= 100)) {
-                        WatchedIcon(Modifier.size(24.dp))
+                        CardWatchedTick()
                     }
                     if (cornerText != null) {
                         Box(
@@ -223,36 +219,17 @@ fun BannerCard(
                     }
                 }
             }
-            val reasonTag = remember(item) { item?.reasonTag() }
-            val isNew = item?.isNew == true
-            val showReason = !grown && reasonTag != null
-            if (favorite || isNew || showReason) {
-                // Every badge lives in the top-left corner, stacked neatly:
-                // heart first, then "New episode", then a reason like "TOP RATED"
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                    horizontalAlignment = Alignment.Start,
+            if (!grown) {
+                // One word badge in the top-left corner: "New episode" first, otherwise a
+                // rating like "TOP RATED" (on TV only on the tile you're on)
+                CardWordBadge(
+                    item = item,
+                    focused = focused,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp),
-                ) {
-                    if (favorite) {
-                        Text(
-                            color = colorResource(android.R.color.holo_red_light),
-                            text = stringResource(R.string.fa_heart),
-                            fontSize = 16.sp,
-                            fontFamily = FontAwesome,
-                        )
-                    }
-                    if (isNew) {
-                        CardBadge(
-                            text = stringResource(if (item?.type == BaseItemKind.SERIES) R.string.new_episode else R.string.new_badge),
-                            background = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    if (!grown) reasonTag?.let { CardBadge(text = it) }
-                }
+                )
             }
             if (playPercent > 0 && playPercent < 100) {
                 Box(
@@ -367,8 +344,6 @@ fun BannerCardWithTitle(
     }
 }
 
-private const val NEW_DAYS = 7L
-
 /** How long the grow animation takes */
 private const val GROW_MS = 220
 
@@ -481,69 +456,5 @@ private fun GrownPreview(
                 )
             }
         }
-    }
-}
-
-/**
- * Whether to show a "New" badge: a series with unwatched episodes added recently,
- * or an unwatched episode added recently
- */
-private val BaseItem.isNew: Boolean
-    get() {
-        val cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(NEW_DAYS)
-        return when (type) {
-            BaseItemKind.SERIES -> {
-                (data.userData?.unplayedItemCount ?: 0) > 0 &&
-                    data.dateLastMediaAdded?.isAfter(cutoff) == true
-            }
-
-            BaseItemKind.EPISODE -> {
-                data.userData?.played != true && data.dateCreated?.isAfter(cutoff) == true
-            }
-
-            else -> {
-                false
-            }
-        }
-    }
-
-/**
- * One small badge in a card's top-left corner. Every badge uses this so they all look the same.
- */
-@Composable
-private fun CardBadge(
-    text: String,
-    background: Color = Color.Black.copy(alpha = .78f),
-) = Text(
-    text = text,
-    fontSize = 10.sp,
-    fontWeight = FontWeight.Bold,
-    letterSpacing = .5.sp,
-    color = Color.White,
-    maxLines = 1,
-    modifier =
-        Modifier
-            .background(background, RoundedCornerShape(3.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-)
-
-/**
- * A short reason tag for a tile, like "CRITICS 94%" or "TOP RATED", or null when nothing stands out.
- * Kept to one tag per tile so rows stay calm.
- */
-private fun BaseItem.reasonTag(): String? {
-    if (type != BaseItemKind.MOVIE && type != BaseItemKind.SERIES) return null
-    val critic = data.criticRating?.toInt()
-    val community = data.communityRating
-    val year = data.productionYear
-    val thisYear =
-        java.time.Year
-            .now()
-            .value
-    return when {
-        critic != null && critic >= 90 -> "CRITICS $critic%"
-        community != null && community >= 8.0f -> "TOP RATED"
-        year != null && year <= thisYear - 25 && community != null && community >= 7.3f -> "CLASSIC"
-        else -> null
     }
 }
