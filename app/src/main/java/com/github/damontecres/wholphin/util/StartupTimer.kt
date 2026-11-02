@@ -86,6 +86,7 @@ object StartupTimer {
     const val WHO = "Who's watching"
     const val PICKED = "profile picked"
     const val HOME_OPEN = "Home opened"
+    const val BANNER_SAVED = "saved banner read"
     const val HOME_SAVED = "saved Home read"
     const val HOME_ROWS = "Home rows"
     const val BANNER = "banner"
