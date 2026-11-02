@@ -102,9 +102,24 @@ class SeerrExtrasViewModel
                         val imdb = ratings["imdb"] as? JsonObject
                         extras =
                             extras.copy(
-                                imdb = imdb?.get("criticsScore")?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0 },
-                                rtCritics = rt?.get("criticsScore")?.jsonPrimitive?.intOrNull?.takeIf { it > 0 },
-                                rtAudience = rt?.get("audienceScore")?.jsonPrimitive?.intOrNull?.takeIf { it > 0 },
+                                imdb =
+                                    imdb
+                                        ?.get("criticsScore")
+                                        ?.jsonPrimitive
+                                        ?.doubleOrNull
+                                        ?.takeIf { it > 0 },
+                                rtCritics =
+                                    rt
+                                        ?.get("criticsScore")
+                                        ?.jsonPrimitive
+                                        ?.intOrNull
+                                        ?.takeIf { it > 0 },
+                                rtAudience =
+                                    rt
+                                        ?.get("audienceScore")
+                                        ?.jsonPrimitive
+                                        ?.intOrNull
+                                        ?.takeIf { it > 0 },
                             )
                         _extras.value = extras
                     }

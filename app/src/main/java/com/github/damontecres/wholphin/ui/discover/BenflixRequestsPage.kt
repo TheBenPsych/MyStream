@@ -183,7 +183,6 @@ class BenflixRequestsViewModel
             genre: FindGenre?,
         ) = "${section.name}-${genre?.label}"
 
-        /** Loads the shelves for one section and genre (kept, so switching back is instant) */
         /**
          * Through Jellyfin Enhanced the "at least N votes" filter is dropped, so "Top rated" would fill up with
          * unknown titles with one perfect vote. There it becomes "popular titles rated 7 or more" instead.
@@ -195,6 +194,7 @@ class BenflixRequestsViewModel
 
         private fun topRatedFloor(minVotes: Int?): Int? = if (minVotes != null && seerrService.api.viaJellyfin) 7 else null
 
+        /** Loads the shelves for one section and genre (kept, so switching back is instant) */
         fun loadSection(
             section: FindSection,
             genre: FindGenre?,
