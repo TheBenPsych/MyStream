@@ -149,7 +149,7 @@ class SeriesViewModel
                         _state.update { it.copy(canDeleteSeries = canDelete) }
                     }
                 }
-                backdropService.submit(series)
+                backdropService.submit(series, strongGlow = true)
                 // Benflix: FILLER / MIXED tags on anime episode cards
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
                 // Benflix: get the episode Play will start ready while the page is open
