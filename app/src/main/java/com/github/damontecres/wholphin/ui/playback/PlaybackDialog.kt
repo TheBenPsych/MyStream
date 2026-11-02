@@ -65,6 +65,9 @@ enum class PlaybackDialogType {
     SUBTITLE_DELAY,
     BITRATE,
     NIGHT_MODE,
+
+    /** Benflix: seasons and episodes over the video (shown by PlaybackPage, not here) */
+    EPISODES,
 }
 
 data class PlaybackSettings(
@@ -272,6 +275,8 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.NIGHT_MODE -> {}
+
+        PlaybackDialogType.EPISODES -> {}
 
         PlaybackDialogType.SUBTITLE_DELAY -> {
             Dialog(

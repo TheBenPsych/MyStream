@@ -1112,4 +1112,9 @@
     <string name="phone_extras">Extras</string>
     <string name="mood_shuffle">Show me different ones</string>
     <string name="mood_page_subtitle">A random handful from your library that fits the mood. New picks every time you open it.</string>
+    <string name="not_now">Not now</string>
+    <string name="player_watch_next">Watch next</string>
+    <string name="player_play_this">Play it</string>
+    <string name="player_episodes">Episodes</string>
+    <string name="player_now_playing">Now playing</string>
 </resources>

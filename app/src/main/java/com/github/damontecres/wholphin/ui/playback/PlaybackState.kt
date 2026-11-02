@@ -29,6 +29,8 @@ data class PlaybackState(
     val afterCreditsScene: Boolean = false,
     /** Benflix: "It's been a while" card shown before the next episode starts */
     val recap: BenflixRecap? = null,
+    /** Benflix: a similar movie offered in the corner when a movie's credits start (never autoplays) */
+    val movieNext: BaseItem? = null,
 ) {
     val hasNext: Boolean get() = (playlistIndex + 1) < playlist.items.size
     val hasPrevious: Boolean get() = playlistIndex > 0
