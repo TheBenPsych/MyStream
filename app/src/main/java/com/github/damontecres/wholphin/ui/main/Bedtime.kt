@@ -45,6 +45,8 @@ import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixParentPin
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixPopups
+import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
@@ -157,7 +159,8 @@ fun BedtimeLayer(
     val windDown by viewModel.windDown.collectAsState()
     // "15 minutes until bedtime": a small note in the corner, even while watching
     Box(contentAlignment = Alignment.TopEnd, modifier = Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = kids && windDown, enter = fadeIn(), exit = fadeOut()) {
+        val windDownTurn = popupTurn("winddown", BenflixPopups.WIND_DOWN, kids && windDown)
+        AnimatedVisibility(visible = windDownTurn, enter = fadeIn(), exit = fadeOut()) {
             Column(
                 modifier =
                     Modifier
@@ -172,6 +175,7 @@ fun BedtimeLayer(
         }
     }
     if (!kids || !locked || playing) return
+    if (!popupTurn("bedtime", BenflixPopups.BEDTIME, true)) return
 
     var askPin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

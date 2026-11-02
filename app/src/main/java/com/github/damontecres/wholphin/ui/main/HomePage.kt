@@ -59,6 +59,8 @@ import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.overviewCache
+import com.github.damontecres.wholphin.services.rememberOverview
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
@@ -133,7 +135,6 @@ fun HomePage(
     val collections = state.collections
     val mood = state.mood
     val moodRow = state.moodRow
-    val studios = state.studios
     val newest = state.newest
     val myList = state.myList
     val genreRows = state.genreRows
@@ -162,6 +163,9 @@ fun HomePage(
             var showContextMenu by remember { mutableStateOf<ContextMenu?>(null) }
             var showPlaylistDialog by remember { mutableStateOf<UUID?>(null) }
             var overviewDialog by remember { mutableStateOf<ItemDetailsDialogInfo?>(null) }
+            val scope = rememberCoroutineScope()
+            val overviewContext = LocalContext.current
+            val overviewCache = remember { overviewCache(overviewContext) }
 
             val playlistState by playlistViewModel.playlistState.collectAsState()
             var position by rememberPosition()
@@ -226,6 +230,14 @@ fun HomePage(
                                         },
                                         onShowOverview = {
                                             overviewDialog = ItemDetailsDialogInfo(it)
+                                            if (it.data.overview == null) {
+                                                // Home rows come without descriptions, so fetch this one
+                                                val itemId = it.id
+                                                scope.launch {
+                                                    val text = overviewCache.get(itemId)
+                                                    overviewDialog = overviewDialog?.copy(overview = text)
+                                                }
+                                            }
                                         },
                                         onClearChosenStreams = {},
                                         onClickRemoveFromNextUp = viewModel::removeFromNextUp,
@@ -292,13 +304,11 @@ fun HomePage(
                 mood = mood,
                 moodRow = moodRow,
                 onClickMood = viewModel::pickMood,
-                studios = studios,
                 newest = newest,
                 myList = myList,
                 genreRows = genreRows,
                 animeTop = animeTop,
                 animeRows = animeRows,
-                onClickStudio = viewModel::openStudio,
                 previewPlayer = viewModel.previewPlayer,
                 previewPlaying = previewPlaying,
                 onHeroItemShown = viewModel::previewTrailer,
@@ -395,13 +405,11 @@ fun HomePageContent(
     mood: HomeMood? = null,
     moodRow: ThemedRow? = null,
     onClickMood: ((HomeMood) -> Unit)? = null,
-    studios: List<StudioTile> = emptyList(),
     newest: ThemedRow? = null,
     myList: ThemedRow? = null,
     genreRows: List<ThemedRow> = emptyList(),
     animeTop: List<BaseItem> = emptyList(),
     animeRows: List<ThemedRow> = emptyList(),
-    onClickStudio: (StudioTile) -> Unit = {},
     previewPlayer: Player? = null,
     previewPlaying: Boolean = false,
     onHeroItemShown: (BaseItem?) -> Unit = {},
@@ -990,16 +998,6 @@ fun HomePageContent(
                             )
                         }
                     }
-                    // Studios sit under all of the library rows
-                    if (studios.isNotEmpty()) {
-                        item(key = "studios") {
-                            StudioRow(
-                                tiles = studios,
-                                onClick = onClickStudio,
-                                modifier = Modifier.padding(bottom = 8.dp),
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -1057,7 +1055,7 @@ fun HomePageHeader(
     HomePageHeader(
         title = title,
         subtitle = subtitle,
-        overview = item?.data?.overview,
+        overview = rememberOverview(item),
         overviewTwoLines = isEpisode,
         quickDetails = item?.ui?.quickDetails,
         timeRemaining = item?.timeRemainingOrRuntime,

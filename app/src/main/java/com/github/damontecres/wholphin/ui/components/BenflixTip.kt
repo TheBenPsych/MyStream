@@ -73,13 +73,18 @@ fun BenflixTip(
 ) {
     val context = LocalContext.current
     var visible by remember(tip) { mutableStateOf(false) }
-    LaunchedEffect(tip, show) {
-        if (show && !BenflixTips.seen(context, tip)) {
-            BenflixTips.markSeen(context, tip)
+    // Benflix: a tip waits its turn while another pop-up (like the update pop-up) is showing
+    var pending by remember(tip) { mutableStateOf(!BenflixTips.seen(context, tip)) }
+    val turn = popupTurn("tip-${tip.name}", BenflixPopups.TIP, pending && show)
+    LaunchedEffect(tip, show, turn) {
+        visible = false
+        if (show && pending && turn) {
             delay(SHOW_AFTER_MS)
+            BenflixTips.markSeen(context, tip)
             visible = true
             delay(SHOW_FOR_MS)
             visible = false
+            pending = false
         }
     }
     Box(modifier = modifier.fillMaxSize(), contentAlignment = alignment) {

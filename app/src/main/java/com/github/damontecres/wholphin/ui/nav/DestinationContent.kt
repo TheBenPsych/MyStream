@@ -45,7 +45,6 @@ import com.github.damontecres.wholphin.ui.games.GamesPage
 import com.github.damontecres.wholphin.ui.games.PlayGamePage
 import com.github.damontecres.wholphin.ui.main.HomePage
 import com.github.damontecres.wholphin.ui.main.MoodPage
-import com.github.damontecres.wholphin.ui.main.settings.HomeSettingsPage
 import com.github.damontecres.wholphin.ui.playback.PlayExternalPage
 import com.github.damontecres.wholphin.ui.playback.PlaybackPage
 import com.github.damontecres.wholphin.ui.preferences.PreferencesPage
@@ -77,10 +76,6 @@ fun DestinationContent(
                 preferences = preferences,
                 modifier = modifier,
             )
-        }
-
-        is Destination.HomeSettings -> {
-            HomeSettingsPage(preferences, modifier)
         }
 
         is Destination.Playback -> {

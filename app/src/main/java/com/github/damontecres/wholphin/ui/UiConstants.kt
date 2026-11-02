@@ -92,6 +92,9 @@ val HomeItemFields =
         ItemFields.DATE_LAST_MEDIA_ADDED,
     )
 
+/** Benflix: Home's own rows, without description text (fetched for the tile you stop on instead) */
+val HomeRowFields = HomeItemFields - ItemFields.OVERVIEW
+
 val PhotoItemFields =
     DetailItemFields +
         listOf(

@@ -17,7 +17,6 @@ import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
-import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.FlowPreview
@@ -101,21 +100,10 @@ class BackdropService
             itemId: String,
             imageUrl: String?,
         ) {
-            delay(500)
-            val backdropStyle =
-                preferences.data
-                    .firstOrNull()
-                    ?.interfacePreferences
-                    ?.backdropStyle
-            val dynamicEnabled =
-                backdropStyle == BackdropStyle.BACKDROP_DYNAMIC_COLOR ||
-                    backdropStyle == BackdropStyle.UNRECOGNIZED
-            val colors =
-                if (dynamicEnabled) {
-                    extractColorsFromBackdrop(imageUrl)
-                } else {
-                    ExtractedColors.DEFAULT
-                }
+            // Benflix never tints the screen with the picture's colours (the screen stays black behind it),
+            // so skip that work. A short wait still stops the picture flickering while scrolling fast.
+            delay(BACKDROP_SETTLE_MS)
+            val colors: ExtractedColors? = ExtractedColors.DEFAULT
             _backdropFlow.update {
                 if (it.itemId == itemId) {
                     BackdropResult(
@@ -277,3 +265,6 @@ data class ExtractedColors(
         val DEFAULT = ExtractedColors(Color.Unspecified, Color.Unspecified, Color.Unspecified)
     }
 }
+
+/** How long the background waits before changing, so fast scrolling doesn't flicker */
+private const val BACKDROP_SETTLE_MS = 150L

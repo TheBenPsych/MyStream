@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -49,6 +50,16 @@ fun <T> ItemRow(
     showViewMore: Boolean = false,
     viewMoreCardContent: @Composable (Modifier) -> Unit = {},
 ) {
+    // Benflix: give each poster a fixed ID so the row doesn't redraw everything (and focus doesn't jump)
+    // when it updates. The same title twice in one row falls back to its spot, so IDs never clash.
+    val keys =
+        remember(items) {
+            val seen = HashSet<String>()
+            items.mapIndexed { i, item ->
+                val id = (item as? BaseItem)?.id?.toString()
+                if (id != null && seen.add(id)) id else "i$i"
+            }
+        }
     // Lay out (and so start loading the posters of) about one more screen of cards ahead of where you are,
     // so scrolling along a row shows pictures right away. Low-memory TVs in Lite mode skip this.
     val context = LocalContext.current
@@ -88,7 +99,7 @@ fun <T> ItemRow(
                     .focusRestorer(firstFocus)
                     .focusRequester(focusRequester),
         ) {
-            itemsIndexed(items) { index, item ->
+            itemsIndexed(items, key = { index, _ -> keys.getOrElse(index) { "i$index" } }) { index, item ->
                 val cardModifier =
                     remember(index, position) {
                         if (index == position) {

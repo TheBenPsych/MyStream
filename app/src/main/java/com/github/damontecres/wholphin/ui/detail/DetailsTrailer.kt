@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -79,8 +80,11 @@ fun Modifier.wakeOnInput(state: TrailerCinemaState): Modifier =
         // Phones: a tap or scroll anywhere brings the page text back. Only watches, never takes the touch
         awaitPointerEventScope {
             while (true) {
-                awaitPointerEvent(PointerEventPass.Initial)
-                state.lastInput = SystemClock.uptimeMillis()
+                // Benflix: once per touch, not on every tiny finger movement, so the timer isn't restarted constantly
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                if (event.type == PointerEventType.Press || event.type == PointerEventType.Scroll) {
+                    state.lastInput = SystemClock.uptimeMillis()
+                }
             }
         }
     }

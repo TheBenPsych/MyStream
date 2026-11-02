@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
@@ -121,7 +122,7 @@ fun PhoneNavBar(
             PhoneNavItem(R.string.fa_house, it.title, it.selected && !searchSelected, it.onClick)
         }
         PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
-        PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.clips_title), clipsSelected, onClickClips)
+        PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.trailer_shuffle), clipsSelected, onClickClips)
         PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, onClickChannels)
         val mineSelected = libraries.any { it.selected } || extras.any { it.selected }
         Column(
@@ -252,7 +253,8 @@ private fun androidx.compose.foundation.layout.RowScope.PhoneNavItem(
     val color = if (selected) Color.White else UNSELECTED
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        // Top, so the icons line up even when a long name (Trailer Shuffle) takes two lines
+        verticalArrangement = Arrangement.Top,
         modifier =
             Modifier
                 .weight(1f)
@@ -270,7 +272,9 @@ private fun androidx.compose.foundation.layout.RowScope.PhoneNavItem(
             fontSize = 12.sp,
             color = color,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
+            maxLines = 2,
+            lineHeight = 13.sp,
+            textAlign = TextAlign.Center,
         )
     }
 }

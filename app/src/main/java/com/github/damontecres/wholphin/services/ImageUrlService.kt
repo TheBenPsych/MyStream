@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.services
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -242,10 +243,15 @@ class ImageUrlService
             imageIndex: Int? = null,
         ): String? {
             if (api.baseUrl.isNullOrBlank()) return null
+            // Benflix: a background picture with no size asked for used to come at full size (often 4K).
+            // The screen never needs more than its own width, so ask the server for that instead.
+            val noSize =
+                maxWidth == null && maxHeight == null && width == null && height == null &&
+                    fillWidth == null && fillHeight == null
             return api.imageApi.getItemImageUrl(
                 itemId = itemId,
                 imageType = imageType,
-                maxWidth = maxWidth,
+                maxWidth = maxWidth ?: if (imageType == ImageType.BACKDROP && noSize) BackdropMaxWidth else null,
                 maxHeight = maxHeight,
                 width = width?.takeIf { it > 0 },
                 height = height?.takeIf { it > 0 },
@@ -281,6 +287,12 @@ class ImageUrlService
         }
 
         companion object {
+            /** Widest a background picture ever needs to be: the screen's long side, 1280 to 1920 pixels */
+            val BackdropMaxWidth: Int by lazy {
+                val metrics = Resources.getSystem().displayMetrics
+                maxOf(metrics.widthPixels, metrics.heightPixels).coerceIn(1280, 1920)
+            }
+
             // Lighter pictures load faster. WebP at 85 looks the same on a TV but is much smaller.
             private const val QUALITY = 85
         }
