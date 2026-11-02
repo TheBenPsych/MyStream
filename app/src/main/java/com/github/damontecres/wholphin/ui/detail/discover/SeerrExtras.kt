@@ -291,19 +291,13 @@ fun SeerrExtrasBlock(
             e.rtAudience?.let { Pill("🍿 Audience $it%") }
             if (e.countries.isNotEmpty()) Pill("From " + e.countries.joinToString(", "))
         }
-        if (e.adult || e.tags.isNotEmpty()) {
+        if (e.tags.isNotEmpty()) {
             val grownUp = e.tags.filter(::isGrownUpTag)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                // Benflix: "Adult content" only for porn, hentai, softcore or erotica; other grown-up tags
-                // (like gore or nudity) get the softer "Mature themes" note
-                if (e.adult) {
-                    Pill("🔞 Adult content", background = Color(0xFFB3261E))
-                } else if (grownUp.isNotEmpty()) {
-                    Pill("⚠ Mature themes", background = Color(0xFF8A4B0F))
-                }
+                if (grownUp.isNotEmpty()) Pill("⚠ Adult content", background = Color(0xFFB3261E))
                 e.tags.forEach { tag ->
                     if (isGrownUpTag(tag)) {
                         Pill(tag, background = Color(0xFFB3261E), small = true)

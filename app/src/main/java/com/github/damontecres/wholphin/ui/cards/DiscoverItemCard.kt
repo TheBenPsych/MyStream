@@ -62,6 +62,8 @@ fun DiscoverItemCard(
     cornerNote: String? = null,
     // Benflix: replaces the year line under the card, like "2024 · IMDb 7.8"
     subtitleOverride: String? = null,
+    // Benflix: show the red "Adult content" strip (only the Requests page turns this on)
+    showAdultBanner: Boolean = false,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     var focusedAfterDelay by remember { mutableStateOf(false) }
@@ -150,9 +152,9 @@ fun DiscoverItemCard(
                     )
                 }
                 // Benflix: red "ADULT CONTENT" strip across the bottom for porn, hentai, softcore or erotica,
-                // once the title's details have been looked up (Ben asked, 2026-11-02)
+                // once the title's details have been looked up. Requests page only (Ben asked, 2026-11-02)
                 val adultFlags by AdultContentFlags.flagged.collectAsState()
-                val adult = item != null && "${item.type.name}-${item.id}" in adultFlags
+                val adult = showAdultBanner && item != null && "${item.type.name}-${item.id}" in adultFlags
                 if (adult) {
                     AdultContentBanner(modifier = Modifier.align(Alignment.BottomCenter))
                 }

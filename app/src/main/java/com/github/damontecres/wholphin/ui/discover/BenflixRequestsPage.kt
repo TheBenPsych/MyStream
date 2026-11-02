@@ -1401,6 +1401,7 @@ private fun FindShelf(
                     }
                 if (shown.isNotEmpty()) {
                     DiscoverItemRow(
+                        showAdultBanner = true,
                         title = row.title,
                         items = shown,
                         onClickItem = { _, item -> openItem(item) },
@@ -1459,6 +1460,7 @@ private fun LazyListScope.searchShelves(
     }
     items(groups, key = { "search-${it.first}" }) { (title, list) ->
         DiscoverItemRow(
+            showAdultBanner = true,
             title = title,
             items = list,
             onClickItem = { _, item -> onOpen(item) },
