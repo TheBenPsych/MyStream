@@ -83,13 +83,17 @@ sealed interface HigherLowerState {
     data class Playing(
         val known: ScoredMovie,
         val guess: ScoredMovie,
-        val streak: Int,
+        /** Which round this is, from 0 */
+        val round: Int,
+        val rounds: Int,
+        val score: Int,
         /** null until they answer; then whether they were right */
         val right: Boolean? = null,
     ) : HigherLowerState
 
     data class Over(
-        val streak: Int,
+        val score: Int,
+        val rounds: Int,
         val best: Int,
         val newBest: Boolean,
         val last: Pair<ScoredMovie, ScoredMovie>,
@@ -98,7 +102,8 @@ sealed interface HigherLowerState {
 
 /**
  * Benflix "Higher or Lower": two posters from your library. You see the first one's critics
- * score; guess whether the second scored higher or lower. Keep going until you miss.
+ * score; guess whether the second scored higher or lower. Five rounds, one point for each right
+ * answer, then "Play again" deals new movies.
  */
 @HiltViewModel
 class HigherLowerViewModel
@@ -114,6 +119,7 @@ class HigherLowerViewModel
         val state: StateFlow<HigherLowerState> = _state
 
         private var deck: ArrayDeque<ScoredMovie> = ArrayDeque()
+        private var pool: List<ScoredMovie> = emptyList()
 
         init {
             start()
@@ -123,14 +129,16 @@ class HigherLowerViewModel
             _state.value = HigherLowerState.Loading
             viewModelScope.launch {
                 try {
-                    val movies = withContext(WholphinDispatchers.IO) { loadMovies() }
+                    // Reuse the movies already loaded; "Play again" just deals a new shuffle
+                    val movies = pool.ifEmpty { withContext(WholphinDispatchers.IO) { loadMovies() } }
+                    pool = movies
                     if (movies.size < MIN_MOVIES) {
                         _state.value =
                             HigherLowerState.NotEnough("You need at least $MIN_MOVIES movies with critics scores to play.")
                         return@launch
                     }
                     deck = ArrayDeque(movies.shuffled())
-                    _state.value = HigherLowerState.Playing(deck.removeFirst(), deck.removeFirst(), 0)
+                    _state.value = HigherLowerState.Playing(deck.removeFirst(), deck.removeFirst(), 0, ROUNDS, 0)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -146,17 +154,18 @@ class HigherLowerViewModel
             val diff = playing.guess.score - playing.known.score
             // A tie counts as right either way
             val right = diff == 0 || (diff > 0) == higher
-            val streak = if (right) playing.streak + 1 else playing.streak
-            _state.value = playing.copy(right = right, streak = streak)
+            val score = if (right) playing.score + 1 else playing.score
+            _state.value = playing.copy(right = right, score = score)
             viewModelScope.launch {
                 delay(REVEAL_MS)
-                if (right && deck.isNotEmpty()) {
-                    _state.value = HigherLowerState.Playing(playing.guess, deck.removeFirst(), streak)
+                if (playing.round + 1 < playing.rounds && deck.isNotEmpty()) {
+                    _state.value = HigherLowerState.Playing(playing.guess, deck.removeFirst(), playing.round + 1, playing.rounds, score)
                 } else {
                     val best = prefs.getInt(bestKey(), 0)
-                    val newBest = streak > best
-                    if (newBest) prefs.edit { putInt(bestKey(), streak) }
-                    _state.value = HigherLowerState.Over(streak, maxOf(best, streak), newBest, playing.known to playing.guess)
+                    val newBest = score > best
+                    if (newBest) prefs.edit { putInt(bestKey(), score) }
+                    _state.value =
+                        HigherLowerState.Over(score, playing.round + 1, maxOf(best, score), newBest, playing.known to playing.guess)
                 }
             }
         }
@@ -165,7 +174,8 @@ class HigherLowerViewModel
 
         private fun bestKey(): String {
             val profile = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
-            return "${profile}_HIGHER_LOWER"
+            // Best score out of 5 (the old key held an endless streak, so it's a new key)
+            return "${profile}_HIGHER_LOWER_5"
         }
 
         private suspend fun loadMovies(): List<ScoredMovie> =
@@ -200,6 +210,7 @@ class HigherLowerViewModel
         companion object {
             private const val POOL_SIZE = 200
             private const val MIN_MOVIES = 6
+            private const val ROUNDS = 5
             private const val REVEAL_MS = 1_600L
             private const val POSTER_WIDTH = 420
         }
@@ -237,11 +248,12 @@ fun HigherLowerPage(
             is HigherLowerState.Over -> {
                 val (a, b) = s.last
                 HigherLowerEnd(
-                    title = if (s.newBest) "New best streak!" else "Game over",
+                    title = if (s.newBest) "New best score!" else "You scored ${s.score} of ${s.rounds}",
                     body =
-                        "${b.name} has ${b.score}%, ${a.name} has ${a.score}%.\n" +
-                            "Your streak: ${s.streak}   ·   Best: ${s.best}",
-                    button = "Play again",
+                        (if (s.newBest) "You scored ${s.score} of ${s.rounds}.\n" else "") +
+                            "Last one: ${b.name} has ${b.score}%, ${a.name} has ${a.score}%.\n" +
+                            "Your best: ${s.best} of ${s.rounds}",
+                    button = "Play again with new movies",
                     onClick = viewModel::start,
                 )
             }
@@ -260,16 +272,18 @@ private fun HigherLowerRound(
         verticalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
         modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "HIGHER OR LOWER",
-                fontFamily = BenflixTitleFont,
-                fontSize = if (isTv) 34.sp else 26.sp,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-            )
-            Text(text = "Streak ${state.streak}", fontSize = 18.sp, color = Color.White.copy(alpha = .85f))
-        }
+        Text(
+            text = "HIGHER OR LOWER",
+            fontFamily = BenflixTitleFont,
+            fontSize = if (isTv) 34.sp else 26.sp,
+            color = Color.White,
+        )
+        Text(
+            text = "Round ${state.round + 1} of ${state.rounds}  ·  Score ${state.score}",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFFFC94D),
+        )
         Text(
             text = "Did critics score the second movie higher or lower?",
             fontSize = if (isTv) 20.sp else 16.sp,
@@ -396,7 +410,7 @@ private fun HigherLowerEnd(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(top = 48.dp),
     ) {
-        Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White)
+        Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White, textAlign = TextAlign.Center)
         Text(body, fontSize = 20.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
         Button(onClick = onClick, modifier = Modifier.focusRequester(focus)) {
             Text(button)

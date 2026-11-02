@@ -71,25 +71,35 @@ sealed interface RiddleState {
     ) : RiddleState
 
     data class Playing(
+        /** Which riddle this is, from 0 */
+        val round: Int,
+        val rounds: Int,
         /** Clues shown so far, hardest first */
         val clues: List<String>,
         val choices: List<String>,
         /** Wrong picks so far (greyed out) */
         val wrong: Set<String> = emptySet(),
+        /** Stars won so far in this game */
+        val score: Int,
+        /** true for today's riddles (the same for the whole family), false for a bonus game */
+        val daily: Boolean,
+        /** Set once this riddle is over: stars won for it (0 if missed) */
+        val result: Int? = null,
+        val answer: String,
     ) : RiddleState
 
     data class Done(
-        val answer: String,
-        /** 3 for the first clue, 1 for the last, 0 if not solved */
-        val stars: Int,
+        /** Each riddle's answer and the stars won for it */
+        val results: List<Pair<String, Int>>,
+        val daily: Boolean,
         val streak: Int,
     ) : RiddleState
 }
 
 /**
- * Benflix "Daily movie riddle": one movie from your own library each day, the same one for
- * everyone on the server. Three clues that get easier, and four titles to pick from.
- * A wrong pick shows the next clue. One try per day.
+ * Benflix "Daily movie riddle": five movies from your own library. Each has three clues that get
+ * easier and five titles to pick from; a wrong pick shows the next clue. Up to 3 stars per movie.
+ * The first game each day is the same for everyone on the server; "Play again" deals a new set.
  */
 @HiltViewModel
 class DailyRiddleViewModel
@@ -103,8 +113,15 @@ class DailyRiddleViewModel
         private val _state = MutableStateFlow<RiddleState>(RiddleState.Loading)
         val state: StateFlow<RiddleState> = _state
 
-        private var allClues: List<String> = emptyList()
-        private var answer: String = ""
+        private data class Riddle(
+            val answer: String,
+            val clues: List<String>,
+            val choices: List<String>,
+        )
+
+        private var riddles: List<Riddle> = emptyList()
+        private val results = mutableListOf<Pair<String, Int>>()
+        private var daily = true
         private val today = LocalDate.now()
 
         init {
@@ -120,35 +137,34 @@ class DailyRiddleViewModel
 
         private fun dayKey(day: LocalDate) = "${profile()}_$day"
 
+        /** Start a game: today's riddles if not played yet, otherwise a new random set */
         fun load() {
             _state.value = RiddleState.Loading
             viewModelScope.launch {
                 try {
                     val names = withContext(WholphinDispatchers.IO) { movieNames() }
                     if (names.size < CHOICES) {
-                        _state.value = RiddleState.Problem("You need at least 4 movies on the server to play.")
+                        _state.value = RiddleState.Problem("You need at least $CHOICES movies on the server to play.")
                         return@launch
                     }
-                    // The same movie for everyone today: the date picks it
-                    val random = Random(today.toEpochDay() * SEED_MIX)
-                    val (answerId, answerName) = names[random.nextInt(names.size)]
-                    answer = answerName
-                    val movie = withContext(WholphinDispatchers.IO) { details(answerId) }
-                    allClues = clues(movie)
-                    val others =
-                        names
-                            .map { it.second }
-                            .filter { it != answerName }
-                            .shuffled(random)
-                            .take(CHOICES - 1)
-                    val choices = (others + answerName).shuffled(random)
-                    val played = prefs.getInt(dayKey(today), NOT_PLAYED)
-                    _state.value =
-                        if (played != NOT_PLAYED) {
-                            RiddleState.Done(answer, played, streak())
-                        } else {
-                            RiddleState.Playing(clues = allClues.take(1), choices = choices)
+                    daily = prefs.getInt(dayKey(today), NOT_PLAYED) == NOT_PLAYED
+                    // Today's set is the same for everyone: the date picks it. A bonus game is random.
+                    val random = if (daily) Random(today.toEpochDay() * SEED_MIX) else Random(System.nanoTime())
+                    val picks = names.shuffled(random).take(ROUNDS)
+                    riddles =
+                        picks.mapNotNull { (id, name) ->
+                            val clues = withContext(WholphinDispatchers.IO) { clues(details(id)) }
+                            if (clues.isEmpty()) return@mapNotNull null
+                            val others =
+                                names
+                                    .map { it.second }
+                                    .filter { it != name }
+                                    .shuffled(random)
+                                    .take(CHOICES - 1)
+                            Riddle(name, clues, (others + name).shuffled(random))
                         }
+                    results.clear()
+                    showRiddle(0)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -158,25 +174,57 @@ class DailyRiddleViewModel
             }
         }
 
+        private fun showRiddle(round: Int) {
+            val riddle = riddles.getOrNull(round) ?: return finishGame()
+            _state.value =
+                RiddleState.Playing(
+                    round = round,
+                    rounds = riddles.size,
+                    clues = riddle.clues.take(1),
+                    choices = riddle.choices,
+                    score = results.sumOf { it.second },
+                    daily = daily,
+                    answer = riddle.answer,
+                )
+        }
+
         fun pick(choice: String) {
             val playing = _state.value as? RiddleState.Playing ?: return
-            if (choice in playing.wrong) return
-            if (choice == answer) {
-                finish(stars = (allClues.size - playing.clues.size + 1).coerceIn(1, MAX_STARS))
-            } else if (playing.clues.size >= allClues.size) {
-                finish(stars = 0)
-            } else {
+            if (playing.result != null || choice in playing.wrong) return
+            val riddle = riddles[playing.round]
+            val stars =
+                when {
+                    choice == riddle.answer -> (riddle.clues.size - playing.clues.size + 1).coerceIn(1, MAX_STARS)
+                    playing.clues.size >= riddle.clues.size -> 0
+                    else -> null
+                }
+            if (stars == null) {
                 _state.value =
-                    playing.copy(clues = allClues.take(playing.clues.size + 1), wrong = playing.wrong + choice)
+                    playing.copy(clues = riddle.clues.take(playing.clues.size + 1), wrong = playing.wrong + choice)
+            } else {
+                results.add(riddle.answer to stars)
+                _state.value =
+                    playing.copy(
+                        result = stars,
+                        score = playing.score + stars,
+                        wrong = if (stars == 0) playing.wrong + choice else playing.wrong,
+                    )
             }
         }
 
-        private fun finish(stars: Int) {
-            prefs.edit { putInt(dayKey(today), stars) }
-            _state.value = RiddleState.Done(answer, stars, streak())
+        /** After a riddle is over: the next one, or the final score */
+        fun next() {
+            val playing = _state.value as? RiddleState.Playing ?: return
+            if (playing.result == null) return
+            showRiddle(playing.round + 1)
         }
 
-        /** Days in a row solved, counting back from today (or yesterday if today isn't played yet) */
+        private fun finishGame() {
+            if (daily) prefs.edit { putInt(dayKey(today), results.sumOf { it.second }) }
+            _state.value = RiddleState.Done(results.toList(), daily, streak())
+        }
+
+        /** Days in a row with at least one star, counting back from today (or yesterday if today isn't played yet) */
         private fun streak(): Int {
             var day = if (prefs.getInt(dayKey(today), NOT_PLAYED) == NOT_PLAYED) today.minusDays(1) else today
             var count = 0
@@ -248,8 +296,9 @@ class DailyRiddleViewModel
         }
 
         companion object {
-            private const val CHOICES = 4
-            private const val MAX_STARS = 3
+            private const val CHOICES = 5
+            const val ROUNDS = 5
+            const val MAX_STARS = 3
             private const val NOT_PLAYED = -1
             private const val SEED_MIX = 7_919L
         }
@@ -284,7 +333,7 @@ fun DailyRiddlePage(
             )
             when (val s = state) {
                 RiddleState.Loading -> {
-                    Text("Getting today's riddle…", fontSize = 20.sp, color = Color.White)
+                    Text("Getting the riddles ready…", fontSize = 20.sp, color = Color.White)
                 }
 
                 is RiddleState.Problem -> {
@@ -294,19 +343,29 @@ fun DailyRiddlePage(
 
                 is RiddleState.Playing -> {
                     Text(
+                        text =
+                            (if (s.daily) "Today's riddles" else "Bonus round") +
+                                "  ·  Movie ${s.round + 1} of ${s.rounds}  ·  ★ ${s.score}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFFFC94D),
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
                         "Which movie is it? A wrong pick shows an easier clue.",
                         fontSize = 16.sp,
                         color = Color.White.copy(alpha = .75f),
+                        textAlign = TextAlign.Center,
                     )
                     s.clues.forEachIndexed { i, clue ->
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier =
                                 Modifier
-                                    .fillMaxWidth(if (isTv) 0.62f else 1f)
+                                    .fillMaxWidth(if (isTv) 0.7f else 1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFF1C1C1F))
-                                    .padding(20.dp),
+                                    .padding(if (isTv) 20.dp else 16.dp),
                         ) {
                             Text(
                                 text = "Clue ${i + 1}\n$clue",
@@ -317,26 +376,36 @@ fun DailyRiddlePage(
                         }
                     }
                     val firstFocus = remember { FocusRequester() }
-                    LaunchedEffect(s.wrong.size) { firstFocus.tryRequestFocus() }
+                    val nextFocus = remember { FocusRequester() }
+                    LaunchedEffect(s.round, s.wrong.size, s.result) {
+                        if (s.result == null) firstFocus.tryRequestFocus() else nextFocus.tryRequestFocus()
+                    }
                     val open = s.choices.filterNot { it in s.wrong }
-                    s.choices.chunked(if (isTv) 2 else 1).forEach { row ->
+                    // Five titles: rows of three on TV (3 + 2), one per row on phones
+                    s.choices.chunked(if (isTv) 3 else 1).forEach { row ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth(if (isTv) 0.62f else 1f),
+                            modifier = Modifier.fillMaxWidth(if (isTv) 0.85f else 1f),
                         ) {
                             row.forEach { choice ->
                                 val wrong = choice in s.wrong
+                                val isAnswer = s.result != null && choice == s.answer
                                 Button(
                                     onClick = { viewModel.pick(choice) },
-                                    enabled = !wrong,
+                                    enabled = !wrong && s.result == null,
                                     colors =
                                         ButtonDefaults.colors(
                                             containerColor = Color(0xFF2A2A2E),
                                             contentColor = Color.White,
                                             focusedContainerColor = Color.White,
                                             focusedContentColor = Color.Black,
-                                            disabledContainerColor = BenflixRed.copy(alpha = .35f),
-                                            disabledContentColor = Color.White.copy(alpha = .5f),
+                                            disabledContainerColor =
+                                                when {
+                                                    isAnswer -> Color(0xFF2E8B57)
+                                                    wrong -> BenflixRed.copy(alpha = .35f)
+                                                    else -> Color(0xFF2A2A2E).copy(alpha = .5f)
+                                                },
+                                            disabledContentColor = if (isAnswer) Color.White else Color.White.copy(alpha = .5f),
                                         ),
                                     modifier =
                                         Modifier
@@ -348,30 +417,79 @@ fun DailyRiddlePage(
                             }
                         }
                     }
+                    s.result?.let { stars ->
+                        Text(
+                            text =
+                                if (stars > 0) {
+                                    "Got it! " + "★".repeat(stars) + "☆".repeat(DailyRiddleViewModel.MAX_STARS - stars)
+                                } else {
+                                    "It was ${s.answer}"
+                                },
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (stars > 0) Color(0xFF46D37A) else BenflixRed,
+                            textAlign = TextAlign.Center,
+                        )
+                        Button(onClick = viewModel::next, modifier = Modifier.focusRequester(nextFocus)) {
+                            Text(if (s.round + 1 < s.rounds) "Next movie" else "See my score")
+                        }
+                    }
                 }
 
                 is RiddleState.Done -> {
+                    val stars = s.results.sumOf { it.second }
+                    val guessed = s.results.count { it.second > 0 }
                     Text(
-                        text = if (s.stars > 0) "★".repeat(s.stars) + "☆".repeat(3 - s.stars) else "So close!",
+                        text = "★ $stars of ${s.results.size * DailyRiddleViewModel.MAX_STARS}",
                         fontSize = 44.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color(0xFFFFC94D),
                     )
                     Text(
-                        text = if (s.stars > 0) "You got it: ${s.answer}" else "It was ${s.answer}",
+                        text = "You guessed $guessed of ${s.results.size} movies",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                         textAlign = TextAlign.Center,
                     )
-                    if (s.streak > 1) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth(if (isTv) 0.6f else 1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF1C1C1F))
+                                .padding(16.dp),
+                    ) {
+                        s.results.forEach { (name, won) ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    name,
+                                    fontSize = 17.sp,
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "★".repeat(won) + "☆".repeat(DailyRiddleViewModel.MAX_STARS - won),
+                                    fontSize = 17.sp,
+                                    color = Color(0xFFFFC94D),
+                                )
+                            }
+                        }
+                    }
+                    if (s.daily && s.streak > 1) {
                         Text("${s.streak} days in a row!", fontSize = 18.sp, color = Color(0xFF46D37A))
                     }
-                    Text(
-                        "A new riddle comes tomorrow. Everyone gets the same one, so ask the family how they did!",
-                        fontSize = 16.sp,
-                        color = Color.White.copy(alpha = .75f),
-                        textAlign = TextAlign.Center,
-                    )
+                    if (s.daily) {
+                        Text(
+                            "Everyone gets the same first set each day, so ask the family how they did!",
+                            fontSize = 16.sp,
+                            color = Color.White.copy(alpha = .75f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    FocusedButton("Play again with new movies", viewModel::load)
                 }
             }
         }
