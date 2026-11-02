@@ -54,16 +54,19 @@ class BackdropService
         /**
          * Update the backdrop to use the specified item
          */
-        suspend fun submit(item: BaseItem) =
-            withContext(WholphinDispatchers.IO) {
-                val imageUrl =
-                    if (item.type == BaseItemKind.GENRE) {
-                        item.imageUrlOverride
-                    } else {
-                        imageUrlService.getItemImageUrl(item, ImageType.BACKDROP)
-                    }
-                submit(item.id.toString(), imageUrl, livingColour(item))
-            }
+        suspend fun submit(
+            item: BaseItem,
+            strongGlow: Boolean = false,
+        ) = withContext(WholphinDispatchers.IO) {
+            val imageUrl =
+                if (item.type == BaseItemKind.GENRE) {
+                    item.imageUrlOverride
+                } else {
+                    imageUrlService.getItemImageUrl(item, ImageType.BACKDROP)
+                }
+            val glow = livingColour(item, if (strongGlow) DETAILS_GLOW_ALPHA else GLOW_ALPHA)
+            submit(item.id.toString(), imageUrl, glow)
+        }
 
         /**
          * Update the backdrop to use the specified discovered item
@@ -78,7 +81,21 @@ class BackdropService
             imageUrl: String?,
             glow: ExtractedColors? = null,
         ) = withContext(WholphinDispatchers.IO) {
-            if (backdropFlow.firstOrNull()?.imageUrl != imageUrl || imageUrl == null) {
+            val current = backdropFlow.firstOrNull()
+            if (imageUrl != null && current?.imageUrl == imageUrl) {
+                // Same picture, maybe a different glow (Home's soft glow, then the details page's stronger one).
+                // Keep the picture on screen and just change the glow.
+                if (glow != null && current?.primaryColor != glow.primary) {
+                    _backdropFlow.update {
+                        it.copy(
+                            itemId = itemId,
+                            primaryColor = glow.primary,
+                            secondaryColor = glow.secondary,
+                            tertiaryColor = glow.tertiary,
+                        )
+                    }
+                }
+            } else {
                 _backdropFlow.update {
                     it.copy(
                         itemId = itemId,
@@ -232,7 +249,10 @@ class BackdropService
          * Living Colour: three soft glow colours from the poster's BlurHash (its tiny blurry preview).
          * Top left takes the poster's top colour, bottom right its bottom colour, top right its average.
          */
-        private fun livingColour(item: BaseItem): ExtractedColors? {
+        private fun livingColour(
+            item: BaseItem,
+            strength: Float,
+        ): ExtractedColors? {
             val hashes = item.data.imageBlurHashes ?: return null
             val hash =
                 (hashes[ImageType.PRIMARY] ?: hashes[ImageType.THUMB] ?: hashes[ImageType.BACKDROP])
@@ -246,9 +266,9 @@ class BackdropService
                 alpha: Float,
             ) = Color(bitmap.getPixel(x, y)).boosted().copy(alpha = alpha)
             return ExtractedColors(
-                primary = glow(2, 2, GLOW_ALPHA),
-                secondary = glow(0, 0, GLOW_ALPHA),
-                tertiary = glow(1, 1, GLOW_ALPHA * 0.8f),
+                primary = glow(2, 2, strength),
+                secondary = glow(0, 0, strength),
+                tertiary = glow(1, 1, strength * 0.8f),
             )
         }
 
@@ -296,6 +316,9 @@ data class ExtractedColors(
 
 /** Living Colour: how strong the glow is (soft, so text stays easy to read) */
 private const val GLOW_ALPHA = 0.32f
+
+/** Poster colour page (Look Book pick P1): details pages are tinted more strongly in the poster's colours */
+private const val DETAILS_GLOW_ALPHA = 0.5f
 
 /** Posters are often dull or dark, so brighten and colour up the glow a little */
 private fun Color.boosted(): Color {
