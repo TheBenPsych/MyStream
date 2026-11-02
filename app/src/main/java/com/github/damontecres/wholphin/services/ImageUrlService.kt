@@ -289,8 +289,10 @@ class ImageUrlService
         companion object {
             /** Widest a background picture ever needs to be: the screen's long side, 1280 to 1920 pixels */
             val BackdropMaxWidth: Int by lazy {
-                val metrics = Resources.getSystem().displayMetrics
-                maxOf(metrics.widthPixels, metrics.heightPixels).coerceIn(1280, 1920)
+                runCatching {
+                    val metrics = Resources.getSystem().displayMetrics
+                    maxOf(metrics.widthPixels, metrics.heightPixels).coerceIn(1280, 1920)
+                }.getOrDefault(1920)
             }
 
             // Lighter pictures load faster. WebP at 85 looks the same on a TV but is much smaller.
