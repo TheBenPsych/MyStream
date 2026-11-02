@@ -1,0 +1,25 @@
+# Benflix startup profile: Android compiles these parts of the app ahead of time when it installs
+# (through ProfileInstaller, which also works for sideloaded installs), so the first launch, Home,
+# the top bar, rows of cards, details pages and the player start faster instead of warming up slowly.
+HSPLcom/github/damontecres/wholphin/MainActivity*;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/main/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/nav/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/cards/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/components/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/detail/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/playback/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/theme/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/util/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/services/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/data/**;->**(**)**
+Lcom/github/damontecres/wholphin/MainActivity*;
+Lcom/github/damontecres/wholphin/ui/main/**;
+Lcom/github/damontecres/wholphin/ui/nav/**;
+Lcom/github/damontecres/wholphin/ui/cards/**;
+Lcom/github/damontecres/wholphin/ui/components/**;
+Lcom/github/damontecres/wholphin/ui/detail/**;
+Lcom/github/damontecres/wholphin/ui/playback/**;
+Lcom/github/damontecres/wholphin/ui/theme/**;
+Lcom/github/damontecres/wholphin/ui/util/**;
+Lcom/github/damontecres/wholphin/services/**;
+Lcom/github/damontecres/wholphin/data/**;
