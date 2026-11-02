@@ -43,6 +43,7 @@ import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.ShowNextUpWhen
 import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
+import com.github.damontecres.wholphin.preferences.SubtitleModePreference
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.enabled
 import com.github.damontecres.wholphin.services.AniSkipMatch
@@ -54,6 +55,10 @@ import com.github.damontecres.wholphin.services.BenflixMobileData
 import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
+import com.github.damontecres.wholphin.services.DisplayPreferencesService
+import com.github.damontecres.wholphin.services.FillerKind
+import com.github.damontecres.wholphin.services.FillerService
+import com.github.damontecres.wholphin.services.FillerTags
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -66,6 +71,7 @@ import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SmartResume
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
+import com.github.damontecres.wholphin.services.getPreferredLanguage
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.gt
@@ -116,6 +122,7 @@ import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.mediaInfoApi
 import org.jellyfin.sdk.api.client.extensions.mediaSegmentsApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
+import org.jellyfin.sdk.api.client.extensions.subtitleApi
 import org.jellyfin.sdk.api.client.extensions.trickplayApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -134,6 +141,8 @@ import org.jellyfin.sdk.model.api.PlaybackInfoDto
 import org.jellyfin.sdk.model.api.PlaystateCommand
 import org.jellyfin.sdk.model.api.PlaystateMessage
 import org.jellyfin.sdk.model.api.PlaystateRequest
+import org.jellyfin.sdk.model.api.RemoteSubtitleInfo
+import org.jellyfin.sdk.model.api.SubtitlePlaybackMode
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import org.jellyfin.sdk.model.api.VideoRange
 import org.jellyfin.sdk.model.api.VideoRangeType
@@ -342,13 +351,17 @@ class PlaybackViewModel
                     .takeIf { it > 0 } ?: AppPreference.DEFAULT_BITRATE
             // Benflix: on mobile data (not Wi-Fi), use a lower quality to save data
             val mobileCap = BenflixMobileData.bitrateCap(context, preferences.appPreferences.benflixPreferences)
-            val maxBitrate =
+            val dataMaxBitrate =
                 if (mobileCap != null && mobileCap < settingsMaxBitrate) {
                     showToast(context, context.getString(R.string.benflix_data_saver_toast), Toast.LENGTH_SHORT)
                     mobileCap
                 } else {
                     settingsMaxBitrate
                 }
+            // Benflix: picked a lower quality today because the video kept stopping? Only lasts today
+            val todaysCap = BenflixPlayerPrefs.todaysLowerQuality(context)
+            val maxBitrate =
+                if (todaysCap != null && todaysCap < dataMaxBitrate) todaysCap else dataMaxBitrate
             _state.update {
                 it.copy(
                     nextUp = null,
@@ -709,6 +722,7 @@ class PlaybackViewModel
                 listenForSegments(item.id)
                 watchForAfterCreditsScene(item.id)
                 watchForMovieNext(item)
+                benflixStartChecks(item, positionMs)
                 viewModelScope.launchIO { warmNextNearEnd(item.id) }
                 // Benflix "What Kids watched this week"
                 BenflixKidsLog.record(context, base)
@@ -1231,6 +1245,7 @@ class PlaybackViewModel
             }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            trackBuffering(playbackState)
             if (playbackState == Player.STATE_ENDED) {
                 Timber.v("Playback state is STATE_ENDED")
                 viewModelScope.launchDefault {
@@ -1266,7 +1281,8 @@ class PlaybackViewModel
 
                         null -> {
                             Timber.v("No next up")
-                            navigationManager.goBack()
+                            // Benflix: the last episode of a show? Say so and offer something like it
+                            if (!showFinishedShow()) navigationManager.goBack()
                         }
                     }
                 }
@@ -1409,6 +1425,527 @@ class PlaybackViewModel
             navigationManager.navigateTo(Destination.Playback(next.id, 0L))
         }
 
+        // ---------------- Benflix player helpers ----------------
+
+        /** Benflix: tags anime filler episodes (null in tests) */
+        @JvmField
+        @Inject
+        var fillerService: FillerService? = null
+
+        /** Benflix: per-profile settings stored on the server (null in tests) */
+        @JvmField
+        @Inject
+        var displayPreferencesService: DisplayPreferencesService? = null
+
+        /** Shows this profile always skips the intro of */
+        private val alwaysSkipIntroSeries: MutableSet<UUID> =
+            java.util.concurrent.ConcurrentHashMap
+                .newKeySet()
+
+        @Volatile private var alwaysSkipIntroLoaded = false
+        private var noticeJob: Job? = null
+        private var busyJob: Job? = null
+        private var subtitlesJob: Job? = null
+
+        @Volatile private var firstReadyAt = 0L
+
+        @Volatile private var lastSeekAt = 0L
+        private val bufferTimes = ArrayDeque<Long>()
+
+        @Volatile private var stutterOffered = false
+
+        private fun currentSeriesId(): UUID? = if (this::currentItem.isInitialized) currentItem.item.data.seriesId else null
+
+        private fun showNotice(notice: PlayerNotice?) {
+            _state.update { it.copy(notice = notice) }
+        }
+
+        /** Benflix: the checks that run each time something starts playing */
+        private fun benflixStartChecks(
+            item: BaseItem,
+            positionMs: Long,
+        ) {
+            noticeJob?.cancel()
+            firstReadyAt = 0L
+            bufferTimes.clear()
+            val pending = BenflixPlayerPrefs.pendingNotice
+            BenflixPlayerPrefs.pendingNotice = null
+            _state.update {
+                it.copy(
+                    notice = pending,
+                    showDone = null,
+                    alwaysSkipIntro = item.data.seriesId?.let { id -> id in alwaysSkipIntroSeries } == true,
+                )
+            }
+            watchForBusy(item.id)
+            findMissingSubtitles(item)
+            if (item.type != BaseItemKind.EPISODE) return
+            val seriesId = item.data.seriesId ?: return
+            noticeJob =
+                viewModelScope.launchIO {
+                    loadAlwaysSkipIntro()
+                    _state.update { it.copy(alwaysSkipIntro = seriesId in alwaysSkipIntroSeries) }
+                    val series =
+                        try {
+                            api.userLibraryApi.getItem(seriesId).content
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.v(ex, "Couldn't get the show")
+                            null
+                        } ?: return@launchIO
+                    // Don't talk over the "It's been a while" card
+                    while (isActive && state.value.recap != null) delay(500L)
+                    if (pending != null) return@launchIO
+                    if (checkFiller(item, BaseItem(series, false))) return@launchIO
+                    if (positionMs <= 0 && !shuffleSession && !isPlaylist && !item.played) checkSkipped(item, series)
+                }
+        }
+
+        /** Benflix: "You haven't seen episode 4 yet. Watch it first?" */
+        private suspend fun checkSkipped(
+            item: BaseItem,
+            series: BaseItemDto,
+        ) {
+            if (BenflixPlayerPrefs.watchInAnyOrder(series.genres)) return
+            // Only once they've started the show (starting somewhere on purpose is fine)
+            if ((series.userData?.playedPercentage ?: 0.0) <= 0.0) return
+            if ((item.data.parentIndexNumber ?: 0) == 0) return
+            try {
+                val episodes =
+                    api.tvShowsApi
+                        .getEpisodes(
+                            GetEpisodesRequest(
+                                seriesId = series.id,
+                                userId = serverRepository.currentUser?.id,
+                                adjacentTo = item.id,
+                                enableUserData = true,
+                            ),
+                        ).content.items
+                val index = episodes.indexOfFirst { it.id == item.id }
+                val previous = episodes.getOrNull(index - 1)?.takeIf { index > 0 } ?: return
+                if ((previous.parentIndexNumber ?: 0) == 0 || previous.userData?.played == true) return
+                val label =
+                    if (previous.parentIndexNumber == item.data.parentIndexNumber) {
+                        "episode ${previous.indexNumber}"
+                    } else {
+                        "season ${previous.parentIndexNumber}, episode ${previous.indexNumber}"
+                    }
+                if (state.value.notice != null || this.itemId != item.id) return
+                showNotice(
+                    PlayerNotice(
+                        title = "You haven't seen $label yet",
+                        message = previous.name?.let { "\"$it\". Watch it first?" } ?: "Watch it first?",
+                        actions = listOf("Watch it first" to NoticeAction.WATCH_SKIPPED, "Not now" to NoticeAction.DISMISS),
+                        targetId = previous.id,
+                    ),
+                )
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Couldn't check for a skipped episode")
+            }
+        }
+
+        /** Benflix: tell them when an anime episode is filler, and offer to skip it. True if it did something */
+        private suspend fun checkFiller(
+            item: BaseItem,
+            series: BaseItem,
+        ): Boolean {
+            val service = fillerService ?: return false
+            if (item.id in BenflixPlayerPrefs.fillerAllowed) return false
+            try {
+                service.load(api, series, serverRepository.currentUser?.id)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "No filler list")
+                return false
+            }
+            val kind = FillerTags.tags.value[item.id] ?: return false
+            if (this.itemId != item.id) return false
+            if (kind == FillerKind.FILLER && BenflixPlayerPrefs.alwaysSkipFiller(context)) {
+                val (next, skipped) = nextStoryEpisode(item) ?: return false
+                BenflixPlayerPrefs.pendingNotice =
+                    PlayerNotice(
+                        title = if (skipped.size == 1) "Skipped a filler episode" else "Skipped ${skipped.size} filler episodes",
+                        actions =
+                            listOf(
+                                "Watch it anyway" to NoticeAction.WATCH_FILLER_ANYWAY,
+                                "Stop skipping filler" to NoticeAction.STOP_SKIPPING_FILLER,
+                            ),
+                        autoHideMs = 8_000L,
+                        targetId = skipped.first(),
+                        extraIds = skipped,
+                    )
+                withContext(WholphinDispatchers.Main) {
+                    player.pause()
+                    navigationManager.goBack()
+                    navigationManager.navigateTo(Destination.Playback(next, 0L))
+                }
+                return true
+            }
+            showNotice(
+                PlayerNotice(
+                    title = if (kind == FillerKind.FILLER) "This is a filler episode" else "This episode is part filler",
+                    message =
+                        if (kind == FillerKind.FILLER) {
+                            "It isn't part of the main story. Want to skip it?"
+                        } else {
+                            "Some of it is main story, some is filler. Want to skip it?"
+                        },
+                    actions =
+                        buildList {
+                            add("Skip filler" to NoticeAction.SKIP_FILLER)
+                            add("Watch it" to NoticeAction.DISMISS)
+                            if (kind == FillerKind.FILLER) add("Always skip filler" to NoticeAction.ALWAYS_SKIP_FILLER)
+                        },
+                    autoHideMs = 15_000L,
+                    targetId = item.id,
+                ),
+            )
+            return true
+        }
+
+        /** The next episode after [item] that's part of the main story, and the filler ones in between (including [item]) */
+        private suspend fun nextStoryEpisode(item: BaseItem): Pair<UUID, List<UUID>>? {
+            val seriesId = item.data.seriesId ?: return null
+            return try {
+                val episodes =
+                    api.tvShowsApi
+                        .getEpisodes(
+                            GetEpisodesRequest(
+                                seriesId = seriesId,
+                                userId = serverRepository.currentUser?.id,
+                                startItemId = item.id,
+                                limit = 150,
+                            ),
+                        ).content.items
+                val tags = FillerTags.tags.value
+                val after = episodes.dropWhile { it.id != item.id }.drop(1)
+                val next = after.firstOrNull { tags[it.id] != FillerKind.FILLER } ?: return null
+                val skipped = listOf(item.id) + after.takeWhile { it.id != next.id }.map { it.id }
+                next.id to skipped
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Couldn't find the next story episode")
+                null
+            }
+        }
+
+        /** Benflix: a button on a heads-up card was pressed */
+        fun onNoticeAction(action: NoticeAction) {
+            val notice = state.value.notice ?: return
+            showNotice(null)
+            when (action) {
+                NoticeAction.DISMISS -> {}
+
+                NoticeAction.WATCH_SKIPPED -> {
+                    notice.targetId?.let { playInstead(it) }
+                }
+
+                NoticeAction.SKIP_FILLER, NoticeAction.ALWAYS_SKIP_FILLER -> {
+                    if (action == NoticeAction.ALWAYS_SKIP_FILLER) {
+                        BenflixPlayerPrefs.setAlwaysSkipFiller(context, true)
+                        showToast(context, "Benflix will skip filler from now on", Toast.LENGTH_SHORT)
+                    }
+                    viewModelScope.launchIO {
+                        val (next, _) = nextStoryEpisode(currentItem.item) ?: return@launchIO
+                        withContext(WholphinDispatchers.Main) { playInstead(next) }
+                    }
+                }
+
+                NoticeAction.WATCH_FILLER_ANYWAY -> {
+                    BenflixPlayerPrefs.fillerAllowed.addAll(notice.extraIds)
+                    notice.targetId?.let { playInstead(it) }
+                }
+
+                NoticeAction.STOP_SKIPPING_FILLER -> {
+                    BenflixPlayerPrefs.setAlwaysSkipFiller(context, false)
+                    showToast(context, "Filler won't be skipped anymore", Toast.LENGTH_SHORT)
+                }
+
+                NoticeAction.LOWER_QUALITY -> {
+                    val actual =
+                        minOf(
+                            state.value.maxBitrate,
+                            state.value.currentPlayback
+                                ?.mediaSourceInfo
+                                ?.bitrate
+                                ?.toLong()
+                                ?.takeIf { it > 0 } ?: Long.MAX_VALUE,
+                        )
+                    val lower = BenflixPlayerPrefs.lowerStep(actual)
+                    BenflixPlayerPrefs.setTodaysLowerQuality(context, lower)
+                    showToast(context, "Lower quality for today. It's back to normal tomorrow", Toast.LENGTH_SHORT)
+                    changeMaxBitrate(lower)
+                }
+
+                NoticeAction.STOP_SKIPPING_INTRO -> {
+                    currentSeriesId()?.let { setAlwaysSkipIntro(it, false) }
+                }
+            }
+        }
+
+        /** Swap this video for another one, so Back still goes to where you were before */
+        private fun playInstead(itemId: UUID) {
+            player.pause()
+            navigationManager.goBack()
+            navigationManager.navigateTo(Destination.Playback(itemId, 0L))
+        }
+
+        /** Benflix "Always for this show": skip this show's intro now and every time from now on */
+        fun alwaysSkipIntroForThisShow(segmentId: UUID?) {
+            val seriesId = currentSeriesId() ?: return
+            setAlwaysSkipIntro(seriesId, true)
+            updateSegment(segmentId, false)
+            showToast(context, "Benflix will skip this show's intro from now on", Toast.LENGTH_SHORT)
+        }
+
+        private fun setAlwaysSkipIntro(
+            seriesId: UUID,
+            on: Boolean,
+        ) {
+            if (on) alwaysSkipIntroSeries.add(seriesId) else alwaysSkipIntroSeries.remove(seriesId)
+            _state.update { it.copy(alwaysSkipIntro = on) }
+            val userId = serverRepository.currentUser?.id ?: return
+            val service = displayPreferencesService ?: return
+            viewModelScope.launchIO {
+                try {
+                    service.updateDisplayPreferences(userId) {
+                        val saved =
+                            this[ALWAYS_SKIP_INTRO_KEY]
+                                .orEmpty()
+                                .split('|')
+                                .filter { it.isNotBlank() }
+                                .toMutableSet()
+                        if (on) saved.add(seriesId.toString()) else saved.remove(seriesId.toString())
+                        put(ALWAYS_SKIP_INTRO_KEY, saved.joinToString("|"))
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't save always skip intro")
+                }
+            }
+        }
+
+        private suspend fun loadAlwaysSkipIntro() {
+            if (alwaysSkipIntroLoaded) return
+            val userId = serverRepository.currentUser?.id ?: return
+            val service = displayPreferencesService ?: return
+            try {
+                service
+                    .getDisplayPreferences(userId)
+                    .customPrefs[ALWAYS_SKIP_INTRO_KEY]
+                    .orEmpty()
+                    .split('|')
+                    .mapNotNull { it.toUUIDOrNull() }
+                    .let { alwaysSkipIntroSeries.addAll(it) }
+                alwaysSkipIntroLoaded = true
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Couldn't load always skip intro")
+            }
+        }
+
+        /** Benflix: if the video hasn't started after a few seconds, say the server is busy */
+        private fun watchForBusy(itemId: UUID) {
+            busyJob?.cancel()
+            busyJob =
+                viewModelScope.launchIO {
+                    delay(BUSY_AFTER_MS)
+                    val ready = onMain { player.playbackState == Player.STATE_READY }
+                    if (!ready && firstReadyAt == 0L && this@PlaybackViewModel.itemId == itemId && state.value.notice == null) {
+                        showNotice(
+                            PlayerNotice(
+                                title = "Benflix is busy right now",
+                                message = "It may take a moment to start, and the picture may look a bit softer for a bit.",
+                                autoHideMs = 9_000L,
+                                busy = true,
+                            ),
+                        )
+                    }
+                }
+        }
+
+        /** Benflix: the video keeps stopping to load? Offer a lower quality, just for today */
+        private fun trackBuffering(playbackState: Int) {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (playbackState == Player.STATE_READY && firstReadyAt == 0L) {
+                firstReadyAt = now
+                busyJob?.cancel()
+                if (state.value.notice?.busy == true) showNotice(null)
+            }
+            if (playbackState != Player.STATE_BUFFERING || firstReadyAt == 0L || now - lastSeekAt < SEEK_GRACE_MS) return
+            bufferTimes.addLast(now)
+            while (bufferTimes.isNotEmpty() && now - bufferTimes.first() > STUTTER_WINDOW_MS) bufferTimes.removeFirst()
+            if (bufferTimes.size < STUTTER_COUNT || stutterOffered || state.value.notice != null) return
+            val actual =
+                minOf(
+                    state.value.maxBitrate,
+                    state.value.currentPlayback
+                        ?.mediaSourceInfo
+                        ?.bitrate
+                        ?.toLong()
+                        ?.takeIf { it > 0 } ?: Long.MAX_VALUE,
+                )
+            if (actual <= 1_000_000L) return
+            stutterOffered = true
+            showNotice(
+                PlayerNotice(
+                    title = "The video keeps stopping to load",
+                    message = "Try a lower quality for today? It goes back to normal tomorrow.",
+                    actions = listOf("Lower quality" to NoticeAction.LOWER_QUALITY, "Not now" to NoticeAction.DISMISS),
+                    autoHideMs = 15_000L,
+                ),
+            )
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+                lastSeekAt = android.os.SystemClock.elapsedRealtime()
+            }
+        }
+
+        /**
+         * Benflix: the profile wants subtitles, but this has none in their language. Quietly look
+         * them up on the server and turn them on (needs subtitle permission on the Jellyfin user).
+         */
+        private fun findMissingSubtitles(item: BaseItem) {
+            subtitlesJob?.cancel()
+            if (item.type != BaseItemKind.EPISODE && item.type != BaseItemKind.MOVIE) return
+            if (!BenflixPlayerPrefs.subtitlesChecked.add(item.id)) return
+            subtitlesJob =
+                viewModelScope.launchIO {
+                    delay(AUTO_SUBS_AFTER_MS)
+                    val playback = state.value.currentPlayback ?: return@launchIO
+                    if (playback.item.id != item.id) return@launchIO
+                    val userConfig = serverRepository.currentUserDto?.configuration
+                    val language = getPreferredLanguage(MediaStreamType.SUBTITLE, preferences, userConfig) ?: return@launchIO
+                    val mode =
+                        when (preferences.userPreferences?.subtitleMode) {
+                            SubtitleModePreference.USE_USER_PROFILE, null -> userConfig?.subtitleMode
+                            SubtitleModePreference.ALWAYS -> SubtitlePlaybackMode.ALWAYS
+                            SubtitleModePreference.SMART -> SubtitlePlaybackMode.SMART
+                            else -> SubtitlePlaybackMode.NONE
+                        }
+                    val streams = playback.mediaSourceInfo.mediaStreams.orEmpty()
+                    val audioLanguage =
+                        streams.firstOrNull { it.type == MediaStreamType.AUDIO && it.index == playback.audioIndex }?.language
+                            ?: streams.firstOrNull { it.type == MediaStreamType.AUDIO }?.language
+                    val wanted =
+                        mode == SubtitlePlaybackMode.ALWAYS ||
+                            (mode == SubtitlePlaybackMode.SMART && audioLanguage != null && !audioLanguage.equals(language, true))
+                    if (!wanted) return@launchIO
+                    val subtitles = streams.filter { it.type == MediaStreamType.SUBTITLE }
+                    if (subtitles.any { it.language.isNullOrBlank() || it.language == "und" || it.language.equals(language, true) }) {
+                        return@launchIO
+                    }
+                    try {
+                        val pick =
+                            api.subtitleApi
+                                .searchRemoteSubtitles(itemId = playback.itemId, language = language)
+                                .content
+                                .sortedWith(
+                                    compareByDescending<RemoteSubtitleInfo> { it.isHashMatch }
+                                        .thenByDescending { it.communityRating }
+                                        .thenByDescending { it.downloadCount },
+                                ).firstOrNull() ?: return@launchIO
+                        if (state.value.currentPlayback
+                                ?.item
+                                ?.id != item.id
+                        ) {
+                            return@launchIO
+                        }
+                        showToast(context, "No subtitles in your language, so Benflix found some", Toast.LENGTH_SHORT)
+                        downloadAndSwitchSubtitles(pick.id, onMain { player.isPlaying }, quiet = true)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.v(ex, "Couldn't find subtitles automatically")
+                    }
+                }
+        }
+
+        /** Benflix: the last episode of a show ended. True if the "You finished the show!" card is showing */
+        private suspend fun showFinishedShow(): Boolean {
+            if (!this::currentItem.isInitialized) return false
+            val item = (currentItem as? PlaylistItem.Media)?.item ?: return false
+            if (item.type != BaseItemKind.EPISODE || shuffleSession) return false
+            val seriesId = item.data.seriesId ?: return false
+            if ((item.data.parentIndexNumber ?: 0) == 0) return false
+            return try {
+                withTimeoutOrNull(FINISHED_LOOKUP_MS) {
+                    val episodes =
+                        api.tvShowsApi
+                            .getEpisodes(
+                                GetEpisodesRequest(
+                                    seriesId = seriesId,
+                                    userId = serverRepository.currentUser?.id,
+                                    adjacentTo = item.id,
+                                ),
+                            ).content.items
+                            .filter { (it.parentIndexNumber ?: 0) != 0 }
+                    if (episodes.lastOrNull()?.id != item.id) return@withTimeoutOrNull false
+                    val series = api.userLibraryApi.getItem(seriesId).content
+                    val similar =
+                        try {
+                            api.libraryApi
+                                .getSimilarItems(
+                                    GetSimilarItemsRequest(
+                                        userId = serverRepository.currentUser?.id,
+                                        itemId = seriesId,
+                                        fields = ItemRowFields,
+                                        limit = 15,
+                                    ),
+                                ).content.items
+                                .filter { it.type == BaseItemKind.SERIES && it.userData?.played != true }
+                                .take(3)
+                                .map { BaseItem(it, true) }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            emptyList()
+                        }
+                    _state.update {
+                        it.copy(
+                            notice = null,
+                            showDone =
+                                ShowDone(
+                                    series = BaseItem(series, false),
+                                    similar = similar,
+                                    caughtUp = series.status.equals("Continuing", true),
+                                ),
+                        )
+                    }
+                    true
+                } ?: false
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Couldn't check for the end of the show")
+                false
+            }
+        }
+
+        fun closeShowDone() {
+            _state.update { it.copy(showDone = null) }
+            navigationManager.goBack()
+        }
+
+        fun openFromShowDone(item: BaseItem) {
+            _state.update { it.copy(showDone = null) }
+            navigationManager.goBack()
+            navigationManager.navigateTo(Destination.MediaItem(item))
+        }
+
         /**
          * Benflix: if this movie has a scene during or after the credits (TMDB marks these),
          * say so when the credits start, and don't skip the credits.
@@ -1521,12 +2058,33 @@ class PlaybackViewModel
                                 } else {
                                     val behavior =
                                         when (currentSegment.type) {
-                                            MediaSegmentType.COMMERCIAL -> prefs.skipCommercials
-                                            MediaSegmentType.PREVIEW -> prefs.skipPreviews
-                                            MediaSegmentType.RECAP -> prefs.skipRecaps
-                                            MediaSegmentType.OUTRO -> prefs.skipOutros
-                                            MediaSegmentType.INTRO -> prefs.skipIntros
-                                            MediaSegmentType.UNKNOWN -> SkipSegmentBehavior.IGNORE
+                                            MediaSegmentType.COMMERCIAL -> {
+                                                prefs.skipCommercials
+                                            }
+
+                                            MediaSegmentType.PREVIEW -> {
+                                                prefs.skipPreviews
+                                            }
+
+                                            MediaSegmentType.RECAP -> {
+                                                prefs.skipRecaps
+                                            }
+
+                                            MediaSegmentType.OUTRO -> {
+                                                prefs.skipOutros
+                                            }
+
+                                            MediaSegmentType.INTRO -> {
+                                                if (currentSeriesId() in alwaysSkipIntroSeries) {
+                                                    SkipSegmentBehavior.AUTO_SKIP
+                                                } else {
+                                                    prefs.skipIntros
+                                                }
+                                            }
+
+                                            MediaSegmentType.UNKNOWN -> {
+                                                SkipSegmentBehavior.IGNORE
+                                            }
                                         }
                                     withContext(WholphinDispatchers.Main) {
                                         val newSegment =
@@ -1534,6 +2092,22 @@ class PlaybackViewModel
                                                 SkipSegmentBehavior.AUTO_SKIP -> {
                                                     if (autoSkippedSegments.add(currentSegment.id)) {
                                                         onMain { player.seekTo(currentSegment.endTicks.ticks.inWholeMilliseconds + 1) }
+                                                        if (currentSegment.type == MediaSegmentType.INTRO &&
+                                                            currentSeriesId() in alwaysSkipIntroSeries &&
+                                                            prefs.skipIntros != SkipSegmentBehavior.AUTO_SKIP
+                                                        ) {
+                                                            showNotice(
+                                                                PlayerNotice(
+                                                                    title = "Skipped the intro",
+                                                                    actions =
+                                                                        listOf(
+                                                                            "Stop skipping it for this show" to
+                                                                                NoticeAction.STOP_SKIPPING_INTRO,
+                                                                        ),
+                                                                    autoHideMs = 6_000L,
+                                                                ),
+                                                            )
+                                                        }
                                                     }
                                                     MediaSegmentState(currentSegment, true)
                                                 }
@@ -2135,6 +2709,15 @@ private const val AFTER_CREDITS_SHOW_MS = 10_000L
 
 /** Benflix: with no credits marker, offer "Watch next" this close to the end of a movie */
 private const val MOVIE_NEXT_NOTICE_MS = 4 * 60_000L
+
+/** Benflix: per-profile list of shows whose intro is always skipped */
+private const val ALWAYS_SKIP_INTRO_KEY = "benflix.autoSkipIntro"
+private const val BUSY_AFTER_MS = 6_000L
+private const val SEEK_GRACE_MS = 3_000L
+private const val STUTTER_WINDOW_MS = 120_000L
+private const val STUTTER_COUNT = 3
+private const val AUTO_SUBS_AFTER_MS = 4_000L
+private const val FINISHED_LOOKUP_MS = 5_000L
 
 private const val RECAP_LOOKUP_MS = 3_000L
 private const val RECAP_AFTER_DAYS = 14L
