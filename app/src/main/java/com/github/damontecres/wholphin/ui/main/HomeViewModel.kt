@@ -90,6 +90,7 @@ import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
@@ -372,6 +373,10 @@ class HomeViewModel
                     viewModelScope.launchIO { loadNewest(userDto) }
                     viewModelScope.launchIO { loadMyList(userDto) }
                     viewModelScope.launchIO { loadCelebration(userDto) }
+                    viewModelScope.launchIO { loadComeBack(userDto) }
+                    if (!refresh || state.spotlight == null) {
+                        viewModelScope.launchIO { loadSpotlight(userDto) }
+                    }
                     if (!refresh || state.animeRows.isEmpty()) {
                         viewModelScope.launchIO { loadAnimeRows(userDto) }
                     }
@@ -1582,6 +1587,116 @@ class HomeViewModel
         }
 
         /**
+         * "Come back to it": movies stopped partway and shows started but not finished, that
+         * haven't been touched for a few weeks
+         */
+        private suspend fun loadComeBack(userDto: ServerUserConfig) {
+            try {
+                val cutoff =
+                    java.time.LocalDateTime
+                        .now()
+                        .minusDays(COME_BACK_DAYS)
+
+                fun request(types: List<BaseItemKind>) =
+                    GetItemsRequest(
+                        userId = userDto.id,
+                        includeItemTypes = types,
+                        recursive = true,
+                        sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                        sortOrder = listOf(SortOrder.DESCENDING),
+                        limit = COME_BACK_POOL,
+                        fields = HomeRowFields,
+                    )
+                val movies =
+                    api.itemsApi
+                        .getItems(request(listOf(BaseItemKind.MOVIE)).copy(filters = listOf(ItemFilter.IS_RESUMABLE)))
+                        .content.items
+                val shows =
+                    api.itemsApi
+                        .getItems(request(listOf(BaseItemKind.SERIES)).copy(isPlayed = false))
+                        .content.items
+                        .filter { (it.userData?.playedPercentage ?: 0.0) > 0.0 }
+                val items =
+                    (movies + shows)
+                        .filter { dto -> dto.userData?.lastPlayedDate?.isBefore(cutoff) == true }
+                        .sortedByDescending { it.userData?.lastPlayedDate }
+                        .take(EXTRA_ROW_MAX)
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(comeBack = items.takeIf { it.size >= 3 }?.let { ThemedRow("Come back to it", it) })
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading come back to it row")
+            }
+        }
+
+        /**
+         * Person spotlight: an actor from what this profile watched lately, with their other
+         * movies and shows on Benflix (not watched yet first)
+         */
+        private suspend fun loadSpotlight(userDto: ServerUserConfig) {
+            try {
+                val taste = loadTaste(userDto.id)
+                val recent =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                isPlayed = true,
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = SPOTLIGHT_POOL,
+                                fields = listOf(ItemFields.PEOPLE),
+                                enableImages = false,
+                            ),
+                        ).content.items
+                val actors =
+                    recent
+                        .flatMap { dto ->
+                            dto.people
+                                .orEmpty()
+                                .filter { it.type == PersonKind.ACTOR }
+                                .take(SPOTLIGHT_TOP_BILLED)
+                        }.groupBy { it.id }
+                        .filterValues { it.size >= 2 }
+                        .entries
+                        .sortedByDescending { it.value.size }
+                        .take(SPOTLIGHT_CHOICES)
+                if (actors.isEmpty()) return
+                val pick = actors[Random(LocalDate.now().toEpochDay()).nextInt(actors.size)]
+                val name = pick.value.first().name ?: return
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                personIds = listOf(pick.key),
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = EXTRA_ROW_MAX,
+                                fields = HomeRowFields,
+                            ),
+                        ).content.items
+                        .filter { taste.keep(it) }
+                        .sortedBy { it.userData?.played == true }
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(spotlight = items.takeIf { it.size >= 4 }?.let { ThemedRow("Spotlight: $name", it) })
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading person spotlight row")
+            }
+        }
+
+        /**
          * "My List": the profile's favorite movies & shows
          */
         private suspend fun loadMyList(userDto: ServerUserConfig) {
@@ -1961,6 +2076,10 @@ data class HomeState(
     val celebration: Celebration? = null,
     val newest: ThemedRow? = null,
     val myList: ThemedRow? = null,
+    /** "Come back to it": started a while ago, never finished */
+    val comeBack: ThemedRow? = null,
+    /** Person spotlight: an actor from what was watched lately */
+    val spotlight: ThemedRow? = null,
     val genreRows: List<ThemedRow> = emptyList(),
     /** "Top 10 anime": Anime Movies and Anime Shows together */
     val animeTop: List<BaseItem> = emptyList(),
@@ -1980,6 +2099,11 @@ data class HomeState(
     }
 }
 
+private const val COME_BACK_DAYS = 21L
+private const val COME_BACK_POOL = 60
+private const val SPOTLIGHT_POOL = 30
+private const val SPOTLIGHT_TOP_BILLED = 5
+private const val SPOTLIGHT_CHOICES = 5
 private const val TASTE_MAX = 300
 private const val ANIME_ID_CACHE_MS = 60 * 60 * 1000L
 private const val ANIME_ROW_MIN = 5

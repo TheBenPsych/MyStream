@@ -15,6 +15,7 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.BenflixAnimeTracks
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
@@ -22,6 +23,7 @@ import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
+import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
@@ -30,6 +32,7 @@ import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.ItemRowFields
+import com.github.damontecres.wholphin.ui.components.SubDub
 import com.github.damontecres.wholphin.ui.equalsNotNull
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -73,6 +76,7 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
@@ -106,6 +110,7 @@ class SeriesViewModel
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
         private val fillerService: FillerService,
+        private val playbackPrep: PlaybackPrep,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -147,6 +152,10 @@ class SeriesViewModel
                 backdropService.submit(series)
                 // Benflix: FILLER / MIXED tags on anime episode cards
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
+                // Benflix: get the episode Play will start ready while the page is open
+                viewModelScope.launchIO {
+                    findNextUp()?.let { prepareNextUp(it, series.data) }
+                }
 
                 val seasonsDeferred = getSeasons(series, seasonEpisodeIds?.seasonNumber)
 
@@ -326,6 +335,11 @@ class SeriesViewModel
         fun onResumePage() {
             state.value.series.successValue?.let { item ->
                 viewModelScope.launchDefault { backdropService.submit(item) }
+                // Benflix: something may have been watched since, so find the next episode again
+                nextUpReady = null
+                viewModelScope.launchIO {
+                    findNextUp()?.let { prepareNextUp(it, item.data) }
+                }
                 viewModelScope.launchDefault {
                     themeSongPlayer.playThemeFor(seriesId)
                 }
@@ -573,19 +587,46 @@ class SeriesViewModel
                 ?.let { backdropService.submit(it) }
         }
 
+        /** Benflix: the next-up episode found when the page opened */
+        @Volatile private var nextUpReady: BaseItemDto? = null
+
+        /** Keep the next episode ready to play, and read SUB / DUB from it on anime */
+        private suspend fun prepareNextUp(
+            episode: BaseItemDto,
+            series: BaseItemDto,
+        ) {
+            nextUpReady = episode
+            val full =
+                try {
+                    api.userLibraryApi.getItem(episode.id).content
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.v(ex, "Could not get %s", episode.id)
+                    return
+                }
+            playbackPrep.hold(full)
+            if (BenflixAnimeTracks.isAnime(series)) {
+                _state.update { it.copy(subDub = SubDub.label(full)) }
+            }
+        }
+
+        private suspend fun findNextUp(): BaseItemDto? {
+            val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
+            return result.items.firstOrNull() ?: api.tvShowsApi
+                .getEpisodes(
+                    seriesId,
+                    limit = 1,
+                ).content.items
+                .firstOrNull()
+        }
+
         /**
          * Play whichever episode is next up for series or else the first episode
          */
         fun playNextUp() {
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
-                val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
-                val nextUp =
-                    result.items.firstOrNull() ?: api.tvShowsApi
-                        .getEpisodes(
-                            seriesId,
-                            limit = 1,
-                        ).content.items
-                        .firstOrNull()
+                val nextUp = nextUpReady.also { nextUpReady = null } ?: findNextUp()
                 if (nextUp != null) {
                     withContext(WholphinDispatchers.Main) {
                         navigateTo(Destination.Playback(BaseItem(nextUp)))
@@ -957,6 +998,8 @@ data class SeriesState(
     val similar: List<BaseItem> = emptyList(),
     // Benflix: best-rated episodes
     val fanFavourites: List<BaseItem> = emptyList(),
+    /** Benflix: "SUB", "DUB" or "SUB | DUB" on anime */
+    val subDub: String? = null,
     val canDeleteSeries: Boolean = false,
     val peopleInEpisode: PeopleInItem = PeopleInItem(),
     val discovered: List<DiscoverItem> = emptyList(),

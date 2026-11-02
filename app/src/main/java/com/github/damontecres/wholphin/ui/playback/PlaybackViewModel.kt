@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.PlayerFactory
 import com.github.damontecres.wholphin.services.PlaylistCreationResult
 import com.github.damontecres.wholphin.services.PlaylistCreator
@@ -139,6 +140,7 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import java.util.Date
 import java.util.UUID
+import javax.inject.Inject
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -181,6 +183,11 @@ class PlaybackViewModel
         val currentPlayer = MutableStateFlow<PlayerInstance?>(null)
 
         internal lateinit var player: Player
+
+        /** Benflix: gets videos ready early (null in tests) */
+        @JvmField
+        @Inject
+        var playbackPrep: PlaybackPrep? = null
 
         private var mediaSession: MediaSession? = null
 
@@ -366,7 +373,8 @@ class PlaybackViewModel
                     }
                 }
             this.itemId = itemId
-            val queriedItem = api.userLibraryApi.getItem(itemId).content
+            // Benflix: the details page may already have it ready
+            val queriedItem = playbackPrep?.take(itemId) ?: api.userLibraryApi.getItem(itemId).content
             // Benflix Smart resume: when coming back to something, start a few seconds early
             val smartRewindMs =
                 if (positionMs > 0 && !preferences.appPreferences.benflixPreferences.smartResumeOff) {
@@ -689,6 +697,7 @@ class PlaybackViewModel
                 _state.update { it.copy(recap = recap) }
                 listenForSegments(item.id)
                 watchForAfterCreditsScene(item.id)
+                viewModelScope.launchIO { warmNextNearEnd(item.id) }
                 // Benflix "What Kids watched this week"
                 BenflixKidsLog.record(context, base)
                 return@withContext true
@@ -1257,6 +1266,24 @@ class PlaybackViewModel
         internal var segmentJob: Job? = null
         private val autoSkippedSegments = mutableSetOf<UUID>()
         private val outroShownSegments = mutableSetOf<UUID>()
+
+        /** Benflix: a few minutes before the end, wake the disk the next episode is on */
+        private suspend fun warmNextNearEnd(itemId: UUID) {
+            val prep = playbackPrep ?: return
+            while (true) {
+                delay(NEXT_CHECK_MS)
+                if (this.itemId != itemId) return
+                val left =
+                    withContext(WholphinDispatchers.Main) {
+                        val duration = player.duration
+                        if (duration > 0) duration - player.currentPosition else Long.MAX_VALUE
+                    }
+                if (left <= NEXT_PREP_MS) {
+                    (state.value.nextItem() as? PlaylistItem.Media)?.let { prep.warm(it.item.data) }
+                    return
+                }
+            }
+        }
 
         /**
          * Benflix: if the last episode of this show was watched more than two weeks ago,
@@ -1996,6 +2023,8 @@ private const val WHAT_DID_THEY_SAY_MS = 12_000L
 
 /** Show the after-credits notice this close to the end, if there are no credits marks */
 private const val AFTER_CREDITS_NOTICE_MS = 5 * 60_000L
+private const val NEXT_CHECK_MS = 15_000L
+private const val NEXT_PREP_MS = 3 * 60_000L
 private const val AFTER_CREDITS_SHOW_MS = 10_000L
 
 private const val RECAP_LOOKUP_MS = 3_000L

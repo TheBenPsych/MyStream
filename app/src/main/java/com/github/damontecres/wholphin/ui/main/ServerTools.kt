@@ -4,6 +4,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.lifecycle.ViewModel
@@ -25,6 +27,7 @@ import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -361,6 +364,20 @@ fun LazyListScope.serverToolsItems(
                 Text("Like \"Server restarting in 5 minutes\". It pops up right away on every Benflix screen that's open.")
             },
         )
+    }
+
+    // Benflix start-up stopwatch: how long this device took to open Benflix last time
+    item {
+        val context = LocalContext.current
+        val last = remember { StartupTimer.last(context) }
+        if (last != null) {
+            ListItem(
+                selected = false,
+                onClick = {},
+                headlineContent = { Text("Start-up speed on this device") },
+                supportingContent = { Text(last) },
+            )
+        }
     }
 
     // Add a person

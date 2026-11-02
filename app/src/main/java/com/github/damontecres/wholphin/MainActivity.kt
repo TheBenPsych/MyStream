@@ -174,6 +174,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         instance = this
+        com.github.damontecres.wholphin.util.StartupTimer
+            .mark(com.github.damontecres.wholphin.util.StartupTimer.SCREEN)
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")
         lifecycle.addObserver(playbackLifecycleObserver)
 
@@ -563,6 +565,9 @@ class MainActivityViewModel
                         setupNavigationManager.navigateTo(SetupDestination.ServerList)
                     }
                 }
+                // Benflix: the intro can stop waiting, whichever way the app opened
+                com.github.damontecres.wholphin.util.StartupTimer
+                    .markSignedIn()
             }
             viewModelScope.launchDefault {
                 // Create the mediaCodecCapabilitiesTest if needed
@@ -669,6 +674,8 @@ class MainActivityViewModel
                 setupNavigationManager.navigateTo(
                     SetupDestination.AppContent(currentUser),
                 )
+                com.github.damontecres.wholphin.util.StartupTimer
+                    .markSignedIn()
             } else {
                 val restoredSession =
                     if (signInAutomatically) {
@@ -679,6 +686,8 @@ class MainActivityViewModel
                     }
                 Timber.d("Restore last session result=%s", restoredSession)
                 setupNavigationManager.navigateTo(restoredSession.destination)
+                com.github.damontecres.wholphin.util.StartupTimer
+                    .markSignedIn()
             }
         }
     }

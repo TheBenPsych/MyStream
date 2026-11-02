@@ -82,6 +82,7 @@ import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.SubDubTag
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.components.TextButton
@@ -216,6 +217,7 @@ fun SeriesDetails(
                 inlineEpisodes = state.inlineEpisodes,
                 onPickSeason = viewModel::showSeasonEpisodes,
                 fanFavourites = state.fanFavourites,
+                subDub = state.subDub,
                 onPlayEpisode = { viewModel.navigateTo(Destination.Playback(it)) },
                 trailers = state.trailers,
                 extras = state.extras,
@@ -389,6 +391,7 @@ fun SeriesDetailsContent(
     onPickSeason: (Int) -> Unit = {},
     fanFavourites: List<BaseItem> = emptyList(),
     onPlayEpisode: (BaseItem) -> Unit = {},
+    subDub: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -448,6 +451,7 @@ fun SeriesDetailsContent(
                         showLogo = preferences.appPreferences.interfacePreferences.showLogos,
                         overviewOnClick = overviewOnClick,
                         bringIntoViewRequester = bringIntoViewRequester,
+                        subDub = subDub,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -847,6 +851,7 @@ fun SeriesDetailsHeader(
     overviewOnClick: () -> Unit,
     bringIntoViewRequester: BringIntoViewRequester,
     modifier: Modifier = Modifier,
+    subDub: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val dto = series.data
@@ -875,6 +880,8 @@ fun SeriesDetailsHeader(
                 null,
                 Modifier.padding(start = HeaderUtils.startPadding),
             )
+            // Benflix: SUB / DUB on anime
+            subDub?.let { SubDubTag(it, Modifier.padding(start = HeaderUtils.startPadding)) }
             dto.studios?.let {
                 val studios = remember { series.studioNames }
                 GenreText(

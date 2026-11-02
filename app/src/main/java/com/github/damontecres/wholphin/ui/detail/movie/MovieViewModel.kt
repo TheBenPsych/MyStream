@@ -20,6 +20,7 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
+import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
@@ -73,6 +74,7 @@ class MovieViewModel
         private val backdropService: BackdropService,
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
+        private val playbackPrep: PlaybackPrep,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -129,6 +131,8 @@ class MovieViewModel
                     )
                 }
                 backdropService.submit(movie)
+                // Benflix: get the movie ready to play while the page is open
+                playbackPrep.hold(movie.data)
                 viewModelScope.launchIO {
                     trailerService.getLocalTrailers(movie).letNotEmpty { localTrailers ->
                         _state.update {
