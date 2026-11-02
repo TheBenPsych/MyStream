@@ -86,6 +86,9 @@ fun UserList(
     /** Benflix "Big kids" tile (Parental controls), next to Kids */
     showBigKids: Boolean = false,
     onBigKids: (JellyfinUser) -> Unit = {},
+    /** Benflix Guest tile: watch without saving anything to the owner's account */
+    showGuest: Boolean = false,
+    onGuest: (JellyfinUser) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
     var pickPictureFor by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
@@ -130,6 +133,11 @@ fun UserList(
                     if (showBigKids) {
                         item {
                             KidsProfileCard(onClick = { onBigKids.invoke(grownUp) }, big = true)
+                        }
+                    }
+                    if (showGuest) {
+                        item {
+                            GuestProfileCard(onClick = { onGuest.invoke(grownUp) })
                         }
                     }
                 }
@@ -649,6 +657,55 @@ private fun KidsProfileCard(
         }
         Text(
             text = if (big) "Big kids" else stringResource(R.string.kids_profile),
+            style = MaterialTheme.typography.bodyLarge.copy(shadow = ReadableTextShadow),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .width(cardSize)
+                    .padding(horizontal = 4.dp),
+        )
+    }
+}
+
+/** Benflix Guest tile: a plain grey tile with a question mark */
+@Composable
+private fun GuestProfileCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cardSize = Cards.serverUserCircle
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.size(cardSize),
+            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
+            colors =
+                ClickableSurfaceDefaults.colors(
+                    containerColor = Color(0xFF55555C),
+                    focusedContainerColor = Color(0xFF6A6A72),
+                ),
+            border =
+                ClickableSurfaceDefaults.border(
+                    focusedBorder =
+                        Border(
+                            border = BorderStroke(width = 3.dp, color = profileBorderColor()),
+                            shape = ProfileTileShape,
+                        ),
+                ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Text(text = "?", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+        Text(
+            text = "Guest",
             style = MaterialTheme.typography.bodyLarge.copy(shadow = ReadableTextShadow),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,

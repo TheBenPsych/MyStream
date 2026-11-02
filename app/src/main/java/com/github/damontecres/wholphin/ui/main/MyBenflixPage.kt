@@ -26,6 +26,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
@@ -186,7 +187,7 @@ fun MyBenflixPage(
             user?.let {
                 UserIconCardImage(
                     id = it.id,
-                    name = if (kids) KidsMode.displayName else it.name,
+                    name = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else it.name,
                     imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
                     modifier = Modifier.size(56.dp),
                 )
@@ -199,7 +200,7 @@ fun MyBenflixPage(
                     letterSpacing = 1.sp,
                 )
                 Text(
-                    text = if (kids) KidsMode.displayName else user?.name.orEmpty(),
+                    text = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else user?.name.orEmpty(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -207,7 +208,7 @@ fun MyBenflixPage(
             }
         }
         val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
-        if (!kids) {
+        if (!kids && !GuestMode.isActive) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 8.dp),

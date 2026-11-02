@@ -31,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.BasicDialog
@@ -99,7 +100,7 @@ fun PhoneNavBar(
         com.github.damontecres.wholphin.ui.components
             .PhoneRemoteDialog(onDismiss = { showRemote = false })
     }
-    val name = if (kids) KidsMode.displayName else user.name
+    val name = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else user.name
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

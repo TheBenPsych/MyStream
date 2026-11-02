@@ -71,6 +71,14 @@ object BenflixKidsLog {
         )
     }
 
+    /** Shows and movies watched most on Kids (last 30 days), most first, for "Watch it again" */
+    fun favouriteIds(context: Context): List<String> =
+        entries(context)
+            .groupBy { it.titleId }
+            .entries
+            .sortedByDescending { it.value.size }
+            .map { it.key }
+
     private fun entries(context: Context): List<KidsWatch> =
         try {
             val array = JSONArray(prefs(context).getString(KEY, "[]"))

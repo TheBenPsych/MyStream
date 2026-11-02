@@ -88,6 +88,7 @@ import org.jellyfin.sdk.api.client.extensions.studiosApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
@@ -288,6 +289,7 @@ class HomeViewModel
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
                 viewModelScope.launchIO { loadTrending(userDto) }
+                if (KidsMode.isActive) viewModelScope.launchIO { loadKidsAgain(userDto.id) }
 
                 val semaphore = Semaphore(4)
 
@@ -684,6 +686,31 @@ class HomeViewModel
             val years = today.year - (movie.premiereDate?.year ?: return emptyList())
             val label = if (years == 1) "Came out 1 year ago today" else "Came out $years years ago today"
             return listOf(FeaturedItem(BaseItem(movie), FeaturedReason.ON_THIS_DAY, becauseOf = label))
+        }
+
+        /** Benflix Kids "Watch it again": what's been watched most on Kids on this device */
+        private suspend fun loadKidsAgain(userId: UUID) {
+            try {
+                val ids =
+                    com.github.damontecres.wholphin.services.BenflixKidsLog
+                        .favouriteIds(context)
+                        .mapNotNull { it.toUUIDOrNull() }
+                        .take(KIDS_AGAIN_MAX)
+                if (ids.size < KIDS_AGAIN_MIN) return
+                val byId =
+                    api.itemsApi
+                        .getItems(GetItemsRequest(userId = userId, ids = ids, fields = HomeItemFields))
+                        .content.items
+                        .associateBy { it.id }
+                val items = ids.mapNotNull { byId[it] }.map { BaseItem(it) }
+                if (items.size >= KIDS_AGAIN_MIN) {
+                    _state.update { it.copy(kidsAgain = ThemedRow("Watch it again", items)) }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Kids: couldn't load Watch it again")
+            }
         }
 
         private suspend fun featuredSource(
@@ -1926,6 +1953,8 @@ data class HomeState(
     val trendingMissing: List<DiscoverItem> = emptyList(),
     val themed: ThemedRow? = null,
     val because: ThemedRow? = null,
+    /** Benflix Kids: "Watch it again", what Kids watched most */
+    val kidsAgain: ThemedRow? = null,
     val becauseMore: ThemedRow? = null,
     val collections: ThemedRow? = null,
     val mood: HomeMood? = null,
@@ -1970,6 +1999,8 @@ private const val FEATURED_RESUME = 2
 private const val FEATURED_BECAUSE = 2
 private const val FEATURED_FAVORITES = 2
 private const val FEATURED_MAX = 10
+private const val KIDS_AGAIN_MIN = 3
+private const val KIDS_AGAIN_MAX = 20
 
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
 @Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null

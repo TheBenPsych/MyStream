@@ -28,6 +28,7 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.BenflixKidsLog
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
@@ -117,6 +118,17 @@ fun ParentalControlsDialog(
                         headlineContent = { Text("Big kids tile") },
                         supportingContent = { Text("A second Kids tile on Who's watching that allows up to PG-13, for older children") },
                         trailingContent = { Switch(checked = bigKids, onCheckedChange = null) },
+                    )
+                    var guestTile by remember { mutableStateOf(GuestMode.tileOn(context)) }
+                    ListItem(
+                        selected = false,
+                        onClick = {
+                            guestTile = !guestTile
+                            GuestMode.setTileOn(context, guestTile)
+                        },
+                        headlineContent = { Text("Guest tile") },
+                        supportingContent = { Text("For visitors: they can watch anything, and nothing is saved to your account") },
+                        trailingContent = { Switch(checked = guestTile, onCheckedChange = null) },
                     )
                     ListItem(
                         selected = false,

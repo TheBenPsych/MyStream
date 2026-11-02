@@ -35,7 +35,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
-import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
+import com.github.damontecres.wholphin.services.BenflixServerHealth
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -48,8 +48,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.activityLogApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -64,7 +62,6 @@ import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PlaystateCommand
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
-import org.json.JSONObject
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -121,7 +118,7 @@ class ServerStatusViewModel
     constructor(
         private val api: ApiClient,
         val serverRepository: ServerRepository,
-        @param:StandardOkHttpClient private val http: OkHttpClient,
+        private val health: BenflixServerHealth,
     ) : ViewModel() {
         private val _status = MutableStateFlow(ServerStatus())
         val status: StateFlow<ServerStatus> = _status
@@ -132,44 +129,8 @@ class ServerStatusViewModel
 
         fun loadDisks() {
             viewModelScope.launch {
-                _disks.value = withContext(WholphinDispatchers.IO) { safe { readDisks() } }.orEmpty()
+                _disks.value = safe { health.readDisks() }.orEmpty()
             }
-        }
-
-        /**
-         * Asks Jellyfin (10.10 or newer) how full the disks with each library are. Libraries on
-         * the same disk show the same numbers, so they're shown together.
-         */
-        private fun readDisks(): List<ServerDisk> {
-            val base = api.baseUrl?.trimEnd('/') ?: return emptyList()
-            val request =
-                Request
-                    .Builder()
-                    .url("$base/System/Info/Storage")
-                    .header("Authorization", "MediaBrowser Token=\"${api.accessToken}\"")
-                    .build()
-            val json =
-                http.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return emptyList()
-                    JSONObject(response.body.string())
-                }
-            val libraries = json.optJSONArray("Libraries") ?: return emptyList()
-            val byDisk = LinkedHashMap<Pair<Long, Long>, MutableList<String>>()
-            for (i in 0 until libraries.length()) {
-                val library = libraries.optJSONObject(i) ?: continue
-                val name = library.optString("Name")
-                if (name.isBlank()) continue
-                val folders = library.optJSONArray("Folders") ?: continue
-                for (j in 0 until folders.length()) {
-                    val folder = folders.optJSONObject(j) ?: continue
-                    val used = folder.optLong("UsedSpace", -1)
-                    val free = folder.optLong("FreeSpace", -1)
-                    if (used < 0 || free < 0) continue
-                    val names = byDisk.getOrPut(used to free) { mutableListOf() }
-                    if (name !in names) names += name
-                }
-            }
-            return byDisk.map { (space, names) -> ServerDisk(names.joinToString(", "), space.first, space.second) }
         }
 
         fun refresh() {

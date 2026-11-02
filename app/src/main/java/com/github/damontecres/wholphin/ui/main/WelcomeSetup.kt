@@ -274,7 +274,7 @@ class WelcomeGateViewModel
         private val navigationManager: NavigationManager,
     ) : ViewModel() {
         fun check() {
-            if (KidsMode.isActive) return
+            if (KidsMode.isActive || com.github.damontecres.wholphin.services.GuestMode.isActive) return
             val userId = serverRepository.currentUser?.id ?: return
             if (userId in checked) return
             checked += userId
