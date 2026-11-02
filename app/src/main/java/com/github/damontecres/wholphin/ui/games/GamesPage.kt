@@ -413,6 +413,16 @@ fun GamesPage(
                         modifier = mod,
                     )
                 },
+                { mod ->
+                    MovieGameTile(
+                        title = "Higher or Lower",
+                        subtitle = "Two posters. Did critics score the second one higher or lower? Keep your streak going!",
+                        icon = R.string.fa_arrow_up_long,
+                        colors = listOf(Color(0xFF15803D), Color(0xFF7F1D1D)),
+                        onClick = { viewModel.navigationManager.navigateTo(Destination.HigherLower) },
+                        modifier = mod,
+                    )
+                },
             )
         if (isTv) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

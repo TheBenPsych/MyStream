@@ -325,6 +325,10 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.RequestArrivedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix Wrapped (December)
+                                                com.github.damontecres.wholphin.ui.main.BenflixWrappedLayer(
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
                                                 // Benflix: friendly screen while the server is down
                                                 com.github.damontecres.wholphin.ui.main
                                                     .ServerNapLayer()

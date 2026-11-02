@@ -219,6 +219,10 @@ sealed class Destination(
     @Serializable
     data object DailyRiddle : Destination(true)
 
+    /** Benflix: "Higher or Lower" critics score game */
+    @Serializable
+    data object HigherLower : Destination(true)
+
     /** Benflix: simple help page (remote buttons and tips) */
     @Serializable
     data object HowTo : Destination(false)

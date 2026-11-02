@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ChosenStreams
@@ -29,6 +31,8 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.preferences.PlayerBackend
+import com.github.damontecres.wholphin.services.BenflixProblems
+import com.github.damontecres.wholphin.services.ReportProblemViewModel
 import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.util.supportedPlayableTypes
@@ -203,6 +207,8 @@ fun ContextMenu(
     var chooseVersion by remember { mutableStateOf<DialogParams?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPlayWithDialog by remember { mutableStateOf(false) }
+    // Benflix "Report a problem"
+    val reportViewModel: ReportProblemViewModel = hiltViewModel()
 
     val dialogItems =
         remember(resources, item, chosenStreams) {
@@ -271,6 +277,30 @@ fun ContextMenu(
                 },
                 onClickDelete = { showDeleteDialog = true },
                 onClickPlayWith = { showPlayWithDialog = true },
+                onReportProblem = {
+                    val title = item.title ?: item.name ?: "this"
+                    chooseVersion =
+                        DialogParams(
+                            fromLongClick = false,
+                            title = "What's wrong with $title?",
+                            items =
+                                BenflixProblems.PROBLEMS.map { problem ->
+                                    DialogItem(
+                                        headlineContent = { androidx.tv.material3.Text(problem) },
+                                        onClick = {
+                                            reportViewModel.report(item.id, title, problem)
+                                            onDismissRequest.invoke()
+                                        },
+                                        supportingContent =
+                                            if (problem == BenflixProblems.PROBLEMS.first()) {
+                                                { androidx.tv.material3.Text("This sends Ben a fix request") }
+                                            } else {
+                                                null
+                                            },
+                                    )
+                                },
+                        )
+                },
             )
         }
     val isTv =
@@ -378,6 +408,7 @@ private fun buildContextMenuItems(
     onClearChosenStreams: () -> Unit,
     onClickDelete: () -> Unit,
     onClickPlayWith: () -> Unit,
+    onReportProblem: () -> Unit = {},
 ): List<DialogItem> =
     buildList {
         // Songs should not show Go to
@@ -672,6 +703,17 @@ private fun buildContextMenuItems(
                     Icons.Default.PlayArrow,
                     dismissOnClick = false,
                     onClick = onClickPlayWith,
+                ),
+            )
+        }
+        // Benflix: "Something's wrong" sends Ben a fix request
+        if (item.type in supportedPlayableTypes || item.type == BaseItemKind.SERIES) {
+            add(
+                DialogItem(
+                    "Report a problem",
+                    Icons.Default.Warning,
+                    dismissOnClick = false,
+                    onClick = onReportProblem,
                 ),
             )
         }

@@ -106,6 +106,7 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.DateTime
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.time.Duration
 
@@ -607,6 +608,30 @@ fun HomePageContent(
             // On TV the header stays put above the rows; on phones it scrolls away with the rest of the page
             if (isTv) pageHeader()
 
+            // Benflix Home trim: the extra rows (more because-you-watched, collections, anime picks,
+            // genre rows) take turns by day; only a couple show until you scroll near the bottom
+            val extraRowMap =
+                buildMap {
+                    becauseMore?.let { put("becauseMore", it) }
+                    collections?.let { put("collections", it) }
+                    animeRows.forEachIndexed { index, row -> put("anime$index", row) }
+                    genreRows.forEachIndexed { index, row -> put("genre$index", row) }
+                }
+            val extraRowFor: (String) -> ThemedRow? = { extraRowMap[it] }
+            // Each row's place depends only on its name and today's date, so rows that load later
+            // don't shuffle the ones already on screen
+            val today = remember { LocalDate.now().toEpochDay() }
+            val extraKeys = extraRowMap.keys.sortedBy { "$it-$today".hashCode() }
+            var showAllRows by remember { mutableStateOf(false) }
+            val nearBottom by remember(listState) {
+                derivedStateOf {
+                    val info = listState.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    info.totalItemsCount > 0 && last >= info.totalItemsCount - 2
+                }
+            }
+            LaunchedEffect(nearBottom) { if (nearBottom) showAllRows = true }
+
             val density = LocalDensity.current
             val spaceAbovePx =
                 remember(density) {
@@ -944,22 +969,6 @@ fun HomePageContent(
                             )
                         }
                     }
-                    if (becauseMore != null) {
-                        item(key = "becauseMore") {
-                            PosterRow(
-                                title = becauseMore.title,
-                                items = becauseMore.items,
-                                onClickItem = onClickTrending,
-                                onFocusItem = { extraFocus = it },
-                                modifier =
-                                    Modifier
-                                        .padding(bottom = 8.dp)
-                                        .onFocusChanged {
-                                            if (!it.hasFocus && extraFocus in becauseMore.items) extraFocus = null
-                                        },
-                            )
-                        }
-                    }
                     if (onClickMood != null) {
                         item(key = "moods") {
                             MoodRow(
@@ -1017,41 +1026,11 @@ fun HomePageContent(
                             )
                         }
                     }
-                    // Anime picks: because you watched an anime, hidden gems, anime by genre
-                    animeRows.forEachIndexed { index, row ->
-                        item(key = "anime$index") {
-                            PosterRow(
-                                title = row.title,
-                                items = row.items,
-                                onClickItem = onClickTrending,
-                                onFocusItem = { extraFocus = it },
-                                modifier =
-                                    Modifier
-                                        .padding(bottom = 8.dp)
-                                        .onFocusChanged {
-                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
-                                        },
-                            )
-                        }
-                    }
-                    if (collections != null) {
-                        item(key = "collections") {
-                            PosterRow(
-                                title = collections.title,
-                                items = collections.items,
-                                onClickItem = onClickTrending,
-                                onFocusItem = { extraFocus = it },
-                                modifier =
-                                    Modifier
-                                        .padding(bottom = 8.dp)
-                                        .onFocusChanged {
-                                            if (!it.hasFocus && extraFocus in collections.items) extraFocus = null
-                                        },
-                            )
-                        }
-                    }
-                    genreRows.forEachIndexed { index, row ->
-                        item(key = "genre$index") {
+                    // Benflix: Home keeps about 12 rows. The extra rows take turns by day,
+                    // and the rest load in as you get near the bottom
+                    extraKeys.take(if (showAllRows) extraKeys.size else EXTRA_ROWS_FIRST).forEach { key ->
+                        val row = extraRowFor(key) ?: return@forEach
+                        item(key = key) {
                             PosterRow(
                                 title = row.title,
                                 items = row.items,
@@ -1333,3 +1312,6 @@ private val HomeHeaderModifier =
     Modifier
         .padding(top = 4.dp, bottom = 12.dp, start = HeaderUtils.startPadding)
         .height(150.dp)
+
+/** How many of the extra Home rows show before you scroll near the bottom */
+private const val EXTRA_ROWS_FIRST = 2
