@@ -105,6 +105,7 @@ import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.DiscoverRequestType
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -463,155 +464,42 @@ fun SeriesDetailsContent(
                 modifier = Modifier,
             ) {
                 item {
-                    SeriesDetailsHeader(
-                        series = series,
-                        showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                        overviewOnClick = overviewOnClick,
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        subDub = subDub,
-                        progressText = remember(progress) { progress?.words() },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .bringIntoViewRequester(bringIntoViewRequester)
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier =
-                            Modifier
-                                .padding(start = HeaderUtils.startPadding)
-                                .focusRequester(focusRequesters[HEADER_ROW])
-                                .focusRestorer(playFocusRequester)
-                                .focusGroup()
-                                .padding(bottom = 16.dp),
-                    ) {
-                        ExpandablePlayButton(
-                            title = R.string.play,
-                            resume = Duration.ZERO,
-                            icon = Icons.Default.PlayArrow,
-                            onClick = {
-                                position = HEADER_ROW
-                                playOnClick.invoke(false)
-                            },
+                    // Benflix: title, info and buttons scroll as one block (no jumping while moving along the buttons)
+                    Column(modifier = Modifier.scrollAsOneBlock()) {
+                        SeriesDetailsHeader(
+                            series = series,
+                            showLogo = preferences.appPreferences.interfacePreferences.showLogos,
+                            overviewOnClick = overviewOnClick,
+                            bringIntoViewRequester = bringIntoViewRequester,
+                            subDub = subDub,
+                            progressText = remember(progress) { progress?.words() },
                             modifier =
                                 Modifier
-                                    .focusRequester(playFocusRequester)
-                                    .onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
+                                    .fillMaxWidth()
+                                    .bringIntoViewRequester(bringIntoViewRequester)
+                                    .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                         )
-                        ExpandableFaButton(
-                            title = R.string.benflix_random_episodes,
-                            iconStringRes = R.string.fa_shuffle,
-                            onClick = {
-                                position = HEADER_ROW
-                                playOnClick.invoke(true)
-                            },
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        // Benflix: watched it all? Start again from episode 1
-                        if (played && progress?.firstEpisodeId != null) {
-                            ExpandableFaButton(
-                                title = R.string.benflix_rewatch,
-                                iconStringRes = R.string.fa_rotate_left,
+                                Modifier
+                                    .padding(start = HeaderUtils.startPadding)
+                                    .focusRequester(focusRequesters[HEADER_ROW])
+                                    .focusRestorer(playFocusRequester)
+                                    .focusGroup()
+                                    .padding(bottom = 16.dp),
+                        ) {
+                            ExpandablePlayButton(
+                                title = R.string.play,
+                                resume = Duration.ZERO,
+                                icon = Icons.Default.PlayArrow,
                                 onClick = {
                                     position = HEADER_ROW
-                                    rewatchOnClick.invoke()
-                                },
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                        }
-                        ExpandableFaButton(
-                            title = if (played) R.string.mark_unwatched else R.string.mark_watched,
-                            iconStringRes = if (played) R.string.fa_eye else R.string.fa_eye_slash,
-                            onClick = watchOnClick,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        ExpandableFaButton(
-                            title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                            iconStringRes = R.string.fa_heart,
-                            onClick = favoriteOnClick,
-                            iconColor = if (favorite) Color.Red else Color.Unspecified,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        LikeButton(
-                            likes = likes,
-                            rateOnClick = rateOnClick,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        DislikeButton(
-                            likes = likes,
-                            rateOnClick = rateOnClick,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        TrailerButton(
-                            trailers = trailers,
-                            trailerOnClick = trailerOnClick,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                        )
-                        if (canDelete) {
-                            DeleteButton(
-                                title = series.title ?: "",
-                                onConfirmDelete = {
-                                    position = HEADER_ROW
-                                    actions.onDeleteItem.invoke(series)
+                                    playOnClick.invoke(false)
                                 },
                                 modifier =
                                     Modifier
+                                        .focusRequester(playFocusRequester)
                                         .onFocusChanged {
                                             if (it.isFocused) {
                                                 scope.launch(ExceptionHandler()) {
@@ -620,15 +508,12 @@ fun SeriesDetailsContent(
                                             }
                                         },
                             )
-                        }
-                        // Benflix (admins): the show got matched to the wrong one on the internet
-                        if (isAdmin) {
                             ExpandableFaButton(
-                                title = R.string.benflix_fix_match,
-                                iconStringRes = R.string.fa_magnifying_glass,
+                                title = R.string.benflix_random_episodes,
+                                iconStringRes = R.string.fa_shuffle,
                                 onClick = {
                                     position = HEADER_ROW
-                                    fixMatchOnClick.invoke()
+                                    playOnClick.invoke(true)
                                 },
                                 modifier =
                                     Modifier.onFocusChanged {
@@ -639,16 +524,29 @@ fun SeriesDetailsContent(
                                         }
                                     },
                             )
-                        }
-                        AnimatedVisibility(
-                            visible = discoverSeries != null,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                        ) {
+                            // Benflix: watched it all? Start again from episode 1
+                            if (played && progress?.firstEpisodeId != null) {
+                                ExpandableFaButton(
+                                    title = R.string.benflix_rewatch,
+                                    iconStringRes = R.string.fa_rotate_left,
+                                    onClick = {
+                                        position = HEADER_ROW
+                                        rewatchOnClick.invoke()
+                                    },
+                                    modifier =
+                                        Modifier.onFocusChanged {
+                                            if (it.isFocused) {
+                                                scope.launch(ExceptionHandler()) {
+                                                    bringIntoViewRequester.bringIntoView()
+                                                }
+                                            }
+                                        },
+                                )
+                            }
                             ExpandableFaButton(
-                                title = R.string.discover,
-                                iconStringRes = R.string.fa_magnifying_glass_plus,
-                                onClick = onClickDiscoverSeries,
+                                title = if (played) R.string.mark_unwatched else R.string.mark_watched,
+                                iconStringRes = if (played) R.string.fa_eye else R.string.fa_eye_slash,
+                                onClick = watchOnClick,
                                 modifier =
                                     Modifier.onFocusChanged {
                                         if (it.isFocused) {
@@ -658,6 +556,112 @@ fun SeriesDetailsContent(
                                         }
                                     },
                             )
+                            ExpandableFaButton(
+                                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                                iconStringRes = R.string.fa_heart,
+                                onClick = favoriteOnClick,
+                                iconColor = if (favorite) Color.Red else Color.Unspecified,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
+                            )
+                            LikeButton(
+                                likes = likes,
+                                rateOnClick = rateOnClick,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
+                            )
+                            DislikeButton(
+                                likes = likes,
+                                rateOnClick = rateOnClick,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
+                            )
+                            TrailerButton(
+                                trailers = trailers,
+                                trailerOnClick = trailerOnClick,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
+                            )
+                            if (canDelete) {
+                                DeleteButton(
+                                    title = series.title ?: "",
+                                    onConfirmDelete = {
+                                        position = HEADER_ROW
+                                        actions.onDeleteItem.invoke(series)
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .onFocusChanged {
+                                                if (it.isFocused) {
+                                                    scope.launch(ExceptionHandler()) {
+                                                        bringIntoViewRequester.bringIntoView()
+                                                    }
+                                                }
+                                            },
+                                )
+                            }
+                            // Benflix (admins): the show got matched to the wrong one on the internet
+                            if (isAdmin) {
+                                ExpandableFaButton(
+                                    title = R.string.benflix_fix_match,
+                                    iconStringRes = R.string.fa_magnifying_glass,
+                                    onClick = {
+                                        position = HEADER_ROW
+                                        fixMatchOnClick.invoke()
+                                    },
+                                    modifier =
+                                        Modifier.onFocusChanged {
+                                            if (it.isFocused) {
+                                                scope.launch(ExceptionHandler()) {
+                                                    bringIntoViewRequester.bringIntoView()
+                                                }
+                                            }
+                                        },
+                                )
+                            }
+                            AnimatedVisibility(
+                                visible = discoverSeries != null,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                            ) {
+                                ExpandableFaButton(
+                                    title = R.string.discover,
+                                    iconStringRes = R.string.fa_magnifying_glass_plus,
+                                    onClick = onClickDiscoverSeries,
+                                    modifier =
+                                        Modifier.onFocusChanged {
+                                            if (it.isFocused) {
+                                                scope.launch(ExceptionHandler()) {
+                                                    bringIntoViewRequester.bringIntoView()
+                                                }
+                                            }
+                                        },
+                                )
+                            }
                         }
                     }
                 }

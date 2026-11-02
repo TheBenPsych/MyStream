@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
@@ -225,6 +226,7 @@ fun DiscoverMovieDetailsContent(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier =
                         Modifier
+                            .scrollAsOneBlock()
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester),
                 ) {

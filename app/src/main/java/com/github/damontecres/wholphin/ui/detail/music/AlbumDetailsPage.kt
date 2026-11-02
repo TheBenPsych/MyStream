@@ -82,6 +82,7 @@ import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.toBaseItems
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
@@ -413,6 +414,7 @@ fun AlbumDetailsPage(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier =
                                 Modifier
+                                    .scrollAsOneBlock()
                                     .fillMaxWidth()
                                     .bringIntoViewRequester(bringIntoViewRequester)
                                     .padding(bottom = 32.dp),

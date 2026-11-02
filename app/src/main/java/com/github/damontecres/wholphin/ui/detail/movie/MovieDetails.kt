@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.DiscoverRequestType
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -380,6 +381,7 @@ fun MovieDetailsContent(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier =
                         Modifier
+                            .scrollAsOneBlock()
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester),
                 ) {
