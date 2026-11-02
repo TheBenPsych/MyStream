@@ -23,8 +23,7 @@ import androidx.compose.ui.unit.Density
 @Composable
 fun PhoneFit(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val isTv =
-        remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    val isTv = remember { isTvDevice(context) }
     val smallest = LocalConfiguration.current.smallestScreenWidthDp
     if (isTv || smallest <= 0 || smallest >= PHONE_DESIGN_DP) {
         content()
@@ -62,7 +61,21 @@ private const val PORTRAIT_FRACTION = .92f
 @Composable
 fun rememberIsTv(): Boolean {
     val context = LocalContext.current
-    return remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    return remember { isTvDevice(context) }
+}
+
+@Volatile
+private var isTvCached: Boolean? = null
+
+/**
+ * True on Android TV / Google TV / Fire TV. Asked once and remembered: the answer never changes,
+ * and asking Android every time each poster appears costs a little time on slower TVs.
+ */
+fun isTvDevice(context: android.content.Context): Boolean {
+    isTvCached?.let { return it }
+    val isTv = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    isTvCached = isTv
+    return isTv
 }
 
 /** How much of the width a details page's text uses: a narrow column on TV, the full width on phones */

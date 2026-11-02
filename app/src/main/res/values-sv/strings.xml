@@ -595,7 +595,7 @@
     <string name="include_types_summary">Vilka typer av objekt ska bilder visas för</string>
     <string name="song_has_lyrics">Låten har text</string>
     <string name="show_album_cover">Visa omslag till album</string>
-    <string name="updated_toast">Wholphin har uppdaterats till %s</string>
+    <string name="updated_toast">Benflix har uppdaterats till %s</string>
     <string name="last_played">Senast visat</string>
     <string name="root_folder">Huvudkatalog</string>
     <string name="popularity">Populäritet</string>

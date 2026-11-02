@@ -580,7 +580,7 @@
     <string name="continue_string">Jätka</string>
     <string name="separate_types">Eraldi tüübid</string>
     <string name="prefer_logos">Pealkirjade puhul eelista logode kuvamist</string>
-    <string name="updated_toast">Wholphin on uuendatud versioonini %s</string>
+    <string name="updated_toast">Benflix on uuendatud versioonini %s</string>
     <string name="remove_continue_watching">Eemalda „Jätka vaatamist“ valikust</string>
     <string name="remove_next_up">Eemalda sari valikust „Järgmisena esitamisel“</string>
     <string name="view_removed_next_up">Vaata sarja, mis sai eemaldatud valikust „Järgmisena esitamisel“</string>
