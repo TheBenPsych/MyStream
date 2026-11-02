@@ -641,6 +641,13 @@ class ClipsViewModel
             player?.playWhenReady = false
         }
 
+        /** Let go of the background player (TV Trailer shuffle plays one trailer at a time) */
+        fun dropPreload() {
+            nextPlayer?.release()
+            nextPlayer = null
+            nextId = null
+        }
+
         fun toggleMute() {
             val muted = !_state.value.muted
             _state.update { it.copy(muted = muted) }
