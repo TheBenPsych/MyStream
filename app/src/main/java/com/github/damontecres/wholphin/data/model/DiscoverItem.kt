@@ -105,6 +105,8 @@ data class DiscoverItem(
     val backDropUrl: String?,
     val logoUrl: String?,
     val jellyfinItemId: UUID?,
+    // Benflix: TMDB's score out of 10, when the list it came from has one
+    val score: Double? = null,
 ) : CardGridItem {
     override val gridId: String get() = id.toString()
     override val playable: Boolean = false

@@ -428,6 +428,9 @@ fun NavDrawer(
     val selectedIndex = state.selectedIndex
 
     val userImageUrl = remember(user) { viewModel.getUserImage(user) }
+    // Benflix: a red number on Requests when family requests are waiting (admins only)
+    hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
+    val requestsWaiting by RequestsWaiting.count.collectAsState()
     val tabs =
         buildList {
             add(
@@ -626,7 +629,9 @@ fun NavDrawer(
                             null
                         } else {
                             TopNavTab(
-                                title = stringResource(R.string.benflix_requests),
+                                title =
+                                    stringResource(R.string.benflix_requests) +
+                                        if (requestsWaiting > 0) " ($requestsWaiting)" else "",
                                 selected = selectedIndex == REQUESTS_INDEX && !clipsOpen && !downloadsOpen,
                                 onClick = {
                                     clipsOpen = false
@@ -716,6 +721,7 @@ fun NavDrawer(
                         viewModel.setIndex(REQUESTS_INDEX)
                         viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
                     },
+                    badge = requestsWaiting,
                 )
             },
         )

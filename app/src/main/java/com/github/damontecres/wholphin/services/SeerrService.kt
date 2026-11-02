@@ -392,6 +392,11 @@ class SeerrService
                 backDropUrl = createImageUrl(ImageType.BACKDROP, movie.backdropPath, movie.mediaInfo),
                 logoUrl = createImageUrl(ImageType.LOGO, null, movie.mediaInfo),
                 jellyfinItemId = movie.mediaInfo?.jellyfinId,
+                score =
+                    movie.voteAverage
+                        ?.toString()
+                        ?.toDoubleOrNull()
+                        ?.takeIf { it > 0 },
             )
 
         suspend fun createDiscoverItem(movie: MovieDetails): DiscoverItem =
@@ -426,6 +431,11 @@ class SeerrService
                 backDropUrl = createImageUrl(ImageType.BACKDROP, tv.backdropPath, tv.mediaInfo),
                 logoUrl = createImageUrl(ImageType.LOGO, null, tv.mediaInfo),
                 jellyfinItemId = tv.mediaInfo?.jellyfinId,
+                score =
+                    tv.voteAverage
+                        ?.toString()
+                        ?.toDoubleOrNull()
+                        ?.takeIf { it > 0 },
             )
 
         suspend fun createDiscoverItem(tv: TvDetails): DiscoverItem =
