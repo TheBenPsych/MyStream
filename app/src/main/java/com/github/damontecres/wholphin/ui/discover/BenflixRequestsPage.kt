@@ -184,6 +184,17 @@ class BenflixRequestsViewModel
         ) = "${section.name}-${genre?.label}"
 
         /** Loads the shelves for one section and genre (kept, so switching back is instant) */
+        /**
+         * Through Jellyfin Enhanced the "at least N votes" filter is dropped, so "Top rated" would fill up with
+         * unknown titles with one perfect vote. There it becomes "popular titles rated 7 or more" instead.
+         */
+        private fun topRatedSort(
+            sortBy: String,
+            minVotes: Int?,
+        ): String = if (minVotes != null && seerrService.api.viaJellyfin) "popularity.desc" else sortBy
+
+        private fun topRatedFloor(minVotes: Int?): Int? = if (minVotes != null && seerrService.api.viaJellyfin) 7 else null
+
         fun loadSection(
             section: FindSection,
             genre: FindGenre?,
@@ -217,9 +228,10 @@ class BenflixRequestsViewModel
                             page = 1,
                             genre = genres,
                             keywords = keywords,
-                            sortBy = sortBy,
+                            sortBy = topRatedSort(sortBy, minVotes),
                             primaryReleaseDateGte = from,
                             voteCountGte = minVotes,
+                            voteAverageGte = topRatedFloor(minVotes),
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
                         .orEmpty()
@@ -237,9 +249,10 @@ class BenflixRequestsViewModel
                             page = 1,
                             genre = genres,
                             keywords = keywords,
-                            sortBy = sortBy,
+                            sortBy = topRatedSort(sortBy, minVotes),
                             firstAirDateGte = from,
                             voteCountGte = minVotes,
+                            voteAverageGte = topRatedFloor(minVotes),
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
                         .orEmpty()

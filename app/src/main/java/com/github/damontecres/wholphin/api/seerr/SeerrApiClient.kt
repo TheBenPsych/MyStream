@@ -50,6 +50,16 @@ class SeerrApiClient(
                 jellyfinToken.isNotNullOrBlank() ||
                 cookieJar.hasValidCredentials(baseUrl)
 
+    /** Benflix: fetch any Seerr address as plain JSON text (for fields the generated models don't have) */
+    fun getRaw(path: String): String? {
+        val request =
+            okhttp3.Request
+                .Builder()
+                .url(baseUrl.trimEnd('/') + path)
+                .build()
+        return client.newCall(request).execute().use { if (it.isSuccessful) it.body.string() else null }
+    }
+
     private fun <T : ApiClient> create(initializer: (String, Call.Factory) -> T): Lazy<T> =
         lazy {
             initializer.invoke(baseUrl, client)
@@ -80,13 +90,37 @@ class SeerrApiClient(
  */
 private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
     val path = url.encodedPath
-    val match = APPROVE_PATH.find(path) ?: return null
-    val (root, id, answer) = match.destructured
-    return url
-        .newBuilder()
-        .encodedPath("$root/arr/requests/$id/$answer")
-        .build()
+    APPROVE_PATH.find(path)?.let { match ->
+        val (root, id, answer) = match.destructured
+        return url
+            .newBuilder()
+            .encodedPath("$root/arr/requests/$id/$answer")
+            .build()
+    }
+    // Jellyfin Enhanced drops a genre given as ?genre=, but has its own genre address (one genre at a time)
+    if (DISCOVER_PATH.matches(path)) {
+        val genres =
+            url
+                .queryParameter("genre")
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
+        if (genres.isNotEmpty()) {
+            // For anime (Animation + another genre) the anime keyword already keeps it to anime
+            val pick = genres.lastOrNull { it != ANIMATION_GENRE } ?: genres.first()
+            return url
+                .newBuilder()
+                .encodedPath("$path/genre/$pick")
+                .removeAllQueryParameters("genre")
+                .build()
+        }
+    }
+    return null
 }
+
+private val DISCOVER_PATH = Regex("^.*/jellyseerr/discover/(movies|tv)$")
+private const val ANIMATION_GENRE = "16"
 
 private val APPROVE_PATH = Regex("^(.*)/jellyseerr/request/(\\d+)/(approve|decline)$")
 

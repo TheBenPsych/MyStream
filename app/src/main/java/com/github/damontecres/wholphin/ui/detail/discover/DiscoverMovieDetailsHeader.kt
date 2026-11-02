@@ -121,6 +121,14 @@ fun DiscoverMovieDetailsHeader(
             movie.genres?.mapNotNull { it.name }?.letNotEmpty {
                 GenreText(it, Modifier.padding(start = HeaderUtils.startPadding))
             }
+            // Benflix: age rating, scores, country and tags (grown-up tags in red)
+            movie.id?.let { tmdbId ->
+                SeerrExtrasBlock(
+                    isMovie = true,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 2.dp, bottom = 4.dp),
+                )
+            }
 
             val tagline = remember { movie.tagline?.takeIf { it.isNotNullOrBlank() } }
             tagline?.let {
