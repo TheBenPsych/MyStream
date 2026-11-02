@@ -105,10 +105,21 @@ fun MainContent(
                                 var showContent by remember {
                                     mutableStateOf(true)
                                 }
+                                // Benflix: keep the page while away. Only when coming back after the
+                                // come-back timer ran out is it hidden (Who's watching shows next).
+                                var wasStopped by remember { mutableStateOf(false) }
                                 LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-                                    if (!userPreferences.appPreferences.signInAutomatically && !GameStreamReturn.pending) {
+                                    wasStopped = true
+                                }
+                                LifecycleEventEffect(Lifecycle.Event.ON_START) {
+                                    if (wasStopped &&
+                                        !userPreferences.appPreferences.signInAutomatically &&
+                                        !GameStreamReturn.pending &&
+                                        !com.github.damontecres.wholphin.services.ResumeTimer.resumeAllowed
+                                    ) {
                                         showContent = false
                                     }
+                                    wasStopped = false
                                 }
 
                                 if (showContent) {

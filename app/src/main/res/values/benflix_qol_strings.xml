@@ -32,6 +32,18 @@
         <item>@string/benflix_color_orange</item>
     </string-array>
 
+    <!-- Come back where you left off -->
+    <string name="benflix_resume_timer">Ask Who\'s watching again after</string>
+    <string-array name="benflix_resume_timer_options">
+        <item>Every time</item>
+        <item>5 minutes</item>
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>2 hours</item>
+        <item>4 hours</item>
+    </string-array>
+
     <!-- Late-night look -->
     <string name="benflix_late_night_look">Late-night look</string>
     <string name="benflix_late_night_look_on">Menus dim a little at night (not the movie itself)</string>
