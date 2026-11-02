@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -46,7 +47,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -79,6 +82,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -135,7 +139,15 @@ class UpdateViewModel
                         while (true) {
                             try {
                                 _bytesDownloaded.value = 0L
-                                updater.installRelease(release, this@UpdateViewModel)
+                                val uri = updater.downloadRelease(release, this@UpdateViewModel)
+                                // The page opens the installer from the screen (see InstallUpdatePage)
+                                _state.update {
+                                    it.copy(
+                                        downloadedUri = uri,
+                                        downloadedVersion = release.version,
+                                        installRequest = it.installRequest + 1,
+                                    )
+                                }
                                 break
                             } catch (ex: IOException) {
                                 // A new build replaces the old one on GitHub every time a change is merged.
@@ -166,6 +178,14 @@ class UpdateViewModel
                         _state.update { it.copy(downloading = false, retryMessage = null) }
                     }
                 }
+        }
+
+        /** The last [InstallUpdateState.installRequest] the page already opened the installer for */
+        var handledInstallRequest = 0
+
+        /** Open the installer again for the file that's already downloaded, no need to download it twice */
+        fun installDownloaded() {
+            _state.update { it.copy(installRequest = it.installRequest + 1) }
         }
 
         fun cancelDownload() {
@@ -201,6 +221,11 @@ data class InstallUpdateState(
     val release: Release? = null,
     val contentLength: Long = -1L,
     val retryMessage: String? = null,
+    /** The finished download, kept so "Install now" can open the installer again without downloading */
+    val downloadedUri: Uri? = null,
+    val downloadedVersion: Version? = null,
+    /** Goes up by one each time the page should open Android's install screen */
+    val installRequest: Int = 0,
 )
 
 @Composable
@@ -215,6 +240,50 @@ fun InstallUpdatePage(
     val context = LocalContext.current
     var permissions by remember { mutableStateOf(viewModel.updater.hasPermissions()) }
     var pendingRelease by remember { mutableStateOf<Release?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+
+    // Android's install screen. Opened from this screen (not from the download in the background), because
+    // some TVs quietly ignored the background launch the first time, so the install screen never showed up.
+    val installerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // Only comes back here if the install was cancelled or failed (a finished update restarts Benflix).
+            // The file is kept, so the button now says "Install now" instead of downloading again.
+            Timber.i("Installer closed with result %s", result.resultCode)
+        }
+
+    fun openInstaller(uri: Uri) {
+        fun launch(plainView: Boolean): Boolean =
+            try {
+                installerLauncher.launch(viewModel.updater.installIntent(uri, plainView))
+                true
+            } catch (ex: ActivityNotFoundException) {
+                Timber.w(ex, "No installer for plainView=%s", plainView)
+                false
+            }
+        if (!launch(plainView = false) && !launch(plainView = true)) {
+            Toast.makeText(context, "Couldn't open the installer. Try Install now again.", Toast.LENGTH_LONG).show()
+            return
+        }
+        // Safety net: if the install screen didn't cover Benflix after a few seconds, open it the other way
+        scope.launch {
+            delay(INSTALLER_CHECK_MS)
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                Timber.w("Installer didn't show up, trying again")
+                launch(plainView = true)
+            }
+        }
+    }
+
+    LaunchedEffect(state.installRequest) {
+        val uri = state.downloadedUri
+        if (state.installRequest > viewModel.handledInstallRequest && uri != null) {
+            viewModel.handledInstallRequest = state.installRequest
+            // Wait until Benflix is really on screen, so Android doesn't treat it as a background launch
+            lifecycleOwner.lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+            openInstaller(uri)
+        }
+    }
 
     // Step 3: back from the "Install unknown apps" screen, carry on with the download
     val unknownSourcesLauncher =
@@ -294,10 +363,15 @@ fun InstallUpdatePage(
                         startUpdate(release)
                     }
                 }
+                val alreadyDownloaded =
+                    state.downloadedUri != null && state.downloadedVersion == release.version
                 InstallUpdatePageContent(
                     currentVersion = viewModel.currentVersion,
                     release = release,
-                    onInstallRelease = { startUpdate(release) },
+                    alreadyDownloaded = alreadyDownloaded,
+                    onInstallRelease = {
+                        if (alreadyDownloaded) viewModel.installDownloaded() else startUpdate(release)
+                    },
                     onCancel = {
                         viewModel.navigationManager.goBack()
                     },
@@ -323,6 +397,9 @@ fun InstallUpdatePage(
     }
 }
 
+/** How long to wait for Android's install screen before trying to open it a second way */
+private const val INSTALLER_CHECK_MS = 4_000L
+
 @Composable
 fun InstallUpdatePageContent(
     currentVersion: Version,
@@ -330,6 +407,7 @@ fun InstallUpdatePageContent(
     onInstallRelease: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    alreadyDownloaded: Boolean = false,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -409,7 +487,7 @@ fun InstallUpdatePageContent(
             val downloadFocus = remember { FocusRequester() }
             LaunchedEffect(Unit) { downloadFocus.requestFocusWhenReady() }
             TextButton(
-                stringRes = R.string.download_and_update,
+                stringRes = if (alreadyDownloaded) R.string.install_now else R.string.download_and_update,
                 onClick = onInstallRelease,
                 modifier = Modifier.focusRequester(downloadFocus),
             )

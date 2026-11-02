@@ -230,14 +230,39 @@ class UpdateChecker
         }
 
         /**
-         * Download and install an update
+         * Download an update and return where it was saved, ready for [installIntent].
+         *
+         * The installer is opened by the update page itself (from the screen you're looking at), not from here:
+         * on some Android TVs a launch from the background download was quietly ignored the first time,
+         * so the page sat there and you had to download again.
          */
-        @SuppressLint("RequestInstallPackagesPolicy")
-        suspend fun installRelease(
+        suspend fun downloadRelease(
             release: Release,
             callback: DownloadCallback,
-        ) {
+        ): Uri =
             withContext(WholphinDispatchers.IO) {
+                downloading = true
+                try {
+                    downloadReleaseFile(release, callback)
+                } finally {
+                    downloading = false
+                }
+            }
+
+        /** True while an update is downloading, so the leftover-file cleanup doesn't delete it */
+        @Volatile
+        private var downloading = false
+
+        /** Delete the update file from the last update, unless an update is downloading right now */
+        fun cleanupLeftoverDownload() {
+            if (!downloading) cleanup()
+        }
+
+        private suspend fun downloadReleaseFile(
+            release: Release,
+            callback: DownloadCallback,
+        ): Uri =
+            run {
                 cleanup()
                 val request =
                     Request
@@ -246,77 +271,97 @@ class UpdateChecker
                         .get()
                         .build()
                 okHttpClient.newCall(request).execute().use {
-                    if (it.isSuccessful) {
-                        Timber.v("Request successful for ${release.downloadUrl}")
-                        callback.contentLength(it.body.contentLength())
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val contentValues =
-                                ContentValues().apply {
-                                    put(MediaStore.MediaColumns.DISPLAY_NAME, APK_NAME)
-                                    put(MediaStore.MediaColumns.MIME_TYPE, APK_MIME_TYPE)
-                                    put(
-                                        MediaStore.MediaColumns.RELATIVE_PATH,
-                                        Environment.DIRECTORY_DOWNLOADS,
-                                    )
-                                }
-                            val resolver = context.contentResolver
-                            val uri =
-                                resolver.insert(
-                                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                                    contentValues,
+                    if (!it.isSuccessful) {
+                        Timber.v("Request failed for ${release.downloadUrl}: ${it.code}")
+                        // Usually a 404 while a new build is being published, so the caller tries again
+                        throw DownloadFailedException(it.code)
+                    }
+                    Timber.v("Request successful for ${release.downloadUrl}")
+                    callback.contentLength(it.body.contentLength())
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val resolver = context.contentResolver
+                        val contentValues =
+                            ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, APK_NAME)
+                                put(MediaStore.MediaColumns.MIME_TYPE, APK_MIME_TYPE)
+                                put(
+                                    MediaStore.MediaColumns.RELATIVE_PATH,
+                                    Environment.DIRECTORY_DOWNLOADS,
                                 )
-                            if (uri != null) {
+                                // Hidden until the whole file is written, so nothing reads half a file
+                                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                            }
+                        val uri =
+                            resolver.insert(
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                contentValues,
+                            )
+                        if (uri != null) {
+                            try {
                                 it.body.byteStream().use { input ->
                                     resolver.openOutputStream(uri).use { output ->
                                         copyTo(input, output!!, callback = callback)
                                     }
                                 }
-
-                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                intent.data = uri
-                                context.startActivity(intent)
-                            } else {
-                                Timber.e("Resolver URI is null, trying fallback")
-//                                showToast(context, "Unable to download the apk")
-                                val targetFile = fallbackDownload(it, callback)
-                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                intent.data =
-                                    FileProvider.getUriForFile(
-                                        context,
-                                        context.packageName + ".provider",
-                                        targetFile,
-                                    )
-                                context.startActivity(intent)
+                            } catch (ex: Exception) {
+                                try {
+                                    resolver.delete(uri, null, null)
+                                } catch (deleteEx: Exception) {
+                                    Timber.w(deleteEx, "Could not delete the partial download")
+                                }
+                                throw ex
                             }
-                        } else {
-                            val targetFile = fallbackDownload(it, callback)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                intent.data =
-                                    FileProvider.getUriForFile(
-                                        context,
-                                        context.packageName + ".provider",
-                                        targetFile,
-                                    )
-                                context.startActivity(intent)
-                            } else {
-                                val intent = Intent(Intent.ACTION_VIEW)
-                                intent.setDataAndType(Uri.fromFile(targetFile), APK_MIME_TYPE)
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                            }
+                            resolver.update(
+                                uri,
+                                ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                                null,
+                                null,
+                            )
+                            return@use uri
                         }
+                        Timber.e("Resolver URI is null, trying fallback")
+                        val targetFile = fallbackDownload(it, callback)
+                        return@use FileProvider.getUriForFile(
+                            context,
+                            context.packageName + ".provider",
+                            targetFile,
+                        )
+                    }
+                    val targetFile = fallbackDownload(it, callback)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        FileProvider.getUriForFile(
+                            context,
+                            context.packageName + ".provider",
+                            targetFile,
+                        )
                     } else {
-                        Timber.v("Request failed for ${release.downloadUrl}: ${it.code}")
-                        // Usually a 404 while a new build is being published, so the caller tries again
-                        throw DownloadFailedException(it.code)
+                        Uri.fromFile(targetFile)
                     }
                 }
             }
-        }
+
+        /**
+         * The intent that opens Android's install screen for a file from [downloadRelease].
+         * [plainView] is a second way to open it, for TVs where the first one doesn't show up.
+         */
+        @SuppressLint("RequestInstallPackagesPolicy")
+        fun installIntent(
+            uri: Uri,
+            plainView: Boolean = false,
+        ): Intent =
+            if (plainView || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, APK_MIME_TYPE)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            } else {
+                Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                    data = uri
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                    putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME, context.packageName)
+                }
+            }
 
         private suspend fun fallbackDownload(
             response: Response,
