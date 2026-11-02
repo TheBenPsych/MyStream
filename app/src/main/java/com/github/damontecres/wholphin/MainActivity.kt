@@ -658,7 +658,11 @@ class MainActivityViewModel
                 )
                 appUpgradeHandler.run()
             }
-            appUpgradeHandler.copySubfont(false)
+            // Benflix speed: the 6 MB subtitle font (only needed when MPV plays) used to be copied
+            // before sign-in on every update, which took about 2 s on older TVs. Copy it on the side.
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                appUpgradeHandler.copySubfont(needUpgrade)
+            }
         }
 
         /**
