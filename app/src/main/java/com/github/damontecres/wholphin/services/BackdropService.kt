@@ -82,9 +82,20 @@ class BackdropService
             glow: ExtractedColors? = null,
         ) = withContext(WholphinDispatchers.IO) {
             val current = backdropFlow.firstOrNull()
-            // A new picture, or the same picture with a different glow (Home's soft glow, then the details page's stronger one)
-            val newGlow = glow != null && current?.primaryColor != glow.primary
-            if (current?.imageUrl != imageUrl || imageUrl == null || newGlow) {
+            if (imageUrl != null && current?.imageUrl == imageUrl) {
+                // Same picture, maybe a different glow (Home's soft glow, then the details page's stronger one).
+                // Keep the picture on screen and just change the glow.
+                if (glow != null && current?.primaryColor != glow.primary) {
+                    _backdropFlow.update {
+                        it.copy(
+                            itemId = itemId,
+                            primaryColor = glow.primary,
+                            secondaryColor = glow.secondary,
+                            tertiaryColor = glow.tertiary,
+                        )
+                    }
+                }
+            } else {
                 _backdropFlow.update {
                     it.copy(
                         itemId = itemId,
