@@ -206,9 +206,10 @@ class HomeViewModel
                     // so the page can start on it. It has its own small file, because reading the
                     // whole saved Home took seconds on older TVs.
                     if (state.value.featured.isEmpty()) {
-                        val savedBanner =
-                            readHomeBanner(userDto.id) ?: readHomeSnapshot(userDto.id)?.featured
-                        savedBanner?.takeIf { it.isNotEmpty() }?.let { saved ->
+                        // Only the small banner file here: falling back to the whole saved Home
+                        // meant reading it twice at once, which took over 3 s on an older TV
+                        readHomeBanner(userDto.id)?.takeIf { it.isNotEmpty() }?.let { saved ->
+                            StartupTimer.mark(StartupTimer.BANNER_SAVED)
                             bannerFromSnapshot = true
                             _state.update { st ->
                                 if (st.featured.isEmpty()) {
@@ -708,6 +709,19 @@ class HomeViewModel
                         .distinctBy { it.item.id }
                         .take(FEATURED_MAX)
                 _state.update { it.copy(featured = featured) }
+                // Benflix speed: keep the small banner file up to date as soon as the banner loads,
+                // so next time it can show straight away
+                if (featured.isNotEmpty() && state.value.kids == KidsMode.isActive) {
+                    try {
+                        diskCache.write(
+                            homeBannerKey(userDto.id),
+                            ListSerializer(SnapshotFeatured.serializer()),
+                            featured.map { SnapshotFeatured(it.item, it.reason, it.becauseOf) },
+                        )
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save home banner")
+                    }
+                }
             }
         }
 
