@@ -163,13 +163,15 @@ class DiscoverMovieViewModel
 
         private suspend fun updateCanCancel() {
             val user = userConfig.firstOrNull()
+            // Benflix: Jellyfin Enhanced can't delete requests, so no trash button there
             val canCancel =
-                canUserCancelRequest(
-                    user,
-                    state.value.movie.successValue
-                        ?.mediaInfo
-                        ?.requests,
-                )
+                !seerrService.api.viaJellyfin &&
+                    canUserCancelRequest(
+                        user,
+                        state.value.movie.successValue
+                            ?.mediaInfo
+                            ?.requests,
+                    )
             _state.update { it.copy(canCancelRequest = canCancel) }
         }
 

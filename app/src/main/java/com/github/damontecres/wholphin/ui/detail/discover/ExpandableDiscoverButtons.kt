@@ -112,7 +112,7 @@ fun ExpandableDiscoverButtons(
                         SeerrAvailability.PENDING,
                         SeerrAvailability.PROCESSING,
                         -> {
-                            pendingOnClick.invoke()
+                            // Benflix: "Pending" is just a label now; pressing it used to reopen the request form
                         }
 
                         SeerrAvailability.PARTIALLY_AVAILABLE,
