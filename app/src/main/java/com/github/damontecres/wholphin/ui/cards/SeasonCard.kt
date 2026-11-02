@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
@@ -30,6 +31,8 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.FillerKind
+import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
@@ -70,6 +73,7 @@ fun SeasonCard(
         interactionSource = interactionSource,
         showImageOverlay = showImageOverlay,
         aspectRatio = aspectRatio,
+        fillerTag = fillerTagFor(item),
     )
 }
 
@@ -136,6 +140,8 @@ fun SeasonCard(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     showImageOverlay: Boolean = false,
     aspectRatio: Float = AspectRatios.TALL,
+    // Benflix: FILLER / MIXED on anime episodes
+    fillerTag: FillerKind? = null,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     // Do not use `by` here, this way we are Defer reads and recompositions to only when modifier calculates
@@ -186,6 +192,16 @@ fun SeasonCard(
                         Modifier
                             .fillMaxSize(),
                 )
+                if (fillerTag != null) {
+                    CardBadge(
+                        text = fillerTag.label,
+                        background = fillerTag.color,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp),
+                    )
+                }
             }
         }
         Column(

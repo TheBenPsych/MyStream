@@ -41,6 +41,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
@@ -228,6 +229,18 @@ fun BannerCard(
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
+                            .padding(6.dp),
+                )
+            }
+            // Benflix: FILLER / MIXED on anime episodes
+            val filler = fillerTagFor(item)
+            if (filler != null && !grown) {
+                CardBadge(
+                    text = filler.label,
+                    background = filler.color,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
                             .padding(6.dp),
                 )
             }
