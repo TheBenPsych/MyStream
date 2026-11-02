@@ -52,6 +52,10 @@ class SwitchSeerrViewModel
                         _state.update { it.copy(loading = LoadingState.Success) }
                     }
                 }
+            } else {
+                // Benflix: without the Wholphin server plugin there is nothing to look up first. This used to
+                // leave the Seerr sign-in spinning forever
+                _state.update { it.copy(loading = LoadingState.Success) }
             }
         }
 

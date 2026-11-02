@@ -14,7 +14,14 @@ class SeerrApiClient(
     val baseUrl: String,
     private val apiKey: String?,
     okHttpClient: OkHttpClient,
+    /**
+     * Benflix: set when Seerr is reached through the Jellyfin Enhanced plugin on the Jellyfin server
+     * ([baseUrl] is then `{jellyfin}/JellyfinEnhanced/jellyseerr`). The plugin signs in to Seerr for us.
+     */
+    private val jellyfinToken: String? = null,
 ) {
+    val viaJellyfin: Boolean get() = jellyfinToken.isNotNullOrBlank()
+
     private val cookieJar = SeerrCookieJar()
 
     private val client =
@@ -29,6 +36,10 @@ class SeerrApiClient(
                         .newBuilder()
                         .apply {
                             if (apiKey.isNotNullOrBlank()) header("X-Api-Key", apiKey)
+                            if (jellyfinToken.isNotNullOrBlank()) {
+                                header("Authorization", "MediaBrowser Client=\"Benflix\", Token=\"$jellyfinToken\"")
+                                jellyfinEnhancedUrl(it.request().url)?.let { newUrl -> url(newUrl) }
+                            }
                         }.build(),
                 )
             }.build()
@@ -36,6 +47,7 @@ class SeerrApiClient(
     val hasValidCredentials: Boolean
         get() =
             apiKey.isNotNullOrBlank() ||
+                jellyfinToken.isNotNullOrBlank() ||
                 cookieJar.hasValidCredentials(baseUrl)
 
     private fun <T : ApiClient> create(initializer: (String, Call.Factory) -> T): Lazy<T> =
@@ -62,6 +74,21 @@ class SeerrApiClient(
     val usersApi by create(::UsersApi)
     val watchlistApi by create(::WatchlistApi)
 }
+
+/**
+ * Jellyfin Enhanced keeps approve / decline under its own "arr" address instead of "jellyseerr"
+ */
+private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
+    val path = url.encodedPath
+    val match = APPROVE_PATH.find(path) ?: return null
+    val (root, id, answer) = match.destructured
+    return url
+        .newBuilder()
+        .encodedPath("$root/arr/requests/$id/$answer")
+        .build()
+}
+
+private val APPROVE_PATH = Regex("^(.*)/jellyseerr/request/(\\d+)/(approve|decline)$")
 
 private class SeerrCookieJar : CookieJar {
     private val cookies = mutableMapOf<String, List<Cookie>>()
