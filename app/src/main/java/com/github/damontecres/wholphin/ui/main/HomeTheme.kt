@@ -1000,6 +1000,183 @@ data class HomeTheme(
                     ),
             )
 
+        // ---- Month-long rows. These show as their own extra row all month, next to the holiday row,
+        // so February still gets Valentine's and June still gets Father's Day.
+
+        val BLACK_HISTORY_MONTH =
+            HomeTheme(
+                R.string.theme_black_history_month,
+                tags =
+                    listOf(
+                        "black history",
+                        "african american history",
+                        "civil rights",
+                        "civil rights movement",
+                        "harlem renaissance",
+                        "black panther party",
+                        "underground railroad",
+                        "martin luther king jr.",
+                        "malcolm x",
+                    ),
+                titles =
+                    listOf(
+                        // History and true stories
+                        "Selma",
+                        "12 Years a Slave",
+                        "Hidden Figures",
+                        "Malcolm X",
+                        "Glory",
+                        "Harriet",
+                        "42",
+                        "Judas and the Black Messiah",
+                        "Till",
+                        "Just Mercy",
+                        "Rustin",
+                        "One Night in Miami...",
+                        "Ray",
+                        "Ali",
+                        "King Richard",
+                        "Respect",
+                        "Marshall",
+                        "Loving",
+                        "The Great Debaters",
+                        "Remember the Titans",
+                        "The Woman King",
+                        "Emancipation",
+                        "Origin",
+                        "Hotel Rwanda",
+                        "BlacKkKlansman",
+                        "Detroit",
+                        "Fruitvale Station",
+                        "Ruby Bridges",
+                        // Celebrated Black films
+                        "Do the Right Thing",
+                        "Boyz n the Hood",
+                        "Moonlight",
+                        "Fences",
+                        "Ma Rainey's Black Bottom",
+                        "If Beale Street Could Talk",
+                        "The Color Purple",
+                        "Black Panther",
+                        "Black Panther: Wakanda Forever",
+                        "Get Out",
+                        "Da 5 Bloods",
+                        "Dreamgirls",
+                        "Coming to America",
+                        "Love & Basketball",
+                        "Creed",
+                        "The Hate U Give",
+                        "Akeelah and the Bee",
+                        "Soul",
+                        "The Princess and the Frog",
+                        "Spider-Man: Into the Spider-Verse",
+                        "Spider-Man: Across the Spider-Verse",
+                        // Documentaries
+                        "13th",
+                        "I Am Not Your Negro",
+                        "Eyes on the Prize",
+                        "High on the Hog: How African American Cuisine Transformed America",
+                        // Shows
+                        "Roots",
+                        "When They See Us",
+                        "The Underground Railroad",
+                        "Self Made",
+                        "Lovecraft Country",
+                        "Atlanta",
+                        "Insecure",
+                        "black-ish",
+                        "The Fresh Prince of Bel-Air",
+                        "Everybody Hates Chris",
+                        "Abbott Elementary",
+                        "A Different World",
+                        "Living Single",
+                        "Martin",
+                    ),
+            )
+
+        val PRIDE_MONTH =
+            HomeTheme(
+                R.string.theme_pride_month,
+                tags =
+                    listOf(
+                        "lgbt",
+                        "lgbtq+",
+                        "lgbt teen",
+                        "gay theme",
+                        "gay",
+                        "lesbian",
+                        "lesbian relationship",
+                        "transgender",
+                        "queer",
+                        "drag queen",
+                        "coming out",
+                        "gay pride",
+                    ),
+                titles =
+                    listOf(
+                        // Movies
+                        "Moonlight",
+                        "Brokeback Mountain",
+                        "Call Me by Your Name",
+                        "Love, Simon",
+                        "Milk",
+                        "Carol",
+                        "Portrait of a Lady on Fire",
+                        "The Birdcage",
+                        "Pride",
+                        "Paris Is Burning",
+                        "Philadelphia",
+                        "Fire Island",
+                        "Bros",
+                        "Booksmart",
+                        "The Half of It",
+                        "Happiest Season",
+                        "Red, White & Royal Blue",
+                        "Bottoms",
+                        "Rocketman",
+                        "Bohemian Rhapsody",
+                        "The Adventures of Priscilla, Queen of the Desert",
+                        "To Wong Foo, Thanks for Everything! Julie Newmar",
+                        "Hedwig and the Angry Inch",
+                        "The Rocky Horror Picture Show",
+                        "But I'm a Cheerleader",
+                        "Kinky Boots",
+                        "The Prom",
+                        "Tangerine",
+                        "God's Own Country",
+                        "Everything Everywhere All at Once",
+                        "Nimona",
+                        "Strange World",
+                        "The Mitchells vs. the Machines",
+                        // Shows
+                        "Pose",
+                        "Heartstopper",
+                        "Schitt's Creek",
+                        "Queer Eye",
+                        "RuPaul's Drag Race",
+                        "Sex Education",
+                        "Love, Victor",
+                        "Fellow Travelers",
+                        "Will & Grace",
+                        "Our Flag Means Death",
+                        "The Owl House",
+                        "She-Ra and the Princesses of Power",
+                        "Steven Universe",
+                        "Feel Good",
+                    ),
+            )
+
+        /**
+         * The month-long row for [date] (Black History Month in February, Pride Month in June),
+         * or null in other months. It shows as an extra row, so it never pushes out a holiday row.
+         */
+        fun forMonth(date: LocalDate): HomeTheme? =
+            when (date.monthValue) {
+                2 -> BLACK_HISTORY_MONTH
+                6 -> PRIDE_MONTH
+                else -> null
+            }
+
         fun forDate(date: LocalDate): HomeTheme {
             val month = date.monthValue
             val day = date.dayOfMonth

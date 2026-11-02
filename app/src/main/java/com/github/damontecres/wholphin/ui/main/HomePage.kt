@@ -126,6 +126,7 @@ fun HomePage(
     val trending = state.trending
     val trendingMissing = state.trendingMissing
     val themed = state.themed
+    val monthly = state.monthly
     val because = state.because
     val kidsAgain = state.kidsAgain
     val becauseMore = state.becauseMore
@@ -283,6 +284,7 @@ fun HomePage(
                 },
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
                 themed = themed,
+                monthly = monthly,
                 because = because,
                 kidsAgain = kidsAgain,
                 becauseMore = becauseMore,
@@ -385,6 +387,7 @@ fun HomePageContent(
     onClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
+    monthly: ThemedRow? = null,
     because: ThemedRow? = null,
     kidsAgain: ThemedRow? = null,
     becauseMore: ThemedRow? = null,
@@ -829,6 +832,22 @@ fun HomePageContent(
                                         .padding(bottom = 8.dp)
                                         .onFocusChanged {
                                             if (!it.hasFocus && extraFocus in themed.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    if (monthly != null) {
+                        item(key = "monthly") {
+                            PosterRow(
+                                title = monthly.title,
+                                items = monthly.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in monthly.items) extraFocus = null
                                         },
                             )
                         }

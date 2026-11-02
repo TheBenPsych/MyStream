@@ -49,4 +49,16 @@ class HomeThemeTest {
         assertEquals(HomeTheme.ST_PATRICKS, HomeTheme.forDate(LocalDate.of(2026, 3, 17)))
         assertEquals(HomeTheme.LUNAR_NEW_YEAR, HomeTheme.forDate(LocalDate.of(2026, 2, 17)))
     }
+
+    @Test
+    fun monthRows() {
+        assertEquals(HomeTheme.BLACK_HISTORY_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 2, 1)))
+        assertEquals(HomeTheme.BLACK_HISTORY_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 2, 28)))
+        assertEquals(HomeTheme.PRIDE_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 6, 15)))
+        assertEquals(null, HomeTheme.forMonth(LocalDate.of(2027, 3, 1)))
+        // The holiday row still works in those months
+        assertEquals(HomeTheme.VALENTINES, HomeTheme.forDate(LocalDate.of(2027, 2, 14)))
+        assertTrue(HomeTheme.PRIDE_MONTH.isPicked("Love, Simon"))
+        assertTrue(HomeTheme.BLACK_HISTORY_MONTH.isPicked("One Night in Miami..."))
+    }
 }
