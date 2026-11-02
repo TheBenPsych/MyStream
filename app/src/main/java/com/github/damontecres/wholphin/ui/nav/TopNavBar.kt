@@ -281,7 +281,8 @@ private fun TopNavTabButton(
         colors =
             ButtonDefaults.colors(
                 containerColor = Color.Transparent,
-                contentColor = if (tab.selected) Color.White else Color(0xFFB3B3B8),
+                // The page you are on shows in Benflix red
+                contentColor = if (tab.selected) Color(0xFFE5484D) else Color(0xFFB3B3B8),
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
