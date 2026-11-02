@@ -169,89 +169,107 @@ fun SwitchUserContent(
                 } else {
                     PosterWall(state.posterWall, Modifier.fillMaxSize())
                 }
+                // Benflix: the profiles fill the space above the fun fact, so the two never overlap
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center)
-                            // A soft dark glow behind the text and profiles, with no hard edges
-                            .drawBehind {
-                                val glow =
-                                    Brush.radialGradient(
-                                        0f to Color.Black.copy(alpha = .6f),
-                                        .45f to Color.Black.copy(alpha = .4f),
-                                        .72f to Color.Transparent,
-                                        center = center,
-                                        radius = size.width / 2,
-                                    )
-                                scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
-                                    drawCircle(glow, radius = size.width / 2, center = center)
-                                }
-                            }.padding(16.dp),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                     ) {
-                        // The holiday greeting, big and in the holiday's own lettering
-                        holiday?.let {
-                            Text(
-                                text = it.text,
-                                fontFamily = holidayFont(it.effect),
-                                fontSize = 52.sp,
-                                color = Color(it.color),
-                                textAlign = TextAlign.Center,
-                                style =
-                                    TextStyle(
-                                        shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
-                                    ),
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    // A soft dark glow behind the text and profiles, with no hard edges
+                                    .drawBehind {
+                                        val glow =
+                                            Brush.radialGradient(
+                                                0f to Color.Black.copy(alpha = .6f),
+                                                .45f to Color.Black.copy(alpha = .4f),
+                                                .72f to Color.Transparent,
+                                                center = center,
+                                                radius = size.width / 2,
+                                            )
+                                        scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
+                                            drawCircle(glow, radius = size.width / 2, center = center)
+                                        }
+                                    }.padding(16.dp),
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                // The holiday greeting, big and in the holiday's own lettering
+                                holiday?.let {
+                                    Text(
+                                        text = it.text,
+                                        fontFamily = holidayFont(it.effect),
+                                        fontSize = 52.sp,
+                                        color = Color(it.color),
+                                        textAlign = TextAlign.Center,
+                                        style =
+                                            TextStyle(
+                                                shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
+                                            ),
+                                    )
+                                }
+                                Text(
+                                    text = stringResource(R.string.select_user),
+                                    style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = server.name ?: server.url,
+                                    style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            UserList(
+                                users = state.users,
+                                currentUser = currentUser,
+                                onSwitchUser = { user ->
+                                    if (user.accessToken == null || user.requireLogin) {
+                                        showAddUserDialog(user)
+                                    } else if (user.hasPin) {
+                                        switchUserWithPin = user
+                                    } else {
+                                        trySwitchUser(user)
+                                    }
+                                },
+                                onAddUser = {
+                                    showAddUserDialog(null)
+                                },
+                                // Built-in Kids profile, using a saved grown-up sign-in on this TV
+                                kidsUser =
+                                    state.users
+                                        .map { it.user }
+                                        .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
+                                        ?.firstOrNull { it.accessToken != null && !it.requireLogin },
+                                onKids = { user -> trySwitchUser(user, kids = true) },
+                                onRemoveUser = { user ->
+                                    viewModel.removeUser(user)
+                                },
+                                onSwitchServer = {
+                                    viewModel.setupNavigationManager.navigateTo(
+                                        SetupDestination.ServerList,
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                        Text(
-                            text = stringResource(R.string.select_user),
-                            style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = server.name ?: server.url,
-                            style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
                     }
-                    UserList(
-                        users = state.users,
-                        currentUser = currentUser,
-                        onSwitchUser = { user ->
-                            if (user.accessToken == null || user.requireLogin) {
-                                showAddUserDialog(user)
-                            } else if (user.hasPin) {
-                                switchUserWithPin = user
-                            } else {
-                                trySwitchUser(user)
-                            }
-                        },
-                        onAddUser = {
-                            showAddUserDialog(null)
-                        },
-                        // Built-in Kids profile, using a saved grown-up sign-in on this TV
-                        kidsUser =
-                            state.users
-                                .map { it.user }
-                                .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
-                                ?.firstOrNull { it.accessToken != null && !it.requireLogin },
-                        onKids = { user -> trySwitchUser(user, kids = true) },
-                        onRemoveUser = { user ->
-                            viewModel.removeUser(user)
-                        },
-                        onSwitchServer = {
-                            viewModel.setupNavigationManager.navigateTo(
-                                SetupDestination.ServerList,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    // Benflix: a "Did you know?" fact at the bottom middle, below Switch server
+                    // A fixed space for it, so the profiles don't jump when the fact fades in
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxWidth().height(120.dp).padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
+                    ) {
+                        FunFactCard(fact = state.funFact)
+                    }
                 }
                 val resources = LocalResources.current
                 val message =
@@ -262,14 +280,6 @@ fun SwitchUserContent(
                         )
                     }
                 SwitchErrorMessage(message)
-                // Benflix: a "Did you know?" fact at the bottom middle
-                FunFactCard(
-                    fact = state.funFact,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 28.dp, start = 16.dp, end = 16.dp),
-                )
             }
         }
     }
