@@ -80,6 +80,8 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.ScrollableDialog
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
+import com.github.damontecres.wholphin.ui.main.BedtimeViewModel
+import com.github.damontecres.wholphin.ui.main.ParentPinDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playOnClickSound
 import com.github.damontecres.wholphin.ui.playSoundOnFocus
@@ -111,6 +113,7 @@ fun PreferencesContent(
     viewModel: PreferencesViewModel = hiltViewModel(),
     updateVM: UpdateViewModel = hiltViewModel(),
     seerrVm: SwitchSeerrViewModel = hiltViewModel(),
+    bedtimeViewModel: BedtimeViewModel = hiltViewModel(),
     onFocus: (Int, Int) -> Unit = { _, _ -> },
     // Benflix: when the new Settings page hosts this, it shows one section (or search results)
     // as cards, with the section menu drawn beside it
@@ -154,6 +157,7 @@ fun PreferencesContent(
     var showQuickConnectDialog by remember { mutableStateOf(false) }
     var showLocaleChoiceDialog by remember { mutableStateOf(false) }
     var showBirthdayDialog by remember { mutableStateOf(false) }
+    var showParentPin by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.preferenceDataStore.data.collect {
@@ -589,6 +593,30 @@ fun PreferencesContent(
                                             onLongClick = {},
                                             interactionSource = interactionSource,
                                         )
+                                    }
+
+                                    AppPreference.ParentPin -> {
+                                        LaunchedEffect(Unit) { bedtimeViewModel.refreshPin() }
+                                        val hasParentPin by bedtimeViewModel.hasPin.collectAsState()
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showParentPin = true },
+                                            modifier = focusModifier,
+                                            summary =
+                                                stringResource(
+                                                    if (hasParentPin) R.string.benflix_parent_pin_on else R.string.benflix_parent_pin_off,
+                                                ),
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                        if (showParentPin) {
+                                            ParentPinDialog(
+                                                hasPin = hasParentPin,
+                                                checkPin = bedtimeViewModel::checkPin,
+                                                setPin = bedtimeViewModel::setPin,
+                                                onDone = { showParentPin = false },
+                                            )
+                                        }
                                     }
 
                                     AppPreference.BirthdayPreference -> {

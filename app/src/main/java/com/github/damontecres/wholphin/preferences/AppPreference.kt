@@ -1042,6 +1042,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.my_birthday,
             )
 
+        /** Benflix: the parent PIN that guards Kids bedtime (and later other parental controls) */
+        val ParentPin =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_parent_pin,
+            )
+
         val ImageDiskCacheSize =
             AppSliderPreference<AppPreferences>(
                 title = R.string.image_cache_size,
@@ -1308,6 +1314,10 @@ val basicPreferences =
                     AppPreference.SkipBackOnResume,
                     AppPreference.PassOutProtection,
                 ),
+        ),
+        PreferenceGroup(
+            title = R.string.benflix_settings_parental,
+            preferences = listOf(AppPreference.ParentPin),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_look,

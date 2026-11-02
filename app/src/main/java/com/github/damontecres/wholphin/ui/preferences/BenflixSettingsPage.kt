@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
@@ -85,6 +86,7 @@ private fun hintFor(
         R.string.benflix_settings_watching -> R.string.benflix_settings_hint_watching
         R.string.benflix_settings_look -> R.string.benflix_settings_hint_look
         R.string.benflix_settings_phone -> R.string.benflix_settings_hint_phone
+        R.string.benflix_settings_parental -> R.string.benflix_settings_hint_parental
         else -> R.string.benflix_settings_hint_help
     }
 
@@ -96,6 +98,7 @@ private fun iconFor(
         R.string.benflix_settings_watching -> Icons.Default.PlayArrow
         R.string.benflix_settings_look -> Icons.Default.Star
         R.string.benflix_settings_phone -> Icons.Default.Phone
+        R.string.benflix_settings_parental -> Icons.Default.Lock
         else -> Icons.Default.Info
     }
 
