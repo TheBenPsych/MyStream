@@ -1267,10 +1267,6 @@ class PlaybackViewModel
         private val autoSkippedSegments = mutableSetOf<UUID>()
         private val outroShownSegments = mutableSetOf<UUID>()
 
-        /**
-         * Benflix: if the last episode of this show was watched more than two weeks ago,
-         * a short "here's where you left off" card shows before the next one starts.
-         */
         /** Benflix: a few minutes before the end, wake the disk the next episode is on */
         private suspend fun warmNextNearEnd(itemId: UUID) {
             val prep = playbackPrep ?: return
@@ -1289,6 +1285,10 @@ class PlaybackViewModel
             }
         }
 
+        /**
+         * Benflix: if the last episode of this show was watched more than two weeks ago,
+         * a short "here's where you left off" card shows before the next one starts.
+         */
         private suspend fun findRecap(item: BaseItemDto): BenflixRecap? {
             if (item.type != BaseItemKind.EPISODE) return null
             val seriesId = item.seriesId ?: return null

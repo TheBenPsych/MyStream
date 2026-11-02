@@ -1592,7 +1592,10 @@ class HomeViewModel
          */
         private suspend fun loadComeBack(userDto: ServerUserConfig) {
             try {
-                val cutoff = java.time.LocalDateTime.now().minusDays(COME_BACK_DAYS)
+                val cutoff =
+                    java.time.LocalDateTime
+                        .now()
+                        .minusDays(COME_BACK_DAYS)
 
                 fun request(types: List<BaseItemKind>) =
                     GetItemsRequest(
@@ -1653,8 +1656,12 @@ class HomeViewModel
                         ).content.items
                 val actors =
                     recent
-                        .flatMap { dto -> dto.people.orEmpty().filter { it.type == PersonKind.ACTOR }.take(SPOTLIGHT_TOP_BILLED) }
-                        .groupBy { it.id }
+                        .flatMap { dto ->
+                            dto.people
+                                .orEmpty()
+                                .filter { it.type == PersonKind.ACTOR }
+                                .take(SPOTLIGHT_TOP_BILLED)
+                        }.groupBy { it.id }
                         .filterValues { it.size >= 2 }
                         .entries
                         .sortedByDescending { it.value.size }

@@ -587,9 +587,6 @@ class SeriesViewModel
                 ?.let { backdropService.submit(it) }
         }
 
-        /**
-         * Play whichever episode is next up for series or else the first episode
-         */
         /** Benflix: the next-up episode found when the page opened */
         @Volatile private var nextUpReady: BaseItemDto? = null
 
@@ -624,6 +621,9 @@ class SeriesViewModel
                 .firstOrNull()
         }
 
+        /**
+         * Play whichever episode is next up for series or else the first episode
+         */
         fun playNextUp() {
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                 val nextUp = nextUpReady.also { nextUpReady = null } ?: findNextUp()
