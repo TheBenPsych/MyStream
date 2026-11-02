@@ -46,7 +46,10 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.SeerrItemType
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
@@ -59,6 +62,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -249,7 +253,34 @@ class WatchOrderViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
+        private val seerrService: SeerrService,
     ) : ViewModel() {
+        /**
+         * Benflix: a "Not on Benflix" card opens that title's page in Requests, where you can ask
+         * for it. Found by searching for the title and picking the one from the right year.
+         */
+        fun openMissing(entry: OrderEntry) {
+            if (KidsMode.isActive) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val wanted = if (entry.show) SeerrItemType.TV else SeerrItemType.MOVIE
+                    val match =
+                        seerrService
+                            .search(entry.title)
+                            .map { seerrService.createDiscoverItem(it) }
+                            .filter { it.type == wanted }
+                            .minByOrNull { kotlin.math.abs((it.releaseDate?.year ?: 0) - entry.year) }
+                    if (match != null) {
+                        withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(match.destination) }
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not look up %s", entry.title)
+                }
+            }
+        }
+
         /** null while loading */
         private val _lists = MutableStateFlow<Map<Franchise, FranchiseList>?>(null)
         val lists: StateFlow<Map<Franchise, FranchiseList>?> = _lists
@@ -412,7 +443,7 @@ fun WatchOrderPage(
                                 fillWidth = POSTER_WIDTH_PX,
                             )
                         } else {
-                            MissingCard(entry.entry)
+                            MissingCard(entry.entry, onClick = { viewModel.openMissing(entry.entry) })
                         }
                         Text(
                             text = "${index + 1}",
@@ -458,12 +489,15 @@ fun WatchOrderPage(
 
 /** A dimmed card for something in the series that isn't on your server */
 @Composable
-private fun MissingCard(entry: OrderEntry) {
+private fun MissingCard(
+    entry: OrderEntry,
+    onClick: () -> Unit = {},
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         // Can be selected with the remote like the other cards, so the list scrolls all the way
         // to the end even when the last row is only titles you don't have
         Surface(
-            onClick = {},
+            onClick = onClick,
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -485,7 +519,7 @@ private fun MissingCard(entry: OrderEntry) {
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text(
-                    text = "NOT ON\nBENFLIX",
+                    text = "NOT ON\nBENFLIX\n\nAsk for it",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,

@@ -184,8 +184,21 @@ class PersonViewModel
                             includeItemTypes = listOf(type),
                             fields = ItemRowFields,
                             recursive = true,
-                            sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.PRODUCTION_YEAR, ItemSortBy.SORT_NAME),
-                            sortOrder = listOf(SortOrder.DESCENDING, SortOrder.DESCENDING, SortOrder.ASCENDING),
+                            // Benflix: what you've already seen them in comes first
+                            sortBy =
+                                listOf(
+                                    ItemSortBy.IS_PLAYED,
+                                    ItemSortBy.PREMIERE_DATE,
+                                    ItemSortBy.PRODUCTION_YEAR,
+                                    ItemSortBy.SORT_NAME,
+                                ),
+                            sortOrder =
+                                listOf(
+                                    SortOrder.DESCENDING,
+                                    SortOrder.DESCENDING,
+                                    SortOrder.DESCENDING,
+                                    SortOrder.ASCENDING,
+                                ),
                         )
                     val pager =
                         ApiRequestPager(

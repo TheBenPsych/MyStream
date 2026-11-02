@@ -56,6 +56,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
 import timber.log.Timber
 import java.util.UUID
 
@@ -149,7 +151,8 @@ fun CollectionDetails(
                         startIndex = 0,
                         shuffle = shuffle,
                         recursive = true,
-                        sortAndDirection = state.sortAndDirection,
+                        // Benflix: Play all goes in release order, oldest first
+                        sortAndDirection = SortAndDirection(ItemSortBy.PREMIERE_DATE, SortOrder.ASCENDING),
                         filter = state.itemFilter,
                     )
                 viewModel.navigateTo(dest)
@@ -401,6 +404,11 @@ fun CollectionDetailsContent(
                                 Modifier
                                     .focusRequester(focusRequester)
                                     .fillMaxWidth(),
+                        )
+                        // Benflix: movies of this collection that aren't on Benflix yet
+                        MissingFromCollection(
+                            collectionId = state.collection!!.id,
+                            modifier = Modifier.padding(start = HeaderUtils.startPadding),
                         )
                     }
                 }
