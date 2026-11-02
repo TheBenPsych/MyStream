@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -69,8 +70,13 @@ import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_ALPHA
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_END_FRACTION
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import org.jellyfin.sdk.api.client.ApiClient
 import javax.inject.Inject
 import kotlin.time.Duration
@@ -86,29 +92,27 @@ class ScreensaverViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
     ) : ViewModel() {
-        val currentItem = screensaverService.createItemFlow(viewModelScope)
+        // Shared, so the picture and the fact below follow the same timer
+        val currentItem =
+            screensaverService
+                .createItemFlow(viewModelScope)
+                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
-        /** Benflix: a "Did you know?" fact that changes every minute or so */
+        /** Benflix: a new "Did you know?" fact each time the picture changes */
+        @OptIn(ExperimentalCoroutinesApi::class)
         val fact =
-            flow {
-                var last: String? = null
-                while (true) {
+            currentItem
+                .map { (it as? ScreensaverItem.CurrentItem)?.item?.id }
+                .distinctUntilChanged()
+                .mapLatest { itemId ->
                     val userId = serverRepository.currentUser?.id
-                    if (userId != null) {
-                        // Hide the old fact, wait a bit, then show a new one
-                        emit(last to false)
-                        delay(FACT_GAP_MS)
-                        last = funFacts.pick(api, userId)
-                        emit(last to (last != null))
+                    if (itemId == null || userId == null) {
+                        null to false
+                    } else {
+                        val picked = funFacts.pick(api, userId)
+                        picked to (picked != null)
                     }
-                    delay(FACT_SHOW_MS)
                 }
-            }
-
-        companion object {
-            private const val FACT_SHOW_MS = 45_000L
-            private const val FACT_GAP_MS = 15_000L
-        }
     }
 
 sealed interface ScreensaverItem {
@@ -287,7 +291,7 @@ fun AppScreensaverContent(
         if (showClock) {
             TimeDisplay()
         }
-        // Benflix: "Did you know?" facts fade in now and then
+        // Benflix: a "Did you know?" fact that changes with each picture
         AnimatedVisibility(
             visible = fact.second && fact.first != null,
             enter = fadeIn(tween(1_500)),
@@ -311,7 +315,10 @@ fun AppScreensaverContent(
                     letterSpacing = 1.5.sp,
                     fontSize = 13.sp,
                 )
-                Text(text = fact.first.orEmpty(), color = Color.White, fontSize = 16.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                // The fact fades over to the next one together with the picture
+                Crossfade(targetState = fact.first.orEmpty(), animationSpec = tween(2_000)) { text ->
+                    Text(text = text, color = Color.White, fontSize = 16.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
