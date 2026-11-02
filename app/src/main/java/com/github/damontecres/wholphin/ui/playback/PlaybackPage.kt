@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,7 +81,6 @@ import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.mpv.MpvPlayer
 import com.github.damontecres.wholphin.preferences.AssPlaybackMode
 import com.github.damontecres.wholphin.preferences.DpadSeekMode
@@ -372,7 +370,7 @@ fun PlaybackPageContent(
 
     Box(
         modifier
-            .background(if (state.nextUp == null) Color.Black else MaterialTheme.colorScheme.background)
+            .background(Color.Black)
             .onPreviewKeyEvent {
                 // Watching a channel: Up/Down flips to the next or previous channel
                 if (com.github.damontecres.wholphin.services.ChannelSession.handlePlayerKey(
@@ -389,7 +387,8 @@ fun PlaybackPageContent(
                 showAmbient
             },
     ) {
-        val playerSize by animateFloatAsState(if (state.nextUp == null) 1f else .6f)
+        // The video stays full size while the Up next card shows in the corner over the credits
+        val playerSize = 1f
         Box(
             modifier =
                 Modifier
@@ -765,7 +764,7 @@ fun PlaybackPageContent(
             state.nextUp != null,
             modifier =
                 Modifier
-                    .align(Alignment.BottomCenter),
+                    .align(Alignment.BottomEnd),
         ) {
             state.nextUp?.let {
                 var autoPlayEnabled by remember { mutableStateOf(viewModel.shouldAutoPlayNextUp()) }
@@ -816,14 +815,13 @@ fun PlaybackPageContent(
                     },
                     modifier =
                         Modifier
-                            .padding(8.dp)
-//                                    .height(128.dp)
-                            .fillMaxHeight(1 - playerSize)
-                            .fillMaxWidth(.66f)
-                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 32.dp, vertical = 40.dp)
+                            .widthIn(max = 640.dp)
+                            .fillMaxWidth()
+                            .height(170.dp)
                             .background(
-                                MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
-                                shape = RoundedCornerShape(8.dp),
+                                Color.Black.copy(alpha = .82f),
+                                shape = RoundedCornerShape(10.dp),
                             ),
                 )
             }

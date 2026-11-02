@@ -82,6 +82,8 @@ import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.TabDetails
+import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.TrailerButton
@@ -389,6 +391,29 @@ fun SeriesDetailsContent(
 
     var position by rememberInt()
     val focusRequesters = remember { List(EPISODES_ROW + 1) { FocusRequester() } }
+    // Tabs under the seasons, like the movie page: one section at a time keeps the page calm
+    val detailSections =
+        buildList {
+            if (similar.isNotEmpty()) add(SIMILAR_ROW)
+            if (people.isNotEmpty()) add(PEOPLE_ROW)
+            if (extras.isNotEmpty()) add(EXTRAS_ROW)
+            if (discovered.isNotEmpty()) add(DISCOVER_ROW)
+        }
+    var selectedSection by rememberInt(SIMILAR_ROW)
+    val currentSection = if (selectedSection in detailSections) selectedSection else detailSections.firstOrNull() ?: -1
+    val sectionTabs =
+        remember(detailSections) {
+            detailSections.map {
+                TabDetails(
+                    when (it) {
+                        SIMILAR_ROW -> R.string.more_like_this
+                        PEOPLE_ROW -> R.string.cast_and_crew
+                        EXTRAS_ROW -> R.string.extras_title
+                        else -> R.string.discover
+                    },
+                )
+            }
+        }
     val playFocusRequester = remember { FocusRequester() }
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
@@ -657,8 +682,18 @@ fun SeriesDetailsContent(
                         },
                     )
                 }
+                if (detailSections.size > 1) {
+                    item {
+                        TabRow(
+                            selectedTabIndex = detailSections.indexOf(currentSection).coerceAtLeast(0),
+                            tabs = sectionTabs,
+                            onClick = { selectedSection = detailSections[it] },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
                 // Netflix order: More like this right after the seasons
-                if (similar.isNotEmpty()) {
+                if (currentSection == SIMILAR_ROW && similar.isNotEmpty()) {
                     item {
                         ItemRow(
                             title = stringResource(R.string.more_like_this),
@@ -701,7 +736,7 @@ fun SeriesDetailsContent(
                         )
                     }
                 }
-                if (people.isNotEmpty()) {
+                if (currentSection == PEOPLE_ROW && people.isNotEmpty()) {
                     item {
                         PersonRow(
                             people = people,
@@ -730,7 +765,7 @@ fun SeriesDetailsContent(
                         )
                     }
                 }
-                if (extras.isNotEmpty()) {
+                if (currentSection == EXTRAS_ROW && extras.isNotEmpty()) {
                     item {
                         ExtrasRow(
                             extras = extras,
@@ -746,7 +781,7 @@ fun SeriesDetailsContent(
                         )
                     }
                 }
-                if (discovered.isNotEmpty()) {
+                if (currentSection == DISCOVER_ROW && discovered.isNotEmpty()) {
                     item {
                         DiscoverRow(
                             row =

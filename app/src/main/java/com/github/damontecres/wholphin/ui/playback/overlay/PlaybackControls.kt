@@ -317,15 +317,7 @@ fun NetflixControlRow(
             },
             onControllerInteraction = onControllerInteraction,
         )
-        PlayerPillButton(
-            text = stringResource(R.string.player_speed),
-            faIcon = R.string.fa_clock,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.PLAYBACK_SPEED)
-            },
-            onControllerInteraction = onControllerInteraction,
-        )
+        // Speed, Night mode, picture size and the rest live under the sliders button to keep the bar simple
         PlayerPillButton(
             text = null,
             faIcon = R.string.fa_sliders,
