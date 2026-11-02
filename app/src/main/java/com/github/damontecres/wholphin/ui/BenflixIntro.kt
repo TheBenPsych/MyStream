@@ -91,6 +91,7 @@ fun BenflixIntro(
             }
         } finally {
             if (!started) player?.release()
+            StartupTimer.mark(StartupTimer.INTRO)
             onFinished()
         }
     }

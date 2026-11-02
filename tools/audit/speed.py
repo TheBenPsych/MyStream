@@ -52,11 +52,19 @@ def main():
     # first start includes typing the server and signing in
     res["first_start_incl_sign_in_s"] = to_home("first")
     time.sleep(20)  # let the first load finish
+    res["app_timings"] = []
     for i in range(3):
         d.sh(f"am force-stop {PKG}")
         time.sleep(3)
+        d.sh("logcat -c")
         res["starts"].append(to_home(f"start{i}"))
         time.sleep(15)
+        # Benflix's own stopwatch (StartupTimer) writes each step to the log; this is more exact
+        # than the robot's timing, which includes the robot reading the screen
+        log = d.sh("logcat -d")
+        steps = re.findall(r"Benflix start-up: (.+?) after (\d+) ms", log)
+        summary = re.findall(r"Benflix start-up summary: (.+)", log)
+        res["app_timings"].append({"steps_ms": {k: int(v) for k, v in steps}, "summary": summary[-1].strip() if summary else None})
     # smooth scrolling: wait for home to settle, then move around with the remote
     time.sleep(10)
     d.sh(f"dumpsys gfxinfo {PKG} reset")

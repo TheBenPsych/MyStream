@@ -58,11 +58,19 @@ object StartupTimer {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(KEY, text) }
     }
 
-    /** Like "Opened in 4.2 s (app 0.3, screen 0.6, signed in 1.4, Home rows 3.1, banner 4.2)" */
+    /**
+     * Like "Opened in 4.2 s (app 0.3, screen 0.6, signed in 1.4, Home rows 3.1, banner 4.2)".
+     * Time spent on Who's watching waiting for someone to pick is shown on its own and left out
+     * of the total, so the number is about Benflix, not how fast the person picked.
+     */
     private fun summary(): String {
-        val total = steps.values.maxOrNull() ?: 0L
-        return "Opened in ${seconds(total)} s (" +
-            steps.entries.joinToString(", ") { "${it.key} ${seconds(it.value)}" } + ")"
+        val end = steps.values.maxOrNull() ?: 0L
+        val who = steps[WHO]
+        val picked = steps[PICKED]
+        val waited = if (who != null && picked != null && picked > who) picked - who else 0L
+        val waitText = if (waited > 0) ", waited on Who's watching ${seconds(waited)} s" else ""
+        return "Opened in ${seconds(end - waited)} s (" +
+            steps.entries.joinToString(", ") { "${it.key} ${seconds(it.value)}" } + waitText + ")"
     }
 
     /** The last start-up on this device, for the Server page */
@@ -73,6 +81,9 @@ object StartupTimer {
     const val APP = "app"
     const val SCREEN = "screen"
     const val SIGNED_IN = "signed in"
+    const val INTRO = "intro done"
+    const val WHO = "Who's watching"
+    const val PICKED = "profile picked"
     const val HOME_ROWS = "Home rows"
     const val BANNER = "banner"
     private const val PREFS = "benflix_startup"
