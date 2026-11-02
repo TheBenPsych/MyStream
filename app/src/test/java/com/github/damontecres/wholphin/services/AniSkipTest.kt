@@ -73,7 +73,8 @@ class AniSkipTest {
     fun `replaces the server's times of the same kind only`() {
         val item = UUID.randomUUID()
 
-        fun seg(type: MediaSegmentType) = MediaSegmentDto(id = UUID.randomUUID(), itemId = item, type = type, startTicks = 0L, endTicks = 10L)
+        fun seg(type: MediaSegmentType) =
+            MediaSegmentDto(id = UUID.randomUUID(), itemId = item, type = type, startTicks = 0L, endTicks = 10L)
         val server = listOf(seg(MediaSegmentType.INTRO), seg(MediaSegmentType.PREVIEW))
         val ani = listOf(seg(MediaSegmentType.INTRO), seg(MediaSegmentType.OUTRO))
         val merged = AniSkipMatch.merge(server, ani)
