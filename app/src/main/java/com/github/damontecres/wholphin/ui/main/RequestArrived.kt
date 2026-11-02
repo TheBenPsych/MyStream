@@ -3,6 +3,8 @@ package com.github.damontecres.wholphin.ui.main
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +24,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,6 +45,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -167,6 +171,7 @@ data class Arrival(
 )
 
 /** Sits on top of every page, like the bedtime screen. Waits while something is playing. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RequestArrivedLayer(
     currentDestination: Destination?,
@@ -178,11 +183,16 @@ fun RequestArrivedLayer(
     if (!popupTurn("request-arrived", BenflixPopups.REQUEST_ARRIVED, arrival != null && !playing)) return
     arrival ?: return
     val focus = remember(arrival.requestId) { FocusRequester() }
+    // Phones are narrow: a smaller poster, and the buttons drop to their own line if they don't fit
+    val isTv = rememberIsTv()
     BasicDialog(onDismissRequest = { viewModel.done(arrival, open = false) }) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.widthIn(max = 620.dp).padding(24.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 620.dp)
+                    .padding(if (isTv) 24.dp else 16.dp),
         ) {
             AsyncImage(
                 model = arrival.item.posterUrl,
@@ -190,8 +200,8 @@ fun RequestArrivedLayer(
                 contentScale = ContentScale.Crop,
                 modifier =
                     Modifier
-                        .width(120.dp)
-                        .height(180.dp)
+                        .width(if (isTv) 120.dp else 84.dp)
+                        .height(if (isTv) 180.dp else 126.dp)
                         .clip(RoundedCornerShape(10.dp)),
             )
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -206,14 +216,20 @@ fun RequestArrivedLayer(
                     text = arrival.item.title ?: "Something you asked for",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = if (isTv) 24.sp else 20.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "You asked for it, and now it's on Benflix. Enjoy!",
                     color = Color(0xFFCFCFD6),
                     fontSize = 16.sp,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 6.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 6.dp),
+                ) {
                     Button(
                         onClick = { viewModel.done(arrival, open = true) },
                         modifier = Modifier.focusRequester(focus),

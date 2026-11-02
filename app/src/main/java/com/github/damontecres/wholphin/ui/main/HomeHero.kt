@@ -154,6 +154,8 @@ fun HomeHero(
     modifier: Modifier = Modifier,
     onSelectSlide: (Int) -> Unit = {},
     autoAdvanceMs: Long? = null,
+    // Phones already show the dots right under the banner picture, so they're left off here
+    showDots: Boolean = true,
 ) {
     val current = featured.getOrNull(index) ?: return
     Column(
@@ -207,7 +209,7 @@ fun HomeHero(
                 onClick = onClickSurprise,
             )
         }
-        if (featured.size > 1) {
+        if (showDots && featured.size > 1) {
             SlideDots(count = featured.size, index = index, onSelect = onSelectSlide, autoAdvanceMs = autoAdvanceMs)
         }
     }
