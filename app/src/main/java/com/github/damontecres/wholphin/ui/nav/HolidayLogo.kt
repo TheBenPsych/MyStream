@@ -52,45 +52,49 @@ private class HolidayLook(
     val flicker: Boolean = false,
 )
 
-private fun lookFor(celebration: Celebration): HolidayLook? =
-    when (celebration.effect) {
-        LogoEffect.FIREWORKS_GOLD -> {
-            if (celebration.text.endsWith("Eve")) {
-                HolidayLook(R.drawable.holiday_logo_nye_base, R.drawable.holiday_logo_nye_front)
-            } else {
-                HolidayLook(R.drawable.holiday_logo_newyear_base, R.drawable.holiday_logo_newyear_front)
-            }
-        }
+/** Holiday pictures for each special day: (base, front) */
+private val LOOKS: Map<LogoEffect, Pair<Int, Int>> =
+    mapOf(
+        LogoEffect.FIREWORKS_USA to (R.drawable.holiday_logo_july4_base to R.drawable.holiday_logo_july4_front),
+        LogoEffect.HEART_FLOAT to (R.drawable.holiday_logo_valentines_base to R.drawable.holiday_logo_valentines_front),
+        LogoEffect.GREEN_SHIMMER to (R.drawable.holiday_logo_stpatricks_base to R.drawable.holiday_logo_stpatricks_front),
+        LogoEffect.GHOST_PEEK to (R.drawable.holiday_logo_halloween_base to R.drawable.holiday_logo_halloween_front),
+        LogoEffect.FALLING_LEAVES to (R.drawable.holiday_logo_thanksgiving_base to R.drawable.holiday_logo_thanksgiving_front),
+        LogoEffect.TWINKLE_LIGHTS to (R.drawable.holiday_logo_christmas_base to R.drawable.holiday_logo_christmas_front),
+        LogoEffect.CONFETTI to (R.drawable.holiday_logo_birthday_base to R.drawable.holiday_logo_birthday_front),
+        LogoEffect.MARIGOLDS to (R.drawable.holiday_logo_dotd_base to R.drawable.holiday_logo_dotd_front),
+        LogoEffect.LANTERNS to (R.drawable.holiday_logo_lunarny_base to R.drawable.holiday_logo_lunarny_front),
+        LogoEffect.EMBERS to (R.drawable.holiday_logo_bonfire_base to R.drawable.holiday_logo_bonfire_front),
+        LogoEffect.STAR_PAIR to (R.drawable.holiday_logo_tanabata_base to R.drawable.holiday_logo_tanabata_front),
+        LogoEffect.BLOSSOMS to (R.drawable.holiday_logo_easter_base to R.drawable.holiday_logo_easter_front),
+        LogoEffect.HYPERSPACE to (R.drawable.holiday_logo_starwars_base to R.drawable.holiday_logo_starwars_front),
+        LogoEffect.ZAPS to (R.drawable.holiday_logo_pokemon_base to R.drawable.holiday_logo_pokemon_front),
+        LogoEffect.COIN to (R.drawable.holiday_logo_mario_base to R.drawable.holiday_logo_mario_front),
+        LogoEffect.FIRE_TRAILS to (R.drawable.holiday_logo_bttf_base to R.drawable.holiday_logo_bttf_front),
+        LogoEffect.FLOWER_BLOOM to (R.drawable.holiday_logo_mothers_base to R.drawable.holiday_logo_mothers_front),
+        LogoEffect.SUNSET to (R.drawable.holiday_logo_fathers_base to R.drawable.holiday_logo_fathers_front),
+        LogoEffect.SPROUTS to (R.drawable.holiday_logo_earth_base to R.drawable.holiday_logo_earth_front),
+        LogoEffect.SPOOKY_CAT to (R.drawable.holiday_logo_friday13_base to R.drawable.holiday_logo_friday13_front),
+        LogoEffect.GROUNDHOG to (R.drawable.holiday_logo_groundhog_base to R.drawable.holiday_logo_groundhog_front),
+        LogoEffect.HARVEST_MOON to (R.drawable.holiday_logo_midautumn_base to R.drawable.holiday_logo_midautumn_front),
+        LogoEffect.POPCORN to (R.drawable.holiday_logo_popcorn_base to R.drawable.holiday_logo_popcorn_front),
+        LogoEffect.GAME_BUTTONS to (R.drawable.holiday_logo_videogames_base to R.drawable.holiday_logo_videogames_front),
+        LogoEffect.CAT_TAIL to (R.drawable.holiday_logo_cat_base to R.drawable.holiday_logo_cat_front),
+        LogoEffect.PAW_PRINTS to (R.drawable.holiday_logo_dog_base to R.drawable.holiday_logo_dog_front),
+        LogoEffect.PIRATE_FLAG to (R.drawable.holiday_logo_pirate_base to R.drawable.holiday_logo_pirate_front),
+    )
 
-        LogoEffect.FIREWORKS_USA -> HolidayLook(R.drawable.holiday_logo_july4_base, R.drawable.holiday_logo_july4_front)
-        LogoEffect.HEART_FLOAT -> HolidayLook(R.drawable.holiday_logo_valentines_base, R.drawable.holiday_logo_valentines_front)
-        LogoEffect.GREEN_SHIMMER -> HolidayLook(R.drawable.holiday_logo_stpatricks_base, R.drawable.holiday_logo_stpatricks_front)
-        LogoEffect.GHOST_PEEK -> HolidayLook(R.drawable.holiday_logo_halloween_base, R.drawable.holiday_logo_halloween_front)
-        LogoEffect.FALLING_LEAVES -> HolidayLook(R.drawable.holiday_logo_thanksgiving_base, R.drawable.holiday_logo_thanksgiving_front)
-        LogoEffect.TWINKLE_LIGHTS -> HolidayLook(R.drawable.holiday_logo_christmas_base, R.drawable.holiday_logo_christmas_front)
-        LogoEffect.CONFETTI -> HolidayLook(R.drawable.holiday_logo_birthday_base, R.drawable.holiday_logo_birthday_front)
-        LogoEffect.MARIGOLDS -> HolidayLook(R.drawable.holiday_logo_dotd_base, R.drawable.holiday_logo_dotd_front)
-        LogoEffect.LANTERNS -> HolidayLook(R.drawable.holiday_logo_lunarny_base, R.drawable.holiday_logo_lunarny_front)
-        LogoEffect.EMBERS -> HolidayLook(R.drawable.holiday_logo_bonfire_base, R.drawable.holiday_logo_bonfire_front)
-        LogoEffect.STAR_PAIR -> HolidayLook(R.drawable.holiday_logo_tanabata_base, R.drawable.holiday_logo_tanabata_front)
-        LogoEffect.BLOSSOMS -> HolidayLook(R.drawable.holiday_logo_easter_base, R.drawable.holiday_logo_easter_front)
-        LogoEffect.HYPERSPACE -> HolidayLook(R.drawable.holiday_logo_starwars_base, R.drawable.holiday_logo_starwars_front)
-        LogoEffect.ZAPS -> HolidayLook(R.drawable.holiday_logo_pokemon_base, R.drawable.holiday_logo_pokemon_front)
-        LogoEffect.COIN -> HolidayLook(R.drawable.holiday_logo_mario_base, R.drawable.holiday_logo_mario_front)
-        LogoEffect.FIRE_TRAILS -> HolidayLook(R.drawable.holiday_logo_bttf_base, R.drawable.holiday_logo_bttf_front)
-        LogoEffect.FLOWER_BLOOM -> HolidayLook(R.drawable.holiday_logo_mothers_base, R.drawable.holiday_logo_mothers_front)
-        LogoEffect.SUNSET -> HolidayLook(R.drawable.holiday_logo_fathers_base, R.drawable.holiday_logo_fathers_front)
-        LogoEffect.SPROUTS -> HolidayLook(R.drawable.holiday_logo_earth_base, R.drawable.holiday_logo_earth_front)
-        LogoEffect.SPOOKY_CAT -> HolidayLook(R.drawable.holiday_logo_friday13_base, R.drawable.holiday_logo_friday13_front, flicker = true)
-        LogoEffect.GROUNDHOG -> HolidayLook(R.drawable.holiday_logo_groundhog_base, R.drawable.holiday_logo_groundhog_front)
-        LogoEffect.HARVEST_MOON -> HolidayLook(R.drawable.holiday_logo_midautumn_base, R.drawable.holiday_logo_midautumn_front)
-        LogoEffect.POPCORN -> HolidayLook(R.drawable.holiday_logo_popcorn_base, R.drawable.holiday_logo_popcorn_front)
-        LogoEffect.GAME_BUTTONS -> HolidayLook(R.drawable.holiday_logo_videogames_base, R.drawable.holiday_logo_videogames_front)
-        LogoEffect.CAT_TAIL -> HolidayLook(R.drawable.holiday_logo_cat_base, R.drawable.holiday_logo_cat_front)
-        LogoEffect.PAW_PRINTS -> HolidayLook(R.drawable.holiday_logo_dog_base, R.drawable.holiday_logo_dog_front)
-        LogoEffect.PIRATE_FLAG -> HolidayLook(R.drawable.holiday_logo_pirate_base, R.drawable.holiday_logo_pirate_front)
-        else -> null
+private fun lookFor(celebration: Celebration): HolidayLook? {
+    if (celebration.effect == LogoEffect.FIREWORKS_GOLD) {
+        return if (celebration.text.endsWith("Eve")) {
+            HolidayLook(R.drawable.holiday_logo_nye_base, R.drawable.holiday_logo_nye_front)
+        } else {
+            HolidayLook(R.drawable.holiday_logo_newyear_base, R.drawable.holiday_logo_newyear_front)
+        }
     }
+    val (base, front) = LOOKS[celebration.effect] ?: return null
+    return HolidayLook(base, front, flicker = celebration.effect == LogoEffect.SPOOKY_CAT)
+}
 
 /**
  * The Benflix logo, [height] tall. On a holiday or birthday it wears that day's look:
