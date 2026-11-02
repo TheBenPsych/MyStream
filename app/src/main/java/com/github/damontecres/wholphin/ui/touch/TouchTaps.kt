@@ -70,6 +70,8 @@ private fun pressAt(
 ) {
     val root = (view as? RootForTest)?.semanticsOwner?.unmergedRootSemanticsNode ?: return
     val node = findTarget(root, at) ?: return
+    // Benflix: a light buzz, so a tap feels like it did something
+    Haptics.tap(view)
     val config = node.config
     if (long) {
         val longAction = config.getOrNull(SemanticsActions.OnLongClick)?.action

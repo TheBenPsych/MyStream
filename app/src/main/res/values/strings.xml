@@ -1123,4 +1123,6 @@
     <string name="benflix_mark_watched_up_to_here">Mark watched up to here</string>
     <string name="benflix_rewatch">Rewatch from the start</string>
     <string name="benflix_fix_match">Wrong match? Fix it</string>
+    <string name="benflix_haptics">Light buzz on taps</string>
+    <string name="benflix_haptics_on">Your phone gives a little buzz when you tap a button</string>
 </resources>

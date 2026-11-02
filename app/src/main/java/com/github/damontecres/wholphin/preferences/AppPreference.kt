@@ -1260,6 +1260,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.disabled,
             )
 
+        val HapticsPref =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_haptics,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.hapticsOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { hapticsOff = !value }
+                },
+                summaryOn = R.string.benflix_haptics_on,
+                summaryOff = R.string.disabled,
+            )
+
         val MobileDataQualityPref =
             AppChoicePreference<AppPreferences, MobileDataQuality>(
                 title = R.string.benflix_mobile_data_quality,
@@ -1376,7 +1388,7 @@ val basicPreferences =
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_phone,
-            preferences = listOf(AppPreference.MobileDataQualityPref),
+            preferences = listOf(AppPreference.MobileDataQualityPref, AppPreference.HapticsPref),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_help,
