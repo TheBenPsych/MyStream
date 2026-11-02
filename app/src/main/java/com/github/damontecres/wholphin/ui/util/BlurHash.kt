@@ -100,6 +100,10 @@ object BlurHash {
             colors[i][2] = signPow((b - 9) / 9f, 2f) * maxAc
         }
         val pixels = IntArray(width * height)
+        // The cosines only depend on the column or the row, so work them out once up front
+        // instead of for every pixel (much faster on slow TVs)
+        val cosX = FloatArray(width * numX) { k -> cos(PI * (k / numX) * (k % numX) / width).toFloat() }
+        val cosY = FloatArray(height * numY) { k -> cos(PI * (k / numY) * (k % numY) / height).toFloat() }
         for (y in 0 until height) {
             for (x in 0 until width) {
                 var r = 0f
@@ -107,8 +111,7 @@ object BlurHash {
                 var b = 0f
                 for (j in 0 until numY) {
                     for (i in 0 until numX) {
-                        val basis =
-                            (cos(PI * x * i / width) * cos(PI * y * j / height)).toFloat()
+                        val basis = cosX[x * numX + i] * cosY[y * numY + j]
                         val c = colors[i + j * numX]
                         r += c[0] * basis
                         g += c[1] * basis

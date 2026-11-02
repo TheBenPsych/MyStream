@@ -653,7 +653,7 @@
     <string name="select_all">Odaberi sve</string>
     <string name="separate_types">Odvojene vrste</string>
     <string name="prefer_logos">Preferiraj prikaz logotipa za naslove</string>
-    <string name="updated_toast">Wholphin ažuriran na %s</string>
+    <string name="updated_toast">Benflix ažuriran na %s</string>
     <string name="remove_continue_watching">Ukloni iz \"Nastavi gledanje\"</string>
     <string name="remove_next_up">Ukloni seriju iz \"Slijedi\"</string>
     <string name="view_removed_next_up">Prikaži serije uklonjene iz \"Slijedi\"</string>

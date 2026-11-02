@@ -72,7 +72,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -143,6 +145,10 @@ class HomeViewModel
         private var previewJob: Job? = null
 
         private var dataLoadingJob: Job? = null
+
+        /** Benflix: when the rows that rarely change were last loaded */
+        @Volatile
+        private var slowRowsLoadedAt = 0L
 
         /** The Anime Movies / Anime Shows libraries (any library with "anime" in its name) */
         @Volatile
@@ -369,10 +375,15 @@ class HomeViewModel
                     if (!refresh || state.monthly.isEmpty()) {
                         viewModelScope.launchIO { loadMonthly(userDto) }
                     }
+                    // Benflix: coming back to Home within a few minutes keeps rows that rarely change
+                    // (New on Benflix, holiday picks, Top collections) instead of asking for them again
+                    val now = System.currentTimeMillis()
+                    val reloadSlowRows = !refresh || now - slowRowsLoadedAt > SLOW_ROWS_REFRESH_MS
+                    if (reloadSlowRows) slowRowsLoadedAt = now
                     viewModelScope.launchIO { loadBecause(userDto) }
-                    viewModelScope.launchIO { loadNewest(userDto) }
+                    if (reloadSlowRows) viewModelScope.launchIO { loadNewest(userDto) }
                     viewModelScope.launchIO { loadMyList(userDto) }
-                    viewModelScope.launchIO { loadCelebration(userDto) }
+                    if (reloadSlowRows) viewModelScope.launchIO { loadCelebration(userDto) }
                     viewModelScope.launchIO { loadComeBack(userDto) }
                     if (!refresh || state.spotlight == null) {
                         viewModelScope.launchIO { loadSpotlight(userDto) }
@@ -384,7 +395,7 @@ class HomeViewModel
                     if (!refresh || state.genreRows.isEmpty()) {
                         viewModelScope.launchIO { loadGenreRows(userDto) }
                     }
-                    viewModelScope.launchIO { loadCollections(userDto) }
+                    if (reloadSlowRows) viewModelScope.launchIO { loadCollections(userDto) }
                     // Studio tiles are no longer on Home; which movies belong to which collection
                     // is worked out quietly in the background and saved for a day
                     viewModelScope.launchIO { buildCollectionIndex(userDto.id) }
@@ -690,8 +701,16 @@ class HomeViewModel
         ): List<FeaturedItem> {
             val today = java.time.LocalDate.now()
             val key = "$today/$userId/${KidsMode.isActive}"
+            // Benflix: the day's list is also saved on the device, so opening the app again the
+            // same day doesn't download every movie's details again
+            val fileKey = "on-this-day-$key"
             val ids =
                 onThisDayCache?.takeIf { it.first == key }?.second
+                    ?: diskCache
+                        .read(fileKey, OnThisDayFile.serializer(), ON_THIS_DAY_FILE_MAX_AGE_MS)
+                        ?.ids
+                        ?.mapNotNull { it.toUUIDOrNull() }
+                        ?.also { onThisDayCache = key to it }
                     ?: api.itemsApi
                         .getItems(
                             GetItemsRequest(
@@ -707,7 +726,10 @@ class HomeViewModel
                             val date = it.premiereDate ?: return@filter false
                             date.monthValue == today.monthValue && date.dayOfMonth == today.dayOfMonth && date.year < today.year
                         }.map { it.id }
-                        .also { onThisDayCache = key to it }
+                        .also {
+                            onThisDayCache = key to it
+                            diskCache.write(fileKey, OnThisDayFile.serializer(), OnThisDayFile(it.map { id -> id.toString() }))
+                        }
             val id = ids.randomOrNull() ?: return emptyList()
             val movie =
                 api.itemsApi
@@ -781,11 +803,10 @@ class HomeViewModel
                     }
                     return
                 }
-                val discovered =
-                    (1..TRENDING_PAGES)
-                        .flatMap { seerrService.trending(it) }
-                        .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
-                        .distinctBy { it.type to it.id }
+                // Benflix: the trending pages are asked for all at once, and kept for a while, so
+                // coming back to Home doesn't wait on Seerr again
+                val cached = trendingCache?.takeIf { System.currentTimeMillis() - it.first < TRENDING_CACHE_MS }?.second
+                val discovered = cached ?: fetchTrending()
                 val allInLibraryIds =
                     discovered
                         .mapNotNull { it.jellyfinItemId }
@@ -825,6 +846,21 @@ class HomeViewModel
                 Timber.e(ex, "Error loading trending items")
                 _state.update { it.copy(trending = loadServerTop(userDto), animeTop = loadAnimeTop(userDto, emptyList())) }
             }
+        }
+
+        /** Benflix: all of Seerr's trending pages at the same time, remembered for a while */
+        private suspend fun fetchTrending(): List<DiscoverItem> {
+            val items =
+                coroutineScope {
+                    (1..TRENDING_PAGES)
+                        .map { page -> async { seerrService.trending(page) } }
+                        .awaitAll()
+                        .flatten()
+                        .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                        .distinctBy { it.type to it.id }
+                }
+            if (items.isNotEmpty()) trendingCache = System.currentTimeMillis() to items
+            return items
         }
 
         /**
@@ -1441,7 +1477,25 @@ class HomeViewModel
             fun keep(item: BaseItem) = keep(item.data)
         }
 
-        private suspend fun loadTaste(userId: UUID): Taste {
+        /** Benflix: the thumbs up/down lists are shared by every row of one Home load */
+        private val tasteLock = Mutex()
+
+        @Volatile
+        private var tasteCache: Triple<UUID, Long, Taste>? = null
+
+        /**
+         * The profile's thumbs up/down. Most Home rows need it, so it's asked for once and shared
+         * for a few seconds instead of every row asking the server again.
+         */
+        private suspend fun loadTaste(userId: UUID): Taste =
+            tasteLock.withLock {
+                tasteCache?.let { (id, at, taste) ->
+                    if (id == userId && System.currentTimeMillis() - at < TASTE_CACHE_MS) return@withLock taste
+                }
+                fetchTaste(userId).also { tasteCache = Triple(userId, System.currentTimeMillis(), it) }
+            }
+
+        private suspend fun fetchTaste(userId: UUID): Taste {
             fun request(filter: ItemFilter) =
                 GetItemsRequest(
                     userId = userId,
@@ -1453,7 +1507,7 @@ class HomeViewModel
             val disliked =
                 try {
                     api.itemsApi
-                        .getItems(request(ItemFilter.DISLIKES).copy(limit = TASTE_MAX))
+                        .getItems(request(ItemFilter.DISLIKES).copy(limit = TASTE_MAX, sortBy = null, enableImages = false))
                         .content.items
                         .map { it.id }
                         .toSet()
@@ -2105,6 +2159,7 @@ private const val SPOTLIGHT_POOL = 30
 private const val SPOTLIGHT_TOP_BILLED = 5
 private const val SPOTLIGHT_CHOICES = 5
 private const val TASTE_MAX = 300
+private const val TASTE_CACHE_MS = 20_000L
 private const val ANIME_ID_CACHE_MS = 60 * 60 * 1000L
 private const val ANIME_ROW_MIN = 5
 private const val ANIME_SIMILAR_FETCH = 40
@@ -2127,6 +2182,10 @@ private const val KIDS_AGAIN_MAX = 20
 
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
 @Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null
+
+/** Benflix: Seerr's trending list and when it was fetched */
+@Volatile private var trendingCache: Pair<Long, List<DiscoverItem>>? = null
+private const val TRENDING_CACHE_MS = 30 * 60 * 1000L
 private const val ON_THIS_DAY_POOL = 3000
 private const val FEATURED_PICKS = 3
 private const val TRENDING_PAGES = 3
@@ -2150,6 +2209,7 @@ private const val TONIGHT_FROM_HOUR = 18
 private const val TONIGHT_MIN_RATING = 7.0
 private const val TONIGHT_POOL = 200
 private const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
+private const val SLOW_ROWS_REFRESH_MS = 10 * 60 * 1000L
 private const val THIRD_WAVE_DELAY_MS = 400L
 private const val COLLECTION_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000L
 private const val HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
@@ -2223,6 +2283,14 @@ private data class AnimeIdsFile(
 )
 
 private const val ANIME_ID_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000L
+
+/** Benflix: today's "On this day" movie ids as saved on disk */
+@Serializable
+private data class OnThisDayFile(
+    val ids: List<String>,
+)
+
+private const val ON_THIS_DAY_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000L
 
 /** The collection index as saved on disk: movie id to collection id, plus the collections */
 @Serializable
