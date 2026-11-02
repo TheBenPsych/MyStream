@@ -89,30 +89,18 @@ class UpdateChecker
 
             val ACTIVE = BuildConfig.UPDATING_ENABLED
 
+            /** The version the "New update ready" tip last showed for, and when */
             private const val KEY_SNOOZE_VERSION = "benflix_update_snoozed_version"
             private const val KEY_SNOOZE_AT = "benflix_update_snoozed_at"
         }
 
         private val _prompt = MutableStateFlow<Release?>(null)
 
-        /** A newer build to offer in the "Update available" pop-up, or null when there is nothing to show */
+        /** A newer build that is ready to install, or null when there is nothing new */
         val prompt: StateFlow<Release?> = _prompt
 
-        /** Set when the pop-up's Update button was pressed, so the update page starts installing right away */
+        /** Set when an Update button was pressed, so the update page starts installing right away */
         var installWhenOpened = false
-
-        /** "Not now": hide the pop-up and don't ask about this build again for a day */
-        fun snooze(release: Release) {
-            PreferenceManager.getDefaultSharedPreferences(context).edit {
-                putString(KEY_SNOOZE_VERSION, release.version.toString())
-                putLong(KEY_SNOOZE_AT, Date().time)
-            }
-            _prompt.value = null
-        }
-
-        fun clearPrompt() {
-            _prompt.value = null
-        }
 
         /**
          * If the app hasn't recently checked, check for any updates and if there is one, show a toast message
@@ -139,16 +127,25 @@ class UpdateChecker
                 pref.edit {
                     putLong(context.getString(R.string.pref_key_update_last_check), now.time)
                 }
-                val snoozedVersion = pref.getString(KEY_SNOOZE_VERSION, null)
-                val snoozedFor = (now.time - pref.getLong(KEY_SNOOZE_AT, 0)).milliseconds
-                if (snoozedVersion == latestRelease.version.toString() && snoozedFor < 24.hours) {
-                    Timber.i("Update pop-up snoozed for ${latestRelease.version}")
-                } else {
-                    // Shown as a pop-up with what's new once a profile is picked
-                    _prompt.value = latestRelease
+                // Benflix: no pop-up. A red "!" shows the way to Settings > Help, and a tip says so
+                // for a few seconds (at most once a day for the same version).
+                val version = latestRelease.version.toString()
+                val tipVersion = pref.getString(KEY_SNOOZE_VERSION, null)
+                val tipAgo = (now.time - pref.getLong(KEY_SNOOZE_AT, 0)).milliseconds
+                val showTip = tipVersion != version || tipAgo >= 24.hours
+                if (showTip) {
+                    pref.edit {
+                        putString(KEY_SNOOZE_VERSION, version)
+                        putLong(KEY_SNOOZE_AT, now.time)
+                    }
                 }
+                _prompt.value = latestRelease
+                com.github.damontecres.wholphin.ui.components.UpdateNotice
+                    .set(version, showTip)
             } else {
                 Timber.v("No update available for $installedVersion")
+                com.github.damontecres.wholphin.ui.components.UpdateNotice
+                    .set(null, false)
                 if (showNegativeToast) {
                     showToast(
                         context,

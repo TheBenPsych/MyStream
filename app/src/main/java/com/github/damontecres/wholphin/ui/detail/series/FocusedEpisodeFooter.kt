@@ -32,6 +32,7 @@ fun FocusedEpisodeFooter(
     onChooseVersion: (MediaSourceInfo) -> Unit,
     modifier: Modifier = Modifier,
     buttonOnFocusChanged: (FocusState) -> Unit = {},
+    goToShowOnClick: (() -> Unit)? = null,
 ) {
     val dto = ep.data
     val resumePosition = dto.userData?.playbackPositionTicks?.ticks ?: Duration.ZERO
@@ -49,6 +50,7 @@ fun FocusedEpisodeFooter(
             favorite = dto.userData?.isFavorite ?: false,
             playOnClick = playOnClick,
             moreOnClick = moreOnClick,
+            goToShowOnClick = goToShowOnClick,
             watchOnClick = watchOnClick,
             favoriteOnClick = favoriteOnClick,
             buttonOnFocusChanged = buttonOnFocusChanged,

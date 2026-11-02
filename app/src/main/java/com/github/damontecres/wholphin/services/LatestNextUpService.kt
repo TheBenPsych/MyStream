@@ -24,6 +24,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
 import org.jellyfin.sdk.model.serializer.UUIDSerializer
@@ -71,6 +72,82 @@ class LatestNextUpService
                     .items
                     .map { BaseItem(it, useSeriesForPrimary) }
             return items
+        }
+
+        /**
+         * Benflix "Your show is back": the first episode of a new season added in the last week,
+         * for shows the person had already finished (everything before that season watched).
+         * Also remembers them in [NewSeasonBack] so their cards get a NEW SEASON tag.
+         */
+        suspend fun getNewSeasonsBack(
+            userId: UUID,
+            useSeriesForPrimary: Boolean = true,
+        ): List<BaseItem> {
+            if (KidsMode.isActive) return emptyList()
+            return try {
+                val firstEpisodes =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                recursive = true,
+                                isPlayed = false,
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                fields = SlimItemFields,
+                                enableUserData = true,
+                                limit = 200,
+                                enableTotalRecordCount = false,
+                            ),
+                        ).content.items
+                        // Newest first, so only keep the ones added in the last week
+                        .filter { it.dateCreated?.isAfter(LocalDateTime.now().minusDays(NewSeasonBack.DAYS)) == true }
+                        .filter { it.indexNumber == 1 && (it.parentIndexNumber ?: 0) > 1 && it.seriesId != null }
+                        .distinctBy { it.seriesId }
+                val back =
+                    firstEpisodes.filter { ep ->
+                        val season = ep.parentIndexNumber ?: return@filter false
+                        val seriesId = ep.seriesId ?: return@filter false
+                        val unwatched =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        parentId = seriesId,
+                                        includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                        recursive = true,
+                                        isPlayed = false,
+                                        enableTotalRecordCount = false,
+                                    ),
+                                ).content.items
+                        // Finished the whole show before this season: nothing older is left to watch...
+                        val olderLeft = unwatched.any { (it.parentIndexNumber ?: 0) in 1 until season }
+                        // ...and they really watched it (not just a show nobody started)
+                        val watchedSome =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        parentId = seriesId,
+                                        includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                        recursive = true,
+                                        isPlayed = true,
+                                        limit = 1,
+                                        enableTotalRecordCount = false,
+                                    ),
+                                ).content.items
+                                .isNotEmpty()
+                        !olderLeft && watchedSome
+                    }
+                NewSeasonBack.ids = back.flatMap { listOfNotNull(it.id, it.seriesId) }.toSet()
+                back.map { BaseItem(it, useSeriesForPrimary) }
+            } catch (ex: kotlinx.coroutines.CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't look for new seasons")
+                emptyList()
+            }
         }
 
         /**
@@ -272,3 +349,13 @@ class LatestNextUpService
 data class RemovedSeriesIds(
     val value: Map<UUID, LocalDateTime>,
 )
+
+/** Benflix: shows that just got a new season, for people who had finished them (see getNewSeasonsBack) */
+object NewSeasonBack {
+    const val DAYS = 7L
+
+    /** Episode and show ids that get the NEW SEASON tag */
+    @Volatile var ids: Set<UUID> = emptySet()
+
+    fun has(item: BaseItem): Boolean = item.id in ids || item.data.seriesId?.let { it in ids } == true
+}

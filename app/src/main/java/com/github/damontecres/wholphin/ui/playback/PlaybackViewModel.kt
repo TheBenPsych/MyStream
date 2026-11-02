@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.services.BenflixAfterCredits
 import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixMobileData
+import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -65,6 +66,7 @@ import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SmartResume
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
+import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
@@ -110,6 +112,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.mediaInfoApi
 import org.jellyfin.sdk.api.client.extensions.mediaSegmentsApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
@@ -135,6 +138,7 @@ import org.jellyfin.sdk.model.api.TrickplayInfo
 import org.jellyfin.sdk.model.api.VideoRange
 import org.jellyfin.sdk.model.api.VideoRangeType
 import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
+import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import org.jellyfin.sdk.model.extensions.inWholeTicks
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
@@ -704,6 +708,7 @@ class PlaybackViewModel
                 _state.update { it.copy(recap = recap) }
                 listenForSegments(item.id)
                 watchForAfterCreditsScene(item.id)
+                watchForMovieNext(item)
                 viewModelScope.launchIO { warmNextNearEnd(item.id) }
                 // Benflix "What Kids watched this week"
                 BenflixKidsLog.record(context, base)
@@ -1347,6 +1352,63 @@ class PlaybackViewModel
         @Volatile private var creditsReached = false
         private var afterCreditsJob: Job? = null
 
+        /** Benflix: the credits segment of this item has started */
+        @Volatile private var outroReached = false
+        private var movieNextJob: Job? = null
+
+        /**
+         * Benflix "Watch next": when a movie's credits start (or near its end), offer one similar
+         * movie the profile hasn't watched. It's only a card in the corner and never autoplays.
+         */
+        private fun watchForMovieNext(item: BaseItem) {
+            movieNextJob?.cancel()
+            outroReached = false
+            _state.update { it.copy(movieNext = null) }
+            if (item.type != BaseItemKind.MOVIE) return
+            movieNextJob =
+                viewModelScope.launchIO {
+                    val pick =
+                        try {
+                            api.libraryApi
+                                .getSimilarItems(
+                                    GetSimilarItemsRequest(
+                                        userId = serverRepository.currentUser?.id,
+                                        itemId = item.id,
+                                        fields = ItemRowFields,
+                                        limit = 20,
+                                    ),
+                                ).content.items
+                                .firstOrNull { it.type == BaseItemKind.MOVIE && it.userData?.played != true }
+                                ?.let { BaseItem(it, true) }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.v(ex, "Couldn't find a movie to watch next")
+                            null
+                        } ?: return@launchIO
+                    while (isActive) {
+                        delay(3_000L)
+                        val (position, duration) = onMain { player.currentPosition to player.duration }
+                        if (duration > 0 && (outroReached || duration - position <= MOVIE_NEXT_NOTICE_MS)) {
+                            _state.update { it.copy(movieNext = pick) }
+                            break
+                        }
+                    }
+                }
+        }
+
+        fun dismissMovieNext() {
+            _state.update { it.copy(movieNext = null) }
+        }
+
+        fun playMovieNext() {
+            val next = state.value.movieNext ?: return
+            _state.update { it.copy(movieNext = null) }
+            // Swap this player for the new movie, so Back still goes to where you were before
+            navigationManager.goBack()
+            navigationManager.navigateTo(Destination.Playback(next.id, 0L))
+        }
+
         /**
          * Benflix: if this movie has a scene during or after the credits (TMDB marks these),
          * say so when the credits start, and don't skip the credits.
@@ -1440,6 +1502,7 @@ class PlaybackViewModel
                                     )
                                 }
                                 val state = state.value
+                                if (currentSegment.type == MediaSegmentType.OUTRO) outroReached = true
 
                                 if (currentSegment.type == MediaSegmentType.OUTRO && hasAfterCreditsScene) {
                                     // Benflix: there's a scene after the credits, so let the credits play
@@ -1557,10 +1620,33 @@ class PlaybackViewModel
             lastInteractionDate = Date()
         }
 
+        /**
+         * Benflix: the age rating to show at the start. Episodes often have no rating of
+         * their own, so they use their show's rating.
+         */
+        suspend fun ageRatingFor(item: BaseItem): String? =
+            item.data.officialRating?.takeIf { it.isNotBlank() }
+                ?: item.data.seriesId?.let { seriesId ->
+                    try {
+                        withContext(WholphinDispatchers.IO) {
+                            api.userLibraryApi
+                                .getItem(seriesId)
+                                .content.officialRating
+                                ?.takeIf { it.isNotBlank() }
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Age rating for show %s", seriesId)
+                        null
+                    }
+                }
+
         fun shouldAutoPlayNextUp(): Boolean =
             preferences.appPreferences.playbackPreferences.let {
                 // Benflix: at Kids bedtime, the next episode doesn't start by itself
                 !BenflixBedtime.lockedNow() &&
+                    !BenflixScreenTime.lockedNow() &&
                     it.autoPlayNext &&
                     if (it.passOutProtectionMs > 0 && !shuffleSession) {
                         (Date().time - lastInteractionDate.time) < it.passOutProtectionMs
@@ -1570,8 +1656,8 @@ class PlaybackViewModel
             }
 
         fun playNextUp() {
-            if (BenflixBedtime.lockedNow()) {
-                // Benflix: it's Kids bedtime, so no more episodes tonight
+            if (BenflixBedtime.lockedNow() || BenflixScreenTime.lockedNow()) {
+                // Benflix: it's Kids bedtime (or today's Kids time is used up), so no more episodes
                 viewModelScope.launch(WholphinDispatchers.Main) { navigationManager.goBack() }
                 return
             }
@@ -2046,6 +2132,9 @@ private const val AFTER_CREDITS_NOTICE_MS = 5 * 60_000L
 private const val NEXT_CHECK_MS = 15_000L
 private const val NEXT_PREP_MS = 3 * 60_000L
 private const val AFTER_CREDITS_SHOW_MS = 10_000L
+
+/** Benflix: with no credits marker, offer "Watch next" this close to the end of a movie */
+private const val MOVIE_NEXT_NOTICE_MS = 4 * 60_000L
 
 private const val RECAP_LOOKUP_MS = 3_000L
 private const val RECAP_AFTER_DAYS = 14L

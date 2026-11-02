@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +68,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.children
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -81,6 +83,7 @@ import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.mpv.MpvPlayer
 import com.github.damontecres.wholphin.preferences.AssPlaybackMode
 import com.github.damontecres.wholphin.preferences.DpadSeekMode
@@ -559,6 +562,11 @@ fun PlaybackPageContent(
                 showPlay = playPauseState.showPlay,
                 previousEnabled = true,
                 nextEnabled = state.hasNext,
+                episodesEnabled =
+                    state.currentPlayback
+                        ?.item
+                        ?.data
+                        ?.seriesId != null,
                 seekEnabled = true,
                 seekForward = preferences.appPreferences.playbackPreferences.skipForwardMs.milliseconds,
                 seekBack = preferences.appPreferences.playbackPreferences.skipBackMs.milliseconds,
@@ -679,6 +687,23 @@ fun PlaybackPageContent(
             )
         }
 
+        // Benflix: the age rating in the top corner for a few seconds when something starts
+        val ratingItem = state.currentPlayback?.item
+        var ageRating by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(ratingItem?.id) {
+            ageRating = null
+            ageRating = ratingItem?.let { viewModel.ageRatingFor(it) }
+        }
+        AgeRatingNote(
+            item = ratingItem,
+            rating = ageRating,
+            hidden = controllerViewState.controlsVisible || state.recap != null,
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(if (isTv) 40.dp else 16.dp),
+        )
+
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
             modifier =
                 Modifier
@@ -748,6 +773,44 @@ fun PlaybackPageContent(
                         .background(Color(0xE6202024), RoundedCornerShape(12.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             )
+        }
+
+        // Benflix "Watch next": a similar movie offered when a movie's credits start
+        val movieNext = state.movieNext.takeIf { state.nextUp == null && !controllerViewState.controlsVisible }
+        BackHandler(movieNext != null) { viewModel.dismissMovieNext() }
+        AnimatedVisibility(
+            visible = movieNext != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomEnd),
+        ) {
+            state.movieNext?.let {
+                NextUpEpisode(
+                    title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
+                    description = it.data.overview,
+                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                    aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                    onClick = {
+                        viewModel.reportInteraction()
+                        viewModel.playMovieNext()
+                    },
+                    timeLeft = null,
+                    runtime = it.data.runTimeTicks?.ticks,
+                    heading = stringResource(R.string.player_watch_next),
+                    buttonText = stringResource(R.string.player_play_this),
+                    onNotNow = viewModel::dismissMovieNext,
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 32.dp, vertical = 40.dp)
+                            .widthIn(max = 760.dp)
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .background(
+                                Color.Black.copy(alpha = .82f),
+                                shape = RoundedCornerShape(10.dp),
+                            ),
+                )
+            }
         }
 
         // Next up episode
@@ -865,7 +928,27 @@ fun PlaybackPageContent(
         }
     }
 
-    playbackDialog?.let { type ->
+    // Benflix: the Episodes button opens seasons and episodes over the video
+    if (playbackDialog == PlaybackDialogType.EPISODES) {
+        val current = state.currentPlayback?.item
+        if (current == null) {
+            playbackDialog = null
+        } else {
+            Dialog(
+                onDismissRequest = {
+                    playbackDialog = null
+                    if (controllerViewState.controlsVisible) controllerViewState.pulseControls()
+                },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
+                    EpisodesPanel(current = current, onDismiss = { playbackDialog = null })
+                }
+            }
+        }
+    }
+
+    playbackDialog?.takeIf { it != PlaybackDialogType.EPISODES }?.let { type ->
         PlaybackDialog(
             type = type,
             settings =

@@ -46,6 +46,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.BenflixKidsLog
+import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.KidsWatch
@@ -146,6 +147,39 @@ fun ParentalControlsDialog(
                         headlineContent = { Text("Big kids tile") },
                         supportingContent = { Text("A second Kids tile on Who's watching that allows up to PG-13, for older children") },
                         trailingContent = { Switch(checked = bigKids, onCheckedChange = null) },
+                    )
+                    // Kids screen time: press to step through Off, 1, 2 and 3 hours a day
+                    val dailyMinutes by viewModel.dailyMinutes.collectAsState()
+                    ListItem(
+                        selected = false,
+                        onClick = {
+                            val choices = BenflixScreenTime.CHOICES
+                            val next = choices[(choices.indexOf(dailyMinutes) + 1).mod(choices.size)]
+                            scope.launch {
+                                if (!viewModel.setDailyMinutes(next)) {
+                                    Toast.makeText(context, "Couldn't save that. Try again.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        headlineContent = { Text("Kids screen time: ${BenflixScreenTime.label(dailyMinutes)}") },
+                        supportingContent = {
+                            Text(
+                                when {
+                                    dailyMinutes == 0 -> {
+                                        "Press to set how long Kids can watch each day"
+                                    }
+
+                                    !hasPin -> {
+                                        "Needs a parent PIN to lock Kids when time is up"
+                                    }
+
+                                    else -> {
+                                        "Used today on this TV or phone: ${BenflixScreenTime.watchedMinutesToday()} min. " +
+                                            "Your PIN adds 30 minutes."
+                                    }
+                                },
+                            )
+                        },
                     )
                     var guestTile by remember { mutableStateOf(GuestMode.tileOn(context)) }
                     ListItem(

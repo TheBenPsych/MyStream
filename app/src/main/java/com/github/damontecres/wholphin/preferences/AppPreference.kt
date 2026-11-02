@@ -1036,6 +1036,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.my_birthday,
             )
 
+        /** Benflix "Not for me": genres this profile never wants to see */
+        val HiddenGenresPref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_hidden_genres,
+            )
+
         /** Benflix: the parent PIN that guards Kids bedtime (and later other parental controls) */
         val ParentPin =
             AppClickablePreference<AppPreferences>(
@@ -1325,6 +1331,7 @@ val basicPreferences =
                     AppPreference.ProtectProfilePreference,
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
+                    AppPreference.HiddenGenresPref,
                     AppPreference.UserInterfaceLanguage,
                     AppPreference.ResumeTimer,
                     AppPreference.SignInAuto,

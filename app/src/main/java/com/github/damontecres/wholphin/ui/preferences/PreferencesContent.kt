@@ -69,6 +69,7 @@ import com.github.damontecres.wholphin.preferences.experimentalPreferences
 import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.preferences.screensaverPreferences
 import com.github.damontecres.wholphin.preferences.updatePlaybackPreferences
+import com.github.damontecres.wholphin.services.HiddenGenres
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.Release
 import com.github.damontecres.wholphin.services.SeerrConnectionStatus
@@ -81,6 +82,7 @@ import com.github.damontecres.wholphin.ui.components.ScrollableDialog
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.main.BedtimeViewModel
+import com.github.damontecres.wholphin.ui.main.HiddenGenresDialog
 import com.github.damontecres.wholphin.ui.main.ParentPinDialog
 import com.github.damontecres.wholphin.ui.main.ParentalControlsDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -158,6 +160,7 @@ fun PreferencesContent(
     var showQuickConnectDialog by remember { mutableStateOf(false) }
     var showLocaleChoiceDialog by remember { mutableStateOf(false) }
     var showBirthdayDialog by remember { mutableStateOf(false) }
+    var showHiddenGenres by remember { mutableStateOf(false) }
     var showParentPin by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -523,7 +526,7 @@ fun PreferencesContent(
                                             },
                                             summary =
                                                 if (updateAvailable) {
-                                                    release?.version?.toString()
+                                                    release?.version?.let { "Version $it is ready. See what's new and install it" }
                                                 } else {
                                                     null
                                                 },
@@ -627,6 +630,23 @@ fun PreferencesContent(
                                                 viewModel = bedtimeViewModel,
                                             )
                                         }
+                                    }
+
+                                    AppPreference.HiddenGenresPref -> {
+                                        val hiddenCount = HiddenGenres.hidden.size
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showHiddenGenres = true },
+                                            modifier = focusModifier,
+                                            summary =
+                                                when (hiddenCount) {
+                                                    0 -> "None hidden"
+                                                    1 -> "1 genre hidden"
+                                                    else -> "$hiddenCount genres hidden"
+                                                },
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
                                     }
 
                                     AppPreference.BirthdayPreference -> {
@@ -1014,6 +1034,9 @@ fun PreferencesContent(
         LocaleChoiceDialog(
             onDismissRequest = { showLocaleChoiceDialog = false },
         )
+    }
+    if (showHiddenGenres) {
+        HiddenGenresDialog(onDismiss = { showHiddenGenres = false })
     }
     if (showBirthdayDialog) {
         BirthdayDialog(

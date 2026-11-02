@@ -155,6 +155,7 @@ fun PlaybackControls(
     nextEnabled: Boolean,
     seekEnabled: Boolean,
     seekBarIntervals: Int,
+    episodesEnabled: Boolean = false,
     seekBack: Duration,
     skipBackOnResume: Duration?,
     seekForward: Duration,
@@ -204,6 +205,7 @@ fun PlaybackControls(
             onClickPlaybackDialogType = onClickPlaybackDialogType,
             showPlay = showPlay,
             nextEnabled = nextEnabled,
+            episodesEnabled = episodesEnabled,
             seekBack = seekBack,
             seekForward = seekForward,
             skipBackOnResume = skipBackOnResume,
@@ -235,6 +237,7 @@ fun NetflixControlRow(
     skipBackOnResume: Duration?,
     currentSegment: MediaSegmentDto?,
     modifier: Modifier = Modifier,
+    episodesEnabled: Boolean = false,
 ) {
     val roundButtons: @Composable () -> Unit = {
         PlayerCircleButton(
@@ -299,6 +302,17 @@ fun NetflixControlRow(
                 onControllerInteraction = onControllerInteraction,
             )
         }
+        if (episodesEnabled) {
+            PlayerPillButton(
+                text = stringResource(R.string.player_episodes),
+                faIcon = R.string.fa_list_ul,
+                onClick = {
+                    onControllerInteraction.invoke()
+                    onClickPlaybackDialogType.invoke(PlaybackDialogType.EPISODES)
+                },
+                onControllerInteraction = onControllerInteraction,
+            )
+        }
         PlayerPillButton(
             text = stringResource(R.string.player_subtitles),
             faIcon = R.string.fa_closed_captioning,
@@ -337,8 +351,15 @@ fun NetflixControlRow(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     roundButtons()
-                    Spacer(Modifier.weight(1f))
-                    pillButtons()
+                    // Benflix: labeled buttons sit on the right; if there are too many for one
+                    // line (say Skip intro + Next episode + Episodes), they wrap neatly instead of being cut off
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        pillButtons()
+                    }
                 }
             } else {
                 // Benflix on narrow screens (phones): the buttons don't fit on one line, so

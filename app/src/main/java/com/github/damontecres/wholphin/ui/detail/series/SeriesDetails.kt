@@ -609,6 +609,13 @@ fun SeriesDetailsContent(
                         modifier = Modifier.padding(start = HeaderUtils.startPadding),
                     )
                 }
+                // Benflix: watched it all and a newer season is out? Ask for it
+                item {
+                    NextSeasonAsk(
+                        seriesId = series.id,
+                        modifier = Modifier.padding(horizontal = HeaderUtils.startPadding),
+                    )
+                }
                 // Netflix-style: pick a season, its episodes show right here
                 if (inlineEpisodes.isNotEmpty()) {
                     item {

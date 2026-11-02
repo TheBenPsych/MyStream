@@ -89,6 +89,9 @@ fun NextUpEpisode(
     runtime: Duration? = null,
     totalCountdown: Duration? = null,
     onWatchCredits: (() -> Unit)? = null,
+    heading: String? = null,
+    buttonText: String? = null,
+    onNotNow: (() -> Unit)? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
@@ -116,7 +119,7 @@ fun NextUpEpisode(
                     .weight(1f),
         ) {
             Text(
-                text = stringResource(R.string.player_next_episode).uppercase(),
+                text = (heading ?: stringResource(R.string.player_next_episode)).uppercase(),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -214,7 +217,7 @@ fun NextUpEpisode(
                                     if (counting) {
                                         stringResource(R.string.player_next_episode_in, timeLeft!!.inWholeSeconds)
                                     } else {
-                                        stringResource(R.string.player_next_episode)
+                                        buttonText ?: stringResource(R.string.player_next_episode)
                                     },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -240,6 +243,28 @@ fun NextUpEpisode(
                     ) {
                         Text(
                             text = stringResource(R.string.player_watch_credits),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                if (onNotNow != null) {
+                    Button(
+                        onClick = onNotNow,
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors =
+                            ButtonDefaults.colors(
+                                containerColor = Color.White.copy(alpha = .15f),
+                                contentColor = Color.White,
+                                focusedContainerColor = Color.White,
+                                focusedContentColor = Color.Black,
+                            ),
+                        contentPadding = PaddingValues(horizontal = 18.dp),
+                        modifier = Modifier.height(44.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.not_now),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             maxLines = 1,

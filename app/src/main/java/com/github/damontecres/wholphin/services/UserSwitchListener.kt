@@ -42,6 +42,7 @@ class UserSwitchListener
         private val serverPluginApi: ServerPluginApi,
         private val benflixSettingsSync: BenflixSettingsSync,
         private val benflixSeerrLink: BenflixSeerrLink,
+        private val hiddenGenresStore: HiddenGenresStore,
     ) {
         init {
             context as AppCompatActivity
@@ -83,6 +84,12 @@ class UserSwitchListener
                 Timber.i("Switching locale to %s", localeList)
                 withContext(WholphinDispatchers.Main) {
                     AppCompatDelegate.setApplicationLocales(localeList)
+                }
+
+                // Benflix: genres this person hid
+                HiddenGenres.hidden = emptySet()
+                launchIO {
+                    hiddenGenresStore.load(user.id)
                 }
 
                 // Benflix: bring back this person's own settings (Settings follow you)
