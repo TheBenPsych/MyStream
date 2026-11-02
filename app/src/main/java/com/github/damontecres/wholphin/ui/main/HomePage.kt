@@ -101,6 +101,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
+import com.github.damontecres.wholphin.util.StartupTimer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.DateTime
@@ -148,6 +149,13 @@ fun HomePage(
     val loading = state.loadingState
     val refreshing = state.refreshState
     val homeRows = state.homeRows
+    // Benflix start-up stopwatch
+    LaunchedEffect(loading) {
+        if (loading == LoadingState.Success) StartupTimer.mark(StartupTimer.HOME_ROWS)
+    }
+    LaunchedEffect(featured.isNotEmpty()) {
+        if (featured.isNotEmpty()) StartupTimer.finish(context)
+    }
 
     when (val state = loading) {
         is LoadingState.Error -> {

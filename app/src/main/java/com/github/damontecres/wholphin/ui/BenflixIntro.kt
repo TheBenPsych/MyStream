@@ -25,9 +25,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.util.StartupTimer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 /**
@@ -64,7 +67,9 @@ fun BenflixIntro(
                 launch { markAlpha.animateTo(1f, tween(300)) }
                 launch { wordAlpha.animateTo(1f, tween(300)) }
             }
-            delay(1700)
+            // Benflix speed: stop holding as soon as the app is ready behind the logo
+            delay(INTRO_MIN_HOLD_MS)
+            withTimeoutOrNull(INTRO_MAX_HOLD_MS - INTRO_MIN_HOLD_MS) { StartupTimer.signedIn.first { it } }
             // 2) Sound + the B pops
             try {
                 player?.start()
@@ -125,3 +130,7 @@ fun BenflixIntro(
         }
     }
 }
+
+/** The still logo shows at least this long, and at most the longer one while the app loads */
+private const val INTRO_MIN_HOLD_MS = 600L
+private const val INTRO_MAX_HOLD_MS = 1_700L

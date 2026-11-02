@@ -22,6 +22,7 @@ import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
+import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
@@ -73,6 +74,7 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
@@ -106,6 +108,7 @@ class SeriesViewModel
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
         private val fillerService: FillerService,
+        private val playbackPrep: PlaybackPrep,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -147,6 +150,13 @@ class SeriesViewModel
                 backdropService.submit(series)
                 // Benflix: FILLER / MIXED tags on anime episode cards
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
+                // Benflix: get the episode Play will start ready while the page is open
+                viewModelScope.launchIO {
+                    findNextUp()?.let {
+                        nextUpReady = it
+                        playbackPrep.prepare(it.id)
+                    }
+                }
 
                 val seasonsDeferred = getSeasons(series, seasonEpisodeIds?.seasonNumber)
 
@@ -326,6 +336,14 @@ class SeriesViewModel
         fun onResumePage() {
             state.value.series.successValue?.let { item ->
                 viewModelScope.launchDefault { backdropService.submit(item) }
+                // Benflix: something may have been watched since, so find the next episode again
+                nextUpReady = null
+                viewModelScope.launchIO {
+                    findNextUp()?.let {
+                        nextUpReady = it
+                        playbackPrep.prepare(it.id)
+                    }
+                }
                 viewModelScope.launchDefault {
                     themeSongPlayer.playThemeFor(seriesId)
                 }
@@ -576,16 +594,22 @@ class SeriesViewModel
         /**
          * Play whichever episode is next up for series or else the first episode
          */
+        /** Benflix: the next-up episode found when the page opened */
+        @Volatile private var nextUpReady: BaseItemDto? = null
+
+        private suspend fun findNextUp(): BaseItemDto? {
+            val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
+            return result.items.firstOrNull() ?: api.tvShowsApi
+                .getEpisodes(
+                    seriesId,
+                    limit = 1,
+                ).content.items
+                .firstOrNull()
+        }
+
         fun playNextUp() {
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
-                val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
-                val nextUp =
-                    result.items.firstOrNull() ?: api.tvShowsApi
-                        .getEpisodes(
-                            seriesId,
-                            limit = 1,
-                        ).content.items
-                        .firstOrNull()
+                val nextUp = nextUpReady.also { nextUpReady = null } ?: findNextUp()
                 if (nextUp != null) {
                     withContext(WholphinDispatchers.Main) {
                         navigateTo(Destination.Playback(BaseItem(nextUp)))

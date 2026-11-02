@@ -54,6 +54,8 @@ class WholphinApplication :
 
     override fun onCreate() {
         super.onCreate()
+        com.github.damontecres.wholphin.util.StartupTimer
+            .mark(com.github.damontecres.wholphin.util.StartupTimer.APP)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(
                 StrictMode.ThreadPolicy
