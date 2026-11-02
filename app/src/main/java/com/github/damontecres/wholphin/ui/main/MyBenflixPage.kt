@@ -238,6 +238,8 @@ fun MyBenflixPage(
                 }
             }
         }
+        // Benflix: this month so far
+        if (!GuestMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
         if (showParentPin) {
             ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
         }

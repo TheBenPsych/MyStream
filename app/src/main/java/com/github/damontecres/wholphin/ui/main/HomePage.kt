@@ -114,6 +114,9 @@ fun HomePage(
     val newest = state.newest
     val myList = state.myList
     val comeBack = state.comeBack
+    val welcomeBack = state.welcomeBack
+    val world = state.world
+    val airing = state.airing
     val spotlight = state.spotlight
     val genreRows = state.genreRows
     val animeTop = state.animeTop
@@ -292,6 +295,9 @@ fun HomePage(
                 newest = newest,
                 myList = myList,
                 comeBack = comeBack,
+                welcomeBack = welcomeBack,
+                world = world,
+                airing = airing,
                 spotlight = spotlight,
                 genreRows = genreRows,
                 animeTop = animeTop,
@@ -395,6 +401,9 @@ fun HomePageContent(
     newest: ThemedRow? = null,
     myList: ThemedRow? = null,
     comeBack: ThemedRow? = null,
+    welcomeBack: ThemedRow? = null,
+    world: List<ThemedRow> = emptyList(),
+    airing: ThemedRow? = null,
     spotlight: ThemedRow? = null,
     genreRows: List<ThemedRow> = emptyList(),
     animeTop: List<BaseItem> = emptyList(),
@@ -603,6 +612,8 @@ fun HomePageContent(
                     becauseMore?.let { put("becauseMore", it) }
                     collections?.let { put("collections", it) }
                     comeBack?.let { put("comeBack", it) }
+                    airing?.let { put("airing", it) }
+                    world.forEachIndexed { index, row -> put("world$index", row) }
                     spotlight?.let { put("spotlight", it) }
                     animeRows.forEachIndexed { index, row -> put("anime$index", row) }
                     genreRows.forEachIndexed { index, row -> put("genre$index", row) }
@@ -860,6 +871,23 @@ fun HomePageContent(
                                         .padding(bottom = 8.dp)
                                         .onFocusChanged {
                                             if (!it.hasFocus && extraFocus in kidsAgain.items) extraFocus = null
+                                        },
+                            )
+                        }
+                    }
+                    // Benflix: back after two weeks or more? What was added while you were away
+                    if (welcomeBack != null) {
+                        item(key = "welcomeBack") {
+                            PosterRow(
+                                title = welcomeBack.title,
+                                items = welcomeBack.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in welcomeBack.items) extraFocus = null
                                         },
                             )
                         }

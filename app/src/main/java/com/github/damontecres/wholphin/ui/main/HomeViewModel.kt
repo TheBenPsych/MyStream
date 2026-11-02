@@ -91,6 +91,7 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.PersonKind
+import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
@@ -389,6 +390,9 @@ class HomeViewModel
                     viewModelScope.launchIO { loadMyList(userDto) }
                     if (reloadSlowRows) viewModelScope.launchIO { loadCelebration(userDto) }
                     viewModelScope.launchIO { loadComeBack(userDto) }
+                    viewModelScope.launchIO { loadWelcomeBack(userDto) }
+                    if (!refresh || state.world.isEmpty()) viewModelScope.launchIO { loadWorld(userDto) }
+                    if (!refresh || state.airing == null) viewModelScope.launchIO { loadAiring(userDto) }
                     if (!refresh || state.spotlight == null) {
                         viewModelScope.launchIO { loadSpotlight(userDto) }
                     }
@@ -1671,6 +1675,132 @@ class HomeViewModel
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading new on Benflix row")
+            }
+        }
+
+        /** Benflix: only worked out once each time Benflix opens */
+        private var welcomeChecked = false
+
+        /**
+         * "While you were away": after two weeks or more without opening Benflix, what was
+         * added in the meantime. Shows once (the next visit counts as recent again).
+         */
+        private suspend fun loadWelcomeBack(userDto: ServerUserConfig) {
+            if (welcomeChecked) return
+            welcomeChecked = true
+            try {
+                val prefs = context.getSharedPreferences(HOME_VISITS, Context.MODE_PRIVATE)
+                val key = "lastSeen-${userDto.id}-${KidsMode.isActive}"
+                val lastSeen = prefs.getLong(key, 0L)
+                val now = System.currentTimeMillis()
+                prefs.edit().putLong(key, now).apply()
+                if (lastSeen <= 0L || now - lastSeen < WELCOME_BACK_AFTER_MS) return
+                val since =
+                    java.time.LocalDateTime.ofInstant(
+                        java.time.Instant.ofEpochMilli(lastSeen),
+                        java.time.ZoneId.systemDefault(),
+                    )
+                val items =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = EXTRA_ROW_MAX * 3,
+                                fields = HomeRowFields,
+                            ),
+                        ).content.items
+                        .filter { it.dateCreated?.isAfter(since) == true }
+                        .take(EXTRA_ROW_MAX)
+                        .map { BaseItem(it) }
+                if (items.size >= 3) {
+                    _state.update { it.copy(welcomeBack = ThemedRow("While you were away", items)) }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading while you were away row")
+            }
+        }
+
+        /** "Around the world": two countries with enough movies on Benflix, picked at random each visit */
+        private suspend fun loadWorld(userDto: ServerUserConfig) {
+            try {
+                val anime = if (animeLibraryIds.isEmpty()) emptySet() else allAnimeIds(userDto.id)
+                val movies =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userDto.id,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = WORLD_POOL,
+                                fields = HomeRowFields + listOf(ItemFields.PRODUCTION_LOCATIONS),
+                            ),
+                        ).content.items
+                        .filter { it.id !in anime }
+                val byCountry =
+                    movies
+                        .groupBy {
+                            it.productionLocations
+                                ?.firstOrNull()
+                                ?.trim()
+                                .orEmpty()
+                        }.filterKeys { it.isNotBlank() && it.lowercase() !in HOME_COUNTRIES }
+                        .filterValues { it.size >= WORLD_MIN }
+                val rows =
+                    byCountry.keys
+                        .shuffled()
+                        .take(2)
+                        .map { country ->
+                            val items =
+                                byCountry
+                                    .getValue(country)
+                                    .sortedByDescending { it.communityRating ?: 0f }
+                                    .take(EXTRA_ROW_MAX)
+                                    .map { BaseItem(it) }
+                            ThemedRow("Around the world: $country", items)
+                        }
+                _state.update { it.copy(world = rows) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading around the world rows")
+            }
+        }
+
+        /** "Anime airing this season": anime shows still running that got new episodes lately */
+        private suspend fun loadAiring(userDto: ServerUserConfig) {
+            if (animeLibraryIds.isEmpty()) return
+            try {
+                val cutoff =
+                    java.time.LocalDateTime
+                        .now()
+                        .minusDays(AIRING_DAYS)
+                val shows =
+                    animeItems(
+                        userDto.id,
+                        GetItemsRequest(
+                            seriesStatus = listOf(SeriesStatus.CONTINUING),
+                            sortBy = listOf(ItemSortBy.DATE_LAST_CONTENT_ADDED),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            limit = EXTRA_ROW_MAX,
+                        ),
+                    ).filter { it.type == BaseItemKind.SERIES && it.dateLastMediaAdded?.isAfter(cutoff) != false }
+                        .sortedByDescending { it.dateLastMediaAdded }
+                        .take(EXTRA_ROW_MAX)
+                        .map { BaseItem(it) }
+                _state.update {
+                    it.copy(airing = shows.takeIf { list -> list.size >= 3 }?.let { list -> ThemedRow("Anime airing this season", list) })
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading anime airing row")
             }
         }
 
