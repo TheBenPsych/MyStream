@@ -62,8 +62,8 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
-import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
+import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
+import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -157,6 +157,16 @@ class BenflixRequestsViewModel
             connecting.value = true
             viewModelScope.launch(WholphinDispatchers.IO) {
                 connecting.value = if (seerrLink.connectWithPassword(password)) null else false
+            }
+        }
+
+        val seerrConnection = seerrServerRepository.connection
+
+        /** Try Jellyfin Enhanced again (for the "Try again" button) */
+        fun retry() {
+            connecting.value = true
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                connecting.value = if (seerrLink.viaJellyfinEnhanced()) null else false
             }
         }
 
@@ -495,6 +505,16 @@ private fun NotConnected(
     val canConnect by viewModel.canConnect.collectAsState()
     val connecting by viewModel.connecting.collectAsState()
     var askPassword by remember { mutableStateOf(false) }
+    // Benflix: Ben signs in to Seerr right here in a pop-up, no trip to Settings > Advanced
+    var showSignIn by remember { mutableStateOf(false) }
+    val seerrConnection by viewModel.seerrConnection.collectAsState()
+    if (showSignIn) {
+        SeerrDialog(
+            seerrDialogMode = SeerrDialogMode.Add,
+            seerrConnection = seerrConnection,
+            onDismissRequest = { showSignIn = false },
+        )
+    }
     if (askPassword) {
         PasswordDialog(
             onDismiss = { askPassword = false },
@@ -544,8 +564,8 @@ private fun NotConnected(
         Text(
             text =
                 if (viewModel.isAdmin) {
-                    "Connect Seerr in Settings > Advanced, or turn on Seerr in the Jellyfin Enhanced plugin " +
-                        "on your Jellyfin server, and this tab fills up with things to add."
+                    "Sign in to Seerr here, or turn on Seerr in the Jellyfin Enhanced plugin on your Jellyfin " +
+                        "server, and this tab fills up with things to add."
                 } else {
                     "Ask Ben to turn on requests for your account, then you can ask for movies and shows here."
                 },
@@ -553,8 +573,12 @@ private fun NotConnected(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (viewModel.isAdmin) {
-            Button(onClick = { viewModel.navigationManager.navigateTo(Destination.Settings(PreferenceScreenOption.ADVANCED)) }) {
-                Text("Open Settings")
+            Button(onClick = { showSignIn = true }) {
+                Text("Sign in to Seerr")
+            }
+        } else {
+            Button(onClick = { viewModel.retry() }) {
+                Text(if (connecting == true) "Connecting…" else "Try again")
             }
         }
     }
