@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -227,7 +228,24 @@ class SeerrService
             }
         }
 
+        /**
+         * Benflix: the quality/folder choices are optional extras. Through Jellyfin Enhanced Seerr's
+         * service settings can't be reached (it answers 400), and any other failure shouldn't block a
+         * request either, so both just fall back to Seerr's own defaults.
+         */
         suspend fun getProfilesAndFolders(type: SeerrItemType): SeerrRequestData {
+            if (api.viaJellyfin) return SeerrRequestData()
+            return try {
+                loadProfilesAndFolders(type)
+            } catch (ex: kotlinx.coroutines.CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "No quality/folder choices, using Seerr defaults")
+                SeerrRequestData()
+            }
+        }
+
+        private suspend fun loadProfilesAndFolders(type: SeerrItemType): SeerrRequestData {
             var result = SeerrRequestData()
             val current = seerrServerRepository.current.firstOrNull()
             if (current != null && current.config.hasPermission(SeerrPermission.REQUEST_ADVANCED)) {
