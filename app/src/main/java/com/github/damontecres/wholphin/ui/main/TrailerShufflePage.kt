@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
@@ -83,8 +83,10 @@ fun TrailerShufflePage(
         showInfo = false
     }
     LifecycleResumeEffect(clip?.trailerId) {
+        // TVs: only one trailer loads at a time. Many TVs only have room for one video at once, and a
+        // second one loading in the background left a black screen (sound only) or pink static
+        viewModel.dropPreload()
         viewModel.play(clip)
-        viewModel.preload(state.clips.getOrNull(index + 1))
         viewModel.loadMoreIfNear(index)
         onPauseOrDispose { viewModel.pause() }
     }
@@ -153,7 +155,7 @@ fun TrailerShufflePage(
         viewModel.player?.let { player ->
             PlayerSurface(
                 player = player,
-                surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
                 modifier = Modifier.fillMaxSize(),
             )
         }
