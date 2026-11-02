@@ -304,6 +304,42 @@ class BenflixFunFacts
                     "The longest movie on Benflix is ${m.name}, at ${minutes / 60} hr ${minutes % 60} min."
                 }
 
+        private val aboutCache = java.util.concurrent.ConcurrentHashMap<UUID, String>()
+
+        /**
+         * Benflix: a behind-the-scenes fact about this exact movie or show (for the screensaver, so the fact
+         * matches the picture), or null if Wikipedia has none. Answers are remembered for this session.
+         */
+        suspend fun aboutItem(item: com.github.damontecres.wholphin.data.model.BaseItem): String? =
+            withContext(WholphinDispatchers.IO) {
+                aboutCache[item.id]?.let { return@withContext it.ifEmpty { null } }
+                val name = item.name ?: return@withContext null
+                val year = item.data.productionYear
+                val fact =
+                    safe {
+                        when (item.type) {
+                            BaseItemKind.MOVIE -> wikipediaFact(name, year)
+                            BaseItemKind.SERIES -> seriesFact(name, year)
+                            else -> null
+                        }
+                    }
+                aboutCache[item.id] = fact.orEmpty()
+                fact
+            }
+
+        private fun seriesFact(
+            name: String,
+            year: Int?,
+        ): String? {
+            val titles = listOfNotNull(year?.let { "$name ($it TV series)" }, "$name (TV series)", name)
+            for (title in titles) {
+                val text = wikipediaText(title) ?: continue
+                if (!text.contains("series", ignoreCase = true)) continue
+                return productionFact(name, text) ?: return null
+            }
+            return null
+        }
+
         /** Looks up a few movies on Wikipedia and keeps the good production facts */
         private suspend fun lookUp(
             api: ApiClient,
