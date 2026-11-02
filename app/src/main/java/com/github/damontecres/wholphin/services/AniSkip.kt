@@ -67,9 +67,18 @@ class AniSkipService
                     if (lengthSec <= 0) return@withContext emptyList()
                     val series =
                         when (item.type) {
-                            BaseItemKind.EPISODE -> item.seriesId?.let { api.userLibraryApi.getItem(it).content } ?: return@withContext emptyList()
-                            BaseItemKind.MOVIE -> null
-                            else -> return@withContext emptyList()
+                            BaseItemKind.EPISODE -> {
+                                item.seriesId?.let { api.userLibraryApi.getItem(it).content }
+                                    ?: return@withContext emptyList()
+                            }
+
+                            BaseItemKind.MOVIE -> {
+                                null
+                            }
+
+                            else -> {
+                                return@withContext emptyList()
+                            }
                         }
                     if (!isAnime(api, item, series)) return@withContext emptyList()
                     val ids = (series ?: item).providerIds.orEmpty()
@@ -137,17 +146,27 @@ class AniSkipService
             val results =
                 try {
                     http
-                        .newCall(Request.Builder().url(url).header("User-Agent", "Benflix").build())
-                        .execute()
+                        .newCall(
+                            Request
+                                .Builder()
+                                .url(url)
+                                .header("User-Agent", "Benflix")
+                                .build(),
+                        ).execute()
                         .use { response ->
                             when {
-                                response.isSuccessful ->
+                                response.isSuccessful -> {
                                     json.decodeFromString<AniSkipResponse>(response.body.string()).results
+                                }
 
                                 // AniSkip answers 404 when nobody has added times for this episode yet
-                                response.code == 404 -> emptyList()
+                                response.code == 404 -> {
+                                    emptyList()
+                                }
 
-                                else -> return decodeSaved()
+                                else -> {
+                                    return decodeSaved()
+                                }
                             }
                         }
                 } catch (ex: Exception) {
@@ -215,15 +234,30 @@ class AniSkipService
             reader.beginObject()
             while (reader.hasNext()) {
                 when (reader.nextName()) {
-                    "type" -> type = reader.nextStringOrNull().orEmpty()
-                    "mal_id" -> mal = reader.nextIntOrNull()
-                    "anilist_id" -> anilist = reader.nextIntOrNull()
-                    "tvdb_id" -> tvdb = reader.nextIntOrNull()
-                    "themoviedb_id" ->
+                    "type" -> {
+                        type = reader.nextStringOrNull().orEmpty()
+                    }
+
+                    "mal_id" -> {
+                        mal = reader.nextIntOrNull()
+                    }
+
+                    "anilist_id" -> {
+                        anilist = reader.nextIntOrNull()
+                    }
+
+                    "tvdb_id" -> {
+                        tvdb = reader.nextIntOrNull()
+                    }
+
+                    "themoviedb_id" -> {
                         reader.readObject { name ->
                             when (name) {
-                                "tv" -> tmdbTv = reader.nextIntOrNull()
-                                "movie" ->
+                                "tv" -> {
+                                    tmdbTv = reader.nextIntOrNull()
+                                }
+
+                                "movie" -> {
                                     if (reader.peek() == JsonToken.BEGIN_ARRAY) {
                                         reader.beginArray()
                                         while (reader.hasNext()) reader.nextIntOrNull()?.let { tmdbMovies.add(it) }
@@ -231,10 +265,16 @@ class AniSkipService
                                     } else {
                                         reader.nextIntOrNull()?.let { tmdbMovies.add(it) }
                                     }
-                                else -> reader.skipValue()
+                                }
+
+                                else -> {
+                                    reader.skipValue()
+                                }
                             }
                         }
-                    "season" ->
+                    }
+
+                    "season" -> {
                         reader.readObject { name ->
                             when (name) {
                                 "tvdb" -> seasonTvdb = reader.nextIntOrNull() ?: -1
@@ -242,7 +282,9 @@ class AniSkipService
                                 else -> reader.skipValue()
                             }
                         }
-                    "episode_offset" ->
+                    }
+
+                    "episode_offset" -> {
                         reader.readObject { name ->
                             when (name) {
                                 "tvdb" -> offsetTvdb = reader.nextIntOrNull() ?: 0
@@ -250,7 +292,11 @@ class AniSkipService
                                 else -> reader.skipValue()
                             }
                         }
-                    else -> reader.skipValue()
+                    }
+
+                    else -> {
+                        reader.skipValue()
+                    }
                 }
             }
             reader.endObject()
@@ -265,8 +311,14 @@ class AniSkipService
 
         private fun JsonReader.nextIntOrNull(): Int? =
             when (peek()) {
-                JsonToken.NUMBER -> nextLong().toInt()
-                JsonToken.STRING -> nextString().toIntOrNull()
+                JsonToken.NUMBER -> {
+                    nextLong().toInt()
+                }
+
+                JsonToken.STRING -> {
+                    nextString().toIntOrNull()
+                }
+
                 else -> {
                     skipValue()
                     null
