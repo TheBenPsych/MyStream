@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -387,17 +390,37 @@ fun GamesPage(
         )
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
-        // Benflix "Guess the movie", made from your own movies
-        ActionTile(
-            title = "Guess the movie",
-            subtitle = "A blurry picture gets sharper. Guess it fast for more points!",
-            onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
-        )
-        ActionTile(
-            title = "Daily movie riddle",
-            subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
-            onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
-        )
+        // Benflix "Guess the movie" and the daily riddle, made from your own movies
+        val movieGames =
+            listOf<@Composable (Modifier) -> Unit>(
+                { mod ->
+                    MovieGameTile(
+                        title = "Guess the movie",
+                        subtitle = "A blurry picture gets sharper. Guess it fast for more points!",
+                        icon = R.string.fa_eye,
+                        colors = listOf(Color(0xFF0E7490), Color(0xFF1E3A8A)),
+                        onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
+                        modifier = mod,
+                    )
+                },
+                { mod ->
+                    MovieGameTile(
+                        title = "Daily movie riddle",
+                        subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
+                        icon = R.string.fa_clock,
+                        colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
+                        onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
+                        modifier = mod,
+                    )
+                },
+            )
+        if (isTv) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                movieGames.forEach { it(Modifier.weight(1f)) }
+            }
+        } else {
+            movieGames.forEach { it(Modifier.fillMaxWidth()) }
+        }
 
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {
@@ -830,6 +853,7 @@ private fun ArcadeWall(
 }
 
 /** A built-in game's tile: big (with the "works with" chips and the description) or small (just the name) */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GameTile(
     game: BuiltInGame,
@@ -891,7 +915,10 @@ private fun GameTile(
                         .padding(if (big) 18.dp else 10.dp),
             ) {
                 if (big) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
                         Badge(PlayWith.CONTROLLER, "Controller")
                         Badge(PlayWith.PHONE, "Phone")
@@ -901,7 +928,7 @@ private fun GameTile(
                     game.title,
                     fontSize =
                         if (big) {
-                            32.sp
+                            26.sp
                         } else if (isTv) {
                             17.sp
                         } else {
@@ -910,7 +937,7 @@ private fun GameTile(
                     fontWeight = FontWeight.Black,
                     color = Color.White,
                     maxLines = 2,
-                    lineHeight = if (big) 34.sp else 19.sp,
+                    lineHeight = if (big) 28.sp else 19.sp,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (big) {
@@ -918,9 +945,9 @@ private fun GameTile(
                         game.tagline,
                         fontSize = 14.sp,
                         color = Color.White.copy(alpha = .9f),
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(.6f),
+                        modifier = Modifier.fillMaxWidth(.75f),
                     )
                 }
                 Box(Modifier.weight(1f))
@@ -931,16 +958,24 @@ private fun GameTile(
                         best > 0 -> "Best $best"
                         else -> "New"
                     }
-                Text(
-                    text = scoreText,
-                    fontSize = if (big) 14.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier =
-                        Modifier
-                            .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = if (big) 10.dp else 6.dp, vertical = if (big) 5.dp else 2.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = scoreText,
+                        fontSize = if (big) 14.sp else 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        modifier =
+                            Modifier
+                                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = if (big) 10.dp else 6.dp, vertical = if (big) 5.dp else 2.dp),
+                    )
+                    if (!big) {
+                        Spacer(Modifier.weight(1f))
+                        // How you can play it: remote, controller, phone
+                        PlayWithIcons(remoteOk = game.remoteOk)
+                    }
+                }
             }
         }
     }
@@ -1034,11 +1069,11 @@ private fun Badge(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier =
             Modifier
                 .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 7.dp, vertical = 3.dp),
     ) {
         when (kind) {
             PlayWith.REMOTE -> {
@@ -1055,10 +1090,84 @@ private fun Badge(
         }
         Text(
             text = text,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
+            maxLines = 1,
         )
+    }
+}
+
+/** Just the icons (remote, controller, phone) in a small dark pill, for the small game tiles */
+@Composable
+private fun PlayWithIcons(remoteOk: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier =
+            Modifier
+                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 3.dp),
+    ) {
+        if (remoteOk) RemoteIcon(Modifier.size(width = 6.dp, height = 12.dp))
+        Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+        Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+    }
+}
+
+/** A colourful tile for the movie games (Guess the movie, Daily riddle), with room for the whole description */
+@Composable
+private fun MovieGameTile(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    colors: List<Color>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+            ),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
+        modifier = modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 128.dp)
+                    .background(Brush.linearGradient(colors))
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(56.dp)
+                        .background(Color.White.copy(alpha = .16f), RoundedCornerShape(12.dp)),
+            ) {
+                Text(stringResource(icon), fontFamily = FontAwesome, fontSize = 26.sp, color = Color.White)
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(title, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 1)
+                Text(subtitle, fontSize = 14.sp, lineHeight = 18.sp, color = Color.White.copy(alpha = .9f))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Badge(PlayWith.REMOTE, "Remote")
+                    Badge(PlayWith.PHONE, "Phone")
+                }
+            }
+        }
     }
 }
 
