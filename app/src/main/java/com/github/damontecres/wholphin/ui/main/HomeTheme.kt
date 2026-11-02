@@ -1471,13 +1471,20 @@ data class HomeTheme(
             val day = date.dayOfMonth
             return when {
                 month == 2 -> listOf(BLACK_HISTORY_MONTH)
+
                 month == 3 -> listOf(WOMENS_HISTORY_MONTH)
+
                 month == 5 -> listOf(AAPI_HERITAGE_MONTH, MENTAL_HEALTH_MONTH)
+
                 month == 6 -> listOf(PRIDE_MONTH)
+
                 month == 7 -> listOf(DISABILITY_PRIDE_MONTH)
+
                 // Hispanic Heritage Month runs Sept 15 to Oct 15
                 (month == 9 && day >= 15) || (month == 10 && day <= 15) -> listOf(HISPANIC_HERITAGE_MONTH)
+
                 month == 11 -> listOf(NATIVE_HERITAGE_MONTH)
+
                 else -> emptyList()
             }
         }
