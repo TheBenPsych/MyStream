@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -72,8 +73,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -173,7 +177,59 @@ class BenflixRequestsViewModel
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
         private val _rows = MutableStateFlow<Map<String, List<FindRow>>>(emptyMap())
-        val rows: StateFlow<Map<String, List<FindRow>>> = _rows
+
+        /** Titles someone asked for that aren't here yet, as "MOVIE-123" / "TV-456" */
+        private val requestedIds = MutableStateFlow<Set<String>>(emptySet())
+
+        /**
+         * Benflix: the shelves, with anything already asked for marked as requested. Seerr doesn't always say so
+         * itself (a pending show can still read as "unknown"), and the shelves are kept from before you asked.
+         */
+        val rows: StateFlow<Map<String, List<FindRow>>> =
+            combine(_rows, requestedIds) { all, requested ->
+                if (requested.isEmpty()) {
+                    all
+                } else {
+                    all.mapValues { (_, shelves) ->
+                        shelves.map { row -> row.copy(items = row.items.map { markRequested(it, requested) }) }
+                    }
+                }
+            }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+        private fun markRequested(
+            item: DiscoverItem,
+            requested: Set<String>,
+        ): DiscoverItem =
+            if (item.availability == SeerrAvailability.UNKNOWN && "${item.type.name}-${item.id}" in requested) {
+                item.copy(availability = SeerrAvailability.PENDING)
+            } else {
+                item
+            }
+
+        /** Looks up what has been asked for (everyone's for the admin, your own otherwise) */
+        fun refreshRequested() {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val myId = if (isAdmin) null else seerrServerRepository.currentUserId.first()
+                    requestedIds.value =
+                        seerrService.api.requestApi
+                            .requestGet(take = 100, skip = 0, requestedBy = myId)
+                            .results
+                            .orEmpty()
+                            .filter {
+                                it.media?.status != SeerrAvailability.AVAILABLE.status &&
+                                    RequestStatus.from(it.status) != RequestStatus.DECLINED
+                            }.mapNotNull { request ->
+                                val tmdbId = request.media?.tmdbId ?: return@mapNotNull null
+                                "${SeerrItemType.fromString(request.type).name}-$tmdbId"
+                            }.toSet()
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not look up requested titles")
+                }
+            }
+        }
 
         private val _requests = MutableStateFlow<List<RequestEntry>?>(null)
         val requests: StateFlow<List<RequestEntry>?> = _requests
@@ -420,11 +476,22 @@ class BenflixRequestsViewModel
                     null
                 }
             val user = request.requestedBy
+            // Benflix: a show waiting for a yes can still read as "unknown" in Seerr, so go by the request itself
+            val status = RequestStatus.from(request.status)
+            val shownItem =
+                if (item != null && item.availability == SeerrAvailability.UNKNOWN && status != RequestStatus.DECLINED) {
+                    item.copy(
+                        availability =
+                            if (status == RequestStatus.APPROVED) SeerrAvailability.PROCESSING else SeerrAvailability.PENDING,
+                    )
+                } else {
+                    item
+                }
             return RequestEntry(
                 request = request,
-                item = item,
+                item = shownItem,
                 who = user?.username ?: user?.email ?: "Someone",
-                status = RequestStatus.from(request.status),
+                status = status,
                 available =
                     request.media?.status == SeerrAvailability.AVAILABLE.status ||
                         item?.availability == SeerrAvailability.AVAILABLE,
@@ -606,6 +673,11 @@ private fun FindShelf(
     var hideOwned by rememberSaveable { mutableStateOf(true) }
     val key = viewModel.key(section, genre)
     LaunchedEffect(key) { viewModel.loadSection(section, genre) }
+    // Coming back from a details page: pick up anything just asked for
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshRequested()
+        onPauseOrDispose { }
+    }
     val allRows by viewModel.rows.collectAsState()
     val rows = allRows[key]
     val genres =
@@ -691,7 +763,10 @@ private fun RequestList(
     mineOnly: Boolean,
     arrivedOnly: Boolean?,
 ) {
-    LaunchedEffect(mineOnly) { viewModel.loadRequests(mineOnly) }
+    LifecycleResumeEffect(mineOnly) {
+        viewModel.loadRequests(mineOnly)
+        onPauseOrDispose { }
+    }
     val all by viewModel.requests.collectAsState()
     val list =
         all?.filter {

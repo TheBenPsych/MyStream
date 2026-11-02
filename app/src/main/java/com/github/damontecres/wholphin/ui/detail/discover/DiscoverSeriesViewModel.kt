@@ -304,13 +304,15 @@ class DiscoverSeriesViewModel
 
         private suspend fun updateAvailability() {
             val user = userConfig.firstOrNull()
+            // Benflix: Jellyfin Enhanced can't delete requests, so no trash button there
             val canCancel =
-                canUserCancelRequest(
-                    user,
-                    state.value.tvSeries.successValue
-                        ?.mediaInfo
-                        ?.requests,
-                )
+                !seerrService.api.viaJellyfin &&
+                    canUserCancelRequest(
+                        user,
+                        state.value.tvSeries.successValue
+                            ?.mediaInfo
+                            ?.requests,
+                    )
             val status =
                 state.value.tvSeries.successValue?.let { tv ->
                     val overallStatus = SeerrAvailability.from(tv.mediaInfo?.status)
