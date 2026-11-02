@@ -683,7 +683,7 @@
     <string name="continue_string">Продолжить</string>
     <string name="separate_types">Разделять по типам</string>
     <string name="prefer_logos">Показывать логотипы вместо текстовых названий</string>
-    <string name="updated_toast">Wholphin обновлён до версии %s</string>
+    <string name="updated_toast">Benflix обновлён до версии %s</string>
     <string name="remove_continue_watching">Убрать из «Продолжить просмотр»</string>
     <string name="remove_next_up">Убрать сериал из «Далее»</string>
     <string name="view_removed_next_up">Показать сериалы, убранные из «Далее»</string>

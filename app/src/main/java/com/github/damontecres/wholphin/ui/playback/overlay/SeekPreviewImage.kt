@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import coil3.compose.rememberAsyncImagePainter
@@ -80,11 +81,11 @@ fun SeekPreviewImage(
     seekProgressMs: Long,
     trickPlayInfo: TrickplayInfo,
     modifier: Modifier = Modifier,
+    height: Dp = 160.dp,
 ) {
     val context = LocalContext.current
 
     if (previewImageUrl.isNotNullOrBlank()) {
-        val height = 160.dp
         val width = height * (trickPlayInfo.width.toFloat() / trickPlayInfo.height)
         val scale = with(LocalDensity.current) { width.toPx() / trickPlayInfo.width }
 

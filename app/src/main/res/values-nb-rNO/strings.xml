@@ -573,7 +573,7 @@
     <string name="select_all">Velg alle</string>
     <string name="separate_types">Seperate typer</string>
     <string name="prefer_logos">Foretrekk å vise logoer for titler</string>
-    <string name="updated_toast">Wholphin oppdatert til %s</string>
+    <string name="updated_toast">Benflix oppdatert til %s</string>
     <string name="remove_continue_watching">Fjern fra fortsett å se</string>
     <string name="remove_next_up">Fjern serier fra neste</string>
     <string name="view_removed_next_up">Vis serier fjernet fra neste</string>

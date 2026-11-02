@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.nav
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +48,7 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
+import com.github.damontecres.wholphin.ui.theme.BenflixRed
 
 /**
  * Benflix on phones: a slim header with the logo at the top of the screen
@@ -99,6 +102,7 @@ fun PhoneNavBar(
     onClickDownloads: () -> Unit,
     modifier: Modifier = Modifier,
     extras: List<TopNavTab> = emptyList(),
+    compact: Boolean = false,
 ) {
     val kids by KidsMode.active.collectAsState()
     val home = tabs.firstOrNull()
@@ -119,20 +123,26 @@ fun PhoneNavBar(
             user.name
         }
 
+    // Benflix floating island: a rounded bar that floats a little above the bottom edge.
+    // It shrinks to icons only while you scroll down, and the current tab sits on a soft pill.
+    val barHeight by animateDpAsState(if (compact) BAR_HEIGHT_COMPACT else BAR_HEIGHT, label = "barHeight")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(BAR_HEIGHT)
-                .background(Color(0xF2141414)),
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .height(barHeight)
+                .shadow(10.dp, ISLAND_SHAPE)
+                .background(ISLAND, ISLAND_SHAPE)
+                .padding(horizontal = 4.dp),
     ) {
         home?.let {
-            PhoneNavItem(R.string.fa_house, it.title, it.selected && !searchSelected, it.onClick)
+            PhoneNavItem(R.string.fa_house, it.title, it.selected && !searchSelected, compact, it.onClick)
         }
-        PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, onClickSearch)
-        PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.trailer_shuffle), clipsSelected, onClickClips)
-        PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, onClickChannels)
+        PhoneNavItem(R.string.fa_magnifying_glass, stringResource(R.string.search), searchSelected, compact, onClickSearch)
+        PhoneNavItem(R.string.fa_circle_play, stringResource(R.string.trailer_shuffle), clipsSelected, compact, onClickClips)
+        PhoneNavItem(R.string.fa_tv, stringResource(R.string.channels), channelsSelected, compact, onClickChannels)
         val mineSelected = libraries.any { it.selected } || extras.any { it.selected }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -141,30 +151,31 @@ fun PhoneNavBar(
                 Modifier
                     .weight(1f)
                     .clickable { showMine = true }
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = 4.dp),
         ) {
-            UserIconCardImage(
-                id = user.id,
-                name = name,
-                imageUrl = if (kids) null else userImageUrl,
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .size(26.dp)
-                        .then(
-                            if (mineSelected) {
-                                Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
-                            } else {
-                                Modifier
-                            },
-                        ),
-            )
-            Text(
-                text = stringResource(R.string.phone_my_benflix),
-                fontSize = 12.sp,
-                color = if (mineSelected) Color.White else UNSELECTED,
-                fontWeight = if (mineSelected) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1,
-            )
+                        .size(width = 56.dp, height = 32.dp)
+                        .background(if (mineSelected) BenflixRed.copy(alpha = PILL_ALPHA) else Color.Transparent, PILL_SHAPE),
+            ) {
+                UserIconCardImage(
+                    id = user.id,
+                    name = name,
+                    imageUrl = if (kids) null else userImageUrl,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            if (!compact) {
+                Text(
+                    text = stringResource(R.string.phone_my_benflix),
+                    fontSize = 11.sp,
+                    color = if (mineSelected) Color.White else UNSELECTED,
+                    fontWeight = if (mineSelected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                )
+            }
         }
     }
 
@@ -399,34 +410,45 @@ private fun androidx.compose.foundation.layout.RowScope.PhoneNavItem(
     faIcon: Int,
     label: String,
     selected: Boolean,
+    compact: Boolean,
     onClick: () -> Unit,
 ) {
     val color = if (selected) Color.White else UNSELECTED
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        // Top, so the icons line up even when a long name (Trailer Shuffle) takes two lines
-        verticalArrangement = Arrangement.Top,
+        verticalArrangement = Arrangement.Center,
         modifier =
             Modifier
                 .weight(1f)
                 .clickable(onClick = onClick)
-                .padding(vertical = 6.dp),
+                .padding(vertical = 4.dp),
     ) {
-        Text(
-            text = stringResource(faIcon),
-            fontFamily = FontAwesome,
-            fontSize = 24.sp,
-            color = color,
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = color,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 2,
-            lineHeight = 13.sp,
-            textAlign = TextAlign.Center,
-        )
+        // The tab you're on sits on a soft pill in your profile colour
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(width = 56.dp, height = 32.dp)
+                    .background(if (selected) BenflixRed.copy(alpha = PILL_ALPHA) else Color.Transparent, PILL_SHAPE),
+        ) {
+            Text(
+                text = stringResource(faIcon),
+                fontFamily = FontAwesome,
+                fontSize = 20.sp,
+                color = color,
+            )
+        }
+        if (!compact) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = color,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -442,6 +464,11 @@ private fun SectionTitle(title: String) {
 }
 
 private val BAR_HEIGHT = 64.dp
+private val BAR_HEIGHT_COMPACT = 48.dp
+private val ISLAND = Color(0xF21C1C21)
+private val ISLAND_SHAPE = RoundedCornerShape(28.dp)
+private val PILL_SHAPE = RoundedCornerShape(16.dp)
+private const val PILL_ALPHA = 0.38f
 
 // Benflix Graphite: a clean neutral dark grey (no red tint)
 private val SHEET = Color(0xFF18181C)

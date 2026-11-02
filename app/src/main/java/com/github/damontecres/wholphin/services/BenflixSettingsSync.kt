@@ -12,6 +12,7 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -137,6 +138,8 @@ class BenflixSettingsSync
         private suspend fun upload(prefs: AppPreferences) {
             val userId = serverRepository.currentUser?.id ?: return
             if (userId != readyUserId || KidsMode.isActive) return
+            // Remember their colour on this device for the Who's watching tiles
+            ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
             val encoded = Base64.encodeToString(prefs.personalPart().toByteArray(), Base64.NO_WRAP)
             if (encoded == lastSynced) return
             try {

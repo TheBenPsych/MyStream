@@ -655,7 +655,7 @@
     <string name="select_all">Вибрати все</string>
     <string name="separate_types">Розділяти типи</string>
     <string name="prefer_logos">Надавати перевагу логотипам для назв</string>
-    <string name="updated_toast">Wholphin оновлено до %s</string>
+    <string name="updated_toast">Benflix оновлено до %s</string>
     <string name="remove_continue_watching">Видалити з «Продовжити перегляд»</string>
     <string name="remove_next_up">Видалити серіал з «Далі»</string>
     <string name="view_removed_next_up">Переглянути серіали, видалені з «Далі»</string>

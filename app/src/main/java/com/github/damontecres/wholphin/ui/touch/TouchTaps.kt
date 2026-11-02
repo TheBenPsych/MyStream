@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.touch
 
-import android.content.pm.PackageManager
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -32,8 +31,7 @@ import androidx.compose.ui.window.Dialog as ComposeDialog
 fun Modifier.touchTaps(): Modifier =
     composed {
         val context = LocalContext.current
-        val isTv =
-            remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+        val isTv = remember { isTvDevice(context) }
         if (isTv) return@composed this
         val view = LocalView.current
         val slop = LocalViewConfiguration.current.touchSlop

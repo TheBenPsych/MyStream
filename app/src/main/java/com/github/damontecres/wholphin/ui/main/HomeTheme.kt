@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.annotation.StringRes
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.services.diwali
 import com.github.damontecres.wholphin.services.easter
 import com.github.damontecres.wholphin.services.isFriday13
 import com.github.damontecres.wholphin.services.lunarNewYear
@@ -324,40 +323,6 @@ data class HomeTheme(
                         "Joy Luck Club",
                         "The Joy Luck Club",
                         "Meet the Patels",
-                    ),
-            )
-
-        val DIWALI =
-            HomeTheme(
-                R.string.theme_diwali,
-                tags = listOf("diwali", "deepavali", "festival of lights", "bollywood"),
-                nameWords = listOf("Diwali", "Deepavali"),
-                titles =
-                    listOf(
-                        "Kabhi Khushi Kabhie Gham...",
-                        "Dilwale Dulhania Le Jayenge",
-                        "Hum Saath-Saath Hain",
-                        "Mohabbatein",
-                        "Kuch Kuch Hota Hai",
-                        "Taare Zameen Par",
-                        "3 Idiots",
-                        "RRR",
-                        "Lagaan: Once Upon a Time in India",
-                        "Baahubali: The Beginning",
-                        "Baahubali 2: The Conclusion",
-                        "Monsoon Wedding",
-                        "Bend It Like Beckham",
-                        "Sita Sings the Blues",
-                        "Mira, Royal Detective",
-                        "Mighty Little Bheem",
-                        "Never Have I Ever",
-                        "Sanjay's Super Team",
-                        "Slumdog Millionaire",
-                        "Life of Pi",
-                        "The Lunchbox",
-                        "Dangal",
-                        "Om Shanti Om",
-                        "Bride & Prejudice",
                     ),
             )
 
@@ -1493,7 +1458,6 @@ data class HomeTheme(
             val month = date.monthValue
             val day = date.dayOfMonth
             val lny = lunarNewYear(date.year)
-            val diwaliDay = diwali(date.year)
             val thanksgiving = date.withDayOfMonth(1).with(TemporalAdjusters.dayOfWeekInMonth(4, DayOfWeek.THURSDAY))
             val easterDay = easter(date.year)
             val midAutumnDay = midAutumn(date.year)
@@ -1515,7 +1479,6 @@ data class HomeTheme(
                 lny != null && !date.isBefore(lny.minusDays(3)) && !date.isAfter(lny.plusDays(3)) -> LUNAR_NEW_YEAR
                 month == 10 -> HALLOWEEN
                 month == 11 && day <= 2 -> DAY_OF_THE_DEAD
-                diwaliDay != null && !date.isBefore(diwaliDay.minusDays(2)) && !date.isAfter(diwaliDay.plusDays(2)) -> DIWALI
                 month == 11 && day in 3..5 -> BONFIRE_NIGHT
                 month == 11 && !date.isBefore(thanksgiving.minusDays(4)) && !date.isAfter(thanksgiving.plusDays(1)) -> THANKSGIVING
                 near(easterDay, 3, 1) -> EASTER

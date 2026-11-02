@@ -662,7 +662,7 @@
     <string name="continue_string">Pokračovať</string>
     <string name="separate_types">Oddeliť typy</string>
     <string name="prefer_logos">Uprednostniť zobrazovanie log namiesto názvov</string>
-    <string name="updated_toast">Wholphin bol aktualizovaný na verziu %s</string>
+    <string name="updated_toast">Benflix bol aktualizovaný na verziu %s</string>
     <string name="remove_continue_watching">Odstrániť z Pokračovať v pozeraní</string>
     <string name="remove_next_up">Odstrániť seriál zo sekcie Nasleduje</string>
     <string name="view_removed_next_up">Zobraziť seriály odstránené zo sekcie Nasleduje</string>

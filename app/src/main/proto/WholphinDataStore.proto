@@ -294,6 +294,8 @@ enum BenflixAccent {
   ACCENT_PINK = 5;
   ACCENT_TEAL = 6;
   ACCENT_ORANGE = 7;
+  // Benflix profile themes: Mono (greys, no colour)
+  ACCENT_MONO = 8;
 }
 
 enum MobileDataQuality {

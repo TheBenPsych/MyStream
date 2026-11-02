@@ -827,7 +827,7 @@
     <string name="select_all">Select all</string>
     <string name="separate_types">Separate types</string>
     <string name="prefer_logos">Prefer showing logos for titles</string>
-    <string name="updated_toast">Wholphin updated to %s</string>
+    <string name="updated_toast">Benflix updated to %s</string>
     <string name="remove_continue_watching">Remove from continue watching</string>
     <string name="remove_next_up">Remove series from next up</string>
     <string name="view_removed_next_up">View series removed from next up</string>
@@ -1020,7 +1020,6 @@
     <string name="theme_st_patricks">St. Patrick\'s Day picks</string>
     <string name="theme_fourth_of_july">4th of July picks</string>
     <string name="theme_bonfire_night">Bonfire Night picks</string>
-    <string name="theme_diwali">Festival of Lights favorites</string>
     <string name="theme_tanabata">Tanabata: wish upon a star</string>
     <string name="theme_easter">Easter picks</string>
     <string name="theme_star_wars">May the 4th: Star Wars</string>
