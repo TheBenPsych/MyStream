@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -78,8 +77,6 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -90,7 +87,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -1082,12 +1078,6 @@ fun BenflixRequestsPage(
                 listOf("My requests", "Now on Benflix")
             }.map { TabDetails(StringStringProvider(it)) }
         }
-    // Benflix: like Home, opening Requests on TV starts on the banner (only the first time, so moving
-    // between the tabs at the top doesn't keep pulling you down)
-    val isTv = rememberIsTv()
-    var startedOnBanner by rememberSaveable { mutableStateOf(false) }
-    val focusBanner = isTv && !startedOnBanner
-    val onBannerFocused = { startedOnBanner = true }
     TabbedPage(
         itemId = if (admin) "benflix-requests-admin" else "benflix-requests",
         tabs = tabs,
@@ -1095,9 +1085,9 @@ fun BenflixRequestsPage(
     ) { index, _ ->
         if (admin) {
             when (index) {
-                0 -> FindShelf(FindSection.MOVIES, viewModel, focusBanner, onBannerFocused)
-                1 -> FindShelf(FindSection.SHOWS, viewModel, focusBanner, onBannerFocused)
-                2 -> FindShelf(FindSection.ANIME, viewModel, focusBanner, onBannerFocused)
+                0 -> FindShelf(FindSection.MOVIES, viewModel)
+                1 -> FindShelf(FindSection.SHOWS, viewModel)
+                2 -> FindShelf(FindSection.ANIME, viewModel)
                 else -> RequestList(viewModel, mineOnly = false, arrivedOnly = null)
             }
         } else {
@@ -1197,8 +1187,6 @@ private fun NotConnected(
 private fun FindShelf(
     section: FindSection,
     viewModel: BenflixRequestsViewModel,
-    focusBanner: Boolean = false,
-    onBannerFocused: () -> Unit = {},
 ) {
     var filters by remember(section) { mutableStateOf(FindFilters()) }
     var hideOwned by rememberSaveable { mutableStateOf(true) }
@@ -1287,50 +1275,12 @@ private fun FindShelf(
         )
     }
     val searching = query.trim().length >= 2
-    val bannerItems =
-        remember(rows, hidden) {
-            rows
-                ?.firstOrNull()
-                ?.items
-                .orEmpty()
-                .filter {
-                    it.availability != SeerrAvailability.AVAILABLE &&
-                        it.availability != SeerrAvailability.PARTIALLY_AVAILABLE &&
-                        it.backDropUrl != null &&
-                        it.requestKey() !in hidden
-                }.take(5)
-        }
-    val showBanner = filters.isEmpty && !searching && bannerItems.isNotEmpty()
-    val bannerFocusRequester = remember { FocusRequester() }
-    // The banner shows up once its row has loaded; keep asking for a moment until it really has focus
-    LaunchedEffect(focusBanner, showBanner) {
-        if (focusBanner && showBanner) {
-            repeat(30) {
-                if (bannerFocusRequester.tryRequestFocus()) {
-                    onBannerFocused()
-                    return@LaunchedEffect
-                }
-                delay(100)
-            }
-            onBannerFocused()
-        }
-    }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        // The banner comes first (and is where the page starts on TV), the search box just under it
-        if (showBanner) {
-            item(key = "banner") {
-                RequestsBanner(
-                    items = bannerItems,
-                    onAsk = viewModel::ask,
-                    onInfo = openItem,
-                    focusRequester = bannerFocusRequester,
-                )
-            }
-        }
+        // Benflix: no big banner here (Ben asked), the page starts with the search box like the other tabs
         item(key = "search") {
             RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
         }
