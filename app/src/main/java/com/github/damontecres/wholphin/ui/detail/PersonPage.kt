@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.DiscoverRequestType
@@ -507,7 +508,7 @@ fun PersonHeader(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(32.dp),
-        modifier = modifier.bringIntoViewRequester(bringIntoViewRequester),
+        modifier = modifier.scrollAsOneBlock().bringIntoViewRequester(bringIntoViewRequester),
     ) {
         AsyncImage(
             model = imageUrl,

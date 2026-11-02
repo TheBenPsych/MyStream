@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.ui.util.rememberDelayedNestedScroll
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.PersonKind
@@ -160,6 +161,7 @@ fun SeriesOverviewContent(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier =
                     Modifier
+                        .scrollAsOneBlock()
                         .focusGroup()
                         .bringIntoViewRequester(bringIntoViewRequester),
             ) {
