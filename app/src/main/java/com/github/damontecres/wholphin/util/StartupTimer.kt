@@ -80,6 +80,7 @@ object StartupTimer {
 
     const val APP = "app"
     const val SCREEN = "screen"
+    const val UPDATE_CHECK = "update check"
     const val SIGNED_IN = "signed in"
     const val INTRO = "intro done"
     const val WHO = "Who's watching"
