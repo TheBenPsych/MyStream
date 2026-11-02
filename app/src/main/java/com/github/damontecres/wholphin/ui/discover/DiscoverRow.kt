@@ -103,6 +103,8 @@ fun DiscoverItemRow(
     onClickViewMore: () -> Unit = {},
     cornerNoteFor: (DiscoverItem) -> String? = { null },
     subtitleFor: (DiscoverItem) -> String? = { null },
+    // Benflix: the red "Adult content" strip, only on the Requests page (Ben's pick)
+    showAdultBanner: Boolean = false,
 ) {
     val state = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
@@ -173,6 +175,7 @@ fun DiscoverItemRow(
                     modifier = cardModifier,
                     cornerNote = item?.let(cornerNoteFor),
                     subtitleOverride = item?.let(subtitleFor),
+                    showAdultBanner = showAdultBanner,
                 )
             }
             if (enableViewMore) {

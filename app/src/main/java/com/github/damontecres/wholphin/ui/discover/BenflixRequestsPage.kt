@@ -62,10 +62,13 @@ import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
+import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
+import com.github.damontecres.wholphin.ui.detail.discover.isAdultContent
 import com.github.damontecres.wholphin.ui.detail.discover.isGrownUpTag
 import com.github.damontecres.wholphin.ui.detail.discover.movieAgeRating
 import com.github.damontecres.wholphin.ui.detail.discover.str
@@ -759,8 +762,10 @@ class BenflixRequestsViewModel
                                             if (o == null) {
                                                 ItemRating(null, false)
                                             } else {
+                                                val age = if (movie) movieAgeRating(o) else tvAgeRating(o)
+                                                if (isAdultContent(o, age)) AdultContentFlags.mark(item.requestKey())
                                                 ItemRating(
-                                                    age = if (movie) movieAgeRating(o) else tvAgeRating(o),
+                                                    age = age,
                                                     adultTags = o["adult"].str() == "true" || tags(o).any(::isGrownUpTag),
                                                 )
                                             }
@@ -1240,10 +1245,9 @@ private fun FindShelf(
                 (!familyOnly || item.type == SeerrItemType.PERSON || ratings[item.requestKey()]?.familyFriendly(item.type) == true)
         }
     }
-    LaunchedEffect(familyOnly, rows, searchResults) {
-        if (familyOnly) {
-            viewModel.loadRatings(rows.orEmpty().flatMap { it.items } + searchResults.orEmpty())
-        }
+    // Benflix: always look up details, for the Family-friendly switch and the "Adult content" banner
+    LaunchedEffect(rows, searchResults) {
+        viewModel.loadRatings(rows.orEmpty().flatMap { it.items } + searchResults.orEmpty())
     }
     val openItem: (DiscoverItem) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
     val scoreLine: (DiscoverItem) -> String? = { item ->
@@ -1397,6 +1401,7 @@ private fun FindShelf(
                     }
                 if (shown.isNotEmpty()) {
                     DiscoverItemRow(
+                        showAdultBanner = true,
                         title = row.title,
                         items = shown,
                         onClickItem = { _, item -> openItem(item) },
@@ -1455,6 +1460,7 @@ private fun LazyListScope.searchShelves(
     }
     items(groups, key = { "search-${it.first}" }) { (title, list) ->
         DiscoverItemRow(
+            showAdultBanner = true,
             title = title,
             items = list,
             onClickItem = { _, item -> onOpen(item) },
@@ -1489,8 +1495,11 @@ private fun RequestList(
     var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
     // Benflix: family search shows family-friendly titles only (Ben's pick)
     val familySearch = !viewModel.isAdmin
-    LaunchedEffect(familySearch, searchResults) {
-        if (familySearch) viewModel.loadRatings(searchResults.orEmpty())
+    LaunchedEffect(searchResults) {
+        viewModel.loadRatings(searchResults.orEmpty())
+    }
+    LaunchedEffect(all) {
+        viewModel.loadRatings(all.orEmpty().mapNotNull { it.item })
     }
     val list =
         all?.filter {
@@ -1642,16 +1651,25 @@ private fun RequestRow(
                 .background(Color(0xFF18181C))
                 .padding(10.dp),
     ) {
-        AsyncImage(
-            model = entry.item?.posterUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        val adultFlags by AdultContentFlags.flagged.collectAsState()
+        Box(
             modifier =
                 Modifier
                     .size(width = 54.dp, height = 80.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF24242A)),
-        )
+        ) {
+            AsyncImage(
+                model = entry.item?.posterUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // Benflix: red "ADULT" strip for porn, hentai, softcore or erotica
+            if (entry.item?.let { it.requestKey() in adultFlags } == true) {
+                AdultContentBanner(short = true, modifier = Modifier.align(Alignment.BottomCenter))
+            }
+        }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.weight(1f),

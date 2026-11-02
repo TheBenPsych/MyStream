@@ -26,6 +26,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -52,6 +53,8 @@ data class SeerrExtras(
     val rtCritics: Int? = null,
     val rtAudience: Int? = null,
     val tags: List<String> = emptyList(),
+    // Benflix: porn, hentai, softcore or erotica (see isAdultContent)
+    val adult: Boolean = false,
 )
 
 @HiltViewModel
@@ -76,11 +79,15 @@ class SeerrExtrasViewModel
                     val api = seerrService.api
                     val kind = if (isMovie) "movie" else "tv"
                     val details = api.getRaw("/$kind/$tmdbId")?.let { Json.parseToJsonElement(it).jsonObject }
+                    val age = details?.let { if (isMovie) movieAgeRating(it) else tvAgeRating(it) }
+                    val adult = details?.let { isAdultContent(it, age) } == true
+                    if (adult) AdultContentFlags.mark("${if (isMovie) "MOVIE" else "TV"}-$tmdbId")
                     var extras =
                         SeerrExtras(
-                            ageRating = details?.let { if (isMovie) movieAgeRating(it) else tvAgeRating(it) },
+                            ageRating = age,
                             countries = details?.let(::countries).orEmpty(),
                             tags = details?.let(::tags).orEmpty(),
+                            adult = adult,
                         )
                     _extras.value = extras
                     // Scores come from a second, slower lookup
@@ -196,6 +203,62 @@ internal fun tags(details: JsonObject): List<String> =
 
 private val GROWN_UP_WORDS =
     listOf("hentai", "erotic", "sex", "nudity", "porn", "softcore", "ecchi", "rape", "incest", "gore", "torture")
+
+/**
+ * Benflix: words in TMDB tags that mean the title is basically porn, hentai, softcore or erotica.
+ * Kept narrow on purpose, so a normal film that is only *about* the porn business (like Boogie Nights)
+ * or just has a sex scene is not marked.
+ */
+private val ADULT_CONTENT_WORDS =
+    listOf(
+        "hentai",
+        "softcore",
+        "soft-core",
+        "soft core",
+        "erotica",
+        "erotic movie",
+        "erotic film",
+        "pink film",
+        "pinku",
+        "porn film",
+        "porno film",
+        "pornographic film",
+        "pornographic animation",
+        "sex film",
+        "sexploitation",
+    )
+
+/** Age ratings that only adult films get */
+private val ADULT_CONTENT_RATINGS = setOf("X", "XXX", "X18+")
+
+/**
+ * Benflix: true when a Seerr movie or show looks like adult content (porn, hentai, softcore, erotica).
+ * Three signs, any one is enough: TMDB's own "adult" switch, an X-type age rating, or an adult tag.
+ */
+fun isAdultContent(
+    details: JsonObject,
+    ageRating: String?,
+): Boolean {
+    if (details["adult"].str() == "true") return true
+    if (ageRating?.trim()?.uppercase() in ADULT_CONTENT_RATINGS) return true
+    return tags(details).any { tag ->
+        val lower = tag.lowercase()
+        ADULT_CONTENT_WORDS.any { lower.contains(it) }
+    }
+}
+
+/**
+ * Benflix: titles found to be adult content this app run ("MOVIE-123"), so every Seerr card can show
+ * the "Adult content" banner once its details have been looked up.
+ */
+object AdultContentFlags {
+    private val _flagged = MutableStateFlow<Set<String>>(emptySet())
+    val flagged: StateFlow<Set<String>> = _flagged
+
+    fun mark(key: String) {
+        if (key !in _flagged.value) _flagged.update { it + key }
+    }
+}
 
 /** True for tags a parent would want to know about before adding something */
 fun isGrownUpTag(tag: String): Boolean {
