@@ -1,142 +1,116 @@
-# Wholphin - an OSS Android TV client for Jellyfin
-
-> "Never half-phin two jellies. Always wholphin one jelly."
-
-Wholphin is an open-source Android TV client for Jellyfin. It aims to provide a different app UI that's inspired by Plex for users interested in migrating to Jellyfin.
-
-This is not a fork of the [official client](https://github.com/jellyfin/jellyfin-androidtv). Wholphin's user interface and controls have been written completely from scratch. Wholphin supports playing media using either ExoPlayer or MPV.
-
 <p align="center">
-<a href="https://github.com/damontecres/Wholphin/releases">
-<img alt="Current Release" src="https://img.shields.io/github/release/damontecres/wholphin.svg"/>
-</a>
-<a href="https://translate.codeberg.org/engage/wholphin/">
-<img src="https://translate.codeberg.org/widget/wholphin/wholphin/svg-badge.svg" alt="Translation status" />
-</a>
-<br/>
-<a href="https://play.google.com/store/apps/details?id=com.github.damontecres.wholphin">
-<img width="180" alt="Get Wholphin on Google Play" src="https://github.com/user-attachments/assets/2550a4cb-ce46-47a1-ae24-f33a169234b7"/>
-</a>
-<a href="https://www.amazon.com/gp/product/B0G8RQQR9T/ref=mas_pm_wholphin">
-<img width="180" alt="Get Wholphin on Amazon AppStore" src="https://github.com/user-attachments/assets/1f3a3b26-4b4f-44b1-9741-f4c895c8a53b"/>
-</a>
-
-
+  <img src="app/src/main/res/drawable-nodpi/benflix_logo.png" alt="Benflix" width="320"/>
 </p>
 
-![v0_5_1_home](https://github.com/user-attachments/assets/62bb1703-abdf-4154-9054-e00b6ceb57b5)
+<h1 align="center">Benflix</h1>
+
+<p align="center">
+  A Netflix-style app for your own movies and shows, for Android TV, Google TV, Fire TV and Android phones.
+</p>
+
+<p align="center">
+  <a href="https://github.com/TheBenPsych/MyStream/releases/tag/latest-build">
+    <img alt="Latest build" src="https://img.shields.io/badge/download-latest%20build-E50914"/>
+  </a>
+</p>
+
+## What is Benflix?
+
+Benflix is a home streaming app. It plays the movies and shows that you already keep on your own
+[Jellyfin](https://jellyfin.org/) media server, and makes them look and feel like a big streaming service.
+
+It is a personal project for family and friends. It is not on the Google Play Store or Amazon Appstore,
+so you install it yourself (it only takes a few minutes, see [How to install](#how-to-install)).
+
+Benflix is built on top of the excellent open-source app [Wholphin](https://github.com/damontecres/Wholphin).
+See [Credits and license](#credits-and-license) below.
+
+<!-- Screenshots coming soon -->
 
 ## Features
 
-### User interface
+### A home screen that feels like Netflix
+- Big rotating banner at the top with a muted trailer playing behind it
+- Rows for Continue watching, Top 10, seasonal picks, Because you watched, Pick a mood, New on Benflix, My List, collections, genres and studios
+- Separate anime rows and a Top 10 for anime
+- Rotten Tomatoes scores, "New episode" badges and a "Surprise me" button
+- A top menu with Home, Browse, Channels, Games, My Benflix and More
 
-- Customize the home page to see the content you are interested in
-    - Use poster or thumb images, show/hide titles, add/remove/re-order different types of rows!
-    - Option to combine the Continue Watching & Next Up into a single row
-    - Pin collections, playlists, favorites, genres, and studios
-    - Remove series from next up
-- A navigation drawer for quick access to libraries, favorites, search, and settings from almost anywhere in the app
-- Integration with [Seerr](https://github.com/seerr-team/seerr) to discover new movies and TV shows
-    - Note: only available when installed from [GitHub](https://github.com/damontecres/Wholphin/releases/latest) or the [Play store](https://play.google.com/store/apps/details?id=com.github.damontecres.wholphin)
-- Customize library display
-  - Option to show Movie/TV Show titles
-  - Choose image types & size
-  - Choose from grid or list layouts
-- Play theme music, if available
-- Customize subtitle style for plain text subtitles with separate HDR settings
-- Search & download subtitles (requires compatible server plugin such as [OpenSubtitles](https://github.com/jellyfin/jellyfin-plugin-opensubtitles))
-- Multiple app color themes
-- Protect user profile switches with PIN code or require server login
-- Change the user interface language per user
-- In-app & Android OS screensaver support
+### Profiles for everyone
+- "Who's watching?" screen with fun avatars, and an optional PIN per profile
+- A Kids profile on every account that only shows kid-friendly titles
+- Thumbs up / thumbs down likes for each profile
 
-### Playback
+### Watching
+- Netflix-style player with skip intro and skip credits
+- Next episode plays automatically
+- Ambient mode when you pause
+- Trailers play right inside the app
+- Two video players to choose from (ExoPlayer and MPV), for the best subtitle support
 
-- Different media playback engines:
-  - **ExoPlayer** w/ optional extra audio, SSA/ASS, & AV1 software decoding
-  - **MPV** for direct playing anything with great SSA/ASS subtitle support
-- Plex inspired playback controls:
-  - Using D-Pad left/right for seeking during playback
-  - Quickly access video chapters & queue during playback
-  - Optionally skip back a few seconds when resuming playback
-- Live TV & DVR support
-- Music & music video support
-- Cinema mode/pre-roll intro support (requires compatible server plugin such as [Intros](https://github.com/jellyfin/jellyfin-plugin-intros))
-- Auto play next episodes with pass out protection
-- Option for automatic refresh rate & resolution switching on supported displays
-- Trickplay (video preview) support
-- Subtly show playback position along the bottom of the screen while seeking w/ D-Pad
+### Extras
+- Ask for new movies and shows from the Requests tab (works with [Seerr / Jellyseerr](https://github.com/seerr-team/seerr))
+- Small holiday and birthday touches on the logo
+- Screensaver with movie artwork and fun facts
+- Games section for playing retro games (in progress)
+- Updates itself: when a new version is ready, a pop-up shows what is new and installs it for you
 
-### Roadmap
+## How to install
 
-See [here for the roadmap](https://github.com/damontecres/Wholphin/wiki#roadmap)
+You need a Jellyfin server and a login from whoever runs it.
 
-## Installation
+### On a TV (Google TV, Android TV or Fire TV)
 
-Using [Google Play](https://play.google.com/store/apps/details?id=com.github.damontecres.wholphin) or [Amazon appstore](https://www.amazon.com/gp/product/B0G8RQQR9T/ref=mas_pm_wholphin) are the fastest way to install. But you can follow these instructions to install without needing an app store
+1. Turn on installing apps from "unknown sources" on your TV. Guides:
+   [Google TV / Chromecast](https://androidtvnews.com/unknown-sources-chromecast-google-tv/) ·
+   [Fire TV](https://www.aftvnews.com/how-to-enable-apps-from-unknown-sources-on-an-amazon-fire-tv-or-fire-tv-stick/)
+2. Install the free **Downloader** app from your TV's app store.
+3. Open Downloader and type the code **`2488986`**, then press Go.
+4. When it finishes downloading, choose **Install**.
+5. Open Benflix, enter your Jellyfin server address, and sign in.
 
-Downloader Code: `8668671`
+### On an Android phone
 
-1. Enable side-loading "unknown" apps
-    - https://androidtvnews.com/unknown-sources-chromecast-google-tv/
-    - https://www.xda-developers.com/how-to-sideload-apps-android-tv/
-    - https://developer.android.com/distribute/marketing-tools/alternative-distribution#unknown-sources
-    - https://www.aftvnews.com/how-to-enable-apps-from-unknown-sources-on-an-amazon-fire-tv-or-fire-tv-stick/
-2. Install the APK on your Android TV device with one of these options:
-    - Install a browser program such as [Downloader](https://www.aftvnews.com/downloader/), use it to get the latest apk with short code `8668671` or URL: http://aftv.news/8668671
-    - Download the latest APK release from the [releases page](https://github.com/damontecres/Wholphin/releases/latest) or http://aftv.news/8668671
-        - Put the APK on an SD Card/USB stick/network share and use a file manager app from the Google Play Store / Amazon AppStore (e.g. `FX File Explorer`). Android's preinstalled file manager probably will not work!
-        - Use `Send files to TV` from the Google Play Store on your phone & TV
-        - (Expert) Use [ADB](https://developer.android.com/studio/command-line/adb) to install the APK from your computer ([guide](https://fossbytes.com/side-load-apps-android-tv/#h-how-to-sideload-apps-on-your-android-tv-using-adb))
+1. On your phone, open this link:
+   [Benflix.apk](https://github.com/TheBenPsych/MyStream/releases/download/latest-build/Benflix.apk)
+2. When it finishes downloading, tap it and allow your browser to install apps if it asks.
+3. Open Benflix and sign in.
 
-### Upgrading the app
+### Getting updates
 
-After the initial install above, the app will automatically check for updates. The updates can be installed in settings.
+You only install Benflix once. After that, the app checks for new versions by itself and shows a pop-up
+when one is ready. You can also go to **Settings > Install update**.
 
-The first time you attempt an update, the OS should guide you through enabling the required additional permissions for the app to install updates.
+### What you need
 
-Note: if installed via an app store, the app store will handle updates.
+- Android 6 or newer (or Fire TV OS 6 or newer)
+- A Jellyfin server, version 10.10 or 10.11
 
-## Compatibility
+There is no iPhone or Apple TV version. Apple users can use [Swiftfin](https://github.com/jellyfin/Swiftfin) or [Infuse](https://firecore.com/infuse) instead.
 
-Requires Android 6+ (or Fire TV OS 6+) and Jellyfin server `10.10.x` or `10.11.x` (tested on primarily `10.11`).
+## Credits and license
 
-The app is tested on a variety of Android TV/Fire TV OS devices, but if you encounter issues, please file an issue!
+Benflix is a modified version (a "fork") of **[Wholphin](https://github.com/damontecres/Wholphin)** by
+[damontecres](https://github.com/damontecres), an open-source Android TV app for Jellyfin.
+A huge thank you to Wholphin and its contributors. Most of the hard work under the hood is theirs.
+If you want a polished Jellyfin app from the Play Store, go get Wholphin!
 
-Seerr integration is generally tested with the latest stable version. Older versions may not work as expected. The Seerr server should configured with integration to your Jellyfin server for full compatibility.
+Thanks also to:
+- The [Jellyfin](https://jellyfin.org/) team for the media server
+- The official [Jellyfin Android TV](https://github.com/jellyfin/jellyfin-androidtv) app, which some of Wholphin's playback code is adapted from
+- The [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin) and all the other open-source libraries this app uses
 
-## Contributions
+Benflix is not connected to, or endorsed by, Netflix, Jellyfin or Wholphin.
 
-Issues and pull requests are always welcome! Please check before submitting that your issue or pull request is not a duplicate.
+### License
 
-If you plan to contribute, please read the [contributing guide](CONTRIBUTING.md)!
+Like Wholphin, Benflix is released under the **GNU General Public License, version 2** (GPL-2.0).
+The full text is in the [LICENSE](LICENSE) file. In short: you are free to use, change and share this
+app, but if you share a changed version you must share its source code under the same license
+and keep these credits.
 
-You can [help translate Wholphin](https://translate.codeberg.org/engage/wholphin/)!
+## For developers
 
-## Acknowledgements
-
-- Thanks to the Jellyfin team for creating and maintaining such a great open-source media server
-- Thanks to the official Jellyfin Android TV client developers, some code for creating the device direct play profile is adapted from there
-- Thanks to the Jellyfin Kotlin SDK developers for making it easier to interact with the Jellyfin server API
-- Thanks to numerous other libraries that make app development even possible
-
-## Additional screenshots
-
-### Customized home page
-![customize_home_example](https://github.com/user-attachments/assets/9a4f04b7-9604-4ea7-b352-50f2b15dc2f1)
-
-### Movie library browsing
-![v0_5_1_library](https://github.com/user-attachments/assets/fad0424b-0631-4438-a8bc-d4fbb95a5bf3)
-
-### Movie page
-![v0_5_1_movie](https://github.com/user-attachments/assets/849aad34-49d5-4864-8de7-005bbcb68ac6)
-
-### Series page
-![v0_5_1_series](https://github.com/user-attachments/assets/655389e1-6a6f-43bc-85e1-e2feffb20429)
-
-### Genres in library
-![v0_5_1_genres](https://github.com/user-attachments/assets/5bbcbeb6-edc9-42c7-a1d8-d92fa432a498)
-
-
-### Playlist
-![v0_5_1_playlist](https://github.com/user-attachments/assets/98268f7d-479d-41c6-b47b-3e67bbe661bc)
+Benflix is built automatically by GitHub Actions every time a change lands on `main`. The newest APK
+is always on the [latest-build release](https://github.com/TheBenPsych/MyStream/releases/tag/latest-build).
+For build details, see [DEVELOPMENT.md](DEVELOPMENT.md) (written for Wholphin, mostly still accurate).
