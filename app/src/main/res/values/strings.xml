@@ -337,7 +337,7 @@
     <string name="direct_play_pgs">Direct play PGS subtitles</string>
     <string name="downmix_stereo">Always downmix to stereo</string>
     <string name="ffmpeg_extension_pref">Use FFmpeg decoder module</string>
-    <string name="global_content_scale">Default content scale</string>
+    <string name="global_content_scale">Video fit (how the picture fills the screen)</string>
     <string name="install_update">Install update</string>
     <string name="installed_version">Installed version</string>
     <string name="max_homepage_items">Max items on home page rows</string>

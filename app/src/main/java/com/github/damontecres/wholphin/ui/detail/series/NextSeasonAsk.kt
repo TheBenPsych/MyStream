@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.detail.series
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -9,6 +10,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +43,7 @@ import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import timber.log.Timber
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
 
@@ -65,6 +69,10 @@ class NextSeasonAskViewModel
     ) : ViewModel() {
         private val _next = MutableStateFlow<NextSeasons?>(null)
         val next: StateFlow<NextSeasons?> = _next
+
+        /** When the next episode comes out, for shows still airing */
+        private val _nextAir = MutableStateFlow<LocalDate?>(null)
+        val nextAir: StateFlow<LocalDate?> = _nextAir
         private var loadedFor: UUID? = null
 
         fun load(seriesId: UUID) {
@@ -75,10 +83,22 @@ class NextSeasonAskViewModel
                     if (KidsMode.isActive || !seerrService.active.first()) return@launch
                     val userId = serverRepository.currentUser?.id
                     val series = api.userLibraryApi.getItem(seriesId, userId).content
+                    val tmdb = series.providerIds?.get("Tmdb")?.toIntOrNull() ?: return@launch
+                    val json =
+                        seerrService.api.getRaw("/tv/$tmdb")?.let { Json.parseToJsonElement(it).jsonObject }
+                            ?: return@launch
+                    val today = LocalDate.now()
+                    // "New episode Thursday": the next episode's date, if it's coming up
+                    _nextAir.value =
+                        (json["nextEpisodeToAir"] as? JsonObject)
+                            ?.get("airDate")
+                            .str()
+                            ?.take(10)
+                            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                            ?.takeIf { !it.isBefore(today) }
                     // Only once everything on Benflix has been watched
                     val unwatched = series.userData?.unplayedItemCount ?: return@launch
                     if (unwatched > 0) return@launch
-                    val tmdb = series.providerIds?.get("Tmdb")?.toIntOrNull() ?: return@launch
                     val onBenflix =
                         api.tvShowsApi
                             .getSeasons(seriesId = seriesId, userId = userId)
@@ -86,9 +106,6 @@ class NextSeasonAskViewModel
                             .mapNotNull { it.indexNumber }
                             .filter { it > 0 }
                     val lastHere = onBenflix.maxOrNull() ?: return@launch
-                    val json =
-                        seerrService.api.getRaw("/tv/$tmdb")?.let { Json.parseToJsonElement(it).jsonObject }
-                            ?: return@launch
                     // Seerr status per season: 1 unknown, 2 asked for, 3 on its way, 4 some, 5 here
                     val statusBySeason =
                         ((json["mediaInfo"] as? JsonObject)?.get("seasons") as? JsonArray)
@@ -98,7 +115,6 @@ class NextSeasonAskViewModel
                                 val n = s["seasonNumber"].str()?.toIntOrNull() ?: return@mapNotNull null
                                 n to (s["status"].str()?.toIntOrNull() ?: 1)
                             }.toMap()
-                    val today = LocalDate.now()
                     val newer =
                         (json["seasons"] as? JsonArray)
                             .orEmpty()
@@ -159,22 +175,48 @@ fun NextSeasonAsk(
 ) {
     LaunchedEffect(seriesId) { viewModel.load(seriesId) }
     val next by viewModel.next.collectAsState()
-    val seasons = next?.seasons ?: return
-    val words = seasonWords(seasons)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier,
-    ) {
-        Button(onClick = viewModel::ask) {
-            Text("Ask for $words")
+    val nextAir by viewModel.nextAir.collectAsState()
+    val seasons = next?.seasons
+    if (nextAir == null && seasons == null) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
+        nextAir?.let { date ->
+            Text(
+                text = "New episode ${airDayWords(date)}",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF46D369),
+            )
         }
-        Text(
-            text = if (seasons.size == 1) "$words is out, but not on Benflix yet" else "$words are out, but not on Benflix yet",
-            fontSize = 14.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+        if (seasons != null) {
+            val words = seasonWords(seasons)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(onClick = viewModel::ask) {
+                    Text("Ask for $words")
+                }
+                Text(
+                    text = if (seasons.size == 1) "$words is out, but not on Benflix yet" else "$words are out, but not on Benflix yet",
+                    fontSize = 14.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+            }
+        }
+    }
+}
+
+/** "today", "tomorrow", "Thursday, Nov 6" (this week) or "Nov 20" */
+private fun airDayWords(date: LocalDate): String {
+    val today = LocalDate.now()
+    val days = java.time.temporal.ChronoUnit.DAYS
+        .between(today, date)
+    return when {
+        days == 0L -> "today"
+        days == 1L -> "tomorrow"
+        days < 7L -> date.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+        else -> date.format(DateTimeFormatter.ofPattern("MMM d"))
     }
 }
