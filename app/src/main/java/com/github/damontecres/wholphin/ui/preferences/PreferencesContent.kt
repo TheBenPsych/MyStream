@@ -282,7 +282,9 @@ fun PreferencesContent(
         UpdateChecker.ACTIVE &&
             preferenceScreenOption == PreferenceScreenOption.BASIC &&
             preferences.autoCheckForUpdates &&
-            updateAvailable
+            updateAvailable &&
+            // Benflix: on the new Settings page the update lives only in Help (and not in search)
+            (!hosted || (searchResults == null && hostedGroup?.title == R.string.benflix_settings_help))
 
     AnimatedVisibility(
         visible = visible,
@@ -352,7 +354,9 @@ fun PreferencesContent(
                         val focused = interactionSource.collectIsFocusedAsState().value
                         val updateFocusRequester = remember { FocusRequester() }
                         LaunchedEffect(Unit) {
-                            if (focusedIndex.first == 0 && focusedIndex.second == 0) {
+                            // Benflix: on the new Settings page focus stays on the section menu
+                            // until you move right, so don't pull it into the update
+                            if (!hosted && focusedIndex.first == 0 && focusedIndex.second == 0) {
                                 // Only re-focus if the user hasn't moved
                                 updateFocusRequester.tryRequestFocus()
                             }
