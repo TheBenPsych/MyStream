@@ -21,10 +21,13 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.BenflixAnimeTracks
 import com.github.damontecres.wholphin.ui.components.GenreText
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.SubDub
+import com.github.damontecres.wholphin.ui.components.SubDubTag
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.VideoStreamDetails
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
@@ -72,6 +75,9 @@ fun MovieDetailsHeader(
                 movie.timeRemainingOrRuntime,
                 Modifier.padding(start = HeaderUtils.startPadding),
             )
+            // Benflix: SUB / DUB on anime
+            val subDub = remember(dto.id) { if (BenflixAnimeTracks.isAnime(dto)) SubDub.label(dto) else null }
+            subDub?.let { SubDubTag(it, Modifier.padding(start = HeaderUtils.startPadding)) }
 
             dto.genres?.letNotEmpty {
                 GenreText(it, Modifier.padding(start = HeaderUtils.startPadding))

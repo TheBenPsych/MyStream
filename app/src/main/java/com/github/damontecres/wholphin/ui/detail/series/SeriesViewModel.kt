@@ -15,6 +15,7 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.BenflixAnimeTracks
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
@@ -31,6 +32,7 @@ import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.ItemRowFields
+import com.github.damontecres.wholphin.ui.components.SubDub
 import com.github.damontecres.wholphin.ui.equalsNotNull
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -152,10 +154,7 @@ class SeriesViewModel
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
                 // Benflix: get the episode Play will start ready while the page is open
                 viewModelScope.launchIO {
-                    findNextUp()?.let {
-                        nextUpReady = it
-                        playbackPrep.prepare(it.id)
-                    }
+                    findNextUp()?.let { prepareNextUp(it, series.data) }
                 }
 
                 val seasonsDeferred = getSeasons(series, seasonEpisodeIds?.seasonNumber)
@@ -339,10 +338,7 @@ class SeriesViewModel
                 // Benflix: something may have been watched since, so find the next episode again
                 nextUpReady = null
                 viewModelScope.launchIO {
-                    findNextUp()?.let {
-                        nextUpReady = it
-                        playbackPrep.prepare(it.id)
-                    }
+                    findNextUp()?.let { prepareNextUp(it, item.data) }
                 }
                 viewModelScope.launchDefault {
                     themeSongPlayer.playThemeFor(seriesId)
@@ -596,6 +592,27 @@ class SeriesViewModel
          */
         /** Benflix: the next-up episode found when the page opened */
         @Volatile private var nextUpReady: BaseItemDto? = null
+
+        /** Keep the next episode ready to play, and read SUB / DUB from it on anime */
+        private suspend fun prepareNextUp(
+            episode: BaseItemDto,
+            series: BaseItemDto,
+        ) {
+            nextUpReady = episode
+            val full =
+                try {
+                    api.userLibraryApi.getItem(episode.id).content
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.v(ex, "Could not get %s", episode.id)
+                    return
+                }
+            playbackPrep.hold(full)
+            if (BenflixAnimeTracks.isAnime(series)) {
+                _state.update { it.copy(subDub = SubDub.label(full)) }
+            }
+        }
 
         private suspend fun findNextUp(): BaseItemDto? {
             val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
@@ -981,6 +998,8 @@ data class SeriesState(
     val similar: List<BaseItem> = emptyList(),
     // Benflix: best-rated episodes
     val fanFavourites: List<BaseItem> = emptyList(),
+    /** Benflix: "SUB", "DUB" or "SUB | DUB" on anime */
+    val subDub: String? = null,
     val canDeleteSeries: Boolean = false,
     val peopleInEpisode: PeopleInItem = PeopleInItem(),
     val discovered: List<DiscoverItem> = emptyList(),

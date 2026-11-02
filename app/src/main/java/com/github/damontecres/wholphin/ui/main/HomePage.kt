@@ -139,6 +139,8 @@ fun HomePage(
     val moodRow = state.moodRow
     val newest = state.newest
     val myList = state.myList
+    val comeBack = state.comeBack
+    val spotlight = state.spotlight
     val genreRows = state.genreRows
     val animeTop = state.animeTop
     val animeRows = state.animeRows
@@ -315,6 +317,8 @@ fun HomePage(
                 onClickMood = viewModel::pickMood,
                 newest = newest,
                 myList = myList,
+                comeBack = comeBack,
+                spotlight = spotlight,
                 genreRows = genreRows,
                 animeTop = animeTop,
                 animeRows = animeRows,
@@ -416,6 +420,8 @@ fun HomePageContent(
     onClickMood: ((HomeMood) -> Unit)? = null,
     newest: ThemedRow? = null,
     myList: ThemedRow? = null,
+    comeBack: ThemedRow? = null,
+    spotlight: ThemedRow? = null,
     genreRows: List<ThemedRow> = emptyList(),
     animeTop: List<BaseItem> = emptyList(),
     animeRows: List<ThemedRow> = emptyList(),
@@ -622,6 +628,8 @@ fun HomePageContent(
                 buildMap {
                     becauseMore?.let { put("becauseMore", it) }
                     collections?.let { put("collections", it) }
+                    comeBack?.let { put("comeBack", it) }
+                    spotlight?.let { put("spotlight", it) }
                     animeRows.forEachIndexed { index, row -> put("anime$index", row) }
                     genreRows.forEachIndexed { index, row -> put("genre$index", row) }
                 }
