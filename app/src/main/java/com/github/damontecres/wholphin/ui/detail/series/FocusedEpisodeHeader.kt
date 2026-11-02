@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.fillerTagFor
+import com.github.damontecres.wholphin.ui.cards.CardBadge
 import com.github.damontecres.wholphin.ui.components.EpisodeName
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.OverviewText
@@ -34,6 +36,15 @@ fun FocusedEpisodeHeader(
         modifier = modifier,
     ) {
         EpisodeName(dto, modifier = Modifier.padding(start = HeaderUtils.startPadding))
+
+        // Benflix: FILLER / MIXED shows here too, since the card you're on hides it while it's bigger
+        fillerTagFor(ep)?.let { tag ->
+            CardBadge(
+                text = tag.label,
+                background = tag.color,
+                modifier = Modifier.padding(start = HeaderUtils.startPadding),
+            )
+        }
 
         ep?.ui?.quickDetails?.let {
             QuickDetails(
