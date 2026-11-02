@@ -81,4 +81,14 @@
     <string name="benflix_easy_read">Easy-read mode</string>
     <string name="benflix_easy_read_on">Bigger text and brighter grey text</string>
     <string name="benflix_easy_read_off">Normal text size</string>
+    <!-- New Settings page: one line under each section in the menu -->
+    <string name="benflix_settings_hint_profile">PIN lock, your colour, birthday, language</string>
+    <string name="benflix_settings_hint_watching">Subtitles, next episode, skip buttons</string>
+    <string name="benflix_settings_hint_look">Easy-read text, late-night look</string>
+    <string name="benflix_settings_hint_phone">Lower quality away from Wi-Fi</string>
+    <string name="benflix_settings_hint_help">How to use Benflix, version, updates</string>
+    <string name="benflix_settings_hint_server">Who is watching, disk space, tools</string>
+    <string name="benflix_settings_hint_advanced">Player, picture quality, requests</string>
+    <string name="benflix_settings_advanced">Advanced</string>
+    <string name="benflix_settings_admin">ADMIN</string>
 </resources>

@@ -25,6 +25,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.github.damontecres.wholphin.data.RestoredSession
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.hilt.AuthOkHttpClient
 import com.github.damontecres.wholphin.ui.CoilConfig
@@ -104,7 +105,7 @@ class WholphinDreamService :
                                 debugLogging = false,
                                 enableCache = true,
                             )
-                            WholphinTheme(appThemeColors = prefs.interfacePreferences.appThemeColors) {
+                            WholphinTheme(appThemeColors = AppThemeColors.MYSTREAM) {
                                 ProvideLocalClock {
                                     val screensaverPrefs = prefs.interfacePreferences.screensaverPreference
                                     val currentItem by itemFlow.collectAsState(null)

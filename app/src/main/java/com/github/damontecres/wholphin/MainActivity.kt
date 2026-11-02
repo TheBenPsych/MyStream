@@ -36,6 +36,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.services.AppUpgradeHandler
 import com.github.damontecres.wholphin.services.BackdropService
@@ -289,7 +290,8 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     WholphinTheme(
                                         true,
-                                        appThemeColors = appPreferences.interfacePreferences.appThemeColors,
+                                        // Benflix always uses its own red and black look
+                                        appThemeColors = AppThemeColors.MYSTREAM,
                                         accent = appPreferences.benflixPreferences.accent,
                                         easyRead = appPreferences.benflixPreferences.easyRead,
                                     ) {
