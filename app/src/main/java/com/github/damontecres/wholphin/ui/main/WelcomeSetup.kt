@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices
 import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -479,7 +480,7 @@ private fun PictureStep(viewModel: WelcomeViewModel) {
     }
     Text("Your colour", fontSize = 18.sp, color = Color.White, modifier = Modifier.padding(top = 8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        BenflixAccent.entries.filter { it != BenflixAccent.UNRECOGNIZED }.forEach { color ->
+        ProfileThemeChoices.forEach { color ->
             Surface(
                 onClick = { viewModel.setAccent(color) },
                 shape = ClickableSurfaceDefaults.shape(CircleShape),

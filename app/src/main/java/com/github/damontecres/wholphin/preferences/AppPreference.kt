@@ -16,6 +16,8 @@ import com.github.damontecres.wholphin.ui.preferences.ConditionalPreferences
 import com.github.damontecres.wholphin.ui.preferences.PreferenceGroup
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.preferences.PreferenceValidation
+import com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices
+import com.github.damontecres.wholphin.ui.theme.themeIndex
 import com.github.damontecres.wholphin.util.DebugLogTree
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -1195,8 +1197,8 @@ sealed interface AppPreference<Pref, T> {
                     prefs.updateBenflixPreferences { accent = value }
                 },
                 displayValues = R.array.benflix_accent_colors,
-                indexToValue = { BenflixAccent.forNumber(it) ?: BenflixAccent.ACCENT_RED },
-                valueToIndex = { if (it != BenflixAccent.UNRECOGNIZED) it.number else 0 },
+                indexToValue = { ProfileThemeChoices.getOrElse(it) { BenflixAccent.ACCENT_RED } },
+                valueToIndex = { it.themeIndex() },
             )
 
         val LateNightLook =
