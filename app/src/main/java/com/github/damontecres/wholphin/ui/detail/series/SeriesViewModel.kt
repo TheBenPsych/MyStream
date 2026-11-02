@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
@@ -103,6 +104,7 @@ class SeriesViewModel
         private val seerrService: SeerrService,
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
+        private val fillerService: FillerService,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -142,6 +144,8 @@ class SeriesViewModel
                     }
                 }
                 backdropService.submit(series)
+                // Benflix: FILLER / MIXED tags on anime episode cards
+                viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
 
                 val seasonsDeferred = getSeasons(series, seasonEpisodeIds?.seasonNumber)
 
