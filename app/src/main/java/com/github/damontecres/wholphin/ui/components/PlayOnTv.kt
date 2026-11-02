@@ -136,11 +136,12 @@ class PlayOnTvViewModel
             screen: BenflixScreen,
             text: String,
         ) = send {
+            val userId = serverRepository.currentUser?.id ?: return@send
             api.sessionApi.sendFullGeneralCommand(
                 screen.sessionId,
                 GeneralCommand(
                     name = GeneralCommandType.SEND_STRING,
-                    controllingUserId = serverRepository.currentUser?.id,
+                    controllingUserId = userId,
                     arguments = mapOf("String" to text, BENFLIX_TYPE to "1"),
                 ),
             )
