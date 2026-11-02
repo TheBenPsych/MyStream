@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +42,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
+import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.enableMarquee
@@ -146,6 +149,13 @@ fun DiscoverItemCard(
                                 .padding(6.dp),
                     )
                 }
+                // Benflix: red "ADULT CONTENT" strip across the bottom for porn, hentai, softcore or erotica,
+                // once the title's details have been looked up (Ben asked, 2026-11-02)
+                val adultFlags by AdultContentFlags.flagged.collectAsState()
+                val adult = item != null && "${item.type.name}-${item.id}" in adultFlags
+                if (adult) {
+                    AdultContentBanner(modifier = Modifier.align(Alignment.BottomCenter))
+                }
                 if (cornerNote != null) {
                     CardBadge(
                         text = cornerNote,
@@ -153,7 +163,7 @@ fun DiscoverItemCard(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(6.dp),
+                                .padding(start = 6.dp, end = 6.dp, bottom = if (adult) 24.dp else 6.dp),
                     )
                 }
             }
@@ -185,6 +195,33 @@ fun DiscoverItemCard(
             )
         }
     }
+}
+
+/**
+ * Benflix: a red strip across the bottom of a poster for adult content (porn, hentai, softcore, erotica).
+ * [short] says just "ADULT" for small thumbnails.
+ */
+@Composable
+fun AdultContentBanner(
+    modifier: Modifier = Modifier,
+    short: Boolean = false,
+) {
+    Text(
+        text = if (short) "ADULT" else "ADULT CONTENT",
+        fontSize = if (short) 9.sp else 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = .5.sp,
+        color = Color.White,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        textAlign = TextAlign.Center,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(Color(0xFFB3261E).copy(alpha = .92f))
+                .padding(vertical = if (short) 2.dp else 4.dp),
+    )
 }
 
 @Composable
