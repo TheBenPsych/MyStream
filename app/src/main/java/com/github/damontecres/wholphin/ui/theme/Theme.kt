@@ -72,8 +72,9 @@ fun WholphinTheme(
                 onSurfaceVariant = Color(0xFFDDE6FF),
             )
         } else if (accent != BenflixAccent.ACCENT_RED && accent != BenflixAccent.UNRECOGNIZED) {
-            // Benflix profile colour: buttons and highlights use the person's own colour
-            baseScheme.copy(primary = accent.toColor(), onPrimary = Color.White)
+            // Benflix profile theme: buttons and highlights use the person's own colour,
+            // and the background and panels are softly tinted in it
+            baseScheme.withProfileTheme(accent)
         } else {
             baseScheme
         }
@@ -89,7 +90,12 @@ fun WholphinTheme(
         LocalDensity provides readDensity,
     ) {
         androidx.compose.material3.MaterialTheme(
-            colorScheme = if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial,
+            colorScheme =
+                (if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial).let {
+                    // Phone screens use these colours: same profile theme as the TV ones
+                    val classic = kids || accent == BenflixAccent.ACCENT_RED || accent == BenflixAccent.UNRECOGNIZED
+                    if (classic) it else it.withProfileTheme(accent)
+                },
             typography = AppMaterialTypography,
         ) {
             MaterialTheme(
@@ -132,4 +138,5 @@ fun BenflixAccent.toColor(): Color =
         BenflixAccent.ACCENT_PINK -> Color(0xFFE5488F)
         BenflixAccent.ACCENT_TEAL -> Color(0xFF14A8A0)
         BenflixAccent.ACCENT_ORANGE -> Color(0xFFF26B1D)
+        BenflixAccent.ACCENT_MONO -> Color(0xFF9A9AA2)
     }

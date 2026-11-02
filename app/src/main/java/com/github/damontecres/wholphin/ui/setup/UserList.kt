@@ -1,10 +1,12 @@
 package com.github.damontecres.wholphin.ui.setup
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -62,7 +68,10 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
+import com.github.damontecres.wholphin.ui.theme.BenflixRedBase
+import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.time.LocalDate
@@ -359,6 +368,11 @@ private fun UserIconCard(
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val chosen = AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) }
+    // Look Book pick P4: the tile you're on glows in that person's own profile colour
+    ProfileColours.init(androidx.compose.ui.platform.LocalContext.current)
+    val glowColour = ProfileColours.get(user.user.id)?.toColor() ?: BenflixRedBase
+    val focused by interactionSource.collectIsFocusedAsState()
+    val glow by animateFloatAsState(if (focused) 1f else 0f, label = "profileGlow")
 
     Column(
         modifier = modifier,
@@ -370,7 +384,23 @@ private fun UserIconCard(
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,
-            modifier = Modifier.size(cardSize),
+            modifier =
+                Modifier
+                    .size(cardSize)
+                    .drawBehind {
+                        if (glow > 0f) {
+                            // A soft halo made of a few see-through layers (no blur, so it stays fast on TVs)
+                            for (layer in 1..GLOW_LAYERS) {
+                                val grow = size.minDimension * (0.10f + 0.07f * layer)
+                                drawRoundRect(
+                                    color = glowColour.copy(alpha = glow * 0.22f / layer),
+                                    topLeft = Offset(-grow, -grow),
+                                    size = Size(size.width + grow * 2, size.height + grow * 2),
+                                    cornerRadius = CornerRadius(grow + size.minDimension * 0.12f),
+                                )
+                            }
+                        }
+                    },
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -384,7 +414,7 @@ private fun UserIconCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = profileBorderColor(),
+                                    color = glowColour,
                                 ),
                             shape = ProfileTileShape,
                         ),
@@ -726,6 +756,9 @@ private fun profileBorderColor(): Color {
     val holiday = remember { holidayFor(LocalDate.now()) }
     return holiday?.let { Color(it.color) } ?: MaterialTheme.colorScheme.onSurface
 }
+
+/** How many see-through layers make up the profile glow */
+private const val GLOW_LAYERS = 3
 
 /** A strong dark shadow so names stay easy to read on top of the moving backgrounds */
 val ReadableTextShadow =
