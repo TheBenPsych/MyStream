@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.enabled
 import com.github.damontecres.wholphin.services.BenflixAfterCredits
 import com.github.damontecres.wholphin.services.BenflixBedtime
+import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixMobileData
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
@@ -667,6 +668,8 @@ class PlaybackViewModel
                 _state.update { it.copy(recap = recap) }
                 listenForSegments(item.id)
                 watchForAfterCreditsScene(item.id)
+                // Benflix "What Kids watched this week"
+                BenflixKidsLog.record(context, base)
                 return@withContext true
             }
 

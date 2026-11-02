@@ -82,6 +82,20 @@ object BenflixBedtime {
     /** True when Kids should be put to bed now */
     fun lockedNow(): Boolean = KidsMode.isActive && pinSet && isBedtime() && System.currentTimeMillis() > moreTimeUntil
 
+    /** How long before bedtime the "15 minutes until bedtime" note shows */
+    const val WIND_DOWN_MINUTES = 15L
+
+    /** The day the wind-down note was last shown, so it shows once a night */
+    @Volatile var windDownShownOn: java.time.LocalDate? = null
+
+    /** True in the 15 minutes before bedtime, on Kids with a parent PIN, once a night */
+    fun windDownNow(now: LocalTime = LocalTime.now()): Boolean =
+        KidsMode.isActive &&
+            pinSet &&
+            !now.isBefore(BEDTIME.minusMinutes(WIND_DOWN_MINUTES)) &&
+            now.isBefore(BEDTIME) &&
+            windDownShownOn != java.time.LocalDate.now()
+
     fun giveMoreTime() {
         moreTimeUntil = System.currentTimeMillis() + MORE_TIME_MS
     }

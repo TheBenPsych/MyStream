@@ -172,7 +172,6 @@ fun MyBenflixPage(
     val rows by viewModel.rows.collectAsState()
     val user by viewModel.serverRepository.currentUserFlow.collectAsState(null)
     val kids by KidsMode.active.collectAsState()
-    val hasParentPin by bedtimeViewModel.hasPin.collectAsState()
     var showParentPin by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { bedtimeViewModel.refreshPin() }
     Column(
@@ -187,7 +186,7 @@ fun MyBenflixPage(
             user?.let {
                 UserIconCardImage(
                     id = it.id,
-                    name = if (kids) "Kids" else it.name,
+                    name = if (kids) KidsMode.displayName else it.name,
                     imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
                     modifier = Modifier.size(56.dp),
                 )
@@ -200,7 +199,7 @@ fun MyBenflixPage(
                     letterSpacing = 1.sp,
                 )
                 Text(
-                    text = if (kids) "Kids" else user?.name.orEmpty(),
+                    text = if (kids) KidsMode.displayName else user?.name.orEmpty(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -221,19 +220,14 @@ fun MyBenflixPage(
                 Button(onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) }) {
                     Text("How to use Benflix")
                 }
-                // Benflix: optional parent PIN, which turns on Kids bedtime at 9 PM
+                // Benflix: parent PIN (Kids bedtime), Big kids tile, what Kids watched
                 Button(onClick = { showParentPin = true }) {
-                    Text(if (hasParentPin) "Parent PIN: on" else "Parent PIN: off")
+                    Text("Parental controls")
                 }
             }
         }
         if (showParentPin) {
-            ParentPinDialog(
-                hasPin = hasParentPin,
-                checkPin = bedtimeViewModel::checkPin,
-                setPin = bedtimeViewModel::setPin,
-                onDone = { showParentPin = false },
-            )
+            ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
         }
         when (val list = rows) {
             null -> {

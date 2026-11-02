@@ -196,7 +196,7 @@ fun TopNavBar(
         ) {
             UserIconCardImage(
                 id = user.id,
-                name = if (kids) "Kids" else user.name,
+                name = if (kids) KidsMode.displayName else user.name,
                 imageUrl = if (kids) null else userImageUrl,
                 modifier = Modifier.size(32.dp),
             )

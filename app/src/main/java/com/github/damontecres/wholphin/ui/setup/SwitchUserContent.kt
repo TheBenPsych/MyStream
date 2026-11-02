@@ -111,8 +111,9 @@ fun SwitchUserContent(
     fun trySwitchUser(
         user: JellyfinUser,
         kids: Boolean = false,
+        bigKids: Boolean = false,
     ) {
-        KidsMode.set(kids)
+        KidsMode.set(kids, bigKids)
         val result = viewModel.trySwitchUser(user)
         scope.launch {
             when (val r = result.await()) {
@@ -250,6 +251,8 @@ fun SwitchUserContent(
                                         .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
                                         ?.firstOrNull { it.accessToken != null && !it.requireLogin },
                                 onKids = { user -> trySwitchUser(user, kids = true) },
+                                showBigKids = remember { KidsMode.bigKidsTile(context) },
+                                onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
                                 onRemoveUser = { user ->
                                     viewModel.removeUser(user)
                                 },

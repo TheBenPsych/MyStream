@@ -94,7 +94,12 @@ fun PhoneNavBar(
     // Games and every library live under My Benflix
     val libraries = tabs.filter { it !== home }
     var showMine by remember { mutableStateOf(false) }
-    val name = if (kids) "Kids" else user.name
+    var showRemote by remember { mutableStateOf(false) }
+    if (showRemote) {
+        com.github.damontecres.wholphin.ui.components
+            .PhoneRemoteDialog(onDismiss = { showRemote = false })
+    }
+    val name = if (kids) KidsMode.displayName else user.name
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -189,6 +194,15 @@ fun PhoneNavBar(
                     BrowseRow(stringResource(R.string.downloads_title), false) {
                         showMine = false
                         onClickDownloads.invoke()
+                    }
+                }
+                // Benflix: use the phone as the TV remote
+                if (!kids) {
+                    item {
+                        BrowseRow("TV remote", false) {
+                            showMine = false
+                            showRemote = true
+                        }
                     }
                 }
                 item { SectionTitle(stringResource(R.string.phone_browse)) }

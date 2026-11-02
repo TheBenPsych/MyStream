@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.setup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +83,9 @@ fun UserList(
     modifier: Modifier = Modifier,
     kidsUser: JellyfinUser? = null,
     onKids: (JellyfinUser) -> Unit = {},
+    /** Benflix "Big kids" tile (Parental controls), next to Kids */
+    showBigKids: Boolean = false,
+    onBigKids: (JellyfinUser) -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
     var pickPictureFor by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
@@ -122,6 +126,11 @@ fun UserList(
                 kidsUser?.let { grownUp ->
                     item {
                         KidsProfileCard(onClick = { onKids.invoke(grownUp) })
+                    }
+                    if (showBigKids) {
+                        item {
+                            KidsProfileCard(onClick = { onBigKids.invoke(grownUp) }, big = true)
+                        }
                     }
                 }
                 // Add User card - always rightmost
@@ -595,6 +604,7 @@ fun benflixAvatarFor(
 private fun KidsProfileCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    big: Boolean = false,
 ) {
     val cardSize = Cards.serverUserCircle
     Column(
@@ -627,11 +637,18 @@ private fun KidsProfileCard(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .clip(ProfileTileShape),
+                        .clip(ProfileTileShape)
+                        .then(
+                            if (big) {
+                                Modifier.border(BorderStroke(4.dp, Color(0xFF3AA6B0)), ProfileTileShape)
+                            } else {
+                                Modifier
+                            },
+                        ),
             )
         }
         Text(
-            text = stringResource(R.string.kids_profile),
+            text = if (big) "Big kids" else stringResource(R.string.kids_profile),
             style = MaterialTheme.typography.bodyLarge.copy(shadow = ReadableTextShadow),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
