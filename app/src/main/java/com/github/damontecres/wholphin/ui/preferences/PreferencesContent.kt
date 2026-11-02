@@ -561,15 +561,6 @@ fun PreferencesContent(
                                         )
                                     }
 
-                                    AppPreference.UserPinnedNavDrawerItems -> {
-                                        NavDrawerPreference(
-                                            title = stringResource(pref.title),
-                                            summary = pref.summary(context, null),
-                                            modifier = focusModifier,
-                                            interactionSource = interactionSource,
-                                        )
-                                    }
-
                                     AppPreference.SendAppLogs -> {
                                         ClickPreference(
                                             title = stringResource(pref.title),

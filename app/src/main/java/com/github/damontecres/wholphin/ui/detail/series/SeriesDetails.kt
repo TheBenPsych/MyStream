@@ -178,9 +178,7 @@ fun SeriesDetails(
     LifecycleResumeEffect(destination.itemId) {
         viewModel.refresh()
 
-        onPauseOrDispose {
-            viewModel.release()
-        }
+        onPauseOrDispose { }
     }
 
     when (val st = state.series) {

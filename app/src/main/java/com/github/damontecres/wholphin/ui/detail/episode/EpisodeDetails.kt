@@ -124,14 +124,6 @@ fun EpisodeDetails(
 
         is DataLoadingState.Success<BaseItem> -> {
             val ep = st.data
-            LifecycleResumeEffect(ep) {
-                ep.data.seriesId?.let { seriesId ->
-                    viewModel.maybePlayThemeSong(seriesId)
-                }
-                onPauseOrDispose {
-                    viewModel.release()
-                }
-            }
             EpisodeDetailsContent(
                 preferences = preferences,
                 ep = ep,

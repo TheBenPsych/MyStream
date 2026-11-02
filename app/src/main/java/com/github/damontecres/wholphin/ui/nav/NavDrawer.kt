@@ -3,79 +3,40 @@ package com.github.damontecres.wholphin.ui.nav
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.animateIntOffsetAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.DrawerState
-import androidx.tv.material3.DrawerValue
-import androidx.tv.material3.Icon
-import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.NavigationDrawerItemDefaults
-import androidx.tv.material3.NavigationDrawerScope
-import androidx.tv.material3.ProvideTextStyle
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -85,15 +46,8 @@ import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
-import com.github.damontecres.wholphin.ui.FontAwesome
-import com.github.damontecres.wholphin.ui.components.TimeDisplay
-import com.github.damontecres.wholphin.ui.enableMarquee
-import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
-import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
-import com.github.damontecres.wholphin.ui.spacedByWithFooter
-import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -238,13 +192,6 @@ class NavDrawerViewModel
                     setShowMore(!state.value.moreExpanded)
                 }
 
-                NavDrawerItem.Discover -> {
-                    setIndex(index)
-                    navigationManager.navigateToFromDrawer(
-                        Destination.Discover,
-                    )
-                }
-
                 is ServerNavDrawerItem -> {
                     setIndex(index)
                     navigationManager.navigateToFromDrawer(item.destination)
@@ -275,7 +222,6 @@ class NavDrawerViewModel
                         when (it) {
                             is ServerNavDrawerItem -> it.destination
                             is NavDrawerItem.Favorites -> Destination.Favorites
-                            is NavDrawerItem.Discover -> Destination.Discover
                             else -> null
                         }
                     }
@@ -350,13 +296,6 @@ sealed interface NavDrawerItem {
             get() = "a_more"
 
         override fun name(context: Context): String = context.getString(R.string.more)
-    }
-
-    object Discover : NavDrawerItem {
-        override val id: String
-            get() = "a_discover"
-
-        override fun name(context: Context): String = context.getString(R.string.discover)
     }
 }
 
@@ -781,243 +720,3 @@ fun NavDrawer(
         )
     }
 }
-
-@Composable
-fun NavigationDrawerScope.ProfileIcon(
-    user: JellyfinUser,
-    imageUrl: String?,
-    serverName: String,
-    drawerOpen: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-) {
-    val focused by interactionSource.collectIsFocusedAsState()
-    NavigationDrawerItem(
-        modifier = modifier,
-        selected = false,
-        onClick = onClick,
-        leadingContent = {
-            UserIconCardImage(
-                id = user.id,
-                name = user.name,
-                imageUrl = imageUrl,
-                alpha = if (drawerOpen) 1f else .5f,
-                modifier = Modifier.size(DrawerIconSize),
-            )
-        },
-        supportingContent = {
-            Text(
-                text = serverName,
-                maxLines = 1,
-            )
-        },
-        interactionSource = interactionSource,
-    ) {
-        Text(
-            modifier = Modifier.enableMarquee(focused),
-            text = user.name ?: user.id.toString(),
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-fun NavigationDrawerScope.IconNavItem(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    selected: Boolean,
-    drawerOpen: Boolean,
-    modifier: Modifier = Modifier,
-    subtext: String? = null,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-) {
-    val focused by interactionSource.collectIsFocusedAsState()
-    NavigationDrawerItem(
-        modifier = modifier,
-        selected = false,
-        onClick = onClick,
-        leadingContent = {
-            val color = navItemColor(selected, focused, drawerOpen)
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(DrawerIconSize),
-            )
-        },
-        supportingContent =
-            subtext?.let {
-                {
-                    Text(
-                        text = it,
-                        maxLines = 1,
-                    )
-                }
-            },
-        interactionSource = interactionSource,
-    ) {
-        Text(
-            modifier = Modifier.enableMarquee(focused),
-            text = text,
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-fun NavigationDrawerScope.NavItem(
-    library: NavDrawerItem,
-    onClick: () -> Unit,
-    selected: Boolean,
-    moreExpanded: Boolean,
-    drawerOpen: Boolean,
-    modifier: Modifier = Modifier,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    containerColor: Color = Color.Unspecified,
-) {
-    val context = LocalContext.current
-    val useFont = library !is ServerNavDrawerItem || library.type != CollectionType.LIVETV
-    val icon =
-        remember(library) {
-            when (library) {
-                NavDrawerItem.Favorites -> {
-                    R.string.fa_heart
-                }
-
-                NavDrawerItem.More -> {
-                    R.string.fa_ellipsis
-                }
-
-                NavDrawerItem.Discover -> {
-                    R.string.fa_magnifying_glass_plus
-                }
-
-                is ServerNavDrawerItem -> {
-                    when (library.type) {
-                        CollectionType.MOVIES -> R.string.fa_film
-                        CollectionType.TVSHOWS -> R.string.fa_tv
-                        CollectionType.HOMEVIDEOS -> R.string.fa_video
-                        CollectionType.LIVETV -> R.drawable.gf_dvr
-                        CollectionType.MUSIC -> R.string.fa_music
-                        CollectionType.BOXSETS -> R.string.fa_open_folder
-                        CollectionType.PLAYLISTS -> R.string.fa_list_ul
-                        else -> R.string.fa_film
-                    }
-                }
-            }
-        }
-    val focused by interactionSource.collectIsFocusedAsState()
-    NavigationDrawerItem(
-        modifier = modifier,
-        selected = false,
-        onClick = onClick,
-        colors =
-            NavigationDrawerItemDefaults.colors(
-                containerColor = containerColor,
-            ),
-        leadingContent = {
-            val color = navItemColor(selected, focused, drawerOpen)
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (useFont) {
-                    Text(
-                        text = stringResource(icon),
-                        textAlign = TextAlign.Center,
-                        fontSize = 16.sp,
-                        fontFamily = FontAwesome,
-                        color = color,
-                        modifier = Modifier,
-                    )
-                } else {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(DrawerIconSize),
-                    )
-                }
-            }
-        },
-        trailingContent =
-            if (library is NavDrawerItem.More) {
-                {
-                    Icon(
-                        imageVector = if (moreExpanded) Icons.Default.ArrowDropDown else Icons.Default.KeyboardArrowLeft,
-                        contentDescription = null,
-                    )
-                }
-            } else {
-                null
-            },
-        interactionSource = interactionSource,
-    ) {
-        Text(
-            modifier = Modifier.enableMarquee(focused),
-            text = library.name(context),
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-@ReadOnlyComposable
-fun navItemColor(
-    selected: Boolean,
-    focused: Boolean,
-    drawerOpen: Boolean,
-): Color {
-    val theme = LocalTheme.current
-    if (theme == AppThemeColors.OLED_BLACK) {
-        return when {
-            selected && focused -> Color.Black
-            selected && !drawerOpen -> Color.White.copy(alpha = .5f)
-            selected && drawerOpen -> Color.White.copy(alpha = .85f)
-            focused -> Color.Black.copy(alpha = .5f)
-            drawerOpen -> Color(0xFF707070)
-            else -> Color(0xFF505050).copy(alpha = .66f)
-        }
-    } else {
-        val alpha =
-            when {
-                drawerOpen -> .85f
-                selected && !drawerOpen -> .5f
-                else -> .2f
-            }
-        return when {
-            selected && focused -> {
-                when (theme) {
-                    AppThemeColors.UNRECOGNIZED,
-                    AppThemeColors.PURPLE,
-                    AppThemeColors.BLUE,
-                    AppThemeColors.GREEN,
-                    AppThemeColors.ORANGE,
-                    AppThemeColors.RED,
-                    AppThemeColors.BROWN,
-                    AppThemeColors.MYSTREAM,
-                    -> MaterialTheme.colorScheme.border
-
-                    AppThemeColors.BOLD_BLUE,
-                    AppThemeColors.OLED_BLACK,
-                    -> MaterialTheme.colorScheme.primary
-                }
-            }
-
-            selected -> {
-                MaterialTheme.colorScheme.border
-            }
-
-            focused -> {
-                LocalContentColor.current
-            }
-
-            else -> {
-                MaterialTheme.colorScheme.onSurface
-            }
-        }.copy(alpha = alpha)
-    }
-}
-
-val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
-
-val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open

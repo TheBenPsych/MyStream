@@ -31,7 +31,6 @@ import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
-import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.cards.GridCard
@@ -78,7 +77,6 @@ class HomeRowGridViewModel
         private val favoriteWatchManager: FavoriteWatchManager,
         private val backdropService: BackdropService,
         private val navigationManager: NavigationManager,
-        private val themeSongPlayer: ThemeSongPlayer,
         private val mediaManagementService: MediaManagementService,
         private val musicService: MusicService,
         val streamChoiceService: StreamChoiceService,

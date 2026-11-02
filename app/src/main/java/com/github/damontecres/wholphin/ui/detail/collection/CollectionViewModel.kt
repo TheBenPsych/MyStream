@@ -21,7 +21,6 @@ import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
-import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.SlimItemFields
@@ -82,7 +81,6 @@ class CollectionViewModel
         val serverRepository: ServerRepository,
         private val navigationManager: NavigationManager,
         private val preferencesService: UserPreferencesService,
-        private val themeSongPlayer: ThemeSongPlayer,
         private val mediaManagementService: MediaManagementService,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val backdropService: BackdropService,
@@ -117,7 +115,6 @@ class CollectionViewModel
         val state: StateFlow<CollectionState> = _state
 
         init {
-            addCloseable { release() }
             // Get global per-user view options for collections
             viewOptionsFlow.collectLatestIn(viewModelScope) { viewOptions ->
                 Timber.v("Updated viewOptions")
@@ -157,7 +154,6 @@ class CollectionViewModel
                         )
                     }
                     listenForStateUpdates()
-                    themeSongPlayer.playThemeFor(itemId)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -165,10 +161,6 @@ class CollectionViewModel
                     _state.update { it.copy(loadingState = LoadingState.Error(ex)) }
                 }
             }
-        }
-
-        fun release() {
-            themeSongPlayer.stop()
         }
 
         /**
@@ -392,7 +384,6 @@ class CollectionViewModel
             }
 
         fun navigateTo(destination: Destination) {
-            release()
             navigationManager.navigateTo(destination)
         }
 

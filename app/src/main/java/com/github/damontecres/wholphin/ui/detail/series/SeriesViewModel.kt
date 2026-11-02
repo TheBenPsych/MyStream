@@ -27,7 +27,6 @@ import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
-import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
@@ -97,7 +96,6 @@ class SeriesViewModel
         val serverRepository: ServerRepository,
         private val navigationManager: NavigationManager,
         private val itemPlaybackRepository: ItemPlaybackRepository,
-        private val themeSongPlayer: ThemeSongPlayer,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val peopleFavorites: PeopleFavorites,
         private val trailerService: TrailerService,
@@ -132,7 +130,6 @@ class SeriesViewModel
         init {
             viewModelScope.launchIO {
                 Timber.v("Start")
-                addCloseable { themeSongPlayer.stop() }
                 val series =
                     try {
                         (detailsPrefetch.take(seriesId) ?: api.userLibraryApi.getItem(seriesId).content)
@@ -340,9 +337,6 @@ class SeriesViewModel
                 viewModelScope.launchIO {
                     findNextUp()?.let { prepareNextUp(it, item.data) }
                 }
-                viewModelScope.launchDefault {
-                    themeSongPlayer.playThemeFor(seriesId)
-                }
             }
         }
 
@@ -352,10 +346,6 @@ class SeriesViewModel
                     (state.value.seasons as? ApiRequestPager<*>)?.refresh()
                 }
             }
-        }
-
-        fun release() {
-            themeSongPlayer.stop()
         }
 
         private fun getSeasons(
@@ -642,7 +632,6 @@ class SeriesViewModel
         }
 
         fun navigateTo(destination: Destination) {
-            release()
             navigationManager.navigateTo(destination)
         }
 

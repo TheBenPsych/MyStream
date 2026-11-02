@@ -39,7 +39,6 @@ import com.github.damontecres.wholphin.ui.detail.music.NowPlayingPage
 import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
-import com.github.damontecres.wholphin.ui.discover.DiscoverPage
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
 import com.github.damontecres.wholphin.ui.games.GamesPage
 import com.github.damontecres.wholphin.ui.games.PlayGamePage
@@ -458,14 +457,6 @@ fun DestinationContent(
 
         Destination.Debug -> {
             DebugPage(preferences, modifier)
-        }
-
-        Destination.Discover -> {
-            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            DiscoverPage(
-                preferences = preferences,
-                modifier = modifier,
-            )
         }
 
         is Destination.DiscoveredItem -> {
