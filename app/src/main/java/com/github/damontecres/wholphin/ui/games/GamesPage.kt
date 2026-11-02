@@ -67,6 +67,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -92,10 +93,13 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.GameLibraryException
 import com.github.damontecres.wholphin.services.GameStreamReturn
+import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlayTarget
@@ -224,6 +228,7 @@ class GamesViewModel
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
         private val games: GameLibraryClient,
+        private val highScores: BenflixHighScores,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
 
@@ -237,8 +242,28 @@ class GamesViewModel
         private val _starting = MutableStateFlow<Int?>(null)
         val starting: StateFlow<Int?> = _starting
 
+        /** "Highest scores": game id to every account's best, highest first (null while loading) */
+        private val _board = MutableStateFlow<Map<String, List<HighScore>>?>(null)
+        val board: StateFlow<Map<String, List<HighScore>>?> = _board
+
         init {
             reload()
+        }
+
+        /** Saves this account's bests to the server and fetches everyone's (Kids and Guest only look) */
+        fun refreshBoard() {
+            val user = serverRepository.currentUser ?: return
+            val isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true
+            val mine =
+                if (KidsMode.isActive || GuestMode.isActive) {
+                    emptyMap()
+                } else {
+                    BuiltInGame.entries.associate { it.name to prefs.getInt("${user.id}_${it.name}", 0) } +
+                        BOARD_EXTRA_GAMES.keys.associateWith { prefs.getInt("${user.id}_$it", 0) }
+                }
+            viewModelScope.launch {
+                _board.value = highScores.sync(user.id, user.name, isAdmin && !KidsMode.isActive && !GuestMode.isActive, mine)
+            }
         }
 
         fun reload() {
@@ -348,6 +373,13 @@ class GamesViewModel
 
         companion object {
             private const val RECENT_GAMES = 8
+
+            /** The movie games that keep a best score too (their saved key to their name) */
+            val BOARD_EXTRA_GAMES =
+                linkedMapOf(
+                    "HIGHER_LOWER_5" to "Higher or Lower",
+                    "GUESS_THE_MOVIE" to "Guess the movie",
+                )
         }
     }
 
@@ -439,6 +471,9 @@ fun GamesPage(
             movieGames.forEach { it(Modifier.fillMaxWidth()) }
         }
         ScoresCard(viewModel, isTv = isTv, modifier = Modifier.fillMaxWidth())
+        val board by viewModel.board.collectAsState()
+        LaunchedEffect(Unit) { viewModel.refreshBoard() }
+        board?.let { HighestScores(it, isTv = isTv) }
 
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {
@@ -1514,3 +1549,83 @@ private class GameSounds(
         pool.release()
     }
 }
+
+/**
+ * "Highest scores": every account's best in each game, arcade style with 3-letter names.
+ * TV: four games per row. Phone: two per row.
+ */
+@Composable
+private fun HighestScores(
+    board: Map<String, List<HighScore>>,
+    isTv: Boolean,
+) {
+    val games =
+        BuiltInGame.entries.map { it.name to it.title } +
+            GamesViewModel.BOARD_EXTRA_GAMES.entries.map { it.key to it.value }
+    val columns = if (isTv) 4 else 2
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF16161A), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text("Highest scores", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+        Text(
+            "Everyone's best on this server",
+            fontSize = 13.sp,
+            color = Color.White.copy(alpha = .6f),
+        )
+        games.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                row.forEach { (id, title) ->
+                    val scores = board[id].orEmpty().take(BOARD_ROWS)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .background(Color.White.copy(alpha = .05f), RoundedCornerShape(8.dp))
+                                .padding(10.dp),
+                    ) {
+                        Text(
+                            title,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 2,
+                            lineHeight = 16.sp,
+                        )
+                        if (scores.isEmpty()) {
+                            Text("No scores yet", fontSize = 13.sp, color = Color.White.copy(alpha = .5f))
+                        }
+                        scores.forEachIndexed { i, entry ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "${i + 1}  ${entry.name}",
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .85f),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "%,d".format(entry.score),
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .85f),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+                repeat(columns - row.size) { Box(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** How many accounts show under each game on "Highest scores" */
+private const val BOARD_ROWS = 5
