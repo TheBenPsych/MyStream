@@ -487,6 +487,14 @@ fun DiscoverSeriesDetailsHeader(
             series.genres?.mapNotNull { it.name }?.letNotEmpty {
                 GenreText(it, Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp))
             }
+            // Benflix: age rating, scores, country and tags (grown-up tags in red)
+            series.id?.let { tmdbId ->
+                SeerrExtrasBlock(
+                    isMovie = false,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
+                )
+            }
             series.overview?.let { overview ->
                 OverviewText(
                     overview = overview,
