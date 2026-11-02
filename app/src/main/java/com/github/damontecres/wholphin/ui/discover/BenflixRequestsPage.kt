@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.discover
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,12 +46,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.api.seerr.RequestApi
 import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
+import com.github.damontecres.wholphin.api.seerr.model.RequestPostRequest
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.RequestStatus
@@ -63,12 +65,22 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
+import com.github.damontecres.wholphin.ui.detail.discover.isGrownUpTag
+import com.github.damontecres.wholphin.ui.detail.discover.movieAgeRating
+import com.github.damontecres.wholphin.ui.detail.discover.str
+import com.github.damontecres.wholphin.ui.detail.discover.tags
+import com.github.damontecres.wholphin.ui.detail.discover.tvAgeRating
+import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
+import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -76,16 +88,35 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import javax.inject.Inject
 
 /** Which shelf of the admin "Find new stuff" page */
@@ -128,12 +159,17 @@ data class RequestEntry(
     val who: String,
     val status: RequestStatus,
     val available: Boolean,
+    // Benflix: being downloaded right now, and how far along (when the server knows)
+    val downloading: Boolean = false,
+    val downloadPercent: Int? = null,
 )
 
 @HiltViewModel
 class BenflixRequestsViewModel
     @Inject
     constructor(
+        @param:ApplicationContext private val context: Context,
+        private val api: ApiClient,
         private val seerrService: SeerrService,
         private val seerrServerRepository: SeerrServerRepository,
         val serverRepository: ServerRepository,
@@ -175,6 +211,9 @@ class BenflixRequestsViewModel
         }
 
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+
+        /** Connected through the Jellyfin Enhanced plugin, which passes fewer filters */
+        val viaJellyfin: Boolean get() = seerrService.api.viaJellyfin
 
         private val _rows = MutableStateFlow<Map<String, List<FindRow>>>(emptyMap())
 
@@ -236,8 +275,8 @@ class BenflixRequestsViewModel
 
         fun key(
             section: FindSection,
-            genre: FindGenre?,
-        ) = "${section.name}-${genre?.label}"
+            filters: FindFilters,
+        ) = "${section.name}-$filters"
 
         /**
          * Through Jellyfin Enhanced the "at least N votes" filter is dropped, so "Top rated" would fill up with
@@ -253,11 +292,22 @@ class BenflixRequestsViewModel
         /** Loads the shelves for one section and genre (kept, so switching back is instant) */
         fun loadSection(
             section: FindSection,
-            genre: FindGenre?,
+            filters: FindFilters,
         ) {
-            val key = key(section, genre)
+            val key = key(section, filters)
             if (_rows.value.containsKey(key)) return
+            val genre = filters.genre
             viewModelScope.launch(WholphinDispatchers.IO) {
+                if (filters.narrowed) {
+                    // Benflix: several filters together make one list of results, a few pages long
+                    val pages =
+                        coroutineScope {
+                            (1..3).map { page -> async { narrowedPage(section, filters, page) } }.awaitAll()
+                        }
+                    val titles = listOf("Results", "More results", "Even more")
+                    _rows.update { it + (key to pages.mapIndexed { i, items -> FindRow(titles[i], items) }) }
+                    return@launch
+                }
                 val today = LocalDate.now().toString()
                 val movieGenre = genre?.movieId?.toString()
                 val tvGenre = genre?.tvId?.toString()
@@ -418,6 +468,415 @@ class BenflixRequestsViewModel
             }
         }
 
+        /** One page of results for the Filters panel */
+        private suspend fun narrowedPage(
+            section: FindSection,
+            filters: FindFilters,
+            page: Int,
+        ): List<DiscoverItem> =
+            try {
+                val sort = filters.sort ?: FindSort.POPULAR
+                val minVotes = if (sort == FindSort.RATED) 300 else null
+                val from = filters.decade?.from
+                val to = filters.decade?.to ?: if (sort == FindSort.NEWEST) LocalDate.now().toString() else null
+                val score = filters.minScore ?: topRatedFloor(minVotes)
+                val language = filters.language?.code?.takeIf { !seerrService.api.viaJellyfin }
+                if (section == FindSection.MOVIES) {
+                    seerrService.api.searchApi
+                        .discoverMoviesGet(
+                            page = page,
+                            genre = filters.genre?.movieId?.toString(),
+                            sortBy = topRatedSort(sort.movie, minVotes),
+                            primaryReleaseDateGte = from,
+                            primaryReleaseDateLte = to,
+                            voteCountGte = minVotes,
+                            voteAverageGte = score,
+                            language = language,
+                        ).results
+                        ?.map { seerrService.createDiscoverItem(it) }
+                        .orEmpty()
+                } else {
+                    val anime = section == FindSection.ANIME
+                    val genres =
+                        if (anime) {
+                            listOfNotNull(ANIMATION_GENRE, filters.genre?.tvId?.toString()).joinToString(",")
+                        } else {
+                            filters.genre?.tvId?.toString()
+                        }
+                    seerrService.api.searchApi
+                        .discoverTvGet(
+                            page = page,
+                            genre = genres,
+                            keywords = if (anime) ANIME_KEYWORD else null,
+                            sortBy = topRatedSort(sort.tv, minVotes),
+                            firstAirDateGte = from,
+                            firstAirDateLte = to,
+                            voteCountGte = minVotes,
+                            voteAverageGte = score,
+                            language = language,
+                        ).results
+                        ?.map { seerrService.createDiscoverItem(it) }
+                        .orEmpty()
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Filtered results failed")
+                emptyList()
+            }
+
+        private val _special = MutableStateFlow<Map<FindSection, List<FindRow>>>(emptyMap())
+
+        /** Benflix: "Because you watched ..." and "Finish the collection" rows for the Movies and Shows tabs */
+        val special: StateFlow<Map<FindSection, List<FindRow>>> =
+            combine(_special, requestedIds) { all, requested ->
+                all.mapValues { (_, shelves) ->
+                    shelves.map { row -> row.copy(items = row.items.map { markRequested(it, requested) }) }
+                }
+            }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+        fun loadSpecial(section: FindSection) {
+            if (section == FindSection.ANIME || _special.value.containsKey(section)) return
+            _special.update { it + (section to emptyList()) }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id ?: return@launch
+                val movies = section == FindSection.MOVIES
+                val rows =
+                    coroutineScope {
+                        val because = async { becauseRows(userId, movies) }
+                        val collection = async { if (movies) finishCollectionRow(userId) else null }
+                        because.await() + listOfNotNull(collection.await())
+                    }
+                _special.update { it + (section to rows) }
+            }
+        }
+
+        /** Things like the last two movies or shows you watched, that aren't on Benflix */
+        private suspend fun becauseRows(
+            userId: UUID,
+            movies: Boolean,
+        ): List<FindRow> =
+            try {
+                val sources: List<Pair<String, String>> =
+                    if (movies) {
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                    recursive = true,
+                                    isPlayed = true,
+                                    sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                    sortOrder = listOf(SortOrder.DESCENDING),
+                                    fields = listOf(ItemFields.PROVIDER_IDS),
+                                    limit = 2,
+                                ),
+                            ).content.items
+                            .mapNotNull { dto -> dto.providerIds?.get("Tmdb")?.let { (dto.name ?: "") to it } }
+                    } else {
+                        val seriesIds =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                        recursive = true,
+                                        isPlayed = true,
+                                        sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                        sortOrder = listOf(SortOrder.DESCENDING),
+                                        limit = 30,
+                                    ),
+                                ).content.items
+                                .mapNotNull { it.seriesId }
+                                .distinct()
+                                .take(2)
+                        if (seriesIds.isEmpty()) {
+                            emptyList()
+                        } else {
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        ids = seriesIds,
+                                        fields = listOf(ItemFields.PROVIDER_IDS),
+                                    ),
+                                ).content.items
+                                .mapNotNull { dto -> dto.providerIds?.get("Tmdb")?.let { (dto.name ?: "") to it } }
+                        }
+                    }
+                val kind = if (movies) "movie" else "tv"
+                val fallback = if (movies) SeerrItemType.MOVIE else SeerrItemType.TV
+                sources.mapNotNull { (name, tmdbId) ->
+                    val items =
+                        rawResults("/$kind/$tmdbId/recommendations", "results", fallback)
+                            .filter { it.availability != SeerrAvailability.AVAILABLE }
+                            .take(20)
+                    if (items.isEmpty() || name.isBlank()) null else FindRow("Because you watched $name", items)
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Because you watched rows failed")
+                emptyList()
+            }
+
+        /** Movies missing from collections you partly have, like the one Alien movie you don't have yet */
+        private suspend fun finishCollectionRow(userId: UUID): FindRow? =
+            try {
+                val collectionIds =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                fields = listOf(ItemFields.PROVIDER_IDS),
+                                limit = 25,
+                            ),
+                        ).content.items
+                        .mapNotNull { it.providerIds?.get("Tmdb") ?: it.providerIds?.get("TmdbCollection") }
+                        .distinct()
+                val semaphore = Semaphore(4)
+                val today = LocalDate.now()
+                val missing =
+                    coroutineScope {
+                        collectionIds
+                            .map { id ->
+                                async {
+                                    semaphore.withPermit {
+                                        val parts = rawResults("/collection/$id", "parts", SeerrItemType.MOVIE)
+                                        val haveSome = parts.any { it.availability == SeerrAvailability.AVAILABLE }
+                                        if (!haveSome) {
+                                            emptyList()
+                                        } else {
+                                            parts.filter {
+                                                it.availability != SeerrAvailability.AVAILABLE &&
+                                                    it.releaseDate?.isAfter(today) == false
+                                            }
+                                        }
+                                    }
+                                }
+                            }.awaitAll()
+                    }.flatten()
+                        .distinctBy { it.id }
+                        .take(30)
+                if (missing.isEmpty()) null else FindRow("Finish the collection", missing)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Finish the collection row failed")
+                null
+            }
+
+        /** Reads a list of titles straight from Seerr's JSON (for lists the generated client doesn't cover) */
+        private suspend fun rawResults(
+            path: String,
+            field: String,
+            fallback: SeerrItemType,
+        ): List<DiscoverItem> =
+            try {
+                val json = seerrService.api.getRaw(path)?.let { Json.parseToJsonElement(it).jsonObject }
+                (json?.get(field) as? JsonArray)
+                    ?.mapNotNull { (it as? JsonObject)?.let { o -> itemFromJson(o, fallback) } }
+                    .orEmpty()
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not read %s", path)
+                emptyList()
+            }
+
+        private suspend fun itemFromJson(
+            o: JsonObject,
+            fallback: SeerrItemType,
+        ): DiscoverItem? {
+            val id = o["id"].str()?.toIntOrNull() ?: return null
+            val mediaInfo = o["mediaInfo"] as? JsonObject
+            val status = mediaInfo?.get("status").str()?.toIntOrNull()
+            val jellyfinId =
+                (mediaInfo?.get("jellyfinMediaId4k").str() ?: mediaInfo?.get("jellyfinMediaId").str())?.toUUIDOrNull()
+            val date = o["releaseDate"].str() ?: o["firstAirDate"].str()
+            return DiscoverItem(
+                id = id,
+                type = SeerrItemType.fromString(o["mediaType"].str(), fallback),
+                title = o["title"].str() ?: o["name"].str(),
+                subtitle = null,
+                overview = o["overview"].str(),
+                availability = SeerrAvailability.from(status) ?: SeerrAvailability.UNKNOWN,
+                releaseDate = date?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() },
+                posterUrl = seerrService.createImageUrl(ImageType.PRIMARY, o["posterPath"].str(), null),
+                backDropUrl = seerrService.createImageUrl(ImageType.BACKDROP, o["backdropPath"].str(), null),
+                logoUrl = null,
+                jellyfinItemId = jellyfinId,
+                score = o["voteAverage"].str()?.toDoubleOrNull()?.takeIf { it > 0 },
+            )
+        }
+
+        private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+        private val _hidden = MutableStateFlow(prefs().getStringSet(HIDDEN_KEY, emptySet()).orEmpty().toSet())
+
+        /** Titles hidden with "Hide this", saved on this device */
+        val hidden: StateFlow<Set<String>> = _hidden
+
+        fun hide(item: DiscoverItem) {
+            val next = _hidden.value + item.requestKey()
+            _hidden.value = next
+            prefs().edit().putStringSet(HIDDEN_KEY, next).apply()
+        }
+
+        private val _ratings = MutableStateFlow<Map<String, ItemRating>>(emptyMap())
+
+        /** Age ratings for the Family-friendly switch, looked up as needed */
+        val ratings: StateFlow<Map<String, ItemRating>> = _ratings
+        private val ratingsAsked = mutableSetOf<String>()
+
+        fun loadRatings(items: List<DiscoverItem>) {
+            val todo =
+                synchronized(ratingsAsked) {
+                    items.filter {
+                        (it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV) && ratingsAsked.add(it.requestKey())
+                    }
+                }
+            if (todo.isEmpty()) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val semaphore = Semaphore(6)
+                coroutineScope {
+                    todo
+                        .map { item ->
+                            async {
+                                semaphore.withPermit {
+                                    val rating =
+                                        try {
+                                            val movie = item.type == SeerrItemType.MOVIE
+                                            val raw = seerrService.api.getRaw(if (movie) "/movie/${item.id}" else "/tv/${item.id}")
+                                            val o = raw?.let { Json.parseToJsonElement(it).jsonObject }
+                                            if (o == null) {
+                                                ItemRating(null, false)
+                                            } else {
+                                                ItemRating(
+                                                    age = if (movie) movieAgeRating(o) else tvAgeRating(o),
+                                                    adultTags = o["adult"].str() == "true" || tags(o).any(::isGrownUpTag),
+                                                )
+                                            }
+                                        } catch (ex: CancellationException) {
+                                            throw ex
+                                        } catch (ex: Exception) {
+                                            ItemRating(null, false)
+                                        }
+                                    _ratings.update { it + (item.requestKey() to rating) }
+                                }
+                            }
+                        }.awaitAll()
+                }
+            }
+        }
+
+        private val _scores = MutableStateFlow<Map<String, String>>(emptyMap())
+
+        /** "IMDb 7.8 · 🍅 92%" for the card you're on, looked up when you land on it */
+        val scores: StateFlow<Map<String, String>> = _scores
+        private val scoresAsked = mutableSetOf<String>()
+
+        fun loadScore(item: DiscoverItem) {
+            if (item.type != SeerrItemType.MOVIE && item.type != SeerrItemType.TV) return
+            val key = item.requestKey()
+            if (!synchronized(scoresAsked) { scoresAsked.add(key) }) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val movie = item.type == SeerrItemType.MOVIE
+                    val raw = seerrService.api.getRaw(if (movie) "/movie/${item.id}/ratingscombined" else "/tv/${item.id}/ratings")
+                    val o = raw?.let { Json.parseToJsonElement(it).jsonObject } ?: return@launch
+                    val rt = if (movie) o["rt"] as? JsonObject else o
+                    val imdb = (o["imdb"] as? JsonObject)?.get("criticsScore").str()?.toDoubleOrNull()?.takeIf { it > 0 }
+                    val critics = rt?.get("criticsScore").str()?.toDoubleOrNull()?.toInt()?.takeIf { it > 0 }
+                    val text =
+                        listOfNotNull(
+                            imdb?.let { "IMDb ${"%.1f".format(it)}" },
+                            critics?.let { "🍅 $it%" },
+                        ).joinToString(" · ")
+                    if (text.isNotBlank()) _scores.update { it + (key to text) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.v(ex, "No scores for %s", key)
+                }
+            }
+        }
+
+        /** What's typed in the search box */
+        val searchQuery = MutableStateFlow("")
+
+        @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+        private val searchRaw: StateFlow<List<DiscoverItem>?> =
+            searchQuery
+                .debounce(450)
+                .map { it.trim() }
+                .distinctUntilChanged()
+                .mapLatest { query ->
+                    if (query.length < 2) {
+                        null
+                    } else {
+                        try {
+                            seerrService.search(query).map { seerrService.createDiscoverItem(it) }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Search failed")
+                            emptyList()
+                        }
+                    }
+                }.flowOn(WholphinDispatchers.IO)
+                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+        /** Search results, with what's already asked for marked */
+        val searchResults: StateFlow<List<DiscoverItem>?> =
+            combine(searchRaw, requestedIds) { list, requested -> list?.map { markRequested(it, requested) } }
+                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+        /** One press to ask for a title (every season for a show) */
+        fun ask(item: DiscoverItem) {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    if (item.type == SeerrItemType.TV) {
+                        val seasons =
+                            seerrService.api.tvApi
+                                .tvTvIdGet(tvId = item.id)
+                                .seasons
+                                ?.mapNotNull { it.seasonNumber }
+                                ?.filter { it > 0 }
+                                .orEmpty()
+                        seerrService.api.requestApi.requestPost(
+                            RequestPostRequest(
+                                mediaId = item.id,
+                                mediaType = RequestPostRequest.MediaType.TV,
+                                seasons = seasons,
+                                is4k = false,
+                                tags = emptyList(),
+                            ),
+                        )
+                    } else {
+                        seerrService.api.requestApi.requestPost(
+                            RequestPostRequest(
+                                mediaId = item.id,
+                                mediaType = RequestPostRequest.MediaType.MOVIE,
+                                is4k = false,
+                                tags = emptyList(),
+                            ),
+                        )
+                    }
+                    requestedIds.update { it + item.requestKey() }
+                    showToast(context, "Asked for ${item.title ?: "it"}")
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Quick ask failed for %s", item.id)
+                    showToast(context, "Couldn't ask for that one. Try from its page.")
+                }
+            }
+        }
+
         /** Everyone's requests (admin) or just your own */
         fun loadRequests(mineOnly: Boolean) {
             viewModelScope.launch(WholphinDispatchers.IO) {
@@ -443,6 +902,7 @@ class BenflixRequestsViewModel
                                 }.awaitAll()
                         }
                     _requests.value = entries
+                    if (!mineOnly) RequestsWaiting.set(entries.count { it.status == RequestStatus.PENDING })
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -487,14 +947,40 @@ class BenflixRequestsViewModel
                 } else {
                     item
                 }
+            val available =
+                request.media?.status == SeerrAvailability.AVAILABLE.status ||
+                    item?.availability == SeerrAvailability.AVAILABLE
+            // Benflix: how far the download is, for the progress steps
+            var percent: Int? = null
+            var downloading = false
+            if (!available && status == RequestStatus.APPROVED && tmdbId != null) {
+                try {
+                    val kind = if (SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE) "movie" else "tv"
+                    val media =
+                        seerrService.api
+                            .getRaw("/$kind/$tmdbId")
+                            ?.let { Json.parseToJsonElement(it).jsonObject["mediaInfo"] as? JsonObject }
+                    val downloads = (media?.get("downloadStatus") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
+                    if (downloads.isNotEmpty()) {
+                        downloading = true
+                        val size = downloads.sumOf { it["size"].str()?.toDoubleOrNull() ?: 0.0 }
+                        val left = downloads.sumOf { it["sizeLeft"].str()?.toDoubleOrNull() ?: 0.0 }
+                        if (size > 0) percent = (((size - left) / size) * 100).toInt().coerceIn(0, 99)
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.v(ex, "No download progress for %s", request.id)
+                }
+            }
             return RequestEntry(
                 request = request,
                 item = shownItem,
                 who = user?.username ?: user?.email ?: "Someone",
                 status = status,
-                available =
-                    request.media?.status == SeerrAvailability.AVAILABLE.status ||
-                        item?.availability == SeerrAvailability.AVAILABLE,
+                available = available,
+                downloading = downloading,
+                downloadPercent = percent,
             )
         }
 
@@ -503,27 +989,42 @@ class BenflixRequestsViewModel
             entry: RequestEntry,
             approve: Boolean,
         ) {
-            val id = entry.request.id ?: return
+            viewModelScope.launch(WholphinDispatchers.IO) { answerNow(entry, approve) }
+        }
+
+        /** Admin: yes to everything waiting */
+        fun approveAll() {
+            val waiting = _requests.value?.filter { it.status == RequestStatus.PENDING }.orEmpty()
             viewModelScope.launch(WholphinDispatchers.IO) {
-                try {
-                    seerrService.api.requestApi.requestRequestIdStatusPost(
-                        requestId = id.toString(),
-                        status =
-                            if (approve) {
-                                RequestApi.StatusRequestRequestIdStatusPost.APPROVE
-                            } else {
-                                RequestApi.StatusRequestRequestIdStatusPost.DECLINE
-                            },
-                    )
-                    val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
-                    _requests.update { list ->
-                        list?.map { if (it.request.id == id) it.copy(status = newStatus) else it }
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not answer request %s", id)
+                waiting.forEach { answerNow(it, true) }
+                showToast(context, "Approved ${waiting.size}")
+            }
+        }
+
+        private suspend fun answerNow(
+            entry: RequestEntry,
+            approve: Boolean,
+        ) {
+            val id = entry.request.id ?: return
+            try {
+                seerrService.api.requestApi.requestRequestIdStatusPost(
+                    requestId = id.toString(),
+                    status =
+                        if (approve) {
+                            RequestApi.StatusRequestRequestIdStatusPost.APPROVE
+                        } else {
+                            RequestApi.StatusRequestRequestIdStatusPost.DECLINE
+                        },
+                )
+                val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
+                _requests.update { list ->
+                    list?.map { if (it.request.id == id) it.copy(status = newStatus) else it }
                 }
+                RequestsWaiting.set(_requests.value?.count { it.status == RequestStatus.PENDING } ?: 0)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not answer request %s", id)
             }
         }
 
@@ -531,6 +1032,8 @@ class BenflixRequestsViewModel
             /** TMDB's Animation genre and its "anime" keyword, which together mean anime */
             const val ANIMATION_GENRE = "16"
             const val ANIME_KEYWORD = "210024"
+            private const val PREFS = "benflix_requests"
+            private const val HIDDEN_KEY = "hidden"
         }
     }
 
@@ -572,7 +1075,7 @@ fun BenflixRequestsPage(
                 else -> RequestList(viewModel, mineOnly = false, arrivedOnly = null)
             }
         } else {
-            RequestList(viewModel, mineOnly = true, arrivedOnly = index == 1)
+            RequestList(viewModel, mineOnly = true, arrivedOnly = index == 1, showSearch = index == 0)
         }
     }
 }
@@ -669,39 +1172,166 @@ private fun FindShelf(
     section: FindSection,
     viewModel: BenflixRequestsViewModel,
 ) {
-    var genre by remember(section) { mutableStateOf<FindGenre?>(null) }
+    var filters by remember(section) { mutableStateOf(FindFilters()) }
     var hideOwned by rememberSaveable { mutableStateOf(true) }
-    val key = viewModel.key(section, genre)
-    LaunchedEffect(key) { viewModel.loadSection(section, genre) }
+    var hideAsked by rememberSaveable { mutableStateOf(false) }
+    var familyOnly by rememberSaveable { mutableStateOf(false) }
+    var showFilters by remember { mutableStateOf(false) }
+    var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
+    val key = viewModel.key(section, filters)
+    LaunchedEffect(key) { viewModel.loadSection(section, filters) }
+    LaunchedEffect(section) { viewModel.loadSpecial(section) }
     // Coming back from a details page: pick up anything just asked for
     LifecycleResumeEffect(Unit) {
         viewModel.refreshRequested()
         onPauseOrDispose { }
     }
     val allRows by viewModel.rows.collectAsState()
-    val rows = allRows[key]
-    val genres =
-        remember(section) {
-            FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
+    val special by viewModel.special.collectAsState()
+    val hidden by viewModel.hidden.collectAsState()
+    val ratings by viewModel.ratings.collectAsState()
+    val scores by viewModel.scores.collectAsState()
+    val query by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val baseRows = allRows[key]
+    // Benflix: "Because you watched" goes after the first row, "Finish the collection" after Popular
+    val rows =
+        remember(baseRows, special, section, filters) {
+            if (baseRows == null || filters.narrowed || filters.genre != null) {
+                baseRows
+            } else {
+                val extra = special[section].orEmpty()
+                val because = extra.filter { it.title.startsWith("Because") }
+                val collection = extra.filter { !it.title.startsWith("Because") }
+                baseRows.take(1) + because + baseRows.drop(1).take(1) + collection + baseRows.drop(2)
+            }
         }
+    val visible: (List<DiscoverItem>) -> List<DiscoverItem> = { items ->
+        items.filter { item ->
+            (!hideOwned || item.availability != SeerrAvailability.AVAILABLE) &&
+                (
+                    !hideAsked ||
+                        (item.availability != SeerrAvailability.PENDING && item.availability != SeerrAvailability.PROCESSING)
+                ) &&
+                item.requestKey() !in hidden &&
+                (!familyOnly || item.type == SeerrItemType.PERSON || ratings[item.requestKey()]?.familyFriendly(item.type) == true)
+        }
+    }
+    LaunchedEffect(familyOnly, rows, searchResults) {
+        if (familyOnly) {
+            viewModel.loadRatings(rows.orEmpty().flatMap { it.items } + searchResults.orEmpty())
+        }
+    }
+    val openItem: (DiscoverItem) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
+    val scoreLine: (DiscoverItem) -> String? = { item ->
+        listOfNotNull(
+            item.releaseDate?.year?.toString(),
+            scores[item.requestKey()] ?: item.score?.let { "★ ${"%.1f".format(it)}" },
+        ).joinToString(" · ").ifBlank { null }
+    }
+    if (showFilters) {
+        FiltersDialog(
+            section = section,
+            current = filters,
+            onDismiss = { showFilters = false },
+            onApply = {
+                filters = it
+                showFilters = false
+            },
+            showLanguage = !viewModel.viaJellyfin,
+        )
+    }
+    menuItem?.let { item ->
+        QuickMenuDialog(
+            item = item,
+            onDismiss = { menuItem = null },
+            onAsk = {
+                menuItem = null
+                viewModel.ask(item)
+            },
+            onInfo = {
+                menuItem = null
+                openItem(item)
+            },
+            onHide = {
+                menuItem = null
+                viewModel.hide(item)
+            },
+        )
+    }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 48.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
         item {
+            RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+        }
+        if (query.trim().length >= 2) {
+            searchShelves(
+                results = searchResults,
+                visible = visible,
+                scoreLine = scoreLine,
+                onOpen = openItem,
+                onMenu = { menuItem = it },
+                onFocusItem = viewModel::loadScore,
+            )
+            return@LazyColumn
+        }
+        if (filters.isEmpty) {
+            item {
+                val bannerItems =
+                    remember(rows, hidden) {
+                        rows
+                            ?.firstOrNull()
+                            ?.items
+                            .orEmpty()
+                            .filter {
+                                it.availability != SeerrAvailability.AVAILABLE &&
+                                    it.availability != SeerrAvailability.PARTIALLY_AVAILABLE &&
+                                    it.backDropUrl != null &&
+                                    it.requestKey() !in hidden
+                            }.take(5)
+                    }
+                RequestsBanner(items = bannerItems, onAsk = viewModel::ask, onInfo = openItem)
+            }
+        }
+        item {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             ) {
-                item {
-                    Chip("Hide what's on Benflix", hideOwned) { hideOwned = !hideOwned }
+                item { RequestsChip("Filters ☰", filters.narrowed, { showFilters = true }) }
+                item { RequestsChip("Hide what's on Benflix", hideOwned, { hideOwned = !hideOwned }) }
+                item { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
+                item { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
+            }
+        }
+        item {
+            val genres =
+                remember(section) {
+                    FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
                 }
-                item {
-                    Chip("All", genre == null) { genre = null }
-                }
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                item { RequestsChip("All", filters.genre == null, { filters = filters.copy(genre = null) }) }
                 items(genres, key = { it.label }) { g ->
-                    Chip(g.label, genre == g) { genre = if (genre == g) null else g }
+                    RequestsChip(g.label, filters.genre == g, { filters = filters.copy(genre = if (filters.genre == g) null else g) })
+                }
+            }
+        }
+        if (filters.narrowed) {
+            item {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                ) {
+                    filters.decade?.let { d -> item { ActiveFilterChip(d.label) { filters = filters.copy(decade = null) } } }
+                    filters.minScore?.let { m -> item { ActiveFilterChip("Score $m+") { filters = filters.copy(minScore = null) } } }
+                    filters.sort?.let { o -> item { ActiveFilterChip(o.label) { filters = filters.copy(sort = null) } } }
+                    filters.language?.let { l -> item { ActiveFilterChip(l.label) { filters = filters.copy(language = null) } } }
                 }
             }
         }
@@ -709,20 +1339,37 @@ private fun FindShelf(
             item { LoadingPage(Modifier.height(240.dp)) }
         } else {
             items(rows, key = { "$key-${it.title}" }) { row ->
+                val comingSoon = row.title.startsWith("Coming soon")
                 val shown =
-                    if (hideOwned) {
-                        row.items.filter { it.availability != SeerrAvailability.AVAILABLE }
-                    } else {
-                        row.items
+                    visible(row.items).let { list ->
+                        if (comingSoon) {
+                            list
+                                .filter { it.releaseDate == null || !it.releaseDate.isBefore(LocalDate.now()) }
+                                .sortedBy { it.releaseDate ?: LocalDate.MAX }
+                        } else {
+                            list
+                        }
                     }
                 if (shown.isNotEmpty()) {
                     DiscoverItemRow(
                         title = row.title,
                         items = shown,
-                        onClickItem = { _, item -> viewModel.navigationManager.navigateTo(item.destination) },
-                        onLongClickItem = { _, _ -> },
-                        onCardFocus = {},
+                        onClickItem = { _, item -> openItem(item) },
+                        onLongClickItem = { _, item -> menuItem = item },
+                        onCardFocus = { i -> shown.getOrNull(i)?.let(viewModel::loadScore) },
                         enableViewMore = false,
+                        cornerNoteFor = { if (comingSoon) comingSoonNote(it) else null },
+                        subtitleFor = scoreLine,
+                    )
+                }
+            }
+            if (rows.all { visible(it.items).isEmpty() }) {
+                item {
+                    Text(
+                        text = "Nothing matches. Try fewer filters.",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
                     )
                 }
             }
@@ -730,31 +1377,52 @@ private fun FindShelf(
     }
 }
 
-@Composable
-private fun Chip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+/** Search results as rows: Movies, Shows and People */
+private fun LazyListScope.searchShelves(
+    results: List<DiscoverItem>?,
+    visible: (List<DiscoverItem>) -> List<DiscoverItem>,
+    scoreLine: (DiscoverItem) -> String?,
+    onOpen: (DiscoverItem) -> Unit,
+    onMenu: (DiscoverItem) -> Unit,
+    onFocusItem: (DiscoverItem) -> Unit,
 ) {
-    Button(
-        onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-        colors =
-            ButtonDefaults.colors(
-                containerColor = if (selected) Color.White else Color(0xFF2C2C33),
-                contentColor = if (selected) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
-            ),
-        modifier = Modifier.height(40.dp),
-    ) {
-        Text(text = label, fontSize = 15.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+    if (results == null) {
+        item { LoadingPage(Modifier.height(200.dp)) }
+        return
+    }
+    val shown = visible(results)
+    val groups =
+        listOf(
+            "Movies" to shown.filter { it.type == SeerrItemType.MOVIE },
+            "Shows" to shown.filter { it.type == SeerrItemType.TV },
+            "People" to shown.filter { it.type == SeerrItemType.PERSON },
+        ).filter { it.second.isNotEmpty() }
+    if (groups.isEmpty()) {
+        item {
+            Text(
+                text = "No matches. Check the spelling, or try a shorter name.",
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            )
+        }
+        return
+    }
+    items(groups, key = { "search-${it.first}" }) { (title, list) ->
+        DiscoverItemRow(
+            title = title,
+            items = list,
+            onClickItem = { _, item -> onOpen(item) },
+            onLongClickItem = { _, item -> if (item.type != SeerrItemType.PERSON) onMenu(item) },
+            onCardFocus = { i -> list.getOrNull(i)?.let(onFocusItem) },
+            enableViewMore = false,
+            subtitleFor = { if (it.type == SeerrItemType.PERSON) null else scoreLine(it) },
+        )
     }
 }
 
 /**
- * A list of requests.
+ * A list of requests, grouped by where they're at.
  * [arrivedOnly] true = only ones now on Benflix, false = only ones still on the way, null = all
  */
 @Composable
@@ -762,12 +1430,23 @@ private fun RequestList(
     viewModel: BenflixRequestsViewModel,
     mineOnly: Boolean,
     arrivedOnly: Boolean?,
+    showSearch: Boolean = false,
 ) {
     LifecycleResumeEffect(mineOnly) {
         viewModel.loadRequests(mineOnly)
         onPauseOrDispose { }
     }
     val all by viewModel.requests.collectAsState()
+    val query by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val ratings by viewModel.ratings.collectAsState()
+    var confirmAll by remember { mutableStateOf(false) }
+    var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
+    // Benflix: family search shows family-friendly titles only (Ben's pick)
+    val familySearch = !viewModel.isAdmin
+    LaunchedEffect(familySearch, searchResults) {
+        if (familySearch) viewModel.loadRatings(searchResults.orEmpty())
+    }
     val list =
         all?.filter {
             when (arrivedOnly) {
@@ -776,39 +1455,124 @@ private fun RequestList(
                 false -> !it.available
             }
         }
-    when {
-        list == null -> {
-            LoadingPage(Modifier.fillMaxSize())
-        }
-
-        list.isEmpty() -> {
-            Text(
-                text =
-                    when (arrivedOnly) {
-                        true -> "Nothing you asked for has arrived yet."
-                        false -> "You haven't asked for anything yet. Search for a movie or show and press Ask for it."
-                        null -> "No requests yet."
+    val waiting = list.orEmpty().count { it.status == RequestStatus.PENDING && !it.available }
+    if (confirmAll) {
+        ApproveAllDialog(
+            count = waiting,
+            onDismiss = { confirmAll = false },
+            onConfirm = {
+                confirmAll = false
+                viewModel.approveAll()
+            },
+        )
+    }
+    menuItem?.let { item ->
+        QuickMenuDialog(
+            item = item,
+            onDismiss = { menuItem = null },
+            onAsk = {
+                menuItem = null
+                viewModel.ask(item)
+            },
+            onInfo = {
+                menuItem = null
+                viewModel.navigationManager.navigateTo(item.destination)
+            },
+            onHide = {
+                menuItem = null
+                viewModel.hide(item)
+            },
+        )
+    }
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        if (showSearch) {
+            item {
+                RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+            }
+            if (query.trim().length >= 2) {
+                searchShelves(
+                    results = searchResults,
+                    visible = { items ->
+                        if (familySearch) {
+                            items.filter {
+                                it.type == SeerrItemType.PERSON || ratings[it.requestKey()]?.familyFriendly(it.type) == true
+                            }
+                        } else {
+                            items
+                        }
                     },
-                fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(32.dp),
-            )
+                    scoreLine = { it.releaseDate?.year?.toString() },
+                    onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
+                    onMenu = { menuItem = it },
+                    onFocusItem = {},
+                )
+                return@LazyColumn
+            }
         }
+        when {
+            list == null -> {
+                item { LoadingPage(Modifier.height(240.dp)) }
+            }
 
-        else -> {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(list, key = { it.request.id ?: it.hashCode() }) { entry ->
-                    RequestRow(
-                        entry = entry,
-                        showWho = !mineOnly,
-                        canAnswer = !mineOnly && entry.status == RequestStatus.PENDING,
-                        onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
-                        onAnswer = { viewModel.answer(entry, it) },
+            list.isEmpty() -> {
+                item {
+                    Text(
+                        text =
+                            when (arrivedOnly) {
+                                true -> "Nothing you asked for has arrived yet."
+                                false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
+                                null -> "No requests yet."
+                            },
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(32.dp),
                     )
+                }
+            }
+
+            else -> {
+                if (!mineOnly && waiting > 1) {
+                    item {
+                        Button(
+                            onClick = { confirmAll = true },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        ) { Text("Approve all $waiting") }
+                    }
+                }
+                val groups =
+                    listOf(
+                        (if (mineOnly) "Waiting for Ben" else "Waiting for you") to
+                            list.filter { !it.available && it.status == RequestStatus.PENDING },
+                        "On the way" to
+                            list.filter {
+                                !it.available && it.status != RequestStatus.PENDING &&
+                                    it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE
+                            },
+                        "Ready to watch" to list.filter { it.available },
+                        "Declined" to
+                            list.filter {
+                                !it.available && (it.status == RequestStatus.DECLINED || it.status == RequestStatus.FAILURE)
+                            },
+                    ).filter { it.second.isNotEmpty() }
+                groups.forEach { (title, entries) ->
+                    item(key = "group-$title") {
+                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size) }
+                    }
+                    items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
+                        Box(Modifier.padding(horizontal = 16.dp)) {
+                            RequestRow(
+                                entry = entry,
+                                showWho = !mineOnly,
+                                canAnswer = !mineOnly && entry.status == RequestStatus.PENDING && !entry.available,
+                                onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
+                                onAnswer = { viewModel.answer(entry, it) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -863,6 +1627,13 @@ private fun RequestRow(
                 maxLines = 1,
             )
             StatusTag(entry)
+            RequestSteps(
+                approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
+                downloading = entry.downloading,
+                percent = entry.downloadPercent,
+                ready = entry.available,
+                declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
+            )
         }
         if (canAnswer) {
             Button(onClick = { onAnswer(true) }) { Text("Approve") }

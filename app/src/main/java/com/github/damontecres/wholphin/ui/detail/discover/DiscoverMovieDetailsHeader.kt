@@ -128,6 +128,12 @@ fun DiscoverMovieDetailsHeader(
                     tmdbId = tmdbId,
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 2.dp, bottom = 4.dp),
                 )
+                // Benflix (admins): who already asked for this, with Approve / Decline
+                WhoAskedBlock(
+                    isMovie = true,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
+                )
             }
 
             val tagline = remember { movie.tagline?.takeIf { it.isNotNullOrBlank() } }

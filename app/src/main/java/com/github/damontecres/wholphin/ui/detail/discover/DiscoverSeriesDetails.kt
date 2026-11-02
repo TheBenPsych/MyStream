@@ -494,6 +494,12 @@ fun DiscoverSeriesDetailsHeader(
                     tmdbId = tmdbId,
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
                 )
+                // Benflix (admins): who already asked for this, with Approve / Decline
+                WhoAskedBlock(
+                    isMovie = false,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
+                )
             }
             series.overview?.let { overview ->
                 OverviewText(

@@ -97,6 +97,8 @@ fun DiscoverItemRow(
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = 16.dp,
     onClickViewMore: () -> Unit = {},
+    cornerNoteFor: (DiscoverItem) -> String? = { null },
+    subtitleFor: (DiscoverItem) -> String? = { null },
 ) {
     val state = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
@@ -165,6 +167,8 @@ fun DiscoverItemRow(
                     onLongClick = onLongClick,
                     showOverlay = true,
                     modifier = cardModifier,
+                    cornerNote = item?.let(cornerNoteFor),
+                    subtitleOverride = item?.let(subtitleFor),
                 )
             }
             if (enableViewMore) {

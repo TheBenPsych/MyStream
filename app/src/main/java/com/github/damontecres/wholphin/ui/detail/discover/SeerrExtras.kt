@@ -130,68 +130,69 @@ class SeerrExtrasViewModel
                 }
             }
         }
-
-        private fun JsonElement?.str(): String? = (this as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
-
-        private fun preferred(list: List<JsonObject>): JsonObject? {
-            val code = { o: JsonObject -> o["iso_3166_1"].str() ?: o["iso31661"].str() }
-            return list.firstOrNull { code(it) == Locale.getDefault().country }
-                ?: list.firstOrNull { code(it) == "US" }
-                ?: list.firstOrNull()
-        }
-
-        private fun movieAgeRating(details: JsonObject): String? {
-            val results =
-                (details["releases"] as? JsonObject)
-                    ?.get("results")
-                    ?.let { it as? JsonArray }
-                    ?.mapNotNull { it as? JsonObject }
-                    .orEmpty()
-            val withRating =
-                results.filter { r ->
-                    (r["release_dates"] as? JsonArray).orEmpty().any {
-                        !(it as? JsonObject)?.get("certification").str().isNullOrBlank()
-                    }
-                }
-            return preferred(withRating)
-                ?.get("release_dates")
-                ?.jsonArray
-                ?.mapNotNull { (it as? JsonObject)?.get("certification").str() }
-                ?.firstOrNull { it.isNotBlank() }
-        }
-
-        private fun tvAgeRating(details: JsonObject): String? {
-            val results =
-                (details["contentRatings"] as? JsonObject)
-                    ?.get("results")
-                    ?.let { it as? JsonArray }
-                    ?.mapNotNull { it as? JsonObject }
-                    ?.filter { !it["rating"].str().isNullOrBlank() }
-                    .orEmpty()
-            return preferred(results)?.get("rating").str()
-        }
-
-        private fun countries(details: JsonObject): List<String> {
-            val named =
-                (details["productionCountries"] as? JsonArray)
-                    ?.mapNotNull { (it as? JsonObject)?.get("name").str() }
-                    .orEmpty()
-            if (named.isNotEmpty()) return named.distinct().take(3)
-            return (details["originCountry"] as? JsonArray)
-                ?.mapNotNull { it.str() }
-                ?.map { Locale("", it).displayCountry.ifBlank { it } }
-                ?.distinct()
-                ?.take(3)
-                .orEmpty()
-        }
-
-        private fun tags(details: JsonObject): List<String> =
-            (details["keywords"] as? JsonArray)
-                ?.mapNotNull { (it as? JsonObject)?.get("name").str() }
-                ?.distinct()
-                ?.take(14)
-                .orEmpty()
     }
+
+/** Benflix: shared readers for Seerr's movie and show JSON (used here and by the Requests page) */
+internal fun JsonElement?.str(): String? = (this as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+
+private fun preferred(list: List<JsonObject>): JsonObject? {
+    val code = { o: JsonObject -> o["iso_3166_1"].str() ?: o["iso31661"].str() }
+    return list.firstOrNull { code(it) == Locale.getDefault().country }
+        ?: list.firstOrNull { code(it) == "US" }
+        ?: list.firstOrNull()
+}
+
+internal fun movieAgeRating(details: JsonObject): String? {
+    val results =
+        (details["releases"] as? JsonObject)
+            ?.get("results")
+            ?.let { it as? JsonArray }
+            ?.mapNotNull { it as? JsonObject }
+            .orEmpty()
+    val withRating =
+        results.filter { r ->
+            (r["release_dates"] as? JsonArray).orEmpty().any {
+                !(it as? JsonObject)?.get("certification").str().isNullOrBlank()
+            }
+        }
+    return preferred(withRating)
+        ?.get("release_dates")
+        ?.jsonArray
+        ?.mapNotNull { (it as? JsonObject)?.get("certification").str() }
+        ?.firstOrNull { it.isNotBlank() }
+}
+
+internal fun tvAgeRating(details: JsonObject): String? {
+    val results =
+        (details["contentRatings"] as? JsonObject)
+            ?.get("results")
+            ?.let { it as? JsonArray }
+            ?.mapNotNull { it as? JsonObject }
+            ?.filter { !it["rating"].str().isNullOrBlank() }
+            .orEmpty()
+    return preferred(results)?.get("rating").str()
+}
+
+internal fun countries(details: JsonObject): List<String> {
+    val named =
+        (details["productionCountries"] as? JsonArray)
+            ?.mapNotNull { (it as? JsonObject)?.get("name").str() }
+            .orEmpty()
+    if (named.isNotEmpty()) return named.distinct().take(3)
+    return (details["originCountry"] as? JsonArray)
+        ?.mapNotNull { it.str() }
+        ?.map { Locale("", it).displayCountry.ifBlank { it } }
+        ?.distinct()
+        ?.take(3)
+        .orEmpty()
+}
+
+internal fun tags(details: JsonObject): List<String> =
+    (details["keywords"] as? JsonArray)
+        ?.mapNotNull { (it as? JsonObject)?.get("name").str() }
+        ?.distinct()
+        ?.take(14)
+        .orEmpty()
 
 private val GROWN_UP_WORDS =
     listOf("hentai", "erotic", "sex", "nudity", "porn", "softcore", "ecchi", "rape", "incest", "gore", "torture")

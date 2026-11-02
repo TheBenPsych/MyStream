@@ -55,6 +55,10 @@ fun DiscoverItemCard(
     showOverlay: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     width: Dp = Cards.height2x3 * AspectRatios.TALL,
+    // Benflix: a small note pinned to the bottom of the poster, like a release date
+    cornerNote: String? = null,
+    // Benflix: replaces the year line under the card, like "2024 · IMDb 7.8"
+    subtitleOverride: String? = null,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     var focusedAfterDelay by remember { mutableStateOf(false) }
@@ -142,6 +146,16 @@ fun DiscoverItemCard(
                                 .padding(6.dp),
                     )
                 }
+                if (cornerNote != null) {
+                    CardBadge(
+                        text = cornerNote,
+                        background = Color.Black.copy(alpha = .75f),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(6.dp),
+                    )
+                }
             }
         }
         SlidingCardText(focused) {
@@ -158,7 +172,7 @@ fun DiscoverItemCard(
                         .enableMarquee(focusedAfterDelay),
             )
             Text(
-                text = item?.releaseDate?.year?.toString() ?: "",
+                text = subtitleOverride ?: item?.releaseDate?.year?.toString() ?: "",
                 maxLines = 1,
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall,

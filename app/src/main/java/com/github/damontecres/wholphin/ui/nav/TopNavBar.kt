@@ -81,6 +81,8 @@ data class TopNavTab(
     val glyph: String? = null,
     /** More menu: My Benflix, shown with your profile picture */
     val isProfile: Boolean = false,
+    /** Benflix: a small red number, like requests waiting for Ben */
+    val badge: Int? = null,
 )
 
 /**
@@ -294,6 +296,19 @@ private fun TopNavTabButton(
             fontWeight = if (tab.selected || focused) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
         )
+        tab.badge?.takeIf { it > 0 }?.let { count ->
+            Text(
+                text = if (count > 9) "9+" else count.toString(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier =
+                    Modifier
+                        .padding(start = 6.dp)
+                        .background(Color(0xFFE5484D), RoundedCornerShape(9.dp))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+            )
+        }
     }
 }
 
