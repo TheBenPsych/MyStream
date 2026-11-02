@@ -69,6 +69,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -238,6 +239,33 @@ class SeriesViewModel
                     viewModelScope.launchIO {
                         val extras = extrasService.getExtras(series.id)
                         _state.update { it.copy(extras = extras) }
+                    }
+                    // Benflix: the show's best-rated episodes, to play one straight away
+                    viewModelScope.launchIO {
+                        try {
+                            val faves =
+                                api.itemsApi
+                                    .getItems(
+                                        GetItemsRequest(
+                                            userId = serverRepository.currentUser?.id,
+                                            parentId = seriesId,
+                                            recursive = true,
+                                            includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                            sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                                            sortOrder = listOf(SortOrder.DESCENDING),
+                                            fields = ItemRowFields,
+                                            limit = 10,
+                                        ),
+                                    ).content
+                                    .items
+                                    .filter { (it.communityRating ?: 0f) > 0f && (it.parentIndexNumber ?: 1) > 0 }
+                                    .map { BaseItem(it, true) }
+                            if (faves.size >= 5) _state.update { it.copy(fanFavourites = faves) }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Could not load fan favourite episodes")
+                        }
                     }
                     if (state.value.similar.isEmpty()) {
                         viewModelScope.launchIO {
@@ -927,6 +955,8 @@ data class SeriesState(
     val extras: List<ExtrasItem> = emptyList(),
     val people: List<Person> = emptyList(),
     val similar: List<BaseItem> = emptyList(),
+    // Benflix: best-rated episodes
+    val fanFavourites: List<BaseItem> = emptyList(),
     val canDeleteSeries: Boolean = false,
     val peopleInEpisode: PeopleInItem = PeopleInItem(),
     val discovered: List<DiscoverItem> = emptyList(),

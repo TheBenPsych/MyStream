@@ -1211,6 +1211,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_late_night_look_off,
             )
 
+        val AutoMpvStyledSubs =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_auto_mpv,
+                defaultValue = false,
+                getter = { it.benflixPreferences.autoMpvStyledSubs },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { autoMpvStyledSubs = value }
+                },
+                summaryOn = R.string.benflix_auto_mpv_on,
+                summaryOff = R.string.benflix_auto_mpv_off,
+            )
+
         val LateNightStart =
             AppChoicePreference<AppPreferences, Int>(
                 title = R.string.benflix_late_night_start,
@@ -1337,6 +1349,7 @@ val basicPreferences =
                     AppPreference.SkipForward,
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
+                    AppPreference.AutoMpvStyledSubs,
                 ),
         ),
         PreferenceGroup(

@@ -281,6 +281,8 @@ message BenflixPreferences {
   bool welcome_done = 7;
   // Minutes away before Who's watching shows again. 0 = default (30), -1 = always ask
   int32 resume_minutes = 8;
+  // Opt-in: play videos with styled (ASS/SSA) subtitles in MPV, falling back to the normal player
+  bool auto_mpv_styled_subs = 9;
 }
 
 enum BenflixAccent {

@@ -189,10 +189,27 @@ class HomeViewModel
                 }
         }
 
+        /** Benflix: the banner on screen came from last time's snapshot, the rest of it isn't applied yet */
+        private var bannerFromSnapshot = false
+
         fun init() {
             viewModelScope.launchIO {
                 Timber.d("init HomeViewModel")
                 serverRepository.currentUserDto?.let { userDto ->
+                    // Benflix: put last time's banner up straight away, before anything else loads,
+                    // so the page can start on it
+                    if (state.value.featured.isEmpty()) {
+                        readHomeSnapshot(userDto.id)?.featured?.takeIf { it.isNotEmpty() }?.let { saved ->
+                            bannerFromSnapshot = true
+                            _state.update { st ->
+                                if (st.featured.isEmpty()) {
+                                    st.copy(featured = saved.map { FeaturedItem(it.item, it.reason, it.becauseOf) })
+                                } else {
+                                    st
+                                }
+                            }
+                        }
+                    }
                     if (dataLoadingJob?.isActive == false) {
                         val settings =
                             homeSettingsService.currentSettings.first { it != HomePageResolvedSettings.EMPTY }
@@ -248,7 +265,7 @@ class HomeViewModel
                 // Opening the app: show what Home looked like last time straight away, then swap
                 // in fresh rows as they arrive
                 val snapshot =
-                    if (!refresh && state.featured.isEmpty()) {
+                    if (!refresh && (state.featured.isEmpty() || bannerFromSnapshot)) {
                         readHomeSnapshot(userDto.id)?.takeIf { it.rows.size == settings.rows.size }
                     } else {
                         null
@@ -282,6 +299,7 @@ class HomeViewModel
 
                 // The top of the screen loads first: the banner, Top 10 and Continue watching.
                 // Rows further down start a moment later, so they don't slow down what you see first.
+                bannerFromSnapshot = false
                 if (!refresh || state.featured.isEmpty()) {
                     viewModelScope.launchIO { loadFeatured(userDto) }
                 }
@@ -483,171 +501,178 @@ class HomeViewModel
          * the newest movies & shows plus a few random unwatched picks
          */
         private suspend fun loadFeatured(userDto: ServerUserConfig) {
-            val taste = loadTaste(userDto.id)
-            val baseRequest =
-                GetItemsRequest(
-                    userId = userDto.id,
-                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                    recursive = true,
-                    imageTypes = listOf(ImageType.BACKDROP),
-                    fields = HomeRowFields,
-                )
-            // Each source is loaded separately so one failing doesn't empty the whole banner
-            val resume =
-                featuredSource("resume") {
-                    api.itemsApi
-                        .getResumeItems(
-                            GetResumeItemsRequest(
-                                userId = userDto.id,
-                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
-                                fields = HomeRowFields,
-                                enableUserData = true,
-                                limit = FEATURED_RESUME,
-                            ),
-                        ).content.items
-                        .map { FeaturedItem(BaseItem(it), FeaturedReason.RESUME) }
-                }
-            val because =
-                featuredSource("because") {
-                    val lastWatched =
+            coroutineScope {
+                // Benflix: every source loads at the same time, and slow ones are skipped this time
+                // instead of holding up the whole banner
+                val tasteAsync = async { loadTaste(userDto.id) }
+                val baseRequest =
+                    GetItemsRequest(
+                        userId = userDto.id,
+                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                        recursive = true,
+                        imageTypes = listOf(ImageType.BACKDROP),
+                        fields = HomeRowFields,
+                    )
+                // Each source is loaded separately so one failing doesn't empty the whole banner
+                val resume =
+                    featuredSourceAsync("resume") {
                         api.itemsApi
-                            .getItems(
-                                GetItemsRequest(
+                            .getResumeItems(
+                                GetResumeItemsRequest(
                                     userId = userDto.id,
                                     includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
-                                    recursive = true,
-                                    isPlayed = true,
-                                    sortBy = listOf(ItemSortBy.DATE_PLAYED),
-                                    sortOrder = listOf(SortOrder.DESCENDING),
-                                    limit = 1,
-                                ),
-                            ).content.items
-                            .firstOrNull()
-                    val sourceId =
-                        if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesId else lastWatched?.id
-                    val sourceName =
-                        if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesName else lastWatched?.name
-                    if (sourceId == null || sourceName == null) {
-                        emptyList()
-                    } else {
-                        api.libraryApi
-                            .getSimilarItems(
-                                GetSimilarItemsRequest(
-                                    userId = userDto.id,
-                                    itemId = sourceId,
                                     fields = HomeRowFields,
-                                    limit = 12,
+                                    enableUserData = true,
+                                    limit = FEATURED_RESUME,
                                 ),
                             ).content.items
-                            .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
-                            .shuffled()
-                            .take(FEATURED_BECAUSE)
-                            .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = sourceName) }
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.RESUME) }
                     }
-                }
-            val liked =
-                featuredSource("liked") {
-                    val likedItem = taste.liked
-                    val name = likedItem?.name
-                    if (likedItem == null || name == null) {
-                        emptyList()
-                    } else {
-                        api.libraryApi
-                            .getSimilarItems(
-                                GetSimilarItemsRequest(
-                                    userId = userDto.id,
-                                    itemId = likedItem.id,
-                                    fields = HomeRowFields,
-                                    limit = 12,
-                                ),
-                            ).content.items
-                            .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
-                            .shuffled()
-                            .take(FEATURED_BECAUSE)
-                            .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = name) }
-                    }
-                }
-            val newest =
-                featuredSource("newest") {
-                    api.itemsApi
-                        .getItems(
-                            baseRequest.copy(
-                                sortBy = listOf(ItemSortBy.DATE_CREATED),
-                                sortOrder = listOf(SortOrder.DESCENDING),
-                                limit = FEATURED_NEWEST,
-                            ),
-                        ).content.items
-                        .map { FeaturedItem(BaseItem(it), FeaturedReason.NEW) }
-                }
-            val favorites =
-                featuredSource("favorites") {
-                    api.itemsApi
-                        .getItems(
-                            baseRequest.copy(
-                                sortBy = listOf(ItemSortBy.RANDOM),
-                                isFavorite = true,
-                                limit = FEATURED_FAVORITES,
-                            ),
-                        ).content.items
-                        .map { FeaturedItem(BaseItem(it), FeaturedReason.FAVORITE) }
-                }
-            val picks =
-                featuredSource("picks") {
-                    api.itemsApi
-                        .getItems(
-                            baseRequest.copy(
-                                sortBy = listOf(ItemSortBy.RANDOM),
-                                isPlayed = false,
-                                limit = FEATURED_PICKS,
-                            ),
-                        ).content.items
-                        .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
-                }
-            // From 6 PM: one well-rated movie you haven't seen leads the banner as Tonight's pick.
-            // It stays the same all evening (a new one each night) and skips thumbs-down titles.
-            val tonight =
-                if (java.time.LocalTime
-                        .now()
-                        .hour >= TONIGHT_FROM_HOUR
-                ) {
-                    featuredSource("tonight") {
-                        val candidates =
+                val because =
+                    featuredSourceAsync("because") {
+                        val lastWatched =
                             api.itemsApi
                                 .getItems(
-                                    baseRequest.copy(
-                                        includeItemTypes = listOf(BaseItemKind.MOVIE),
-                                        isPlayed = false,
-                                        minCommunityRating = TONIGHT_MIN_RATING,
-                                        sortBy = listOf(ItemSortBy.SORT_NAME),
-                                        limit = TONIGHT_POOL,
+                                    GetItemsRequest(
+                                        userId = userDto.id,
+                                        includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                        recursive = true,
+                                        isPlayed = true,
+                                        sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                        sortOrder = listOf(SortOrder.DESCENDING),
+                                        limit = 1,
                                     ),
                                 ).content.items
-                                .filter { it.userData?.likes != false }
-                        if (candidates.isEmpty()) {
+                                .firstOrNull()
+                        val sourceId =
+                            if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesId else lastWatched?.id
+                        val sourceName =
+                            if (lastWatched?.type == BaseItemKind.EPISODE) lastWatched?.seriesName else lastWatched?.name
+                        if (sourceId == null || sourceName == null) {
                             emptyList()
                         } else {
-                            val day =
-                                java.time.LocalDate
-                                    .now()
-                                    .toEpochDay()
-                            val index = Math.floorMod(day * 31 + userDto.id.hashCode(), candidates.size.toLong()).toInt()
-                            listOf(FeaturedItem(BaseItem(candidates[index]), FeaturedReason.TONIGHT, becauseOf = userDto.name))
+                            api.libraryApi
+                                .getSimilarItems(
+                                    GetSimilarItemsRequest(
+                                        userId = userDto.id,
+                                        itemId = sourceId,
+                                        fields = HomeRowFields,
+                                        limit = 12,
+                                    ),
+                                ).content.items
+                                .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
+                                .shuffled()
+                                .take(FEATURED_BECAUSE)
+                                .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = sourceName) }
                         }
                     }
-                } else {
-                    emptyList()
-                }
-            // Benflix "On this day": a movie that came out on today's date, years ago
-            val onThisDay = featuredSource("onThisDay") { onThisDay(userDto.id, baseRequest) }
-            // Take turns between the sources so the banner mixes them
-            val sources = listOf(tonight, onThisDay, resume, because, liked, newest, favorites, picks)
-            val featured =
-                (0 until sources.maxOf { it.size })
-                    .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
-                    .filter { taste.keep(it.item) }
-                    .distinctBy { it.item.id }
-                    .take(FEATURED_MAX)
-            _state.update { it.copy(featured = featured) }
+                val liked =
+                    featuredSourceAsync("liked") {
+                        val likedItem = tasteAsync.await().liked
+                        val name = likedItem?.name
+                        if (likedItem == null || name == null) {
+                            emptyList()
+                        } else {
+                            api.libraryApi
+                                .getSimilarItems(
+                                    GetSimilarItemsRequest(
+                                        userId = userDto.id,
+                                        itemId = likedItem.id,
+                                        fields = HomeRowFields,
+                                        limit = 12,
+                                    ),
+                                ).content.items
+                                .filter { !it.backdropImageTags.isNullOrEmpty() && it.userData?.played != true }
+                                .shuffled()
+                                .take(FEATURED_BECAUSE)
+                                .map { FeaturedItem(BaseItem(it), FeaturedReason.BECAUSE, becauseOf = name) }
+                        }
+                    }
+                val newest =
+                    featuredSourceAsync("newest") {
+                        api.itemsApi
+                            .getItems(
+                                baseRequest.copy(
+                                    sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                    sortOrder = listOf(SortOrder.DESCENDING),
+                                    limit = FEATURED_NEWEST,
+                                ),
+                            ).content.items
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.NEW) }
+                    }
+                val favorites =
+                    featuredSourceAsync("favorites") {
+                        api.itemsApi
+                            .getItems(
+                                baseRequest.copy(
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    isFavorite = true,
+                                    limit = FEATURED_FAVORITES,
+                                ),
+                            ).content.items
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.FAVORITE) }
+                    }
+                val picks =
+                    featuredSourceAsync("picks") {
+                        api.itemsApi
+                            .getItems(
+                                baseRequest.copy(
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    isPlayed = false,
+                                    limit = FEATURED_PICKS,
+                                ),
+                            ).content.items
+                            .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
+                    }
+                // From 6 PM: one well-rated movie you haven't seen leads the banner as Tonight's pick.
+                // It stays the same all evening (a new one each night) and skips thumbs-down titles.
+                val tonight =
+                    if (java.time.LocalTime
+                            .now()
+                            .hour >= TONIGHT_FROM_HOUR
+                    ) {
+                        featuredSourceAsync("tonight") {
+                            val candidates =
+                                api.itemsApi
+                                    .getItems(
+                                        baseRequest.copy(
+                                            includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                            isPlayed = false,
+                                            minCommunityRating = TONIGHT_MIN_RATING,
+                                            sortBy = listOf(ItemSortBy.SORT_NAME),
+                                            limit = TONIGHT_POOL,
+                                        ),
+                                    ).content.items
+                                    .filter { it.userData?.likes != false }
+                            if (candidates.isEmpty()) {
+                                emptyList()
+                            } else {
+                                val day =
+                                    java.time.LocalDate
+                                        .now()
+                                        .toEpochDay()
+                                val index = Math.floorMod(day * 31 + userDto.id.hashCode(), candidates.size.toLong()).toInt()
+                                listOf(FeaturedItem(BaseItem(candidates[index]), FeaturedReason.TONIGHT, becauseOf = userDto.name))
+                            }
+                        }
+                    } else {
+                        null
+                    }
+                // Benflix "On this day": a movie that came out on today's date, years ago
+                val onThisDay = featuredSourceAsync("onThisDay") { onThisDay(userDto.id, baseRequest) }
+                // Take turns between the sources so the banner mixes them
+                val taste = tasteAsync.await()
+                val sources =
+                    listOf(tonight, onThisDay, resume, because, liked, newest, favorites, picks)
+                        .map { it?.await().orEmpty() }
+                val featured =
+                    (0 until sources.maxOf { it.size })
+                        .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
+                        .filter { taste.keep(it.item) }
+                        .distinctBy { it.item.id }
+                        .take(FEATURED_MAX)
+                _state.update { it.copy(featured = featured) }
+            }
         }
 
         /**
@@ -712,6 +737,14 @@ class HomeViewModel
             } catch (ex: Exception) {
                 Timber.w(ex, "Kids: couldn't load Watch it again")
             }
+        }
+
+        /** [featuredSource] started right away; gives up (empty) if it takes too long */
+        private fun kotlinx.coroutines.CoroutineScope.featuredSourceAsync(
+            name: String,
+            block: suspend () -> List<FeaturedItem>,
+        ) = async {
+            withTimeoutOrNull(FEATURED_SOURCE_TIMEOUT_MS) { featuredSource(name, block) }.orEmpty()
         }
 
         private suspend fun featuredSource(
@@ -1964,6 +1997,7 @@ private const val FEATURED_RESUME = 2
 private const val FEATURED_BECAUSE = 2
 private const val FEATURED_FAVORITES = 2
 private const val FEATURED_MAX = 10
+private const val FEATURED_SOURCE_TIMEOUT_MS = 3_000L
 private const val KIDS_AGAIN_MIN = 3
 private const val KIDS_AGAIN_MAX = 20
 

@@ -215,6 +215,8 @@ fun SeriesDetails(
                 inlineSeasonIndex = state.inlineSeasonIndex,
                 inlineEpisodes = state.inlineEpisodes,
                 onPickSeason = viewModel::showSeasonEpisodes,
+                fanFavourites = state.fanFavourites,
+                onPlayEpisode = { viewModel.navigateTo(Destination.Playback(it)) },
                 trailers = state.trailers,
                 extras = state.extras,
                 people = state.people,
@@ -350,6 +352,7 @@ private const val EXTRAS_ROW = TRAILER_ROW + 1
 private const val SIMILAR_ROW = EXTRAS_ROW + 1
 private const val DISCOVER_ROW = SIMILAR_ROW + 1
 private const val EPISODES_ROW = DISCOVER_ROW + 1
+private const val FAVES_ROW = EPISODES_ROW + 1
 
 @Composable
 fun SeriesDetailsContent(
@@ -384,13 +387,15 @@ fun SeriesDetailsContent(
     inlineSeasonIndex: Int = -1,
     inlineEpisodes: List<BaseItem> = emptyList(),
     onPickSeason: (Int) -> Unit = {},
+    fanFavourites: List<BaseItem> = emptyList(),
+    onPlayEpisode: (BaseItem) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     var position by rememberInt()
-    val focusRequesters = remember { List(EPISODES_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember { List(FAVES_ROW + 1) { FocusRequester() } }
     // Tabs under the seasons, like the movie page: one section at a time keeps the page calm
     val detailSections =
         buildList {
@@ -651,6 +656,36 @@ fun SeriesDetailsContent(
                                 },
                             )
                         }
+                    }
+                }
+                // Benflix: fan favourite episodes; pick one and it plays
+                if (fanFavourites.isNotEmpty()) {
+                    item {
+                        ItemRow(
+                            title = stringResource(R.string.benflix_fan_favourites),
+                            items = fanFavourites,
+                            onClickItem = { _, item ->
+                                position = FAVES_ROW
+                                onPlayEpisode.invoke(item)
+                            },
+                            onLongClickItem = { _, _ -> },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequesters[FAVES_ROW]),
+                            cardContent = @Composable { _, item, mod, onClick, onLongClick ->
+                                SeasonCard(
+                                    item = item,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    imageHeight = Cards.heightEpisode,
+                                    imageWidth = Dp.Unspecified,
+                                    aspectRatio = AspectRatios.WIDE,
+                                    showImageOverlay = true,
+                                    modifier = mod,
+                                )
+                            },
+                        )
                     }
                 }
                 item {

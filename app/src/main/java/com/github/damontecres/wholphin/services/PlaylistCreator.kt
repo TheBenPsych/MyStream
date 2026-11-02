@@ -18,15 +18,19 @@ import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.playlistsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CreatePlaylistDto
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.LocationType
 import org.jellyfin.sdk.model.api.MediaType
@@ -35,6 +39,7 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -307,6 +312,10 @@ class PlaylistCreator
                                         PlaylistItem.Media(BaseItem(it, false))
                                     }.let(::addAll)
                             }
+                            // Benflix: the next movie in its collection comes up next
+                            if (item.type == BaseItemKind.MOVIE) {
+                                nextInCollection(item)?.let { add(PlaylistItem.Media(BaseItem(it, false))) }
+                            }
                         }
                     PlaylistCreationResult.Success(Playlist(list))
                 }
@@ -322,6 +331,59 @@ class PlaylistCreator
                 else -> {
                     PlaylistCreationResult.Error(null, "Unsupported type: ${item.type}")
                 }
+            }
+
+        /**
+         * Benflix: the movie that comes after this one in its collection (by release date), using
+         * the TMDB collection id that Jellyfin saves on both the movie and the collection
+         */
+        private suspend fun nextInCollection(movie: BaseItemDto): BaseItemDto? =
+            try {
+                val userId = serverRepository.currentUser?.id
+                val full = movie.providerIds?.let { movie } ?: api.userLibraryApi.getItem(movie.id, userId).content
+                val collectionTmdb = full.providerIds?.get("TmdbCollection")
+                if (collectionTmdb.isNullOrBlank()) {
+                    null
+                } else {
+                    val collection =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                                    recursive = true,
+                                    fields = listOf(ItemFields.PROVIDER_IDS),
+                                    enableImages = false,
+                                ),
+                            ).content
+                            .items
+                            .firstOrNull { set ->
+                                set.providerIds?.get("Tmdb") == collectionTmdb ||
+                                    set.providerIds?.get("TmdbCollection") == collectionTmdb
+                            }
+                    collection?.let { set ->
+                        val movies =
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        parentId = set.id,
+                                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                        sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.PRODUCTION_YEAR),
+                                        sortOrder = listOf(SortOrder.ASCENDING),
+                                        fields = DetailItemFields,
+                                    ),
+                                ).content
+                                .items
+                        val index = movies.indexOfFirst { it.id == movie.id }
+                        if (index >= 0) movies.getOrNull(index + 1) else null
+                    }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not find the next movie in the collection")
+                null
             }
 
         /**

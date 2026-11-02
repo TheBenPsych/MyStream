@@ -46,6 +46,11 @@
 
     <!-- Late-night look -->
     <string name="benflix_late_night_look">Late-night look</string>
+    <string name="benflix_fan_favourites">Fan favourite episodes</string>
+    <string name="benflix_auto_mpv">Fancy subtitles player (test)</string>
+    <string name="benflix_auto_mpv_on">Anime-style subtitles play in MPV so they look right. Falls back to the normal player if MPV has trouble</string>
+    <string name="benflix_auto_mpv_off">Off: everything plays in the normal player</string>
+    <string name="benflix_content_issue">This video has a problem and couldn\'t play. Try another version, or tell Ben</string>
     <string name="benflix_late_night_look_on">Menus dim a little at night (not the movie itself)</string>
     <string name="benflix_late_night_look_off">Off</string>
     <string name="benflix_late_night_start">Late-night look starts at</string>
