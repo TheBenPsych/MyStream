@@ -39,6 +39,7 @@ import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.toBaseItems
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
+import com.github.damontecres.wholphin.util.FuzzyTitles
 import com.github.damontecres.wholphin.util.SearchRelevance
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -282,7 +283,11 @@ class SearchViewModel
                                         limit = SEARCH_LIMIT,
                                         enableTotalRecordCount = false,
                                     )
-                                api.itemsApi.getItems(request).toBaseItems(api, false)
+                                withCloseMatches(
+                                    query,
+                                    listOf(type),
+                                    api.itemsApi.getItems(request).toBaseItems(api, false),
+                                )
                             }
                         }
                     val sorted =
@@ -315,9 +320,11 @@ class SearchViewModel
 
                     val result = api.itemsApi.getItems(request).content
                     val items =
-                        result.items.map {
-                            BaseItem(it, false)
-                        }
+                        withCloseMatches(
+                            query,
+                            state.value.includedSearchableTypes,
+                            result.items.map { BaseItem(it, false) },
+                        )
                     val sorted =
                         items.sortedWith(
                             compareBy<BaseItem> { SearchRelevance.score(it, query) },
@@ -328,6 +335,45 @@ class SearchViewModel
                     Timber.e(ex, "Exception in combined search")
                     _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
                 }
+            }
+        }
+
+        /**
+         * Benflix typo-forgiving search: when the server finds fewer than 3 movies or shows,
+         * add titles that are only a letter or two off ("avengrs" finds Avengers)
+         */
+        private suspend fun withCloseMatches(
+            query: String,
+            types: List<BaseItemKind>,
+            items: List<BaseItem>,
+        ): List<BaseItem> {
+            val wanted = types.filter { it in FUZZY_TYPES }
+            if (wanted.isEmpty() || items.count { it.type in wanted } >= 3) return items
+            return try {
+                val have = items.map { it.id }.toSet()
+                val ids =
+                    FuzzyTitles
+                        .closeMatches(api, serverRepository.currentUser?.id, query, wanted)
+                        .filter { it !in have }
+                if (ids.isEmpty()) {
+                    items
+                } else {
+                    val extra =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = serverRepository.currentUser?.id,
+                                    ids = ids,
+                                    fields = SlimItemFields,
+                                ),
+                            ).toBaseItems(api, false)
+                    items + extra.sortedBy { ids.indexOf(it.id) }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Typo-forgiving search failed")
+                items
             }
         }
 
@@ -634,3 +680,4 @@ private val allSearchableTypes =
     )
 
 private const val SEARCH_LIMIT = 50
+private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.BOX_SET)
