@@ -387,7 +387,7 @@ fun HomePageContent(
     onClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
-    monthly: ThemedRow? = null,
+    monthly: List<ThemedRow> = emptyList(),
     because: ThemedRow? = null,
     kidsAgain: ThemedRow? = null,
     becauseMore: ThemedRow? = null,
@@ -836,18 +836,18 @@ fun HomePageContent(
                             )
                         }
                     }
-                    if (monthly != null) {
-                        item(key = "monthly") {
+                    monthly.forEachIndexed { index, row ->
+                        item(key = "monthly$index") {
                             PosterRow(
-                                title = monthly.title,
-                                items = monthly.items,
+                                title = row.title,
+                                items = row.items,
                                 onClickItem = onClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
                                         .padding(bottom = 8.dp)
                                         .onFocusChanged {
-                                            if (!it.hasFocus && extraFocus in monthly.items) extraFocus = null
+                                            if (!it.hasFocus && extraFocus in row.items) extraFocus = null
                                         },
                             )
                         }

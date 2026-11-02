@@ -1166,16 +1166,321 @@ data class HomeTheme(
                     ),
             )
 
+        val WOMENS_HISTORY_MONTH =
+            HomeTheme(
+                R.string.theme_womens_history_month,
+                tags =
+                    listOf(
+                        "women's rights",
+                        "women's suffrage",
+                        "suffragette",
+                        "suffragettes",
+                        "female empowerment",
+                    ),
+                titles =
+                    listOf(
+                        "Hidden Figures",
+                        "Erin Brockovich",
+                        "Little Women",
+                        "Suffragette",
+                        "On the Basis of Sex",
+                        "RBG",
+                        "Iron Jawed Angels",
+                        "Norma Rae",
+                        "Silkwood",
+                        "Frida",
+                        "Harriet",
+                        "The Woman King",
+                        "A League of Their Own",
+                        "Battle of the Sexes",
+                        "The Post",
+                        "She Said",
+                        "Bombshell",
+                        "Radioactive",
+                        "Nyad",
+                        "Queen of Katwe",
+                        "Coal Miner's Daughter",
+                        "Selena",
+                        "Respect",
+                        "Million Dollar Baby",
+                        "Bend It Like Beckham",
+                        "Whip It",
+                        "Legally Blonde",
+                        "9 to 5",
+                        "Mona Lisa Smile",
+                        "Thelma & Louise",
+                        "Elizabeth",
+                        "The Iron Lady",
+                        "Wonder Woman",
+                        "Captain Marvel",
+                        "Mulan",
+                        "Brave",
+                        "Moana",
+                        "Barbie",
+                        "Enola Holmes",
+                        "Mrs. America",
+                        "The Marvelous Mrs. Maisel",
+                        "The Queen's Gambit",
+                        "Gentleman Jack",
+                        "Anne with an E",
+                        "Good Girls Revolt",
+                        "Call the Midwife",
+                    ),
+            )
+
+        val AAPI_HERITAGE_MONTH =
+            HomeTheme(
+                R.string.theme_aapi_heritage_month,
+                tags =
+                    listOf(
+                        "asian american",
+                        "pacific islander",
+                        "chinese american",
+                        "korean american",
+                        "japanese american",
+                        "filipino american",
+                        "vietnamese american",
+                        "indian american",
+                        "polynesian culture",
+                        "maori culture",
+                    ),
+                titles =
+                    listOf(
+                        "Crazy Rich Asians",
+                        "Everything Everywhere All at Once",
+                        "The Farewell",
+                        "Minari",
+                        "Past Lives",
+                        "Turning Red",
+                        "Raya and the Last Dragon",
+                        "Moana",
+                        "Moana 2",
+                        "Lilo & Stitch",
+                        "Shang-Chi and the Legend of the Ten Rings",
+                        "The Joy Luck Club",
+                        "Always Be My Maybe",
+                        "To All the Boys I've Loved Before",
+                        "Searching",
+                        "The Namesake",
+                        "Saving Face",
+                        "Better Luck Tomorrow",
+                        "Harold & Kumar Go to White Castle",
+                        "Joy Ride",
+                        "Shortcomings",
+                        "Blue Bayou",
+                        "Yellow Rose",
+                        "Whale Rider",
+                        "Hunt for the Wilderpeople",
+                        "Over the Moon",
+                        "Big Hero 6",
+                        "Mulan",
+                        "Kim's Convenience",
+                        "Fresh Off the Boat",
+                        "Never Have I Ever",
+                        "Beef",
+                        "American Born Chinese",
+                        "Ms. Marvel",
+                    ),
+            )
+
+        val MENTAL_HEALTH_MONTH =
+            HomeTheme(
+                R.string.theme_mental_health_month,
+                tags =
+                    listOf(
+                        "mental health",
+                    ),
+                titles =
+                    listOf(
+                        "Inside Out",
+                        "Inside Out 2",
+                        "Good Will Hunting",
+                        "Silver Linings Playbook",
+                        "The Perks of Being a Wallflower",
+                        "A Beautiful Mind",
+                        "It's Kind of a Funny Story",
+                        "Little Miss Sunshine",
+                        "Lars and the Real Girl",
+                        "Dear Evan Hansen",
+                        "Girl, Interrupted",
+                        "One Flew Over the Cuckoo's Nest",
+                        "Ordinary People",
+                        "Patch Adams",
+                        "The Fisher King",
+                        "Soul",
+                        "Turning Red",
+                        "Encanto",
+                        "Stutz",
+                        "Short Term 12",
+                        "Infinitely Polar Bear",
+                        "The Skeleton Twins",
+                        "Ted Lasso",
+                        "Shrinking",
+                        "BoJack Horseman",
+                        "This Is Us",
+                        "Maniac",
+                        "Never Have I Ever",
+                        "In Treatment",
+                    ),
+            )
+
+        val HISPANIC_HERITAGE_MONTH =
+            HomeTheme(
+                R.string.theme_hispanic_heritage_month,
+                tags =
+                    listOf(
+                        "latino",
+                        "hispanic",
+                        "mexican american",
+                        "chicano",
+                        "cuban american",
+                        "puerto rican",
+                        "dominican american",
+                        "latinx",
+                    ),
+                titles =
+                    listOf(
+                        "Coco",
+                        "Encanto",
+                        "The Book of Life",
+                        "In the Heights",
+                        "West Side Story",
+                        "Selena",
+                        "Frida",
+                        "Roma",
+                        "Y Tu Mamá También",
+                        "Stand and Deliver",
+                        "La Bamba",
+                        "Real Women Have Curves",
+                        "McFarland, USA",
+                        "Instructions Not Included",
+                        "Pan's Labyrinth",
+                        "The Motorcycle Diaries",
+                        "Under the Same Moon",
+                        "Blue Beetle",
+                        "Flamin' Hot",
+                        "Tortilla Soup",
+                        "My Family",
+                        "Spare Parts",
+                        "Vivo",
+                        "Spy Kids",
+                        "Quinceañera",
+                        "Mi Familia",
+                        "Elena of Avalor",
+                        "One Day at a Time",
+                        "Jane the Virgin",
+                        "Gentefied",
+                        "Vida",
+                        "Ugly Betty",
+                        "George Lopez",
+                        "Los Espookys",
+                        "Primo",
+                    ),
+            )
+
+        val NATIVE_HERITAGE_MONTH =
+            HomeTheme(
+                R.string.theme_native_heritage_month,
+                tags =
+                    listOf(
+                        "indigenous",
+                        "indigenous peoples",
+                        "first nations",
+                        "native american reservation",
+                        "native american culture",
+                        "inuit",
+                    ),
+                titles =
+                    listOf(
+                        "Reservation Dogs",
+                        "Dark Winds",
+                        "Rutherford Falls",
+                        "Little Bird",
+                        "Molly of Denali",
+                        "Spirit Rangers",
+                        "Smoke Signals",
+                        "Wind River",
+                        "Killers of the Flower Moon",
+                        "Fancy Dance",
+                        "Frybread Face and Me",
+                        "Rumble: The Indians Who Rocked the World",
+                        "Bones of Crows",
+                        "Night Raiders",
+                        "Rhymes for Young Ghouls",
+                        "Dances with Wolves",
+                        "The Last of the Mohicans",
+                        "Windtalkers",
+                        "Thunderheart",
+                        "Bury My Heart at Wounded Knee",
+                        "Lakota Nation vs. United States",
+                        "Powwow Highway",
+                        "Atanarjuat: The Fast Runner",
+                    ),
+            )
+
+        val DISABILITY_PRIDE_MONTH =
+            HomeTheme(
+                R.string.theme_disability_pride_month,
+                tags =
+                    listOf(
+                        "disability",
+                        "disabled",
+                        "deaf",
+                        "sign language",
+                        "autism",
+                        "paralympics",
+                        "down syndrome",
+                    ),
+                titles =
+                    listOf(
+                        "CODA",
+                        "Sound of Metal",
+                        "Crip Camp",
+                        "The Peanut Butter Falcon",
+                        "Wonder",
+                        "Finding Nemo",
+                        "Finding Dory",
+                        "The Theory of Everything",
+                        "My Left Foot",
+                        "Children of a Lesser God",
+                        "Temple Grandin",
+                        "Murderball",
+                        "The Intouchables",
+                        "The Miracle Worker",
+                        "Rory O'Shea Was Here",
+                        "Rising Phoenix",
+                        "The Sessions",
+                        "Ezra",
+                        "A Quiet Place",
+                        "Ray",
+                        "Atypical",
+                        "Switched at Birth",
+                        "Love on the Spectrum",
+                        "Deaf U",
+                        "Born This Way",
+                        "Everything's Gonna Be Okay",
+                    ),
+            )
+
         /**
-         * The month-long row for [date] (Black History Month in February, Pride Month in June),
-         * or null in other months. It shows as an extra row, so it never pushes out a holiday row.
+         * The month-long rows for [date], such as Black History Month in February. May has two.
+         * They show as extra rows, so they never push out a holiday row.
          */
-        fun forMonth(date: LocalDate): HomeTheme? =
-            when (date.monthValue) {
-                2 -> BLACK_HISTORY_MONTH
-                6 -> PRIDE_MONTH
-                else -> null
+        fun forMonth(date: LocalDate): List<HomeTheme> {
+            val month = date.monthValue
+            val day = date.dayOfMonth
+            return when {
+                month == 2 -> listOf(BLACK_HISTORY_MONTH)
+                month == 3 -> listOf(WOMENS_HISTORY_MONTH)
+                month == 5 -> listOf(AAPI_HERITAGE_MONTH, MENTAL_HEALTH_MONTH)
+                month == 6 -> listOf(PRIDE_MONTH)
+                month == 7 -> listOf(DISABILITY_PRIDE_MONTH)
+                // Hispanic Heritage Month runs Sept 15 to Oct 15
+                (month == 9 && day >= 15) || (month == 10 && day <= 15) -> listOf(HISPANIC_HERITAGE_MONTH)
+                month == 11 -> listOf(NATIVE_HERITAGE_MONTH)
+                else -> emptyList()
             }
+        }
 
         fun forDate(date: LocalDate): HomeTheme {
             val month = date.monthValue

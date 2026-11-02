@@ -52,13 +52,24 @@ class HomeThemeTest {
 
     @Test
     fun monthRows() {
-        assertEquals(HomeTheme.BLACK_HISTORY_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 2, 1)))
-        assertEquals(HomeTheme.BLACK_HISTORY_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 2, 28)))
-        assertEquals(HomeTheme.PRIDE_MONTH, HomeTheme.forMonth(LocalDate.of(2027, 6, 15)))
-        assertEquals(null, HomeTheme.forMonth(LocalDate.of(2027, 3, 1)))
+        assertEquals(listOf(HomeTheme.BLACK_HISTORY_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 2, 1)))
+        assertEquals(listOf(HomeTheme.WOMENS_HISTORY_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 3, 8)))
+        assertEquals(
+            listOf(HomeTheme.AAPI_HERITAGE_MONTH, HomeTheme.MENTAL_HEALTH_MONTH),
+            HomeTheme.forMonth(LocalDate.of(2027, 5, 10)),
+        )
+        assertEquals(listOf(HomeTheme.PRIDE_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 6, 15)))
+        assertEquals(listOf(HomeTheme.DISABILITY_PRIDE_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 7, 20)))
+        assertEquals(emptyList<HomeTheme>(), HomeTheme.forMonth(LocalDate.of(2027, 9, 14)))
+        assertEquals(listOf(HomeTheme.HISPANIC_HERITAGE_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 9, 15)))
+        assertEquals(listOf(HomeTheme.HISPANIC_HERITAGE_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 10, 15)))
+        assertEquals(emptyList<HomeTheme>(), HomeTheme.forMonth(LocalDate.of(2027, 10, 16)))
+        assertEquals(listOf(HomeTheme.NATIVE_HERITAGE_MONTH), HomeTheme.forMonth(LocalDate.of(2027, 11, 20)))
+        assertEquals(emptyList<HomeTheme>(), HomeTheme.forMonth(LocalDate.of(2027, 4, 1)))
         // The holiday row still works in those months
         assertEquals(HomeTheme.VALENTINES, HomeTheme.forDate(LocalDate.of(2027, 2, 14)))
         assertTrue(HomeTheme.PRIDE_MONTH.isPicked("Love, Simon"))
         assertTrue(HomeTheme.BLACK_HISTORY_MONTH.isPicked("One Night in Miami..."))
+        assertTrue(HomeTheme.HISPANIC_HERITAGE_MONTH.isPicked("Y Tu Mama Tambien"))
     }
 }
