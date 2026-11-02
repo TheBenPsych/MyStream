@@ -16,7 +16,9 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ActivityContext
 import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
@@ -39,12 +41,23 @@ class UserSwitchListener
         private val homeSettingsService: HomeSettingsService,
         private val serverPluginApi: ServerPluginApi,
         private val benflixSettingsSync: BenflixSettingsSync,
+        private val benflixSeerrLink: BenflixSeerrLink,
     ) {
         init {
             context as AppCompatActivity
             // Benflix: save the person's own settings to their account when they change
             context.lifecycleScope.launchDefault {
                 benflixSettingsSync.watchForChanges()
+            }
+            // Benflix: when an admin is connected to Seerr, share the setup so other TVs connect by themselves
+            context.lifecycleScope.launchDefault {
+                seerrServerRepository.current
+                    .combine(serverRepository.currentUserDtoFlow) { seerr, dto -> seerr to dto }
+                    .collectLatest { (seerr, dto) ->
+                        if (seerr != null && dto?.policy?.isAdministrator == true) {
+                            benflixSeerrLink.shareSetup(dto.id, seerr)
+                        }
+                    }
             }
             context.lifecycleScope.launchDefault {
                 serverRepository.currentUserFlow
@@ -148,6 +161,10 @@ class UserSwitchListener
                                         }
                                     }
                                 }
+                            // Benflix: nothing set up on this device yet, so connect by itself if Ben shared Seerr
+                            if (seerrServerRepository.current.first() == null) {
+                                benflixSeerrLink.autoConnect(user)
+                            }
                         }
                     }
                 }

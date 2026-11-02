@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +33,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,9 +54,11 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
+import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
@@ -125,8 +134,29 @@ class BenflixRequestsViewModel
         private val seerrServerRepository: SeerrServerRepository,
         val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
+        private val seerrLink: BenflixSeerrLink,
     ) : ViewModel() {
         val active = seerrService.active
+
+        /** Ben shared Seerr, so this person can connect by typing their password once */
+        val canConnect = MutableStateFlow(false)
+
+        /** null = idle, true = connecting, false = last try failed */
+        val connecting = MutableStateFlow<Boolean?>(null)
+
+        init {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id ?: return@launch
+                canConnect.value = seerrLink.sharedUrl(userId) != null
+            }
+        }
+
+        fun connect(password: String) {
+            connecting.value = true
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                connecting.value = if (seerrLink.connectWithPassword(password)) null else false
+            }
+        }
 
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
@@ -460,6 +490,45 @@ private fun NotConnected(
     viewModel: BenflixRequestsViewModel,
     modifier: Modifier,
 ) {
+    val canConnect by viewModel.canConnect.collectAsState()
+    val connecting by viewModel.connecting.collectAsState()
+    var askPassword by remember { mutableStateOf(false) }
+    if (askPassword) {
+        PasswordDialog(
+            onDismiss = { askPassword = false },
+            onConnect = {
+                askPassword = false
+                viewModel.connect(it)
+            },
+        )
+    }
+    if (canConnect && !viewModel.isAdmin) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = modifier.padding(32.dp),
+        ) {
+            Text(
+                text = "Ask for movies and shows",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text =
+                    when (connecting) {
+                        true -> "Connecting…"
+                        false -> "That password didn't work. Try again, or ask Ben to check your account."
+                        null -> "Type your Benflix password once on this device and you can ask Ben for anything that's missing."
+                    },
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = { askPassword = true }) {
+                Text("Type my password")
+            }
+        }
+        return
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier.padding(32.dp),
@@ -726,3 +795,36 @@ private fun ago(createdAt: String?): String? =
     } catch (ex: Exception) {
         null
     }
+
+/** Asks for the person's Benflix password (hidden while typing) */
+@Composable
+private fun PasswordDialog(
+    onDismiss: () -> Unit,
+    onConnect: (String) -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    BasicDialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 420.dp)
+                    .padding(24.dp),
+        ) {
+            Text("Your Benflix password", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (password.isNotEmpty()) onConnect(password) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = { if (password.isNotEmpty()) onConnect(password) }) { Text("Connect") }
+                Button(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    }
+}

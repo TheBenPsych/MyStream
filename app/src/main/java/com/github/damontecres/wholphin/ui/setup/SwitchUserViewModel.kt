@@ -10,6 +10,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.BenflixFunFacts
+import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SetupDestination
@@ -63,6 +64,7 @@ class SwitchUserViewModel
         val setupNavigationManager: SetupNavigationManager,
         val imageUrlService: ImageUrlService,
         private val funFacts: BenflixFunFacts,
+        private val benflixSeerrLink: BenflixSeerrLink,
         @Assisted val server: JellyfinServer,
     ) : ViewModel() {
         @AssistedFactory
@@ -227,6 +229,8 @@ class SwitchUserViewModel
                         username = username,
                         password = password,
                     )
+                    // Benflix: keep the password in memory so Requests (Seerr) can sign them in too
+                    authenticationResult.user?.id?.let { benflixSeerrLink.rememberPassword(it, password) }
                     val current =
                         serverRepository.changeUser(server.url, authenticationResult, existingUser)
                     setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
