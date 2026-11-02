@@ -85,6 +85,8 @@ object StartupTimer {
     const val INTRO = "intro done"
     const val WHO = "Who's watching"
     const val PICKED = "profile picked"
+    const val HOME_OPEN = "Home opened"
+    const val HOME_SAVED = "saved Home read"
     const val HOME_ROWS = "Home rows"
     const val BANNER = "banner"
     private const val PREFS = "benflix_startup"

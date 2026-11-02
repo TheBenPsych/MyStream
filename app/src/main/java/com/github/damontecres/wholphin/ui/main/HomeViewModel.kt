@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
+import com.github.damontecres.wholphin.util.StartupTimer
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -75,6 +76,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.builtins.ListSerializer
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.genresApi
@@ -198,11 +200,15 @@ class HomeViewModel
         fun init() {
             viewModelScope.launchIO {
                 Timber.d("init HomeViewModel")
+                StartupTimer.mark(StartupTimer.HOME_OPEN)
                 serverRepository.currentUserDto?.let { userDto ->
                     // Benflix: put last time's banner up straight away, before anything else loads,
-                    // so the page can start on it
+                    // so the page can start on it. It has its own small file, because reading the
+                    // whole saved Home took seconds on older TVs.
                     if (state.value.featured.isEmpty()) {
-                        readHomeSnapshot(userDto.id)?.featured?.takeIf { it.isNotEmpty() }?.let { saved ->
+                        val savedBanner =
+                            readHomeBanner(userDto.id) ?: readHomeSnapshot(userDto.id)?.featured
+                        savedBanner?.takeIf { it.isNotEmpty() }?.let { saved ->
                             bannerFromSnapshot = true
                             _state.update { st ->
                                 if (st.featured.isEmpty()) {
@@ -273,6 +279,7 @@ class HomeViewModel
                     } else {
                         null
                     }
+                if (snapshot != null) StartupTimer.mark(StartupTimer.HOME_SAVED)
                 Timber.v(
                     "refresh=%s, state.loadingState=%s, %s rows",
                     refresh,
@@ -462,6 +469,11 @@ class HomeViewModel
         // HOME_SNAPSHOT_FORMAT when the saved format really changes.
         private fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.isActive}-$HOME_SNAPSHOT_FORMAT"
 
+        private fun homeBannerKey(userId: UUID) = "home-banner-$userId-${KidsMode.isActive}-$HOME_SNAPSHOT_FORMAT"
+
+        private fun readHomeBanner(userId: UUID): List<SnapshotFeatured>? =
+            diskCache.read(homeBannerKey(userId), ListSerializer(SnapshotFeatured.serializer()), HOME_SNAPSHOT_MAX_AGE_MS)
+
         private fun readHomeSnapshot(userId: UUID): HomeSnapshot? =
             diskCache.read(homeSnapshotKey(userId), HomeSnapshot.serializer(), HOME_SNAPSHOT_MAX_AGE_MS)
 
@@ -505,6 +517,7 @@ class HomeViewModel
                     animeRows = current.animeRows.mapNotNull { it.snap() },
                 )
             try {
+                diskCache.write(homeBannerKey(userId), ListSerializer(SnapshotFeatured.serializer()), snapshot.featured)
                 diskCache.write(homeSnapshotKey(userId), HomeSnapshot.serializer(), snapshot)
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not save home snapshot")

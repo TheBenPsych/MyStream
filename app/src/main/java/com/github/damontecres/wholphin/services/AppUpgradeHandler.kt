@@ -112,7 +112,6 @@ class AppUpgradeHandler
                 putLong(VERSION_CODE_CURRENT_KEY, newVersionCode)
             }
             try {
-                copySubfont(true)
                 upgradeApp(
                     Version.fromString(previousVersion ?: "0.0.0"),
                     Version.fromString(newVersion),
@@ -127,15 +126,23 @@ class AppUpgradeHandler
         /**
          * Copies the font file used by MPV subtitles to the app's files directory
          */
+        @Synchronized
         fun copySubfont(overwrite: Boolean) {
             try {
                 val fontFileName = "subfont.ttf"
                 val outputFile = File(context.filesDir, fontFileName)
                 if (!outputFile.exists() || overwrite) {
+                    // Benflix: copied in the background now, so write to a temp file and swap it in
+                    // at the end. A player starting mid-copy never sees half a font.
+                    val tempFile = File(context.filesDir, "$fontFileName.tmp")
                     context.assets.open(fontFileName).use { input ->
-                        outputFile.outputStream().use { output ->
+                        tempFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
+                    }
+                    if (!tempFile.renameTo(outputFile)) {
+                        outputFile.delete()
+                        tempFile.renameTo(outputFile)
                     }
                     Timber.i("Wrote font %s to local", fontFileName)
                 }
