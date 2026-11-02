@@ -789,8 +789,19 @@ class BenflixRequestsViewModel
                     val raw = seerrService.api.getRaw(if (movie) "/movie/${item.id}/ratingscombined" else "/tv/${item.id}/ratings")
                     val o = raw?.let { Json.parseToJsonElement(it).jsonObject } ?: return@launch
                     val rt = if (movie) o["rt"] as? JsonObject else o
-                    val imdb = (o["imdb"] as? JsonObject)?.get("criticsScore").str()?.toDoubleOrNull()?.takeIf { it > 0 }
-                    val critics = rt?.get("criticsScore").str()?.toDoubleOrNull()?.toInt()?.takeIf { it > 0 }
+                    val imdb =
+                        (o["imdb"] as? JsonObject)
+                            ?.get("criticsScore")
+                            .str()
+                            ?.toDoubleOrNull()
+                            ?.takeIf { it > 0 }
+                    val critics =
+                        rt
+                            ?.get("criticsScore")
+                            .str()
+                            ?.toDoubleOrNull()
+                            ?.toInt()
+                            ?.takeIf { it > 0 }
                     val text =
                         listOfNotNull(
                             imdb?.let { "IMDb ${"%.1f".format(it)}" },
