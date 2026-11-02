@@ -116,15 +116,21 @@ fun DiscoverItemCard(
                     when (item?.availability) {
                         SeerrAvailability.PENDING,
                         SeerrAvailability.PROCESSING,
-                        -> stringResource(R.string.badge_requested) to Color(0xFFA16207)
+                        -> {
+                            stringResource(R.string.badge_requested) to Color(0xFFA16207)
+                        }
 
-                        SeerrAvailability.PARTIALLY_AVAILABLE ->
+                        SeerrAvailability.PARTIALLY_AVAILABLE -> {
                             stringResource(R.string.badge_some_on_benflix) to AppColors.Discover.Green
+                        }
 
-                        SeerrAvailability.AVAILABLE ->
+                        SeerrAvailability.AVAILABLE -> {
                             stringResource(R.string.badge_on_benflix) to AppColors.Discover.Green
+                        }
 
-                        else -> null
+                        else -> {
+                            null
+                        }
                     }
                 if (status != null) {
                     CardBadge(
