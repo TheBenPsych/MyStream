@@ -235,7 +235,7 @@ sealed interface AppPreference<Pref, T> {
         val PlayThemeMusic =
             AppChoicePreference<AppPreferences, ThemeSongVolume>(
                 title = R.string.play_theme_music,
-                defaultValue = ThemeSongVolume.MEDIUM,
+                defaultValue = ThemeSongVolume.DISABLED,
                 getter = { it.interfacePreferences.playThemeSongs },
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { playThemeSongs = value }
@@ -535,7 +535,7 @@ sealed interface AppPreference<Pref, T> {
         val CinemaMode =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.cinema_mode,
-                defaultValue = true,
+                defaultValue = false,
                 getter = { it.playbackPreferences.cinemaMode },
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { cinemaMode = value }
@@ -865,7 +865,7 @@ sealed interface AppPreference<Pref, T> {
         val BackdropStylePref =
             AppChoicePreference<AppPreferences, BackdropStyle>(
                 title = R.string.backdrop_display,
-                defaultValue = BackdropStyle.BACKDROP_DYNAMIC_COLOR,
+                defaultValue = BackdropStyle.BACKDROP_IMAGE_ONLY,
                 getter = { it.interfacePreferences.backdropStyle },
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { backdropStyle = value }
@@ -943,10 +943,17 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { playerBackend = value }
                 },
-                displayValues = R.array.player_backend_options,
-                subtitles = R.array.player_backend_options_subtitles,
+                // Benflix: no "External app" choice, it would turn off skip intro, autoplay next and more
+                displayValues = R.array.benflix_player_backend_options,
+                subtitles = R.array.benflix_player_backend_options_subtitles,
                 indexToValue = { PlayerBackend.forNumber(it) ?: PlayerBackend.EXO_PLAYER },
-                valueToIndex = { if (it != PlayerBackend.UNRECOGNIZED) it.number else PlayerBackend.EXO_PLAYER.number },
+                valueToIndex = {
+                    if (it == PlayerBackend.UNRECOGNIZED || it == PlayerBackend.EXTERNAL_PLAYER) {
+                        PlayerBackend.EXO_PLAYER.number
+                    } else {
+                        it.number
+                    }
+                },
             )
 
         val ExternalPlayerApp =
@@ -1312,7 +1319,6 @@ val basicPreferences =
                     AppPreference.SkipForward,
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
-                    AppPreference.PassOutProtection,
                 ),
         ),
         PreferenceGroup(
@@ -1325,7 +1331,6 @@ val basicPreferences =
                 listOf(
                     AppPreference.EasyRead,
                     AppPreference.LateNightLook,
-                    AppPreference.PlayThemeMusic,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,
                 ),
@@ -1436,8 +1441,6 @@ val advancedPreferences =
                 preferences =
                     listOf(
                         AppPreference.ShowClock,
-                        AppPreference.BackdropStylePref,
-                        AppPreference.ShowLogos,
                         AppPreference.ManageMedia,
                         AppPreference.DisplayTogglesPref,
                         // Temporarily disabled, see https://github.com/damontecres/Wholphin/pull/127#issuecomment-3478058418
@@ -1454,7 +1457,6 @@ val advancedPreferences =
                     listOf(
                         AppPreference.OneClickPause,
                         AppPreference.ControllerTimeout,
-                        AppPreference.CinemaMode,
                         AppPreference.GlobalContentScale,
                         AppPreference.SkipSegments,
                         AppPreference.DpadSeekModePref,
@@ -1487,10 +1489,6 @@ val advancedPreferences =
                                 AppPreference.MpvSettings,
                             ),
                         ),
-                        ConditionalPreferences(
-                            { it.playbackPreferences.playerBackend == PlayerBackend.EXTERNAL_PLAYER },
-                            listOf(AppPreference.ExternalPlayerApp),
-                        ),
                     ),
             ),
         )
@@ -1501,7 +1499,6 @@ val advancedPreferences =
                     preferences =
                         listOf(
                             AppPreference.AutoCheckForUpdates,
-                            AppPreference.UpdateUrl,
                         ),
                 ),
             )

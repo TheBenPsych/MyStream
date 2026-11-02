@@ -18,9 +18,12 @@ import com.github.damontecres.wholphin.data.model.RememberedTab
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.preferences.ExperimentalPreference
 import com.github.damontecres.wholphin.preferences.HdrOverrideMode
+import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.ScreensaverPreference
+import com.github.damontecres.wholphin.preferences.ThemeSongVolume
 import com.github.damontecres.wholphin.preferences.update
 import com.github.damontecres.wholphin.preferences.updateAdvancedPreferences
 import com.github.damontecres.wholphin.preferences.updateExperimentalPreferences
@@ -489,6 +492,23 @@ class AppUpgradeHandler
                         it
                     }
                 }
+            }
+
+            // Benflix: these Wholphin settings were removed from Settings because they clash with
+            // Benflix. Put anyone who changed them back on the Benflix behaviour, on every update.
+            appPreferences.updateData {
+                it
+                    .updatePlaybackPreferences {
+                        passOutProtectionMs = 0
+                        cinemaMode = false
+                        if (playerBackend == PlayerBackend.EXTERNAL_PLAYER) playerBackend = PlayerBackend.EXO_PLAYER
+                    }.updateInterfacePreferences {
+                        playThemeSongs = ThemeSongVolume.DISABLED
+                        backdropStyle = BackdropStyle.BACKDROP_IMAGE_ONLY
+                        showLogos = true
+                    }.update {
+                        updateUrl = AppPreference.UpdateUrl.defaultValue
+                    }
             }
 
             if (previous.isLessThan(Version.fromString("1.0.10-0-g0"))) {
