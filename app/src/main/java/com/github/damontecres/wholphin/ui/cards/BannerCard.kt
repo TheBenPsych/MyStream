@@ -416,7 +416,6 @@ fun rememberGrowOnFocus(
     return state
 }
 
-/** The inside of a grown tile: a wide picture from the movie, its logo, and year, rating and length */
 /** The show's title-logo artwork over a soft dark fade at the bottom left of a wide tile */
 @Composable
 private fun TitleArt(
@@ -453,6 +452,7 @@ private fun TitleArt(
 private const val TITLE_ART_HEIGHT = 0.28f
 private const val TITLE_ART_WIDTH = 0.9f
 
+/** The inside of a grown tile: a wide picture from the movie, its logo, and year, rating and length */
 @Composable
 private fun GrownPreview(
     item: BaseItem,
