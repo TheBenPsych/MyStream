@@ -25,6 +25,8 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.main.BenflixGenre
 import com.github.damontecres.wholphin.ui.main.GenreTile
@@ -33,28 +35,45 @@ import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
-/** The last few things searched for on this device */
+/**
+ * Benflix recent searches, kept per account (Kids has its own list, Guest keeps none).
+ * Only the last few are kept.
+ */
 object RecentSearches {
     private const val PREFS = "benflix_search"
-    private const val KEY = "recent"
-    private const val MAX = 6
+    private const val MAX = 3
 
-    fun get(context: Context): List<String> =
-        context
+    private fun key(account: String?): String? =
+        when {
+            account.isNullOrBlank() || GuestMode.isActive -> null
+            KidsMode.isActive -> "recent_${account}_kids"
+            else -> "recent_$account"
+        }
+
+    fun get(
+        context: Context,
+        account: String?,
+    ): List<String> {
+        val key = key(account) ?: return emptyList()
+        return context
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY, null)
+            .getString(key, null)
             ?.split("\n")
             ?.filter { it.isNotBlank() }
+            ?.take(MAX)
             .orEmpty()
+    }
 
     fun add(
         context: Context,
+        account: String?,
         query: String,
     ) {
+        val key = key(account) ?: return
         val q = query.trim()
         if (q.length < 2) return
-        val list = (listOf(q) + get(context).filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(KEY, list.joinToString("\n")) }
+        val list = (listOf(q) + get(context, account).filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(key, list.joinToString("\n")) }
     }
 }
 
@@ -67,9 +86,10 @@ fun SearchStart(
     navigationManager: NavigationManager,
     onClickRecent: (String) -> Unit,
     modifier: Modifier = Modifier,
+    account: String? = null,
 ) {
     val context = LocalContext.current
-    val recent = remember { RecentSearches.get(context) }
+    val recent = remember(account) { RecentSearches.get(context, account) }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),

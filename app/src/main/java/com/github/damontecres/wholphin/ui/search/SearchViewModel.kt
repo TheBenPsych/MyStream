@@ -84,6 +84,9 @@ class SearchViewModel
         private val navDrawerService: NavDrawerService,
     ) : ViewModel(),
         ContextMenuProvider {
+        /** Benflix: recent searches are kept per account */
+        val recentAccount: String? get() = serverRepository.currentUser?.id?.toString()
+
         // Benflix: never offer requests on the Kids profile
         val seerrActive =
             seerrService.active.combine(KidsMode.active) { active, kids -> active && !kids }.stateIn(

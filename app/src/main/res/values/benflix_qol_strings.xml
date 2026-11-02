@@ -91,7 +91,9 @@
     <string name="benflix_settings_hint_advanced">Player, picture quality, requests</string>
     <string name="benflix_settings_advanced">Advanced</string>
     <string name="benflix_settings_parental">Parental controls</string>
-    <string name="benflix_settings_hint_parental">Parent PIN, Kids bedtime</string>
+    <string name="benflix_settings_hint_parental">Parent PIN, Kids bedtime, Big kids, Guest</string>
+    <string name="benflix_parental_more">Big kids, Guest tile, what Kids watched</string>
+    <string name="benflix_parental_more_summary">Asks for the parent PIN first if one is set</string>
     <string name="benflix_parent_pin">Parent PIN</string>
     <string name="benflix_parent_pin_on">On: Kids bedtime is 9 PM, the PIN unlocks 30 more minutes</string>
     <string name="benflix_parent_pin_off">Off: Kids is never locked</string>

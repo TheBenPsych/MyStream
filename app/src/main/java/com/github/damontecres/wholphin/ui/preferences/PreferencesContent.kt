@@ -82,6 +82,7 @@ import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.main.BedtimeViewModel
 import com.github.damontecres.wholphin.ui.main.ParentPinDialog
+import com.github.damontecres.wholphin.ui.main.ParentalControlsDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playOnClickSound
 import com.github.damontecres.wholphin.ui.playSoundOnFocus
@@ -615,6 +616,24 @@ fun PreferencesContent(
                                                 checkPin = bedtimeViewModel::checkPin,
                                                 setPin = bedtimeViewModel::setPin,
                                                 onDone = { showParentPin = false },
+                                            )
+                                        }
+                                    }
+
+                                    AppPreference.ParentalMore -> {
+                                        var showParental by remember { mutableStateOf(false) }
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showParental = true },
+                                            modifier = focusModifier,
+                                            summary = stringResource(R.string.benflix_parental_more_summary),
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                        if (showParental) {
+                                            ParentalControlsDialog(
+                                                onDismiss = { showParental = false },
+                                                viewModel = bedtimeViewModel,
                                             )
                                         }
                                     }
