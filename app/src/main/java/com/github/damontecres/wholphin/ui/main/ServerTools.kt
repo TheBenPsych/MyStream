@@ -15,10 +15,12 @@ import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
 import com.github.damontecres.wholphin.services.BenflixNote
 import com.github.damontecres.wholphin.services.BenflixNotes
 import com.github.damontecres.wholphin.services.BenflixPeople
+import com.github.damontecres.wholphin.services.BenflixProblems
 import com.github.damontecres.wholphin.services.CheckupItem
 import com.github.damontecres.wholphin.services.CheckupSection
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NoteKind
+import com.github.damontecres.wholphin.services.ProblemReport
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
@@ -28,6 +30,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.sessionApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.MessageCommand
 import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
 import javax.inject.Inject
@@ -42,6 +48,8 @@ data class ServerToolsState(
     /** A message to show in a pop-up, like a new password */
     val message: Pair<String, String>? = null,
     val busy: Boolean = false,
+    // Benflix: "Report a problem" reports from everyone
+    val problems: List<ProblemReport> = emptyList(),
 )
 
 @HiltViewModel
@@ -53,6 +61,8 @@ class ServerToolsViewModel
         private val people: BenflixPeople,
         private val checkup: BenflixLibraryCheckup,
         val navigationManager: NavigationManager,
+        private val api: ApiClient,
+        private val problems: BenflixProblems,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ServerToolsState())
         val state: StateFlow<ServerToolsState> = _state
@@ -73,6 +83,24 @@ class ServerToolsViewModel
             work(showBusy = false) {
                 val list = people.list()
                 _state.value = _state.value.copy(people = list)
+            }
+            work(showBusy = false) {
+                val reports = problems.all()
+                _state.value = _state.value.copy(problems = reports)
+            }
+        }
+
+        fun clearProblem(report: ProblemReport) =
+            work(showBusy = false) {
+                problems.clear(report)
+                _state.value = _state.value.copy(problems = _state.value.problems - report)
+            }
+
+        fun openProblem(report: ProblemReport) {
+            val id = report.itemId ?: return
+            work(showBusy = false) {
+                val item = api.userLibraryApi.getItem(id, userId).content
+                navigationManager.navigateTo(Destination.MediaItem(item.id, item.type))
             }
         }
 
@@ -167,6 +195,41 @@ class ServerToolsViewModel
 
         fun open(item: CheckupItem) = navigationManager.navigateTo(Destination.MediaItem(item.itemId, item.type))
 
+        /** Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open */
+        fun sendPopup(text: String) {
+            if (text.isBlank()) return
+            work {
+                val sessions =
+                    api.sessionApi
+                        .getSessions(activeWithinSeconds = 960)
+                        .content
+                        .filter { it.supportsRemoteControl == true && it.id != null }
+                var sent = 0
+                sessions.forEach { session ->
+                    try {
+                        api.sessionApi.sendMessageCommand(
+                            sessionId = session.id!!,
+                            data = MessageCommand(header = "Message from Ben", text = text, timeoutMs = 15_000L),
+                        )
+                        sent++
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not send the pop-up to %s", session.deviceName)
+                    }
+                }
+                _state.value =
+                    _state.value.copy(
+                        message =
+                            if (sent == 0) {
+                                "Nobody to send to" to "No Benflix screens are open right now."
+                            } else {
+                                "Pop-up sent" to "It showed on $sent screen" + (if (sent == 1) "" else "s") + " right away."
+                            },
+                    )
+            }
+        }
+
         fun clearMessage() {
             _state.value = _state.value.copy(message = null)
         }
@@ -202,6 +265,8 @@ sealed interface ServerToolsDialog {
 
     data object WriteWelcome : ServerToolsDialog
 
+    data object WritePopup : ServerToolsDialog
+
     data object AddPerson : ServerToolsDialog
 
     data class Person(
@@ -215,6 +280,10 @@ sealed interface ServerToolsDialog {
     data class Hide(
         val item: CheckupItem,
     ) : ServerToolsDialog
+
+    data class Problem(
+        val report: ProblemReport,
+    ) : ServerToolsDialog
 }
 
 /** The Notes, People and Library checkup sections of the Server page */
@@ -224,6 +293,27 @@ fun LazyListScope.serverToolsItems(
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
 ) {
+    // Benflix: problems people reported
+    if (state.problems.isNotEmpty()) {
+        item { sectionTitle("Problems reported (${state.problems.size})") }
+        items(state.problems, key = { "problem-${it.userId}-${it.at}" }) { report ->
+            ListItem(
+                selected = false,
+                onClick = { viewModel.openProblem(report) },
+                onLongClick = { showDialog(ServerToolsDialog.Problem(report)) },
+                headlineContent = { Text("${report.problem}: ${report.title}") },
+                supportingContent = {
+                    val day =
+                        java.time.Instant
+                            .ofEpochMilli(report.at)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate()
+                    Text("${report.userName} · ${report.device} · $day · click to open, hold to mark fixed")
+                },
+            )
+        }
+    }
+
     // Notes from Ben
     item { sectionTitle("Note on everyone's Home") }
     item {
@@ -257,6 +347,18 @@ fun LazyListScope.serverToolsItems(
                         "Welcome note. Click to change it, or save it empty to remove it."
                     },
                 )
+            },
+        )
+    }
+
+    // Benflix: a pop-up on every screen right now
+    item {
+        ListItem(
+            selected = false,
+            onClick = { showDialog(ServerToolsDialog.WritePopup) },
+            headlineContent = { Text("Pop-up message on every screen") },
+            supportingContent = {
+                Text("Like \"Server restarting in 5 minutes\". It pops up right away on every Benflix screen that's open.")
             },
         )
     }
@@ -393,6 +495,28 @@ fun ServerToolsDialogs(
             )
         }
 
+        ServerToolsDialog.WritePopup -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "Pop-up message on every screen",
+                        value = "",
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Done,
+                            ),
+                        onSubmit = {},
+                        maxLines = 3,
+                    ),
+                onSave = {
+                    onDismiss()
+                    viewModel.sendPopup(it)
+                },
+                onDismissRequest = onDismiss,
+            )
+        }
+
         ServerToolsDialog.AddPerson -> {
             StringInputDialog(
                 input =
@@ -446,6 +570,20 @@ fun ServerToolsDialogs(
                 onConfirm = {
                     onDismiss()
                     viewModel.hide(dialog.item)
+                },
+            )
+        }
+
+        is ServerToolsDialog.Problem -> {
+            ConfirmDialog(
+                title = "Mark \"${dialog.report.title}\" fixed?",
+                body =
+                    "${dialog.report.problem}, reported by ${dialog.report.userName} on ${dialog.report.device}. " +
+                        "Their app log was sent to the server's log folder. This takes it off the list.",
+                onCancel = onDismiss,
+                onConfirm = {
+                    onDismiss()
+                    viewModel.clearProblem(dialog.report)
                 },
             )
         }

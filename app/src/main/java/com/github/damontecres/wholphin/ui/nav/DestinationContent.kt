@@ -417,6 +417,11 @@ fun DestinationContent(
                 .GuessTheMoviePage(modifier)
         }
 
+        Destination.HigherLower -> {
+            com.github.damontecres.wholphin.ui.games
+                .HigherLowerPage(modifier)
+        }
+
         Destination.DailyRiddle -> {
             com.github.damontecres.wholphin.ui.games
                 .DailyRiddlePage(modifier)

@@ -14,6 +14,7 @@ object BenflixPopups {
     const val BEDTIME = 100
     const val WIND_DOWN = 40
     const val REQUEST_ARRIVED = 35
+    const val WRAPPED = 32
     const val UPDATE = 30
     const val TIP = 10
 }
