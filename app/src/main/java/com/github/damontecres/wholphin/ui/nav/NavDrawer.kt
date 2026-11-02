@@ -331,6 +331,9 @@ fun NavDrawer(
                     selected = selectedIndex == HOME_INDEX,
                     onClick = {
                         viewModel.setIndex(HOME_INDEX)
+                        // Benflix: Home always starts on the banner
+                        com.github.damontecres.wholphin.ui.main.HomeJump
+                            .request()
                         if (destination is Destination.Home) {
                             viewModel.navigationManager.reloadHome()
                             onClearBackdrop.invoke()

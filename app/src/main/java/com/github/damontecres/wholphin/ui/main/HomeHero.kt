@@ -3,6 +3,8 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -138,6 +141,7 @@ fun HomeHero(
     onFocusChanged: (Boolean) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    onSelectSlide: (Int) -> Unit = {},
 ) {
     val current = featured.getOrNull(index) ?: return
     Column(
@@ -191,20 +195,52 @@ fun HomeHero(
             )
         }
         if (featured.size > 1) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                featured.indices.forEach { i ->
-                    val width by animateDpAsState(if (i == index) 28.dp else 10.dp)
-                    Box(
-                        modifier =
-                            Modifier
-                                .width(width)
-                                .height(4.dp)
-                                .background(
-                                    if (i == index) Color.White else Color.White.copy(alpha = .35f),
-                                    RoundedCornerShape(2.dp),
-                                ),
-                    )
-                }
+            SlideDots(count = featured.size, index = index, onSelect = onSelectSlide)
+        }
+    }
+}
+
+/**
+ * Benflix: the little banner dots. Each one can be picked with the remote (move down onto them and press OK,
+ * or just move left/right across them) or tapped on a phone to jump to that slide.
+ */
+@Composable
+fun SlideDots(
+    count: Int,
+    index: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier,
+    ) {
+        (0 until count).forEach { i ->
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            val selected = i == index
+            val width by animateDpAsState(if (selected) 28.dp else 10.dp)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .onFocusChanged { if (it.isFocused) onSelect(i) }
+                        .clickable(interactionSource = interaction, indication = null) { onSelect(i) }
+                        .padding(horizontal = 3.dp),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .width(width)
+                            .height(if (focused) 8.dp else 4.dp)
+                            .background(
+                                if (selected || focused) Color.White else Color.White.copy(alpha = .35f),
+                                RoundedCornerShape(4.dp),
+                            ),
+                )
             }
         }
     }
