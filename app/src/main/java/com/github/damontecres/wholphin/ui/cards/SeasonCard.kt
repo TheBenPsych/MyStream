@@ -33,6 +33,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.FillerKind
 import com.github.damontecres.wholphin.services.fillerTagFor
+import com.github.damontecres.wholphin.services.finaleTagFor
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
@@ -74,6 +75,7 @@ fun SeasonCard(
         showImageOverlay = showImageOverlay,
         aspectRatio = aspectRatio,
         fillerTag = fillerTagFor(item),
+        finaleTag = finaleTagFor(item),
     )
 }
 
@@ -142,6 +144,8 @@ fun SeasonCard(
     aspectRatio: Float = AspectRatios.TALL,
     // Benflix: FILLER / MIXED on anime episodes
     fillerTag: FillerKind? = null,
+    // Benflix: SEASON FINALE / SERIES FINALE
+    finaleTag: String? = null,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     // Do not use `by` here, this way we are Defer reads and recompositions to only when modifier calculates
@@ -192,6 +196,16 @@ fun SeasonCard(
                         Modifier
                             .fillMaxSize(),
                 )
+                if (finaleTag != null) {
+                    CardBadge(
+                        text = finaleTag,
+                        background = FINALE_COLOR,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp),
+                    )
+                }
                 if (fillerTag != null) {
                     CardBadge(
                         text = fillerTag.label,
@@ -263,3 +277,8 @@ fun rememberFocusedAfterDelay(interactionSource: MutableInteractionSource): andr
     }
     return state
 }
+
+/** Benflix: the colour of the SEASON FINALE / SERIES FINALE tag */
+val FINALE_COLOR =
+    androidx.compose.ui.graphics
+        .Color(0xFF8C1D18)

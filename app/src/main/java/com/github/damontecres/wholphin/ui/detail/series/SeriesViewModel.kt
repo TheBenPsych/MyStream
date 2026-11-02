@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.BenflixAnimeTracks
 import com.github.damontecres.wholphin.services.DetailsPrefetch
+import com.github.damontecres.wholphin.services.EpisodeFacts
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
@@ -26,10 +27,12 @@ import com.github.damontecres.wholphin.services.PeopleFavorites
 import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
+import com.github.damontecres.wholphin.services.ShowProgress
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
+import com.github.damontecres.wholphin.services.loadShowProgress
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.components.SubDub
 import com.github.damontecres.wholphin.ui.equalsNotNull
@@ -149,6 +152,21 @@ class SeriesViewModel
                 backdropService.submit(series, strongGlow = true)
                 // Benflix: FILLER / MIXED tags on anime episode cards
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
+                // Benflix: finale tags, time left and the first episode
+                viewModelScope.launchIO { loadProgress(series) }
+                _state.update { it.copy(isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true) }
+                // Benflix: "Mark watched up to here" from a long-press menu, so refresh what's shown
+                viewModelScope.launchIO {
+                    EpisodeFacts.watchedChanged.collect { changed ->
+                        if (changed == seriesId) {
+                            loadProgress(series)
+                            refresh()
+                            state.value.inlineSeasonIndex
+                                .takeIf { it >= 0 }
+                                ?.let { showSeasonEpisodes(it) }
+                        }
+                    }
+                }
                 // Benflix: get the episode Play will start ready while the page is open
                 viewModelScope.launchIO {
                     findNextUp()?.let { prepareNextUp(it, series.data) }
@@ -329,6 +347,17 @@ class SeriesViewModel
             }
         }
 
+        private suspend fun loadProgress(series: BaseItem) {
+            val progress = loadShowProgress(api, series.data, serverRepository.currentUser?.id)
+            _state.update { it.copy(progress = progress) }
+        }
+
+        /** Benflix "Rewatch from the start": plays the first episode from the beginning */
+        fun rewatch() {
+            val first = state.value.progress?.firstEpisodeId ?: return
+            navigationManager.navigateTo(Destination.Playback(first, 0L))
+        }
+
         fun onResumePage() {
             state.value.series.successValue?.let { item ->
                 viewModelScope.launchDefault { backdropService.submit(item) }
@@ -337,6 +366,7 @@ class SeriesViewModel
                 viewModelScope.launchIO {
                     findNextUp()?.let { prepareNextUp(it, item.data) }
                 }
+                viewModelScope.launchIO { loadProgress(item) }
             }
         }
 
@@ -996,4 +1026,8 @@ data class SeriesState(
     val chosenStreams: ChosenStreams? = null,
     val inlineSeasonIndex: Int = -1,
     val inlineEpisodes: List<BaseItem> = emptyList(),
+    /** Benflix: how much is left to watch, and the first episode for Rewatch */
+    val progress: ShowProgress? = null,
+    /** Benflix: the Jellyfin user is an admin (shows "Wrong match? Fix it") */
+    val isAdmin: Boolean = false,
 )

@@ -1120,4 +1120,7 @@
     <string name="player_now_playing">Now playing</string>
     <string name="benflix_update_tip_tv">New update ready! Find it in Settings, under Help.</string>
     <string name="benflix_update_tip_phone">New update ready! Tap My Benflix, then Settings, then Help.</string>
+    <string name="benflix_mark_watched_up_to_here">Mark watched up to here</string>
+    <string name="benflix_rewatch">Rewatch from the start</string>
+    <string name="benflix_fix_match">Wrong match? Fix it</string>
 </resources>

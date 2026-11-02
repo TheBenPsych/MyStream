@@ -53,3 +53,31 @@ fun SubDubTag(
                 .padding(horizontal = 6.dp, vertical = 1.dp),
     )
 }
+
+/**
+ * Benflix: ENDED or RETURNING on a show's page, from Jellyfin's show status
+ * ("Ended" / "Continuing"). Shows nothing when the status isn't known.
+ */
+@Composable
+fun ShowStatusTag(
+    status: String?,
+    modifier: Modifier = Modifier,
+) {
+    val (label, color) =
+        when {
+            status.equals("Ended", true) -> "ENDED" to Color.White.copy(alpha = .7f)
+            status.equals("Continuing", true) -> "RETURNING" to Color(0xFF46D369)
+            else -> return
+        }
+    Text(
+        text = label,
+        color = color,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp,
+        modifier =
+            modifier
+                .border(1.dp, color, RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 1.dp),
+    )
+}
