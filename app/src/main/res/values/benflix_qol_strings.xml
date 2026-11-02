@@ -90,5 +90,10 @@
     <string name="benflix_settings_hint_server">Who is watching, disk space, tools</string>
     <string name="benflix_settings_hint_advanced">Player, picture quality, requests</string>
     <string name="benflix_settings_advanced">Advanced</string>
+    <string name="benflix_settings_parental">Parental controls</string>
+    <string name="benflix_settings_hint_parental">Parent PIN, Kids bedtime</string>
+    <string name="benflix_parent_pin">Parent PIN</string>
+    <string name="benflix_parent_pin_on">On: Kids bedtime is 9 PM, the PIN unlocks 30 more minutes</string>
+    <string name="benflix_parent_pin_off">Off: Kids is never locked</string>
     <string name="benflix_settings_admin">ADMIN</string>
 </resources>
