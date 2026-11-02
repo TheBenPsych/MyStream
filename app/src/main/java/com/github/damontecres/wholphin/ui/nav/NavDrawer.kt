@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.DrawerState
+import androidx.tv.material3.DrawerValue
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
@@ -720,3 +721,7 @@ fun NavDrawer(
         )
     }
 }
+
+val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
+
+val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open
