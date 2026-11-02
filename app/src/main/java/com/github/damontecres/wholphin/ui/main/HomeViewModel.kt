@@ -7,7 +7,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -461,7 +460,10 @@ class HomeViewModel
             }
         }
 
-        private fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.isActive}-${BuildConfig.VERSION_CODE}"
+        // Benflix speed: the saved Home used to be thrown away by every app update (and Benflix
+        // updates often), so the first start after an update waited for the banner. Only bump
+        // HOME_SNAPSHOT_FORMAT when the saved format really changes.
+        private fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.isActive}-$HOME_SNAPSHOT_FORMAT"
 
         private fun readHomeSnapshot(userId: UUID): HomeSnapshot? =
             diskCache.read(homeSnapshotKey(userId), HomeSnapshot.serializer(), HOME_SNAPSHOT_MAX_AGE_MS)
@@ -2224,6 +2226,7 @@ private const val COLLECTION_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000L
 private const val HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
 private const val SNAPSHOT_SAVE_DELAY_MS = 15_000L
 private const val SNAPSHOT_ROW_MAX = 20
+private const val HOME_SNAPSHOT_FORMAT = "f1"
 
 /** What Home looked like last time, saved so it can be shown instantly when the app opens */
 @Serializable

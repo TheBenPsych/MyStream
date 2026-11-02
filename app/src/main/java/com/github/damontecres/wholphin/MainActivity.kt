@@ -542,6 +542,8 @@ class MainActivityViewModel
                         )
                     }
 
+                    com.github.damontecres.wholphin.util.StartupTimer
+                        .mark(com.github.damontecres.wholphin.util.StartupTimer.UPDATE_CHECK)
                     try {
                         val result = handleIntent(intent)
                         if (result) {
