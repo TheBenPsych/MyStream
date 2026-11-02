@@ -88,6 +88,41 @@ class SeerrServerRepository
             }
         }
 
+        /**
+         * Benflix: connect through the Jellyfin Enhanced plugin on the Jellyfin server. It reaches Seerr from
+         * inside the house and signs in as the matching Seerr user, so this works anywhere the Jellyfin
+         * server works, with no Seerr password. Nothing is saved; it is set up again on each start.
+         */
+        fun connectViaJellyfinEnhanced(
+            jellyfinUrl: String,
+            token: String,
+            jellyfinUserRowId: Int,
+            seerrUserId: Int,
+            admin: Boolean,
+        ) {
+            seerrApi.useJellyfinEnhanced(jellyfinUrl, token)
+            val server = SeerrServer(id = JELLYFIN_ENHANCED_SERVER_ID, url = jellyfinEnhancedBase(jellyfinUrl), name = "Jellyfin Enhanced")
+            val user =
+                SeerrUser(
+                    jellyfinUserRowId = jellyfinUserRowId,
+                    serverId = server.id,
+                    authMethod = SeerrAuthMethod.API_KEY,
+                    username = null,
+                    password = null,
+                    credential = null,
+                )
+            // The plugin checks the real Seerr permissions on every request; these only decide which buttons show
+            val config =
+                User(
+                    id = seerrUserId,
+                    permissions = if (admin) SEERR_ADMIN else SEERR_REQUEST,
+                )
+            val publicSettings = PublicSettings(cacheImages = false)
+            _connection.update {
+                it.copy(connection = SeerrConnectionStatus.Success(CurrentSeerr(server, user, config, publicSettings)))
+            }
+        }
+
         suspend fun addAndChangeServer(
             url: String,
             apiKey: String,
@@ -258,6 +293,11 @@ class SeerrServerRepository
             return false
         }
     }
+
+/** Benflix: the made-up id of the "server" used when Seerr is reached through Jellyfin Enhanced */
+const val JELLYFIN_ENHANCED_SERVER_ID = -2
+private const val SEERR_ADMIN = 2
+private const val SEERR_REQUEST = 32
 
 /**
  * A [SeerrUser] config
