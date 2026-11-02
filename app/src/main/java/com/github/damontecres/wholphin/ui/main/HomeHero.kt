@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -142,6 +146,7 @@ fun HomeHero(
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     onSelectSlide: (Int) -> Unit = {},
+    autoAdvanceMs: Long? = null,
 ) {
     val current = featured.getOrNull(index) ?: return
     Column(
@@ -195,10 +200,12 @@ fun HomeHero(
             )
         }
         if (featured.size > 1) {
-            SlideDots(count = featured.size, index = index, onSelect = onSelectSlide)
+            SlideDots(count = featured.size, index = index, onSelect = onSelectSlide, autoAdvanceMs = autoAdvanceMs)
         }
     }
 }
+
+private val DOT_RED = Color(0xFFE5484D)
 
 /**
  * Benflix: the little banner dots. Each one can be picked with the remote (move down onto them and press OK,
@@ -210,7 +217,18 @@ fun SlideDots(
     index: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    autoAdvanceMs: Long? = null,
 ) {
+    // Benflix: the current dot fills up red while the banner waits to move on, like a little timer
+    val fill = remember(index) { Animatable(0f) }
+    LaunchedEffect(index, autoAdvanceMs) {
+        if (autoAdvanceMs != null) {
+            fill.snapTo(0f)
+            fill.animateTo(1f, tween(durationMillis = autoAdvanceMs.toInt(), easing = LinearEasing))
+        } else {
+            fill.snapTo(0f)
+        }
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -237,10 +255,30 @@ fun SlideDots(
                             .width(width)
                             .height(if (focused) 8.dp else 4.dp)
                             .background(
-                                if (selected || focused) Color.White else Color.White.copy(alpha = .35f),
+                                when {
+                                    // Benflix red on the one you're on, so it's easy to see
+                                    focused -> DOT_RED
+
+                                    selected -> Color.White.copy(alpha = .55f)
+
+                                    else -> Color.White.copy(alpha = .35f)
+                                },
                                 RoundedCornerShape(4.dp),
                             ),
-                )
+                ) {
+                    if (selected && !focused) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(if (autoAdvanceMs != null) fill.value else 1f)
+                                    .background(
+                                        if (autoAdvanceMs != null) DOT_RED else Color.White,
+                                        RoundedCornerShape(4.dp),
+                                    ),
+                        )
+                    }
+                }
             }
         }
     }

@@ -441,6 +441,7 @@ fun HomePageContent(
             heroIndex = (heroIndex + 1) % featured.size
         }
     }
+    val autoAdvanceMs = if (heroFocused && featured.size > 1 && !previewPlaying) HERO_ROTATE_MS else null
     val onSelectSlide: (Int) -> Unit = { heroIndex = it.coerceIn(0, (featured.size - 1).coerceAtLeast(0)) }
     val focusedItem =
         remember(homeRows, position, heroFocused, heroIndex, featured, extraFocus) {
@@ -462,9 +463,21 @@ fun HomePageContent(
     val currentOnFocusPosition by rememberUpdatedState(onFocusPosition)
     val currentOnClickPlay by rememberUpdatedState(onClickPlay)
 
+    // Benflix: the first row was picked only because the banner wasn't ready yet
+    var autoPickedRow by remember { mutableStateOf<RowColumn?>(null) }
     if (takeFocus) {
         LaunchedEffect(homeRows, showHero) {
-            if (!firstFocused && showHero && position.row < 0) {
+            val waitingRow = autoPickedRow
+            val untouched =
+                waitingRow != null &&
+                    (currentPosition.row < 0 || currentPosition == waitingRow)
+            if (showHero && untouched) {
+                // The banner arrived after the rows and nobody has moved yet: start on the banner after all
+                autoPickedRow = null
+                onFocusPosition(RowColumn(-1, -1))
+                listState.scrollToItem(0)
+                heroFocusRequester.tryRequestFocus()
+            } else if (!firstFocused && showHero && position.row < 0) {
                 // Start on the banner, like other streaming apps
                 heroFocusRequester.tryRequestFocus()
                 firstFocused = true
@@ -480,6 +493,7 @@ fun HomePageContent(
                         ?.let {
                             rowFocusRequesters[it].tryRequestFocus()
                             firstFocused = true
+                            if (!showHero) autoPickedRow = RowColumn(it, 0)
                             delay(50)
                             listState.scrollToItem(
                                 it + heroOffset,
@@ -605,6 +619,7 @@ fun HomePageContent(
                                             count = featured.size,
                                             index = heroIndex.coerceIn(0, featured.lastIndex),
                                             onSelect = onSelectSlide,
+                                            autoAdvanceMs = autoAdvanceMs,
                                             modifier =
                                                 Modifier
                                                     .align(Alignment.CenterHorizontally)
@@ -628,6 +643,7 @@ fun HomePageContent(
                                     featured = featured,
                                     index = heroIndex.coerceIn(0, featured.lastIndex),
                                     onSelectSlide = onSelectSlide,
+                                    autoAdvanceMs = autoAdvanceMs,
                                     onClickPlay = onClickFeaturedPlay,
                                     onClickInfo = onClickFeaturedInfo,
                                     onClickFavorite = onClickFeaturedFavorite,
