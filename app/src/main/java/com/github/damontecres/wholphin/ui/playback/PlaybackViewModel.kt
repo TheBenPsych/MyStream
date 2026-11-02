@@ -45,6 +45,8 @@ import com.github.damontecres.wholphin.preferences.ShowNextUpWhen
 import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.enabled
+import com.github.damontecres.wholphin.services.AniSkipMatch
+import com.github.damontecres.wholphin.services.AniSkipService
 import com.github.damontecres.wholphin.services.BenflixAfterCredits
 import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
@@ -188,6 +190,11 @@ class PlaybackViewModel
         @JvmField
         @Inject
         var playbackPrep: PlaybackPrep? = null
+
+        /** Benflix: hand-checked opening/ending times for anime (null in tests) */
+        @JvmField
+        @Inject
+        var aniSkip: AniSkipService? = null
 
         private var mediaSession: MediaSession? = null
 
@@ -1393,14 +1400,27 @@ class PlaybackViewModel
             segmentJob =
                 viewModelScope.launchIO {
                     val prefs = preferences.appPreferences.playbackPreferences
-                    val segments by api.mediaSegmentsApi.getItemSegments(itemId)
-                    if (segments.items.isNotEmpty()) {
+                    val serverSegments =
+                        try {
+                            api.mediaSegmentsApi
+                                .getItemSegments(itemId)
+                                .content.items
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Couldn't get media segments")
+                            emptyList()
+                        }
+                    // Benflix: for anime, AniSkip's hand-checked times replace the server's guesses
+                    val aniSkipSegments = aniSkip?.segmentsFor(api, itemId).orEmpty()
+                    val segments = AniSkipMatch.merge(serverSegments, aniSkipSegments)
+                    if (segments.isNotEmpty()) {
                         while (isActive) {
                             delay(500L)
                             val currentTicks =
                                 onMain { player.currentPosition.milliseconds.inWholeTicks }
                             val currentSegment =
-                                segments.items
+                                segments
                                     .firstOrNull {
                                         it.type != MediaSegmentType.UNKNOWN && currentTicks >= it.startTicks && currentTicks < it.endTicks
                                     }
