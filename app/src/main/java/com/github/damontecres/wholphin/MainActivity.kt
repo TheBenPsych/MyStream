@@ -35,6 +35,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.PlayerBackend
@@ -50,6 +51,7 @@ import com.github.damontecres.wholphin.services.LatestNextUpSchedulerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlaybackLifecycleObserver
 import com.github.damontecres.wholphin.services.RefreshRateService
+import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.ServerEventListener
 import com.github.damontecres.wholphin.services.SetupDestination
@@ -160,6 +162,7 @@ class MainActivity : AppCompatActivity() {
 
     private var signInAuto = true
     private var playerBackend: PlayerBackend? = null
+    private var resumeMinutes = AppPreference.RESUME_DEFAULT_MINUTES
 
     private val json =
         Json {
@@ -233,9 +236,14 @@ class MainActivity : AppCompatActivity() {
         userPreferencesDataStore.data.collectLatestIn(lifecycleScope) { prefs ->
             signInAuto = prefs.signInAutomatically
             playerBackend = prefs.playbackPreferences.playerBackend
+            resumeMinutes = ResumeTimer.minutes(prefs)
         }
 
-        viewModel.appStart(intent)
+        // Benflix: if Android closed the app in the background and the person comes back soon,
+        // skip Who's watching (checked against the timer in Settings)
+        val checkResume = savedInstanceState?.getBoolean(KEY_IN_APP, false) == true
+        if (savedInstanceState == null) ResumeTimer.clear(this)
+        viewModel.appStart(intent, resume = if (checkResume) null else false)
         setContent {
             PhoneFit {
                 MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
@@ -357,9 +365,19 @@ class MainActivity : AppCompatActivity() {
         if (GameStreamReturn.pending) {
             // Back from playing a game in Moonlight: stay where we were (the Games tab)
             GameStreamReturn.pending = false
+            ResumeTimer.resumeAllowed = true
             return
         }
-        viewModel.appStart(null)
+        // Benflix: came back soon enough? Then go right back to where they were
+        val inApp = setupNavigationManager.backStack.lastOrNull() is SetupDestination.AppContent
+        val pinProfile =
+            viewModel.serverRepository.current.value
+                ?.user
+                ?.isProtected == true
+        ResumeTimer.resumeAllowed =
+            inApp && !pinProfile && ResumeTimer.withinTime(this, resumeMinutes)
+        Timber.i("onRestart: resumeAllowed=%s", ResumeTimer.resumeAllowed)
+        viewModel.appStart(null, resume = ResumeTimer.resumeAllowed)
         if (!playExternalViewModel.launched.value) {
             // If restarting during playback that is not external, go back a page
             val lastDest = navigationManager.backStack.lastOrNull()
@@ -373,6 +391,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         Timber.d("onStop")
+        if (!isChangingConfigurations) ResumeTimer.markLeft(this)
         screensaverService.stop(true)
         tvProviderSchedulerService.launchOneTimeRefresh()
     }
@@ -417,6 +436,10 @@ class MainActivity : AppCompatActivity() {
             Timber.w(ex, "Could not persist back stack; skipping")
         }
         outState.putBoolean(KEY_EXTERNAL_PLAYER, playerBackend == PlayerBackend.EXTERNAL_PLAYER)
+        outState.putBoolean(
+            KEY_IN_APP,
+            setupNavigationManager.backStack.lastOrNull() is SetupDestination.AppContent,
+        )
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
@@ -438,7 +461,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         Timber.v("onNewIntent")
         setIntent(intent)
-        viewModel.appStart(intent)
+        viewModel.appStart(intent, resume = ResumeTimer.resumeAllowed)
     }
 
     fun changeDisplayMode(modeId: Int) {
@@ -461,6 +484,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val KEY_BACK_STACK = "backStack"
         private const val KEY_EXTERNAL_PLAYER = "extPlayer"
+        private const val KEY_IN_APP = "benflixInApp"
 
         lateinit var instance: MainActivity
             private set
@@ -483,7 +507,14 @@ class MainActivityViewModel
     ) : ViewModel() {
         private val mutex = Mutex()
 
-        fun appStart(intent: Intent?) {
+        /**
+         * @param resume true = the person came back soon, skip Who's watching. null = check the
+         * Benflix come-back timer (used when Android had closed the app in the background).
+         */
+        fun appStart(
+            intent: Intent?,
+            resume: Boolean? = false,
+        ) {
             viewModelScope.launchDefault {
                 mutex.withLock {
                     try {
@@ -507,7 +538,13 @@ class MainActivityViewModel
                     }
 
                     try {
-                        handleAppStart()
+                        val resumeNow =
+                            resume
+                                ?: ResumeTimer.withinTime(
+                                    context,
+                                    ResumeTimer.minutes(preferences.data.first()),
+                                )
+                        handleAppStart(resumeNow)
                     } catch (ex: Exception) {
                         Timber.e(ex, "Error during appStart")
                         setupNavigationManager.navigateTo(SetupDestination.ServerList)
@@ -608,8 +645,10 @@ class MainActivityViewModel
          * Handle starting the app including auto sign in and navigating to the right starting page
          */
         @VisibleForTesting
-        internal suspend fun handleAppStart() {
-            val signInAutomatically = preferences.data.first().signInAutomatically
+        internal suspend fun handleAppStart(resume: Boolean = false) {
+            // Benflix: coming back within the timer works like "Sign in automatically" (still asks
+            // on profiles with a PIN)
+            val signInAutomatically = preferences.data.first().signInAutomatically || resume
             val currentUser = serverRepository.current.value
             if (signInAutomatically && currentUser != null && !currentUser.user.isProtected) {
                 // Hot reload

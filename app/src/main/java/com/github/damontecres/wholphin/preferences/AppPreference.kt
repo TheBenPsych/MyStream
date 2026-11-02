@@ -1268,6 +1268,19 @@ sealed interface AppPreference<Pref, T> {
                 valueToIndex = { MOBILE_DATA_ORDER.indexOf(it).coerceAtLeast(0) },
             )
 
+        val ResumeTimer =
+            AppChoicePreference<AppPreferences, Int>(
+                title = R.string.benflix_resume_timer,
+                defaultValue = RESUME_DEFAULT_MINUTES,
+                getter = { it.benflixPreferences.resumeMinutes.takeIf { m -> m != 0 } ?: RESUME_DEFAULT_MINUTES },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { resumeMinutes = value }
+                },
+                displayValues = R.array.benflix_resume_timer_options,
+                indexToValue = { RESUME_MINUTES.getOrElse(it) { RESUME_DEFAULT_MINUTES } },
+                valueToIndex = { RESUME_MINUTES.indexOf(it).coerceAtLeast(0) },
+            )
+
         val HowToUse =
             AppDestinationPreference<AppPreferences>(
                 title = R.string.benflix_how_to,
@@ -1281,6 +1294,11 @@ sealed interface AppPreference<Pref, T> {
                 summary = R.string.benflix_server_page_summary,
                 destination = Destination.ServerStatus,
             )
+
+        const val RESUME_DEFAULT_MINUTES = 30
+
+        /** -1 = always ask. Matches benflix_resume_timer_options */
+        val RESUME_MINUTES = listOf(-1, 5, 15, 30, 60, 120, 240)
 
         const val LATE_NIGHT_DEFAULT_HOUR = 22
         val LATE_NIGHT_HOURS = listOf(20, 21, 22, 23, 24)
@@ -1309,6 +1327,7 @@ val basicPreferences =
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
                     AppPreference.UserInterfaceLanguage,
+                    AppPreference.ResumeTimer,
                     AppPreference.SignInAuto,
                 ),
         ),
