@@ -1648,7 +1648,7 @@ class PlaybackViewModel
                 NoticeAction.SKIP_FILLER, NoticeAction.ALWAYS_SKIP_FILLER -> {
                     if (action == NoticeAction.ALWAYS_SKIP_FILLER) {
                         BenflixPlayerPrefs.setAlwaysSkipFiller(context, true)
-                        showToast(context, "Benflix will skip filler from now on", Toast.LENGTH_SHORT)
+                        viewModelScope.launchIO { showToast(context, "Benflix will skip filler from now on", Toast.LENGTH_SHORT) }
                     }
                     viewModelScope.launchIO {
                         val (next, _) = nextStoryEpisode(currentItem.item) ?: return@launchIO
@@ -1663,7 +1663,7 @@ class PlaybackViewModel
 
                 NoticeAction.STOP_SKIPPING_FILLER -> {
                     BenflixPlayerPrefs.setAlwaysSkipFiller(context, false)
-                    showToast(context, "Filler won't be skipped anymore", Toast.LENGTH_SHORT)
+                    viewModelScope.launchIO { showToast(context, "Filler won't be skipped anymore", Toast.LENGTH_SHORT) }
                 }
 
                 NoticeAction.LOWER_QUALITY -> {
@@ -1678,7 +1678,13 @@ class PlaybackViewModel
                         )
                     val lower = BenflixPlayerPrefs.lowerStep(actual)
                     BenflixPlayerPrefs.setTodaysLowerQuality(context, lower)
-                    showToast(context, "Lower quality for today. It's back to normal tomorrow", Toast.LENGTH_SHORT)
+                    viewModelScope.launchIO {
+                        showToast(
+                            context,
+                            "Lower quality for today. It's back to normal tomorrow",
+                            Toast.LENGTH_SHORT,
+                        )
+                    }
                     changeMaxBitrate(lower)
                 }
 
@@ -1700,7 +1706,7 @@ class PlaybackViewModel
             val seriesId = currentSeriesId() ?: return
             setAlwaysSkipIntro(seriesId, true)
             updateSegment(segmentId, false)
-            showToast(context, "Benflix will skip this show's intro from now on", Toast.LENGTH_SHORT)
+            viewModelScope.launchIO { showToast(context, "Benflix will skip this show's intro from now on", Toast.LENGTH_SHORT) }
         }
 
         private fun setAlwaysSkipIntro(
