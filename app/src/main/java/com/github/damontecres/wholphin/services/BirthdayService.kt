@@ -62,7 +62,6 @@ enum class LogoEffect {
     CONFETTI,
     MARIGOLDS,
     LANTERNS,
-    DIYAS,
     EMBERS,
     STAR_PAIR,
     BLOSSOMS,
@@ -127,7 +126,6 @@ fun holidayFor(date: LocalDate): Celebration? {
         m == 11 && d == 5 -> Celebration("Happy Bonfire Night", "🔥", 0xFFFF7A1A, LogoEffect.EMBERS)
         m == 7 && d == 7 -> Celebration("Happy Tanabata", "🎋", 0xFF9FB8FF, LogoEffect.STAR_PAIR)
         date == lunarNewYear(date.year) -> Celebration("Happy Lunar New Year", "🏮", 0xFFFF3B30, LogoEffect.LANTERNS)
-        date == diwali(date.year) -> Celebration("Happy Diwali", "🪔", 0xFFFFC14D, LogoEffect.DIYAS)
         date == easter(date.year) -> Celebration("Happy Easter", "🐣", 0xFFFFB3C7, LogoEffect.BLOSSOMS)
         date == midAutumn(date.year) -> Celebration("Happy Mid-Autumn Festival", "🥮", 0xFFFFC94D, LogoEffect.HARVEST_MOON)
         date == nthSunday(date, 5, 2) -> Celebration("Happy Mother's Day", "💐", 0xFFFF9EC7, LogoEffect.FLOWER_BLOOM)
@@ -158,19 +156,6 @@ fun lunarNewYear(year: Int): LocalDate? =
         2030 -> LocalDate.of(2030, 2, 3)
         2031 -> LocalDate.of(2031, 1, 23)
         2032 -> LocalDate.of(2032, 2, 11)
-        else -> null
-    }
-
-/** Diwali also moves with the moon each year */
-fun diwali(year: Int): LocalDate? =
-    when (year) {
-        2026 -> LocalDate.of(2026, 11, 8)
-        2027 -> LocalDate.of(2027, 10, 29)
-        2028 -> LocalDate.of(2028, 10, 17)
-        2029 -> LocalDate.of(2029, 11, 5)
-        2030 -> LocalDate.of(2030, 10, 26)
-        2031 -> LocalDate.of(2031, 11, 14)
-        2032 -> LocalDate.of(2032, 11, 2)
         else -> null
     }
 

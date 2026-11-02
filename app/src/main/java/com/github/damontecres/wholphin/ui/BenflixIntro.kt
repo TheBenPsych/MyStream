@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui
 
 import android.media.MediaPlayer
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -18,7 +17,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -34,9 +38,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 /**
- * Benflix startup animation. The logo shows still for about 2 seconds while the app loads
- * behind it (so nothing lags), then the "ta-dum" sound plays, the B pops, and it zooms
- * toward the screen as everything fades away. It plays every time Benflix is opened fresh.
+ * Benflix startup animation. The logo shows still while the app loads behind it (so nothing
+ * lags), then the "ta-dum" sound plays as a soft light sweeps across the logo, it settles, and
+ * everything fades away (Ben's Look Book pick: light sweep, no zoom). It plays every fresh launch.
  */
 @Composable
 fun BenflixIntro(
@@ -44,7 +48,7 @@ fun BenflixIntro(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val markScale = remember { Animatable(1f) }
+    val sweep = remember { Animatable(0f) }
     val markAlpha = remember { Animatable(0f) }
     val wordAlpha = remember { Animatable(0f) }
     val screenAlpha = remember { Animatable(1f) }
@@ -70,25 +74,17 @@ fun BenflixIntro(
             // Benflix speed: stop holding as soon as the app is ready behind the logo
             delay(INTRO_MIN_HOLD_MS)
             withTimeoutOrNull(INTRO_MAX_HOLD_MS - INTRO_MIN_HOLD_MS) { StartupTimer.signedIn.first { it } }
-            // 2) Sound + the B pops
+            // 2) Sound + a soft light sweeps across the logo
             try {
                 player?.start()
                 started = player != null
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not play intro sound")
             }
-            markScale.animateTo(1.12f, tween(450, easing = FastOutSlowInEasing))
-            markScale.animateTo(1f, tween(450, easing = FastOutSlowInEasing))
-            delay(500)
-            // 3) Zoom toward the screen and fade away
-            coroutineScope {
-                launch { wordAlpha.animateTo(0f, tween(250)) }
-                launch { markScale.animateTo(9f, tween(850, easing = FastOutLinearInEasing)) }
-                launch {
-                    delay(350)
-                    screenAlpha.animateTo(0f, tween(500))
-                }
-            }
+            sweep.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
+            delay(350)
+            // 3) Settle and fade away
+            screenAlpha.animateTo(0f, tween(500))
         } finally {
             if (!started) player?.release()
             onFinished()
@@ -113,10 +109,9 @@ fun BenflixIntro(
                     Modifier
                         .size(260.dp)
                         .graphicsLayer {
-                            scaleX = markScale.value
-                            scaleY = markScale.value
                             alpha = markAlpha.value
-                        },
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }.lightSweep { sweep.value },
             )
             Image(
                 painter = painterResource(R.drawable.benflix_logo),
@@ -125,11 +120,38 @@ fun BenflixIntro(
                 modifier =
                     Modifier
                         .height(36.dp)
-                        .graphicsLayer { alpha = wordAlpha.value },
+                        .graphicsLayer {
+                            alpha = wordAlpha.value
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }.lightSweep { sweep.value },
             )
         }
     }
 }
+
+/**
+ * A soft white band that slides across whatever it is on (only over the drawn pixels).
+ * [progress] goes 0 to 1; at 0 and 1 the band is off the edges, so nothing shows.
+ */
+private fun Modifier.lightSweep(progress: () -> Float): Modifier =
+    drawWithContent {
+        drawContent()
+        val p = progress()
+        if (p <= 0f || p >= 1f) return@drawWithContent
+        val band = size.width * 0.35f
+        val x = -band + (size.width + band * 2) * p
+        drawRect(
+            brush =
+                Brush.linearGradient(
+                    0f to Color.Transparent,
+                    0.5f to Color.White.copy(alpha = 0.75f),
+                    1f to Color.Transparent,
+                    start = Offset(x - band, 0f),
+                    end = Offset(x + band, size.height * 0.4f),
+                ),
+            blendMode = BlendMode.SrcAtop,
+        )
+    }
 
 /** The still logo shows at least this long, and at most the longer one while the app loads */
 private const val INTRO_MIN_HOLD_MS = 600L

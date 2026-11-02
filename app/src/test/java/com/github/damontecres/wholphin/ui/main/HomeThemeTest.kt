@@ -40,7 +40,6 @@ class HomeThemeTest {
     fun holidayDates() {
         assertEquals(HomeTheme.HALLOWEEN, HomeTheme.forDate(LocalDate.of(2026, 10, 15)))
         assertEquals(HomeTheme.BONFIRE_NIGHT, HomeTheme.forDate(LocalDate.of(2026, 11, 5)))
-        assertEquals(HomeTheme.DIWALI, HomeTheme.forDate(LocalDate.of(2026, 11, 8)))
         // Thanksgiving 2026 is Nov 26
         assertEquals(HomeTheme.THANKSGIVING, HomeTheme.forDate(LocalDate.of(2026, 11, 26)))
         assertEquals(HomeTheme.CHRISTMAS, HomeTheme.forDate(LocalDate.of(2026, 11, 28)))
