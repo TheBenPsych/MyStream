@@ -78,6 +78,7 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavDrawerService
@@ -96,13 +97,23 @@ import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
+import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
+import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -117,8 +128,96 @@ class NavDrawerViewModel
         val setupNavigationManager: SetupNavigationManager,
         val backdropService: BackdropService,
         private val musicService: MusicService,
+        private val imageUrlService: ImageUrlService,
     ) : ViewModel() {
         val serviceState = navDrawerService.state
+
+        /** Browse menu cards: a backdrop from one of each library's titles, and how many titles it has */
+        private val _libraryArt = MutableStateFlow<Map<UUID, LibraryArt>>(emptyMap())
+        val libraryArt: StateFlow<Map<UUID, LibraryArt>> = _libraryArt
+        private var libraryArtJob: Job? = null
+
+        fun loadLibraryArt(libraries: List<ServerNavDrawerItem>) {
+            val missing = libraries.filter { it.itemId !in _libraryArt.value }
+            if (missing.isEmpty() || libraryArtJob?.isActive == true) return
+            val kids = KidsMode.isActive
+            libraryArtJob =
+                viewModelScope.launch(WholphinDispatchers.IO) {
+                    missing.forEach { library ->
+                        val art =
+                            try {
+                                val types =
+                                    when (library.type) {
+                                        CollectionType.MOVIES -> listOf(BaseItemKind.MOVIE)
+                                        CollectionType.TVSHOWS -> listOf(BaseItemKind.SERIES)
+                                        CollectionType.MUSIC -> listOf(BaseItemKind.MUSIC_ALBUM)
+                                        else -> listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
+                                    }
+                                val count =
+                                    api.itemsApi
+                                        .getItems(
+                                            GetItemsRequest(
+                                                parentId = library.itemId,
+                                                recursive = true,
+                                                includeItemTypes = types,
+                                                limit = 0,
+                                                enableTotalRecordCount = true,
+                                            ),
+                                        ).content.totalRecordCount
+                                // Kids get the plain coloured card, so no grown-up artwork sneaks in
+                                val pick =
+                                    if (kids) {
+                                        null
+                                    } else {
+                                        api.itemsApi
+                                            .getItems(
+                                                GetItemsRequest(
+                                                    parentId = library.itemId,
+                                                    recursive = true,
+                                                    includeItemTypes = types,
+                                                    imageTypes = listOf(ImageType.BACKDROP),
+                                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                                    limit = 1,
+                                                    enableTotalRecordCount = false,
+                                                ),
+                                            ).content.items
+                                            .firstOrNull()
+                                    }
+                                val url =
+                                    when {
+                                        pick != null -> {
+                                            imageUrlService.getItemImageUrl(
+                                                itemId = pick.id,
+                                                imageType = ImageType.BACKDROP,
+                                                fillWidth = 400,
+                                                fillHeight = 225,
+                                            )
+                                        }
+
+                                        kids -> {
+                                            null
+                                        }
+
+                                        else -> {
+                                            imageUrlService.getItemImageUrl(
+                                                itemId = library.itemId,
+                                                imageType = ImageType.PRIMARY,
+                                                fillWidth = 400,
+                                                fillHeight = 225,
+                                            )
+                                        }
+                                    }
+                                LibraryArt(url, count)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Browse art for %s", library.name)
+                                LibraryArt(null, null)
+                            }
+                        _libraryArt.update { it + (library.itemId to art) }
+                    }
+                }
+        }
 
         private val _state = MutableStateFlow(NavDrawerState())
         val state: StateFlow<NavDrawerState> = _state
@@ -264,6 +363,12 @@ sealed interface NavDrawerItem {
 /**
  * A server provided nav drawer item, typically a library
  */
+/** A Browse card's picture and how many titles the library has */
+data class LibraryArt(
+    val imageUrl: String?,
+    val count: Int?,
+)
+
 data class ServerNavDrawerItem(
     val itemId: UUID,
     val name: String,
@@ -359,6 +464,7 @@ fun NavDrawer(
                         title = topNavTitle(item),
                         selected = selectedIndex == index,
                         onClick = { viewModel.onClickDrawerItem(index, item) },
+                        libraryId = (item as? ServerNavDrawerItem)?.itemId,
                     ),
                 )
             }
@@ -563,7 +669,18 @@ fun NavDrawer(
         tabs.filterIndexed { i, _ -> i >= libraryOffset && i != tabs.lastIndex && i - libraryOffset != myListIndex }
     val firstLibraries =
         listOf(moviesIndex, showsIndex).filter { it >= 0 }.mapNotNull { tabs.getOrNull(libraryOffset + it) }
-    val browseTabs = firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }
+    val libraryArt by viewModel.libraryArt.collectAsState()
+    // Fetch the Browse card pictures a few seconds after start, so they're ready when Browse opens
+    val libraries = remember(allItems) { allItems.filterIsInstance<ServerNavDrawerItem>() }
+    LaunchedEffect(libraries) {
+        delay(4_000)
+        viewModel.loadLibraryArt(libraries)
+    }
+    val browseTabs =
+        (firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }).map { tab ->
+            val art = tab.libraryId?.let { libraryArt[it] }
+            if (art == null) tab else tab.copy(imageUrl = art.imageUrl, count = art.count)
+        }
     val kids by KidsMode.active.collectAsState()
     val myBenflixTab =
         TopNavTab(
@@ -573,6 +690,8 @@ fun NavDrawer(
                 viewModel.setIndex(MY_BENFLIX_INDEX)
                 viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
             },
+            hint = stringResource(R.string.more_hint_my_benflix),
+            isProfile = true,
         )
     // Home, Channels, Games, Requests (not for Kids). My Benflix is the first thing under More.
     val mainTabs =
@@ -599,22 +718,30 @@ fun NavDrawer(
         )
     val moreTabs =
         listOf(myBenflixTab) +
-            tabs.filterIndexed { i, _ -> i in 1 until libraryOffset } +
+            tabs
+                .filterIndexed { i, _ -> i in 1 until libraryOffset }
+                .map { it.copy(hint = stringResource(R.string.more_hint_now_playing), glyph = MoreGlyphs.MUSIC) } +
             listOf(
                 TopNavTab(
                     title = stringResource(R.string.trailer_shuffle),
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.TrailerShuffle) },
+                    hint = stringResource(R.string.more_hint_trailer_shuffle),
+                    glyph = MoreGlyphs.SHUFFLE,
                 ),
                 TopNavTab(
                     title = stringResource(R.string.watch_in_order),
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.WatchOrder) },
+                    hint = stringResource(R.string.more_hint_watch_in_order),
+                    glyph = MoreGlyphs.LIST,
                 ),
                 TopNavTab(
                     title = stringResource(R.string.mood_quiz),
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
+                    hint = stringResource(R.string.more_hint_mood_quiz),
+                    glyph = MoreGlyphs.SMILE,
                 ),
             )
     Column(modifier = modifier) {
