@@ -1438,9 +1438,10 @@ class PlaybackViewModel
         var displayPreferencesService: DisplayPreferencesService? = null
 
         /** Shows this profile always skips the intro of */
-        private val alwaysSkipIntroSeries: MutableSet<UUID> =
+        private val alwaysSkipIntroSeries: MutableSet<UUID> by lazy {
             java.util.concurrent.ConcurrentHashMap
                 .newKeySet()
+        }
 
         @Volatile private var alwaysSkipIntroLoaded = false
         private var noticeJob: Job? = null
@@ -1450,9 +1451,12 @@ class PlaybackViewModel
         @Volatile private var firstReadyAt = 0L
 
         @Volatile private var lastSeekAt = 0L
-        private val bufferTimes = ArrayDeque<Long>()
+        private val bufferTimes by lazy { ArrayDeque<Long>() }
 
         @Volatile private var stutterOffered = false
+
+        /** This show's intro is always skipped (the set can't be asked about null, so movies are checked first) */
+        private fun alwaysSkipsIntro(): Boolean = currentSeriesId()?.let { it in alwaysSkipIntroSeries } == true
 
         private fun currentSeriesId(): UUID? = if (this::currentItem.isInitialized) currentItem.item.data.seriesId else null
 
@@ -2081,7 +2085,7 @@ class PlaybackViewModel
                                             }
 
                                             MediaSegmentType.INTRO -> {
-                                                if (currentSeriesId() in alwaysSkipIntroSeries) {
+                                                if (alwaysSkipsIntro()) {
                                                     SkipSegmentBehavior.AUTO_SKIP
                                                 } else {
                                                     prefs.skipIntros
@@ -2099,7 +2103,7 @@ class PlaybackViewModel
                                                     if (autoSkippedSegments.add(currentSegment.id)) {
                                                         onMain { player.seekTo(currentSegment.endTicks.ticks.inWholeMilliseconds + 1) }
                                                         if (currentSegment.type == MediaSegmentType.INTRO &&
-                                                            currentSeriesId() in alwaysSkipIntroSeries &&
+                                                            alwaysSkipsIntro() &&
                                                             prefs.skipIntros != SkipSegmentBehavior.AUTO_SKIP
                                                         ) {
                                                             showNotice(
