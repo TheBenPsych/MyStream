@@ -12,7 +12,6 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
-import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.LocalTrailer
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
@@ -52,7 +51,6 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
-import com.github.damontecres.wholphin.ui.util.StringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
@@ -77,7 +75,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.genresApi
@@ -2119,197 +2116,11 @@ class HomeViewModel
         }
     }
 
-data class HomeState(
-    val loadingState: LoadingState,
-    val refreshState: LoadingState,
-    val homeRows: List<HomeRowLoadingState>,
-    val settings: HomePageResolvedSettings,
-    val featured: List<FeaturedItem> = emptyList(),
-    val trending: List<BaseItem> = emptyList(),
-    val trendingMissing: List<DiscoverItem> = emptyList(),
-    val themed: ThemedRow? = null,
-    /** Month-long rows, such as Black History Month in February or Pride Month in June */
-    val monthly: List<ThemedRow> = emptyList(),
-    val because: ThemedRow? = null,
-    /** Benflix Kids: "Watch it again", what Kids watched most */
-    val kidsAgain: ThemedRow? = null,
-    val becauseMore: ThemedRow? = null,
-    val collections: ThemedRow? = null,
-    val mood: HomeMood? = null,
-    val moodRow: ThemedRow? = null,
-    val celebration: Celebration? = null,
-    val newest: ThemedRow? = null,
-    val myList: ThemedRow? = null,
-    /** "Come back to it": started a while ago, never finished */
-    val comeBack: ThemedRow? = null,
-    /** Person spotlight: an actor from what was watched lately */
-    val spotlight: ThemedRow? = null,
-    val genreRows: List<ThemedRow> = emptyList(),
-    /** "Top 10 anime": Anime Movies and Anime Shows together */
-    val animeTop: List<BaseItem> = emptyList(),
-    /** Anime picks: because you watched an anime, hidden gems, anime by genre */
-    val animeRows: List<ThemedRow> = emptyList(),
-    /** Whether these rows were loaded for the Kids profile */
-    val kids: Boolean = false,
-) {
-    companion object {
-        val EMPTY =
-            HomeState(
-                LoadingState.Pending,
-                LoadingState.Pending,
-                emptyList(),
-                HomePageResolvedSettings.EMPTY,
-            )
-    }
-}
-
-private const val COME_BACK_DAYS = 21L
-private const val COME_BACK_POOL = 60
-private const val SPOTLIGHT_POOL = 30
-private const val SPOTLIGHT_TOP_BILLED = 5
-private const val SPOTLIGHT_CHOICES = 5
-private const val TASTE_MAX = 300
-private const val TASTE_CACHE_MS = 20_000L
-private const val ANIME_ID_CACHE_MS = 60 * 60 * 1000L
-private const val ANIME_ROW_MIN = 5
-private const val ANIME_SIMILAR_FETCH = 40
-private const val ANIME_GEM_MIN_RATING = 7.5
-private const val ANIME_GENRE_ROWS = 2
-private const val BECAUSE_LOOKBACK = 30
-private const val BECAUSE_TRIES = 6
-private const val EXTRA_ROW_MAX = 20
-private const val GENRE_ROWS = 3
-private const val GENRE_MIN = 6
-private const val TRENDING_MIN = 5
-private const val FEATURED_NEWEST = 3
-private const val FEATURED_RESUME = 2
-private const val FEATURED_BECAUSE = 2
-private const val FEATURED_FAVORITES = 2
-private const val FEATURED_MAX = 10
-private const val FEATURED_SOURCE_TIMEOUT_MS = 3_000L
-private const val KIDS_AGAIN_MIN = 3
-private const val KIDS_AGAIN_MAX = 20
-
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
 @Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null
 
 /** Benflix: Seerr's trending list and when it was fetched */
 @Volatile private var trendingCache: Pair<Long, List<DiscoverItem>>? = null
-private const val TRENDING_CACHE_MS = 30 * 60 * 1000L
-private const val ON_THIS_DAY_POOL = 3000
-private const val FEATURED_PICKS = 3
-private const val TRENDING_PAGES = 3
-private const val TRENDING_TOP = 10
-private const val THEMED_MAX = 20
-private const val THEMED_FETCH = 60
-
-/** How many name searches the themed row runs at once */
-private const val THEMED_PARALLEL = 6
-private const val COLLECTION_INDEX_MAX = 400
-private const val COLLECTION_INDEX_PARALLEL = 6
-private const val BECAUSE_MAX = 20
-private const val BECAUSE_MIN = 4
-private const val COLLECTIONS_FETCH = 100
-private const val COLLECTIONS_MAX = 20
-private const val COLLECTIONS_MIN = 3
-private const val STUDIO_MIN_ITEMS = 3
-private const val STUDIO_MAX_TILES = 20
-private const val TRAILER_DELAY_MS = 1_500L
-private const val TONIGHT_FROM_HOUR = 18
-private const val TONIGHT_MIN_RATING = 7.0
-private const val TONIGHT_POOL = 200
-private const val TONIGHT_FETCH = 4
-private const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
-private const val SLOW_ROWS_REFRESH_MS = 10 * 60 * 1000L
-private const val THIRD_WAVE_DELAY_MS = 400L
-private const val COLLECTION_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000L
-private const val HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
-private const val SNAPSHOT_SAVE_DELAY_MS = 15_000L
-private const val SNAPSHOT_ROW_MAX = 20
-private const val HOME_SNAPSHOT_FORMAT = "f1"
-
-/** What Home looked like last time, saved so it can be shown instantly when the app opens */
-@Serializable
-private data class HomeSnapshot(
-    val rows: List<SnapshotServerRow>,
-    val featured: List<SnapshotFeatured> = emptyList(),
-    val trending: List<BaseItem> = emptyList(),
-    val themed: SnapshotRow? = null,
-    val monthly: List<SnapshotRow> = emptyList(),
-    val because: SnapshotRow? = null,
-    val becauseMore: SnapshotRow? = null,
-    val collections: SnapshotRow? = null,
-    val newest: SnapshotRow? = null,
-    val myList: SnapshotRow? = null,
-    val genreRows: List<SnapshotRow> = emptyList(),
-    val animeTop: List<BaseItem> = emptyList(),
-    val animeRows: List<SnapshotRow> = emptyList(),
-) {
-    fun applyTo(state: HomeState): HomeState {
-        fun SnapshotRow?.row() = this?.let { ThemedRow(it.title, it.items) }
-        return state.copy(
-            featured = featured.map { FeaturedItem(it.item, it.reason, it.becauseOf) },
-            trending = trending,
-            themed = themed.row(),
-            monthly = monthly.mapNotNull { it.row() },
-            because = because.row(),
-            becauseMore = becauseMore.row(),
-            collections = collections.row(),
-            newest = newest.row(),
-            myList = myList.row(),
-            genreRows = genreRows.mapNotNull { it.row() },
-            animeTop = animeTop,
-            animeRows = animeRows.mapNotNull { it.row() },
-        )
-    }
-}
-
-@Serializable
-private data class SnapshotServerRow(
-    val title: StringProvider,
-    val items: List<BaseItem>,
-    val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
-    val rowType: HomeRowConfig? = null,
-    val showViewMore: Boolean = true,
-) {
-    fun toState(): HomeRowLoadingState = HomeRowLoadingState.Success(title, items, viewOptions, rowType, showViewMore)
-}
-
-@Serializable
-private data class SnapshotRow(
-    val title: String,
-    val items: List<BaseItem>,
-)
-
-@Serializable
-private data class SnapshotFeatured(
-    val item: BaseItem,
-    val reason: FeaturedReason,
-    val becauseOf: String? = null,
-)
-
-/** The anime libraries' movie & show ids as saved on disk */
-@Serializable
-private data class AnimeIdsFile(
-    val ids: List<String>,
-)
-
-private const val ANIME_ID_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000L
-
-/** Benflix: today's "On this day" movie ids as saved on disk */
-@Serializable
-private data class OnThisDayFile(
-    val ids: List<String>,
-)
-
-private const val ON_THIS_DAY_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000L
-
-/** The collection index as saved on disk: movie id to collection id, plus the collections */
-@Serializable
-private data class CollectionIndexFile(
-    val byMovie: Map<String, String>,
-    val collections: List<BaseItemDto>,
-)
 
 /**
  * Whether a row is a "is watching" type
