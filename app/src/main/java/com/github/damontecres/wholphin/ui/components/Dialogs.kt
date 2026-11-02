@@ -437,7 +437,8 @@ fun BasicDialog(
                 Modifier
                     .shadow(elevation = elevation, shape = RoundedCornerShape(8.dp))
                     .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(elevation),
+                        // Benflix Graphite (neutral dark grey) at the default 1dp
+                        MaterialTheme.colorScheme.surfaceColorAtElevation(elevation.coerceAtLeast(2.dp)),
                         shape = RoundedCornerShape(8.dp),
                     ),
         ) {

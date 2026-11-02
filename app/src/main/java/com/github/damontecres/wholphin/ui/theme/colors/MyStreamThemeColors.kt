@@ -80,6 +80,9 @@ val MyStreamThemeColors =
         val surfaceContainerHighDark = Color(0xFF222227)
         val surfaceContainerHighestDark = Color(0xFF2C2C31)
 
+        // Benflix Graphite: neutral grey so raised surfaces are never tinted red/brown
+        val surfaceTintDark = Color(0xFFC9C9CF)
+
         override val lightSchemeMaterial: ColorScheme =
             androidx.compose.material3.lightColorScheme(
                 primary = primaryLight,
@@ -169,6 +172,7 @@ val MyStreamThemeColors =
                 inverseSurface = inverseSurfaceDark,
                 inverseOnSurface = inverseOnSurfaceDark,
                 inversePrimary = inversePrimaryDark,
+                surfaceTint = surfaceTintDark,
             )
 
         override val darkScheme =
@@ -200,5 +204,7 @@ val MyStreamThemeColors =
                 inverseOnSurface = inverseOnSurfaceDark,
                 inversePrimary = inversePrimaryDark,
                 border = Color(0xFFFFFFFF),
+                // Pop-ups and menus get lighter with a neutral grey, not the Benflix red (which looked brown)
+                surfaceTint = surfaceTintDark,
             )
     }
