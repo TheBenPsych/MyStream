@@ -93,7 +93,6 @@ class LatestNextUpService
                                 includeItemTypes = listOf(BaseItemKind.EPISODE),
                                 recursive = true,
                                 isPlayed = false,
-                                minDateCreated = LocalDateTime.now().minusDays(NewSeasonBack.DAYS),
                                 sortBy = listOf(ItemSortBy.DATE_CREATED),
                                 sortOrder = listOf(SortOrder.DESCENDING),
                                 fields = SlimItemFields,
@@ -102,6 +101,8 @@ class LatestNextUpService
                                 enableTotalRecordCount = false,
                             ),
                         ).content.items
+                        // Newest first, so only keep the ones added in the last week
+                        .filter { it.dateCreated?.isAfter(LocalDateTime.now().minusDays(NewSeasonBack.DAYS)) == true }
                         .filter { it.indexNumber == 1 && (it.parentIndexNumber ?: 0) > 1 && it.seriesId != null }
                         .distinctBy { it.seriesId }
                 val back =
