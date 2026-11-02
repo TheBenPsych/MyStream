@@ -10,8 +10,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -103,7 +105,48 @@ fun HomeNoteCard(
             ServerHeadsUp(text = text, onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) })
         }
         note?.let { (current, kind) -> NoteCard(current, kind, viewModel::dismiss) }
+        KidsClock()
     }
+}
+
+/** Benflix Kids: "45 minutes left today" when a parent set a daily screen time */
+@Composable
+private fun KidsClock() {
+    val kids by com.github.damontecres.wholphin.services.KidsMode.active
+        .collectAsState()
+    if (!kids) return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var left by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<Int?>(null)
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        com.github.damontecres.wholphin.services.BenflixScreenTime
+            .load(context)
+        while (true) {
+            left =
+                com.github.damontecres.wholphin.services.BenflixScreenTime
+                    .minutesLeftToday()
+            kotlinx.coroutines.delay(30_000L)
+        }
+    }
+    val minutes = left ?: return
+    val words =
+        when {
+            minutes <= 0 -> "No watching time left today"
+            minutes < 60 -> "$minutes minutes left today"
+            minutes % 60 == 0 -> if (minutes == 60) "1 hour left today" else "${minutes / 60} hours left today"
+            else -> "${minutes / 60} h ${minutes % 60} min left today"
+        }
+    Text(
+        text = "⏰ $words",
+        color = Color.White,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier =
+            Modifier
+                .background(Color(0xFF2B5DA8).copy(alpha = .55f), RoundedCornerShape(50))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+    )
 }
 
 /** Benflix: the gold "server needs you" line, only on the admin's Home */

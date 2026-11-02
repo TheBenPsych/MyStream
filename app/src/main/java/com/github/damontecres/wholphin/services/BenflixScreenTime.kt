@@ -84,6 +84,13 @@ object BenflixScreenTime {
             limitMinutes > 0 &&
             watchedMinutesToday() >= limitMinutes + (if (day == LocalDate.now()) extraMinutes else 0)
 
+    /** Benflix "Kids clock": minutes of watching left today, or null when there's no daily limit */
+    fun minutesLeftToday(): Int? {
+        if (limitMinutes <= 0) return null
+        val extra = if (day == LocalDate.now()) extraMinutes else 0
+        return (limitMinutes + extra - watchedMinutesToday()).coerceAtLeast(0)
+    }
+
     fun giveMoreTime(context: Context) {
         load(context)
         rollOver(context)

@@ -24,6 +24,8 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NoteKind
 import com.github.damontecres.wholphin.services.ProblemReport
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
+import com.github.damontecres.wholphin.ui.components.DialogItem
+import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
@@ -35,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
+import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.MessageCommand
 import org.jellyfin.sdk.model.api.UserDto
@@ -162,6 +165,25 @@ class ServerToolsViewModel
                     _state.value.copy(message = "New password for ${user.name}" to "Password: $password")
             }
 
+        /** Benflix: the most this person can stream away from home (0 = no limit), using Jellyfin's own setting */
+        fun setAwayQuality(
+            user: UserDto,
+            bitsPerSecond: Int,
+        ) = work {
+            val policy =
+                user.policy ?: api.userApi
+                    .getUserById(user.id)
+                    .content.policy ?: return@work
+            api.userApi.updateUserPolicy(user.id, policy.copy(remoteClientBitrateLimit = bitsPerSecond))
+            _state.value =
+                _state.value.copy(
+                    people = people.list(),
+                    message =
+                        "Saved" to
+                            "${user.name} can stream up to ${awayQualityLabel(bitsPerSecond).lowercase()} when away from home.",
+                )
+        }
+
         fun removePerson(user: UserDto) =
             work {
                 people.remove(user.id)
@@ -273,6 +295,16 @@ sealed interface ServerToolsDialog {
     data object AddPerson : ServerToolsDialog
 
     data class Person(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: what you can do for a person (new password, quality away from home, remove) */
+    data class PersonMenu(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: the most a person can stream when they're away from home */
+    data class AwayQuality(
         val user: UserDto,
     ) : ServerToolsDialog
 
@@ -393,7 +425,7 @@ fun LazyListScope.serverToolsItems(
     items(state.people, key = { "person-${it.id}" }) { user ->
         ListItem(
             selected = false,
-            onClick = { showDialog(ServerToolsDialog.Person(user)) },
+            onClick = { showDialog(ServerToolsDialog.PersonMenu(user)) },
             onLongClick = {
                 if (user.policy?.isAdministrator != true) showDialog(ServerToolsDialog.RemovePerson(user))
             },
@@ -404,7 +436,10 @@ fun LazyListScope.serverToolsItems(
                         if (user.policy?.isAdministrator == true) "Admin" else null,
                         if (user.policy?.isDisabled == true) "Turned off" else null,
                         user.lastActivityDate?.let { "Last seen ${it.toLocalDate()}" } ?: "Never signed in",
-                        if (user.policy?.isAdministrator == true) null else "click for a new password, hold to remove",
+                        awayQualityLabel(user.policy?.remoteClientBitrateLimit)
+                            .takeIf { (user.policy?.remoteClientBitrateLimit ?: 0) > 0 }
+                            ?.let { "Away from home: $it" },
+                        "click for more",
                     ).joinToString(" · "),
                 )
             },
@@ -466,6 +501,7 @@ fun ServerToolsDialogs(
     viewModel: ServerToolsViewModel,
     dialog: ServerToolsDialog?,
     onDismiss: () -> Unit,
+    showDialog: (ServerToolsDialog) -> Unit = {},
 ) {
     when (dialog) {
         ServerToolsDialog.WriteNote -> {
@@ -567,6 +603,83 @@ fun ServerToolsDialogs(
             )
         }
 
+        is ServerToolsDialog.PersonMenu -> {
+            val user = dialog.user
+            DialogPopup(
+                showDialog = true,
+                title = user.name.orEmpty(),
+                dialogItems =
+                    buildList {
+                        add(
+                            DialogItem(
+                                headlineContent = { Text("New password") },
+                                supportingContent = { Text("Gives them a fresh password to sign in with") },
+                                onClick = { showDialog(ServerToolsDialog.Person(user)) },
+                            ),
+                        )
+                        add(
+                            DialogItem(
+                                headlineContent = {
+                                    Text(
+                                        "Quality away from home: ${awayQualityLabel(user.policy?.remoteClientBitrateLimit)}",
+                                    )
+                                },
+                                supportingContent = { Text("The most they can stream when they're not on your home Wi-Fi") },
+                                onClick = { showDialog(ServerToolsDialog.AwayQuality(user)) },
+                            ),
+                        )
+                        if (user.policy?.isAdministrator != true) {
+                            add(
+                                DialogItem(
+                                    headlineContent = { Text("Remove ${user.name}") },
+                                    onClick = { showDialog(ServerToolsDialog.RemovePerson(user)) },
+                                ),
+                            )
+                        }
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.AwayQuality -> {
+            val user = dialog.user
+            val current = user.policy?.remoteClientBitrateLimit ?: 0
+            DialogPopup(
+                showDialog = true,
+                title = "${user.name}: quality away from home",
+                dialogItems =
+                    AWAY_QUALITY_CHOICES.map { bps ->
+                        DialogItem(
+                            headlineContent = { Text(awayQualityLabel(bps)) },
+                            supportingContent =
+                                when (bps) {
+                                    0 -> {
+                                        { Text("Same as at home") }
+                                    }
+
+                                    4_000_000 -> {
+                                        { Text("Good for phones, saves your upload") }
+                                    }
+
+                                    else -> {
+                                        null
+                                    }
+                                },
+                            selected = bps == current,
+                            onClick = {
+                                onDismiss()
+                                viewModel.setAwayQuality(user, bps)
+                            },
+                        )
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
         is ServerToolsDialog.RemovePerson -> {
             ConfirmDialog(
                 title = "Remove ${dialog.user.name}?",
@@ -616,3 +729,16 @@ fun ServerToolsDialogs(
         )
     }
 }
+
+/** Benflix: the choices for quality away from home, in bits per second (0 = no limit) */
+val AWAY_QUALITY_CHOICES = listOf(0, 20_000_000, 10_000_000, 8_000_000, 4_000_000, 2_000_000)
+
+fun awayQualityLabel(bitsPerSecond: Int?): String =
+    when {
+        bitsPerSecond == null || bitsPerSecond <= 0 -> "No limit"
+        bitsPerSecond >= 20_000_000 -> "Best (20 Mbps)"
+        bitsPerSecond >= 10_000_000 -> "High (10 Mbps)"
+        bitsPerSecond >= 8_000_000 -> "HD (8 Mbps)"
+        bitsPerSecond >= 4_000_000 -> "Data saver (4 Mbps)"
+        else -> "Low (${bitsPerSecond / 1_000_000} Mbps)"
+    }

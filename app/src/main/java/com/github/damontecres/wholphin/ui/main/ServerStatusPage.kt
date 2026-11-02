@@ -541,6 +541,7 @@ fun ServerStatusPage(
         viewModel = toolsViewModel,
         dialog = toolsDialog,
         onDismiss = { toolsDialog = null },
+        showDialog = { toolsDialog = it },
     )
     stopping?.let { w ->
         ConfirmDialog(

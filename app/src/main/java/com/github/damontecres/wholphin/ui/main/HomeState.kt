@@ -30,6 +30,12 @@ data class HomeState(
     val myList: ThemedRow? = null,
     /** "Come back to it": started a while ago, never finished */
     val comeBack: ThemedRow? = null,
+    /** Benflix: "While you were away", once, after two weeks or more without opening Benflix */
+    val welcomeBack: ThemedRow? = null,
+    /** Benflix "Around the world": movies from one country, like South Korea */
+    val world: List<ThemedRow> = emptyList(),
+    /** Benflix: anime shows airing right now */
+    val airing: ThemedRow? = null,
     /** Person spotlight: an actor from what was watched lately */
     val spotlight: ThemedRow? = null,
     val genreRows: List<ThemedRow> = emptyList(),

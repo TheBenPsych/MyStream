@@ -179,6 +179,10 @@ sealed class Destination(
     @Serializable
     data object MoodQuiz : Destination(false)
 
+    /** Benflix "This or that": pick one of two posters, 8 rounds, the winner is tonight's pick */
+    @Serializable
+    data object ThisOrThat : Destination(false)
+
     /** Your own page on the TV: continue watching, My List, liked, watch history */
     @Serializable
     data object MyBenflix : Destination(false)

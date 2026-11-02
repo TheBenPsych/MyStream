@@ -64,3 +64,18 @@ internal const val SNAPSHOT_SAVE_DELAY_MS = 15_000L
 // took over 3 s on an older TV); the full rows replace them a moment later anyway.
 internal const val SNAPSHOT_ROW_MAX = 10
 internal const val HOME_SNAPSHOT_FORMAT = "f1"
+
+/** Benflix "While you were away": shows after this long without opening Benflix (two weeks) */
+internal const val WELCOME_BACK_AFTER_MS = 14L * 24 * 60 * 60 * 1000
+internal const val HOME_VISITS = "benflix_home_visits"
+
+/** "Around the world": how many movies to look through, and how many a country needs */
+internal const val WORLD_POOL = 400
+internal const val WORLD_MIN = 6
+
+/** Countries most of the library is from, so they don't get an "Around the world" row */
+internal val HOME_COUNTRIES =
+    setOf("united states of america", "united states", "usa", "us", "united kingdom", "uk", "canada")
+
+/** "Anime airing this season": new episodes within this many days */
+internal const val AIRING_DAYS = 100L

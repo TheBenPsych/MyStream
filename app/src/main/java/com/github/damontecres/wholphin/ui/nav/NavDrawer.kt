@@ -593,6 +593,15 @@ fun NavDrawer(
                             },
                         ),
                         TopNavTab(
+                            title = "This or that",
+                            selected = false,
+                            onClick = {
+                                clipsOpen = false
+                                downloadsOpen = false
+                                viewModel.navigationManager.navigateTo(Destination.ThisOrThat)
+                            },
+                        ),
+                        TopNavTab(
                             title = stringResource(R.string.watch_in_order),
                             selected = false,
                             onClick = {
@@ -692,6 +701,13 @@ fun NavDrawer(
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
                     hint = stringResource(R.string.more_hint_mood_quiz),
+                    glyph = MoreGlyphs.SMILE,
+                ),
+                TopNavTab(
+                    title = "This or that",
+                    selected = false,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.ThisOrThat) },
+                    hint = "Pick one of two posters, 8 rounds, the winner is tonight's pick",
                     glyph = MoreGlyphs.SMILE,
                 ),
             )
