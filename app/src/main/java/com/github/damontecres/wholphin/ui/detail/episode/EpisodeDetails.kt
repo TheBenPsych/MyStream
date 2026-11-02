@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUID
@@ -140,6 +141,14 @@ fun EpisodeDetails(
                     overviewDialog =
                         ItemDetailsDialogInfo(ep)
                 },
+                goToShowOnClick =
+                    ep.data.seriesId?.let { seriesId ->
+                        {
+                            viewModel.navigateTo(
+                                Destination.MediaItem(seriesId, BaseItemKind.SERIES, null),
+                            )
+                        }
+                    },
                 moreOnClick = {
                     showContextMenu =
                         ContextMenu.ForBaseItem(
@@ -221,6 +230,7 @@ fun EpisodeDetailsContent(
     onConfirmDelete: () -> Unit,
     onChooseVersion: (MediaSourceInfo) -> Unit,
     modifier: Modifier = Modifier,
+    goToShowOnClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -267,6 +277,7 @@ fun EpisodeDetailsContent(
                             playOnClick.invoke(it)
                         },
                         moreOnClick = moreOnClick,
+                        goToShowOnClick = goToShowOnClick,
                         watchOnClick = watchOnClick,
                         favoriteOnClick = favoriteOnClick,
                         buttonOnFocusChanged = {

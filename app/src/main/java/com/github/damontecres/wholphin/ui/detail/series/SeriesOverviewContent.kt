@@ -97,6 +97,7 @@ fun SeriesOverviewContent(
     moreOnClick: () -> Unit,
     overviewOnClick: () -> Unit,
     personOnClick: (Person) -> Unit,
+    goToShowOnClick: (() -> Unit)? = null,
     canDelete: (BaseItem) -> Boolean,
     onConfirmDelete: (BaseItem) -> Unit,
     onClickExtra: (Int, ExtrasItem) -> Unit,
@@ -323,6 +324,7 @@ fun SeriesOverviewContent(
                         chosenStreams = chosenStreams,
                         playOnClick = playOnClick,
                         moreOnClick = moreOnClick,
+                        goToShowOnClick = goToShowOnClick,
                         watchOnClick = {
                             watchOnClick.invoke()
                             episodeRowFocusRequester.tryRequestFocus()

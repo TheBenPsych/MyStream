@@ -54,6 +54,7 @@
     <string name="forced_track">Forced</string>
     <string name="genres">Genres</string>
     <string name="go_to_series">Go to series</string>
+    <string name="go_to_show">Go to show</string>
     <string name="go_to">Go To</string>
     <string name="hide_controller_timeout">Hide playback controls</string>
     <string name="hide_debug_info">Hide debug info</string>

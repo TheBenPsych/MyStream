@@ -270,6 +270,11 @@ fun SeriesOverview(
                         viewModel.setFavorite(it.id, !favorite, position.episodeRowIndex)
                     }
                 },
+                goToShowOnClick = {
+                    viewModel.navigateTo(
+                        Destination.MediaItem(destination.itemId, BaseItemKind.SERIES, null),
+                    )
+                },
                 moreOnClick = {
                     episodeList?.getOrNull(position.episodeRowIndex)?.let { ep ->
                         showContextMenu =

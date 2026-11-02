@@ -94,6 +94,7 @@ fun ExpandablePlayButtons(
     likes: Boolean? = null,
     rateOnClick: ((Boolean?) -> Unit)? = null,
     downloadItem: com.github.damontecres.wholphin.data.model.BaseItem? = null,
+    goToShowOnClick: (() -> Unit)? = null,
 ) {
     val resources = LocalResources.current
     val firstFocus = remember { FocusRequester() }
@@ -201,6 +202,18 @@ fun ExpandablePlayButtons(
                         modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                         mirrorIcon = true,
                         interactionSource = restartInteractionSource,
+                    )
+                }
+            }
+
+            // Benflix: one press back to the show's own page (from an episode or season)
+            if (goToShowOnClick != null) {
+                item("go_to_show") {
+                    ExpandableFaButton(
+                        title = R.string.go_to_show,
+                        iconStringRes = R.string.fa_tv,
+                        onClick = goToShowOnClick,
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                     )
                 }
             }
