@@ -27,8 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -431,6 +431,7 @@ private fun GuideHeader(
                     remember(program.item.id) {
                         val id = program.item.id
                         val seriesId = program.item.data.seriesId
+
                         fun url(
                             itemId: java.util.UUID,
                             type: ImageType,
