@@ -527,15 +527,6 @@ fun NavDrawer(
                                 viewModel.navigationManager.navigateTo(Destination.WatchOrder)
                             },
                         ),
-                        TopNavTab(
-                            title = stringResource(R.string.benflix_how_to),
-                            selected = false,
-                            onClick = {
-                                clipsOpen = false
-                                downloadsOpen = false
-                                viewModel.navigationManager.navigateTo(Destination.HowTo)
-                            },
-                        ),
                     ),
             )
         }
@@ -590,11 +581,6 @@ fun NavDrawer(
                     title = stringResource(R.string.mood_quiz),
                     selected = false,
                     onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
-                ),
-                TopNavTab(
-                    title = stringResource(R.string.benflix_how_to),
-                    selected = false,
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) },
                 ),
             )
     Column(modifier = modifier) {

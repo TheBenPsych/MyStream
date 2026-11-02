@@ -232,9 +232,6 @@ fun MyBenflixPage(
                         Text("Server")
                     }
                 }
-                Button(onClick = { viewModel.navigationManager.navigateTo(Destination.HowTo) }) {
-                    Text("How to use Benflix")
-                }
                 // Benflix: parent PIN (Kids bedtime), Big kids tile, what Kids watched
                 Button(onClick = { showParentPin = true }) {
                     Text("Parental controls")
