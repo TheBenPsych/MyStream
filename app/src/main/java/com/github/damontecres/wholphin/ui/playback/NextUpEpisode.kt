@@ -182,8 +182,10 @@ fun NextUpEpisode(
                             focusedContainerColor = Color.White,
                             focusedContentColor = Color.Black,
                         ),
+                    // Takes whatever room is left after "Watch credits", so that button is never cut off
                     modifier =
                         Modifier
+                            .weight(1f, fill = false)
                             .height(44.dp)
                             .focusRequester(focusRequester),
                 ) {
@@ -217,6 +219,7 @@ fun NextUpEpisode(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
@@ -232,6 +235,7 @@ fun NextUpEpisode(
                                 focusedContainerColor = Color.White,
                                 focusedContentColor = Color.Black,
                             ),
+                        contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
                     ) {
                         Text(

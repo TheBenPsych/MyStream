@@ -294,7 +294,7 @@ sealed interface AppPreference<Pref, T> {
         val AutoPlayNextDelay =
             AppSliderPreference<AppPreferences>(
                 title = R.string.auto_play_next_delay,
-                defaultValue = 15,
+                defaultValue = 5,
                 min = 0,
                 max = 60,
                 interval = 5,

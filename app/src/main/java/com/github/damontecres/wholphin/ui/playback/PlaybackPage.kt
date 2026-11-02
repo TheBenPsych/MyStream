@@ -816,7 +816,7 @@ fun PlaybackPageContent(
                     modifier =
                         Modifier
                             .padding(horizontal = 32.dp, vertical = 40.dp)
-                            .widthIn(max = 640.dp)
+                            .widthIn(max = 760.dp)
                             .fillMaxWidth()
                             .height(170.dp)
                             .background(
