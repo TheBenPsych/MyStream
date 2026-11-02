@@ -13,7 +13,8 @@ class FillerTagsTest {
         <table class="EpisodeList"><tbody>
         <tr class="manga_canon odd"><td class="Number">1</td><td class="Title"><a href="/x">Enter: Naruto Uzumaki!</a></td>
         <td class="Type"><span>Manga Canon</span></td><td class="Date">2002-10-03</td></tr>
-        <tr class="filler even"><td class="Number">26</td><td class="Title"><a href="/y">Special Report: Live from the Forest of Death!</a></td>
+        <tr class="filler even"><td class="Number">26</td>
+        <td class="Title"><a href="/y">Special Report: Live from the Forest of Death!</a></td>
         <td class="Type"><span>Filler</span></td><td class="Date">2003-04-02</td></tr>
         </tbody></table>
         """.trimIndent()
