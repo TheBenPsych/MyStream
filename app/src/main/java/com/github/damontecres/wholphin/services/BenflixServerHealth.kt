@@ -31,6 +31,10 @@ class BenflixServerHealth
         /** The heads-up, worked out once per app start (null = all good) */
         @Volatile private var checked: Pair<String?, String?>? = null
 
+        /** Benflix: the last disk answer, so the Server page can show it straight away */
+        @Volatile var lastDisks: List<ServerDisk>? = null
+            private set
+
         /**
          * Asks Jellyfin (10.10 or newer) how full the disks with each library are. Libraries on
          * the same disk show the same numbers, so they're shown together.
@@ -65,7 +69,9 @@ class BenflixServerHealth
                         if (name !in names) names += name
                     }
                 }
-                byDisk.map { (space, names) -> ServerDisk(names.joinToString(", "), space.first, space.second) }
+                byDisk
+                    .map { (space, names) -> ServerDisk(names.joinToString(", "), space.first, space.second) }
+                    .also { lastDisks = it }
             }
 
         /** One short line for the admin's Home, or null when everything is fine */
