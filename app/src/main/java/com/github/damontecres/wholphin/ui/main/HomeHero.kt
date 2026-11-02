@@ -200,6 +200,8 @@ fun HomeHero(
     }
 }
 
+private val DOT_RED = Color(0xFFE5484D)
+
 /**
  * Benflix: the little banner dots. Each one can be picked with the remote (move down onto them and press OK,
  * or just move left/right across them) or tapped on a phone to jump to that slide.
@@ -237,7 +239,12 @@ fun SlideDots(
                             .width(width)
                             .height(if (focused) 8.dp else 4.dp)
                             .background(
-                                if (selected || focused) Color.White else Color.White.copy(alpha = .35f),
+                                when {
+                                    // Benflix red on the one you're on, so it's easy to see
+                                    focused -> DOT_RED
+                                    selected -> Color.White
+                                    else -> Color.White.copy(alpha = .35f)
+                                },
                                 RoundedCornerShape(4.dp),
                             ),
                 )
