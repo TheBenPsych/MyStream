@@ -1038,6 +1038,14 @@
     <string name="theme_cat_day">Purr-fect picks</string>
     <string name="theme_dog_day">Good dogs</string>
     <string name="theme_pirate">Pirate adventures</string>
+    <string name="theme_black_history_month">Celebrating Black History Month</string>
+    <string name="theme_pride_month">Happy Pride Month</string>
+    <string name="theme_womens_history_month">Celebrating Women\'s History Month</string>
+    <string name="theme_aapi_heritage_month">Asian American &amp; Pacific Islander Heritage Month</string>
+    <string name="theme_mental_health_month">Mental Health Awareness Month</string>
+    <string name="theme_hispanic_heritage_month">Celebrating Hispanic Heritage Month</string>
+    <string name="theme_native_heritage_month">Native American Heritage Month</string>
+    <string name="theme_disability_pride_month">Disability Pride Month</string>
     <string name="theme_genre_of_week">Genre of the week: %1$s</string>
     <string name="player_next_episode">Next episode</string>
     <string name="player_subtitles">Subtitles</string>

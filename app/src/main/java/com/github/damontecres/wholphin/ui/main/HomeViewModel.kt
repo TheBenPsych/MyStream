@@ -350,6 +350,9 @@ class HomeViewModel
                     if (!refresh || state.themed == null) {
                         viewModelScope.launchIO { loadThemed(userDto) }
                     }
+                    if (!refresh || state.monthly.isEmpty()) {
+                        viewModelScope.launchIO { loadMonthly(userDto) }
+                    }
                     viewModelScope.launchIO { loadBecause(userDto) }
                     viewModelScope.launchIO { loadNewest(userDto) }
                     viewModelScope.launchIO { loadMyList(userDto) }
@@ -461,6 +464,7 @@ class HomeViewModel
                     featured = current.featured.map { SnapshotFeatured(it.item, it.reason, it.becauseOf) },
                     trending = current.trending.take(SNAPSHOT_ROW_MAX),
                     themed = current.themed.snap(),
+                    monthly = current.monthly.mapNotNull { it.snap() },
                     because = current.because.snap(),
                     becauseMore = current.becauseMore.snap(),
                     collections = current.collections.snap(),
@@ -1142,6 +1146,31 @@ class HomeViewModel
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error loading themed row")
+            }
+        }
+
+        /**
+         * Load the month-long rows (Black History Month, Pride Month and so on). Like holiday rows it only shows
+         * hand-picked or tagged titles, and it is hidden when fewer than 4 are on the server.
+         */
+        private suspend fun loadMonthly(userDto: ServerUserConfig) {
+            try {
+                val rows =
+                    HomeTheme.forMonth(LocalDate.now()).mapNotNull { theme ->
+                        val found = findThemeItems(userDto.id, theme)
+                        Timber.d("Month row %s found %s items", theme.title, found.size)
+                        if (found.size < theme.minItems) return@mapNotNull null
+                        val items =
+                            collapseIntoCollections(userDto.id, found)
+                                .take(THEMED_MAX)
+                                .map { BaseItem(it) }
+                        items.takeIf { it.isNotEmpty() }?.let { ThemedRow(context.getString(theme.title), it) }
+                    }
+                _state.update { it.copy(monthly = rows) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.e(ex, "Error loading month rows")
             }
         }
 
@@ -1952,6 +1981,8 @@ data class HomeState(
     val trending: List<BaseItem> = emptyList(),
     val trendingMissing: List<DiscoverItem> = emptyList(),
     val themed: ThemedRow? = null,
+    /** Month-long rows, such as Black History Month in February or Pride Month in June */
+    val monthly: List<ThemedRow> = emptyList(),
     val because: ThemedRow? = null,
     /** Benflix Kids: "Watch it again", what Kids watched most */
     val kidsAgain: ThemedRow? = null,
@@ -2041,6 +2072,7 @@ private data class HomeSnapshot(
     val featured: List<SnapshotFeatured> = emptyList(),
     val trending: List<BaseItem> = emptyList(),
     val themed: SnapshotRow? = null,
+    val monthly: List<SnapshotRow> = emptyList(),
     val because: SnapshotRow? = null,
     val becauseMore: SnapshotRow? = null,
     val collections: SnapshotRow? = null,
@@ -2056,6 +2088,7 @@ private data class HomeSnapshot(
             featured = featured.map { FeaturedItem(it.item, it.reason, it.becauseOf) },
             trending = trending,
             themed = themed.row(),
+            monthly = monthly.mapNotNull { it.row() },
             because = because.row(),
             becauseMore = becauseMore.row(),
             collections = collections.row(),
