@@ -15,12 +15,16 @@ import timber.log.Timber
  * includes it) and keeps the last one for the Server page.
  */
 object StartupTimer {
-    private val processStart: Long =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Process.getStartElapsedRealtime()
-        } else {
-            SystemClock.elapsedRealtime()
-        }
+    // Lazy and guarded, so unit tests (where Android's clock isn't available) don't crash
+    private val processStart: Long by lazy {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Process.getStartElapsedRealtime()
+            } else {
+                SystemClock.elapsedRealtime()
+            }
+        }.getOrDefault(0L)
+    }
     private val steps = LinkedHashMap<String, Long>()
     private var finished = false
 
@@ -32,7 +36,8 @@ object StartupTimer {
     @Synchronized
     fun mark(step: String) {
         if (finished || step in steps) return
-        val ms = SystemClock.elapsedRealtime() - processStart
+        val now = runCatching { SystemClock.elapsedRealtime() }.getOrNull() ?: return
+        val ms = now - processStart
         steps[step] = ms
         Timber.i("Benflix start-up: %s after %s ms", step, ms)
     }
