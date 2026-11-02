@@ -313,6 +313,9 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.BedtimeLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix: friendly screen while the server is down
+                                                com.github.damontecres.wholphin.ui.main
+                                                    .ServerNapLayer()
                                             }
                                         }
                                     }

@@ -100,7 +100,14 @@ fun PhoneNavBar(
         com.github.damontecres.wholphin.ui.components
             .PhoneRemoteDialog(onDismiss = { showRemote = false })
     }
-    val name = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else user.name
+    val name =
+        if (kids) {
+            KidsMode.displayName
+        } else if (GuestMode.isActive) {
+            "Guest"
+        } else {
+            user.name
+        }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

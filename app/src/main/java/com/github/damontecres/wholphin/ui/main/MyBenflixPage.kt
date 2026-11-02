@@ -187,7 +187,14 @@ fun MyBenflixPage(
             user?.let {
                 UserIconCardImage(
                     id = it.id,
-                    name = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else it.name,
+                    name =
+                        if (kids) {
+                            KidsMode.displayName
+                        } else if (GuestMode.isActive) {
+                            "Guest"
+                        } else {
+                            it.name
+                        },
                     imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
                     modifier = Modifier.size(56.dp),
                 )
@@ -200,7 +207,14 @@ fun MyBenflixPage(
                     letterSpacing = 1.sp,
                 )
                 Text(
-                    text = if (kids) KidsMode.displayName else if (GuestMode.isActive) "Guest" else user?.name.orEmpty(),
+                    text =
+                        if (kids) {
+                            KidsMode.displayName
+                        } else if (GuestMode.isActive) {
+                            "Guest"
+                        } else {
+                            user?.name.orEmpty()
+                        },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
