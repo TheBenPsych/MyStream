@@ -74,7 +74,12 @@ class BenflixFunFacts
                 }
             }
 
-        private fun keyOf(fact: String) = fact.trim().lowercase().hashCode().toString()
+        private fun keyOf(fact: String) =
+            fact
+                .trim()
+                .lowercase()
+                .hashCode()
+                .toString()
 
         private fun seenKeys(): List<String> =
             prefs()
