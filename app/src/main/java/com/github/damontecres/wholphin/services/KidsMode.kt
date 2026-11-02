@@ -24,14 +24,44 @@ object KidsMode {
     val isActive: Boolean
         get() = _active.value
 
-    fun set(on: Boolean) {
-        if (_active.value != on) Timber.i("Kids mode: %s", on)
+    /** Benflix "Big kids": allows up to PG-13 / TV-14 instead of PG */
+    @Volatile var isBig: Boolean = false
+        private set
+
+    /** The name shown in the menus: "Kids" or "Big kids" */
+    val displayName: String get() = if (isBig) "Big kids" else "Kids"
+
+    fun set(
+        on: Boolean,
+        big: Boolean = false,
+    ) {
+        if (_active.value != on || isBig != big) Timber.i("Kids mode: %s, big: %s", on, big)
         seriesRatings.clear()
+        isBig = on && big
         _active.value = on
     }
 
     /** Highest rating the server is asked for */
-    private const val MAX_RATING = "PG"
+    private val maxRating: String get() = if (isBig) "PG-13" else "PG"
+
+    /** Extra ratings allowed for Big kids */
+    private val BIG_KIDS_RATINGS = setOf("PG-13", "TV-14", "12", "12A", "13", "FSK-12", "M", "PG13")
+
+    /** Whether the "Big kids" tile shows on Who's watching on this device (Parental controls) */
+    fun bigKidsTile(context: android.content.Context): Boolean =
+        context.getSharedPreferences(LEVEL_PREFS, android.content.Context.MODE_PRIVATE).getBoolean(BIG_KIDS_KEY, false)
+
+    fun setBigKidsTile(
+        context: android.content.Context,
+        on: Boolean,
+    ) = context
+        .getSharedPreferences(LEVEL_PREFS, android.content.Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(BIG_KIDS_KEY, on)
+        .apply()
+
+    private const val LEVEL_PREFS = "benflix_kids_levels"
+    private const val BIG_KIDS_KEY = "big_kids_tile"
 
     /** Ratings allowed in Kids (US movie & TV, plus a few common others) */
     private val ALLOWED_RATINGS =
@@ -82,7 +112,7 @@ object KidsMode {
             }
             val builder = request.url.newBuilder()
             if (request.url.queryParameter("maxOfficialRating") == null) {
-                builder.addQueryParameter("maxOfficialRating", MAX_RATING)
+                builder.addQueryParameter("maxOfficialRating", maxRating)
             }
             // Let the server drop unrated movies & shows too, so pages come back full
             // (otherwise long grids end up with blank gaps). Not for episodes & seasons,
@@ -194,6 +224,6 @@ object KidsMode {
             ratingOf(item)
                 ?: if (type in USES_SERIES_RATING) seriesRatings[item.optString("SeriesId")]?.takeIf { it.isNotEmpty() } else null
         // No rating at all means the server can't tell what it is, so it stays out
-        return rating != null && rating.uppercase() in ALLOWED_RATINGS
+        return rating != null && (rating.uppercase() in ALLOWED_RATINGS || (isBig && rating.uppercase() in BIG_KIDS_RATINGS))
     }
 }

@@ -167,7 +167,7 @@ fun SearchPage(
     val searchContext = LocalContext.current
     val onClickItem = { _: Int, item: BaseItem ->
         Timber.v("Clicked %s, type=%s", item.id, item.type)
-        RecentSearches.add(searchContext, query)
+        RecentSearches.add(searchContext, viewModel.recentAccount, query)
         if (item.type == BaseItemKind.TV_PROGRAM || item.type == BaseItemKind.PROGRAM || item.type == BaseItemKind.LIVE_TV_PROGRAM) {
             viewModel.fetchProgramForDialog(item.id)
             showProgramDialog = true
@@ -385,6 +385,7 @@ fun SearchPage(
                     // Nothing typed yet: recent searches, moods and genres to browse
                     SearchStart(
                         navigationManager = viewModel.navigationManager,
+                        account = viewModel.recentAccount,
                         onClickRecent = {
                             query = it
                             triggerImmediateSearch(it)

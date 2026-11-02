@@ -127,6 +127,7 @@ fun HomePage(
     val trendingMissing = state.trendingMissing
     val themed = state.themed
     val because = state.because
+    val kidsAgain = state.kidsAgain
     val becauseMore = state.becauseMore
     val collections = state.collections
     val mood = state.mood
@@ -283,6 +284,7 @@ fun HomePage(
                 onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
                 themed = themed,
                 because = because,
+                kidsAgain = kidsAgain,
                 becauseMore = becauseMore,
                 collections = collections,
                 mood = mood,
@@ -384,6 +386,7 @@ fun HomePageContent(
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
     because: ThemedRow? = null,
+    kidsAgain: ThemedRow? = null,
     becauseMore: ThemedRow? = null,
     collections: ThemedRow? = null,
     mood: HomeMood? = null,
@@ -747,6 +750,23 @@ fun HomePageContent(
                                     }
                                 }
                             }
+                        }
+                    }
+                    // Benflix Kids: their favourites first
+                    if (kidsAgain != null) {
+                        item(key = "kidsAgain") {
+                            PosterRow(
+                                title = kidsAgain.title,
+                                items = kidsAgain.items,
+                                onClickItem = onClickTrending,
+                                onFocusItem = { extraFocus = it },
+                                modifier =
+                                    Modifier
+                                        .padding(bottom = 8.dp)
+                                        .onFocusChanged {
+                                            if (!it.hasFocus && extraFocus in kidsAgain.items) extraFocus = null
+                                        },
+                            )
                         }
                     }
                     // Benflix rows, Netflix style, after Continue watching

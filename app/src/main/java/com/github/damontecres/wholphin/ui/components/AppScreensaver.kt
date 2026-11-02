@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -13,11 +14,14 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,8 +42,10 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.datastore.core.DataStore
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -52,15 +58,20 @@ import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
 import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.services.BenflixFunFacts
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_ALPHA
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_END_FRACTION
+import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import org.jellyfin.sdk.api.client.ApiClient
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -71,8 +82,33 @@ class ScreensaverViewModel
     constructor(
         private val screensaverService: ScreensaverService,
         val preferencesDataStore: DataStore<AppPreferences>,
+        private val funFacts: BenflixFunFacts,
+        private val api: ApiClient,
+        private val serverRepository: ServerRepository,
     ) : ViewModel() {
         val currentItem = screensaverService.createItemFlow(viewModelScope)
+
+        /** Benflix: a "Did you know?" fact that changes every minute or so */
+        val fact =
+            flow {
+                var last: String? = null
+                while (true) {
+                    val userId = serverRepository.currentUser?.id
+                    if (userId != null) {
+                        // Hide the old fact, wait a bit, then show a new one
+                        emit(last to false)
+                        delay(FACT_GAP_MS)
+                        last = funFacts.pick(api, userId)
+                        emit(last to (last != null))
+                    }
+                    delay(FACT_SHOW_MS)
+                }
+            }
+
+        companion object {
+            private const val FACT_SHOW_MS = 45_000L
+            private const val FACT_GAP_MS = 15_000L
+        }
     }
 
 sealed interface ScreensaverItem {
@@ -97,8 +133,10 @@ fun AppScreensaver(
     viewModel: ScreensaverViewModel = hiltViewModel(),
 ) {
     val currentItem by viewModel.currentItem.collectAsState(null)
+    val fact by viewModel.fact.collectAsState(null to false)
     AppScreensaverContent(
         currentItem = currentItem,
+        fact = fact,
         showClock = prefs.interfacePreferences.screensaverPreference.showClock,
         duration = prefs.interfacePreferences.screensaverPreference.duration.milliseconds,
         animate = prefs.interfacePreferences.screensaverPreference.animate,
@@ -114,6 +152,7 @@ fun AppScreensaverContent(
     duration: Duration,
     animate: Boolean,
     modifier: Modifier = Modifier,
+    fact: Pair<String?, Boolean> = null to false,
 ) {
     Box(
         modifier
@@ -247,6 +286,33 @@ fun AppScreensaverContent(
         }
         if (showClock) {
             TimeDisplay()
+        }
+        // Benflix: "Did you know?" facts fade in now and then
+        AnimatedVisibility(
+            visible = fact.second && fact.first != null,
+            enter = fadeIn(tween(1_500)),
+            exit = fadeOut(tween(1_500)),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+                    .widthIn(max = 460.dp),
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = "DID YOU KNOW?",
+                    color = BenflixRed,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    fontSize = 13.sp,
+                )
+                Text(text = fact.first.orEmpty(), color = Color.White, fontSize = 16.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

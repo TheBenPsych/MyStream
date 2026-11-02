@@ -99,6 +99,10 @@ object AppModule {
                 // TODO user agent, timeouts, logging, etc
                 // Benflix Kids profile: only kid-rated movies & shows
                 addInterceptor(KidsMode.interceptor)
+                // Benflix Guest profile: nothing watched is saved
+                addInterceptor(com.github.damontecres.wholphin.services.GuestMode.interceptor)
+                // Benflix: notice when the server is down ("taking a nap")
+                addInterceptor(com.github.damontecres.wholphin.services.ServerNap.interceptor)
             }.build()
 
     @AuthOkHttpClient

@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -77,6 +79,14 @@ class ServerEventListener
                             listOf(
                                 GeneralCommandType.DISPLAY_MESSAGE,
                                 GeneralCommandType.SEND_STRING,
+                                // Benflix: phone as the TV remote
+                                GeneralCommandType.MOVE_UP,
+                                GeneralCommandType.MOVE_DOWN,
+                                GeneralCommandType.MOVE_LEFT,
+                                GeneralCommandType.MOVE_RIGHT,
+                                GeneralCommandType.SELECT,
+                                GeneralCommandType.BACK,
+                                GeneralCommandType.GO_HOME,
                             ),
                         supportsMediaControl = true,
                     )
@@ -101,9 +111,47 @@ class ServerEventListener
                                         message.data?.name,
                                     )
                                     when (message.data?.name) {
+                                        GeneralCommandType.MOVE_UP -> {
+                                            pressKey(KeyEvent.KEYCODE_DPAD_UP)
+                                        }
+
+                                        GeneralCommandType.MOVE_DOWN -> {
+                                            pressKey(KeyEvent.KEYCODE_DPAD_DOWN)
+                                        }
+
+                                        GeneralCommandType.MOVE_LEFT -> {
+                                            pressKey(KeyEvent.KEYCODE_DPAD_LEFT)
+                                        }
+
+                                        GeneralCommandType.MOVE_RIGHT -> {
+                                            pressKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+                                        }
+
+                                        GeneralCommandType.SELECT -> {
+                                            pressKey(KeyEvent.KEYCODE_DPAD_CENTER)
+                                        }
+
+                                        GeneralCommandType.BACK -> {
+                                            pressKey(KeyEvent.KEYCODE_BACK)
+                                        }
+
+                                        GeneralCommandType.GO_HOME -> {
+                                            withContext(WholphinDispatchers.Main) { navigationManager.goToHome() }
+                                        }
+
                                         GeneralCommandType.DISPLAY_MESSAGE,
                                         GeneralCommandType.SEND_STRING,
                                         -> {
+                                            if (message.data?.arguments?.get(BENFLIX_TYPE) != null) {
+                                                // Benflix remote keyboard: type into whatever box is selected
+                                                typeText(
+                                                    message.data
+                                                        ?.arguments
+                                                        ?.get("String")
+                                                        .orEmpty(),
+                                                )
+                                                return@onEach
+                                            }
                                             val header = message.data?.arguments["Header"]
                                             val text =
                                                 message.data?.arguments["Text"]
@@ -155,6 +203,24 @@ class ServerEventListener
                 }
         }
 
+        /** Benflix remote: acts like the TV remote's button was pressed */
+        private suspend fun pressKey(code: Int) =
+            withContext(WholphinDispatchers.Main) {
+                activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+                activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+            }
+
+        private suspend fun typeText(text: String) =
+            withContext(WholphinDispatchers.Main) {
+                val keys = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD)
+                if (text == BACKSPACE) {
+                    activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                    return@withContext
+                }
+                keys.getEvents(text.toCharArray())?.forEach { activity.dispatchKeyEvent(it) }
+            }
+
         private suspend fun onPlayRequest(request: PlayRequest?) {
             val itemId = request?.itemIds?.firstOrNull() ?: return
             if (request.playCommand != PlayCommand.PLAY_NOW) return
@@ -185,3 +251,9 @@ class ServerEventListener
     }
 
 private const val TICKS_PER_MS = 10_000L
+
+/** Marks a SEND_STRING from the Benflix phone remote (typing), not a message to show */
+const val BENFLIX_TYPE = "BenflixType"
+
+/** Sent by the phone remote's delete key */
+const val BACKSPACE = "\b"

@@ -24,8 +24,12 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixNote
 import com.github.damontecres.wholphin.services.BenflixNotes
+import com.github.damontecres.wholphin.services.BenflixServerHealth
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NoteKind
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,11 +43,23 @@ class HomeNoteViewModel
     constructor(
         private val notes: BenflixNotes,
         private val serverRepository: ServerRepository,
+        private val health: BenflixServerHealth,
+        val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** Benflix: a heads-up for the admin when the server needs attention */
+        private val _headsUp = MutableStateFlow<String?>(null)
+        val headsUp: StateFlow<String?> = _headsUp
+
         private val _note = MutableStateFlow<Pair<BenflixNote, NoteKind>?>(null)
         val note: StateFlow<Pair<BenflixNote, NoteKind>?> = _note
 
         init {
+            viewModelScope.launch {
+                if (KidsMode.isActive || GuestMode.isActive) return@launch
+                if (serverRepository.currentUserDto?.policy?.isAdministrator == true) {
+                    _headsUp.value = health.headsUp()
+                }
+            }
             viewModelScope.launch {
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 if (KidsMode.isActive) return@launch
@@ -81,12 +97,61 @@ fun HomeNoteCard(
     viewModel: HomeNoteViewModel = hiltViewModel(),
 ) {
     val note by viewModel.note.collectAsState()
-    val (current, kind) = note ?: return
+    val headsUp by viewModel.headsUp.collectAsState()
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        headsUp?.let { text ->
+            ServerHeadsUp(text = text, onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) })
+        }
+        note?.let { (current, kind) -> NoteCard(current, kind, viewModel::dismiss) }
+    }
+}
+
+/** Benflix: the gold "server needs you" line, only on the admin's Home */
+@Composable
+private fun ServerHeadsUp(
+    text: String,
+    onClick: () -> Unit,
+) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(RoundedCornerShape(10.dp)),
+        colors =
+            androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = WarnGold.copy(alpha = 0.14f),
+                focusedContainerColor = WarnGold.copy(alpha = 0.3f),
+            ),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = "⚠ $text · Open the Server page ›",
+            color = WarnGold,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
+    }
+}
+
+private val WarnGold =
+    androidx.compose.ui.graphics
+        .Color(0xFFF2B84B)
+
+@Composable
+private fun NoteCard(
+    current: BenflixNote,
+    kind: NoteKind,
+    onDismiss: () -> Unit,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier =
-            modifier
+            Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -104,7 +169,7 @@ fun HomeNoteCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        Button(onClick = viewModel::dismiss) {
+        Button(onClick = onDismiss) {
             Text(if (kind == NoteKind.WELCOME) "Start watching" else "Got it")
         }
     }

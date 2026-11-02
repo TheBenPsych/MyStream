@@ -1055,6 +1055,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_parent_pin,
             )
 
+        /** Benflix: Big kids tile, Guest tile and what Kids watched this week */
+        val ParentalMore =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_parental_more,
+            )
+
         val ImageDiskCacheSize =
             AppSliderPreference<AppPreferences>(
                 title = R.string.image_cache_size,
@@ -1323,7 +1329,7 @@ val basicPreferences =
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_parental,
-            preferences = listOf(AppPreference.ParentPin),
+            preferences = listOf(AppPreference.ParentPin, AppPreference.ParentalMore),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_look,

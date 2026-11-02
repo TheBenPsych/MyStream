@@ -393,6 +393,11 @@ fun GamesPage(
             subtitle = "A blurry picture gets sharper. Guess it fast for more points!",
             onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
         )
+        ActionTile(
+            title = "Daily movie riddle",
+            subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
+            onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
+        )
 
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {

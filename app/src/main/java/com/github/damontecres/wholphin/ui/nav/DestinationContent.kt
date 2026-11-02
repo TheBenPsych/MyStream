@@ -416,6 +416,11 @@ fun DestinationContent(
                 .GuessTheMoviePage(modifier)
         }
 
+        Destination.DailyRiddle -> {
+            com.github.damontecres.wholphin.ui.games
+                .DailyRiddlePage(modifier)
+        }
+
         Destination.HowTo -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main

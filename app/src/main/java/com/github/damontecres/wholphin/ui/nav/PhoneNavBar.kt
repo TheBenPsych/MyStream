@@ -31,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.BasicDialog
@@ -94,7 +95,19 @@ fun PhoneNavBar(
     // Games and every library live under My Benflix
     val libraries = tabs.filter { it !== home }
     var showMine by remember { mutableStateOf(false) }
-    val name = if (kids) "Kids" else user.name
+    var showRemote by remember { mutableStateOf(false) }
+    if (showRemote) {
+        com.github.damontecres.wholphin.ui.components
+            .PhoneRemoteDialog(onDismiss = { showRemote = false })
+    }
+    val name =
+        if (kids) {
+            KidsMode.displayName
+        } else if (GuestMode.isActive) {
+            "Guest"
+        } else {
+            user.name
+        }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -189,6 +202,15 @@ fun PhoneNavBar(
                     BrowseRow(stringResource(R.string.downloads_title), false) {
                         showMine = false
                         onClickDownloads.invoke()
+                    }
+                }
+                // Benflix: use the phone as the TV remote
+                if (!kids) {
+                    item {
+                        BrowseRow("TV remote", false) {
+                            showMine = false
+                            showRemote = true
+                        }
                     }
                 }
                 item { SectionTitle(stringResource(R.string.phone_browse)) }

@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,6 +74,10 @@ class BedtimeViewModel
         private val _hasPin = MutableStateFlow(false)
         val hasPin: StateFlow<Boolean> = _hasPin
 
+        /** True while the "15 minutes until bedtime" note is showing */
+        private val _windDown = MutableStateFlow(false)
+        val windDown: StateFlow<Boolean> = _windDown
+
         init {
             viewModelScope.launch {
                 var lastUser: java.util.UUID? = null
@@ -80,6 +88,14 @@ class BedtimeViewModel
                         refreshPin()
                     }
                     _locked.value = BenflixBedtime.lockedNow()
+                    if (BenflixBedtime.windDownNow()) {
+                        BenflixBedtime.windDownShownOn = java.time.LocalDate.now()
+                        launch {
+                            _windDown.value = true
+                            delay(WIND_DOWN_SHOW_MS)
+                            _windDown.value = false
+                        }
+                    }
                     delay(CHECK_EVERY_MS)
                 }
             }
@@ -121,6 +137,7 @@ class BedtimeViewModel
 
         companion object {
             private const val CHECK_EVERY_MS = 20_000L
+            private const val WIND_DOWN_SHOW_MS = 15_000L
         }
     }
 
@@ -137,6 +154,23 @@ fun BedtimeLayer(
     val kids by KidsMode.active.collectAsState()
     LaunchedEffect(kids) { if (kids) viewModel.refreshPin() }
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
+    val windDown by viewModel.windDown.collectAsState()
+    // "15 minutes until bedtime": a small note in the corner, even while watching
+    Box(contentAlignment = Alignment.TopEnd, modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = kids && windDown, enter = fadeIn(), exit = fadeOut()) {
+            Column(
+                modifier =
+                    Modifier
+                        .padding(24.dp)
+                        .widthIn(max = 380.dp)
+                        .background(Color(0xEE141418), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                Text("15 minutes until bedtime", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Time to pick your last show!", fontSize = 15.sp, color = Color(0xFFD8D8F0))
+            }
+        }
+    }
     if (!kids || !locked || playing) return
 
     var askPin by remember { mutableStateOf(false) }

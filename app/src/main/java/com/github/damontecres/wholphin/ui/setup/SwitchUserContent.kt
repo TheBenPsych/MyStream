@@ -54,6 +54,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.holidayFor
@@ -111,8 +112,11 @@ fun SwitchUserContent(
     fun trySwitchUser(
         user: JellyfinUser,
         kids: Boolean = false,
+        bigKids: Boolean = false,
+        guest: Boolean = false,
     ) {
-        KidsMode.set(kids)
+        KidsMode.set(kids, bigKids)
+        GuestMode.set(guest)
         val result = viewModel.trySwitchUser(user)
         scope.launch {
             when (val r = result.await()) {
@@ -250,6 +254,10 @@ fun SwitchUserContent(
                                         .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
                                         ?.firstOrNull { it.accessToken != null && !it.requireLogin },
                                 onKids = { user -> trySwitchUser(user, kids = true) },
+                                showBigKids = remember { KidsMode.bigKidsTile(context) },
+                                onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
+                                showGuest = remember { GuestMode.tileOn(context) },
+                                onGuest = { user -> trySwitchUser(user, guest = true) },
                                 onRemoveUser = { user ->
                                     viewModel.removeUser(user)
                                 },
