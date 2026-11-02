@@ -211,8 +211,9 @@ fun NextSeasonAsk(
 /** "today", "tomorrow", "Thursday, Nov 6" (this week) or "Nov 20" */
 private fun airDayWords(date: LocalDate): String {
     val today = LocalDate.now()
-    val days = java.time.temporal.ChronoUnit.DAYS
-        .between(today, date)
+    val days =
+        java.time.temporal.ChronoUnit.DAYS
+            .between(today, date)
     return when {
         days == 0L -> "today"
         days == 1L -> "tomorrow"
