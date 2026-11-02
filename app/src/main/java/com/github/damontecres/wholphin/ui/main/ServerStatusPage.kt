@@ -1,5 +1,10 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,11 +49,11 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.activityLogApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -84,17 +90,19 @@ data class ServerProblem(
     val time: String,
 )
 
-data class ServerStatus(
+/** The top of the page: the server's name and whether it answers */
+data class ServerHeader(
     val serverName: String = "",
     val version: String = "",
     val online: Boolean = false,
-    val watching: List<WatchingNow> = emptyList(),
+)
+
+/** The Library numbers */
+data class LibraryNumbers(
     val addedThisWeek: Int = 0,
     val movies: Int = 0,
     val shows: Int = 0,
     val episodes: Int = 0,
-    val problems: List<ServerProblem> = emptyList(),
-    val loaded: Boolean = false,
 )
 
 /** Benflix: one disk (or group of disks) the server keeps movies & shows on */
@@ -112,6 +120,26 @@ data class ServerDisk(
     }
 }
 
+/**
+ * Benflix: what the Server page showed last time, kept while the app is open, so opening the page
+ * again shows the old numbers straight away while fresh ones load.
+ */
+private object ServerPageMemory {
+    @Volatile var header: ServerHeader? = null
+
+    @Volatile var watching: List<WatchingNow>? = null
+
+    @Volatile var library: LibraryNumbers? = null
+
+    @Volatile var problems: List<ServerProblem>? = null
+}
+
+/**
+ * Server page data. Every section (header, watching now, library, problems, disks) loads on its
+ * own and shows as soon as its answer arrives, so one slow question to the server (often the
+ * disk check, when Unraid has to wake sleeping disks) no longer holds up the whole page.
+ * Each value is null while it's still loading the first time.
+ */
 @HiltViewModel
 class ServerStatusViewModel
     @Inject
@@ -120,32 +148,59 @@ class ServerStatusViewModel
         val serverRepository: ServerRepository,
         private val health: BenflixServerHealth,
     ) : ViewModel() {
-        private val _status = MutableStateFlow(ServerStatus())
-        val status: StateFlow<ServerStatus> = _status
+        private val _header = MutableStateFlow(ServerPageMemory.header)
+        val header: StateFlow<ServerHeader?> = _header
 
-        /** Benflix: disk space, loaded once when the page opens (null while loading) */
-        private val _disks = MutableStateFlow<List<ServerDisk>?>(null)
+        private val _watching = MutableStateFlow(ServerPageMemory.watching)
+        val watching: StateFlow<List<WatchingNow>?> = _watching
+
+        private val _library = MutableStateFlow(ServerPageMemory.library)
+        val library: StateFlow<LibraryNumbers?> = _library
+
+        private val _problems = MutableStateFlow(ServerPageMemory.problems)
+        val problems: StateFlow<List<ServerProblem>?> = _problems
+
+        /** Benflix: disk space (null while loading) */
+        private val _disks = MutableStateFlow(health.lastDisks)
         val disks: StateFlow<List<ServerDisk>?> = _disks
 
-        fun loadDisks() {
-            viewModelScope.launch {
-                _disks.value = safe { health.readDisks() }.orEmpty()
-            }
-        }
+        private var started = false
 
-        fun refresh() {
-            viewModelScope.launch {
-                _status.value = withContext(WholphinDispatchers.IO) { load() }
+        /** Starts every section loading at once. "Watching now" then keeps itself fresh. */
+        fun start() {
+            if (started) return
+            started = true
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val h = safe { loadHeader() }
+                if (h != null) {
+                    set(h)
+                } else if (_header.value == null) {
+                    _header.value = ServerHeader(online = false)
+                }
             }
-        }
-
-        /** Keeps the "Watching now" list fresh while the page is open */
-        fun keepRefreshing() {
-            viewModelScope.launch {
+            viewModelScope.launch(WholphinDispatchers.IO) {
                 while (true) {
-                    _status.value = withContext(WholphinDispatchers.IO) { load() }
+                    val list = safe { loadWatching() }
+                    if (list != null) {
+                        setWatching(list)
+                    } else if (_watching.value == null) {
+                        setWatching(emptyList())
+                    }
                     delay(REFRESH_MS)
                 }
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val numbers = loadLibrary()
+                _library.value = numbers
+                ServerPageMemory.library = numbers
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val list = safe { loadProblems() }.orEmpty()
+                _problems.value = list
+                ServerPageMemory.problems = list
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty()
             }
         }
 
@@ -154,13 +209,23 @@ class ServerStatusViewModel
                 try {
                     api.sessionApi.sendPlaystateCommand(sessionId, PlaystateCommand.STOP)
                     delay(1_500)
-                    _status.value = load()
+                    setWatching(loadWatching())
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not stop that stream")
                 }
             }
+        }
+
+        private fun set(header: ServerHeader) {
+            _header.value = header
+            ServerPageMemory.header = header
+        }
+
+        private fun setWatching(list: List<WatchingNow>) {
+            _watching.value = list
+            ServerPageMemory.watching = list
         }
 
         private suspend fun <T> safe(block: suspend () -> T): T? =
@@ -173,10 +238,58 @@ class ServerStatusViewModel
                 null
             }
 
-        private suspend fun load(): ServerStatus =
-            withContext(WholphinDispatchers.IO) {
-                val info = async { safe { api.systemApi.getSystemInfo().content } }
-                val sessions = async { safe { api.sessionApi.getSessions(null, null, ACTIVE_WITHIN_SECONDS).content } }
+        private suspend fun loadHeader(): ServerHeader {
+            val info = api.systemApi.getSystemInfo().content
+            return ServerHeader(serverName = info.serverName.orEmpty(), version = info.version.orEmpty(), online = true)
+        }
+
+        private suspend fun loadWatching(): List<WatchingNow> =
+            api.sessionApi
+                .getSessions(null, null, ACTIVE_WITHIN_SECONDS)
+                .content
+                .filter { it.nowPlayingItem != null }
+                .map { s ->
+                    val item = s.nowPlayingItem!!
+                    val method = s.playState?.playMethod
+                    val transcode = s.transcodingInfo
+                    val converting = method == PlayMethod.TRANSCODE
+                    val title =
+                        if (item.type == BaseItemKind.EPISODE) {
+                            listOfNotNull(item.seriesName, item.name).joinToString(" · ")
+                        } else {
+                            item.name.orEmpty()
+                        }
+                    WatchingNow(
+                        sessionId = s.id.orEmpty(),
+                        who = s.userName ?: "Someone",
+                        what = title,
+                        device = listOfNotNull(s.deviceName, s.client).distinct().joinToString(" · "),
+                        howItPlays =
+                            when {
+                                converting && transcode?.videoCodec != null -> {
+                                    "Converting to ${transcode.videoCodec?.uppercase()} (server is working hard)"
+                                }
+
+                                converting -> {
+                                    "Converting (server is working hard)"
+                                }
+
+                                method == PlayMethod.DIRECT_STREAM -> {
+                                    "Direct stream (light work)"
+                                }
+
+                                else -> {
+                                    "Direct play (no work for the server)"
+                                }
+                            },
+                        converting = converting,
+                        paused = s.playState?.isPaused == true,
+                    )
+                }
+
+        /** Totals and "added this week" are asked for at the same time */
+        private suspend fun loadLibrary(): LibraryNumbers =
+            coroutineScope {
                 val counts = async { safe { api.libraryApi.getItemCounts().content } }
                 val weekAgo = LocalDateTime.now(ZoneOffset.UTC).minusDays(7)
                 val recent =
@@ -192,93 +305,41 @@ class ServerStatusViewModel
                                         sortOrder = listOf(SortOrder.DESCENDING),
                                         fields = listOf(ItemFields.DATE_CREATED),
                                         limit = RECENT_LIMIT,
+                                        // Benflix: only the dates are needed, so skip pictures,
+                                        // watched info and the slow "how many in total" count
+                                        enableImages = false,
+                                        enableUserData = false,
+                                        enableTotalRecordCount = false,
                                     ),
                                 ).content.items
                         }
                     }
-                val log =
-                    async {
-                        safe {
-                            api.activityLogApi
-                                .getLogEntries(0, LOG_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(1))
-                                .content.items
-                        }
-                    }
-                val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
-                val sysInfo = info.await()
                 val c = counts.await()
-                ServerStatus(
-                    serverName = sysInfo?.serverName.orEmpty(),
-                    version = sysInfo?.version.orEmpty(),
-                    online = sysInfo != null,
-                    watching =
-                        sessions
-                            .await()
-                            .orEmpty()
-                            .filter { it.nowPlayingItem != null }
-                            .map { s ->
-                                val item = s.nowPlayingItem!!
-                                val method = s.playState?.playMethod
-                                val transcode = s.transcodingInfo
-                                val converting = method == PlayMethod.TRANSCODE
-                                val title =
-                                    if (item.type == BaseItemKind.EPISODE) {
-                                        listOfNotNull(item.seriesName, item.name).joinToString(" · ")
-                                    } else {
-                                        item.name.orEmpty()
-                                    }
-                                WatchingNow(
-                                    sessionId = s.id.orEmpty(),
-                                    who = s.userName ?: "Someone",
-                                    what = title,
-                                    device = listOfNotNull(s.deviceName, s.client).distinct().joinToString(" · "),
-                                    howItPlays =
-                                        when {
-                                            converting && transcode?.videoCodec != null -> {
-                                                "Converting to ${transcode.videoCodec?.uppercase()} (server is working hard)"
-                                            }
-
-                                            converting -> {
-                                                "Converting (server is working hard)"
-                                            }
-
-                                            method == PlayMethod.DIRECT_STREAM -> {
-                                                "Direct stream (light work)"
-                                            }
-
-                                            else -> {
-                                                "Direct play (no work for the server)"
-                                            }
-                                        },
-                                    converting = converting,
-                                    paused = s.playState?.isPaused == true,
-                                )
-                            },
-                    addedThisWeek =
-                        recent.await().orEmpty().count { item ->
-                            item.dateCreated?.isAfter(weekAgo) == true
-                        },
+                LibraryNumbers(
+                    addedThisWeek = recent.await().orEmpty().count { it.dateCreated?.isAfter(weekAgo) == true },
                     movies = c?.movieCount ?: 0,
                     shows = c?.seriesCount ?: 0,
                     episodes = c?.episodeCount ?: 0,
-                    problems =
-                        log
-                            .await()
-                            .orEmpty()
-                            .filter { it.severity == LogLevel.ERROR || it.severity == LogLevel.CRITICAL }
-                            .map {
-                                ServerProblem(
-                                    text = it.name,
-                                    time =
-                                        it.date
-                                            .atOffset(ZoneOffset.UTC)
-                                            .atZoneSameInstant(java.time.ZoneId.systemDefault())
-                                            .format(timeFormat),
-                                )
-                            },
-                    loaded = true,
                 )
             }
+
+        private suspend fun loadProblems(): List<ServerProblem> {
+            val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
+            return api.activityLogApi
+                .getLogEntries(0, LOG_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(1))
+                .content.items
+                .filter { it.severity == LogLevel.ERROR || it.severity == LogLevel.CRITICAL }
+                .map {
+                    ServerProblem(
+                        text = it.name,
+                        time =
+                            it.date
+                                .atOffset(ZoneOffset.UTC)
+                                .atZoneSameInstant(java.time.ZoneId.systemDefault())
+                                .format(timeFormat),
+                    )
+                }
+        }
 
         companion object {
             private const val ACTIVE_WITHIN_SECONDS = 960
@@ -290,7 +351,8 @@ class ServerStatusViewModel
 
 /**
  * Benflix Server page (only for admins): who's watching right now, whether the server has to
- * convert their video, what was added this week, and any problems in the last day.
+ * convert their video, what was added this week, and any problems in the last day. Each section
+ * appears as soon as its own answer arrives; until then it shows a grey "loading" box.
  */
 @Composable
 fun ServerStatusPage(
@@ -302,18 +364,21 @@ fun ServerStatusPage(
     val isAdmin = userDto?.policy?.isAdministrator == true
     LaunchedEffect(isAdmin) {
         if (isAdmin) {
-            viewModel.keepRefreshing()
-            viewModel.loadDisks()
+            viewModel.start()
             toolsViewModel.load()
         }
     }
     val toolsState by toolsViewModel.state.collectAsState()
     var toolsDialog by remember { mutableStateOf<ServerToolsDialog?>(null) }
-    val status by viewModel.status.collectAsState()
+    val header by viewModel.header.collectAsState()
+    val watching by viewModel.watching.collectAsState()
+    val library by viewModel.library.collectAsState()
+    val problems by viewModel.problems.collectAsState()
     val disks by viewModel.disks.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
     val firstFocus = remember { FocusRequester() }
-    LaunchedEffect(status.loaded) { if (status.loaded) firstFocus.tryRequestFocus() }
+    val watchingReady = watching != null
+    LaunchedEffect(watchingReady) { if (watchingReady) firstFocus.tryRequestFocus() }
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -323,15 +388,18 @@ fun ServerStatusPage(
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = (status.serverName.ifBlank { "SERVER" }).uppercase(),
+                    text = (header?.serverName.orEmpty().ifBlank { "SERVER" }).uppercase(),
                     fontFamily = BenflixTitleFont,
                     fontSize = 44.sp,
                     letterSpacing = 1.sp,
                 )
-                if (status.loaded) {
+                val h = header
+                if (h == null) {
+                    StatusChip(text = "Checking…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
                     StatusChip(
-                        text = if (status.online) "Online · Jellyfin ${status.version}" else "Can't reach the server",
-                        color = if (status.online) GoodGreen else WarnGold,
+                        text = if (h.online) "Online · Jellyfin ${h.version}" else "Can't reach the server",
+                        color = if (h.online) GoodGreen else WarnGold,
                     )
                 }
             }
@@ -340,71 +408,96 @@ fun ServerStatusPage(
             item { Text("Only the server's admin can see this page.", fontSize = 18.sp) }
             return@LazyColumn
         }
-        if (!status.loaded) {
-            item { Text("Checking the server…", fontSize = 18.sp) }
-            return@LazyColumn
-        }
-        item { SectionTitle("Watching now (${status.watching.size})") }
-        if (status.watching.isEmpty()) {
-            item {
-                ListItem(
-                    selected = false,
-                    onClick = {},
-                    headlineContent = { Text("Nobody is watching right now") },
-                    modifier = Modifier.focusRequester(firstFocus),
-                )
+        val watchList = watching
+        item { SectionTitle(if (watchList == null) "Watching now" else "Watching now (${watchList.size})") }
+        when {
+            watchList == null -> {
+                item { LoadingBox("Seeing who's watching…") }
             }
-        }
-        items(status.watching, key = { it.sessionId }) { w ->
-            ListItem(
-                selected = false,
-                onClick = { stopping = w },
-                headlineContent = {
-                    Text(
-                        text = "${w.who} · ${w.what}" + if (w.paused) " (paused)" else "",
-                        fontWeight = FontWeight.Medium,
+
+            watchList.isEmpty() -> {
+                item {
+                    ListItem(
+                        selected = false,
+                        onClick = {},
+                        headlineContent = { Text("Nobody is watching right now") },
+                        modifier = Modifier.focusRequester(firstFocus),
                     )
-                },
-                supportingContent = { Text(w.device) },
-                trailingContent = {
-                    StatusChip(text = w.howItPlays, color = if (w.converting) WarnGold else GoodGreen)
-                },
-                modifier = if (w == status.watching.first()) Modifier.focusRequester(firstFocus) else Modifier,
-            )
+                }
+            }
+
+            else -> {
+                items(watchList, key = { it.sessionId }) { w ->
+                    ListItem(
+                        selected = false,
+                        onClick = { stopping = w },
+                        headlineContent = {
+                            Text(
+                                text = "${w.who} · ${w.what}" + if (w.paused) " (paused)" else "",
+                                fontWeight = FontWeight.Medium,
+                            )
+                        },
+                        supportingContent = { Text(w.device) },
+                        trailingContent = {
+                            StatusChip(text = w.howItPlays, color = if (w.converting) WarnGold else GoodGreen)
+                        },
+                        modifier = if (w == watchList.first()) Modifier.focusRequester(firstFocus) else Modifier,
+                    )
+                }
+            }
         }
         item { SectionTitle("Library") }
         item {
+            val lib = library
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                BigNumber("${status.addedThisWeek}", "added this week", Modifier.weight(1f))
-                BigNumber("%,d".format(status.movies), "movies", Modifier.weight(1f))
-                BigNumber("%,d".format(status.shows), "shows", Modifier.weight(1f))
-                BigNumber("%,d".format(status.episodes), "episodes", Modifier.weight(1f))
+                BigNumber(lib?.let { "${it.addedThisWeek}" }, "added this week", Modifier.weight(1f))
+                BigNumber(lib?.let { "%,d".format(it.movies) }, "movies", Modifier.weight(1f))
+                BigNumber(lib?.let { "%,d".format(it.shows) }, "shows", Modifier.weight(1f))
+                BigNumber(lib?.let { "%,d".format(it.episodes) }, "episodes", Modifier.weight(1f))
             }
         }
         // Benflix: how full the disks are
-        disks?.let { list ->
-            if (list.isNotEmpty()) {
+        val diskList = disks
+        when {
+            diskList == null -> {
                 item { SectionTitle("Disk space") }
-                items(list) { disk -> DiskBar(disk) }
+                item { LoadingBox("Checking the disks… (sleeping disks can take a few seconds to wake up)") }
+            }
+
+            diskList.isNotEmpty() -> {
+                item { SectionTitle("Disk space") }
+                items(diskList) { disk -> DiskBar(disk) }
             }
         }
-        item { SectionTitle("Problems in the last day (${status.problems.size})") }
-        if (status.problems.isEmpty()) {
-            item {
-                ListItem(
-                    selected = false,
-                    onClick = {},
-                    headlineContent = { Text("No problems. All good!") },
-                )
-            }
+        val problemList = problems
+        item {
+            SectionTitle(if (problemList == null) "Problems in the last day" else "Problems in the last day (${problemList.size})")
         }
-        items(status.problems) { p ->
-            ListItem(
-                selected = false,
-                onClick = {},
-                headlineContent = { Text(p.text) },
-                supportingContent = { Text(p.time) },
-            )
+        when {
+            problemList == null -> {
+                item { LoadingBox("Looking for problems…") }
+            }
+
+            problemList.isEmpty() -> {
+                item {
+                    ListItem(
+                        selected = false,
+                        onClick = {},
+                        headlineContent = { Text("No problems. All good!") },
+                    )
+                }
+            }
+
+            else -> {
+                items(problemList) { p ->
+                    ListItem(
+                        selected = false,
+                        onClick = {},
+                        headlineContent = { Text(p.text) },
+                        supportingContent = { Text(p.time) },
+                    )
+                }
+            }
         }
         serverToolsItems(
             state = toolsState,
@@ -428,6 +521,32 @@ fun ServerStatusPage(
                 viewModel.stop(w.sessionId)
                 stopping = null
             },
+        )
+    }
+}
+
+/** Benflix: a grey box with a gently pulsing line, shown where a section is still loading */
+@Composable
+private fun LoadingBox(text: String) {
+    val pulse = rememberInfiniteTransition(label = "loading")
+    val alpha by pulse.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "loadingAlpha",
+    )
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.graphicsLayer { this.alpha = alpha },
         )
     }
 }
@@ -465,7 +584,7 @@ private fun StatusChip(
 
 @Composable
 private fun BigNumber(
-    value: String,
+    value: String?,
     label: String,
     modifier: Modifier = Modifier,
 ) {
@@ -475,7 +594,13 @@ private fun BigNumber(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                 .padding(12.dp),
     ) {
-        Text(text = value, fontFamily = BenflixTitleFont, fontSize = 34.sp)
+        // Benflix: a dash while the number is still loading
+        Text(
+            text = value ?: "–",
+            fontFamily = BenflixTitleFont,
+            fontSize = 34.sp,
+            color = if (value == null) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+        )
         Text(text = label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

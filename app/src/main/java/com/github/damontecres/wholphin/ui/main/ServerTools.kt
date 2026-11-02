@@ -61,13 +61,18 @@ class ServerToolsViewModel
 
         fun load() {
             val id = userId ?: return
+            // Benflix: ask for all three at once and show each as soon as it arrives
             work(showBusy = false) {
-                _state.value =
-                    _state.value.copy(
-                        note = notes.read(id),
-                        welcome = notes.read(id, NoteKind.WELCOME),
-                        people = people.list(),
-                    )
+                val note = notes.read(id)
+                _state.value = _state.value.copy(note = note)
+            }
+            work(showBusy = false) {
+                val welcome = notes.read(id, NoteKind.WELCOME)
+                _state.value = _state.value.copy(welcome = welcome)
+            }
+            work(showBusy = false) {
+                val list = people.list()
+                _state.value = _state.value.copy(people = list)
             }
         }
 
