@@ -35,6 +35,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.PlayerBackend
@@ -42,9 +43,7 @@ import com.github.damontecres.wholphin.services.AppUpgradeHandler
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.DatePlayedInvalidationService
 import com.github.damontecres.wholphin.services.DeviceProfileService
-import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.services.GameStreamReturn
-import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.IntentResult
 import com.github.damontecres.wholphin.services.IntentService
@@ -52,6 +51,7 @@ import com.github.damontecres.wholphin.services.LatestNextUpSchedulerService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlaybackLifecycleObserver
 import com.github.damontecres.wholphin.services.RefreshRateService
+import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.ServerEventListener
 import com.github.damontecres.wholphin.services.SetupDestination
@@ -370,7 +370,10 @@ class MainActivity : AppCompatActivity() {
         }
         // Benflix: came back soon enough? Then go right back to where they were
         val inApp = setupNavigationManager.backStack.lastOrNull() is SetupDestination.AppContent
-        val pinProfile = viewModel.serverRepository.current.value?.user?.isProtected == true
+        val pinProfile =
+            viewModel.serverRepository.current.value
+                ?.user
+                ?.isProtected == true
         ResumeTimer.resumeAllowed =
             inApp && !pinProfile && ResumeTimer.withinTime(this, resumeMinutes)
         Timber.i("onRestart: resumeAllowed=%s", ResumeTimer.resumeAllowed)
