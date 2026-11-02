@@ -91,6 +91,10 @@ fun MainContent(
                             }
 
                             is SetupDestination.UserList -> {
+                                LaunchedEffect(Unit) {
+                                    com.github.damontecres.wholphin.util.StartupTimer
+                                        .mark(com.github.damontecres.wholphin.util.StartupTimer.WHO)
+                                }
                                 SwitchUserContent(
                                     server = key.server,
                                     Modifier.fillMaxSize(),
@@ -99,6 +103,8 @@ fun MainContent(
 
                             is SetupDestination.AppContent -> {
                                 LaunchedEffect(Unit) {
+                                    com.github.damontecres.wholphin.util.StartupTimer
+                                        .mark(com.github.damontecres.wholphin.util.StartupTimer.PICKED)
                                     backdropService.clearBackdrop()
                                 }
                                 val current = key.current

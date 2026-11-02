@@ -204,6 +204,13 @@ def contains(outer, inner):
     return a <= x <= c and b <= y <= d
 
 
+def label_under(tile, label):
+    """True if the label sits just below the tile (Who's watching shows the name under the picture)"""
+    a, b, c, d = bounds(tile)
+    x, y = center(label)
+    return a <= x <= c and d <= y <= d + 120
+
+
 def tap(n):
     """Phone: a finger tap. TV: walk the focus to it with the D-pad, then press OK"""
     if MODE != "tv":
@@ -219,7 +226,7 @@ def tap(n):
             key("DPAD_DOWN", wait=0.4)
             continue
         # is the target inside the focused thing (or the focused thing inside the target)?
-        if contains(f, n) or contains(n, f):
+        if contains(f, n) or contains(n, f) or label_under(f, n):
             key("DPAD_CENTER", wait=0.8)
             return
         fx, fy = center(f)
@@ -473,7 +480,12 @@ def sign_in():
             continue
         n = find(root, rf"^{USER}$")
         if n is not None and find(root, r"Who's watching|Select User") is not None:
-            tap(n)
+            f = focused_node(root)
+            if MODE == "tv" and f is not None and (contains(f, n) or label_under(f, n)):
+                # Who's watching starts with the focus on the first profile: just press OK
+                key("DPAD_CENTER", wait=0.8)
+            else:
+                tap(n)
             time.sleep(4)
             continue
         n = find(root, r"^Add profile$")

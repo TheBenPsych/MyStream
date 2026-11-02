@@ -648,27 +648,35 @@ class HomeViewModel
                             .hour >= TONIGHT_FROM_HOUR
                     ) {
                         featuredSourceAsync("tonight") {
-                            val candidates =
+                            // Benflix speed: count the fitting movies first, then fetch only the
+                            // few around tonight's spot instead of 200 of them
+                            val tonightRequest =
+                                baseRequest.copy(
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                    isPlayed = false,
+                                    minCommunityRating = TONIGHT_MIN_RATING,
+                                    sortBy = listOf(ItemSortBy.SORT_NAME),
+                                )
+                            val total =
                                 api.itemsApi
-                                    .getItems(
-                                        baseRequest.copy(
-                                            includeItemTypes = listOf(BaseItemKind.MOVIE),
-                                            isPlayed = false,
-                                            minCommunityRating = TONIGHT_MIN_RATING,
-                                            sortBy = listOf(ItemSortBy.SORT_NAME),
-                                            limit = TONIGHT_POOL,
-                                        ),
-                                    ).content.items
-                                    .filter { it.userData?.likes != false }
-                            if (candidates.isEmpty()) {
+                                    .getItems(tonightRequest.copy(limit = 0, enableTotalRecordCount = true))
+                                    .content.totalRecordCount
+                                    .coerceAtMost(TONIGHT_POOL)
+                            if (total <= 0) {
                                 emptyList()
                             } else {
                                 val day =
                                     java.time.LocalDate
                                         .now()
                                         .toEpochDay()
-                                val index = Math.floorMod(day * 31 + userDto.id.hashCode(), candidates.size.toLong()).toInt()
-                                listOf(FeaturedItem(BaseItem(candidates[index]), FeaturedReason.TONIGHT, becauseOf = userDto.name))
+                                val index = Math.floorMod(day * 31 + userDto.id.hashCode(), total.toLong()).toInt()
+                                // A few extra, in case tonight's one got a thumbs down
+                                api.itemsApi
+                                    .getItems(tonightRequest.copy(startIndex = index, limit = TONIGHT_FETCH))
+                                    .content.items
+                                    .firstOrNull { it.userData?.likes != false }
+                                    ?.let { listOf(FeaturedItem(BaseItem(it), FeaturedReason.TONIGHT, becauseOf = userDto.name)) }
+                                    .orEmpty()
                             }
                         }
                     } else {
@@ -2208,6 +2216,7 @@ private const val TRAILER_DELAY_MS = 1_500L
 private const val TONIGHT_FROM_HOUR = 18
 private const val TONIGHT_MIN_RATING = 7.0
 private const val TONIGHT_POOL = 200
+private const val TONIGHT_FETCH = 4
 private const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
 private const val SLOW_ROWS_REFRESH_MS = 10 * 60 * 1000L
 private const val THIRD_WAVE_DELAY_MS = 400L
