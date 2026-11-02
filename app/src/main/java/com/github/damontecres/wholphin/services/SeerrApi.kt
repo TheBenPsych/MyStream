@@ -28,4 +28,15 @@ class SeerrApi(
     ) {
         api = SeerrApiClient(createSeerrApiUrl(baseUrl), apiKey, okHttpClient)
     }
+
+    /** Benflix: talk to Seerr through the Jellyfin Enhanced plugin on the Jellyfin server */
+    fun useJellyfinEnhanced(
+        jellyfinUrl: String,
+        token: String,
+    ) {
+        api = SeerrApiClient(jellyfinEnhancedBase(jellyfinUrl), null, okHttpClient, jellyfinToken = token)
+    }
 }
+
+/** Where Jellyfin Enhanced answers Seerr questions */
+fun jellyfinEnhancedBase(jellyfinUrl: String): String = jellyfinUrl.trimEnd('/') + "/JellyfinEnhanced/jellyseerr"

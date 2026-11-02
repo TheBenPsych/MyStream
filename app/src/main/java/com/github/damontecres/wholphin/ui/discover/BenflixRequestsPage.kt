@@ -146,6 +146,8 @@ class BenflixRequestsViewModel
 
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
+                // Not connected yet: Jellyfin Enhanced on the server may be able to connect us right away
+                if (!seerrService.active.first() && seerrLink.viaJellyfinEnhanced()) return@launch
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 canConnect.value = seerrLink.sharedUrl(userId) != null
             }
@@ -542,7 +544,8 @@ private fun NotConnected(
         Text(
             text =
                 if (viewModel.isAdmin) {
-                    "Connect Seerr in Settings > Advanced and this tab fills up with things to add."
+                    "Connect Seerr in Settings > Advanced, or turn on Seerr in the Jellyfin Enhanced plugin " +
+                        "on your Jellyfin server, and this tab fills up with things to add."
                 } else {
                     "Ask Ben to turn on requests for your account, then you can ask for movies and shows here."
                 },
