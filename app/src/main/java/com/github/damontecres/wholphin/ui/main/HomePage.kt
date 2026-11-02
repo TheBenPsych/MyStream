@@ -711,6 +711,7 @@ fun HomePageContent(
                                     index = heroIndex.coerceIn(0, featured.lastIndex),
                                     onSelectSlide = onSelectSlide,
                                     autoAdvanceMs = autoAdvanceMs,
+                                    showDots = isTv,
                                     onClickPlay = onClickFeaturedPlay,
                                     onClickInfo = onClickFeaturedInfo,
                                     onClickFavorite = onClickFeaturedFavorite,

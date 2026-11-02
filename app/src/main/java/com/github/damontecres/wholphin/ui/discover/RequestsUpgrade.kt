@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.discover
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,9 +35,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +60,7 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.Year
@@ -282,20 +294,37 @@ private fun FilterGroup(
     }
 }
 
-/** Search box at the top of the Requests page */
+/**
+ * Search box on the Requests page.
+ *
+ * Phones type as soon as you tap it. On TV it can be passed over with the remote without the keyboard
+ * popping up: press OK on it to start typing, Back to put the keyboard away.
+ */
 @Composable
 fun RequestsSearchBox(
     query: String,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isTv = rememberIsTv()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var typing by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    BackHandler(isTv && focused && typing) {
+        typing = false
+        keyboardController?.hide()
+    }
     OutlinedTextField(
         value = query,
-        onValueChange = onQuery,
+        onValueChange = {
+            typing = true
+            onQuery(it)
+        },
         singleLine = true,
+        readOnly = isTv && !typing,
         placeholder = { androidx.compose.material3.Text("Search any movie or show to ask for") },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { }),
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
         colors =
             OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
@@ -311,7 +340,20 @@ fun RequestsSearchBox(
             modifier
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .onFocusChanged {
+                    focused = it.isFocused
+                    if (!it.isFocused) typing = false
+                }.onPreviewKeyEvent { event ->
+                    val ok = event.key == Key.DirectionCenter || event.key == Key.Enter
+                    if (isTv && ok && !typing && event.type == KeyEventType.KeyUp) {
+                        typing = true
+                        keyboardController?.show()
+                        true
+                    } else {
+                        false
+                    }
+                },
     )
 }
 
@@ -325,6 +367,8 @@ fun RequestsBanner(
     onAsk: (DiscoverItem) -> Unit,
     onInfo: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    // Lands on the banner's first button, so the page can start there like Home does
+    focusRequester: FocusRequester? = null,
 ) {
     if (items.isEmpty()) return
     var index by remember(items.size) { mutableIntStateOf(0) }
@@ -340,7 +384,9 @@ fun RequestsBanner(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                // At least this tall, and taller when the words need it (narrow phones), so the
+                // buttons are never cut off
+                .heightIn(min = 300.dp)
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(PANEL),
@@ -349,12 +395,12 @@ fun RequestsBanner(
             model = item.backDropUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.matchParentSize(),
         )
         Box(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .background(
                         Brush.horizontalGradient(
                             0f to Color.Black.copy(alpha = .92f),
@@ -401,10 +447,12 @@ fun RequestsBanner(
                 overflow = TextOverflow.Ellipsis,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp)) {
-                Button(onClick = { if (!asked) onAsk(item) }, enabled = !asked) {
+                val askModifier = if (!asked && focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
+                val infoModifier = if (asked && focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
+                Button(onClick = { if (!asked) onAsk(item) }, enabled = !asked, modifier = askModifier) {
                     Text(if (asked) "Requested" else "Ask for it")
                 }
-                Button(onClick = { onInfo(item) }) { Text("More info") }
+                Button(onClick = { onInfo(item) }, modifier = infoModifier) { Text("More info") }
             }
             if (items.size > 1) {
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(top = 4.dp)) {

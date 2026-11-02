@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -424,23 +425,43 @@ private fun GuideHeader(
         ) {
             if (pair != null) {
                 val (_, program) = pair
-                val url =
+                // The guide loads its shows without picture info (to stay fast), so ask the server
+                // for pictures by the show's id alone, trying the next kind if one is missing
+                val urls =
                     remember(program.item.id) {
+                        val id = program.item.id
+                        val seriesId = program.item.data.seriesId
+
+                        fun url(
+                            itemId: java.util.UUID,
+                            type: ImageType,
+                        ) = imageUrlService.getItemImageUrl(
+                            itemId = itemId,
+                            imageType = type,
+                            fillWidth = 480,
+                            fillHeight = 270,
+                        )
                         if (program.item.type == BaseItemKind.EPISODE) {
-                            imageUrlService.getItemImageUrl(
-                                itemId = program.item.id,
-                                imageType = ImageType.PRIMARY,
-                                fillWidth = 480,
-                                fillHeight = 270,
+                            listOfNotNull(
+                                url(id, ImageType.PRIMARY),
+                                seriesId?.let { url(it, ImageType.BACKDROP) },
+                                seriesId?.let { url(it, ImageType.THUMB) },
+                                seriesId?.let { url(it, ImageType.PRIMARY) },
                             )
                         } else {
-                            imageUrlService.getItemImageUrl(program.item, ImageType.BACKDROP, fillWidth = 480, fillHeight = 270)
+                            listOfNotNull(
+                                url(id, ImageType.BACKDROP),
+                                url(id, ImageType.THUMB),
+                                url(id, ImageType.PRIMARY),
+                            )
                         }
                     }
+                var attempt by remember(program.item.id) { mutableIntStateOf(0) }
                 AsyncImage(
-                    model = url,
+                    model = urls.getOrNull(attempt),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    onError = { if (attempt < urls.lastIndex) attempt++ },
                     modifier = Modifier.fillMaxSize(),
                 )
                 if (now >= program.startMs && now < program.endMs) {
