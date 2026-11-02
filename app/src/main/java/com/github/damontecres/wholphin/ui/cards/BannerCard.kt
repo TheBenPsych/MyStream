@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
@@ -72,6 +71,7 @@ fun BannerCard(
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = true,
     grown: Boolean = false,
+    titleArt: Boolean = false,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -85,7 +85,7 @@ fun BannerCard(
                 null
             }
         }
-    val imageUrl =
+    val plainImageUrl =
         remember(item, fillHeight, imageType, useSeriesForPrimary) {
             if (item != null) {
                 item.imageUrlOverride
@@ -100,6 +100,25 @@ fun BannerCard(
                 null
             }
         }
+    // Benflix title art: on wide tiles (like Continue watching) show a clean picture from the show with
+    // its title-logo artwork on top, when Jellyfin has a logo. Otherwise the tile looks the same as before.
+    val logoUrl =
+        if (titleArt && cardHeight.isSpecified) {
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoUrl(item)
+        } else {
+            null
+        }
+    val artUrl =
+        remember(item, logoUrl, fillHeight) {
+            if (item != null && logoUrl != null && item.imageUrlOverride == null) {
+                imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillHeight = fillHeight)
+            } else {
+                null
+            }
+        }
+    val showTitleArt = artUrl != null
+    val imageUrl = artUrl ?: plainImageUrl
     var imageError by remember(imageUrl) { mutableStateOf(false) }
     val cardInteractionSource = interactionSource ?: remember { MutableInteractionSource() }
     val focused by cardInteractionSource.collectIsFocusedAsState()
@@ -170,6 +189,9 @@ fun BannerCard(
                             .padding(16.dp)
                             .align(Alignment.Center),
                 )
+            }
+            if (showTitleArt && !grown) {
+                TitleArt(title = name ?: item?.title, logoUrl = logoUrl, cardHeight = cardHeight)
             }
             androidx.compose.animation.AnimatedVisibility(
                 visible = grown && item != null,
@@ -395,6 +417,42 @@ fun rememberGrowOnFocus(
 }
 
 /** The inside of a grown tile: a wide picture from the movie, its logo, and year, rating and length */
+/** The show's title-logo artwork over a soft dark fade at the bottom left of a wide tile */
+@Composable
+private fun TitleArt(
+    title: String?,
+    logoUrl: String?,
+    cardHeight: Dp,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0.45f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = .75f),
+                    ),
+                ),
+    ) {
+        com.github.damontecres.wholphin.ui.components.TitleOrLogo(
+            title = title,
+            logoImageUrl = logoUrl,
+            showLogo = true,
+            logoHeight = cardHeight * TITLE_ART_HEIGHT,
+            logoMaxWidth = cardHeight * TITLE_ART_WIDTH,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 10.dp, bottom = 12.dp),
+        )
+    }
+}
+
+/** Title art size, compared with the tile's height */
+private const val TITLE_ART_HEIGHT = 0.28f
+private const val TITLE_ART_WIDTH = 0.9f
+
 @Composable
 private fun GrownPreview(
     item: BaseItem,

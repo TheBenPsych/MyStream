@@ -17,6 +17,7 @@ import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.ui.util.BlurHash
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.FlowPreview
@@ -61,7 +62,7 @@ class BackdropService
                     } else {
                         imageUrlService.getItemImageUrl(item, ImageType.BACKDROP)
                     }
-                submit(item.id.toString(), imageUrl)
+                submit(item.id.toString(), imageUrl, livingColour(item))
             }
 
         /**
@@ -75,6 +76,7 @@ class BackdropService
         suspend fun submit(
             itemId: String,
             imageUrl: String?,
+            glow: ExtractedColors? = null,
         ) = withContext(WholphinDispatchers.IO) {
             if (backdropFlow.firstOrNull()?.imageUrl != imageUrl || imageUrl == null) {
                 _backdropFlow.update {
@@ -83,7 +85,7 @@ class BackdropService
                         imageUrl = null,
                     )
                 }
-                extractColors(itemId, imageUrl)
+                extractColors(itemId, imageUrl, glow)
             }
         }
 
@@ -99,11 +101,13 @@ class BackdropService
         private suspend fun extractColors(
             itemId: String,
             imageUrl: String?,
+            glow: ExtractedColors?,
         ) {
-            // Benflix never tints the screen with the picture's colours (the screen stays black behind it),
-            // so skip that work. A short wait still stops the picture flickering while scrolling fast.
+            // Living Colour: the screen glows softly in the colours of the poster you're on. The colours come
+            // from the poster's BlurHash (already sent by the server), so no picture is downloaded or scanned.
+            // A short wait still stops the picture flickering while scrolling fast.
             delay(BACKDROP_SETTLE_MS)
-            val colors: ExtractedColors? = ExtractedColors.DEFAULT
+            val colors: ExtractedColors? = glow ?: ExtractedColors.DEFAULT
             _backdropFlow.update {
                 if (it.itemId == itemId) {
                     BackdropResult(
@@ -224,6 +228,30 @@ class BackdropService
                 ExtractedColors.DEFAULT
             }
 
+        /**
+         * Living Colour: three soft glow colours from the poster's BlurHash (its tiny blurry preview).
+         * Top left takes the poster's top colour, bottom right its bottom colour, top right its average.
+         */
+        private fun livingColour(item: BaseItem): ExtractedColors? {
+            val hashes = item.data.imageBlurHashes ?: return null
+            val hash =
+                (hashes[ImageType.PRIMARY] ?: hashes[ImageType.THUMB] ?: hashes[ImageType.BACKDROP])
+                    ?.values
+                    ?.firstOrNull() ?: return null
+            val bitmap = BlurHash.decode(hash, 3, 3) ?: return null
+
+            fun glow(
+                x: Int,
+                y: Int,
+                alpha: Float,
+            ) = Color(bitmap.getPixel(x, y)).boosted().copy(alpha = alpha)
+            return ExtractedColors(
+                primary = glow(2, 2, GLOW_ALPHA),
+                secondary = glow(0, 0, GLOW_ALPHA),
+                tertiary = glow(1, 1, GLOW_ALPHA * 0.8f),
+            )
+        }
+
         fun clearColorCache() {
             extractedColorCache.evictAll()
         }
@@ -264,6 +292,18 @@ data class ExtractedColors(
     companion object {
         val DEFAULT = ExtractedColors(Color.Unspecified, Color.Unspecified, Color.Unspecified)
     }
+}
+
+/** Living Colour: how strong the glow is (soft, so text stays easy to read) */
+private const val GLOW_ALPHA = 0.32f
+
+/** Posters are often dull or dark, so brighten and colour up the glow a little */
+private fun Color.boosted(): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.RGBToHSV((red * 255).toInt(), (green * 255).toInt(), (blue * 255).toInt(), hsv)
+    hsv[1] = (hsv[1] * 1.3f).coerceIn(0f, 1f)
+    hsv[2] = hsv[2].coerceIn(0.45f, 0.85f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
 /** How long the background waits before changing, so fast scrolling doesn't flicker */

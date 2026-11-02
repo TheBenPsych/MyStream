@@ -1288,6 +1288,8 @@ fun HomePageCardContent(
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
                     grown = grown,
+                    // Wide tiles (like Continue watching) show the title-logo artwork
+                    titleArt = ratio > TITLE_ART_MIN_RATIO,
                 )
             }
         }
@@ -1328,6 +1330,9 @@ private val HomeHeaderModifier =
     Modifier
         .padding(top = 4.dp, bottom = 12.dp, start = HeaderUtils.startPadding)
         .height(150.dp)
+
+/** Tiles at least this wide show title art */
+private const val TITLE_ART_MIN_RATIO = 1.5f
 
 /** How many of the extra Home rows show before you scroll near the bottom */
 private const val EXTRA_ROWS_FIRST = 2

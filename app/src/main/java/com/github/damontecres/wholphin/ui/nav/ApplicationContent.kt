@@ -60,15 +60,11 @@ fun ApplicationContent(
     Box(
         modifier = modifier,
     ) {
-        // MyStream uses a plain dark background behind the artwork instead of tinting the screen with the
-        // artwork's colors, so the colorful style shows as image only
+        // Benflix Living Colour: behind the artwork the screen glows softly in the colours of the poster
+        // you're on, so "image only" shows the glow too. Only "none" turns the background off.
         val backdropStyle =
             preferences.appPreferences.interfacePreferences.backdropStyle.let {
-                if (it == BackdropStyle.BACKDROP_DYNAMIC_COLOR || it == BackdropStyle.UNRECOGNIZED) {
-                    BackdropStyle.BACKDROP_IMAGE_ONLY
-                } else {
-                    it
-                }
+                if (it == BackdropStyle.BACKDROP_NONE) it else BackdropStyle.BACKDROP_DYNAMIC_COLOR
             }
         // Benflix on phones: Home already shows its banner as a card, so the screen behind stays plain black.
         // A big picture behind it doubled the banner and made the logo and labels hard to read.
