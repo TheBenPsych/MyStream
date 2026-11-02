@@ -527,7 +527,7 @@ private fun FindShelf(
         if (rows == null) {
             item { LoadingPage(Modifier.height(240.dp)) }
         } else {
-            items(rows, key = { "${key}-${it.title}" }) { row ->
+            items(rows, key = { "$key-${it.title}" }) { row ->
                 val shown =
                     if (hideOwned) {
                         row.items.filter { it.availability != SeerrAvailability.AVAILABLE }
