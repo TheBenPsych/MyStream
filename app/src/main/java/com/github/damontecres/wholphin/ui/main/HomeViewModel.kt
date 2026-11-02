@@ -634,8 +634,10 @@ class HomeViewModel
                 } else {
                     emptyList()
                 }
+            // Benflix "On this day": a movie that came out on today's date, years ago
+            val onThisDay = featuredSource("onThisDay") { onThisDay(userDto.id, baseRequest) }
             // Take turns between the sources so the banner mixes them
-            val sources = listOf(tonight, resume, because, liked, newest, favorites, picks)
+            val sources = listOf(tonight, onThisDay, resume, because, liked, newest, favorites, picks)
             val featured =
                 (0 until sources.maxOf { it.size })
                     .flatMap { i -> sources.mapNotNull { it.getOrNull(i) } }
@@ -643,6 +645,45 @@ class HomeViewModel
                     .distinctBy { it.item.id }
                     .take(FEATURED_MAX)
             _state.update { it.copy(featured = featured) }
+        }
+
+        /**
+         * Movies released on today's date in an earlier year. Jellyfin can't search by day of the
+         * year, so the release dates of the movies are checked once a day and remembered.
+         */
+        private suspend fun onThisDay(
+            userId: UUID,
+            baseRequest: GetItemsRequest,
+        ): List<FeaturedItem> {
+            val today = java.time.LocalDate.now()
+            val key = "$today/$userId/${KidsMode.isActive}"
+            val ids =
+                onThisDayCache?.takeIf { it.first == key }?.second
+                    ?: api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                enableImages = false,
+                                enableUserData = false,
+                                limit = ON_THIS_DAY_POOL,
+                            ),
+                        ).content.items
+                        .filter {
+                            val date = it.premiereDate ?: return@filter false
+                            date.monthValue == today.monthValue && date.dayOfMonth == today.dayOfMonth && date.year < today.year
+                        }.map { it.id }
+                        .also { onThisDayCache = key to it }
+            val id = ids.randomOrNull() ?: return emptyList()
+            val movie =
+                api.itemsApi
+                    .getItems(baseRequest.copy(ids = listOf(id), includeItemTypes = listOf(BaseItemKind.MOVIE)))
+                    .content.items
+                    .firstOrNull() ?: return emptyList()
+            val years = today.year - (movie.premiereDate?.year ?: return emptyList())
+            val label = if (years == 1) "Came out 1 year ago today" else "Came out $years years ago today"
+            return listOf(FeaturedItem(BaseItem(movie), FeaturedReason.ON_THIS_DAY, becauseOf = label))
         }
 
         private suspend fun featuredSource(
@@ -1929,6 +1970,10 @@ private const val FEATURED_RESUME = 2
 private const val FEATURED_BECAUSE = 2
 private const val FEATURED_FAVORITES = 2
 private const val FEATURED_MAX = 10
+
+/** Benflix "On this day": which movies came out on today's date (worked out once a day) */
+@Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null
+private const val ON_THIS_DAY_POOL = 3000
 private const val FEATURED_PICKS = 3
 private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10

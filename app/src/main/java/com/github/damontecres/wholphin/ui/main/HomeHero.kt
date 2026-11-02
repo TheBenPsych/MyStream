@@ -59,6 +59,7 @@ enum class FeaturedReason {
     FAVORITE,
     BECAUSE,
     TONIGHT,
+    ON_THIS_DAY,
 }
 
 /**
@@ -103,6 +104,11 @@ fun FeaturedReasonLabel(
             FeaturedReason.TONIGHT -> {
                 featured.becauseOf?.let { stringResource(R.string.featured_tonight_for, it) }
                     ?: stringResource(R.string.featured_tonight)
+            }
+
+            // Benflix: "Came out 25 years ago today"
+            FeaturedReason.ON_THIS_DAY -> {
+                featured.becauseOf.orEmpty()
             }
         }
     Text(

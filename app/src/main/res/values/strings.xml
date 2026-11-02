@@ -137,6 +137,7 @@
     <string name="show_next_up_when">Show next up</string>
     <string name="show">Show</string>
     <string name="shuffle">Shuffle</string>
+    <string name="benflix_random_episodes">Random episodes</string>
     <string name="skip">Skip</string>
     <string name="sort_by_date_added">Date Added</string>
     <string name="sort_by_date_episode_added">Date Episode Added</string>

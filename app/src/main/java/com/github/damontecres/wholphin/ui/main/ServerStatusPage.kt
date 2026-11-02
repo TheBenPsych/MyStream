@@ -2,11 +2,13 @@ package com.github.damontecres.wholphin.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +35,7 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -45,6 +48,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.activityLogApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -59,6 +64,7 @@ import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PlaystateCommand
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.json.JSONObject
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -94,15 +100,77 @@ data class ServerStatus(
     val loaded: Boolean = false,
 )
 
+/** Benflix: one disk (or group of disks) the server keeps movies & shows on */
+data class ServerDisk(
+    val name: String,
+    val usedBytes: Long,
+    val freeBytes: Long,
+) {
+    val totalBytes: Long get() = usedBytes + freeBytes
+    val usedShare: Float get() = if (totalBytes > 0) usedBytes.toFloat() / totalBytes else 0f
+    val nearlyFull: Boolean get() = usedShare >= NEARLY_FULL
+
+    companion object {
+        const val NEARLY_FULL = 0.9f
+    }
+}
+
 @HiltViewModel
 class ServerStatusViewModel
     @Inject
     constructor(
         private val api: ApiClient,
         val serverRepository: ServerRepository,
+        @param:StandardOkHttpClient private val http: OkHttpClient,
     ) : ViewModel() {
         private val _status = MutableStateFlow(ServerStatus())
         val status: StateFlow<ServerStatus> = _status
+
+        /** Benflix: disk space, loaded once when the page opens (null while loading) */
+        private val _disks = MutableStateFlow<List<ServerDisk>?>(null)
+        val disks: StateFlow<List<ServerDisk>?> = _disks
+
+        fun loadDisks() {
+            viewModelScope.launch {
+                _disks.value = withContext(WholphinDispatchers.IO) { safe { readDisks() } }.orEmpty()
+            }
+        }
+
+        /**
+         * Asks Jellyfin (10.10 or newer) how full the disks with each library are. Libraries on
+         * the same disk show the same numbers, so they're shown together.
+         */
+        private fun readDisks(): List<ServerDisk> {
+            val base = api.baseUrl?.trimEnd('/') ?: return emptyList()
+            val request =
+                Request
+                    .Builder()
+                    .url("$base/System/Info/Storage")
+                    .header("Authorization", "MediaBrowser Token=\"${api.accessToken}\"")
+                    .build()
+            val json =
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return emptyList()
+                    JSONObject(response.body.string())
+                }
+            val libraries = json.optJSONArray("Libraries") ?: return emptyList()
+            val byDisk = LinkedHashMap<Pair<Long, Long>, MutableList<String>>()
+            for (i in 0 until libraries.length()) {
+                val library = libraries.optJSONObject(i) ?: continue
+                val name = library.optString("Name")
+                if (name.isBlank()) continue
+                val folders = library.optJSONArray("Folders") ?: continue
+                for (j in 0 until folders.length()) {
+                    val folder = folders.optJSONObject(j) ?: continue
+                    val used = folder.optLong("UsedSpace", -1)
+                    val free = folder.optLong("FreeSpace", -1)
+                    if (used < 0 || free < 0) continue
+                    val names = byDisk.getOrPut(used to free) { mutableListOf() }
+                    if (name !in names) names += name
+                }
+            }
+            return byDisk.map { (space, names) -> ServerDisk(names.joinToString(", "), space.first, space.second) }
+        }
 
         fun refresh() {
             viewModelScope.launch {
@@ -274,12 +342,14 @@ fun ServerStatusPage(
     LaunchedEffect(isAdmin) {
         if (isAdmin) {
             viewModel.keepRefreshing()
+            viewModel.loadDisks()
             toolsViewModel.load()
         }
     }
     val toolsState by toolsViewModel.state.collectAsState()
     var toolsDialog by remember { mutableStateOf<ServerToolsDialog?>(null) }
     val status by viewModel.status.collectAsState()
+    val disks by viewModel.disks.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(status.loaded) { if (status.loaded) firstFocus.tryRequestFocus() }
@@ -348,6 +418,13 @@ fun ServerStatusPage(
                 BigNumber("%,d".format(status.movies), "movies", Modifier.weight(1f))
                 BigNumber("%,d".format(status.shows), "shows", Modifier.weight(1f))
                 BigNumber("%,d".format(status.episodes), "episodes", Modifier.weight(1f))
+            }
+        }
+        // Benflix: how full the disks are
+        disks?.let { list ->
+            if (list.isNotEmpty()) {
+                item { SectionTitle("Disk space") }
+                items(list) { disk -> DiskBar(disk) }
             }
         }
         item { SectionTitle("Problems in the last day (${status.problems.size})") }
@@ -440,4 +517,54 @@ private fun BigNumber(
         Text(text = value, fontFamily = BenflixTitleFont, fontSize = 34.sp)
         Text(text = label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/** Benflix: a bar showing how full a disk is, gold with a warning when it's nearly full */
+@Composable
+private fun DiskBar(disk: ServerDisk) {
+    val color = if (disk.nearlyFull) WarnGold else GoodGreen
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .padding(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(text = disk.name, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(
+                text = "${sizeText(disk.freeBytes)} free of ${sizeText(disk.totalBytes)}",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50)),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(disk.usedShare.coerceIn(0.02f, 1f))
+                        .height(10.dp)
+                        .background(color, RoundedCornerShape(50)),
+            )
+        }
+        if (disk.nearlyFull) {
+            Text(
+                text = "Almost full! New downloads may stop soon. Delete a few things or add a disk.",
+                fontSize = 14.sp,
+                color = WarnGold,
+            )
+        }
+    }
+}
+
+private fun sizeText(bytes: Long): String {
+    val tb = bytes / 1_000_000_000_000.0
+    return if (tb >= 1) "%.1f TB".format(tb) else "%.0f GB".format(bytes / 1_000_000_000.0)
 }

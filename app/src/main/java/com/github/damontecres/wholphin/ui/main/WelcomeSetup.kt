@@ -26,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,7 +96,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /** The steps of the welcome setup, in order */
-enum class WelcomeStep { HELLO, PICTURE, SUBTITLES, EASY_READ, FAVORITES }
+enum class WelcomeStep { HELLO, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, FAVORITES }
 
 /** A poster on the "Pick a few things you love" wall */
 data class WelcomePoster(
@@ -350,6 +352,7 @@ fun WelcomePage(
                 WelcomeStep.PICTURE -> PictureStep(viewModel)
                 WelcomeStep.SUBTITLES -> SubtitlesStep(viewModel)
                 WelcomeStep.EASY_READ -> EasyReadStep(viewModel)
+                WelcomeStep.PARENT_PIN -> ParentPinStep(viewModel)
                 WelcomeStep.FAVORITES -> FavoritesStep(viewModel, isTv)
             }
         }
@@ -381,6 +384,47 @@ private fun StepButtons(
         OutlinedButton(onClick = viewModel::finish) {
             Text("Skip")
         }
+    }
+}
+
+/** Optional: families can set a parent PIN, which puts the Kids profile to bed at 9 PM */
+@Composable
+private fun ParentPinStep(
+    viewModel: WelcomeViewModel,
+    bedtimeViewModel: BedtimeViewModel = hiltViewModel(),
+) {
+    val hasPin by bedtimeViewModel.hasPin.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        bedtimeViewModel.refreshPin()
+        focus.tryRequestFocus()
+    }
+    StepTitle(
+        title = "Got kids? Set a parent PIN",
+        subtitle =
+            "With a parent PIN, the Kids profile goes to bed at 9 PM (after the show that's on). " +
+                "A grown-up can enter the PIN for 30 more minutes. No PIN? Kids stays unlocked.",
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
+        if (hasPin) {
+            Button(onClick = viewModel::next, modifier = Modifier.focusRequester(focus)) { Text("PIN is set. Next") }
+            OutlinedButton(onClick = { showDialog = true }) { Text("Change PIN") }
+        } else {
+            Button(onClick = { showDialog = true }, modifier = Modifier.focusRequester(focus)) { Text("Set a parent PIN") }
+            OutlinedButton(onClick = viewModel::next) { Text("No thanks") }
+        }
+    }
+    if (showDialog) {
+        ParentPinDialog(
+            hasPin = hasPin,
+            checkPin = bedtimeViewModel::checkPin,
+            setPin = bedtimeViewModel::setPin,
+            onDone = { set ->
+                showDialog = false
+                if (set) viewModel.next()
+            },
+        )
     }
 }
 

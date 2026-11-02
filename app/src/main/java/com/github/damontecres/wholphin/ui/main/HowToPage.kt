@@ -59,6 +59,9 @@ private val generalTips =
         HowToTip("Switch profile", "Press your profile picture at the top (TV) or in My Benflix (phone)."),
         HowToTip("Something to watch, fast", "Try Channels, Trailer shuffle or the Mood quiz under More."),
         HowToTip("Bigger text", "Turn on Easy-read mode in Settings, Look, for bigger and brighter text."),
+        HowToTip("Play on TV", "On your phone, open a movie or episode and press Play on TV. Benflix needs to be open on the TV."),
+        HowToTip("Kids bedtime", "Set a Parent PIN in My Benflix. Kids then goes to bed at 9 PM, and your PIN gives 30 more minutes."),
+        HowToTip("Random episodes", "On a show's page, press Random episodes. It keeps playing random ones until you press Back."),
         HowToTip("Getting a new version", "When there's an update, Settings shows Install update at the top."),
     )
 

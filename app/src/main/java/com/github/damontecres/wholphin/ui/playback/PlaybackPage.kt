@@ -17,7 +17,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -59,9 +61,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.children
@@ -74,7 +79,9 @@ import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberPresentationState
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.mpv.MpvPlayer
 import com.github.damontecres.wholphin.preferences.AssPlaybackMode
@@ -101,6 +108,7 @@ import com.github.damontecres.wholphin.ui.playback.overlay.rememberSeekBarState
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.applyTo
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.seasonEpisode
+import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -717,6 +725,32 @@ fun PlaybackPageContent(
             alignment = Alignment.BottomStart,
         )
 
+        // Benflix: back after a while? A short "here's where you left off" before the episode
+        state.recap?.let { recap ->
+            RecapCard(recap = recap, onStart = viewModel::startAfterRecap, modifier = Modifier.align(Alignment.Center))
+        }
+
+        // Benflix: a heads-up when there's a scene after the credits
+        AnimatedVisibility(
+            visible = state.afterCreditsScene,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(24.dp),
+        ) {
+            Text(
+                text = "Stay! There's a scene after the credits",
+                color = Color.White,
+                fontSize = 18.sp,
+                modifier =
+                    Modifier
+                        .background(Color(0xE6202024), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+            )
+        }
+
         // Next up episode
         BackHandler(state.nextUp != null) {
             if (player.isPlaying) {
@@ -886,3 +920,45 @@ fun PlaybackPageContent(
 }
 
 private val AMBIENT_DELAY = 15.seconds
+
+/** Benflix: shown before the next episode when someone hasn't watched the show in a while */
+@Composable
+private fun RecapCard(
+    recap: BenflixRecap,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    var secondsLeft by remember(recap) { mutableIntStateOf(RECAP_SECONDS) }
+    LaunchedEffect(recap) {
+        focusRequester.tryRequestFocus()
+        while (secondsLeft > 0) {
+            delay(1.seconds)
+            secondsLeft--
+        }
+        onStart()
+    }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier =
+            modifier
+                .padding(24.dp)
+                .widthIn(max = 640.dp)
+                .background(Color(0xF0141418), RoundedCornerShape(16.dp))
+                .padding(24.dp),
+    ) {
+        Text(text = "It's been a while. Here's where you left off.", fontSize = 15.sp, color = Color.White.copy(alpha = .75f))
+        if (recap.label.isNotBlank()) {
+            Text(text = recap.label.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BenflixRed)
+        }
+        recap.name?.let { Text(text = it, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+        recap.overview?.let {
+            Text(text = it, fontSize = 16.sp, color = Color.White.copy(alpha = .9f), maxLines = 5, overflow = TextOverflow.Ellipsis)
+        }
+        Button(onClick = onStart, modifier = Modifier.padding(top = 6.dp).focusRequester(focusRequester)) {
+            Text("Start next episode ($secondsLeft)")
+        }
+    }
+}
+
+private const val RECAP_SECONDS = 20

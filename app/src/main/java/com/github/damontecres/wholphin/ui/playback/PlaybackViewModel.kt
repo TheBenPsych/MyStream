@@ -45,6 +45,8 @@ import com.github.damontecres.wholphin.preferences.ShowNextUpWhen
 import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.enabled
+import com.github.damontecres.wholphin.services.BenflixAfterCredits
+import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixMobileData
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
@@ -102,17 +104,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.mediaInfoApi
 import org.jellyfin.sdk.api.client.extensions.mediaSegmentsApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.client.extensions.trickplayApi
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.api.sockets.subscribe
 import org.jellyfin.sdk.model.DeviceInfo
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.MediaSegmentType
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.MediaType
@@ -124,10 +130,12 @@ import org.jellyfin.sdk.model.api.PlaystateRequest
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import org.jellyfin.sdk.model.api.VideoRange
 import org.jellyfin.sdk.model.api.VideoRangeType
+import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import org.jellyfin.sdk.model.extensions.inWholeTicks
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
+import java.time.LocalDateTime
 import java.util.Date
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -363,6 +371,13 @@ class PlaybackViewModel
                 if (queriedItem.type.playable) {
                     PlaylistItem.Media(BaseItem(queriedItem, false))
                 } else {
+                    // Benflix random episodes: keeps going until they back out
+                    shuffleSession =
+                        queriedItem.type == BaseItemKind.SERIES &&
+                        (
+                            (destination as? Destination.PlaybackList)?.shuffle == true ||
+                                (destination as? Destination.Playback)?.shuffle == true
+                        )
                     val playlistResult =
                         if (destination is Destination.PlaybackList) {
                             playlistCreator.createFrom(
@@ -634,6 +649,8 @@ class PlaybackViewModel
                         trickPlayInfo = trickPlayInfo,
                     )
                 }
+                // Benflix: back after a while? Show where they left off before starting
+                val recap = if (positionMs <= 0) findRecap(base) else null
                 withContext(WholphinDispatchers.Main) {
                     changeStreams(
                         item = item,
@@ -645,9 +662,11 @@ class PlaybackViewModel
                         enableDirectStream = !forceTranscoding,
                     )
                     player.prepare()
-                    player.play()
+                    if (recap == null) player.play()
                 }
+                _state.update { it.copy(recap = recap) }
                 listenForSegments(item.id)
+                watchForAfterCreditsScene(item.id)
                 return@withContext true
             }
 
@@ -1216,6 +1235,96 @@ class PlaybackViewModel
         private val outroShownSegments = mutableSetOf<UUID>()
 
         /**
+         * Benflix: if the last episode of this show was watched more than two weeks ago,
+         * a short "here's where you left off" card shows before the next one starts.
+         */
+        private suspend fun findRecap(item: BaseItemDto): BenflixRecap? {
+            if (item.type != BaseItemKind.EPISODE) return null
+            val seriesId = item.seriesId ?: return null
+            return try {
+                withTimeoutOrNull(RECAP_LOOKUP_MS) {
+                    val episodes =
+                        api.tvShowsApi
+                            .getEpisodes(
+                                GetEpisodesRequest(
+                                    seriesId = seriesId,
+                                    userId = serverRepository.currentUser?.id,
+                                    adjacentTo = item.id,
+                                    fields = listOf(ItemFields.OVERVIEW),
+                                    enableUserData = true,
+                                ),
+                            ).content.items
+                    val index = episodes.indexOfFirst { it.id == item.id }
+                    val previous = episodes.getOrNull(index - 1)?.takeIf { index > 0 } ?: return@withTimeoutOrNull null
+                    val lastPlayed = previous.userData?.lastPlayedDate ?: return@withTimeoutOrNull null
+                    if (lastPlayed.isAfter(LocalDateTime.now().minusDays(RECAP_AFTER_DAYS))) return@withTimeoutOrNull null
+                    val label =
+                        listOfNotNull(
+                            previous.parentIndexNumber?.let { "Season $it" },
+                            previous.indexNumber?.let { "Episode $it" },
+                        ).joinToString(", ")
+                    BenflixRecap(label = label, name = previous.name, overview = previous.overview?.takeIf { it.isNotBlank() })
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "No recap")
+                null
+            }
+        }
+
+        /** Benflix: the recap card was closed (or timed out), so start the episode */
+        fun startAfterRecap() {
+            if (state.value.recap == null) return
+            _state.update { it.copy(recap = null) }
+            player.play()
+        }
+
+        // Benflix: movies with a scene during or after the credits
+        @Volatile private var hasAfterCreditsScene = false
+
+        /** Benflix: playing random episodes of a show, which keep going until Back */
+        @Volatile private var shuffleSession = false
+
+        @Volatile private var creditsReached = false
+        private var afterCreditsJob: Job? = null
+
+        /**
+         * Benflix: if this movie has a scene during or after the credits (TMDB marks these),
+         * say so when the credits start, and don't skip the credits.
+         */
+        private fun watchForAfterCreditsScene(itemId: UUID) {
+            afterCreditsJob?.cancel()
+            hasAfterCreditsScene = false
+            creditsReached = false
+            _state.update { it.copy(afterCreditsScene = false) }
+            afterCreditsJob =
+                viewModelScope.launchIO {
+                    val item =
+                        try {
+                            api.userLibraryApi.getItem(itemId).content
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.v(ex, "Couldn't check for a scene after the credits")
+                            return@launchIO
+                        }
+                    if (!BenflixAfterCredits.has(item)) return@launchIO
+                    hasAfterCreditsScene = true
+                    while (isActive) {
+                        delay(2_000L)
+                        val (position, duration) = onMain { player.currentPosition to player.duration }
+                        if (duration > 0 && (creditsReached || duration - position <= AFTER_CREDITS_NOTICE_MS)) {
+                            _state.update { it.copy(afterCreditsScene = true) }
+                            delay(AFTER_CREDITS_SHOW_MS)
+                            _state.update { it.copy(afterCreditsScene = false) }
+                            break
+                        }
+                    }
+                }
+        }
+
+        /**
          * Cancels listening for segments and clears current segment state
          */
         private fun resetSegmentState() {
@@ -1261,7 +1370,11 @@ class PlaybackViewModel
                                 }
                                 val state = state.value
 
-                                if (currentSegment.type == MediaSegmentType.OUTRO &&
+                                if (currentSegment.type == MediaSegmentType.OUTRO && hasAfterCreditsScene) {
+                                    // Benflix: there's a scene after the credits, so let the credits play
+                                    creditsReached = true
+                                    _state.update { it.copy(currentSegment = null) }
+                                } else if (currentSegment.type == MediaSegmentType.OUTRO &&
                                     prefs.showNextUpWhen == ShowNextUpWhen.DURING_CREDITS &&
                                     state.hasNext &&
                                     outroShownSegments.add(currentSegment.id)
@@ -1375,8 +1488,10 @@ class PlaybackViewModel
 
         fun shouldAutoPlayNextUp(): Boolean =
             preferences.appPreferences.playbackPreferences.let {
-                it.autoPlayNext &&
-                    if (it.passOutProtectionMs > 0) {
+                // Benflix: at Kids bedtime, the next episode doesn't start by itself
+                !BenflixBedtime.lockedNow() &&
+                    it.autoPlayNext &&
+                    if (it.passOutProtectionMs > 0 && !shuffleSession) {
                         (Date().time - lastInteractionDate.time) < it.passOutProtectionMs
                     } else {
                         true
@@ -1384,6 +1499,11 @@ class PlaybackViewModel
             }
 
         fun playNextUp() {
+            if (BenflixBedtime.lockedNow()) {
+                // Benflix: it's Kids bedtime, so no more episodes tonight
+                viewModelScope.launch(WholphinDispatchers.Main) { navigationManager.goBack() }
+                return
+            }
             viewModelScope.launchDefault {
                 playlistMutex.withLock {
                     val state = state.value
@@ -1820,3 +1940,10 @@ class PlaybackViewModel
     }
 
 private const val WHAT_DID_THEY_SAY_MS = 12_000L
+
+/** Show the after-credits notice this close to the end, if there are no credits marks */
+private const val AFTER_CREDITS_NOTICE_MS = 5 * 60_000L
+private const val AFTER_CREDITS_SHOW_MS = 10_000L
+
+private const val RECAP_LOOKUP_MS = 3_000L
+private const val RECAP_AFTER_DAYS = 14L
