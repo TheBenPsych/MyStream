@@ -1347,9 +1347,6 @@ val basicPreferences =
             preferences =
                 buildList {
                     add(AppPreference.ServerPage)
-                    if (BuildConfig.DISCOVER_ENABLED) {
-                        add(AppPreference.SeerrIntegration)
-                    }
                     add(AppPreference.AdvancedSettings)
                 },
         ),
@@ -1503,16 +1500,18 @@ val advancedPreferences =
             PreferenceGroup(
                 title = R.string.more,
                 preferences =
-                    listOf(
-                        AppPreference.QuickConnect,
-                        AppPreference.SendAppLogs,
-                        AppPreference.SendCrashReports,
-                        AppPreference.DebugLogging,
-                        AppPreference.ImageDiskCacheSize,
-                        AppPreference.ClearImageCache,
-                        ExperimentalPreference.Enable,
-                        AppPreference.OssLicenseInfo,
-                    ),
+                    buildList<AppPreference<AppPreferences, out Any?>> {
+                        // Benflix: requests (Seerr) moved here from the main Settings page
+                        if (BuildConfig.DISCOVER_ENABLED) add(AppPreference.SeerrIntegration)
+                        add(AppPreference.QuickConnect)
+                        add(AppPreference.SendAppLogs)
+                        add(AppPreference.SendCrashReports)
+                        add(AppPreference.DebugLogging)
+                        add(AppPreference.ImageDiskCacheSize)
+                        add(AppPreference.ClearImageCache)
+                        add(ExperimentalPreference.Enable)
+                        add(AppPreference.OssLicenseInfo)
+                    },
                 conditionalPreferences =
                     listOf(
                         ConditionalPreferences(

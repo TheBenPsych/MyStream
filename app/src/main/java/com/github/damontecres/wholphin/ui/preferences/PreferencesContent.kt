@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
@@ -88,6 +91,7 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -108,7 +112,12 @@ fun PreferencesContent(
     updateVM: UpdateViewModel = hiltViewModel(),
     seerrVm: SwitchSeerrViewModel = hiltViewModel(),
     onFocus: (Int, Int) -> Unit = { _, _ -> },
+    // Benflix: when the new Settings page hosts this, it shows one section (or search results)
+    // as cards, with the section menu drawn beside it
+    hostedGroup: PreferenceGroup<AppPreferences>? = null,
+    hostedQuery: String? = null,
 ) {
+    val hosted = hostedGroup != null || hostedQuery != null
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
@@ -183,7 +192,8 @@ fun PreferencesContent(
     // Benflix: settings search (type a word, see every matching setting from all sections)
     var settingsQuery by rememberSaveable { mutableStateOf("") }
     var showSettingsSearch by remember { mutableStateOf(false) }
-    val showSearchBox = preferenceScreenOption == PreferenceScreenOption.BASIC
+    val effectiveQuery = hostedQuery ?: settingsQuery
+    val showSearchBox = preferenceScreenOption == PreferenceScreenOption.BASIC && !hosted
 
     fun isShown(pref: AppPreference<AppPreferences, *>): Boolean =
         (isTv || pref != AppPreference.ScreensaverSettings) &&
@@ -191,8 +201,8 @@ fun PreferencesContent(
             (isAdmin || pref != AppPreference.ServerPage)
 
     val searchResults =
-        remember(settingsQuery, preferences, isTv, isAdmin) {
-            if (settingsQuery.isBlank()) {
+        remember(effectiveQuery, preferences, isTv, isAdmin) {
+            if (effectiveQuery.isBlank()) {
                 null
             } else {
                 val all =
@@ -209,7 +219,7 @@ fun PreferencesContent(
                         preferences =
                             all.filter { pref ->
                                 isShown(pref) &&
-                                    resources.getString(pref.title).contains(settingsQuery.trim(), ignoreCase = true)
+                                    resources.getString(pref.title).contains(effectiveQuery.trim(), ignoreCase = true)
                             },
                     ),
                 )
@@ -217,7 +227,7 @@ fun PreferencesContent(
         }
     val prefList =
         when (preferenceScreenOption) {
-            PreferenceScreenOption.BASIC -> searchResults ?: basicPreferences
+            PreferenceScreenOption.BASIC -> searchResults ?: hostedGroup?.let { listOf(it) } ?: basicPreferences
             PreferenceScreenOption.ADVANCED -> advancedPreferences
             PreferenceScreenOption.EXO_PLAYER -> ExoPlayerPreferences
             PreferenceScreenOption.MPV -> MpvPreferences
@@ -268,26 +278,46 @@ fun PreferencesContent(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + slideInHorizontally { it / 2 },
+        enter = if (hosted) fadeIn() else fadeIn() + slideInHorizontally { it / 2 },
         exit = fadeOut() + slideOutHorizontally { it / 2 },
         modifier = modifier,
     ) {
         LaunchedEffect(Unit) {
-            focusRequester.tryRequestFocus()
+            // The new Settings page keeps focus on its section menu until you move right
+            if (!hosted) focusRequester.tryRequestFocus()
         }
         Column(
-            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
+            modifier =
+                Modifier.ifElse(
+                    !hosted,
+                    Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
+                ),
         ) {
-            Text(
-                text = stringResource(screenTitle),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-            )
+            if (hosted) {
+                Text(
+                    text =
+                        if (searchResults != null) {
+                            stringResource(R.string.benflix_settings_search_results)
+                        } else {
+                            stringResource(hostedGroup?.title ?: screenTitle)
+                        },
+                    fontFamily = BenflixTitleFont,
+                    fontSize = 44.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+                )
+            } else {
+                Text(
+                    text = stringResource(screenTitle),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                )
+            }
             LazyColumn(
                 state = state,
                 horizontalAlignment = Alignment.Start,
@@ -372,18 +402,31 @@ fun PreferencesContent(
                                     .map { it.preferences }
                                     .flatten()
                         ).filter { isShown(it) }
-                    if (groupPreferences.isEmpty()) return@forEachIndexed
-                    item {
-                        Text(
-                            text = stringResource(group.title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Start,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp, bottom = 4.dp),
-                        )
+                    if (groupPreferences.isEmpty()) {
+                        if (hosted && searchResults != null) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.benflix_settings_no_results),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                                )
+                            }
+                        }
+                        return@forEachIndexed
+                    }
+                    if (!hosted) {
+                        item {
+                            Text(
+                                text = stringResource(group.title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Start,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp, bottom = 4.dp),
+                            )
+                        }
                     }
                     groupPreferences.forEachIndexed { prefIndex, pref ->
                         pref as AppPreference<AppPreferences, Any>
@@ -406,6 +449,16 @@ fun PreferencesContent(
                                         firstFocusRequester,
                                         lastFocusRequester,
                                     )
+                            // Benflix: on the new Settings page each setting sits on its own dark card
+                            val cardModifier =
+                                if (hosted) {
+                                    Modifier
+                                        .padding(vertical = 4.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
+                                } else {
+                                    Modifier
+                                }
                             LaunchedEffect(focused) {
                                 if (focused) {
                                     focusedIndex = Pair(groupIndex, prefIndex)
@@ -413,395 +466,397 @@ fun PreferencesContent(
                                     onFocus.invoke(groupIndex, prefIndex)
                                 }
                             }
-                            when (pref) {
-                                AppPreference.InstalledVersion -> {
-                                    ClickPreference(
-                                        title = stringResource(R.string.installed_version),
-                                        onClick = {
-                                            val now = System.currentTimeMillis()
-                                            versionTaps = if (now - lastVersionTap < 1_500) versionTaps + 1 else 1
-                                            lastVersionTap = now
-                                            if (versionTaps >= 5) {
-                                                versionTaps = 0
-                                                showSpeedMeter = true
-                                                viewModel.measureServerPing()
-                                            }
-                                        },
-                                        onLongClick = {
-                                            viewModel.navigationManager.navigateTo(Destination.Debug)
-                                        },
-                                        summary = installedVersion.toString(),
-                                        interactionSource = interactionSource,
-                                        modifier = focusModifier,
-                                    )
-                                }
-
-                                AppPreference.Update -> {
-                                    ClickPreference(
-                                        title =
-                                            if (release != null && updateAvailable) {
-                                                stringResource(R.string.install_update)
-                                            } else if (!preferences.autoCheckForUpdates && release == null) {
-                                                stringResource(R.string.check_for_updates)
-                                            } else {
-                                                stringResource(R.string.no_update_available)
-                                            },
-                                        onClick = {
-                                            if (movementSounds) playOnClickSound(context)
-                                            if (release != null && updateAvailable) {
-                                                release?.let {
-                                                    viewModel.navigationManager.navigateTo(
-                                                        Destination.UpdateApp,
-                                                    )
+                            Box(modifier = cardModifier) {
+                                when (pref) {
+                                    AppPreference.InstalledVersion -> {
+                                        ClickPreference(
+                                            title = stringResource(R.string.installed_version),
+                                            onClick = {
+                                                val now = System.currentTimeMillis()
+                                                versionTaps = if (now - lastVersionTap < 1_500) versionTaps + 1 else 1
+                                                lastVersionTap = now
+                                                if (versionTaps >= 5) {
+                                                    versionTaps = 0
+                                                    showSpeedMeter = true
+                                                    viewModel.measureServerPing()
                                                 }
-                                            } else {
-                                                updateVM.init()
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (movementSounds) playOnClickSound(context)
-                                            viewModel.navigationManager.navigateTo(Destination.UpdateApp)
-                                        },
-                                        summary =
-                                            if (updateAvailable) {
-                                                release?.version?.toString()
-                                            } else {
-                                                null
                                             },
-                                        interactionSource = interactionSource,
-                                        modifier = focusModifier,
-                                    )
-                                }
+                                            onLongClick = {
+                                                viewModel.navigationManager.navigateTo(Destination.Debug)
+                                            },
+                                            summary = installedVersion.toString(),
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
 
-                                AppPreference.ClearImageCache -> {
-                                    val summary =
-                                        remember(cacheUsage) {
-                                            cacheUsage.let {
-                                                val diskMB =
-                                                    it.imageDiskUsed / AppPreference.MEGA_BIT
-                                                val memoryUsedMB =
-                                                    it.imageMemoryUsed / AppPreference.MEGA_BIT
-                                                val memoryMaxMB =
-                                                    it.imageMemoryMax / AppPreference.MEGA_BIT
-                                                "Disk: ${diskMB}mb, Memory: ${memoryUsedMB}mb/${memoryMaxMB}mb"
-                                            }
-                                        }
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            SingletonImageLoader.get(context).let {
-                                                it.memoryCache?.clear()
-                                                it.diskCache?.clear()
-                                                updateCache = true
-                                            }
-                                        },
-                                        modifier = focusModifier,
-                                        summary = summary,
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.UserPinnedNavDrawerItems -> {
-                                    NavDrawerPreference(
-                                        title = stringResource(pref.title),
-                                        summary = pref.summary(context, null),
-                                        modifier = focusModifier,
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.SendAppLogs -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            viewModel.sendAppLogs()
-                                        },
-                                        modifier = focusModifier,
-                                        summary = pref.summary(context, null),
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                SubtitleSettings.Reset -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            viewModel.resetSubtitleSettings()
-                                        },
-                                        modifier = focusModifier,
-                                        summary = pref.summary(context, null),
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.BirthdayPreference -> {
-                                    LaunchedEffect(Unit) { viewModel.loadBirthday() }
-                                    val birthday by viewModel.birthday.collectAsState()
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = { showBirthdayDialog = true },
-                                        modifier = focusModifier,
-                                        summary =
-                                            birthday?.let {
-                                                it.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + " " + it.dayOfMonth
-                                            } ?: stringResource(R.string.not_set),
-                                        onLongClick = null,
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.ProtectProfilePreference -> {
-                                    val summary =
-                                        when {
-                                            currentUser?.requireLogin == true -> R.string.require_login
-                                            currentUser?.hasPin == true -> R.string.require_pin_code
-                                            else -> R.string.none
-                                        }
-                                    ChoicePreference(
-                                        title = stringResource(pref.title),
-                                        summary = stringResource(summary),
-                                        interactionSource = interactionSource,
-                                        possibleValues =
-                                            listOf(
-                                                stringResource(R.string.none),
-                                                stringResource(R.string.require_pin_code),
-                                                stringResource(R.string.require_login),
-                                            ),
-                                        selectedIndex =
-                                            when {
-                                                currentUser?.requireLogin == true -> ProfileProtection.LOGIN
-                                                currentUser?.hasPin == true -> ProfileProtection.PIN
-                                                else -> ProfileProtection.NONE
-                                            }.ordinal,
-                                        onValueChange = {
-                                            currentUser?.let { user ->
-                                                when (ProfileProtection.entries[it]) {
-                                                    ProfileProtection.NONE -> {
-                                                        viewModel.removeLoginAndPin(user)
-                                                    }
-
-                                                    ProfileProtection.PIN -> {
-                                                        showPinFlow = true
-                                                    }
-
-                                                    ProfileProtection.LOGIN -> {
-                                                        viewModel.setRequireLogin(user)
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        modifier = focusModifier,
-                                    )
-                                }
-
-                                AppPreference.SeerrIntegration -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            seerrDialogMode =
-                                                when (val conn = seerrConnection.connection) {
-                                                    is SeerrConnectionStatus.Error -> {
-                                                        SeerrDialogMode.Error(
-                                                            conn.server,
-                                                            conn.user,
-                                                            conn.ex,
+                                    AppPreference.Update -> {
+                                        ClickPreference(
+                                            title =
+                                                if (release != null && updateAvailable) {
+                                                    stringResource(R.string.install_update)
+                                                } else if (!preferences.autoCheckForUpdates && release == null) {
+                                                    stringResource(R.string.check_for_updates)
+                                                } else {
+                                                    stringResource(R.string.no_update_available)
+                                                },
+                                            onClick = {
+                                                if (movementSounds) playOnClickSound(context)
+                                                if (release != null && updateAvailable) {
+                                                    release?.let {
+                                                        viewModel.navigationManager.navigateTo(
+                                                            Destination.UpdateApp,
                                                         )
+                                                    }
+                                                } else {
+                                                    updateVM.init()
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (movementSounds) playOnClickSound(context)
+                                                viewModel.navigationManager.navigateTo(Destination.UpdateApp)
+                                            },
+                                            summary =
+                                                if (updateAvailable) {
+                                                    release?.version?.toString()
+                                                } else {
+                                                    null
+                                                },
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
+
+                                    AppPreference.ClearImageCache -> {
+                                        val summary =
+                                            remember(cacheUsage) {
+                                                cacheUsage.let {
+                                                    val diskMB =
+                                                        it.imageDiskUsed / AppPreference.MEGA_BIT
+                                                    val memoryUsedMB =
+                                                        it.imageMemoryUsed / AppPreference.MEGA_BIT
+                                                    val memoryMaxMB =
+                                                        it.imageMemoryMax / AppPreference.MEGA_BIT
+                                                    "Disk: ${diskMB}mb, Memory: ${memoryUsedMB}mb/${memoryMaxMB}mb"
+                                                }
+                                            }
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                SingletonImageLoader.get(context).let {
+                                                    it.memoryCache?.clear()
+                                                    it.diskCache?.clear()
+                                                    updateCache = true
+                                                }
+                                            },
+                                            modifier = focusModifier,
+                                            summary = summary,
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.UserPinnedNavDrawerItems -> {
+                                        NavDrawerPreference(
+                                            title = stringResource(pref.title),
+                                            summary = pref.summary(context, null),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.SendAppLogs -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                viewModel.sendAppLogs()
+                                            },
+                                            modifier = focusModifier,
+                                            summary = pref.summary(context, null),
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    SubtitleSettings.Reset -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                viewModel.resetSubtitleSettings()
+                                            },
+                                            modifier = focusModifier,
+                                            summary = pref.summary(context, null),
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.BirthdayPreference -> {
+                                        LaunchedEffect(Unit) { viewModel.loadBirthday() }
+                                        val birthday by viewModel.birthday.collectAsState()
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showBirthdayDialog = true },
+                                            modifier = focusModifier,
+                                            summary =
+                                                birthday?.let {
+                                                    it.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + " " + it.dayOfMonth
+                                                } ?: stringResource(R.string.not_set),
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.ProtectProfilePreference -> {
+                                        val summary =
+                                            when {
+                                                currentUser?.requireLogin == true -> R.string.require_login
+                                                currentUser?.hasPin == true -> R.string.require_pin_code
+                                                else -> R.string.none
+                                            }
+                                        ChoicePreference(
+                                            title = stringResource(pref.title),
+                                            summary = stringResource(summary),
+                                            interactionSource = interactionSource,
+                                            possibleValues =
+                                                listOf(
+                                                    stringResource(R.string.none),
+                                                    stringResource(R.string.require_pin_code),
+                                                    stringResource(R.string.require_login),
+                                                ),
+                                            selectedIndex =
+                                                when {
+                                                    currentUser?.requireLogin == true -> ProfileProtection.LOGIN
+                                                    currentUser?.hasPin == true -> ProfileProtection.PIN
+                                                    else -> ProfileProtection.NONE
+                                                }.ordinal,
+                                            onValueChange = {
+                                                currentUser?.let { user ->
+                                                    when (ProfileProtection.entries[it]) {
+                                                        ProfileProtection.NONE -> {
+                                                            viewModel.removeLoginAndPin(user)
+                                                        }
+
+                                                        ProfileProtection.PIN -> {
+                                                            showPinFlow = true
+                                                        }
+
+                                                        ProfileProtection.LOGIN -> {
+                                                            viewModel.setRequireLogin(user)
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            modifier = focusModifier,
+                                        )
+                                    }
+
+                                    AppPreference.SeerrIntegration -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                seerrDialogMode =
+                                                    when (val conn = seerrConnection.connection) {
+                                                        is SeerrConnectionStatus.Error -> {
+                                                            SeerrDialogMode.Error(
+                                                                conn.server,
+                                                                conn.user,
+                                                                conn.ex,
+                                                            )
+                                                        }
+
+                                                        SeerrConnectionStatus.NotConfigured -> {
+                                                            SeerrDialogMode.Add
+                                                        }
+
+                                                        is SeerrConnectionStatus.Success -> {
+                                                            SeerrDialogMode.Remove(
+                                                                conn.current,
+                                                            )
+                                                        }
+                                                    }
+                                            },
+                                            modifier = focusModifier,
+                                            summary =
+                                                when (seerrConnection.connection) {
+                                                    is SeerrConnectionStatus.Error -> {
+                                                        stringResource(R.string.voice_error_server)
                                                     }
 
                                                     SeerrConnectionStatus.NotConfigured -> {
-                                                        SeerrDialogMode.Add
+                                                        stringResource(R.string.add_server)
                                                     }
 
                                                     is SeerrConnectionStatus.Success -> {
-                                                        SeerrDialogMode.Remove(
-                                                            conn.current,
-                                                        )
+                                                        stringResource(R.string.enabled)
                                                     }
-                                                }
-                                        },
-                                        modifier = focusModifier,
-                                        summary =
-                                            when (seerrConnection.connection) {
-                                                is SeerrConnectionStatus.Error -> {
-                                                    stringResource(R.string.voice_error_server)
-                                                }
-
-                                                SeerrConnectionStatus.NotConfigured -> {
-                                                    stringResource(R.string.add_server)
-                                                }
-
-                                                is SeerrConnectionStatus.Success -> {
-                                                    stringResource(R.string.enabled)
-                                                }
-                                            },
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.QuickConnect -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            if (currentUser != null) {
-                                                viewModel.resetQuickConnectStatus()
-                                                showQuickConnectDialog = true
-                                            }
-                                        },
-                                        modifier = focusModifier,
-                                        summary = pref.summary(context, null),
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                ScreensaverPreference.Start -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            viewModel.screensaverService.start()
-                                        },
-                                        modifier = focusModifier,
-                                        summary = pref.summary(context, null),
-                                        onLongClick = {},
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                AppPreference.ExternalPlayerApp -> {
-                                    val value = pref.getter.invoke(preferences).toString()
-                                    val selectedIndex =
-                                        remember(value, players) {
-                                            players.indexOfFirstOrNull { it.identifier == value }
-                                        } ?: 0
-                                    ChoicePreference(
-                                        title = stringResource(pref.title),
-                                        summary = players[selectedIndex].name,
-                                        interactionSource = interactionSource,
-                                        possibleValues = players,
-                                        selectedIndex = selectedIndex,
-                                        onValueChange = { index ->
-                                            scope.launch(ExceptionHandler()) {
-                                                val newValue =
-                                                    players.getOrNull(index)?.identifier ?: ""
-                                                preferences =
-                                                    viewModel.preferenceDataStore.updateData { prefs ->
-                                                        pref.setter.invoke(prefs, newValue)
-                                                    }
-                                            }
-                                        },
-                                        valueDisplay = { index, item ->
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                if (item.icon != null) {
-                                                    Image(
-                                                        bitmap = item.icon,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.width(40.dp),
-                                                    )
-                                                }
-                                                Text(item.name)
-                                            }
-                                        },
-                                        modifier = focusModifier,
-                                    )
-                                }
-
-                                AppPreference.UserInterfaceLanguage -> {
-                                    val locale =
-                                        remember(currentUser?.uiLanguage) {
-                                            currentUser?.uiLanguage?.let { Locale.forLanguageTag(it) }
-                                                ?: Locale.getDefault()
-                                        }
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            showLocaleChoiceDialog = true
-                                        },
-                                        modifier = focusModifier,
-                                        summary = locale.getDisplayName(locale),
-                                        onLongClick = null,
-                                        interactionSource = interactionSource,
-                                    )
-                                }
-
-                                ExperimentalPreference.Enable -> {
-                                    var showConfirm by remember { mutableStateOf(false) }
-                                    pref as AppSwitchPreference<AppPreferences>
-                                    val value = pref.getter.invoke(preferences)
-                                    SwitchPreference(
-                                        title = stringResource(pref.title),
-                                        value = value,
-                                        onClick = {
-                                            if (value) {
-                                                scope.launch(ExceptionHandler()) {
-                                                    preferences =
-                                                        viewModel.preferenceDataStore.updateData { prefs ->
-                                                            pref.setter.invoke(prefs, false)
-                                                        }
-                                                }
-                                            } else {
-                                                showConfirm = true
-                                            }
-                                        },
-                                        summaryOn = pref.summaryOn?.let { stringResource(pref.summaryOn) },
-                                        summaryOff = pref.summaryOff?.let { stringResource(pref.summaryOff) },
-                                    )
-                                    if (showConfirm) {
-                                        ConfirmDialog(
-                                            title = stringResource(R.string.confirm_enable_experimental_title),
-                                            body = stringResource(R.string.confirm_enable_experimental_body),
-                                            onCancel = { showConfirm = false },
-                                            onConfirm = {
-                                                showConfirm = false
-                                                scope.launch(ExceptionHandler()) {
-                                                    preferences =
-                                                        viewModel.preferenceDataStore.updateData { prefs ->
-                                                            pref.setter.invoke(prefs, true)
-                                                        }
-                                                }
-                                            },
+                                                },
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
                                         )
                                     }
-                                }
 
-                                else -> {
-                                    val value = pref.getter.invoke(preferences)
-                                    ComposablePreference(
-                                        preference = pref,
-                                        value = value,
-                                        onNavigate = viewModel.navigationManager::navigateTo,
-                                        onValueChange = { newValue ->
-                                            val validation = pref.validate(preferences, newValue)
-                                            when (validation) {
-                                                is PreferenceValidation.Invalid -> {
-                                                    // TODO?
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            validation.message,
-                                                            Toast.LENGTH_SHORT,
-                                                        ).show()
+                                    AppPreference.QuickConnect -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                if (currentUser != null) {
+                                                    viewModel.resetQuickConnectStatus()
+                                                    showQuickConnectDialog = true
                                                 }
+                                            },
+                                            modifier = focusModifier,
+                                            summary = pref.summary(context, null),
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
 
-                                                PreferenceValidation.Valid -> {
+                                    ScreensaverPreference.Start -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                viewModel.screensaverService.start()
+                                            },
+                                            modifier = focusModifier,
+                                            summary = pref.summary(context, null),
+                                            onLongClick = {},
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.ExternalPlayerApp -> {
+                                        val value = pref.getter.invoke(preferences).toString()
+                                        val selectedIndex =
+                                            remember(value, players) {
+                                                players.indexOfFirstOrNull { it.identifier == value }
+                                            } ?: 0
+                                        ChoicePreference(
+                                            title = stringResource(pref.title),
+                                            summary = players[selectedIndex].name,
+                                            interactionSource = interactionSource,
+                                            possibleValues = players,
+                                            selectedIndex = selectedIndex,
+                                            onValueChange = { index ->
+                                                scope.launch(ExceptionHandler()) {
+                                                    val newValue =
+                                                        players.getOrNull(index)?.identifier ?: ""
+                                                    preferences =
+                                                        viewModel.preferenceDataStore.updateData { prefs ->
+                                                            pref.setter.invoke(prefs, newValue)
+                                                        }
+                                                }
+                                            },
+                                            valueDisplay = { index, item ->
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    if (item.icon != null) {
+                                                        Image(
+                                                            bitmap = item.icon,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.width(40.dp),
+                                                        )
+                                                    }
+                                                    Text(item.name)
+                                                }
+                                            },
+                                            modifier = focusModifier,
+                                        )
+                                    }
+
+                                    AppPreference.UserInterfaceLanguage -> {
+                                        val locale =
+                                            remember(currentUser?.uiLanguage) {
+                                                currentUser?.uiLanguage?.let { Locale.forLanguageTag(it) }
+                                                    ?: Locale.getDefault()
+                                            }
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                showLocaleChoiceDialog = true
+                                            },
+                                            modifier = focusModifier,
+                                            summary = locale.getDisplayName(locale),
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    ExperimentalPreference.Enable -> {
+                                        var showConfirm by remember { mutableStateOf(false) }
+                                        pref as AppSwitchPreference<AppPreferences>
+                                        val value = pref.getter.invoke(preferences)
+                                        SwitchPreference(
+                                            title = stringResource(pref.title),
+                                            value = value,
+                                            onClick = {
+                                                if (value) {
                                                     scope.launch(ExceptionHandler()) {
                                                         preferences =
                                                             viewModel.preferenceDataStore.updateData { prefs ->
-                                                                pref.setter(prefs, newValue)
+                                                                pref.setter.invoke(prefs, false)
                                                             }
                                                     }
+                                                } else {
+                                                    showConfirm = true
                                                 }
-                                            }
-                                        },
-                                        interactionSource = interactionSource,
-                                        modifier = focusModifier,
-                                    )
+                                            },
+                                            summaryOn = pref.summaryOn?.let { stringResource(pref.summaryOn) },
+                                            summaryOff = pref.summaryOff?.let { stringResource(pref.summaryOff) },
+                                        )
+                                        if (showConfirm) {
+                                            ConfirmDialog(
+                                                title = stringResource(R.string.confirm_enable_experimental_title),
+                                                body = stringResource(R.string.confirm_enable_experimental_body),
+                                                onCancel = { showConfirm = false },
+                                                onConfirm = {
+                                                    showConfirm = false
+                                                    scope.launch(ExceptionHandler()) {
+                                                        preferences =
+                                                            viewModel.preferenceDataStore.updateData { prefs ->
+                                                                pref.setter.invoke(prefs, true)
+                                                            }
+                                                    }
+                                                },
+                                            )
+                                        }
+                                    }
+
+                                    else -> {
+                                        val value = pref.getter.invoke(preferences)
+                                        ComposablePreference(
+                                            preference = pref,
+                                            value = value,
+                                            onNavigate = viewModel.navigationManager::navigateTo,
+                                            onValueChange = { newValue ->
+                                                val validation = pref.validate(preferences, newValue)
+                                                when (validation) {
+                                                    is PreferenceValidation.Invalid -> {
+                                                        // TODO?
+                                                        Toast
+                                                            .makeText(
+                                                                context,
+                                                                validation.message,
+                                                                Toast.LENGTH_SHORT,
+                                                            ).show()
+                                                    }
+
+                                                    PreferenceValidation.Valid -> {
+                                                        scope.launch(ExceptionHandler()) {
+                                                            preferences =
+                                                                viewModel.preferenceDataStore.updateData { prefs ->
+                                                                    pref.setter(prefs, newValue)
+                                                                }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -940,7 +995,11 @@ fun PreferencesPage(
         modifier = modifier.background(MaterialTheme.colorScheme.background),
     ) {
         when (preferenceScreenOption) {
-            PreferenceScreenOption.BASIC,
+            // Benflix: the main Settings page has its own layout (menu on the left on TV)
+            PreferenceScreenOption.BASIC -> {
+                BenflixSettingsPage(initialPreferences, Modifier.fillMaxSize())
+            }
+
             PreferenceScreenOption.ADVANCED,
             PreferenceScreenOption.EXO_PLAYER,
             PreferenceScreenOption.MPV,
