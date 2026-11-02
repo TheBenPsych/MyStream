@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,7 +63,7 @@ private val MenuLine = Color(0xFF2C2C33)
 private val MenuMuted = Color(0xFF8B8B94)
 private val BenflixRed = Color(0xFFE5484D)
 
-private val BrowseCardWidth = 176.dp
+private val BrowseCardWidth = 184.dp
 private val BrowseGap = 10.dp
 private const val BROWSE_COLUMNS = 3
 private val MoreWidth = 330.dp
@@ -224,34 +223,35 @@ private fun BrowseCard(
                         .fillMaxSize()
                         .background(Brush.verticalGradient(0.3f to Color.Transparent, 1f to Color.Black.copy(alpha = .88f))),
             )
-            Row(
-                verticalAlignment = Alignment.Bottom,
+            // How many titles, small in the top corner, so the name gets the whole width
+            tab.count?.let {
+                Text(
+                    text = "%,d".format(it),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            }
+            Text(
+                text = tab.title,
+                fontSize = 15.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .padding(horizontal = 10.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = tab.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Spacer(Modifier.weight(1f))
-                tab.count?.let {
-                    Text(
-                        text = "%,d".format(it),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = .7f),
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
-                }
-            }
+            )
             // The library you're in gets a thin red line along the bottom
             if (tab.selected) {
                 Box(

@@ -195,7 +195,7 @@ class NavDrawerService
             val builtins =
                 buildList {
                     add(NavDrawerItem.Favorites)
-                    if (discoverActive) add(NavDrawerItem.Discover)
+                    // Benflix: no Discover in the menus, the Requests tab does the same job
                 }
             val allLibraries = getAllUserLibraries(user.id, userDto.tvAccess)
             val libraries =
