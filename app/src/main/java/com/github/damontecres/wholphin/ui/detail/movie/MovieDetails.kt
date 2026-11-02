@@ -154,12 +154,6 @@ fun MovieDetails(
             val unknownStr = stringResource(R.string.unknown)
             val movie by rememberUpdatedState(s.data)
             val chosenStreams by rememberUpdatedState(state.chosenStreams)
-            LifecycleResumeEffect(destination.itemId) {
-                viewModel.maybePlayThemeSong(destination.itemId)
-                onPauseOrDispose {
-                    viewModel.release()
-                }
-            }
             MovieDetailsContent(
                 preferences = preferences,
                 movie = movie,

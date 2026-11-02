@@ -14,7 +14,6 @@ import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.StreamChoiceService
-import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -53,7 +52,6 @@ class EpisodeViewModel
         val itemPlaybackRepository: ItemPlaybackRepository,
         val streamChoiceService: StreamChoiceService,
         val serverReportService: ServerReportService,
-        private val themeSongPlayer: ThemeSongPlayer,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val userPreferencesService: UserPreferencesService,
         private val backdropService: BackdropService,
@@ -174,18 +172,7 @@ class EpisodeViewModel
             }
         }
 
-        fun maybePlayThemeSong(seriesId: UUID) {
-            viewModelScope.launchIO {
-                themeSongPlayer.playThemeFor(seriesId)
-            }
-        }
-
-        fun release() {
-            themeSongPlayer.stop()
-        }
-
         fun navigateTo(destination: Destination) {
-            release()
             navigationManager.navigateTo(destination)
         }
 

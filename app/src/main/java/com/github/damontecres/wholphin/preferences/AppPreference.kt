@@ -777,14 +777,6 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, _ -> prefs },
             )
 
-        val UserPinnedNavDrawerItems =
-            AppClickablePreference<AppPreferences>(
-                title = R.string.nav_drawer_pins,
-                summary = R.string.nav_drawer_pins_summary,
-                getter = { },
-                setter = { prefs, _ -> prefs },
-            )
-
         val UserInterfaceLanguage =
             AppClickablePreference<AppPreferences>(
                 title = R.string.user_interface_language,
@@ -1476,10 +1468,7 @@ val advancedPreferences =
                         AppPreference.ShowClock,
                         AppPreference.ManageMedia,
                         AppPreference.DisplayTogglesPref,
-                        // Temporarily disabled, see https://github.com/damontecres/Wholphin/pull/127#issuecomment-3478058418
-//                    AppPreference.NavDrawerSwitchOnFocus,
-                        AppPreference.SlideshowDuration,
-                        AppPreference.SlideshowPlayVideos,
+                        // Benflix: photo slideshow options removed (Benflix has no photo libraries; slideshows use the defaults)
                     ),
             ),
         )

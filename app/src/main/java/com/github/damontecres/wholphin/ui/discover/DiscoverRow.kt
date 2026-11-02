@@ -33,7 +33,11 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
+import com.github.damontecres.wholphin.ui.util.StringProvider
 import com.github.damontecres.wholphin.util.DataLoadingState
+import com.github.damontecres.wholphin.util.DiscoverRequestType
+import java.util.UUID
 
 @Composable
 fun DiscoverRow(
@@ -194,5 +198,24 @@ fun DiscoverItemRow(
                 }
             }
         }
+    }
+}
+
+fun Int.toUUID() = UUID(0L, toLong())
+
+fun UUID.toInt() = leastSignificantBits.toInt()
+
+data class DiscoverRowData(
+    val title: StringProvider,
+    val items: DataLoadingState<List<DiscoverItem>>,
+    val type: DiscoverRequestType,
+) {
+    companion object {
+        val EMPTY =
+            DiscoverRowData(
+                EmptyStringProvider,
+                DataLoadingState.Pending,
+                DiscoverRequestType.UNKNOWN,
+            )
     }
 }
