@@ -326,8 +326,10 @@ class FillerService
              */
             fun parse(html: String): Map<Int, FillerKind> {
                 if (html.isBlank()) return emptyMap()
+                // The quick lists come before the episode table, so the table's numbers can't leak in
                 val text =
                     html
+                        .substringBefore("<table")
                         .replace(Regex("<[^>]+>"), " ")
                         .replace("&nbsp;", " ")
                         .replace(Regex("\\s+"), " ")
