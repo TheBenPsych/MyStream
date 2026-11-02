@@ -783,13 +783,6 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, _ -> prefs },
             )
 
-        val CustomizeHome =
-            AppDestinationPreference<AppPreferences>(
-                title = R.string.customize_home,
-                destination = Destination.HomeSettings,
-                summary = R.string.customize_home_summary,
-            )
-
         val UserInterfaceLanguage =
             AppClickablePreference<AppPreferences>(
                 title = R.string.user_interface_language,

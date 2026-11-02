@@ -31,6 +31,8 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.Release
 import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixPopups
+import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.dialogWidth
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -66,6 +68,8 @@ fun UpdatePrompt(viewModel: UpdatePromptViewModel = hiltViewModel()) {
     val kids by KidsMode.active.collectAsState()
     val current = release ?: return
     if (kids) return
+    // Benflix: wait while a more important pop-up (like bedtime) is showing
+    if (!popupTurn("update", BenflixPopups.UPDATE, true)) return
     val updateFocus = remember { FocusRequester() }
     BasicDialog(
         onDismissRequest = { viewModel.notNow(current) },

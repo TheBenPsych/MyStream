@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.HomeItemFields
+import com.github.damontecres.wholphin.ui.HomeRowFields
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
 import com.github.damontecres.wholphin.ui.data.RowColumn
@@ -54,9 +55,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
-import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
-import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -84,7 +83,6 @@ import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
-import org.jellyfin.sdk.api.client.extensions.studiosApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -493,7 +491,7 @@ class HomeViewModel
                     includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
                     recursive = true,
                     imageTypes = listOf(ImageType.BACKDROP),
-                    fields = HomeItemFields,
+                    fields = HomeRowFields,
                 )
             // Each source is loaded separately so one failing doesn't empty the whole banner
             val resume =
@@ -503,7 +501,7 @@ class HomeViewModel
                             GetResumeItemsRequest(
                                 userId = userDto.id,
                                 includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                                 enableUserData = true,
                                 limit = FEATURED_RESUME,
                             ),
@@ -538,7 +536,7 @@ class HomeViewModel
                                 GetSimilarItemsRequest(
                                     userId = userDto.id,
                                     itemId = sourceId,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                     limit = 12,
                                 ),
                             ).content.items
@@ -560,7 +558,7 @@ class HomeViewModel
                                 GetSimilarItemsRequest(
                                     userId = userDto.id,
                                     itemId = likedItem.id,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                     limit = 12,
                                 ),
                             ).content.items
@@ -767,7 +765,7 @@ class HomeViewModel
                                     GetItemsRequest(
                                         userId = userDto.id,
                                         ids = inLibraryIds,
-                                        fields = HomeItemFields,
+                                        fields = HomeRowFields,
                                     ),
                                 ).content.items
                                 .associateBy { it.id }
@@ -819,7 +817,7 @@ class HomeViewModel
                             sortOrder = listOf(SortOrder.DESCENDING),
                             // Extra, because anime is taken out below
                             limit = TRENDING_TOP * 4,
-                            fields = HomeItemFields,
+                            fields = HomeRowFields,
                         ),
                     ).content.items
                     .let { items ->
@@ -860,6 +858,13 @@ class HomeViewModel
             animeIdCache?.let { (cachedLibs, at, ids) ->
                 if (cachedLibs == libs && System.currentTimeMillis() - at < ANIME_ID_CACHE_MS) return ids
             }
+            // Benflix: the list is saved on the device for a day, so opening the app doesn't download it again
+            val fileKey = "anime-ids-$userId-${libs.joinToString(",").hashCode()}"
+            diskCache.read(fileKey, AnimeIdsFile.serializer(), ANIME_ID_FILE_MAX_AGE_MS)?.let { saved ->
+                val ids = saved.ids.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }.toSet()
+                animeIdCache = Triple(libs, System.currentTimeMillis(), ids)
+                return ids
+            }
             val ids =
                 libs
                     .flatMap { libraryId ->
@@ -884,6 +889,9 @@ class HomeViewModel
                         }
                     }.toSet()
             animeIdCache = Triple(libs, System.currentTimeMillis(), ids)
+            if (ids.isNotEmpty()) {
+                diskCache.write(fileKey, AnimeIdsFile.serializer(), AnimeIdsFile(ids.map { it.toString() }))
+            }
             return ids
         }
 
@@ -904,7 +912,7 @@ class HomeViewModel
                                 parentId = libraryId,
                                 recursive = true,
                                 includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                             ),
                         ).content.items
                 } catch (ex: CancellationException) {
@@ -933,7 +941,7 @@ class HomeViewModel
                                     GetItemsRequest(
                                         userId = userDto.id,
                                         ids = trendingIds.take(TRENDING_TOP),
-                                        fields = HomeItemFields,
+                                        fields = HomeRowFields,
                                     ),
                                 ).content.items
                                 .associateBy { it.id }
@@ -1044,7 +1052,7 @@ class HomeViewModel
                                 GetSimilarItemsRequest(
                                     userId = userDto.id,
                                     itemId = source.first,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                     limit = ANIME_SIMILAR_FETCH,
                                 ),
                             ).content.items
@@ -1207,7 +1215,7 @@ class HomeViewModel
                         recursive = true,
                         searchTerm = term,
                         limit = 10,
-                        fields = HomeItemFields,
+                        fields = HomeRowFields,
                     )
 
                 // Hand-picked titles: search by name, then keep only exact name matches
@@ -1238,7 +1246,7 @@ class HomeViewModel
                                     tags = theme.tags,
                                     sortBy = listOf(ItemSortBy.RANDOM),
                                     limit = THEMED_FETCH,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                 ),
                             )
                         }
@@ -1256,7 +1264,7 @@ class HomeViewModel
                                     genres = theme.genres,
                                     sortBy = listOf(ItemSortBy.RANDOM),
                                     limit = THEMED_FETCH,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                 ),
                             )
                         }
@@ -1311,7 +1319,7 @@ class HomeViewModel
                             includeItemTypes = listOf(BaseItemKind.BOX_SET),
                             recursive = true,
                             limit = COLLECTION_INDEX_MAX,
-                            fields = HomeItemFields,
+                            fields = HomeRowFields,
                         ),
                     ).content.items
             val permits = Semaphore(COLLECTION_INDEX_PARALLEL)
@@ -1390,70 +1398,6 @@ class HomeViewModel
                 }
             CelebrationNow.set(celebration)
             _state.update { it.copy(celebration = celebration) }
-        }
-
-        /**
-         * Studio tiles under the banner: the studios & networks with the most movies & shows on the server
-         */
-        private suspend fun loadStudios(userDto: ServerUserConfig) {
-            try {
-                val types = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
-                val studios =
-                    api.studiosApi
-                        .getStudios(userId = userDto.id, includeItemTypes = types)
-                        .content.items
-                val tiles =
-                    StudioBrands
-                        .mapNotNull { brand ->
-                            val ids =
-                                studios
-                                    .filter { studio ->
-                                        val name = studio.name?.lowercase() ?: return@filter false
-                                        brand.matches.any { name.contains(it) }
-                                    }.map { it.id }
-                            if (ids.isEmpty()) return@mapNotNull null
-                            val count =
-                                api.itemsApi
-                                    .getItems(
-                                        GetItemsRequest(
-                                            userId = userDto.id,
-                                            studioIds = ids,
-                                            includeItemTypes = types,
-                                            recursive = true,
-                                            limit = 0,
-                                            enableTotalRecordCount = true,
-                                        ),
-                                    ).content.totalRecordCount
-                            StudioTile(brand, ids, count)
-                        }.filter { it.count >= STUDIO_MIN_ITEMS }
-                        .sortedByDescending { it.count }
-                        .take(STUDIO_MAX_TILES)
-                _state.update { it.copy(studios = tiles) }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.e(ex, "Error loading studio tiles")
-            }
-        }
-
-        fun openStudio(tile: StudioTile) {
-            val userId = serverRepository.currentUser?.id ?: return
-            navigationManager.navigateTo(
-                Destination.ItemGrid(
-                    title = StringStringProvider(tile.brand.name),
-                    request =
-                        GetItemsRequest(
-                            userId = userId,
-                            studioIds = tile.studioIds,
-                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                            recursive = true,
-                            sortBy = listOf(ItemSortBy.PREMIERE_DATE),
-                            sortOrder = listOf(SortOrder.DESCENDING),
-                            fields = HomeItemFields,
-                        ),
-                    requestHandler = GetItemsRequestHandler,
-                ),
-            )
         }
 
         /**
@@ -1557,7 +1501,7 @@ class HomeViewModel
                                 GetSimilarItemsRequest(
                                     userId = userDto.id,
                                     itemId = sourceId,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                     limit = BECAUSE_MAX,
                                 ),
                             ).content.items
@@ -1598,7 +1542,7 @@ class HomeViewModel
                                 sortBy = listOf(ItemSortBy.DATE_CREATED),
                                 sortOrder = listOf(SortOrder.DESCENDING),
                                 limit = EXTRA_ROW_MAX,
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                             ),
                         ).content.items
                         .filter { taste.keep(it) }
@@ -1629,7 +1573,7 @@ class HomeViewModel
                                 sortBy = listOf(ItemSortBy.DATE_CREATED),
                                 sortOrder = listOf(SortOrder.DESCENDING),
                                 limit = EXTRA_ROW_MAX,
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                             ),
                         ).content.items
                         .map { BaseItem(it) }
@@ -1674,7 +1618,7 @@ class HomeViewModel
                                 genres = listOf(genre),
                                 sortBy = listOf(ItemSortBy.RANDOM),
                                 limit = EXTRA_ROW_MAX,
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                             ),
                         ).content.items
                         .filter { it.id !in skip && taste.keep(it) }
@@ -1723,7 +1667,7 @@ class HomeViewModel
                                     genres = listOf(genre),
                                     sortBy = listOf(ItemSortBy.RANDOM),
                                     limit = EXTRA_ROW_MAX,
-                                    fields = HomeItemFields,
+                                    fields = HomeRowFields,
                                 ),
                             ).content.items
                             .filter { taste.keep(it) }
@@ -1756,7 +1700,7 @@ class HomeViewModel
                                 sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
                                 sortOrder = listOf(SortOrder.DESCENDING),
                                 limit = COLLECTIONS_FETCH,
-                                fields = HomeItemFields,
+                                fields = HomeRowFields,
                             ),
                         ).content.items
                         // Most watched first: collections people have seen the most of
@@ -1991,7 +1935,6 @@ data class HomeState(
     val mood: HomeMood? = null,
     val moodRow: ThemedRow? = null,
     val celebration: Celebration? = null,
-    val studios: List<StudioTile> = emptyList(),
     val newest: ThemedRow? = null,
     val myList: ThemedRow? = null,
     val genreRows: List<ThemedRow> = emptyList(),
@@ -2124,6 +2067,14 @@ private data class SnapshotFeatured(
     val reason: FeaturedReason,
     val becauseOf: String? = null,
 )
+
+/** The anime libraries' movie & show ids as saved on disk */
+@Serializable
+private data class AnimeIdsFile(
+    val ids: List<String>,
+)
+
+private const val ANIME_ID_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000L
 
 /** The collection index as saved on disk: movie id to collection id, plus the collections */
 @Serializable

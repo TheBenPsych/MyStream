@@ -42,22 +42,61 @@ class BenflixFunFacts
     ) {
         private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        /** A fact to show now, or null when there isn't one yet */
+        /**
+         * A fact to show now, or null when there isn't one yet. Benflix: never one this device has
+         * already shown, until every fact has been seen; then the oldest ones come back first.
+         */
         suspend fun pick(
             api: ApiClient,
             userId: UUID,
         ): String? =
             withContext(WholphinDispatchers.IO) {
-                val saved = savedFacts()
-                val useSaved = saved.isNotEmpty() && Math.random() < SAVED_SHARE
+                val seen = seenKeys().toHashSet()
+                val fresh = { f: String -> keyOf(f) !in seen }
+                val saved = savedFacts().filter(fresh)
+                val builtIn = (BenflixTrivia.facts + BenflixTrivia.quotes).filter(fresh)
+                val roll = Math.random()
                 val fact =
-                    if (useSaved) {
-                        saved.random()
-                    } else {
-                        safe { libraryFact(api, userId) } ?: saved.randomOrNull()
+                    when {
+                        roll < SAVED_SHARE && saved.isNotEmpty() -> saved.random()
+                        roll < SAVED_SHARE + BUILT_IN_SHARE && builtIn.isNotEmpty() -> builtIn.random()
+                        else -> safe { libraryFact(api, userId, fresh) }
+                    } ?: saved.randomOrNull() ?: builtIn.randomOrNull()
+                if (fact != null) {
+                    markSeen(fact)
+                    fact
+                } else {
+                    // Everything has been shown: forget the older half and start over from those
+                    forgetOldest()
+                    (BenflixTrivia.facts + BenflixTrivia.quotes).filter { keyOf(it) !in seenKeys().toHashSet() }.randomOrNull()?.also {
+                        markSeen(it)
                     }
-                fact
+                }
             }
+
+        private fun keyOf(fact: String) =
+            fact
+                .trim()
+                .lowercase()
+                .hashCode()
+                .toString()
+
+        private fun seenKeys(): List<String> =
+            prefs()
+                .getString(SEEN_KEY, null)
+                .orEmpty()
+                .split(",")
+                .filter { it.isNotBlank() }
+
+        private fun markSeen(fact: String) {
+            val all = (seenKeys() + keyOf(fact)).distinct().takeLast(MAX_SEEN)
+            prefs().edit { putString(SEEN_KEY, all.joinToString(",")) }
+        }
+
+        private fun forgetOldest() {
+            val all = seenKeys()
+            prefs().edit { putString(SEEN_KEY, all.drop(all.size / 2).joinToString(",")) }
+        }
 
         /** Looks up a few more Wikipedia facts for next time (call after showing one) */
         suspend fun learnMore(
@@ -103,17 +142,103 @@ class BenflixFunFacts
                     ),
                 ).content.items
 
-        /** One fact made from the library itself */
+        /** One fact made from the library itself, that this device hasn't shown yet */
         private suspend fun libraryFact(
             api: ApiClient,
             userId: UUID,
+            fresh: (String) -> Boolean,
         ): String? {
-            val kinds = listOf(::actorFact, ::anniversaryFact, ::taglineFact, ::longestFact).shuffled()
+            val kinds =
+                listOf(
+                    ::actorFact,
+                    ::anniversaryFact,
+                    ::taglineFact,
+                    ::longestFact,
+                    ::directorFact,
+                    ::decadeFact,
+                    ::oldestFact,
+                    ::countFact,
+                ).shuffled()
             for (kind in kinds) {
-                safe { kind(api, userId) }?.let { return it }
+                safe { kind(api, userId) }?.takeIf(fresh)?.let { return it }
             }
             return null
         }
+
+        private suspend fun directorFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val director =
+                movies(api, userId, SAMPLE, fields = listOf(ItemFields.PEOPLE))
+                    .flatMap { m -> m.people.orEmpty().filter { it.type == PersonKind.DIRECTOR } }
+                    .groupBy { it.id }
+                    .values
+                    .shuffled()
+                    .firstOrNull { it.size >= 2 }
+                    ?.first() ?: return null
+            val count = countMovies(api, userId, GetItemsRequest(personIds = listOf(director.id)))
+            if (count < MIN_ACTOR_MOVIES || director.name.isNullOrBlank()) return null
+            return "${director.name} directed $count movies on Benflix."
+        }
+
+        private suspend fun decadeFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val decade = listOf(1950, 1960, 1970, 1980, 1990, 2000, 2010).random()
+            val count = countMovies(api, userId, GetItemsRequest(years = (decade until decade + 10).toList()))
+            if (count < MIN_DECADE_MOVIES) return null
+            return "Benflix has $count movies from the ${decade}s."
+        }
+
+        private suspend fun oldestFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? =
+            movies(api, userId, 1, sortBy = ItemSortBy.PREMIERE_DATE, sortOrder = SortOrder.ASCENDING)
+                .firstOrNull()
+                ?.let { m ->
+                    val year = m.productionYear ?: m.premiereDate?.year ?: return null
+                    "The oldest movie on Benflix is ${m.name}, from $year."
+                }
+
+        private suspend fun countFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val movies = countMovies(api, userId, GetItemsRequest())
+            val shows =
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userId,
+                            recursive = true,
+                            includeItemTypes = listOf(BaseItemKind.SERIES),
+                            limit = 0,
+                            enableTotalRecordCount = true,
+                        ),
+                    ).content.totalRecordCount
+            if (movies == 0) return null
+            return "Benflix has $movies movies and $shows shows to pick from."
+        }
+
+        /** How many movies match [filter] (kid-safe ratings only, like every fun fact) */
+        private suspend fun countMovies(
+            api: ApiClient,
+            userId: UUID,
+            filter: GetItemsRequest,
+        ): Int =
+            api.itemsApi
+                .getItems(
+                    filter.copy(
+                        userId = userId,
+                        recursive = true,
+                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                        limit = 0,
+                        enableTotalRecordCount = true,
+                    ),
+                ).content.totalRecordCount
 
         private suspend fun actorFact(
             api: ApiClient,
@@ -268,10 +393,14 @@ class BenflixFunFacts
             private const val PREFS = "benflix_fun_facts"
             private const val KEY = "facts"
             private const val SEPARATOR = "\u001E"
-            private const val MAX_SAVED = 60
-            private const val SAVED_SHARE = 0.6
+            private const val MAX_SAVED = 400
+            private const val SEEN_KEY = "seen"
+            private const val MAX_SEEN = 1500
+            private const val SAVED_SHARE = 0.35
+            private const val BUILT_IN_SHARE = 0.4
+            private const val MIN_DECADE_MOVIES = 5
             private const val SAMPLE = 60
-            private const val LOOKUPS = 3
+            private const val LOOKUPS = 6
             private const val TOP_BILLED = 4
             private const val MIN_ACTOR_MOVIES = 3
             private const val MIN_SENTENCE = 50
@@ -291,6 +420,14 @@ class BenflixFunFacts
                     "weeks",
                     "days",
                     "record",
+                    "inspired",
+                    "nickname",
+                    "first time",
+                    "voice",
+                    "sound",
+                    "props",
+                    "costume",
+                    "location",
                 )
             private val BAD_STARTS = listOf("He", "She", "It", "They", "This", "These", "That", "His", "Her", "Their", "However", "Also")
         }

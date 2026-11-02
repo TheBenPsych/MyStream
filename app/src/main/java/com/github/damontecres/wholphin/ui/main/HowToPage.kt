@@ -45,7 +45,7 @@ private val phoneTips =
     listOf(
         HowToTip("Tap", "Opens a movie or show. Tap the video while watching to show the controls."),
         HowToTip("Press and hold a poster", "Shows quick info without opening the page."),
-        HowToTip("Bottom bar", "Home, Search, Clips, Channels and My Benflix are always at the bottom."),
+        HowToTip("Bottom bar", "Home, Search, Trailer Shuffle, Channels and My Benflix are always at the bottom."),
     )
 
 private val generalTips =
@@ -57,7 +57,7 @@ private val generalTips =
         HowToTip("Download to your phone", "On a phone, open a movie and press Download (Wi-Fi only). Find it in My Benflix, Downloads."),
         HowToTip("Kids", "Pick the Kids profile on the Who's watching screen. It only shows titles rated PG or lower."),
         HowToTip("Switch profile", "Press your profile picture at the top (TV) or in My Benflix (phone)."),
-        HowToTip("Something to watch, fast", "Try Channels, Trailer shuffle or the Mood quiz under More."),
+        HowToTip("Something to watch, fast", "Try Channels, Trailer Shuffle or the Mood quiz under More."),
         HowToTip("Bigger text", "Turn on Easy-read mode in Settings, Look, for bigger and brighter text."),
         HowToTip("Play on TV", "On your phone, open a movie or episode and press Play on TV. Benflix needs to be open on the TV."),
         HowToTip("Kids bedtime", "Set a Parent PIN in My Benflix. Kids then goes to bed at 9 PM, and your PIN gives 30 more minutes."),

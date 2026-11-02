@@ -62,10 +62,13 @@ jobs:
           find app/build/outputs/apk -name '*.apk' -print0 |
             while IFS= read -r -d '' apk; do
               abi="$(basename "$apk" .apk | grep -oE '(universal|armeabi-v7a|arm64-v8a|x86_64)$' || echo universal)"
+              # Old name, kept so the Downloader code (2488986) keeps working
               cp "$apk" "out/MyStream-$abi.apk"
               # Names the in-app updater looks for
               if [ "$abi" = universal ]; then
                 cp "$apk" "out/Benflix-release.apk"
+                # The friendly name family see on the download page
+                cp "$apk" "out/Benflix.apk"
               else
                 cp "$apk" "out/Benflix-release-$abi.apk"
               fi
@@ -75,7 +78,7 @@ jobs:
       - name: Upload APKs to the Actions run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: MyStream-apks
+          name: Benflix-apks
           path: out/*.apk
 
       - name: Publish to the "latest-build" release
@@ -120,7 +123,7 @@ jobs:
           {
             echo "Newest Benflix build (version $VERSION) from \`main\` (commit ${GITHUB_SHA::7})."
             echo
-            echo "Install **MyStream-universal.apk** on your TV if you are not sure which one to pick."
+            echo "Install **Benflix.apk** on your TV or phone if you are not sure which one to pick."
             echo "<!-- app-sha:$GITHUB_SHA -->"
             # Older app versions show these lines: just this build's own changes
             while IFS= read -r t; do echo "<!-- app-note:$t -->"; done < new-titles.txt
