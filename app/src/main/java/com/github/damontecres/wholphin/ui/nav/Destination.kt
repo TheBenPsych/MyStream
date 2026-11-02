@@ -186,6 +186,10 @@ sealed class Destination(
     @Serializable
     data object MyBenflix : Destination(false)
 
+    /** Requests: find new things to add (admin) or see what you asked for */
+    @Serializable
+    data object Requests : Destination(false)
+
     /** A page for one genre: its best, hidden gems, what's new and shorter picks */
     @Serializable
     data class GenreHub(

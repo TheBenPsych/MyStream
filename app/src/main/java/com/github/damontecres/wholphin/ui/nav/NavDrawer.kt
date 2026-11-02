@@ -78,6 +78,7 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -196,6 +197,8 @@ class NavDrawerViewModel
                             MY_BENFLIX_INDEX
                         } else if (key is Destination.Channels) {
                             CHANNELS_INDEX
+                        } else if (key is Destination.Requests) {
+                            REQUESTS_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -282,6 +285,7 @@ private const val NOW_PLAYING_INDEX = -3
 private const val GAMES_INDEX = -4
 private const val MY_BENFLIX_INDEX = -5
 private const val CHANNELS_INDEX = -6
+private const val REQUESTS_INDEX = -7
 
 /**
  * Display the top navigation bar with [DestinationContent] below it
@@ -498,7 +502,7 @@ fun NavDrawer(
                 onClickProfile = onClickProfile,
                 // The same extras the TV has under My Benflix and More
                 extras =
-                    listOf(
+                    listOfNotNull(
                         TopNavTab(
                             title = stringResource(R.string.phone_my_page),
                             selected = selectedIndex == MY_BENFLIX_INDEX && !clipsOpen && !downloadsOpen,
@@ -509,6 +513,20 @@ fun NavDrawer(
                                 viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
                             },
                         ),
+                        if (KidsMode.isActive) {
+                            null
+                        } else {
+                            TopNavTab(
+                                title = stringResource(R.string.benflix_requests),
+                                selected = selectedIndex == REQUESTS_INDEX && !clipsOpen && !downloadsOpen,
+                                onClick = {
+                                    clipsOpen = false
+                                    downloadsOpen = false
+                                    viewModel.setIndex(REQUESTS_INDEX)
+                                    viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
+                                },
+                            )
+                        },
                         TopNavTab(
                             title = stringResource(R.string.mood_quiz),
                             selected = false,
@@ -532,8 +550,8 @@ fun NavDrawer(
         }
         return
     }
-    // TV: one slim line. Home, Browse (every library in one list), Channels, Games, My Benflix and More
-    // (Now playing and the extras like the mood quiz)
+    // TV: one slim line. Home, Browse (every library in one list), Channels, Games, Requests and More
+    // (My Benflix, Now playing and the extras like the mood quiz)
     val allItems = serviceState.items + serviceState.moreItems
     val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
     val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
@@ -546,8 +564,19 @@ fun NavDrawer(
     val firstLibraries =
         listOf(moviesIndex, showsIndex).filter { it >= 0 }.mapNotNull { tabs.getOrNull(libraryOffset + it) }
     val browseTabs = firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }
+    val kids by KidsMode.active.collectAsState()
+    val myBenflixTab =
+        TopNavTab(
+            title = myBenflixTitle,
+            selected = selectedIndex == MY_BENFLIX_INDEX,
+            onClick = {
+                viewModel.setIndex(MY_BENFLIX_INDEX)
+                viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+            },
+        )
+    // Home, Channels, Games, Requests (not for Kids). My Benflix is the first thing under More.
     val mainTabs =
-        listOf(
+        listOfNotNull(
             tabs.first(),
             TopNavTab(
                 title = stringResource(R.string.channels),
@@ -555,17 +584,22 @@ fun NavDrawer(
                 onClick = onClickChannels,
             ),
             tabs.last(),
-            TopNavTab(
-                title = myBenflixTitle,
-                selected = selectedIndex == MY_BENFLIX_INDEX,
-                onClick = {
-                    viewModel.setIndex(MY_BENFLIX_INDEX)
-                    viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
-                },
-            ),
+            if (kids) {
+                null
+            } else {
+                TopNavTab(
+                    title = stringResource(R.string.benflix_requests),
+                    selected = selectedIndex == REQUESTS_INDEX,
+                    onClick = {
+                        viewModel.setIndex(REQUESTS_INDEX)
+                        viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
+                    },
+                )
+            },
         )
     val moreTabs =
-        tabs.filterIndexed { i, _ -> i in 1 until libraryOffset } +
+        listOf(myBenflixTab) +
+            tabs.filterIndexed { i, _ -> i in 1 until libraryOffset } +
             listOf(
                 TopNavTab(
                     title = stringResource(R.string.trailer_shuffle),

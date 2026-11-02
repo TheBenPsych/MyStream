@@ -1107,6 +1107,7 @@
     <string name="phone_my_benflix">My Benflix</string>
     <string name="phone_switch_profile">Switch profile</string>
     <string name="phone_my_page">My page (My List, Liked, history)</string>
+    <string name="benflix_requests">Requests</string>
     <string name="phone_extras">Extras</string>
     <string name="mood_shuffle">Show me different ones</string>
     <string name="mood_page_subtitle">A random handful from your library that fits the mood. New picks every time you open it.</string>
