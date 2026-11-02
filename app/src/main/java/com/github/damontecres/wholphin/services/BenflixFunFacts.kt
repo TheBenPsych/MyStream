@@ -53,7 +53,7 @@ class BenflixFunFacts
             withContext(WholphinDispatchers.IO) {
                 val seen = seenKeys().toHashSet()
                 val fresh = { f: String -> keyOf(f) !in seen }
-                val saved = savedFacts().filter(fresh)
+                val saved = savedFacts().filter { fresh(it) && looksComplete(it) }
                 val builtIn = BenflixTrivia.facts.filter(fresh)
                 val roll = Math.random()
                 val fact =
@@ -450,14 +450,28 @@ class BenflixFunFacts
             val section = rest.substring(0, end).replace(Regex("\n=+[^=]+=+\n"), "\n")
             val sentences =
                 section
-                    .split(Regex("(?<=[.!?])\\s+"))
+                    .split(SENTENCE_END)
                     .map { it.trim() }
-                    .filter { it.length in MIN_SENTENCE..MAX_SENTENCE }
+                    .filter { it.length in MIN_SENTENCE..MAX_SENTENCE && looksComplete(it) }
                     .filter { s -> GOOD_WORDS.any { s.contains(it, ignoreCase = true) } }
+                    .filter { s -> BORING_WORDS.none { s.contains(it, ignoreCase = true) } }
                     // Starts with a name, not "He", "It" or "This", so it makes sense on its own
                     .filter { s -> BAD_STARTS.none { s.startsWith("$it ") } }
             val best = sentences.firstOrNull { it.contains(name, ignoreCase = true) } ?: sentences.firstOrNull() ?: return null
             return if (best.contains(name, ignoreCase = true)) best else "$name: $best"
+        }
+
+        /**
+         * False for a sentence that was cut in the wrong place, like one ending on the "B." of
+         * "Courtney B. Vance", or one with an unclosed quote or bracket
+         */
+        private fun looksComplete(s: String): Boolean {
+            if (!s.endsWith(".") && !s.endsWith("!") && !s.endsWith("?") && !s.endsWith(".”") && !s.endsWith(".\"")) return false
+            if (Regex("(^|\\s)[A-Z]\\.$").containsMatchIn(s)) return false
+            if (ABBREVIATIONS.any { s.endsWith(" $it.") }) return false
+            if (s.count { it == '(' } != s.count { it == ')' }) return false
+            if (s.count { it == '“' } != s.count { it == '”' } || s.count { it == '"' } % 2 != 0) return false
+            return s.first().isUpperCase() || s.first().isDigit()
         }
 
         private suspend fun <T> safe(block: suspend () -> T): T? =
@@ -472,7 +486,7 @@ class BenflixFunFacts
 
         companion object {
             private const val PREFS = "benflix_fun_facts"
-            private const val KEY = "facts"
+            private const val KEY = "facts2"
             private const val SEPARATOR = "\u001E"
             private const val MAX_SAVED = 400
             private const val SEEN_KEY = "seen"
@@ -491,27 +505,68 @@ class BenflixFunFacts
             private const val MIN_EPISODES = 730
             private val GOOD_WORDS =
                 listOf(
-                    "filmed",
-                    "shot ",
-                    "cast",
                     "budget",
                     "originally",
                     "improvis",
                     "real ",
                     "actual",
                     "practical",
-                    "weeks",
-                    "days",
                     "record",
                     "inspired",
                     "nickname",
                     "first time",
-                    "voice",
-                    "sound",
                     "props",
+                    "turned down",
+                    "accident",
+                    "injur",
+                    "secret",
+                    "replaced",
+                    "auditioned",
+                    "ad-lib",
+                    "by hand",
+                    "for real",
+                    "animatronic",
+                    "puppet",
+                    "trained",
+                    "learned to",
+                    "did his own",
+                    "did her own",
+                    "stunt",
                     "costume",
-                    "location",
                 )
+
+            /** A sentence ends at . ! or ? and a space, but not after an initial ("Courtney B. Vance") or a title ("Dr.") */
+            private val SENTENCE_END =
+                Regex(
+                    "(?<=[.!?])(?<!(^|\\s)[A-Z]\\.)" +
+                        "(?<!\\b(Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|Mt|No)\\.)\\s+(?=[A-Z0-9\"“])",
+                )
+            private val ABBREVIATIONS = listOf("Mr", "Mrs", "Ms", "Dr", "St", "Jr", "Sr", "vs", "Mt", "No")
+
+            /** News-style lines (casting talks, release dates, money) that aren't fun to read */
+            private val BORING_WORDS =
+                listOf(
+                    "was asked",
+                    "announced",
+                    "confirmed",
+                    "in talks",
+                    "negotiat",
+                    "reported",
+                    "principal photography",
+                    "wrapped",
+                    "release date",
+                    "box office",
+                    "joined the cast",
+                    "was cast",
+                    "were cast",
+                    "signed on",
+                    "set to",
+                    "expected to",
+                    "would return",
+                    "screenplay",
+                    "deal",
+                )
+
             private val BAD_STARTS = listOf("He", "She", "It", "They", "This", "These", "That", "His", "Her", "Their", "However", "Also")
         }
     }

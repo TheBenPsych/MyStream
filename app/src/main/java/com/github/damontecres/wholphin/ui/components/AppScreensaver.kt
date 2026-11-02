@@ -318,7 +318,7 @@ fun AppScreensaverContent(
                 )
                 // The fact fades over to the next one together with the picture
                 Crossfade(targetState = fact.first.orEmpty(), animationSpec = tween(2_000)) { text ->
-                    Text(text = text, color = Color.White, fontSize = 16.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                    Text(text = text, color = Color.White, fontSize = 16.sp, maxLines = 6, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
