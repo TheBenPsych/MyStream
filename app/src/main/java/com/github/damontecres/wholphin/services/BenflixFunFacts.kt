@@ -54,7 +54,7 @@ class BenflixFunFacts
                 val seen = seenKeys().toHashSet()
                 val fresh = { f: String -> keyOf(f) !in seen }
                 val saved = savedFacts().filter(fresh)
-                val builtIn = (BenflixTrivia.facts + BenflixTrivia.quotes).filter(fresh)
+                val builtIn = BenflixTrivia.facts.filter(fresh)
                 val roll = Math.random()
                 val fact =
                     when {
@@ -68,7 +68,7 @@ class BenflixFunFacts
                 } else {
                     // Everything has been shown: forget the older half and start over from those
                     forgetOldest()
-                    (BenflixTrivia.facts + BenflixTrivia.quotes).filter { keyOf(it) !in seenKeys().toHashSet() }.randomOrNull()?.also {
+                    BenflixTrivia.facts.filter { keyOf(it) !in seenKeys().toHashSet() }.randomOrNull()?.also {
                         markSeen(it)
                     }
                 }
@@ -152,7 +152,10 @@ class BenflixFunFacts
                 listOf(
                     ::actorFact,
                     ::anniversaryFact,
-                    ::taglineFact,
+                    ::fourKFact,
+                    ::bingeFact,
+                    ::episodesFact,
+                    ::newestFact,
                     ::longestFact,
                     ::directorFact,
                     ::decadeFact,
@@ -285,13 +288,55 @@ class BenflixFunFacts
                 }
         }
 
-        private suspend fun taglineFact(
+        private suspend fun fourKFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val count = countMovies(api, userId, GetItemsRequest(is4k = true))
+            if (count < MIN_DECADE_MOVIES) return null
+            return "Benflix has $count movies in 4K."
+        }
+
+        /** How long it would take to watch every movie back to back */
+        private suspend fun bingeFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val sample = movies(api, userId, SAMPLE).mapNotNull { it.runTimeTicks }
+            if (sample.size < MIN_DECADE_MOVIES) return null
+            val count = countMovies(api, userId, GetItemsRequest())
+            val days = sample.average() * count / TICKS_PER_MINUTE / MINUTES_PER_DAY
+            if (days < 1) return null
+            return "Watching every movie on Benflix back to back, with no sleep, would take about ${days.toInt()} days."
+        }
+
+        private suspend fun episodesFact(
+            api: ApiClient,
+            userId: UUID,
+        ): String? {
+            val episodes =
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userId,
+                            recursive = true,
+                            includeItemTypes = listOf(BaseItemKind.EPISODE),
+                            limit = 0,
+                            enableTotalRecordCount = true,
+                        ),
+                    ).content.totalRecordCount
+            if (episodes < MIN_EPISODES) return null
+            return "Benflix has $episodes TV episodes. At one a day, that's about ${episodes / 365} years of TV."
+        }
+
+        private suspend fun newestFact(
             api: ApiClient,
             userId: UUID,
         ): String? =
-            movies(api, userId, SAMPLE, fields = listOf(ItemFields.TAGLINES))
-                .firstOrNull { !it.taglines.isNullOrEmpty() && it.taglines!!.first().length in 10..120 }
-                ?.let { "The poster for ${it.name} said: “${it.taglines!!.first()}”" }
+            movies(api, userId, 1, sortBy = ItemSortBy.DATE_CREATED, sortOrder = SortOrder.DESCENDING)
+                .firstOrNull()
+                ?.name
+                ?.let { "The newest movie added to Benflix is $it." }
 
         private suspend fun longestFact(
             api: ApiClient,
@@ -442,6 +487,8 @@ class BenflixFunFacts
             private const val MIN_SENTENCE = 50
             private const val MAX_SENTENCE = 190
             private const val TICKS_PER_MINUTE = 600_000_000L
+            private const val MINUTES_PER_DAY = 1_440
+            private const val MIN_EPISODES = 730
             private val GOOD_WORDS =
                 listOf(
                     "filmed",
