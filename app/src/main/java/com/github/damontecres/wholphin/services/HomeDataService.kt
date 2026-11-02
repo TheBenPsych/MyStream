@@ -101,9 +101,13 @@ class HomeDataService
                             row.viewOptions.useSeries,
                         )
 
+                    // Benflix: a show you finished that just got a new season goes first
+                    val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
+                    val withBack = back + resume.withoutShowsIn(back)
+
                     Success(
                         title = ResStringProvider(R.string.continue_watching),
-                        items = resume,
+                        items = withBack,
                         viewOptions = row.viewOptions,
                         rowType = row,
                         showViewMore = resume.size >= limit,
@@ -147,7 +151,9 @@ class HomeDataService
                             prefs.maxDaysNextUp,
                             row.viewOptions.useSeries,
                         )
-                    val combined = latestNextUpService.buildCombined(resume, nextUp)
+                    // Benflix: a show you finished that just got a new season goes first
+                    val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
+                    val combined = back + latestNextUpService.buildCombined(resume, nextUp).withoutShowsIn(back)
 
                     Success(
                         title = ResStringProvider(R.string.continue_watching),
@@ -763,3 +769,10 @@ private val Library.includeItemTypes: List<BaseItemKind>?
         }
 
 private val HomeItemFieldsBoxSets get() = HomeItemFields + listOf(ItemFields.CHILD_COUNT)
+
+/** Benflix: drop other cards of the shows already shown at the front as NEW SEASON */
+private fun List<BaseItem>.withoutShowsIn(back: List<BaseItem>): List<BaseItem> {
+    if (back.isEmpty()) return this
+    val shows = back.mapNotNull { it.data.seriesId }.toSet()
+    return filterNot { it.data.seriesId != null && it.data.seriesId in shows }
+}

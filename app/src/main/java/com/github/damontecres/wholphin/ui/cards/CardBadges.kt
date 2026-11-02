@@ -17,6 +17,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.NewSeasonBack
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -44,6 +45,16 @@ fun CardWordBadge(
 ) {
     if (item == null) return
     val isTv = rememberIsTv()
+    // Benflix "Your show is back": a show you finished got a new season this week
+    val newSeason = remember(item) { NewSeasonBack.has(item) }
+    if (newSeason) {
+        CardBadge(
+            text = "NEW SEASON",
+            background = MaterialTheme.colorScheme.primary,
+            modifier = modifier,
+        )
+        return
+    }
     val isNew = remember(item) { item.isNew }
     if (isNew) {
         CardBadge(

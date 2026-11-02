@@ -97,7 +97,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /** The steps of the welcome setup, in order */
-enum class WelcomeStep { HELLO, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, FAVORITES }
+enum class WelcomeStep { HELLO, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, HIDE_GENRES, FAVORITES }
 
 /** A poster on the "Pick a few things you love" wall */
 data class WelcomePoster(
@@ -354,6 +354,7 @@ fun WelcomePage(
                 WelcomeStep.SUBTITLES -> SubtitlesStep(viewModel)
                 WelcomeStep.EASY_READ -> EasyReadStep(viewModel)
                 WelcomeStep.PARENT_PIN -> ParentPinStep(viewModel)
+                WelcomeStep.HIDE_GENRES -> HideGenresStep(viewModel)
                 WelcomeStep.FAVORITES -> FavoritesStep(viewModel, isTv)
             }
         }
@@ -386,6 +387,17 @@ private fun StepButtons(
             Text("Skip")
         }
     }
+}
+
+/** Optional: genres this person never wants to see (they can change it later in Settings > Profile) */
+@Composable
+private fun HideGenresStep(viewModel: WelcomeViewModel) {
+    StepTitle(
+        title = "Anything you never want to see?",
+        subtitle = "Press a genre to hide it from your Home and library pages. Search still finds it. Most people skip this.",
+    )
+    HiddenGenresPicker(modifier = Modifier.padding(vertical = 8.dp))
+    StepButtons(viewModel, nextLabel = "Next")
 }
 
 /** Optional: families can set a parent PIN, which puts the Kids profile to bed at 9 PM */
