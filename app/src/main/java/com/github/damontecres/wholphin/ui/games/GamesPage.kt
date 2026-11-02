@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,6 +67,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -91,10 +93,13 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.GameLibraryException
 import com.github.damontecres.wholphin.services.GameStreamReturn
+import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlayTarget
@@ -223,6 +228,7 @@ class GamesViewModel
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
         private val games: GameLibraryClient,
+        private val highScores: BenflixHighScores,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
 
@@ -236,8 +242,28 @@ class GamesViewModel
         private val _starting = MutableStateFlow<Int?>(null)
         val starting: StateFlow<Int?> = _starting
 
+        /** "Highest scores": game id to every account's best, highest first (null while loading) */
+        private val _board = MutableStateFlow<Map<String, List<HighScore>>?>(null)
+        val board: StateFlow<Map<String, List<HighScore>>?> = _board
+
         init {
             reload()
+        }
+
+        /** Saves this account's bests to the server and fetches everyone's (Kids and Guest only look) */
+        fun refreshBoard() {
+            val user = serverRepository.currentUser ?: return
+            val isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true
+            val mine =
+                if (KidsMode.isActive || GuestMode.isActive) {
+                    emptyMap()
+                } else {
+                    BuiltInGame.entries.associate { it.name to prefs.getInt("${user.id}_${it.name}", 0) } +
+                        BOARD_EXTRA_GAMES.keys.associateWith { prefs.getInt("${user.id}_$it", 0) }
+                }
+            viewModelScope.launch {
+                _board.value = highScores.sync(user.id, user.name, isAdmin && !KidsMode.isActive && !GuestMode.isActive, mine)
+            }
         }
 
         fun reload() {
@@ -347,6 +373,13 @@ class GamesViewModel
 
         companion object {
             private const val RECENT_GAMES = 8
+
+            /** The movie games that keep a best score too (their saved key to their name) */
+            val BOARD_EXTRA_GAMES =
+                linkedMapOf(
+                    "HIGHER_LOWER_5" to "Higher or Lower",
+                    "GUESS_THE_MOVIE" to "Guess the movie",
+                )
         }
     }
 
@@ -383,10 +416,10 @@ fun GamesPage(
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        Text(
-            if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // One "works with" line for the whole page, instead of chips on every tile
+        WorksWith(
+            text = if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
+            isTv = isTv,
         )
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
@@ -400,6 +433,7 @@ fun GamesPage(
                         icon = R.string.fa_eye,
                         colors = listOf(Color(0xFF0E7490), Color(0xFF1E3A8A)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
+                        isTv = isTv,
                         modifier = mod,
                     )
                 },
@@ -410,6 +444,7 @@ fun GamesPage(
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
+                        isTv = isTv,
                         modifier = mod,
                     )
                 },
@@ -420,17 +455,25 @@ fun GamesPage(
                         icon = R.string.fa_arrow_up_long,
                         colors = listOf(Color(0xFF15803D), Color(0xFF7F1D1D)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.HigherLower) },
+                        isTv = isTv,
                         modifier = mod,
                     )
                 },
             )
         if (isTv) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                movieGames.forEach { it(Modifier.weight(1f)) }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.height(IntrinsicSize.Min),
+            ) {
+                movieGames.forEach { it(Modifier.weight(1f).fillMaxHeight()) }
             }
         } else {
             movieGames.forEach { it(Modifier.fillMaxWidth()) }
         }
+        ScoresCard(viewModel, isTv = isTv, modifier = Modifier.fillMaxWidth())
+        val board by viewModel.board.collectAsState()
+        LaunchedEffect(Unit) { viewModel.refreshBoard() }
+        board?.let { HighestScores(it, isTv = isTv) }
 
         // Your own games, from the RomM game library on the server (admin only for now)
         if (library != LibraryState.Hidden) {
@@ -733,7 +776,7 @@ private fun playedAgo(time: Long): String {
     }
 }
 
-/** One spot on the Arcade wall next to (or below) the big tile */
+/** One spot on the Arcade wall */
 private sealed interface WallItem {
     data class Game(
         val game: BuiltInGame,
@@ -743,12 +786,8 @@ private sealed interface WallItem {
 }
 
 /**
- * The Arcade wall: a collage with one big tile for the game you played last (or a game of the day),
- * smaller tiles packed around it, a "Surprise me" tile, and your best scores.
- *
- * TV: a grid six small tiles wide. The big tile takes 2 x 2, three columns of small tiles sit next to it,
- * and the scores card takes the last column. More games than fit flow into rows of six underneath.
- * Phone: the big tile across the top, then two small tiles per row, then the scores.
+ * The Arcade wall: every built-in game as a same-size tile (the one you played last comes first),
+ * plus a "Surprise me" tile. TV: four tiles per row. Phone: two per row.
  */
 @Composable
 private fun ArcadeWall(
@@ -756,129 +795,65 @@ private fun ArcadeWall(
     isTv: Boolean,
     focusRequester: FocusRequester,
 ) {
-    val featured = remember { viewModel.featured() }
-    val label = remember { if (viewModel.lastPlayed() != null) "Play again" else "Game of the day" }
+    val last = remember { viewModel.lastPlayed() }
     val tiles =
-        remember(featured) {
-            BuiltInGame.entries.filter { it != featured }.map { WallItem.Game(it) } + WallItem.Surprise
+        remember(last) {
+            val games = listOfNotNull(last) + BuiltInGame.entries.filter { it != last }
+            games.map { WallItem.Game(it) } + WallItem.Surprise
         }
     val gap = if (isTv) 16.dp else 10.dp
-
-    @Composable
-    fun Small(
-        item: WallItem,
-        modifier: Modifier,
-    ) {
-        when (item) {
-            is WallItem.Game -> {
-                GameTile(
-                    game = item.game,
-                    best = viewModel.best(item.game),
-                    big = false,
-                    isTv = isTv,
-                    onClick = { viewModel.open(item.game) },
-                    modifier = modifier,
-                )
-            }
-
-            WallItem.Surprise -> {
-                SurpriseTile(isTv = isTv, onClick = { viewModel.surprise(featured) }, modifier = modifier)
-            }
-        }
-    }
+    val columns = if (isTv) 4 else 2
 
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        if (isTv) {
-            val unit = (maxWidth - gap * 5) / 6
-            val smallHeight = unit * .78f
-            val bigHeight = smallHeight * 2 + gap
-            val besideBig = tiles.take(6)
-            val below = tiles.drop(6)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(gap),
-                modifier = Modifier.padding(vertical = 12.dp),
-            ) {
+        val unit = (maxWidth - gap * (columns - 1)) / columns
+        val tileHeight = if (isTv) unit * .6f else 112.dp
+        Column(
+            verticalArrangement = Arrangement.spacedBy(gap),
+            modifier = Modifier.padding(vertical = if (isTv) 12.dp else 4.dp),
+        ) {
+            tiles.chunked(columns).forEachIndexed { r, row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    GameTile(
-                        game = featured,
-                        best = viewModel.best(featured),
-                        big = true,
-                        isTv = true,
-                        label = label,
-                        onClick = { viewModel.open(featured) },
-                        modifier =
+                    row.forEachIndexed { c, item ->
+                        val mod =
                             Modifier
-                                .size(width = unit * 2 + gap, height = bigHeight)
-                                .focusRequester(focusRequester),
-                    )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(gap),
-                        modifier = Modifier.width(unit * 3 + gap * 2),
-                    ) {
-                        besideBig.chunked(3).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                row.forEach { Small(it, Modifier.size(width = unit, height = smallHeight)) }
+                                .size(width = unit, height = tileHeight)
+                                .then(if (r == 0 && c == 0) Modifier.focusRequester(focusRequester) else Modifier)
+                        when (item) {
+                            is WallItem.Game -> {
+                                GameTile(
+                                    game = item.game,
+                                    best = viewModel.best(item.game),
+                                    isTv = isTv,
+                                    onClick = { viewModel.open(item.game) },
+                                    modifier = mod,
+                                )
+                            }
+
+                            WallItem.Surprise -> {
+                                SurpriseTile(isTv = isTv, onClick = { viewModel.surprise(viewModel.featured()) }, modifier = mod)
                             }
                         }
                     }
-                    ScoresCard(viewModel, isTv = true, modifier = Modifier.size(width = unit, height = bigHeight))
                 }
-                below.chunked(6).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        row.forEach { Small(it, Modifier.size(width = unit, height = smallHeight)) }
-                    }
-                }
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                GameTile(
-                    game = featured,
-                    best = viewModel.best(featured),
-                    big = true,
-                    isTv = false,
-                    label = label,
-                    onClick = { viewModel.open(featured) },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                )
-                tiles.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        row.forEach {
-                            Small(
-                                it,
-                                Modifier
-                                    .weight(1f)
-                                    .height(112.dp),
-                            )
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-                ScoresCard(viewModel, isTv = false, modifier = Modifier.fillMaxWidth())
             }
         }
     }
 }
 
-/** A built-in game's tile: big (with the "works with" chips and the description) or small (just the name) */
-@OptIn(ExperimentalLayoutApi::class)
+/** A built-in game's tile: the game's picture, its name and your best score */
 @Composable
 private fun GameTile(
     game: BuiltInGame,
     best: Int,
-    big: Boolean,
     isTv: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String? = null,
 ) {
-    val shape = RoundedCornerShape(if (big) 14.dp else 10.dp)
+    val shape = RoundedCornerShape(12.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = if (big) 1.04f else 1.08f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
@@ -897,95 +872,47 @@ private fun GameTile(
                 preview.preparePreview(size.width, size.height)
                 with(preview) { draw(textMeasurer) }
             }
-            // Fade the picture behind the words so they stay easy to read
+            // Fade the picture behind the name so it stays easy to read
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        if (big) {
-                            Brush.horizontalGradient(
-                                0f to game.colors[1].copy(alpha = .92f),
-                                0.55f to game.colors[1].copy(alpha = .5f),
-                                1f to Color.Transparent,
-                            )
-                        } else {
-                            Brush.verticalGradient(
-                                0f to game.colors[1].copy(alpha = .9f),
-                                0.6f to game.colors[1].copy(alpha = .25f),
-                                1f to Color.Black.copy(alpha = .35f),
-                            )
-                        },
+                        Brush.verticalGradient(
+                            0f to game.colors[1].copy(alpha = .95f),
+                            0.45f to game.colors[1].copy(alpha = .6f),
+                            0.75f to game.colors[1].copy(alpha = .15f),
+                            1f to Color.Black.copy(alpha = .35f),
+                        ),
                     ),
             )
             Column(
-                verticalArrangement = Arrangement.spacedBy(if (big) 8.dp else 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(if (big) 18.dp else 10.dp),
+                        .padding(if (isTv) 12.dp else 10.dp),
             ) {
-                if (big) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        if (game.remoteOk) Badge(PlayWith.REMOTE, "Remote")
-                        Badge(PlayWith.CONTROLLER, "Controller")
-                        Badge(PlayWith.PHONE, "Phone")
-                    }
-                }
                 Text(
                     game.title,
-                    fontSize =
-                        if (big) {
-                            26.sp
-                        } else if (isTv) {
-                            17.sp
-                        } else {
-                            18.sp
-                        },
+                    fontSize = if (isTv) 20.sp else 18.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White,
                     maxLines = 2,
-                    lineHeight = if (big) 28.sp else 19.sp,
+                    lineHeight = if (isTv) 22.sp else 19.sp,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (big) {
-                    Text(
-                        game.tagline,
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = .9f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(.75f),
-                    )
-                }
                 Box(Modifier.weight(1f))
-                val scoreText =
-                    when {
-                        big && label != null && best > 0 -> "$label · Best $best"
-                        big && label != null -> label
-                        best > 0 -> "Best $best"
-                        else -> "New"
-                    }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = scoreText,
-                        fontSize = if (big) 14.sp else 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        modifier =
-                            Modifier
-                                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = if (big) 10.dp else 6.dp, vertical = if (big) 5.dp else 2.dp),
-                    )
-                    if (!big) {
-                        Spacer(Modifier.weight(1f))
-                        // How you can play it: remote, controller, phone
-                        PlayWithIcons(remoteOk = game.remoteOk)
-                    }
-                }
+                Text(
+                    text = if (best > 0) "Best $best" else "New",
+                    fontSize = if (isTv) 12.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    modifier =
+                        Modifier
+                            .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                )
             }
         }
     }
@@ -1026,7 +953,10 @@ private fun SurpriseTile(
     }
 }
 
-/** "Your best scores": every built-in game with this profile's best, highest first */
+/**
+ * "Your best scores": every built-in game with this profile's best, highest first.
+ * TV: one slim strip across the page, a cell per game. Phone: a simple list.
+ */
 @Composable
 private fun ScoresCard(
     viewModel: GamesViewModel,
@@ -1037,31 +967,60 @@ private fun ScoresCard(
         BuiltInGame.entries
             .map { it to viewModel.best(it) }
             .sortedByDescending { it.second }
-    val shown = if (isTv) scores.take(7) else scores
+    val topBest = scores.firstOrNull()?.second ?: 0
+
+    fun scoreText(best: Int) = if (best > 0) "%,d".format(best) else "—"
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(if (isTv) 6.dp else 8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isTv) 10.dp else 8.dp),
         modifier =
             modifier
-                .background(Color(0xFF16161A), RoundedCornerShape(10.dp))
-                .padding(if (isTv) 12.dp else 16.dp),
+                .background(Color(0xFF16161A), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Text("Your best scores", fontSize = if (isTv) 15.sp else 18.sp, fontWeight = FontWeight.Black, color = Color.White)
-        shown.forEachIndexed { i, (game, best) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    game.title,
-                    fontSize = if (isTv) 11.sp else 14.sp,
-                    color = Color.White.copy(alpha = .75f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    if (best > 0) "%,d".format(best) else "—",
-                    fontSize = if (isTv) 12.sp else 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (i == 0 && best > 0) Color(0xFFFFD54F) else Color.White,
-                )
+        Text("Your best scores", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+        if (isTv) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                scores.forEach { (game, best) ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            game.title,
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = .75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            scoreText(best),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (best > 0 && best == topBest) Color(0xFFFFD54F) else Color.White,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        } else {
+            scores.forEach { (game, best) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        game.title,
+                        fontSize = 15.sp,
+                        color = Color.White.copy(alpha = .75f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        scoreText(best),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (best > 0 && best == topBest) Color(0xFFFFD54F) else Color.White,
+                    )
+                }
             }
         }
     }
@@ -1079,11 +1038,11 @@ private fun Badge(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier =
             Modifier
-                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 7.dp, vertical = 3.dp),
+                .background(Color.White.copy(alpha = .1f), RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         when (kind) {
             PlayWith.REMOTE -> {
@@ -1100,7 +1059,7 @@ private fun Badge(
         }
         Text(
             text = text,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 1,
@@ -1108,24 +1067,59 @@ private fun Badge(
     }
 }
 
-/** Just the icons (remote, controller, phone) in a small dark pill, for the small game tiles */
+/**
+ * The page's intro line plus one set of "works with" chips. Every game here works with a TV remote,
+ * a controller, or a phone, so the chips live here once instead of on every tile.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlayWithIcons(remoteOk: Boolean) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        modifier =
-            Modifier
-                .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
-    ) {
-        if (remoteOk) RemoteIcon(Modifier.size(width = 6.dp, height = 12.dp))
-        Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
-        Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+private fun WorksWith(
+    text: String,
+    isTv: Boolean,
+) {
+    @Composable
+    fun Chips() {
+        Badge(PlayWith.REMOTE, "Remote")
+        Badge(PlayWith.CONTROLLER, "Controller")
+        Badge(PlayWith.PHONE, "Phone")
+    }
+    if (isTv) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text("Works with", fontSize = 12.sp, color = Color.White.copy(alpha = .6f))
+            Chips()
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Chips()
+            }
+        }
     }
 }
 
-/** A colourful tile for the movie games (Guess the movie, Daily riddle), with room for the whole description */
+/**
+ * A colourful tile for the movie games (Guess the movie, Daily riddle, Higher or Lower).
+ * The whole title and description always show: nothing is cut off. On TV the icon sits next to the
+ * title so the text gets the full width of the tile.
+ */
 @Composable
 private fun MovieGameTile(
     title: String,
@@ -1133,6 +1127,7 @@ private fun MovieGameTile(
     icon: Int,
     colors: List<Color>,
     onClick: () -> Unit,
+    isTv: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(14.dp)
@@ -1147,34 +1142,55 @@ private fun MovieGameTile(
         colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
         modifier = modifier,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 128.dp)
-                    .background(Brush.linearGradient(colors))
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
-        ) {
+        @Composable
+        fun IconBox(boxSize: Int) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .size(56.dp)
-                        .background(Color.White.copy(alpha = .16f), RoundedCornerShape(12.dp)),
+                        .size(boxSize.dp)
+                        .background(Color.White.copy(alpha = .16f), RoundedCornerShape(10.dp)),
             ) {
-                Text(stringResource(icon), fontFamily = FontAwesome, fontSize = 26.sp, color = Color.White)
+                Text(stringResource(icon), fontFamily = FontAwesome, fontSize = (boxSize * .45f).sp, color = Color.White)
             }
+        }
+        if (isTv) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .heightIn(min = 120.dp)
+                        .background(Brush.linearGradient(colors))
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
             ) {
-                Text(title, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 1)
-                Text(subtitle, fontSize = 14.sp, lineHeight = 18.sp, color = Color.White.copy(alpha = .9f))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Badge(PlayWith.REMOTE, "Remote")
-                    Badge(PlayWith.PHONE, "Phone")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    IconBox(40)
+                    Text(title, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Black, color = Color.White)
+                }
+                Text(subtitle, fontSize = 14.sp, lineHeight = 19.sp, color = Color.White.copy(alpha = .9f))
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 104.dp)
+                        .background(Brush.linearGradient(colors))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                IconBox(48)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(title, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Black, color = Color.White)
+                    Text(subtitle, fontSize = 14.sp, lineHeight = 18.sp, color = Color.White.copy(alpha = .9f))
                 }
             }
         }
@@ -1533,3 +1549,83 @@ private class GameSounds(
         pool.release()
     }
 }
+
+/**
+ * "Highest scores": every account's best in each game, arcade style with 3-letter names.
+ * TV: four games per row. Phone: two per row.
+ */
+@Composable
+private fun HighestScores(
+    board: Map<String, List<HighScore>>,
+    isTv: Boolean,
+) {
+    val games =
+        BuiltInGame.entries.map { it.name to it.title } +
+            GamesViewModel.BOARD_EXTRA_GAMES.entries.map { it.key to it.value }
+    val columns = if (isTv) 4 else 2
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF16161A), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text("Highest scores", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+        Text(
+            "Everyone's best on this server",
+            fontSize = 13.sp,
+            color = Color.White.copy(alpha = .6f),
+        )
+        games.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                row.forEach { (id, title) ->
+                    val scores = board[id].orEmpty().take(BOARD_ROWS)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .background(Color.White.copy(alpha = .05f), RoundedCornerShape(8.dp))
+                                .padding(10.dp),
+                    ) {
+                        Text(
+                            title,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 2,
+                            lineHeight = 16.sp,
+                        )
+                        if (scores.isEmpty()) {
+                            Text("No scores yet", fontSize = 13.sp, color = Color.White.copy(alpha = .5f))
+                        }
+                        scores.forEachIndexed { i, entry ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "${i + 1}  ${entry.name}",
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .85f),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "%,d".format(entry.score),
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .85f),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+                repeat(columns - row.size) { Box(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** How many accounts show under each game on "Highest scores" */
+private const val BOARD_ROWS = 5
