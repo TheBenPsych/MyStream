@@ -130,7 +130,7 @@ class MovieViewModel
                         chapters = chapters,
                     )
                 }
-                backdropService.submit(movie)
+                backdropService.submit(movie, strongGlow = true)
                 // Benflix: get the movie ready to play while the page is open
                 playbackPrep.hold(movie.data)
                 viewModelScope.launchIO {

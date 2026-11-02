@@ -14,22 +14,24 @@
     <string name="benflix_profile_color">Profile colour</string>
     <string name="benflix_profile_color_summary">Used for progress bars and buttons</string>
     <string name="benflix_color_red">Benflix red</string>
-    <string name="benflix_color_blue">Blue</string>
-    <string name="benflix_color_green">Green</string>
+    <string name="benflix_color_blue">Ocean</string>
+    <string name="benflix_color_green">Forest</string>
     <string name="benflix_color_gold">Gold</string>
-    <string name="benflix_color_purple">Purple</string>
-    <string name="benflix_color_pink">Pink</string>
+    <string name="benflix_color_purple">Grape</string>
+    <string name="benflix_color_pink">Rose</string>
     <string name="benflix_color_teal">Teal</string>
-    <string name="benflix_color_orange">Orange</string>
+    <string name="benflix_color_orange">Sunset</string>
+    <string name="benflix_color_mono">Mono</string>
+    <!-- Same order as ProfileThemeChoices in ProfileThemes.kt -->
     <string-array name="benflix_accent_colors">
         <item>@string/benflix_color_red</item>
         <item>@string/benflix_color_blue</item>
         <item>@string/benflix_color_green</item>
-        <item>@string/benflix_color_gold</item>
+        <item>@string/benflix_color_orange</item>
         <item>@string/benflix_color_purple</item>
         <item>@string/benflix_color_pink</item>
-        <item>@string/benflix_color_teal</item>
-        <item>@string/benflix_color_orange</item>
+        <item>@string/benflix_color_gold</item>
+        <item>@string/benflix_color_mono</item>
     </string-array>
 
     <!-- Come back where you left off -->

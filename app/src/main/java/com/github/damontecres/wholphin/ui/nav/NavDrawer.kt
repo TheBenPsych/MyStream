@@ -587,6 +587,8 @@ fun NavDrawer(
             }
             PhoneNavBar(
                 tabs = phoneTabs,
+                // Shrinks to icons only while you scroll down (same moment the header hides)
+                compact = !headerVisible && !clipsOpen && !downloadsOpen,
                 clipsSelected = clipsOpen,
                 onClickClips = {
                     downloadsOpen = false
