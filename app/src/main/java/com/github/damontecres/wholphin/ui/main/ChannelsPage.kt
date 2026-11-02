@@ -230,7 +230,10 @@ private fun GuideGrid(
                                     .background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(5.dp)),
                         ) {
                             Text(
-                                text = schedule.channel.title.take(1).uppercase(),
+                                text =
+                                    schedule.channel.title
+                                        .take(1)
+                                        .uppercase(),
                                 fontFamily = BenflixTitleFont,
                                 fontSize = 17.sp,
                                 color = Color.White,

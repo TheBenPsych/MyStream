@@ -360,15 +360,15 @@ sealed interface NavDrawerItem {
     }
 }
 
-/**
- * A server provided nav drawer item, typically a library
- */
 /** A Browse card's picture and how many titles the library has */
 data class LibraryArt(
     val imageUrl: String?,
     val count: Int?,
 )
 
+/**
+ * A server provided nav drawer item, typically a library
+ */
 data class ServerNavDrawerItem(
     val itemId: UUID,
     val name: String,
