@@ -7,6 +7,7 @@ import androidx.core.content.edit
 import androidx.datastore.core.DataStore
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
@@ -55,11 +56,14 @@ class BenflixSettingsSync
         suspend fun restoreFor(userId: UUID) {
             readyUserId = null
             _ready.value = null
+            var nextUpMoved = true
             try {
-                val saved =
+                val customPrefs =
                     displayPreferencesService
                         .getDisplayPreferences(userId)
-                        .customPrefs[KEY]
+                        .customPrefs
+                nextUpMoved = customPrefs[NEXT_UP_MOVED_KEY] != null
+                val saved = customPrefs[KEY]
                 if (saved != null) {
                     val parsed = AppPreferences.parseFrom(Base64.decode(saved, Base64.NO_WRAP))
                     var changed = false
@@ -84,10 +88,41 @@ class BenflixSettingsSync
                 Timber.w(ex, "Could not load saved Benflix settings")
                 lastSynced = null
             }
+            if (!nextUpMoved) moveNextUpCountdown(userId)
             readyUserId = userId
             _ready.value = userId
             // Save this device's settings as theirs if they have none saved yet
             upload(preferencesDataStore.data.first())
+        }
+
+        /**
+         * The next-episode countdown used to start at 15 seconds. Ben wanted 5, so anyone still on the
+         * old 15 is moved to 5 once (someone who picks 15 again later keeps it).
+         */
+        private suspend fun moveNextUpCountdown(userId: UUID) {
+            try {
+                preferencesDataStore.updateData { current ->
+                    if (current.playbackPreferences.autoPlayNextDelaySeconds == OLD_NEXT_UP_SECONDS) {
+                        current
+                            .toBuilder()
+                            .setPlaybackPreferences(
+                                current.playbackPreferences
+                                    .toBuilder()
+                                    .setAutoPlayNextDelaySeconds(AppPreference.AutoPlayNextDelay.defaultValue)
+                                    .build(),
+                            ).build()
+                    } else {
+                        current
+                    }
+                }
+                displayPreferencesService.updateDisplayPreferences(userId) {
+                    put(NEXT_UP_MOVED_KEY, "1")
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not move the next episode countdown")
+            }
         }
 
         /** Watches for setting changes and saves them to the person's account a few seconds later */
@@ -120,6 +155,8 @@ class BenflixSettingsSync
         companion object {
             private const val KEY = "benflix.settings.v1"
             private const val PREFS = "benflix_settings_sync"
+            private const val NEXT_UP_MOVED_KEY = "benflix.nextup5"
+            private const val OLD_NEXT_UP_SECONDS = 15L
         }
     }
 
