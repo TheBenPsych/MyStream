@@ -10,10 +10,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -229,9 +228,19 @@ fun HigherLowerPage(
             modifier
                 .fillMaxSize()
                 .background(Color(0xFF0B0B0D))
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 24.dp else 12.dp),
     ) {
+        FitScreen(isTv) { HigherLowerContent(state, isTv, viewModel) }
+    }
+}
+
+@Composable
+private fun HigherLowerContent(
+    state: HigherLowerState,
+    isTv: Boolean,
+    viewModel: HigherLowerViewModel,
+) {
+    run {
         when (val s = state) {
             HigherLowerState.Loading -> {
                 Text("Picking movies from your library…", fontSize = 20.sp, color = Color.White)
@@ -290,24 +299,45 @@ private fun HigherLowerRound(
             color = Color.White.copy(alpha = .8f),
             textAlign = TextAlign.Center,
         )
+        // On TV the posters are sized from the screen's height so the buttons and the answer always fit below
+        val tvPosterWidth = tvPictureHeight(0.42f) * (2f / 3f)
         Row(
-            horizontalArrangement = Arrangement.spacedBy(if (isTv) 32.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 32.dp else 12.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.Top,
-            modifier = Modifier.fillMaxWidth(if (isTv) 0.7f else 1f),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            PosterSide(state.known, showScore = true, highlight = null, modifier = Modifier.weight(1f))
+            PosterSide(
+                state.known,
+                showScore = true,
+                highlight = null,
+                modifier = if (isTv) Modifier.width(tvPosterWidth) else Modifier.weight(1f),
+            )
             PosterSide(
                 state.guess,
                 showScore = state.right != null,
                 highlight = state.right,
-                modifier = Modifier.weight(1f),
+                modifier = if (isTv) Modifier.width(tvPosterWidth) else Modifier.weight(1f),
             )
         }
+        // The answer shows right above the buttons (the space is kept so nothing jumps)
+        Text(
+            text =
+                when (state.right) {
+                    true -> "Right! ${state.guess.name} has ${state.guess.score}%"
+                    false -> "Nope, ${state.guess.name} has ${state.guess.score}%"
+                    null -> " "
+                },
+            fontSize = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (state.right == true) Color(0xFF46D37A) else BenflixRed,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
         val first = remember(state.guess.name) { FocusRequester() }
         LaunchedEffect(state.guess.name) { first.tryRequestFocus() }
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth(if (isTv) 0.5f else 1f),
+            modifier = if (isTv) Modifier.width(tvPosterWidth * 2 + 32.dp) else Modifier.fillMaxWidth(),
         ) {
             listOf(true to "▲ Higher", false to "▼ Lower").forEachIndexed { i, (higher, label) ->
                 Button(
@@ -327,14 +357,6 @@ private fun HigherLowerRound(
                     Text(label, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
             }
-        }
-        state.right?.let { right ->
-            Text(
-                text = if (right) "Right! ${state.guess.score}%" else "Nope, ${state.guess.score}%",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (right) Color(0xFF46D37A) else BenflixRed,
-            )
         }
     }
 }
@@ -408,7 +430,7 @@ private fun HigherLowerEnd(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(top = 48.dp),
+        modifier = Modifier.padding(top = 24.dp),
     ) {
         Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White, textAlign = TextAlign.Center)
         Text(body, fontSize = 20.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)

@@ -10,11 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -309,9 +308,19 @@ fun GuessTheMoviePage(
             modifier
                 .fillMaxSize()
                 .background(Color(0xFF0B0B0D))
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 24.dp else 12.dp),
     ) {
+        FitScreen(isTv) { GuessContent(state, isTv, viewModel) }
+    }
+}
+
+@Composable
+private fun GuessContent(
+    state: GuessState,
+    isTv: Boolean,
+    viewModel: GuessTheMovieViewModel,
+) {
+    run {
         when (val s = state) {
             GuessState.Loading -> {
                 Text("Picking movies from your library…", fontSize = 20.sp, color = Color.White)
@@ -378,8 +387,7 @@ private fun RoundContent(
                     targetState = round.pictures.getOrNull(shown),
                     label = "guess-picture",
                     modifier =
-                        Modifier
-                            .fillMaxWidth(if (isTv) 0.62f else 1f)
+                        (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFF1C1C1F)),
@@ -397,8 +405,7 @@ private fun RoundContent(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier =
-                        Modifier
-                            .fillMaxWidth(if (isTv) 0.62f else 1f)
+                        (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 7f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFF1C1C1F))
@@ -413,6 +420,20 @@ private fun RoundContent(
                 }
             }
         }
+        // The answer shows above the choices (the space is kept so nothing jumps)
+        Text(
+            text =
+                when (state.picked) {
+                    null -> " "
+                    round.answer -> "Right! +${state.pointsThisRound}"
+                    else -> "It was ${round.answer}"
+                },
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (state.picked == round.answer) Color(0xFF46D37A) else Color.White,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
         val firstFocus = remember(round.number) { FocusRequester() }
         LaunchedEffect(round.number) { firstFocus.tryRequestFocus() }
         // Two by two on TV, one per line on phones
@@ -449,14 +470,6 @@ private fun RoundContent(
                 }
             }
         }
-        state.picked?.let { picked ->
-            Text(
-                text = if (picked == round.answer) "Right! +${state.pointsThisRound}" else "It was ${round.answer}",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (picked == round.answer) Color(0xFF46D37A) else Color.White,
-            )
-        }
     }
 }
 
@@ -472,7 +485,7 @@ private fun EndCard(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(top = 48.dp),
+        modifier = Modifier.padding(top = 24.dp),
     ) {
         Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White)
         Text(body, fontSize = 20.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
