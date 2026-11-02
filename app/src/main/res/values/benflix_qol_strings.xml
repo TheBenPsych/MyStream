@@ -96,4 +96,15 @@
     <string name="benflix_parent_pin_on">On: Kids bedtime is 9 PM, the PIN unlocks 30 more minutes</string>
     <string name="benflix_parent_pin_off">Off: Kids is never locked</string>
     <string name="benflix_settings_admin">ADMIN</string>
+    <!-- Player choices without the "External app" option -->
+    <string-array name="benflix_player_backend_options">
+        <item>@string/exoplayer</item>
+        <item>@string/mpv</item>
+        <item>@string/prefer_mpv</item>
+    </string-array>
+    <string-array name="benflix_player_backend_options_subtitles">
+        <item /><!-- Intentionally blank -->
+        <item /><!-- Intentionally blank -->
+        <item>@string/player_backend_options_subtitles_prefer_mpv</item>
+    </string-array>
 </resources>
