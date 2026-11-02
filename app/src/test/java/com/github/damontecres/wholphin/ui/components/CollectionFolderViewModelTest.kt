@@ -110,7 +110,6 @@ class CollectionFolderViewModelTest {
             favoriteWatchManager = mockk(relaxed = true),
             backdropService = mockk(relaxed = true),
             navigationManager = mockk(relaxed = true),
-            themeSongPlayer = mockk(relaxed = true),
             userPreferencesService = mockk(relaxed = true),
             mediaManagementService = mockMediaManagementService,
             musicService = mockk(relaxed = true),
