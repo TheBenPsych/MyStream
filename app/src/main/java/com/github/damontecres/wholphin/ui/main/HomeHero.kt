@@ -242,7 +242,9 @@ fun SlideDots(
                                 when {
                                     // Benflix red on the one you're on, so it's easy to see
                                     focused -> DOT_RED
+
                                     selected -> Color.White
+
                                     else -> Color.White.copy(alpha = .35f)
                                 },
                                 RoundedCornerShape(4.dp),
