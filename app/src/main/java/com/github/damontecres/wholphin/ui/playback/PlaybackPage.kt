@@ -1,9 +1,16 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ActivityInfo
+import android.media.AudioManager
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -17,9 +24,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +41,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,6 +51,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +67,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -70,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -121,6 +134,7 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaSegmentType
 import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
+import kotlin.math.abs
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -360,6 +374,50 @@ fun PlaybackPageContent(
 
     val isTv = rememberIsTv()
 
+    // Benflix: pause when headphones or a Bluetooth speaker disconnect, so it doesn't blast out loud
+    val appContext = LocalContext.current
+    DisposableEffect(player) {
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) player.pause()
+                }
+            }
+        ContextCompat.registerReceiver(
+            appContext,
+            receiver,
+            IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
+    }
+
+    // Benflix on phones: the player always turns sideways (either way up)
+    if (!isTv) {
+        val activity = LocalActivity.current
+        DisposableEffect(activity) {
+            val before = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            onDispose { activity?.requestedOrientation = before }
+        }
+    }
+    val doubleTapSeek by rememberUpdatedState<(Boolean) -> Unit>(
+        { forward ->
+            val delta = if (forward) DOUBLE_TAP_SEEK_MS else -DOUBLE_TAP_SEEK_MS
+            val duration = player.duration.coerceAtLeast(0L)
+            player.seekTo((player.currentPosition + delta).coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE))
+            controllerViewState.hideControls()
+            scope.launch {
+                // Wait for the controls to hide first, since hiding them clears the "+10" note
+                delay(120)
+                updateSkipIndicator(delta)
+            }
+        },
+    )
+
     // Benflix ambient mode: artwork drifts across the screen after being paused for a while
     var showAmbient by remember { mutableStateOf(false) }
     var ambientKeyPresses by remember { mutableIntStateOf(0) }
@@ -409,10 +467,25 @@ fun PlaybackPageContent(
                             // any touch while they're up keeps them from hiding.
                             Modifier
                                 .pointerInput(Unit) {
+                                    // Benflix: double-tap the left or right side to go back or forward 10 seconds
+                                    var lastUpTime = 0L
+                                    var lastUpX = -1f
                                     awaitEachGesture {
-                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                        if (controllerViewState.controlsVisible) {
+                                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        val isDouble =
+                                            down.uptimeMillis - lastUpTime < viewConfiguration.doubleTapTimeoutMillis &&
+                                                abs(down.position.x - lastUpX) < size.width / 3f
+                                        if (isDouble) {
+                                            down.consume()
+                                            doubleTapSeek(down.position.x > size.width / 2f)
+                                        } else if (controllerViewState.controlsVisible) {
                                             controllerViewState.pulseControls()
+                                        }
+                                        val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                        if (up != null) {
+                                            if (isDouble) up.consume()
+                                            lastUpTime = up.uptimeMillis
+                                            lastUpX = up.position.x
                                         }
                                     }
                                 }.semantics {
@@ -732,13 +805,32 @@ fun PlaybackPageContent(
                     delay(10.seconds)
                     viewModel.updateSegment(segment.segment.id, true)
                 }
-                SkipSegmentButton(
-                    type = segment.segment.type,
-                    onClick = {
-                        viewModel.updateSegment(segment.segment.id, false)
-                    },
-                    modifier = Modifier.focusRequester(focusRequester),
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Benflix "Always for this show": skip this show's intro every time from now on
+                    if (segment.segment.type == MediaSegmentType.INTRO &&
+                        state.currentPlayback
+                            ?.item
+                            ?.data
+                            ?.seriesId != null &&
+                        !state.alwaysSkipIntro
+                    ) {
+                        Button(
+                            onClick = { viewModel.alwaysSkipIntroForThisShow(segment.segment.id) },
+                        ) {
+                            Text(text = "Always for this show")
+                        }
+                    }
+                    SkipSegmentButton(
+                        type = segment.segment.type,
+                        onClick = {
+                            viewModel.updateSegment(segment.segment.id, false)
+                        },
+                        modifier = Modifier.focusRequester(focusRequester),
+                    )
+                }
             }
         }
 
@@ -888,6 +980,32 @@ fun PlaybackPageContent(
                             ),
                 )
             }
+        }
+
+        // Benflix heads-ups: skipped an episode, filler, keeps stopping, busy
+        val notice = state.notice.takeIf { !controllerViewState.controlsVisible && state.nextUp == null && state.showDone == null }
+        AnimatedVisibility(
+            visible = notice != null,
+            enter = fadeIn() + slideInVertically { -it / 3 },
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd),
+        ) {
+            state.notice?.let {
+                PlayerNoticeCard(notice = it, isTv = isTv, onAction = viewModel::onNoticeAction)
+            }
+        }
+        LaunchedEffect(state.notice == null) {
+            if (state.notice == null && !controllerViewState.controlsVisible) focusRequester.tryRequestFocus()
+        }
+
+        // Benflix: "You finished the show!"
+        state.showDone?.let { done ->
+            ShowDoneCard(
+                done = done,
+                isTv = isTv,
+                onOpen = viewModel::openFromShowDone,
+                onClose = viewModel::closeShowDone,
+            )
         }
     }
 
@@ -1043,3 +1161,6 @@ private fun RecapCard(
 }
 
 private const val RECAP_SECONDS = 20
+
+/** Benflix: how far a double-tap jumps on phones */
+private const val DOUBLE_TAP_SEEK_MS = 10_000L

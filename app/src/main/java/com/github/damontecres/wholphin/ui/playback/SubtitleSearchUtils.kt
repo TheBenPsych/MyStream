@@ -92,6 +92,8 @@ fun PlaybackViewModel.searchForSubtitles(language: String? = null) {
 fun PlaybackViewModel.downloadAndSwitchSubtitles(
     subtitleId: String?,
     wasPlaying: Boolean,
+    // Benflix: found automatically, so don't show the download window
+    quiet: Boolean = false,
 ) {
     if (subtitleId == null) {
         subtitleSearchState.update {
@@ -104,7 +106,7 @@ fun PlaybackViewModel.downloadAndSwitchSubtitles(
             )
         }
     } else {
-        subtitleSearchState.update { it.copy(status = SubtitleSearchStatus.Downloading) }
+        if (!quiet) subtitleSearchState.update { it.copy(status = SubtitleSearchStatus.Downloading) }
         viewModelScope.launchIO {
             try {
                 state.value.currentPlayback?.let { currentPlayback ->
@@ -159,10 +161,12 @@ fun PlaybackViewModel.downloadAndSwitchSubtitles(
                         newCount = subtitleStreams.size
                     }
                     if (maxAttempts == 0) {
-                        showToast(
-                            context,
-                            context.getString(R.string.subtitle_download_too_long),
-                        )
+                        if (!quiet) {
+                            showToast(
+                                context,
+                                context.getString(R.string.subtitle_download_too_long),
+                            )
+                        }
                     } else {
                         // Find the new subtitle stream
                         val subtitlesStreams =
@@ -221,6 +225,7 @@ fun PlaybackViewModel.downloadAndSwitchSubtitles(
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Exception while downloading subtitles: $subtitleId")
+                if (quiet) return@launchIO
                 subtitleSearchState.update {
                     it.copy(
                         status =
