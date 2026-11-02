@@ -20,6 +20,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.model.UUID
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import timber.log.Timber
@@ -80,8 +81,8 @@ class FillerService
                 try {
                     if (!isAnime(api, series, userId)) return@withContext
                     val names = listOfNotNull(series.name, series.data.originalTitle).distinct()
-                    val list = names.firstNotNullOfOrNull { listFor(slug(it)) } ?: return@withContext
-                    if (list.isEmpty()) return@withContext
+                    val show = names.firstNotNullOfOrNull { showFor(slug(it)) } ?: return@withContext
+                    if (show.kinds.isEmpty()) return@withContext
                     val episodes =
                         api.tvShowsApi
                             .getEpisodes(
@@ -94,30 +95,26 @@ class FillerService
                             ).content
                             .items
                             .filter { (it.parentIndexNumber ?: 1) > 0 && it.indexNumber != null }
-                    // Episodes before each season: the highest episode number in every earlier season
-                    val lastInSeason =
-                        episodes
-                            .groupBy { it.parentIndexNumber ?: 1 }
-                            .mapValues { (_, eps) -> eps.maxOf { it.indexNumber ?: 0 } }
-                            .toSortedMap()
-                    val before = mutableMapOf<Int, Int>()
-                    var total = 0
-                    lastInSeason.forEach { (season, last) ->
-                        before[season] = total
-                        total += last
-                    }
+                    val numbers = siteNumbers(episodes, show.titles)
                     val found =
                         episodes
                             .mapNotNull { ep ->
-                                val first = (before[ep.parentIndexNumber ?: 1] ?: 0) + (ep.indexNumber ?: return@mapNotNull null)
+                                val first = numbers[ep.id] ?: return@mapNotNull null
                                 val last = first + ((ep.indexNumberEnd ?: ep.indexNumber!!) - ep.indexNumber!!)
-                                val kinds = (first..last).mapNotNull { list[it] }
+                                val kinds = (first..last).mapNotNull { show.kinds[it] }
                                 when {
                                     kinds.isEmpty() -> null
                                     kinds.size == last - first + 1 && kinds.all { it == FillerKind.FILLER } -> ep.id to FillerKind.FILLER
                                     else -> ep.id to FillerKind.MIXED
                                 }
                             }.toMap()
+                    Timber.i(
+                        "Filler tags for %s: %s of %s episodes matched by title, %s tagged",
+                        series.name,
+                        numbers.matchedByTitle,
+                        episodes.size,
+                        found.size,
+                    )
                     FillerTags.add(found)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -147,13 +144,69 @@ class FillerService
             }
         }
 
-        /** Episode number across the whole show -> its kind. Saved for a week; null if the site has no page */
-        private fun listFor(slug: String): Map<Int, FillerKind>? {
+        /** The site's lists for one show: episode number -> kind, and episode number -> title */
+        class Show(
+            val kinds: Map<Int, FillerKind>,
+            val titles: Map<Int, String>,
+        )
+
+        /** Each episode's number on the site, plus how many were matched by their title */
+        class SiteNumbers(
+            private val map: Map<UUID, Int>,
+            val matchedByTitle: Int,
+        ) {
+            operator fun get(id: UUID) = map[id]
+        }
+
+        /**
+         * Works out each episode's number on the site (which counts from 1 across the whole show).
+         *
+         * 1. An episode whose title matches exactly one title on the site gets that number. This
+         *    still works when episodes are missing from the library or seasons are split differently.
+         * 2. Other episodes use their season's most common gap between Jellyfin's number and the site's.
+         * 3. Seasons with no title matches fall back to adding up the seasons before them.
+         */
+        private fun siteNumbers(
+            episodes: List<BaseItemDto>,
+            titles: Map<Int, String>,
+        ): SiteNumbers {
+            val byTitle =
+                titles.entries
+                    .groupBy({ cleanTitle(it.value) }, { it.key })
+                    .filter { (title, nums) -> title.length >= MIN_TITLE && nums.size == 1 }
+                    .mapValues { it.value.first() }
+            val matched =
+                episodes
+                    .mapNotNull { ep -> byTitle[cleanTitle(ep.name.orEmpty())]?.let { ep.id to it } }
+                    .toMap()
+            val seasons = episodes.groupBy { it.parentIndexNumber ?: 1 }.toSortedMap()
+            val out = mutableMapOf<UUID, Int>()
+            var before = 0
+            seasons.forEach { (_, eps) ->
+                val offset =
+                    eps
+                        .mapNotNull { ep -> matched[ep.id]?.let { it - ep.indexNumber!! } }
+                        .groupingBy { it }
+                        .eachCount()
+                        .maxByOrNull { it.value }
+                        ?.key ?: before
+                eps.forEach { ep -> out[ep.id] = matched[ep.id] ?: (ep.indexNumber!! + offset) }
+                // The next season starts after this one's last episode on the site
+                before = maxOf(before + eps.maxOf { it.indexNumber ?: 0 }, eps.maxOf { out[it.id] ?: 0 })
+            }
+            return SiteNumbers(out, matched.size)
+        }
+
+        /** Saved for a week; null if the site has no page for this show */
+        private fun showFor(slug: String): Show? {
             if (slug.isBlank()) return null
             val saved = prefs().getString(slug, null)
+            val savedTitles = prefs().getString("$slug-titles", "").orEmpty()
             val savedAt = prefs().getLong("$slug-at", 0L)
+
+            fun savedShow() = saved?.takeIf { it != NONE }?.let { Show(decode(it), decodeTitles(savedTitles)) }
             if (saved != null && System.currentTimeMillis() - savedAt < WEEK_MS) {
-                return if (saved == NONE) null else decode(saved)
+                return savedShow()
             }
             val html =
                 try {
@@ -169,20 +222,34 @@ class FillerService
                             when {
                                 response.isSuccessful -> response.body.string()
                                 response.code == 404 -> ""
-                                else -> return saved?.takeIf { it != NONE }?.let { decode(it) }
+                                else -> return savedShow()
                             }
                         }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Filler list not reachable for %s", slug)
-                    return saved?.takeIf { it != NONE }?.let { decode(it) }
+                    return savedShow()
                 }
-            val list = parse(html)
+            val kinds = parse(html)
+            val titles = parseTitles(html)
             prefs().edit {
-                putString(slug, if (list.isEmpty()) NONE else encode(list))
+                putString(slug, if (kinds.isEmpty()) NONE else encode(kinds))
+                putString("$slug-titles", encodeTitles(titles))
                 putLong("$slug-at", System.currentTimeMillis())
             }
-            return list.takeIf { it.isNotEmpty() }
+            return Show(kinds, titles).takeIf { kinds.isNotEmpty() }
         }
+
+        private fun encodeTitles(titles: Map<Int, String>) =
+            titles.entries.joinToString("\n") { "${it.key}\t${it.value.replace('\n', ' ').replace('\t', ' ')}" }
+
+        private fun decodeTitles(saved: String): Map<Int, String> =
+            saved
+                .split("\n")
+                .mapNotNull { line ->
+                    val tab = line.indexOf('\t')
+                    if (tab <= 0) return@mapNotNull null
+                    line.substring(0, tab).toIntOrNull()?.let { it to line.substring(tab + 1) }
+                }.toMap()
 
         private fun encode(list: Map<Int, FillerKind>) = list.entries.joinToString(",") { "${it.key}:${it.value.name.first()}" }
 
@@ -196,7 +263,9 @@ class FillerService
                 }.toMap()
 
         companion object {
-            private const val PREFS = "benflix_filler"
+            // "2": saved lists now also keep episode titles, so older saves are fetched again
+            private const val PREFS = "benflix_filler2"
+            private const val MIN_TITLE = 4
             private const val NONE = "-"
             private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
 
@@ -210,6 +279,46 @@ class FillerService
                     .replace("&", "and")
                     .replace(Regex("[^a-z0-9]+"), "-")
                     .trim('-')
+
+            /** "The Fourth Hokage's Death Wish" -> "fourthhokagesdeathwish", for comparing titles */
+            fun cleanTitle(title: String): String =
+                java.text.Normalizer
+                    .normalize(title, java.text.Normalizer.Form.NFD)
+                    .replace(Regex("\\p{M}+"), "")
+                    .lowercase()
+                    .replace("&", "and")
+                    .replace(Regex("\\b(the|a|an)\\b"), "")
+                    .replace(Regex("[^a-z0-9]+"), "")
+
+            /**
+             * Reads the episode table on a show's page: each row starts with the episode number,
+             * then its title.
+             */
+            fun parseTitles(html: String): Map<Int, String> {
+                if (html.isBlank()) return emptyMap()
+                val out = mutableMapOf<Int, String>()
+                val row = Regex("<tr[^>]*>(.*?)</tr>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+                val cell = Regex("<td[^>]*>(.*?)</td>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+                row.findAll(html).forEach { r ->
+                    val cells =
+                        cell
+                            .findAll(r.groupValues[1])
+                            .map { c ->
+                                c.groupValues[1]
+                                    .replace(Regex("<[^>]+>"), " ")
+                                    .replace("&amp;", "&")
+                                    .replace("&#039;", "'")
+                                    .replace("&quot;", "\"")
+                                    .replace("&nbsp;", " ")
+                                    .replace(Regex("\\s+"), " ")
+                                    .trim()
+                            }.toList()
+                    val number = cells.getOrNull(0)?.toIntOrNull() ?: return@forEach
+                    val title = cells.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return@forEach
+                    out[number] = title
+                }
+                return out
+            }
 
             /**
              * Reads the "Quick List" at the top of a show's page, e.g.
