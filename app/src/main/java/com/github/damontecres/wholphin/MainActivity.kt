@@ -377,6 +377,11 @@ class MainActivity : AppCompatActivity() {
         ResumeTimer.resumeAllowed =
             inApp && !pinProfile && ResumeTimer.withinTime(this, resumeMinutes)
         Timber.i("onRestart: resumeAllowed=%s", ResumeTimer.resumeAllowed)
+        // Away too long: Home starts on the banner again
+        if (!ResumeTimer.resumeAllowed) {
+            com.github.damontecres.wholphin.ui.main.HomeJump
+                .request()
+        }
         viewModel.appStart(null, resume = ResumeTimer.resumeAllowed)
         if (!playExternalViewModel.launched.value) {
             // If restarting during playback that is not external, go back a page

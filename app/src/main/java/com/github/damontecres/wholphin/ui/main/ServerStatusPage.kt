@@ -1,10 +1,13 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +56,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.activityLogApi
@@ -166,11 +170,26 @@ class ServerStatusViewModel
 
         private var started = false
 
+        /** Benflix: how many parts are still fetching fresh numbers (the "Loading new stats" note) */
+        private val _loading = MutableStateFlow(0)
+        val loading: StateFlow<Int> = _loading
+
+        private fun loadPart(block: suspend () -> Unit) {
+            _loading.update { it + 1 }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    block()
+                } finally {
+                    _loading.update { it - 1 }
+                }
+            }
+        }
+
         /** Starts every section loading at once. "Watching now" then keeps itself fresh. */
         fun start() {
             if (started) return
             started = true
-            viewModelScope.launch(WholphinDispatchers.IO) {
+            loadPart {
                 val h = safe { loadHeader() }
                 if (h != null) {
                     set(h)
@@ -178,7 +197,9 @@ class ServerStatusViewModel
                     _header.value = ServerHeader(online = false)
                 }
             }
+            _loading.update { it + 1 }
             viewModelScope.launch(WholphinDispatchers.IO) {
+                var first = true
                 while (true) {
                     val list = safe { loadWatching() }
                     if (list != null) {
@@ -186,20 +207,24 @@ class ServerStatusViewModel
                     } else if (_watching.value == null) {
                         setWatching(emptyList())
                     }
+                    if (first) {
+                        first = false
+                        _loading.update { it - 1 }
+                    }
                     delay(REFRESH_MS)
                 }
             }
-            viewModelScope.launch(WholphinDispatchers.IO) {
+            loadPart {
                 val numbers = loadLibrary()
                 _library.value = numbers
                 ServerPageMemory.library = numbers
             }
-            viewModelScope.launch(WholphinDispatchers.IO) {
+            loadPart {
                 val list = safe { loadProblems() }.orEmpty()
                 _problems.value = list
                 ServerPageMemory.problems = list
             }
-            viewModelScope.launch(WholphinDispatchers.IO) {
+            loadPart {
                 _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty()
             }
         }
@@ -375,6 +400,7 @@ fun ServerStatusPage(
     val library by viewModel.library.collectAsState()
     val problems by viewModel.problems.collectAsState()
     val disks by viewModel.disks.collectAsState()
+    val loadingParts by viewModel.loading.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
     val firstFocus = remember { FocusRequester() }
     val watchingReady = watching != null
@@ -401,6 +427,10 @@ fun ServerStatusPage(
                         text = if (h.online) "Online · Jellyfin ${h.version}" else "Can't reach the server",
                         color = if (h.online) GoodGreen else WarnGold,
                     )
+                }
+                // Benflix: the numbers below may be from last time until the fresh ones arrive
+                AnimatedVisibility(visible = isAdmin && loadingParts > 0, enter = fadeIn(), exit = fadeOut()) {
+                    StatusChip(text = "Loading new stats…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

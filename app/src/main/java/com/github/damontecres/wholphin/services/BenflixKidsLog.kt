@@ -71,6 +71,9 @@ object BenflixKidsLog {
         )
     }
 
+    /** Everything played on Kids (last 30 days), newest first */
+    fun recent(context: Context): List<KidsWatch> = entries(context).sortedByDescending { it.time }
+
     /** Shows and movies watched most on Kids (last 30 days), most first, for "Watch it again" */
     fun favouriteIds(context: Context): List<String> =
         entries(context)

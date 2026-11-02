@@ -59,7 +59,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.imageApi
+import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -68,7 +72,18 @@ class BedtimeViewModel
     constructor(
         private val serverRepository: ServerRepository,
         private val parentPin: BenflixParentPin,
+        private val api: ApiClient,
     ) : ViewModel() {
+        /** Poster picture for a show or movie in "What Kids watched" */
+        fun posterUrl(itemId: String): String? =
+            runCatching {
+                api.imageApi.getItemImageUrl(
+                    itemId = UUID.fromString(itemId),
+                    imageType = ImageType.PRIMARY,
+                    maxHeight = 300,
+                )
+            }.getOrNull()
+
         /** True when it's bedtime in Kids (and a parent PIN is set) */
         private val _locked = MutableStateFlow(false)
         val locked: StateFlow<Boolean> = _locked

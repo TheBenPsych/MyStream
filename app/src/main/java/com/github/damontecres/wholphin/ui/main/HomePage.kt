@@ -352,7 +352,7 @@ fun HomePage(
     }
 }
 
-private const val HERO_ROTATE_MS = 8_000L
+private const val HERO_ROTATE_MS = 5_000L
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -433,15 +433,15 @@ fun HomePageContent(
     LaunchedEffect(currentHeroItem?.id) {
         onHeroItemShown(currentHeroItem)
     }
-    LaunchedEffect(featured.size, heroFocused, previewPlaying) {
-        // Rotate the banner while it is focused, but let a trailer finish first
+    LaunchedEffect(featured.size, heroFocused, previewPlaying, heroIndex) {
+        // Rotate the banner while it is focused, but let a trailer finish first.
+        // Keyed on heroIndex, so picking a slide yourself starts its 5 seconds over.
         if (heroFocused && featured.size > 1 && !previewPlaying) {
-            while (true) {
-                delay(HERO_ROTATE_MS)
-                heroIndex = (heroIndex + 1) % featured.size
-            }
+            delay(HERO_ROTATE_MS)
+            heroIndex = (heroIndex + 1) % featured.size
         }
     }
+    val onSelectSlide: (Int) -> Unit = { heroIndex = it.coerceIn(0, (featured.size - 1).coerceAtLeast(0)) }
     val focusedItem =
         remember(homeRows, position, heroFocused, heroIndex, featured, extraFocus) {
             if (heroFocused && showHero) {
@@ -498,6 +498,16 @@ fun HomePageContent(
     val focusedDiscover = if (heroFocused) null else extraFocus as? DiscoverItem
     LaunchedEffect(focusedDiscover) {
         focusedDiscover?.let { onUpdateDiscoverBackdrop.invoke(it) }
+    }
+    // Benflix: pressing Home (or coming back after a long time away) starts on the banner
+    val jumpRequests by HomeJump.requests.collectAsState()
+    LaunchedEffect(jumpRequests, showHero) {
+        if (showHero && HomeJump.consume()) {
+            onFocusPosition(RowColumn(-1, -1))
+            heroIndex = 0
+            listState.scrollToItem(0)
+            if (isTv) heroFocusRequester.tryRequestFocus()
+        }
     }
     // Benflix: deep in the page, Back first jumps to the top. Pressing it again goes to the top menu
     var contentHasFocus by remember { mutableStateOf(false) }
@@ -590,6 +600,17 @@ fun HomePageContent(
                                         featured = phoneFeatured,
                                         onClick = { onClickFeaturedInfo(phoneFeatured.item) },
                                     )
+                                    if (featured.size > 1) {
+                                        SlideDots(
+                                            count = featured.size,
+                                            index = heroIndex.coerceIn(0, featured.lastIndex),
+                                            onSelect = onSelectSlide,
+                                            modifier =
+                                                Modifier
+                                                    .align(Alignment.CenterHorizontally)
+                                                    .padding(top = 8.dp),
+                                        )
+                                    }
                                     if (showNote) HomeNoteCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                                 }
                             } else {
@@ -606,6 +627,7 @@ fun HomePageContent(
                                 HomeHero(
                                     featured = featured,
                                     index = heroIndex.coerceIn(0, featured.lastIndex),
+                                    onSelectSlide = onSelectSlide,
                                     onClickPlay = onClickFeaturedPlay,
                                     onClickInfo = onClickFeaturedInfo,
                                     onClickFavorite = onClickFeaturedFavorite,
@@ -1088,8 +1110,9 @@ fun HomePageHeader(
             title = title,
             logoImageUrl = logoImageUrl,
             showLogo = showLogo,
-            logoHeight = if (rememberIsTv()) 100.dp else 72.dp,
-            logoMaxWidth = 420.dp,
+            // Benflix: one standard logo box, so every description fits underneath
+            logoHeight = if (rememberIsTv()) 64.dp else 56.dp,
+            logoMaxWidth = 340.dp,
             modifier = Modifier.fillMaxWidth(.75f),
         )
         Column(
