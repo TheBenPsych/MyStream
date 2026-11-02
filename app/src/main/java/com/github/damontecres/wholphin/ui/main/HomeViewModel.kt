@@ -15,7 +15,6 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.LocalTrailer
-import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
@@ -774,17 +773,9 @@ class HomeViewModel
                     } else {
                         emptyList()
                     }
-                val missing =
-                    if (userDto.policy?.isAdministrator == true && !KidsMode.isActive) {
-                        discovered
-                            .filter {
-                                it.jellyfinItemId == null &&
-                                    it.availability != SeerrAvailability.AVAILABLE &&
-                                    it.availability != SeerrAvailability.BLOCKLISTED
-                            }.take(TRENDING_MISSING_MAX)
-                    } else {
-                        emptyList()
-                    }
+                // Benflix: "Trending, not on your server" is no longer on Home (Ben asked 2026-11-02).
+                // The Requests tab covers it.
+                val missing = emptyList<DiscoverItem>()
                 // Too few trending titles on the server to fill the row, so use the server's own top titles
                 val top = if (trending.size < TRENDING_MIN) loadServerTop(userDto) else trending
                 _state.update { it.copy(trending = top, trendingMissing = missing) }
@@ -1982,7 +1973,6 @@ private const val ON_THIS_DAY_POOL = 3000
 private const val FEATURED_PICKS = 3
 private const val TRENDING_PAGES = 3
 private const val TRENDING_TOP = 10
-private const val TRENDING_MISSING_MAX = 20
 private const val THEMED_MAX = 20
 private const val THEMED_FETCH = 60
 

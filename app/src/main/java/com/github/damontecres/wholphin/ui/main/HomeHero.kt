@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -28,11 +29,15 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
@@ -55,8 +60,10 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
+import com.github.damontecres.wholphin.ui.components.MinButtonSize
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlin.time.Duration
 
 enum class FeaturedReason {
@@ -159,7 +166,8 @@ fun HomeHero(
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.focusRestorer(focusRequester),
+            // A little room above, so a button growing when picked isn't clipped at the top
+            modifier = Modifier.padding(top = 6.dp).focusRestorer(focusRequester),
         ) {
             HeroPillButton(
                 title = stringResource(R.string.play),
@@ -167,7 +175,7 @@ fun HomeHero(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(20.dp),
                     )
                 },
                 containerColor = Color.White,
@@ -181,7 +189,7 @@ fun HomeHero(
                     Text(
                         text = stringResource(R.string.fa_circle_info),
                         fontFamily = FontAwesome,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                     )
                 },
                 containerColor = Color(0x99787882),
@@ -229,10 +237,23 @@ fun SlideDots(
             fill.snapTo(0f)
         }
     }
+    // Benflix: moving down onto the dots always lands on the slide being shown, wherever you come from,
+    // and if the banner moves on while you're on the dots, the red one moves with it
+    val dotRequesters = remember(count) { List(count) { FocusRequester() } }
+    var dotsFocused by remember { mutableStateOf(false) }
+    val currentIndex by rememberUpdatedState(index)
+    LaunchedEffect(index) {
+        if (dotsFocused) dotRequesters.getOrNull(index)?.tryRequestFocus()
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier,
+        modifier =
+            modifier
+                .onFocusChanged { dotsFocused = it.hasFocus }
+                .focusProperties {
+                    onEnter = { dotRequesters.getOrNull(currentIndex)?.tryRequestFocus() }
+                }.focusGroup(),
     ) {
         (0 until count).forEach { i ->
             val interaction = remember { MutableInteractionSource() }
@@ -245,7 +266,8 @@ fun SlideDots(
                     Modifier
                         .height(24.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .onFocusChanged { if (it.isFocused) onSelect(i) }
+                        .focusRequester(dotRequesters[i])
+                        .onFocusChanged { if (it.isFocused && i != currentIndex) onSelect(i) }
                         .clickable(interactionSource = interaction, indication = null) { onSelect(i) }
                         .padding(horizontal = 3.dp),
             ) {
@@ -299,7 +321,7 @@ fun HeroPillButton(
     Button(
         onClick = onClick,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-        contentPadding = PaddingValues(start = 18.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
         colors =
             ButtonDefaults.colors(
                 containerColor = containerColor,
@@ -307,13 +329,14 @@ fun HeroPillButton(
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
-        modifier = modifier.height(48.dp),
+        // Benflix: the same height as the round My List and Surprise me buttons next to it
+        modifier = modifier.height(MinButtonSize),
     ) {
         icon()
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             text = title,
-            fontSize = 17.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )

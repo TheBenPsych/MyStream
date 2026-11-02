@@ -352,7 +352,7 @@ fun HomePage(
     }
 }
 
-private const val HERO_ROTATE_MS = 5_000L
+private const val HERO_ROTATE_MS = 7_000L
 
 val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
     get() =
@@ -424,9 +424,27 @@ fun HomePageContent(
     val isTv = rememberIsTv()
     // Phones have no focus, so there the banner counts as "selected" while it is still on screen
     val heroOnScreen by remember(listState) { derivedStateOf { listState.firstVisibleItemIndex <= 1 } }
-    val heroFocused = if (isTv) heroFocusedTv else featured.isNotEmpty() && heroOnScreen
-    val heroFocusRequester = remember { FocusRequester() }
     val showHero = featured.isNotEmpty()
+    // Benflix (TV): the banner stays "on" (logo, description, turning slides) while nothing below it has been
+    // picked, so moving up into the top menu doesn't blank or freeze it
+    val heroFocused =
+        if (isTv) {
+            showHero && (heroFocusedTv || (position.row < 0 && extraFocus == null))
+        } else {
+            showHero && heroOnScreen
+        }
+    val heroFocusRequester = remember { FocusRequester() }
+    val currentHeroFocusedTv by rememberUpdatedState(heroFocusedTv)
+
+    // Benflix: asking for focus right after the banner appears can fail because it isn't on screen yet,
+    // so keep asking for a moment until it really has focus
+    suspend fun focusHero() {
+        repeat(30) {
+            if (currentHeroFocusedTv) return
+            heroFocusRequester.tryRequestFocus()
+            delay(100)
+        }
+    }
     // Rows start after the banner, and on phones also after the header that scrolls with the page
     val heroOffset = (if (showHero) 1 else 0) + (if (isTv) 0 else 1)
     val currentHeroItem = if (heroFocused) featured.getOrNull(heroIndex)?.item else null
@@ -435,7 +453,7 @@ fun HomePageContent(
     }
     LaunchedEffect(featured.size, heroFocused, previewPlaying, heroIndex) {
         // Rotate the banner while it is focused, but let a trailer finish first.
-        // Keyed on heroIndex, so picking a slide yourself starts its 5 seconds over.
+        // Keyed on heroIndex, so picking a slide yourself starts its 7 seconds over.
         if (heroFocused && featured.size > 1 && !previewPlaying) {
             delay(HERO_ROTATE_MS)
             heroIndex = (heroIndex + 1) % featured.size
@@ -476,10 +494,12 @@ fun HomePageContent(
                 autoPickedRow = null
                 onFocusPosition(RowColumn(-1, -1))
                 listState.scrollToItem(0)
-                heroFocusRequester.tryRequestFocus()
+                focusHero()
+                firstFocused = true
             } else if (!firstFocused && showHero && position.row < 0) {
                 // Start on the banner, like other streaming apps
-                heroFocusRequester.tryRequestFocus()
+                listState.scrollToItem(0)
+                focusHero()
                 firstFocused = true
             } else if (!firstFocused && homeRows.isNotEmpty()) {
                 if (position.row >= 0) {
@@ -520,7 +540,7 @@ fun HomePageContent(
             onFocusPosition(RowColumn(-1, -1))
             heroIndex = 0
             listState.scrollToItem(0)
-            if (isTv) heroFocusRequester.tryRequestFocus()
+            if (isTv) focusHero()
         }
     }
     // Benflix: deep in the page, Back first jumps to the top. Pressing it again goes to the top menu
@@ -531,7 +551,8 @@ fun HomePageContent(
         backScope.launch {
             listState.scrollToItem(0)
             if (showHero) {
-                heroFocusRequester.tryRequestFocus()
+                onFocusPosition(RowColumn(-1, -1))
+                focusHero()
             } else {
                 rowFocusRequesters.firstOrNull()?.tryRequestFocus()
             }
@@ -549,7 +570,12 @@ fun HomePageContent(
                 Modifier
                     .focusProperties {
                         onEnter = {
-                            rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus()
+                            // Coming down from the top menu: back to the banner if that's where you were
+                            if (showHero && currentPosition.row < 0) {
+                                heroFocusRequester.tryRequestFocus()
+                            } else {
+                                rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus()
+                            }
                         }
                     }.fillMaxSize(),
         ) {
@@ -648,7 +674,11 @@ fun HomePageContent(
                                     onClickInfo = onClickFeaturedInfo,
                                     onClickFavorite = onClickFeaturedFavorite,
                                     onClickSurprise = onClickSurprise,
-                                    onFocusChanged = { heroFocusedTv = it },
+                                    onFocusChanged = {
+                                        heroFocusedTv = it
+                                        // Back on the banner: nothing below is picked any more
+                                        if (it) currentOnFocusPosition(RowColumn(-1, -1))
+                                    },
                                     focusRequester = heroFocusRequester,
                                 )
                                 if (showNote && isTv) {

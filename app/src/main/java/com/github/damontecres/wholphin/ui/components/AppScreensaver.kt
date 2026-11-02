@@ -102,14 +102,15 @@ class ScreensaverViewModel
         @OptIn(ExperimentalCoroutinesApi::class)
         val fact =
             currentItem
-                .map { (it as? ScreensaverItem.CurrentItem)?.item?.id }
-                .distinctUntilChanged()
-                .mapLatest { itemId ->
+                .map { (it as? ScreensaverItem.CurrentItem)?.item }
+                .distinctUntilChanged { old, new -> old?.id == new?.id }
+                .mapLatest { item ->
                     val userId = serverRepository.currentUser?.id
-                    if (itemId == null || userId == null) {
+                    if (item == null || userId == null) {
                         null to false
                     } else {
-                        val picked = funFacts.pick(api, userId)
+                        // A fact about the movie or show on screen, otherwise a normal "Did you know?"
+                        val picked = funFacts.aboutItem(item) ?: funFacts.pick(api, userId)
                         picked to (picked != null)
                     }
                 }
