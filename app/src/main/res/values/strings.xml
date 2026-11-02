@@ -1007,6 +1007,9 @@
     <string name="trending_not_on_server">Trending, not on your server</string>
     <string name="new_episode">NEW EPISODE</string>
     <string name="new_badge">NEW</string>
+    <string name="badge_requested">REQUESTED</string>
+    <string name="badge_on_benflix">ON BENFLIX</string>
+    <string name="badge_some_on_benflix">SOME ON BENFLIX</string>
     <string name="theme_halloween">Halloween picks</string>
     <string name="theme_holiday">Holiday favorites</string>
     <string name="theme_date_night">Date night</string>

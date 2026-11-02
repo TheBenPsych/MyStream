@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,7 +37,6 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
-import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
@@ -113,73 +110,31 @@ fun DiscoverItemCard(
                         Modifier
                             .fillMaxSize(),
                 )
-                when (item?.availability) {
-                    SeerrAvailability.PENDING,
-                    SeerrAvailability.PROCESSING,
-                    -> {
-                        PendingIndicator(Modifier.align(Alignment.TopEnd))
-                    }
+                // Benflix: the request status as one small word badge in the top-left corner,
+                // the same style as every other card (Ben's pick, 2026-11-02)
+                val status =
+                    when (item?.availability) {
+                        SeerrAvailability.PENDING,
+                        SeerrAvailability.PROCESSING,
+                        -> stringResource(R.string.badge_requested) to Color(0xFFA16207)
 
-                    SeerrAvailability.PARTIALLY_AVAILABLE -> {
-                        PartiallyAvailableIndicator(Modifier.align(Alignment.TopEnd))
-                    }
+                        SeerrAvailability.PARTIALLY_AVAILABLE ->
+                            stringResource(R.string.badge_some_on_benflix) to AppColors.Discover.Green
 
-                    SeerrAvailability.AVAILABLE,
-                    -> {
-                        AvailableIndicator(Modifier.align(Alignment.TopEnd))
-                    }
+                        SeerrAvailability.AVAILABLE ->
+                            stringResource(R.string.badge_on_benflix) to AppColors.Discover.Green
 
-                    SeerrAvailability.BLOCKLISTED -> {
-                        // TODO handle block listed
-//                        BlocklistedIndicator(Modifier.align(Alignment.TopEnd))
+                        else -> null
                     }
-
-                    SeerrAvailability.UNKNOWN,
-                    SeerrAvailability.DELETED,
-                    null,
-                    -> {
-                    }
-                }
-                if (showOverlay) {
-                    val color =
-                        remember(item?.type) {
-                            when (item?.type) {
-                                SeerrItemType.MOVIE -> AppColors.Discover.Blue
-                                SeerrItemType.TV -> AppColors.Discover.Purple
-                                SeerrItemType.PERSON -> AppColors.Discover.Green
-                                SeerrItemType.UNKNOWN -> Color.Black
-                                null -> Color.Black
-                            }.copy(alpha = .8f)
-                        }
-                    val text =
-                        remember(item?.type) {
-                            when (item?.type) {
-                                SeerrItemType.MOVIE -> R.plurals.movies
-                                SeerrItemType.TV -> R.plurals.tv_shows
-                                SeerrItemType.PERSON -> R.plurals.people
-                                SeerrItemType.UNKNOWN -> null
-                                null -> null
-                            }
-                        }
-                    text?.let {
-                        Text(
-                            text = pluralStringResource(it, 1).uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = .5.sp,
-                            color = Color.White,
-                            maxLines = 1,
-                            // Same look as the badges on every other card
-                            modifier =
-                                Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(6.dp)
-                                    .background(
-                                        color = color,
-                                        shape = RoundedCornerShape(3.dp),
-                                    ).padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                    }
+                if (status != null) {
+                    CardBadge(
+                        text = status.first,
+                        background = status.second,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp),
+                    )
                 }
             }
         }

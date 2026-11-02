@@ -103,6 +103,7 @@ fun GridCard(
                 // My Benflix, genre pages, the mood quiz and Watch in order), so ask for a poster-sized one
                 fillWidth = fillWidth ?: if (fillHeight == null) DEFAULT_GRID_IMAGE_WIDTH else null,
                 fillHeight = fillHeight,
+                focused = focused,
                 modifier =
                     Modifier
                         .fillMaxWidth()
