@@ -41,6 +41,8 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.fillerTagFor
+import com.github.damontecres.wholphin.services.finaleTagFor
+import com.github.damontecres.wholphin.services.seasonLeftFor
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
@@ -252,6 +254,23 @@ fun BannerCard(
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp),
+                )
+            }
+            // Benflix: "3 left in season" on Continue watching, and finale tags
+            val seasonLeft = seasonLeftFor(item)
+            val finale = finaleTagFor(item)
+            if (!grown && (seasonLeft != null || finale != null)) {
+                CardBadge(
+                    text =
+                        finale ?: when (seasonLeft) {
+                            1 -> "LAST IN SEASON"
+                            else -> "$seasonLeft LEFT IN SEASON"
+                        },
+                    background = if (finale != null) FINALE_COLOR else Color.Black.copy(alpha = .78f),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 6.dp, bottom = 8.dp),
                 )
             }
             // Benflix: FILLER / MIXED on anime episodes

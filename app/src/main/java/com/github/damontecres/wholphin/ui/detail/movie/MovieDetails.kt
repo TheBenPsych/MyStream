@@ -289,6 +289,7 @@ private const val CHAPTER_ROW = TRAILER_ROW + 1
 private const val EXTRAS_ROW = CHAPTER_ROW + 1
 private const val SIMILAR_ROW = EXTRAS_ROW + 1
 private const val DISCOVER_ROW = SIMILAR_ROW + 1
+private const val DIRECTOR_ROW = DISCOVER_ROW + 1
 
 @Composable
 fun MovieDetailsContent(
@@ -316,7 +317,7 @@ fun MovieDetailsContent(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var position by rememberInt(0)
-    val focusRequesters = remember { List(DISCOVER_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember { List(DIRECTOR_ROW + 1) { FocusRequester() } }
     val dto = movie.data
     val resumePosition = dto.userData?.playbackPositionTicks?.ticks ?: Duration.ZERO
 
@@ -328,6 +329,7 @@ fun MovieDetailsContent(
     val detailSections =
         buildList {
             if (state.similar.isNotEmpty()) add(SIMILAR_ROW)
+            if (state.fromDirector.isNotEmpty()) add(DIRECTOR_ROW)
             if (state.people.isNotEmpty()) add(PEOPLE_ROW)
             if (state.chapters.isNotEmpty()) add(CHAPTER_ROW)
             if (state.extras.isNotEmpty()) add(EXTRAS_ROW)
@@ -336,17 +338,25 @@ fun MovieDetailsContent(
     var selectedSection by rememberInt(SIMILAR_ROW)
     val currentSection = if (selectedSection in detailSections) selectedSection else detailSections.firstOrNull() ?: -1
     val sectionTabs =
-        remember(detailSections) {
+        remember(detailSections, state.directorName) {
             detailSections.map {
-                TabDetails(
-                    when (it) {
-                        SIMILAR_ROW -> R.string.more_like_this
-                        PEOPLE_ROW -> R.string.cast_and_crew
-                        CHAPTER_ROW -> R.string.chapters
-                        EXTRAS_ROW -> R.string.extras_title
-                        else -> R.string.discover
-                    },
-                )
+                if (it == DIRECTOR_ROW) {
+                    // Benflix: "More from Christopher Nolan"
+                    TabDetails(
+                        com.github.damontecres.wholphin.ui.util
+                            .StringStringProvider("More from ${state.directorName ?: "the director"}"),
+                    )
+                } else {
+                    TabDetails(
+                        when (it) {
+                            SIMILAR_ROW -> R.string.more_like_this
+                            PEOPLE_ROW -> R.string.cast_and_crew
+                            CHAPTER_ROW -> R.string.chapters
+                            EXTRAS_ROW -> R.string.extras_title
+                            else -> R.string.discover
+                        },
+                    )
+                }
             }
         }
 
@@ -478,6 +488,38 @@ fun MovieDetailsContent(
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequesters[SIMILAR_ROW]),
+                    )
+                }
+            }
+            // Benflix "More from this director"
+            state.fromDirector.takeIf { currentSection == DIRECTOR_ROW }.orEmpty().letNotEmpty { movies ->
+                item {
+                    ItemRow(
+                        title = "More from ${state.directorName ?: "the director"}",
+                        items = movies,
+                        onClickItem = { index, item ->
+                            position = DIRECTOR_ROW
+                            onClickItem.invoke(index, item)
+                        },
+                        onLongClickItem = { index, item ->
+                            position = DIRECTOR_ROW
+                            onLongClickSimilar.invoke(index, item)
+                        },
+                        cardContent = { index, item, mod, onClick, onLongClick ->
+                            SeasonCard(
+                                item = item,
+                                onClick = onClick,
+                                onLongClick = onLongClick,
+                                modifier = mod,
+                                showImageOverlay = true,
+                                imageHeight = Cards.height2x3,
+                                imageWidth = Dp.Unspecified,
+                            )
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[DIRECTOR_ROW]),
                     )
                 }
             }

@@ -39,15 +39,22 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaStreamType
+import org.jellyfin.sdk.model.api.PersonKind
+import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import timber.log.Timber
 import java.util.UUID
@@ -148,6 +155,8 @@ class MovieViewModel
                         )
                     }
                 }
+                // Benflix "More from this director"
+                viewModelScope.launchIO { loadDirector(movie) }
                 viewModelScope.launchIO {
                     val extras = extrasService.getExtras(itemId)
                     _state.update {
@@ -181,6 +190,38 @@ class MovieViewModel
                     _state.update { it.copy(similar = similar) }
                 }
             }
+
+        private suspend fun loadDirector(movie: BaseItem) {
+            val director =
+                movie.data.people
+                    ?.firstOrNull { it.type == PersonKind.DIRECTOR }
+                    ?: return
+            try {
+                val movies =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                personIds = listOf(director.id),
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                fields = ItemRowFields,
+                                sortBy = listOf(ItemSortBy.PREMIERE_DATE),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = 30,
+                            ),
+                        ).content.items
+                        .filter { it.id != movie.id }
+                        .map { BaseItem(it, true) }
+                if (movies.isNotEmpty()) {
+                    _state.update { it.copy(directorName = director.name, fromDirector = movies) }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "More from the director")
+            }
+        }
 
         fun setWatched(
             itemId: UUID,
@@ -308,6 +349,9 @@ data class MovieState(
     val discovered: List<DiscoverItem> = emptyList(),
     val chosenStreams: ChosenStreams? = null,
     val canDelete: Boolean = false,
+    /** Benflix "More from this director" */
+    val directorName: String? = null,
+    val fromDirector: List<BaseItem> = emptyList(),
 ) {
     val movie: BaseItem? = (loading as? DataLoadingState.Success<BaseItem>)?.data
 }

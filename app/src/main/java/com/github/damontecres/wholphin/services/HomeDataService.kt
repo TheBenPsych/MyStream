@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.ProgramItemFields
 import com.github.damontecres.wholphin.ui.components.getGenreImageMap
 import com.github.damontecres.wholphin.ui.formatTypeName
+import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.playback.getTypeFor
 import com.github.damontecres.wholphin.ui.toBaseItems
@@ -104,6 +105,8 @@ class HomeDataService
                     // Benflix: a show you finished that just got a new season goes first
                     val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
                     val withBack = back + resume.withoutShowsIn(back)
+                    // Benflix: "3 left in season" on the cards
+                    scope.launchIO { EpisodeFacts.loadSeasonLeft(api, userDto.id, withBack) }
 
                     Success(
                         title = ResStringProvider(R.string.continue_watching),
@@ -154,6 +157,8 @@ class HomeDataService
                     // Benflix: a show you finished that just got a new season goes first
                     val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
                     val combined = back + latestNextUpService.buildCombined(resume, nextUp).withoutShowsIn(back)
+                    // Benflix: "3 left in season" on the cards
+                    scope.launchIO { EpisodeFacts.loadSeasonLeft(api, userDto.id, combined.take(limit)) }
 
                     Success(
                         title = ResStringProvider(R.string.continue_watching),

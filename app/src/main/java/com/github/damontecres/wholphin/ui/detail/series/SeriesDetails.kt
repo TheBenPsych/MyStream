@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,7 +56,9 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.studioNames
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.ShowProgress
 import com.github.damontecres.wholphin.services.TrailerService
+import com.github.damontecres.wholphin.services.words
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.RequestOrRestoreFocus
@@ -133,6 +136,7 @@ fun SeriesDetails(
     var showContextMenu by remember { mutableStateOf<ContextMenu?>(null) }
 
     var showWatchConfirmation by remember { mutableStateOf(false) }
+    var showFixMatch by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf<Optional<UUID>>(Optional.absent()) }
 
     val contextActions =
@@ -216,6 +220,10 @@ fun SeriesDetails(
                 onPickSeason = viewModel::showSeasonEpisodes,
                 fanFavourites = state.fanFavourites,
                 subDub = state.subDub,
+                progress = state.progress,
+                rewatchOnClick = viewModel::rewatch,
+                isAdmin = state.isAdmin,
+                fixMatchOnClick = { showFixMatch = true },
                 onPlayEpisode = { viewModel.navigateTo(Destination.Playback(it)) },
                 trailers = state.trailers,
                 extras = state.extras,
@@ -293,6 +301,13 @@ fun SeriesDetails(
                 },
                 actions = contextActions,
             )
+            if (showFixMatch) {
+                com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
+                    item = series,
+                    onDismissRequest = { showFixMatch = false },
+                    onFixed = { showFixMatch = false },
+                )
+            }
             if (showWatchConfirmation) {
                 ConfirmDialog(
                     title = series.name ?: "",
@@ -390,6 +405,10 @@ fun SeriesDetailsContent(
     fanFavourites: List<BaseItem> = emptyList(),
     onPlayEpisode: (BaseItem) -> Unit = {},
     subDub: String? = null,
+    progress: ShowProgress? = null,
+    rewatchOnClick: () -> Unit = {},
+    isAdmin: Boolean = false,
+    fixMatchOnClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -450,6 +469,7 @@ fun SeriesDetailsContent(
                         overviewOnClick = overviewOnClick,
                         bringIntoViewRequester = bringIntoViewRequester,
                         subDub = subDub,
+                        progressText = remember(progress) { progress?.words() },
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -501,6 +521,25 @@ fun SeriesDetailsContent(
                                     }
                                 },
                         )
+                        // Benflix: watched it all? Start again from episode 1
+                        if (played && progress?.firstEpisodeId != null) {
+                            ExpandableFaButton(
+                                title = R.string.benflix_rewatch,
+                                iconStringRes = R.string.fa_rotate_left,
+                                onClick = {
+                                    position = HEADER_ROW
+                                    rewatchOnClick.invoke()
+                                },
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
+                            )
+                        }
                         ExpandableFaButton(
                             title = if (played) R.string.mark_unwatched else R.string.mark_watched,
                             iconStringRes = if (played) R.string.fa_eye else R.string.fa_eye_slash,
@@ -580,6 +619,25 @@ fun SeriesDetailsContent(
                                                 }
                                             }
                                         },
+                            )
+                        }
+                        // Benflix (admins): the show got matched to the wrong one on the internet
+                        if (isAdmin) {
+                            ExpandableFaButton(
+                                title = R.string.benflix_fix_match,
+                                iconStringRes = R.string.fa_magnifying_glass,
+                                onClick = {
+                                    position = HEADER_ROW
+                                    fixMatchOnClick.invoke()
+                                },
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
+                                        }
+                                    },
                             )
                         }
                         AnimatedVisibility(
@@ -857,6 +915,7 @@ fun SeriesDetailsHeader(
     bringIntoViewRequester: BringIntoViewRequester,
     modifier: Modifier = Modifier,
     subDub: String? = null,
+    progressText: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val dto = series.data
@@ -885,8 +944,23 @@ fun SeriesDetailsHeader(
                 null,
                 Modifier.padding(start = HeaderUtils.startPadding),
             )
-            // Benflix: SUB / DUB on anime
-            subDub?.let { SubDubTag(it, Modifier.padding(start = HeaderUtils.startPadding)) }
+            // Benflix: SUB / DUB on anime, ENDED / RETURNING, and how much is left to watch
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = HeaderUtils.startPadding),
+            ) {
+                subDub?.let { SubDubTag(it) }
+                com.github.damontecres.wholphin.ui.components
+                    .ShowStatusTag(dto.status)
+                progressText?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = .85f),
+                    )
+                }
+            }
             dto.studios?.let {
                 val studios = remember { series.studioNames }
                 GenreText(

@@ -209,6 +209,9 @@ fun ContextMenu(
     var showPlayWithDialog by remember { mutableStateOf(false) }
     // Benflix "Report a problem"
     val reportViewModel: ReportProblemViewModel = hiltViewModel()
+    // Benflix "Mark watched up to here"
+    val markUpToViewModel: com.github.damontecres.wholphin.services.MarkWatchedUpToViewModel = hiltViewModel()
+    var showFixMatch by remember { mutableStateOf(false) }
 
     val dialogItems =
         remember(resources, item, chosenStreams) {
@@ -277,6 +280,15 @@ fun ContextMenu(
                 },
                 onClickDelete = { showDeleteDialog = true },
                 onClickPlayWith = { showPlayWithDialog = true },
+                onMarkUpTo = { markUpToViewModel.markUpTo(item) },
+                onFixMatch =
+                    if (markUpToViewModel.isAdmin &&
+                        (item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.SERIES)
+                    ) {
+                        { showFixMatch = true }
+                    } else {
+                        null
+                    },
                 onReportProblem = {
                     val title = item.title ?: item.name ?: "this"
                     chooseVersion =
@@ -365,6 +377,16 @@ fun ContextMenu(
             elevation = 3.dp,
         )
     }
+    if (showFixMatch) {
+        com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
+            item = item,
+            onDismissRequest = { showFixMatch = false },
+            onFixed = {
+                showFixMatch = false
+                onDismissRequest.invoke()
+            },
+        )
+    }
     if (showPlayWithDialog) {
         val dialogItems =
             remember {
@@ -409,6 +431,8 @@ private fun buildContextMenuItems(
     onClickDelete: () -> Unit,
     onClickPlayWith: () -> Unit,
     onReportProblem: () -> Unit = {},
+    onMarkUpTo: () -> Unit = {},
+    onFixMatch: (() -> Unit)? = null,
 ): List<DialogItem> =
     buildList {
         // Songs should not show Go to
@@ -613,6 +637,30 @@ private fun buildContextMenuItems(
                 actions.onClickWatch.invoke(item.id, !watched)
             },
         )
+        // Benflix (admins): matched to the wrong movie or show on the internet
+        if (onFixMatch != null) {
+            add(
+                DialogItem(
+                    text = R.string.benflix_fix_match,
+                    iconStringRes = R.string.fa_magnifying_glass,
+                    dismissOnClick = false,
+                ) {
+                    onFixMatch.invoke()
+                },
+            )
+        }
+        // Benflix: catch up a show you watched somewhere else in one go
+        if (item.type == BaseItemKind.EPISODE && seriesId != null) {
+            add(
+                DialogItem(
+                    text = R.string.benflix_mark_watched_up_to_here,
+                    iconStringRes = R.string.fa_eye,
+                    dismissOnClick = true,
+                ) {
+                    onMarkUpTo.invoke()
+                },
+            )
+        }
         add(
             DialogItem(
                 text = if (favorite) R.string.remove_favorite else R.string.add_favorite,
