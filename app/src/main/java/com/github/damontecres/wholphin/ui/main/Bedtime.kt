@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -43,6 +44,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixParentPin
+import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
@@ -52,6 +54,7 @@ import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +73,7 @@ import javax.inject.Inject
 class BedtimeViewModel
     @Inject
     constructor(
+        @param:ApplicationContext private val context: Context,
         private val serverRepository: ServerRepository,
         private val parentPin: BenflixParentPin,
         private val api: ApiClient,
@@ -91,14 +95,25 @@ class BedtimeViewModel
         private val _hasPin = MutableStateFlow(false)
         val hasPin: StateFlow<Boolean> = _hasPin
 
+        /** True when Kids has used up today's screen time (and a parent PIN is set) */
+        private val _timeUp = MutableStateFlow(false)
+        val timeUp: StateFlow<Boolean> = _timeUp
+
+        private val _dailyMinutes = MutableStateFlow(0)
+        val dailyMinutes: StateFlow<Int> = _dailyMinutes
+
         /** True while the "15 minutes until bedtime" note is showing */
         private val _windDown = MutableStateFlow(false)
         val windDown: StateFlow<Boolean> = _windDown
 
         init {
+            BenflixScreenTime.load(context)
             viewModelScope.launch {
                 var lastUser: java.util.UUID? = null
                 while (isActive) {
+                    // Kids screen time: count the minutes Kids spends watching
+                    BenflixScreenTime.tick(context, CHECK_EVERY_MS * 2)
+                    _timeUp.value = BenflixScreenTime.lockedNow()
                     val userId = serverRepository.currentUser?.id
                     if (userId != null && userId != lastUser) {
                         lastUser = userId
@@ -125,6 +140,10 @@ class BedtimeViewModel
                 BenflixBedtime.pinSet = has
                 _hasPin.value = has
                 _locked.value = BenflixBedtime.lockedNow()
+                val minutes = parentPin.kidsDailyMinutes(userId)
+                BenflixScreenTime.limitMinutes = minutes
+                _dailyMinutes.value = minutes
+                _timeUp.value = BenflixScreenTime.lockedNow()
             }
         }
 
@@ -152,6 +171,26 @@ class BedtimeViewModel
             _locked.value = false
         }
 
+        fun moreScreenTime() {
+            BenflixScreenTime.giveMoreTime(context)
+            _timeUp.value = false
+        }
+
+        suspend fun setDailyMinutes(minutes: Int): Boolean {
+            val userId = serverRepository.currentUser?.id ?: return false
+            return try {
+                withContext(WholphinDispatchers.IO) { parentPin.setKidsDailyMinutes(userId, minutes) }
+                _dailyMinutes.value = minutes
+                _timeUp.value = BenflixScreenTime.lockedNow()
+                true
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't save Kids screen time")
+                false
+            }
+        }
+
         companion object {
             private const val CHECK_EVERY_MS = 20_000L
             private const val WIND_DOWN_SHOW_MS = 15_000L
@@ -171,6 +210,8 @@ fun BedtimeLayer(
     val kids by KidsMode.active.collectAsState()
     LaunchedEffect(kids) { if (kids) viewModel.refreshPin() }
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
+    LaunchedEffect(playing, kids) { BenflixScreenTime.watching = playing && kids }
+    val timeUp by viewModel.timeUp.collectAsState()
     val windDown by viewModel.windDown.collectAsState()
     // "15 minutes until bedtime": a small note in the corner, even while watching
     Box(contentAlignment = Alignment.TopEnd, modifier = Modifier.fillMaxSize()) {
@@ -189,7 +230,11 @@ fun BedtimeLayer(
             }
         }
     }
-    if (!kids || !locked || playing) return
+    if (!kids || playing) return
+    if (!locked) {
+        if (timeUp) ScreenTimeUp(viewModel)
+        return
+    }
     if (!popupTurn("bedtime", BenflixPopups.BEDTIME, true)) return
 
     var askPin by remember { mutableStateOf(false) }
@@ -243,6 +288,79 @@ fun BedtimeLayer(
                             if (viewModel.checkPin(pin)) {
                                 askPin = false
                                 viewModel.moreTime()
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.incorrect), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Kids used up today's screen time: a friendly "That's all for today" with a grown-up button */
+@Composable
+private fun ScreenTimeUp(viewModel: BedtimeViewModel) {
+    var askPin by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(Color(0xFF0E2A24), Color(0xFF123B2F), Color(0xFF05100C)))),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
+            ) {
+                Text(
+                    text = "THAT'S ALL FOR TODAY!",
+                    fontFamily = BenflixTitleFont,
+                    fontSize = 56.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "You've watched your Benflix time for today. Time to go play! See you tomorrow.",
+                    fontSize = 20.sp,
+                    color = Color(0xFFD6F0E6),
+                    textAlign = TextAlign.Center,
+                )
+                Button(
+                    onClick = { askPin = true },
+                    modifier = Modifier.padding(top = 16.dp).focusRequester(focusRequester),
+                ) {
+                    Text("Grown-up: 30 more minutes", fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+        LaunchedEffect(Unit) {
+            delay(200)
+            try {
+                focusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+            }
+        }
+        if (askPin) {
+            BasicDialog(onDismissRequest = { askPin = false }) {
+                PinEntryCreate(
+                    title = R.string.enter_pin,
+                    onTextChange = {},
+                    onConfirm = { pin ->
+                        scope.launch {
+                            if (viewModel.checkPin(pin)) {
+                                askPin = false
+                                viewModel.moreScreenTime()
                             } else {
                                 Toast.makeText(context, context.getString(R.string.incorrect), Toast.LENGTH_SHORT).show()
                             }

@@ -679,6 +679,23 @@ fun PlaybackPageContent(
             )
         }
 
+        // Benflix: the age rating in the top corner for a few seconds when something starts
+        val ratingItem = state.currentPlayback?.item
+        var ageRating by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(ratingItem?.id) {
+            ageRating = null
+            ageRating = ratingItem?.let { viewModel.ageRatingFor(it) }
+        }
+        AgeRatingNote(
+            item = ratingItem,
+            rating = ageRating,
+            hidden = controllerViewState.controlsVisible || state.recap != null,
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(if (isTv) 40.dp else 16.dp),
+        )
+
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
             modifier =
                 Modifier

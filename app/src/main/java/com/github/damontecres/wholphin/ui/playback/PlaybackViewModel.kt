@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.services.BenflixAfterCredits
 import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixMobileData
+import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -1557,10 +1558,33 @@ class PlaybackViewModel
             lastInteractionDate = Date()
         }
 
+        /**
+         * Benflix: the age rating to show at the start. Episodes often have no rating of
+         * their own, so they use their show's rating.
+         */
+        suspend fun ageRatingFor(item: BaseItem): String? =
+            item.data.officialRating?.takeIf { it.isNotBlank() }
+                ?: item.data.seriesId?.let { seriesId ->
+                    try {
+                        withContext(WholphinDispatchers.IO) {
+                            api.userLibraryApi
+                                .getItem(seriesId)
+                                .content.officialRating
+                                ?.takeIf { it.isNotBlank() }
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Age rating for show %s", seriesId)
+                        null
+                    }
+                }
+
         fun shouldAutoPlayNextUp(): Boolean =
             preferences.appPreferences.playbackPreferences.let {
                 // Benflix: at Kids bedtime, the next episode doesn't start by itself
                 !BenflixBedtime.lockedNow() &&
+                    !BenflixScreenTime.lockedNow() &&
                     it.autoPlayNext &&
                     if (it.passOutProtectionMs > 0 && !shuffleSession) {
                         (Date().time - lastInteractionDate.time) < it.passOutProtectionMs
@@ -1570,8 +1594,8 @@ class PlaybackViewModel
             }
 
         fun playNextUp() {
-            if (BenflixBedtime.lockedNow()) {
-                // Benflix: it's Kids bedtime, so no more episodes tonight
+            if (BenflixBedtime.lockedNow() || BenflixScreenTime.lockedNow()) {
+                // Benflix: it's Kids bedtime (or today's Kids time is used up), so no more episodes
                 viewModelScope.launch(WholphinDispatchers.Main) { navigationManager.goBack() }
                 return
             }

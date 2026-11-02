@@ -37,6 +37,30 @@ class BenflixParentPin
             BenflixBedtime.pinSet = !pin.isNullOrBlank()
         }
 
+        /** Kids daily screen time in minutes (0 = no limit), saved with the person's settings */
+        suspend fun kidsDailyMinutes(userId: UUID): Int =
+            try {
+                displayPreferencesService
+                    .getDisplayPreferences(userId)
+                    .customPrefs[BenflixScreenTime.PREF_KEY]
+                    ?.toIntOrNull() ?: 0
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't read Kids screen time")
+                0
+            }
+
+        suspend fun setKidsDailyMinutes(
+            userId: UUID,
+            minutes: Int,
+        ) {
+            displayPreferencesService.updateDisplayPreferences(userId) {
+                if (minutes <= 0) remove(BenflixScreenTime.PREF_KEY) else put(BenflixScreenTime.PREF_KEY, minutes.toString())
+            }
+            BenflixScreenTime.limitMinutes = minutes.coerceAtLeast(0)
+        }
+
         private suspend fun savedHash(userId: UUID): String? =
             try {
                 displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY]?.takeIf { it.isNotBlank() }
