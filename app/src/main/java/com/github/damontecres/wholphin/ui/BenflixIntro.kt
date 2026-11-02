@@ -26,6 +26,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.util.StartupTimer
+import com.github.damontecres.wholphin.util.WholphinDispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -49,17 +51,21 @@ fun BenflixIntro(
     val wordAlpha = remember { Animatable(0f) }
     val screenAlpha = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
-        // Get the sound ready while the still logo is showing
-        val player =
-            try {
-                MediaPlayer.create(context, R.raw.benflix_intro)?.apply {
-                    setVolume(.7f, .7f)
-                    setOnCompletionListener { it.release() }
+        // Get the sound ready while the still logo is showing. Benflix speed: this used to happen
+        // before the logo could even fade in, which held the whole intro up on slower TVs
+        val playerAsync =
+            async(WholphinDispatchers.IO) {
+                try {
+                    MediaPlayer.create(context, R.raw.benflix_intro)?.apply {
+                        setVolume(.7f, .7f)
+                        setOnCompletionListener { it.release() }
+                    }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not load intro sound")
+                    null
                 }
-            } catch (ex: Exception) {
-                Timber.w(ex, "Could not load intro sound")
-                null
             }
+        var player: MediaPlayer? = null
         var started = false
         try {
             // 1) Still logo for about 2 seconds while the app loads in the background
@@ -71,6 +77,7 @@ fun BenflixIntro(
             delay(INTRO_MIN_HOLD_MS)
             withTimeoutOrNull(INTRO_MAX_HOLD_MS - INTRO_MIN_HOLD_MS) { StartupTimer.signedIn.first { it } }
             // 2) Sound + the B pops
+            player = playerAsync.await()
             try {
                 player?.start()
                 started = player != null
