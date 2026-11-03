@@ -585,7 +585,6 @@ fun GamesPage(
                     modifier = cardSize,
                 )
             }
-            DeviceCard(power, isTv)
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -629,14 +628,6 @@ fun GamesPage(
                                 val fit = power.fit(local.power)
                                 if (fit == DevicePower.Fit.TOO_MUCH) null else Triple(c, local, fit)
                             }
-                        }
-                    val notHere =
-                        remember(state) {
-                            state.consoles
-                                .filter { c ->
-                                    val local = LocalConsole.forSlug(c.slug)
-                                    local == null || power.fit(local.power) == DevicePower.Fit.TOO_MUCH
-                                }.map { it.name }
                         }
                     if (playable.isNotEmpty()) {
                         InfoText(
@@ -703,9 +694,6 @@ fun GamesPage(
                         ) {
                             items(console.games, key = { it.id }) { game -> refs[game.id]?.let { Card(it) } }
                         }
-                    }
-                    if (notHere.isNotEmpty()) {
-                        InfoText("Not on this device yet: ${notHere.joinToString(", ")}.")
                     }
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                 }
@@ -1757,33 +1745,6 @@ data class GameChoice(
     val downloaded: Boolean,
     val pinned: Boolean,
 )
-
-/** "This TV: MediaTek MT8696 · 4 cores…" and which consoles play well here */
-@Composable
-private fun DeviceCard(
-    power: DevicePower,
-    isTv: Boolean,
-) {
-    val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
-    val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF1C1C1C), RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-        )
-        Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
-        if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
-    }
-}
 
 /** Play, Resume or Start over, plus "Keep for trips" on phones */
 @Composable
