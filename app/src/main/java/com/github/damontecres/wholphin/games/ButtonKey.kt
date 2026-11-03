@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.games
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +16,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -27,6 +32,16 @@ import androidx.compose.ui.unit.sp
 enum class KeyFor {
     REMOTE,
     CONTROLLER,
+}
+
+/** How big a show is next to a game */
+enum class ShowSize(
+    val label: String,
+) {
+    SIDE("Show: small at the side"),
+    HALF("Show: half and half"),
+    BIG("Show: big"),
+    CORNER("Show: tiny corner"),
 }
 
 /** One line of the key: the button you press (drawn like it looks) and what it does in the game */
@@ -104,12 +119,18 @@ fun ButtonKey(
         verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 9.dp),
         modifier = modifier,
     ) {
-        Text(
-            text = if (pad == KeyFor.REMOTE) "Remote" else "Controller",
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = text,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PadIcon(pad, Modifier.size(if (compact) 20.dp else 26.dp))
+            Text(
+                text = if (pad == KeyFor.REMOTE) "Remote" else "Controller",
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = text,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         keyLines(console, pad).forEach { line ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -152,42 +173,94 @@ fun ButtonKey(
     }
 }
 
+/** A little drawing of a TV remote or a game controller */
+@Composable
+fun PadIcon(
+    pad: KeyFor,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val c = Color.White.copy(alpha = 0.85f)
+        val stroke = Stroke(width = size.minDimension * 0.08f)
+        if (pad == KeyFor.REMOTE) {
+            val bw = size.width * 0.42f
+            drawRoundRect(
+                c,
+                Offset((size.width - bw) / 2, size.height * 0.04f),
+                Size(bw, size.height * 0.92f),
+                CornerRadius(bw / 2),
+                style = stroke,
+            )
+            drawCircle(c, bw * 0.28f, Offset(size.width / 2, size.height * 0.3f), style = stroke)
+            drawCircle(c, bw * 0.08f, Offset(size.width / 2, size.height * 0.62f))
+            drawCircle(c, bw * 0.08f, Offset(size.width / 2, size.height * 0.76f))
+        } else {
+            val h = size.height * 0.6f
+            drawRoundRect(
+                c,
+                Offset(size.width * 0.02f, (size.height - h) / 2),
+                Size(size.width * 0.96f, h),
+                CornerRadius(h / 2),
+                style = stroke,
+            )
+            val cy = size.height / 2
+            drawLine(c, Offset(size.width * 0.2f, cy), Offset(size.width * 0.36f, cy), stroke.width)
+            drawLine(c, Offset(size.width * 0.28f, cy - h * 0.18f), Offset(size.width * 0.28f, cy + h * 0.18f), stroke.width)
+            drawCircle(c, h * 0.08f, Offset(size.width * 0.66f, cy + h * 0.1f))
+            drawCircle(c, h * 0.08f, Offset(size.width * 0.78f, cy - h * 0.1f))
+        }
+    }
+}
+
+/** "Phone as a controller" tip */
+@Composable
+fun PhoneTip(modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(22.dp)
+                    .background(PadGrey, RoundedCornerShape(6.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
+        ) {
+            Text("📱", fontSize = 11.sp)
+        }
+        Text(
+            "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
+            color = Color.White.copy(alpha = 0.8f),
+            fontSize = 12.sp,
+        )
+    }
+}
+
 /**
- * The key on the side of the game (TV): the remote and the controller next to each other, and how to
- * use a phone as a controller.
+ * The key on the side of the game: the pad you last pressed (remote or controller), switching by
+ * itself, plus how to use a phone as a controller.
  */
 @Composable
-fun SideKeys(
+fun SmartKey(
     console: LocalConsole,
+    pad: KeyFor,
     modifier: Modifier = Modifier,
+    showPhoneTip: Boolean = true,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ButtonKey(console, KeyFor.REMOTE, Modifier.weight(1f), compact = true)
-            ButtonKey(console, KeyFor.CONTROLLER, Modifier.weight(1f), compact = true)
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(22.dp)
-                        .background(PadGrey, RoundedCornerShape(6.dp))
-                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
-            ) {
-                Text("📱", fontSize = 11.sp)
-            }
+        ButtonKey(console, pad, compact = true)
+        if (showPhoneTip) {
             Text(
-                "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 12.sp,
+                if (pad == KeyFor.REMOTE) "Using a controller? Press any button on it." else "Using the remote? Press any button on it.",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
             )
+            PhoneTip()
         }
     }
 }

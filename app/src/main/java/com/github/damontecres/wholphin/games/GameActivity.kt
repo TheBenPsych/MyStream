@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.games
 
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
+import android.hardware.input.InputManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -10,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -41,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,10 +51,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -60,6 +65,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.palette.graphics.Palette
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -116,7 +122,38 @@ class GameActivity : ComponentActivity() {
     private var sideShow: SideShow? = null
     private var canSideShow = false
     private var showOn by mutableStateOf(false)
-    private var showBig by mutableStateOf(false)
+    private var showSize by mutableStateOf(ShowSize.SIDE)
+
+    // Living Colour: the side panel takes its colour from the game's box art
+    private var panelTint by mutableStateOf(Color(0xFF2A2A2A))
+
+    // The smart key shows whichever was pressed last: the remote or a controller
+    private var lastPad by mutableStateOf(KeyFor.REMOTE)
+
+    // Little pop-ups ("Saved", "Controller connected") and the info strip
+    private var toast by mutableStateOf<String?>(null)
+    private val hideToast = Runnable { toast = null }
+    private var lastSaved by mutableLongStateOf(0L)
+    private var playedBefore = 0L
+    private var playStart = 0L
+    private var lastBackTap = 0L
+    private var coverUrl = ""
+    private val inputListener =
+        object : InputManager.InputDeviceListener {
+            override fun onInputDeviceAdded(deviceId: Int) {
+                if (isPadDevice(InputDevice.getDevice(deviceId))) {
+                    gamepadSeen = true
+                    lastPad = KeyFor.CONTROLLER
+                    showToast("Controller connected: Player ${portFor(deviceId) + 1}")
+                }
+            }
+
+            override fun onInputDeviceRemoved(deviceId: Int) {
+                if (ports.containsKey(deviceId)) showToast("Controller disconnected")
+            }
+
+            override fun onInputDeviceChanged(deviceId: Int) {}
+        }
     private var showShape by mutableFloatStateOf(16f / 9f)
     private var showTitle by mutableStateOf("")
 
@@ -179,6 +216,12 @@ class GameActivity : ComponentActivity() {
         hasSpot = GameSaves.file(saveDir, "state").exists()
         displayHz = screenRefreshRate()
         gamepadSeen = hasGamepad()
+        if (gamepadSeen) lastPad = KeyFor.CONTROLLER
+        coverUrl = intent.getStringExtra(EXTRA_COVER).orEmpty()
+        loadPanelColour()
+        playedBefore = getSharedPreferences(PREFS, MODE_PRIVATE).getLong(todayKey(), 0L)
+        playStart = SystemClock.elapsedRealtime()
+        (getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(inputListener, handler)
         sideKey = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("side_key", true)
         val power = DevicePower.get(this)
         canSideShow =
@@ -202,6 +245,7 @@ class GameActivity : ComponentActivity() {
                     gameName = gameName,
                     onButtons = { player, mask -> onPhoneButtons(player, mask) },
                     onMenu = { runOnUiThread { if (menuOpen) closeMenu() else openMenu() } },
+                    onJoin = { player, name -> runOnUiThread { showToast("$name joined as Player ${player + 1}") } },
                 ).also { it.start() }
         }
 
@@ -413,6 +457,7 @@ class GameActivity : ComponentActivity() {
             return false
         }
         if (changed.isNotEmpty()) GameSaves.markPending(saveDir, changed)
+        lastSaved = System.currentTimeMillis()
         return true
     }
 
@@ -441,6 +486,7 @@ class GameActivity : ComponentActivity() {
         stopShow()
         Thread {
             saveHere(withSpot = true)
+            keepPlayTime()
             val sent = GameSaves.upload(saveDir, gameId, address, token)
             if (!sent) Timber.i("Saves will be sent to Tower next time")
             // Let Jellyfin hear how far the show got before the game player closes
@@ -469,7 +515,7 @@ class GameActivity : ComponentActivity() {
         val show = sideShow ?: return
         showTitle = item.title
         showOn = true
-        showBig = false
+        showSize = ShowSize.SIDE
         show.play(
             item = item,
             view = showView,
@@ -485,7 +531,7 @@ class GameActivity : ComponentActivity() {
         sideShow?.stop()
         handler.removeCallbacks(reportProgress)
         showOn = false
-        showBig = false
+        showSize = ShowSize.SIDE
         applySound()
     }
 
@@ -504,6 +550,59 @@ class GameActivity : ComponentActivity() {
     private fun saveSideKey(on: Boolean) {
         sideKey = on
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("side_key", on).apply()
+    }
+
+    private fun showToast(text: String) {
+        toast = text
+        handler.removeCallbacks(hideToast)
+        handler.postDelayed(hideToast, 3000)
+    }
+
+    /** Small show, half and half, big show, tiny corner: one step on */
+    private fun nextShowSize() {
+        if (!showOn) return
+        showSize = ShowSize.entries[(showSize.ordinal + 1) % ShowSize.entries.size]
+        showToast(showSize.label)
+    }
+
+    private fun todayKey() = "played_${java.time.LocalDate.now()}_$gameId"
+
+    /** Minutes played today, this game */
+    private fun playedTodayMs() = playedBefore + (SystemClock.elapsedRealtime() - playStart)
+
+    private fun keepPlayTime() {
+        val total = playedTodayMs()
+        playedBefore = total
+        playStart = SystemClock.elapsedRealtime()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putLong(todayKey(), total).apply()
+    }
+
+    /** Takes the side panel's colour from the game's box art */
+    private fun loadPanelColour() {
+        if (coverUrl.isBlank()) return
+        Thread {
+            try {
+                val bytes =
+                    okhttp3.OkHttpClient
+                        .Builder()
+                        .callTimeout(10, TimeUnit.SECONDS)
+                        .build()
+                        .newCall(
+                            okhttp3.Request
+                                .Builder()
+                                .url(coverUrl)
+                                .header("X-Benflix-Token", token)
+                                .build(),
+                        ).execute()
+                        .use { if (it.isSuccessful) it.body.bytes() else null } ?: return@Thread
+                val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@Thread
+                val palette = Palette.from(bmp).maximumColorCount(16).generate()
+                val swatch = palette.vibrantSwatch ?: palette.dominantSwatch ?: palette.mutedSwatch ?: return@Thread
+                runOnUiThread { panelTint = Color(swatch.rgb) }
+            } catch (e: Exception) {
+                Timber.i("No box art colour: ${e.message}")
+            }
+        }.start()
     }
 
     /** For remotes without enough buttons: the menu can tap Start or Select for you */
@@ -533,6 +632,7 @@ class GameActivity : ComponentActivity() {
     override fun onPause() {
         // Save on this device first (the game thread stops when the view pauses)
         if (loaded && !quitting) saveHere(withSpot = true)
+        keepPlayTime()
         setPaused(true)
         sideShow?.pause()
         glView.onPause()
@@ -547,6 +647,7 @@ class GameActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        (getSystemService(INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(inputListener)
         sideShow?.stop()
         audio?.release()
         padServer?.stop()
@@ -767,6 +868,7 @@ class GameActivity : ComponentActivity() {
         }
         val gamepad = isGamepad(event)
         if (gamepad && !gamepadSeen) gamepadSeen = true
+        if (down) lastPad = if (gamepad) KeyFor.CONTROLLER else KeyFor.REMOTE
         val button = buttonFor(code, gamepad) ?: return super.dispatchKeyEvent(event)
         val port = portFor(event.deviceId)
         keyMask[port] =
@@ -789,6 +891,13 @@ class GameActivity : ComponentActivity() {
     ) {
         if (down) {
             if (repeat > 0 || backHeld) return
+            lastPad = KeyFor.REMOTE
+            // Two quick presses of Back change the show's size
+            val now = SystemClock.uptimeMillis()
+            if (showOn && now - lastBackTap < 400) {
+                lastBackTap = 0L
+                nextShowSize()
+            }
             backHeld = true
             backOpenedMenu = false
             keyMask[0] = keyMask[0] or RetroButton.bit(RetroButton.B)
@@ -800,6 +909,7 @@ class GameActivity : ComponentActivity() {
             if (!backOpenedMenu) {
                 keyMask[0] = keyMask[0] and RetroButton.bit(RetroButton.B).inv()
                 push(0)
+                lastBackTap = SystemClock.uptimeMillis()
             }
         }
     }
@@ -808,6 +918,7 @@ class GameActivity : ComponentActivity() {
         val joystick = event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
         if (!joystick || event.action != MotionEvent.ACTION_MOVE || menuOpen) return super.dispatchGenericMotionEvent(event)
         if (!gamepadSeen) gamepadSeen = true
+        lastPad = KeyFor.CONTROLLER
         val port = portFor(event.deviceId)
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
@@ -887,10 +998,11 @@ class GameActivity : ComponentActivity() {
         }
     }
 
-    /** Where the game, the show and the button key go on the screen */
+    /** Where the game, the show, the side panel and the button key go on the screen */
     private class Spots(
         val game: Rect,
         val show: Rect?,
+        val panel: Rect?,
         val key: Rect?,
     )
 
@@ -914,52 +1026,89 @@ class GameActivity : ComponentActivity() {
         return Rect(x + (w - fw) / 2, y + (h - fh) / 2, fw, fh)
     }
 
+    /** The key under something in the panel, leaving room for the info strip at the bottom */
+    private fun keyBelow(
+        x: Dp,
+        top: Dp,
+        w: Dp,
+        h: Dp,
+        pad: Dp,
+    ): Rect? {
+        val height = h - top - STRIP - pad
+        return if (height < 150.dp) null else Rect(x, top, w, height)
+    }
+
     private fun spots(
         w: Dp,
         h: Dp,
     ): Spots {
         val pad = 12.dp
         val keyWanted = sideKey && message == null && (isTv || gamepadSeen)
+        // Without a show: the game sits left and the panel uses its black bar (or the whole screen is the game)
+        val keyPanel = maxOf(w * 0.3f, w - h * gameShape)
         return when {
-            showOn && showBig -> {
-                // Big show on the left; the game (and key) small on the right
+            showOn && showSize == ShowSize.BIG -> {
                 val panel = w * 0.3f
                 val main = w - panel
                 val gw = panel - pad * 2
                 val game = fit(main + pad, pad, gw, min(h * 0.45f, gw / gameShape), gameShape)
-                val keyTop = game.y + game.h + pad
                 Spots(
                     game = game,
                     show = fit(0.dp, 0.dp, main, h, showShape),
-                    key = if (keyWanted) Rect(main + pad, keyTop, gw, h - keyTop - pad) else null,
+                    panel = Rect(main, 0.dp, panel, h),
+                    key = if (keyWanted) keyBelow(main + pad, game.y + game.h + pad, gw, h, pad) else null,
+                )
+            }
+
+            showOn && showSize == ShowSize.HALF -> {
+                val half = w / 2
+                val vw = half - pad * 2
+                val show = fit(half + pad, pad, vw, min(h * 0.55f, vw / showShape), showShape)
+                Spots(
+                    game = Rect(0.dp, 0.dp, half, h),
+                    show = show,
+                    panel = Rect(half, 0.dp, half, h),
+                    key = if (keyWanted) keyBelow(half + pad, show.y + show.h + pad, vw, h, pad) else null,
+                )
+            }
+
+            showOn && showSize == ShowSize.CORNER -> {
+                // The game as usual, with a tiny show over its bottom corner
+                val gameW = if (keyWanted) w - keyPanel else w
+                val sw = gameW * 0.28f
+                val sh = sw / showShape
+                Spots(
+                    game = Rect(0.dp, 0.dp, gameW, h),
+                    show = Rect(gameW - sw - pad, h - sh - pad, sw, sh),
+                    panel = if (keyWanted) Rect(gameW, 0.dp, keyPanel, h) else null,
+                    key = if (keyWanted) Rect(gameW + pad, pad, keyPanel - pad * 2, h - pad * 2 - STRIP) else null,
                 )
             }
 
             showOn -> {
-                // The game on the left where its black bar was; the show (and key) on the right
                 val panel = maxOf(w * 0.28f, w - h * gameShape)
                 val main = w - panel
                 val vw = panel - pad * 2
                 val show = fit(main + pad, pad, vw, min(h * 0.45f, vw / showShape), showShape)
-                val keyTop = show.y + show.h + pad
                 Spots(
                     game = Rect(0.dp, 0.dp, main, h),
                     show = show,
-                    key = if (keyWanted) Rect(main + pad, keyTop, vw, h - keyTop - pad) else null,
+                    panel = Rect(main, 0.dp, panel, h),
+                    key = if (keyWanted) keyBelow(main + pad, show.y + show.h + pad, vw, h, pad) else null,
                 )
             }
 
             keyWanted -> {
-                val panel = maxOf(w * 0.3f, w - h * gameShape)
                 Spots(
-                    game = Rect(0.dp, 0.dp, w - panel, h),
+                    game = Rect(0.dp, 0.dp, w - keyPanel, h),
                     show = null,
-                    key = Rect(w - panel + pad, pad, panel - pad * 2, h - pad * 2),
+                    panel = Rect(w - keyPanel, 0.dp, keyPanel, h),
+                    key = Rect(w - keyPanel + pad, pad, keyPanel - pad * 2, h - pad * 2 - STRIP),
                 )
             }
 
             else -> {
-                Spots(Rect(0.dp, 0.dp, w, h), null, null)
+                Spots(Rect(0.dp, 0.dp, w, h), null, null, null)
             }
         }
     }
@@ -968,6 +1117,15 @@ class GameActivity : ComponentActivity() {
     private fun SideBySide() {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val s = spots(maxWidth, maxHeight)
+            s.panel?.let { r ->
+                // Living Colour: a soft glow from the box art's colour, fading to black
+                Box(
+                    Modifier
+                        .offset(r.x, r.y)
+                        .size(r.w, r.h)
+                        .background(Brush.verticalGradient(listOf(panelTint.copy(alpha = 0.55f), Color(0xFF0D0B0C)))),
+                )
+            }
             AndroidView(
                 factory = { glView },
                 modifier =
@@ -992,13 +1150,56 @@ class GameActivity : ComponentActivity() {
                             .offset(r.x, r.y)
                             .size(r.w, r.h),
                 ) {
-                    if (isTv) {
-                        SideKeys(console)
-                    } else {
-                        ButtonKey(console, KeyFor.CONTROLLER, compact = true)
-                    }
+                    SmartKey(console, if (isTv) lastPad else KeyFor.CONTROLLER, showPhoneTip = isTv)
                 }
             }
+            s.panel?.let { r ->
+                InfoStrip(
+                    Modifier
+                        .offset(r.x + 12.dp, r.y + r.h - STRIP)
+                        .size(r.w - 24.dp, STRIP),
+                )
+            }
+            toast?.let { text ->
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color(0xE6202020), RoundedCornerShape(20.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
+    /** One small line: game, console, when it was saved and how long you've played today */
+    @Composable
+    private fun InfoStrip(modifier: Modifier) {
+        var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                kotlinx.coroutines.delay(20_000)
+                now = System.currentTimeMillis()
+            }
+        }
+        val saved =
+            when {
+                lastSaved == 0L -> null
+                now - lastSaved < 60_000 -> "Saved just now"
+                else -> "Saved ${(now - lastSaved) / 60_000} min ago"
+            }
+        val played = (playedTodayMs() / 60_000).let { if (it < 1) null else "Played $it min today" }
+        Box(modifier, contentAlignment = Alignment.CenterStart) {
+            Text(
+                listOfNotNull(gameName, console.title, saved, played).joinToString("  ·  "),
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 
@@ -1081,8 +1282,12 @@ class GameActivity : ComponentActivity() {
                     MenuButton("Resume", Modifier.focusRequester(focus)) { closeMenu() }
                     MenuButton("Save my spot") {
                         Thread {
-                            if (saveHere(withSpot = true)) sendToTower()
-                            runOnUiThread { closeMenu() }
+                            val ok = saveHere(withSpot = true)
+                            if (ok) sendToTower()
+                            runOnUiThread {
+                                closeMenu()
+                                showToast(if (ok) "Saved" else "Couldn't save just now")
+                            }
                         }.start()
                     }
                     if (hasSpot) {
@@ -1104,10 +1309,7 @@ class GameActivity : ComponentActivity() {
                                 picking = true
                             }
                         } else {
-                            MenuButton(if (showBig) "Make the game big" else "Make the show big") {
-                                showBig = !showBig
-                                closeMenu()
-                            }
+                            MenuButton("Show size: ${showSize.label.removePrefix("Show: ")}") { nextShowSize() }
                             val sound =
                                 when (soundMode) {
                                     0 -> "Sound: show and game"
@@ -1171,6 +1373,8 @@ class GameActivity : ComponentActivity() {
         const val EXTRA_TOKEN = "token"
         const val EXTRA_SERVER = "server"
         const val EXTRA_USER = "user"
+        const val EXTRA_COVER = "cover"
         private const val PREFS = "game_player"
+        private val STRIP = 28.dp
     }
 }

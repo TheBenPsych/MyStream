@@ -421,6 +421,7 @@ class LocalGames
                     .putExtra(GameActivity.EXTRA_TOKEN, client.token)
                     .putExtra(GameActivity.EXTRA_SERVER, client.jellyfinUrl)
                     .putExtra(GameActivity.EXTRA_USER, client.userId)
+                    .putExtra(GameActivity.EXTRA_COVER, game.ref.coverUrl ?: "")
             if (from !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             // Coming back from the game returns to the Games tab, not "Who's watching?"
             GameStreamReturn.pending = true
