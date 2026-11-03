@@ -497,9 +497,19 @@ fun DiscoverSeriesDetailsHeader(
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
                 )
                 // Benflix (admins): who already asked for this, with Approve / Decline
+                val onBenflix = series.mediaInfo?.status == com.github.damontecres.wholphin.data.model.SeerrAvailability.AVAILABLE.status
                 WhoAskedBlock(
                     isMovie = false,
                     tmdbId = tmdbId,
+                    title = series.name,
+                    available = onBenflix,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
+                )
+                // Benflix: "Ben looked, but couldn't find this yet" (everyone sees it)
+                com.github.damontecres.wholphin.ui.discover.CantFindBlock(
+                    isMovie = false,
+                    tmdbId = tmdbId,
+                    available = onBenflix,
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
                 )
             }

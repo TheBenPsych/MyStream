@@ -10,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,6 +28,9 @@ import com.github.damontecres.wholphin.api.seerr.RequestApi
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.discover.CantFindDialog
+import com.github.damontecres.wholphin.ui.discover.CantFindViewModel
+import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,6 +54,8 @@ data class AskedBy(
     val who: String,
     val whenAsked: String?,
     val status: RequestStatus,
+    // Benflix: Seerr user id, so "Couldn't find it" can tell them
+    val seerrUserId: Int? = null,
 )
 
 /**
@@ -94,6 +102,7 @@ class WhoAskedViewModel
                                             ?: "Someone",
                                     whenAsked = ago(request["createdAt"].str()),
                                     status = RequestStatus.from(request["status"].str()?.toIntOrNull()),
+                                    seerrUserId = user?.get("id").str()?.toIntOrNull(),
                                 )
                             }
                 } catch (ex: CancellationException) {
@@ -153,11 +162,30 @@ fun WhoAskedBlock(
     isMovie: Boolean,
     tmdbId: Int,
     modifier: Modifier = Modifier,
+    title: String? = null,
+    available: Boolean = false,
     viewModel: WhoAskedViewModel = hiltViewModel(key = "who-asked-$isMovie-$tmdbId"),
+    cantFindViewModel: CantFindViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(isMovie, tmdbId) { viewModel.load(isMovie, tmdbId) }
     val asked by viewModel.asked.collectAsState()
+    val cantFind by cantFindViewModel.entries.collectAsState()
+    var askCantFind by remember { mutableStateOf(false) }
     if (asked.isEmpty()) return
+    val key = cantFindKey(isMovie, tmdbId)
+    // Benflix: approved but nothing turned up, so Ben can tell whoever asked
+    val canMarkCantFind =
+        viewModel.isAdmin && !available && key !in cantFind && asked.any { it.status == RequestStatus.APPROVED }
+    if (askCantFind) {
+        CantFindDialog(
+            title = title,
+            onDismiss = { askCantFind = false },
+            onMark = { note ->
+                askCantFind = false
+                cantFindViewModel.mark(key, title, note, asked.mapNotNull { it.seerrUserId })
+            },
+        )
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier,
@@ -190,6 +218,9 @@ fun WhoAskedBlock(
                     Button(onClick = { viewModel.answer(entry, false) }) { Text("Decline") }
                 }
             }
+        }
+        if (canMarkCantFind) {
+            Button(onClick = { askCantFind = true }) { Text("Can't find it", maxLines = 1) }
         }
     }
 }
