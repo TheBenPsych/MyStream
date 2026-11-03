@@ -17,6 +17,9 @@ import time
 import xml.etree.ElementTree as ET
 
 MODE, PKG, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+# SMOKE=1: the quick check that runs on every pull request. Signs in, opens every tab, a details page and
+# the player, then fails if the app crashed. Skips the slow button sweep and the random stress test.
+SMOKE = os.environ.get("SMOKE") == "1"
 SERVER = os.environ.get("AUDIT_SERVER", "https://demo.jellyfin.org/stable")
 USER = os.environ.get("AUDIT_USER", "demo")
 os.makedirs(OUT, exist_ok=True)
@@ -26,7 +29,7 @@ if os.path.exists(f"{OUT}/report.json"):
     os.rename(f"{OUT}/report.json", f"{OUT}/report-try{n}.json")
 REPORT = {"mode": MODE, "steps": [], "timings": {}, "unreachable": {}, "problems": []}
 shot_no = [0]
-DEADLINE = time.time() + 36 * 60
+DEADLINE = time.time() + (12 if SMOKE else 36) * 60
 
 
 def out_of_time():
@@ -507,6 +510,10 @@ def sign_in():
 
 
 def main():
+    global focus_sweep, monkey
+    if SMOKE:
+        focus_sweep = lambda *_args, **_kw: None  # noqa: E731
+        monkey = lambda *_args, **_kw: None  # noqa: E731
     sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
     adb("logcat", "-c")
     adb("logcat", "-b", "crash", "-c")
@@ -623,6 +630,7 @@ def main():
     # Save the app's log
     with open(f"{OUT}/logcat.txt", "w") as f:
         f.write(adb("logcat", "-d", "-v", "time", timeout=120))
+    check_crash("end")
     with open(f"{OUT}/report.json", "w") as f:
         json.dump(REPORT, f, indent=1)
     print(json.dumps({k: REPORT[k] for k in ("timings", "unreachable", "problems")}, indent=1)[:20000])
@@ -641,3 +649,9 @@ if __name__ == "__main__":
     finally:
         with open(f"{OUT}/report.json", "w") as f:
             json.dump(REPORT, f, indent=1)
+    crashed = [p for p in REPORT["problems"] if p.get("type") == "crash"]
+    if SMOKE and crashed:
+        print(f"[{MODE}] Benflix CRASHED during the quick check:", flush=True)
+        for p in crashed:
+            print(f"--- near '{p.get('where')}' ---\n{p.get('trace', '')[:3000]}", flush=True)
+        sys.exit(3)

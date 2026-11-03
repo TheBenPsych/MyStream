@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.ui.util.BlurHash
+import com.github.damontecres.wholphin.ui.util.FastScroll
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.FlowPreview
@@ -47,6 +48,10 @@ class BackdropService
         private val preferences: DataStore<AppPreferences>,
     ) {
         private val extractedColorCache = LruCache<String, ExtractedColors>(50)
+
+        /** The last item asked for; only its picture is shown once things settle */
+        @Volatile
+        private var latestItemId: String? = null
 
         private val _backdropFlow = MutableStateFlow<BackdropResult>(BackdropResult.NONE)
         val backdropFlow = _backdropFlow
@@ -81,6 +86,7 @@ class BackdropService
             imageUrl: String?,
             glow: ExtractedColors? = null,
         ) = withContext(WholphinDispatchers.IO) {
+            latestItemId = itemId
             val current = backdropFlow.firstOrNull()
             if (imageUrl != null && current?.imageUrl == imageUrl) {
                 // Same picture, maybe a different glow (Home's soft glow, then the details page's stronger one).
@@ -96,11 +102,15 @@ class BackdropService
                     }
                 }
             } else {
-                _backdropFlow.update {
-                    it.copy(
-                        itemId = itemId,
-                        imageUrl = null,
-                    )
+                // Benflix: while an arrow is held to fly along a row, keep the current picture up instead of
+                // blanking it on every poster. It changes once the arrow is let go.
+                if (!FastScroll.held.value) {
+                    _backdropFlow.update {
+                        it.copy(
+                            itemId = itemId,
+                            imageUrl = null,
+                        )
+                    }
                 }
                 extractColors(itemId, imageUrl, glow)
             }
@@ -110,6 +120,7 @@ class BackdropService
          * Remove the backdrop, such as when switching pages
          */
         suspend fun clearBackdrop() {
+            latestItemId = null
             _backdropFlow.update {
                 BackdropResult.NONE
             }
@@ -124,9 +135,11 @@ class BackdropService
             // from the poster's BlurHash (already sent by the server), so no picture is downloaded or scanned.
             // A short wait still stops the picture flickering while scrolling fast.
             delay(BACKDROP_SETTLE_MS)
+            if (FastScroll.awaitReleased()) delay(BACKDROP_SETTLE_MS)
+            if (latestItemId != itemId) return
             val colors: ExtractedColors? = glow ?: ExtractedColors.DEFAULT
             _backdropFlow.update {
-                if (it.itemId == itemId) {
+                if (it.itemId == itemId || latestItemId == itemId) {
                     BackdropResult(
                         itemId = itemId,
                         imageUrl = imageUrl,

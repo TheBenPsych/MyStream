@@ -412,6 +412,10 @@ class GamesViewModel
                             localGames.downloaded(),
                         )
                     }
+                (_library.value as? LibraryState.Ready)?.let { ready ->
+                    // Get the emulators for this library's consoles ready in the background (Wi-Fi only)
+                    viewModelScope.launch { localGames.warmCores(ready.consoles.map { it.slug }) }
+                }
                 if (_library.value is LibraryState.Ready) {
                     localGames.sendWaitingSaves()
                     _towerRecent.value =
