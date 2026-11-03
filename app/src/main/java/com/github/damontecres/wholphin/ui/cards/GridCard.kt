@@ -129,6 +129,7 @@ fun GridCard(
                 Text(
                     text = item?.subtitle ?: "",
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Normal,

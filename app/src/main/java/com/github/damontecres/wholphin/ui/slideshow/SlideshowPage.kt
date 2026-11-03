@@ -9,6 +9,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +37,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -66,6 +69,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.isDirectionalDpad
 import com.github.damontecres.wholphin.ui.playback.isDpad
 import com.github.damontecres.wholphin.ui.playback.isEnterKey
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import org.jellyfin.sdk.model.api.MediaType
@@ -222,6 +226,68 @@ fun SlideshowPage(
 
             var longPressing by remember { mutableStateOf(false) }
 
+            fun goToPrevious() {
+                if (!viewModel.previousImage()) {
+                    Toast
+                        .makeText(
+                            context,
+                            R.string.slideshow_at_beginning,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                }
+            }
+
+            fun goToNext() {
+                if (!viewModel.nextImage()) {
+                    Toast
+                        .makeText(
+                            context,
+                            R.string.no_more_images,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                }
+            }
+
+            // Phones: swipe left/right for the next/previous photo, tap to show or hide the controls
+            val isTv = rememberIsTv()
+            val swipeThreshold = with(density) { 48.dp.toPx() }
+            val touchModifier =
+                if (isTv) {
+                    Modifier
+                } else {
+                    Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                if (showFilterDialog) return@detectTapGestures
+                                if (showOverlay) {
+                                    showOverlay = false
+                                    viewModel.unpauseSlideshow()
+                                } else {
+                                    showOverlay = true
+                                    viewModel.pauseSlideshow()
+                                }
+                            }
+                        }.pointerInput(Unit) {
+                            var dragX = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { dragX = 0f },
+                                onDragEnd = {
+                                    val zoomed = zoomFactor * 100 > 102
+                                    if (!showOverlay && !showFilterDialog && !zoomed) {
+                                        if (dragX <= -swipeThreshold) {
+                                            goToNext()
+                                        } else if (dragX >= swipeThreshold) {
+                                            goToPrevious()
+                                        }
+                                    }
+                                },
+                            ) { change, dragAmount ->
+                                change.consume()
+                                dragX += dragAmount
+                            }
+                        }
+                }
+
             Box(
                 modifier =
                     modifier
@@ -269,25 +335,11 @@ fun SlideshowPage(
                             } else if (!isOverlayShowing && (it.key == Key.DirectionLeft || it.key == Key.DirectionRight)) {
                                 when (it.key) {
                                     Key.DirectionLeft, Key.DirectionUpLeft, Key.DirectionDownLeft -> {
-                                        if (!viewModel.previousImage()) {
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    R.string.slideshow_at_beginning,
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
-                                        }
+                                        goToPrevious()
                                     }
 
                                     Key.DirectionRight, Key.DirectionUpRight, Key.DirectionDownRight -> {
-                                        if (!viewModel.nextImage()) {
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    R.string.no_more_images,
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
-                                        }
+                                        goToNext()
                                     }
                                 }
                             } else if (isOverlayShowing && it.key == Key.Back) {
@@ -304,7 +356,7 @@ fun SlideshowPage(
                                 viewModel.pulseSlideshow()
                             }
                             result
-                        },
+                        }.then(touchModifier),
             ) {
                 when (val st = loadingState) {
                     ImageLoadingState.Error -> {
