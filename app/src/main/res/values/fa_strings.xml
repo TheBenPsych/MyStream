@@ -74,4 +74,14 @@
     <string name="fa_bars" translatable="false">&#xf0c9;</string>
     <string name="fa_gamepad" translatable="false">&#xf11b;</string>
     <string name="fa_mobile_screen" translatable="false">&#xf3cd;</string>
+    <string name="fa_face_smile" translatable="false">&#xf118;</string>
+    <string name="fa_bookmark" translatable="false">&#xf02e;</string>
+    <string name="fa_gear" translatable="false">&#xf013;</string>
+    <string name="fa_user_shield" translatable="false">&#xf505;</string>
+    <string name="fa_wand_sparkles" translatable="false">&#xe2ca;</string>
+    <string name="fa_dragon" translatable="false">&#xf6d5;</string>
+    <string name="fa_list_ol" translatable="false">&#xf0cb;</string>
+    <string name="fa_circle_plus" translatable="false">&#xf055;</string>
+    <string name="fa_scale_balanced" translatable="false">&#xf24e;</string>
+    <string name="fa_chevron_down" translatable="false">&#xf078;</string>
 </resources>
