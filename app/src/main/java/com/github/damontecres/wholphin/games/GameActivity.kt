@@ -524,7 +524,9 @@ class GameActivity : ComponentActivity() {
     }
 
     /** Writes saves and sends them to Tower one after another, away from the screen's thread */
-    private val diskWork = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val diskWork =
+        java.util.concurrent.Executors
+            .newSingleThreadExecutor()
 
     private fun sendToTower() {
         diskWork.execute { GameSaves.upload(saveDir, gameId, address, token) }
