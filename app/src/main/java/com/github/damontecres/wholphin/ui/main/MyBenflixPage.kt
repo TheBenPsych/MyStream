@@ -37,12 +37,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -67,6 +66,13 @@ class MyBenflixViewModel
         fun userImageUrl(userId: java.util.UUID): String = api.imageApi.getUserImageUrl(userId)
 
         private val _rows = MutableStateFlow<List<HubRow>?>(null)
+
+        companion object {
+            /** Last time's rows per person, so the page shows at once when opened again */
+            private val lastRows = java.util.concurrent.ConcurrentHashMap<java.util.UUID, List<HubRow>>()
+            private val ROW_TITLES = listOf("Continue watching", "My List", "Liked", "Watch history")
+        }
+
         val rows: StateFlow<List<HubRow>?> = _rows
 
         fun load() {
@@ -98,63 +104,85 @@ class MyBenflixViewModel
                     sortOrder = listOf(SortOrder.DESCENDING),
                     limit = ROW_MAX,
                     fields = HomeItemFields,
+                    // Counting everything makes Jellyfin much slower and the page doesn't need it
+                    enableTotalRecordCount = false,
                 )
-                val rows =
-                    coroutineScope {
-                        listOf(
-                            async {
-                                HubRow(
-                                    "Continue watching",
-                                    safe {
-                                        api.itemsApi
-                                            .getResumeItems(
-                                                GetResumeItemsRequest(userId = userId, limit = ROW_MAX, fields = HomeItemFields),
-                                            ).content.items
-                                            .map { BaseItem(it, true) }
-                                    },
-                                )
-                            },
-                            async {
-                                HubRow(
-                                    "My List",
-                                    safe {
-                                        api.itemsApi
-                                            .getItems(request(filters = listOf(ItemFilter.IS_FAVORITE), sortBy = ItemSortBy.DATE_CREATED))
-                                            .content.items
-                                            .map { BaseItem(it) }
-                                    },
-                                )
-                            },
-                            async {
-                                HubRow(
-                                    "Liked",
-                                    safe {
-                                        api.itemsApi
-                                            .getItems(request(filters = listOf(ItemFilter.LIKES), sortBy = ItemSortBy.DATE_PLAYED))
-                                            .content.items
-                                            .map { BaseItem(it) }
-                                    },
-                                )
-                            },
-                            async {
-                                HubRow(
-                                    "Watch history",
-                                    safe {
-                                        api.itemsApi
-                                            .getItems(
-                                                request(
-                                                    sortBy = ItemSortBy.DATE_PLAYED,
-                                                    isPlayed = true,
-                                                    types = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
-                                                ),
-                                            ).content.items
-                                            .map { BaseItem(it, true) }
-                                    },
-                                )
-                            },
-                        ).awaitAll()
+                // Benflix: show what was there last time straight away, then each row as soon as it's ready
+                lastRows[userId]?.let { _rows.value = it }
+                val loaders: List<suspend () -> HubRow> =
+                    listOf(
+                        suspend {
+                            HubRow(
+                                "Continue watching",
+                                safe {
+                                    api.itemsApi
+                                        .getResumeItems(
+                                            GetResumeItemsRequest(userId = userId, limit = ROW_MAX, fields = HomeItemFields),
+                                        ).content.items
+                                        .map { BaseItem(it, true) }
+                                },
+                            )
+                        },
+                        suspend {
+                            HubRow(
+                                "My List",
+                                safe {
+                                    api.itemsApi
+                                        .getItems(request(filters = listOf(ItemFilter.IS_FAVORITE), sortBy = ItemSortBy.DATE_CREATED))
+                                        .content.items
+                                        .map { BaseItem(it) }
+                                },
+                            )
+                        },
+                        suspend {
+                            HubRow(
+                                "Liked",
+                                safe {
+                                    api.itemsApi
+                                        .getItems(request(filters = listOf(ItemFilter.LIKES), sortBy = ItemSortBy.DATE_PLAYED))
+                                        .content.items
+                                        .map { BaseItem(it) }
+                                },
+                            )
+                        },
+                        suspend {
+                            HubRow(
+                                "Watch history",
+                                safe {
+                                    api.itemsApi
+                                        .getItems(
+                                            request(
+                                                sortBy = ItemSortBy.DATE_PLAYED,
+                                                isPlayed = true,
+                                                types = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                            ),
+                                        ).content.items
+                                        .map { BaseItem(it, true) }
+                                },
+                            )
+                        },
+                    )
+                val slots = arrayOfNulls<HubRow>(loaders.size)
+                val lock = kotlinx.coroutines.sync.Mutex()
+                coroutineScope {
+                    loaders.forEachIndexed { index, loader ->
+                        launch {
+                            val row = loader()
+                            lock.withLock {
+                                slots[index] = row
+                                // Keep last time's row in its place until the new one arrives
+                                val previous = lastRows[userId].orEmpty()
+                                val shown =
+                                    slots.mapIndexed { i, r -> r ?: previous.firstOrNull { it.title == ROW_TITLES[i] } }
+                                val visible = shown.filterNotNull().filter { it.items.isNotEmpty() }
+                                if (visible.isNotEmpty()) _rows.value = visible
+                            }
+                        }
                     }
-                _rows.value = rows.filter { it.items.isNotEmpty() }
+                }
+                val done = slots.filterNotNull().filter { it.items.isNotEmpty() }
+                lastRows[userId] = done
+                _rows.value = done
             }
         }
     }

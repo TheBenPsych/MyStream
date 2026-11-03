@@ -99,7 +99,10 @@ class AniListSync
                 }
                 try {
                     val viewer = viewerName(newToken)
-                    displayPreferencesService.updateDisplayPreferences(userId) { put(KEY, newToken) }
+                    displayPreferencesService.updateDisplayPreferences(userId) {
+                        put(KEY, newToken)
+                        put(KEY_NAME, viewer)
+                    }
                     token = newToken
                     tokenUser = userId
                     _name.value = viewer
@@ -114,16 +117,32 @@ class AniListSync
             }
         }
 
-        /** Looks up whether this profile is signed in to AniList (on any of its devices) */
+        /** Looks up whether this profile is signed in to AniList (on any of its devices); quick, no AniList call */
         suspend fun refresh() {
             val userId = serverRepository.currentUser?.id ?: return
+            if (tokenUser == userId && token != null && _name.value != null) return
             try {
-                val saved = displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY]?.takeIf { it.isNotBlank() }
+                val prefs = displayPreferencesService.getDisplayPreferences(userId).customPrefs
+                val saved = prefs[KEY]?.takeIf { it.isNotBlank() }
                 token = saved
                 tokenUser = userId
-                _name.value = saved?.let { viewerName(it) }
-            } catch (ex: AniListSignedOutException) {
-                signOutLocal(userId)
+                _name.value = saved?.let { prefs[KEY_NAME]?.takeIf { n -> n.isNotBlank() } ?: "signed in" }
+                // Older sign-ins didn't save the name: look it up once, in the background
+                if (saved != null && prefs[KEY_NAME].isNullOrBlank()) {
+                    scope.launch {
+                        try {
+                            val viewer = viewerName(saved)
+                            _name.value = viewer
+                            displayPreferencesService.updateDisplayPreferences(userId) { put(KEY_NAME, viewer) }
+                        } catch (ex: AniListSignedOutException) {
+                            signOutLocal(userId)
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Could not get the AniList name")
+                        }
+                    }
+                }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -134,7 +153,10 @@ class AniListSync
         suspend fun signOut() {
             val userId = serverRepository.currentUser?.id ?: return
             try {
-                displayPreferencesService.updateDisplayPreferences(userId) { remove(KEY) }
+                displayPreferencesService.updateDisplayPreferences(userId) {
+                    remove(KEY)
+                    remove(KEY_NAME)
+                }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -189,6 +211,9 @@ class AniListSync
                 sendQueue()
             }
         }
+
+        /** Marked as watched by hand (or "watched up to here"): counts like finishing it */
+        fun markedWatched(itemId: UUID) = watched(itemId, 1, 1)
 
         /** Sends what's waiting, oldest first. Stops at the first problem and tries again next time. */
         fun sendQueue() {
@@ -247,7 +272,9 @@ class AniListSync
             repeat(MAX_SEASONS) {
                 val (sequel, count) = aniList.sequelOf(mediaId)
                 if (count == null || number <= count || sequel == null) {
-                    save(token, mediaId, number, count)
+                    if (save(token, mediaId, number, count)) {
+                        showToast(context, "Ticked off on AniList: ${series.name} episode $number")
+                    }
                     return
                 }
                 number -= count
@@ -260,7 +287,7 @@ class AniListSync
             mediaId: Int,
             progress: Int,
             episodes: Int?,
-        ) {
+        ): Boolean {
             val current =
                 aniList
                     .signedInQuery(
@@ -270,7 +297,7 @@ class AniListSync
                     )?.let { (it["Media"] as? JsonObject)?.get("mediaListEntry") as? JsonObject }
             val had = (current?.get("progress") as? JsonPrimitive)?.intOrNull ?: 0
             val hadStatus = (current?.get("status") as? JsonPrimitive)?.contentOrNull
-            if (had >= progress && hadStatus != "PLANNING") return
+            if (had >= progress && hadStatus != "PLANNING") return false
             val status = if (episodes != null && progress >= episodes) "COMPLETED" else "CURRENT"
             aniList.signedInQuery(
                 "mutation (\$id: Int, \$p: Int, \$s: MediaListStatus) { SaveMediaListEntry(mediaId: \$id, progress: \$p, status: \$s) { id } }",
@@ -282,6 +309,7 @@ class AniListSync
                 token,
             )
             Timber.i("AniList: %s episode %s (%s)", mediaId, progress, status)
+            return true
         }
 
         companion object {
@@ -290,6 +318,7 @@ class AniListSync
             private const val PREFS = "benflix_anilist"
             private const val QUEUE = "queue"
             private const val KEY = "benflix_anilist_token"
+            private const val KEY_NAME = "benflix_anilist_name"
             private const val DONE_FRACTION = 0.8
             private const val MAX_SEASONS = 12
 
