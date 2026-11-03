@@ -375,11 +375,12 @@ class GamesViewModel
         companion object {
             private const val RECENT_GAMES = 8
 
-            /** The movie games that keep a best score too (their saved key to their name) */
+            /** The movie games on the "Highest scores" board: their saved key to their name and what's ranked */
             val BOARD_EXTRA_GAMES =
                 linkedMapOf(
-                    "HIGHER_LOWER_5" to "Higher or Lower",
-                    "GUESS_THE_MOVIE" to "Guess the movie",
+                    HigherLowerViewModel.BOARD_KEY to ("Higher or Lower" to "Best streak"),
+                    "GUESS_THE_MOVIE" to ("Guess the movie" to "Most points"),
+                    DailyRiddleViewModel.BOARD_KEY to ("Daily movie riddle" to "Days in a row"),
                 )
         }
     }
@@ -441,7 +442,7 @@ fun GamesPage(
                 { mod ->
                     MovieGameTile(
                         title = "Daily movie riddle",
-                        subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
+                        subtitle = "Five movie riddles a day, the same for the whole family. Play every day to grow your streak!",
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
@@ -452,7 +453,7 @@ fun GamesPage(
                 { mod ->
                     MovieGameTile(
                         title = "Higher or Lower",
-                        subtitle = "Two posters. Did critics score the second one higher or lower? Keep your streak going!",
+                        subtitle = "Two posters. Did critics score the second one higher or lower? One wrong guess ends your streak!",
                         icon = R.string.fa_arrow_up_long,
                         colors = listOf(Color(0xFF15803D), Color(0xFF7F1D1D)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.HigherLower) },
@@ -1561,9 +1562,10 @@ private fun HighestScores(
     board: Map<String, List<HighScore>>,
     isTv: Boolean,
 ) {
+    // Each game: its id, its name, and what the board ranks (a streak, points, days in a row...)
     val games =
-        BuiltInGame.entries.map { it.name to it.title } +
-            GamesViewModel.BOARD_EXTRA_GAMES.entries.map { it.key to it.value }
+        BuiltInGame.entries.map { Triple(it.name, it.title, "High score") } +
+            GamesViewModel.BOARD_EXTRA_GAMES.entries.map { Triple(it.key, it.value.first, it.value.second) }
     val columns = if (isTv) 4 else 2
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1581,7 +1583,7 @@ private fun HighestScores(
         )
         games.chunked(columns).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                row.forEach { (id, title) ->
+                row.forEach { (id, title, measure) ->
                     val scores = board[id].orEmpty().take(BOARD_ROWS)
                     Column(
                         verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -1598,6 +1600,13 @@ private fun HighestScores(
                             color = Color.White,
                             maxLines = 2,
                             lineHeight = 16.sp,
+                        )
+                        Text(
+                            measure,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = .55f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         if (scores.isEmpty()) {
                             Text("No scores yet", fontSize = 13.sp, color = Color.White.copy(alpha = .5f))

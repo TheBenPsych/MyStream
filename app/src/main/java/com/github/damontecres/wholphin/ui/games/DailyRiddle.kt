@@ -91,6 +91,8 @@ sealed interface RiddleState {
         val results: List<Pair<String, Int>>,
         val daily: Boolean,
         val streak: Int,
+        /** The longest run of days in a row this profile ever had (what the Highest scores board ranks) */
+        val longest: Int,
     ) : RiddleState
 }
 
@@ -108,6 +110,9 @@ class DailyRiddleViewModel
         private val serverRepository: ServerRepository,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_riddle", Context.MODE_PRIVATE)
+
+        /** Where the Games page reads each account's bests for the "Highest scores" board */
+        private val gamePrefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
         private val _state = MutableStateFlow<RiddleState>(RiddleState.Loading)
         val state: StateFlow<RiddleState> = _state
 
@@ -219,7 +224,19 @@ class DailyRiddleViewModel
 
         private fun finishGame() {
             if (daily) prefs.edit { putInt(dayKey(today), results.sumOf { it.second }) }
-            _state.value = RiddleState.Done(results.toList(), daily, streak())
+            val streak = streak()
+            _state.value = RiddleState.Done(results.toList(), daily, streak, saveLongest(streak))
+        }
+
+        /**
+         * The board ranks the longest streak of days in a row, because everyone gets the same
+         * riddles each day: playing every day is the real challenge. Kids and Guest don't post.
+         */
+        private fun saveLongest(streak: Int): Int {
+            val key = "${profile()}_$BOARD_KEY"
+            val longest = maxOf(gamePrefs.getInt(key, 0), streak)
+            if (longest > gamePrefs.getInt(key, 0)) gamePrefs.edit { putInt(key, longest) }
+            return longest
         }
 
         /** Days in a row with at least one star, counting back from today (or yesterday if today isn't played yet) */
@@ -297,6 +314,9 @@ class DailyRiddleViewModel
             private const val CHOICES = 5
             const val ROUNDS = 5
             const val MAX_STARS = 3
+
+            /** The "Highest scores" board's key: longest streak of days in a row */
+            const val BOARD_KEY = "DAILY_RIDDLE_STREAK"
             private const val NOT_PLAYED = -1
             private const val SEED_MIX = 7_919L
         }
@@ -487,8 +507,15 @@ private fun RiddleContent(
                             }
                         }
                     }
-                    if (s.daily && s.streak > 1) {
-                        Text("${s.streak} days in a row!", fontSize = 18.sp, color = Color(0xFF46D37A))
+                    if (s.streak > 0) {
+                        Text(
+                            text =
+                                (if (s.streak > 1) "${s.streak} days in a row!" else "Day 1 of your streak!") +
+                                    "  ·  Your longest: ${s.longest}",
+                            fontSize = 18.sp,
+                            color = Color(0xFF46D37A),
+                            textAlign = TextAlign.Center,
+                        )
                     }
                     if (s.daily) {
                         Text(
