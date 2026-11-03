@@ -1278,7 +1278,6 @@ internal fun listNames(names: List<String>): String =
         else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
     }
 
-
 /** Benflix: like "Wed 9:00 PM" */
 internal fun untilText(at: Long): String =
     java.time.Instant
