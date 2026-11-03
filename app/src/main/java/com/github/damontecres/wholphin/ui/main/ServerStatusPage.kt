@@ -345,6 +345,7 @@ fun ServerStatusPage(
     val disks by data.disks.collectAsState()
     val loadingParts by data.loading.collectAsState()
     val updatedAt by data.updatedAt.collectAsState()
+    val waitingOn by data.waitingOn.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
     var messaging by remember { mutableStateOf<WatchingNow?>(null) }
     var askRestart by remember { mutableStateOf(false) }
@@ -571,6 +572,7 @@ fun ServerStatusPage(
             loading = loadingParts > 0,
             updatedAt = updatedAt,
             onRefresh = data::refresh,
+            waitingOn = waitingOn,
         )
     }
 
@@ -767,6 +769,7 @@ private fun PageHeader(
     loading: Boolean,
     updatedAt: Long,
     onRefresh: () -> Unit,
+    waitingOn: Set<String> = emptySet(),
 ) {
     val isTv = rememberIsTv()
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(start = 8.dp)) {
@@ -816,6 +819,14 @@ private fun PageHeader(
             }
             if (!loading && ago != null) {
                 Text(text = ago!!, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            // Benflix: anything slow keeps loading quietly; say what, so it's clear the page isn't stuck
+            if (!loading && waitingOn.isNotEmpty()) {
+                Text(
+                    text = "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
