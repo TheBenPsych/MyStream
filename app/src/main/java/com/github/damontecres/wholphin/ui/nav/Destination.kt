@@ -216,7 +216,7 @@ sealed class Destination(
     @Serializable
     data object GuessTheMovie : Destination(true)
 
-    /** Benflix: one movie riddle a day, the same for everyone */
+    /** Benflix "Movie riddle": timed riddles one after another until a miss */
     @Serializable
     data object DailyRiddle : Destination(true)
 
