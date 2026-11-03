@@ -55,7 +55,7 @@ private fun keyLines(
     return buildList {
         when (pad) {
             KeyFor.CONTROLLER -> {
-                add(KeyLine("✚", PadGrey, false, "Move (or left stick)"))
+                add(KeyLine("✚", PadGrey, false, "Move"))
                 // Xbox-style pads: the game's buttons sit in the same spots as on the real console
                 name(RetroButton.B)?.let { add(KeyLine("A", XboxGreen, true, it, Color.Black)) }
                 name(RetroButton.A)?.let { add(KeyLine("B", XboxRed, true, it)) }
@@ -67,7 +67,7 @@ private fun keyLines(
                 name(RetroButton.R2)?.let { add(KeyLine("RT", PadGrey, false, it)) }
                 add(KeyLine("☰", PadGrey, true, "Start"))
                 name(RetroButton.SELECT)?.let { add(KeyLine("⧉", PadGrey, true, it)) }
-                add(KeyLine("Ⓧ", PadGrey, true, "Benflix menu"))
+                add(KeyLine("Ⓧ", PadGrey, true, "Menu"))
             }
 
             KeyFor.REMOTE -> {
@@ -80,7 +80,7 @@ private fun keyLines(
                 name(RetroButton.X)?.let { add(KeyLine("⏩", PadGrey, true, it)) }
                 name(RetroButton.L)?.let { add(KeyLine("CH−", PadGrey, false, it)) }
                 name(RetroButton.R)?.let { add(KeyLine("CH+", PadGrey, false, it)) }
-                add(KeyLine("Hold Back", PadGrey, false, "Benflix menu"))
+                add(KeyLine("Hold Back", PadGrey, false, "Menu"))
             }
         }
     }
@@ -97,10 +97,11 @@ fun ButtonKey(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val chip: Dp = if (compact) 26.dp else 34.dp
-    val text = if (compact) 13.sp else 16.sp
+    val chip: Dp = if (compact) 22.dp else 34.dp
+    val text = if (compact) 12.sp else 16.sp
+    val pillPad = if (compact) 5.dp else 8.dp
     Column(
-        verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 9.dp),
         modifier = modifier,
     ) {
         Text(
@@ -112,7 +113,7 @@ fun ButtonKey(
         keyLines(console, pad).forEach { line ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
             ) {
                 val shape: Shape = if (line.round && line.press.length <= 2) CircleShape else RoundedCornerShape(chip / 2)
                 Box(
@@ -122,7 +123,7 @@ fun ButtonKey(
                             .then(if (line.round && line.press.length <= 2) Modifier.size(chip) else Modifier.widthIn(min = chip * 1.6f))
                             .background(line.color, shape)
                             .border(1.dp, Color.White.copy(alpha = 0.25f), shape)
-                            .padding(horizontal = if (line.round && line.press.length <= 2) 0.dp else 8.dp, vertical = 3.dp),
+                            .padding(horizontal = if (line.round && line.press.length <= 2) 0.dp else pillPad, vertical = 2.dp),
                 ) {
                     Text(
                         line.press,
@@ -146,6 +147,46 @@ fun ButtonKey(
                 "Not every remote has ⏯ ≡ ⏪ ⏩ or CH buttons. No ⏯? The menu has Press Start and Press Select.",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 14.sp,
+            )
+        }
+    }
+}
+
+/**
+ * The key on the side of the game (TV): the remote and the controller next to each other, and how to
+ * use a phone as a controller.
+ */
+@Composable
+fun SideKeys(
+    console: LocalConsole,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ButtonKey(console, KeyFor.REMOTE, Modifier.weight(1f), compact = true)
+            ButtonKey(console, KeyFor.CONTROLLER, Modifier.weight(1f), compact = true)
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(22.dp)
+                        .background(PadGrey, RoundedCornerShape(6.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
+            ) {
+                Text("📱", fontSize = 11.sp)
+            }
+            Text(
+                "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 12.sp,
             )
         }
     }

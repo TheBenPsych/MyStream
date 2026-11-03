@@ -948,7 +948,7 @@ class GameActivity : ComponentActivity() {
             }
 
             keyWanted -> {
-                val panel = maxOf(w * 0.17f, w - h * gameShape)
+                val panel = maxOf(w * 0.3f, w - h * gameShape)
                 Spots(
                     game = Rect(0.dp, 0.dp, w - panel, h),
                     show = null,
@@ -990,7 +990,11 @@ class GameActivity : ComponentActivity() {
                             .offset(r.x, r.y)
                             .size(r.w, r.h),
                 ) {
-                    ButtonKey(console, if (gamepadSeen) KeyFor.CONTROLLER else KeyFor.REMOTE, compact = true)
+                    if (isTv) {
+                        SideKeys(console)
+                    } else {
+                        ButtonKey(console, KeyFor.CONTROLLER, compact = true)
+                    }
                 }
             }
         }

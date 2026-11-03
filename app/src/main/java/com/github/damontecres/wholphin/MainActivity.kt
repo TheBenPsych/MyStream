@@ -389,7 +389,7 @@ class MainActivity : AppCompatActivity() {
         super.onRestart()
         Timber.d("onRestart")
         if (GameStreamReturn.pending) {
-            // Back from playing a game in Moonlight: stay where we were (the Games tab)
+            // Back from playing a game: stay where we were (the Games tab)
             GameStreamReturn.pending = false
             ResumeTimer.resumeAllowed = true
             return
