@@ -29,6 +29,7 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.client.extensions.systemApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
@@ -62,6 +63,20 @@ data class WatchingNow(
     val progress: Float?,
     /** Benflix: like "38 min left" */
     val timeLeft: String?,
+    /** Benflix: why the server has to convert it, in plain words (null when it doesn't) */
+    val why: String? = null,
+    /** Benflix: how much of the internet connection it uses, in Mbps (null when unknown) */
+    val mbps: Double? = null,
+    /** Benflix: watching from outside the home network */
+    val away: Boolean = false,
+)
+
+/** Benflix: one thing someone started watching (from Jellyfin's activity log) */
+data class WatchedEntry(
+    val text: String,
+    val userId: java.util.UUID,
+    val at: LocalDateTime,
+    val time: String,
 )
 
 /** Benflix: one server problem from Jellyfin's log, in plain English, with repeats counted */
@@ -156,6 +171,10 @@ class ServerDashboardData
         /** Problems people reported with "Report a problem" */
         private val _problemReports = MutableStateFlow<List<ProblemReport>?>(null)
         val problemReports: StateFlow<List<ProblemReport>?> = _problemReports
+
+        /** Benflix: what everyone started watching this week, newest first (null until asked) */
+        private val _history = MutableStateFlow<List<WatchedEntry>?>(null)
+        val history: StateFlow<List<WatchedEntry>?> = _history
 
         /** How many parts are still fetching fresh numbers (the "Loading new stats" note) */
         private val _loading = MutableStateFlow(0)
@@ -267,6 +286,49 @@ class ServerDashboardData
             }
         }
 
+        /** Benflix: loads "Watched today / this week" (only when Right now or People is opened) */
+        fun loadHistory(force: Boolean = false) {
+            if (!force && _history.value != null) return
+            scope.launch(WholphinDispatchers.IO) {
+                safe { readHistory() }?.let { _history.value = it }
+            }
+        }
+
+        private suspend fun readHistory(): List<WatchedEntry> {
+            val dayFormat = DateTimeFormatter.ofPattern("EEE h:mm a")
+            return api.activityLogApi
+                .getLogEntries(0, HISTORY_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(7), true)
+                .content.items
+                .filter { it.type.equals("VideoPlayback", ignoreCase = true) }
+                .sortedByDescending { it.date }
+                .map {
+                    WatchedEntry(
+                        text = it.name,
+                        userId = it.userId,
+                        at = it.date,
+                        time =
+                            it.date
+                                .atOffset(ZoneOffset.UTC)
+                                .atZoneSameInstant(ZoneId.systemDefault())
+                                .format(dayFormat),
+                    )
+                }
+        }
+
+        /** Benflix: how big each playing file is per second, so direct plays also show their Mbps */
+        private val bitrates = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+        private suspend fun directBitrate(
+            itemId: java.util.UUID,
+            mediaSourceId: String?,
+        ): Int? {
+            val key = "$itemId/$mediaSourceId"
+            bitrates[key]?.let { return it }
+            val item = safe { api.userLibraryApi.getItem(itemId, serverRepository.currentUser?.id).content } ?: return null
+            val source = item.mediaSources?.firstOrNull { it.id == mediaSourceId } ?: item.mediaSources?.firstOrNull()
+            return source?.bitrate?.also { bitrates[key] = it }
+        }
+
         fun removeReport(report: ProblemReport) {
             _problemReports.update { it?.minus(report) }
         }
@@ -311,6 +373,12 @@ class ServerDashboardData
                 .content
                 .filter { it.nowPlayingItem != null }
                 .map { s ->
+                    val directMbps =
+                        if (s.playState?.playMethod != PlayMethod.TRANSCODE) {
+                            directBitrate(s.nowPlayingItem!!.id, s.playState?.mediaSourceId)
+                        } else {
+                            null
+                        }
                     val item = s.nowPlayingItem!!
                     val method = s.playState?.playMethod
                     val transcode = s.transcodingInfo
@@ -361,6 +429,9 @@ class ServerDashboardData
                             },
                         converting = converting,
                         paused = s.playState?.isPaused == true,
+                        why = if (converting) transcode?.let { whyConverting(it) } else null,
+                        mbps = ((if (converting) transcode?.bitrate else directMbps) ?: 0).takeIf { it > 0 }?.let { it / 1_000_000.0 },
+                        away = isAwayFromHome(s.remoteEndPoint),
                         posterUrl =
                             api.imageApi.getItemImageUrl(
                                 itemId = if (item.type == BaseItemKind.EPISODE) item.seriesId ?: item.id else item.id,
@@ -464,6 +535,7 @@ class ServerDashboardData
             private const val FRESH_MS = 60_000L
             private const val POSTER_HEIGHT = 240
             private const val TICKS_PER_MINUTE = 600_000_000L
+            private const val HISTORY_LIMIT = 300
         }
     }
 
@@ -546,4 +618,60 @@ fun PreloadServerPage(isAdmin: Boolean) {
             .serverDashboardData()
             .preload()
     }
+}
+
+/**
+ * Benflix: why Jellyfin has to convert a stream, in plain words with what usually fixes it.
+ * Jellyfin's reasons are read by name so new ones don't break anything.
+ */
+internal fun whyConverting(info: org.jellyfin.sdk.model.api.TranscodingInfo): String {
+    val reasons = info.transcodeReasons.map { it.name }
+    return when {
+        reasons.any { it.startsWith("SUBTITLE") } -> {
+            "Subtitles have to be burned into the picture. Tip: pick a different subtitle (SRT), or turn subtitles off."
+        }
+
+        reasons.any { it.contains("BITRATE") } -> {
+            "The file is bigger than their quality limit (often the away-from-home limit). Tip: raise it in People."
+        }
+
+        reasons.any { it.startsWith("AUDIO") || it.contains("SECONDARY_AUDIO") } && info.isVideoDirect -> {
+            "Their device can't play this sound format, so only the sound is converted (light work). " +
+                "Tip: pick another audio track."
+        }
+
+        reasons.any { it.contains("RANGE") || it.contains("BIT_DEPTH") } -> {
+            "Their screen can't show this HDR video, so colours are converted. Tip: an SDR copy saves the work."
+        }
+
+        reasons.any { it.startsWith("VIDEO") || it.contains("CONTAINER") || it.contains("REFFRAMES") } -> {
+            "Their device can't play this video format. Tip: a more common copy (H.264/HEVC MKV) plays without converting."
+        }
+
+        reasons.isEmpty() -> {
+            "Jellyfin didn't say why."
+        }
+
+        else -> {
+            "Jellyfin says: " + reasons.joinToString(", ") { it.lowercase().replace('_', ' ') }
+        }
+    }
+}
+
+/** Benflix: true when the address is outside the home network */
+internal fun isAwayFromHome(address: String?): Boolean {
+    val ip = address?.trim()?.removePrefix("::ffff:")?.substringBefore('%') ?: return false
+    if (ip.isBlank()) return false
+    if (ip == "::1" || ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("192.168.")) return false
+    if (ip.startsWith("fe80", true) || ip.startsWith("fd", true) || ip.startsWith("fc", true)) return false
+    if (ip.startsWith("100.")) {
+        // Tailscale and similar home VPNs use 100.64.0.0/10
+        val second = ip.split('.').getOrNull(1)?.toIntOrNull()
+        if (second != null && second in 64..127) return false
+    }
+    if (ip.startsWith("172.")) {
+        val second = ip.split('.').getOrNull(1)?.toIntOrNull()
+        if (second != null && second in 16..31) return false
+    }
+    return true
 }
