@@ -720,7 +720,13 @@ class GameActivity : ComponentActivity() {
                                 if (isTv) "Back opens this menu" else "The ☰ circle at the top opens this menu",
                                 "Start + Select together also opens it",
                             ) +
-                            if (isTv) listOf("Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller") else emptyList()
+                            if (isTv) {
+                                listOf(
+                                    "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
+                                )
+                            } else {
+                                emptyList()
+                            }
                     lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
                     MenuButton("Done", Modifier.focusRequester(focus)) { showHelp = false }
                 } else {

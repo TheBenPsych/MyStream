@@ -70,11 +70,12 @@ class PhonePadServer(
 
     fun start() {
         try {
-            val s = DatagramSocket(null).apply {
-                reuseAddress = true
-                soTimeout = 250
-                bind(InetSocketAddress(0))
-            }
+            val s =
+                DatagramSocket(null).apply {
+                    reuseAddress = true
+                    soTimeout = 250
+                    bind(InetSocketAddress(0))
+                }
             socket = s
             running = true
             val info =
