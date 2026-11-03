@@ -27,8 +27,8 @@ import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -306,6 +306,7 @@ class BenflixCantFind
                 val tmdbId = media?.tmdbId ?: return null
                 return (if (SeerrItemType.fromString(type) == SeerrItemType.MOVIE) "MOVIE" else "TV") + "-$tmdbId"
             }
+
             private const val REFRESH_MS = 3 * 60_000L
             private val json = Json { ignoreUnknownKeys = true }
 
