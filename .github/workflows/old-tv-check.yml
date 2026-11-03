@@ -42,7 +42,9 @@ jobs:
           fi
           sed -i 's/include("armeabi-v7a", "arm64-v8a", "x86_64")/include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")/' app/build.gradle.kts
           ./gradlew assembleDefaultRelease --no-daemon
-          cp "$(find app/build/outputs/apk -name '*universal*.apk' | head -1)" app.apk
+          # the universal APK (all ABIs) has no ABI in its name and is the biggest one
+          ls -la $(find app/build/outputs/apk -name '*.apk')
+          cp "$(find app/build/outputs/apk -name '*.apk' -printf '%s %p\n' | sort -n | tail -1 | cut -d' ' -f2)" app.apk
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: apk
