@@ -27,6 +27,8 @@ data class ServerGame(
     /** The year it came out, 0 if unknown */
     val year: Int = 0,
     val genres: List<String> = emptyList(),
+    /** Rated for everyone, so it shows on the Kids profile */
+    val kids: Boolean = false,
 )
 
 /** One console and its games, e.g. "Nintendo 64" */
@@ -112,6 +114,7 @@ class GameLibraryClient
                                     genres =
                                         g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                                             ?: emptyList(),
+                                    kids = g.optBoolean("kids", false),
                                 )
                             },
                     )

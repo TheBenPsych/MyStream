@@ -115,6 +115,7 @@ class GameActivity : ComponentActivity() {
     private var gameId = 0
     private var gameName = ""
     private var address = ""
+    private var localSaves = false
     private var token = ""
     private var isTv = true
 
@@ -246,6 +247,7 @@ class GameActivity : ComponentActivity() {
         gameId = intent.getIntExtra(EXTRA_GAME_ID, 0)
         gameName = intent.getStringExtra(EXTRA_NAME).orEmpty()
         address = intent.getStringExtra(EXTRA_ADDRESS).orEmpty()
+        localSaves = intent.getBooleanExtra(EXTRA_LOCAL_SAVES, false)
         token = intent.getStringExtra(EXTRA_TOKEN).orEmpty()
         val resume = intent.getBooleanExtra(EXTRA_RESUME, false)
         console = LocalConsole.ALL.firstOrNull { it.key == intent.getStringExtra(EXTRA_CONSOLE) } ?: LocalConsole.ALL.first()
@@ -537,6 +539,7 @@ class GameActivity : ComponentActivity() {
             .newSingleThreadExecutor()
 
     private fun sendToTower() {
+        if (localSaves) return
         diskWork.execute { GameSaves.upload(saveDir, gameId, address, token) }
     }
 
@@ -550,7 +553,7 @@ class GameActivity : ComponentActivity() {
         Thread {
             saveHere(withSpot = true)
             keepPlayTime()
-            val sent = GameSaves.upload(saveDir, gameId, address, token)
+            val sent = localSaves || GameSaves.upload(saveDir, gameId, address, token)
             if (!sent) Timber.i("Saves will be sent to Tower next time")
             // Let Jellyfin hear how far the show got before the game player closes
             sideShow?.awaitReports(4000)
@@ -1822,6 +1825,9 @@ class GameActivity : ComponentActivity() {
         const val EXTRA_CONSOLE = "console"
         const val EXTRA_RESUME = "resume"
         const val EXTRA_ADDRESS = "address"
+
+        /** Kids tile: saves stay on this device (the account's Tower saves belong to the grown-up) */
+        const val EXTRA_LOCAL_SAVES = "local_saves"
         const val EXTRA_TOKEN = "token"
         const val EXTRA_SERVER = "server"
         const val EXTRA_USER = "user"

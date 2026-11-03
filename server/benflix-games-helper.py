@@ -144,13 +144,14 @@ def romm_get(path, raw=False):
 
 
 def check_signed_in(token):
-    """Only people signed in to Jellyfin get the games, and not kids accounts. Returns (account id, is admin)."""
+    """Only people signed in to Jellyfin get the games. Returns (account id, is admin, is kids account).
+    Kids accounts only get games rated for everyone (see kids_safe)."""
     if not token:
         raise HelperError(401, "Sign in to Benflix first.")
     with _lock:
         known = _tokens.get(token)
         if known and time.time() - known[0] < 600:
-            return known[1], known[2]
+            return known[1], known[2], known[3]
     req = urllib.request.Request(
         JELLYFIN_URL + "/Users/Me", headers={"Authorization": f'MediaBrowser Token="{token}"', "Accept": "application/json"}
     )
@@ -162,15 +163,37 @@ def check_signed_in(token):
     except (urllib.error.URLError, OSError):
         raise HelperError(502, "The games helper couldn't reach Jellyfin to check your sign-in.")
     policy = user.get("Policy") or {}
-    if policy.get("MaxParentalRating") is not None or user.get("Name", "").lower() == "kids":
-        raise HelperError(403, "Games aren't available on kids accounts.")
+    is_kids = policy.get("MaxParentalRating") is not None or user.get("Name", "").lower() == "kids"
     user_id = re.sub(r"[^0-9a-fA-F-]", "", str(user.get("Id", "")))
     if not user_id:
         raise HelperError(502, "Jellyfin didn't say who you are.")
     is_admin = bool(policy.get("IsAdministrator"))
     with _lock:
-        _tokens[token] = (time.time(), user_id, is_admin)
-    return user_id, is_admin
+        _tokens[token] = (time.time(), user_id, is_admin, is_kids)
+    return user_id, is_admin, is_kids
+
+
+# Ratings that mean "fine for kids" (ESRB, PEGI, CERO, USK) and ones that mean "not for kids"
+KIDS_OK = {"E", "EC", "E10", "E10+", "EVERYONE", "EVERYONE10+", "3", "7", "A", "CEROA", "0", "6", "USK0", "USK6", "G", "ALL"}
+KIDS_NO = {"T", "M", "AO", "TEEN", "MATURE", "ADULTSONLY", "12", "16", "18", "B", "C", "D", "Z", "USK12", "USK16", "USK18", "RP"}
+
+
+def kids_safe(g):
+    """True when the game's age rating says it's for everyone. Games with no rating are left out, like
+    movies on the Kids profile."""
+    m = g.get("metadatum") or {}
+    ratings = m.get("age_ratings") or g.get("age_ratings") or []
+    seen = set()
+    for r in ratings:
+        text = str((r.get("rating") or r.get("name") or "") if isinstance(r, dict) else r)
+        for prefix in ("ESRB", "PEGI", "CERO", "USK"):
+            text = text.upper().replace(prefix, "")
+        seen.add(re.sub(r"[^A-Z0-9+]", "", text.upper()))
+    seen.discard("")
+    return bool(seen & KIDS_OK) and not (seen & KIDS_NO)
+
+
+_kids_ids = set()  # games a kids account may download, filled by load_games()
 
 
 WEB_PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benflix-web.html")
@@ -244,8 +267,13 @@ def load_games():
                     "size": g.get("fs_size_bytes") or 0,
                     "year": release_year(g),
                     "genres": genres_of(g),
+                    "kids": kids_safe(g),
                 }
             )
+            if kids_safe(g):
+                _kids_ids.add(g["id"])
+            else:
+                _kids_ids.discard(g["id"])
     return {
         "consoles": [
             {"name": n, "slug": slugs.get(n, ""), "games": sorted(gs, key=lambda x: x["name"].lower())}
@@ -515,7 +543,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token and path.startswith("/api/web/jf/") and "/Images/" in path:
                 # Pictures on the browser page (an <img> can't send the header, so the sign-in rides along)
                 token = (query.get("api_key") or [""])[0]
-            user_id, is_admin = check_signed_in(token)
+            user_id, is_admin, is_kids = check_signed_in(token)
             if path.startswith("/api/admin/"):
                 if not is_admin:
                     raise HelperError(403, "Only the server admin can use the Server page tools.")
@@ -536,7 +564,19 @@ class Handler(BaseHTTPRequestHandler):
                 status, data, ctype = jellyfin_call(method, jf_path, token=token, body=body)
                 return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
-                return self.send(200, load_games())
+                games = load_games()
+                if is_kids:
+                    games["consoles"] = [
+                        dict(c, games=[x for x in c["games"] if x["kids"]]) for c in games["consoles"]
+                    ]
+                    games["consoles"] = [c for c in games["consoles"] if c["games"]]
+                return self.send(200, games)
+            m = re.fullmatch(r"/api/(?:info|cover|rom|save)/(\d+)(?:/.*)?", path)
+            if is_kids and m:
+                if not _kids_ids:
+                    load_games()
+                if int(m.group(1)) not in _kids_ids:
+                    raise HelperError(403, "That game isn't rated for kids.")
             m = re.fullmatch(r"/api/info/(\d+)", path)
             if method == "GET" and m:
                 return self.send(200, game_info(int(m.group(1))))
