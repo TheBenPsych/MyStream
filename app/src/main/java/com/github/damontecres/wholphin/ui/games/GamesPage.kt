@@ -365,8 +365,13 @@ class GamesViewModel
                     BuiltInGame.entries.associate { it.name to prefs.getInt("${user.id}_${it.name}", 0) } +
                         BOARD_EXTRA_GAMES.keys.associateWith { prefs.getInt("${user.id}_$it", 0) }
                 }
+            // Show the board from last time straight away, then the fresh one when it arrives
+            val cacheKey = "board_cache_${user.id}"
+            if (_board.value == null) {
+                prefs.getString(cacheKey, null)?.let { _board.value = BenflixHighScores.decodeBoard(it) }
+            }
             viewModelScope.launch {
-                _board.value =
+                val fresh =
                     highScores.sync(user.id, user.name, isAdmin && !KidsMode.isActive && !GuestMode.isActive, mine) { bests ->
                         // Bring back best scores made on other devices (or before a reinstall)
                         val editor = prefs.edit()
@@ -375,6 +380,8 @@ class GamesViewModel
                         }
                         editor.apply()
                     }
+                _board.value = fresh
+                prefs.edit().putString(cacheKey, BenflixHighScores.encodeBoard(fresh)).apply()
             }
         }
 

@@ -2,6 +2,12 @@ package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userApi
@@ -34,6 +40,9 @@ class BenflixHighScores
         private val api: ApiClient,
         private val displayPreferencesService: DisplayPreferencesService,
     ) {
+        /** Copies the board to everyone in the background, even after the Games page is closed */
+        private val shareScope = CoroutineScope(SupervisorJob() + WholphinDispatchers.IO)
+
         /**
          * Saves this account's best scores (game id to score) to the server, then returns the board:
          * game id to the scores, highest first.
@@ -62,7 +71,7 @@ class BenflixHighScores
                         displayPreferencesService.updateDisplayPreferences(userId) { put(KEY_MINE, encodeMine(merged)) }
                     }
                     if (mine.isNotEmpty()) onMyBests(merged)
-                    if (isAdmin) gatherAndShare() else readBoard(userId, myName, merged)
+                    if (isAdmin) gather() else readBoard(userId, myName, merged)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -71,40 +80,59 @@ class BenflixHighScores
                 }
             }
 
-        /** Admin only: read every account's scores and copy the board to everyone */
-        private suspend fun gatherAndShare(): Map<String, List<HighScore>> {
-            val users = api.userApi.getUsers().content
-            val board = mutableMapOf<String, MutableList<HighScore>>()
-            users.forEach { user ->
-                try {
-                    val scores =
-                        displayPreferencesService
-                            .getDisplayPreferences(user.id)
-                            .customPrefs[KEY_MINE]
-                            ?.let { decodeMine(it) }
-                            .orEmpty()
-                    val name = shortName(user.name)
+        /**
+         * Admin only: read every account's scores, all at once (one by one was slow with many accounts).
+         * The board is returned straight away; copying it to everyone happens after, in the background.
+         */
+        private suspend fun gather(): Map<String, List<HighScore>> =
+            coroutineScope {
+                val users = api.userApi.getUsers().content
+                val all =
+                    users
+                        .map { user ->
+                            async {
+                                try {
+                                    val scores =
+                                        displayPreferencesService
+                                            .getDisplayPreferences(user.id)
+                                            .customPrefs[KEY_MINE]
+                                            ?.let { decodeMine(it) }
+                                            .orEmpty()
+                                    shortName(user.name) to scores
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    Timber.w(ex, "Could not read scores for %s", user.name)
+                                    null
+                                }
+                            }
+                        }.awaitAll()
+                val board = mutableMapOf<String, MutableList<HighScore>>()
+                all.filterNotNull().forEach { (name, scores) ->
                     scores.forEach { (game, score) -> if (score > 0) board.getOrPut(game) { mutableListOf() }.add(HighScore(name, score)) }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not read scores for %s", user.name)
                 }
-            }
-            val result = sorted(board)
-            val encoded = encodeBoard(result)
-            users.forEach { user ->
-                try {
-                    val current = displayPreferencesService.getDisplayPreferences(user.id).customPrefs[KEY_BOARD]
-                    if (current != encoded) displayPreferencesService.updateDisplayPreferences(user.id) { put(KEY_BOARD, encoded) }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not share the board with %s", user.name)
+                val result = sorted(board)
+                val encoded = encodeBoard(result)
+                // Copy the board to everyone without making the Games page wait for it
+                shareScope.launch {
+                    users
+                        .map { user ->
+                            async {
+                                try {
+                                    val current = displayPreferencesService.getDisplayPreferences(user.id).customPrefs[KEY_BOARD]
+                                    if (current != encoded) {
+                                        displayPreferencesService.updateDisplayPreferences(user.id) { put(KEY_BOARD, encoded) }
+                                    }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    Timber.w(ex, "Could not share the board with %s", user.name)
+                                }
+                            }
+                        }.awaitAll()
                 }
+                result
             }
-            return result
-        }
 
         /** Everyone else: the board the admin last shared, with this account's own newest scores mixed in */
         private suspend fun readBoard(
@@ -159,12 +187,12 @@ class BenflixHighScores
                     }.toMap()
 
             // game:NAM=score|NAM=score;game:...
-            private fun encodeBoard(board: Map<String, List<HighScore>>) =
+            fun encodeBoard(board: Map<String, List<HighScore>>) =
                 board.entries.joinToString(";") { (game, list) ->
                     game + ":" + list.joinToString("|") { "${it.name}=${it.score}" }
                 }
 
-            private fun decodeBoard(value: String): Map<String, List<HighScore>> =
+            fun decodeBoard(value: String): Map<String, List<HighScore>> =
                 value
                     .split(';')
                     .mapNotNull { part ->
