@@ -57,7 +57,9 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
+import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
+import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
@@ -179,8 +181,37 @@ class BenflixRequestsViewModel
         val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
         private val seerrLink: BenflixSeerrLink,
+        private val cantFindList: BenflixCantFind,
     ) : ViewModel() {
         val active = seerrService.active
+
+        /** Benflix: titles Ben marked "Couldn't find it", by request key */
+        val cantFind = cantFindList.entries
+
+        /** Admin: mark a request "Couldn't find it", so whoever asked is told */
+        fun markCantFind(
+            entry: RequestEntry,
+            note: String?,
+        ) {
+            val key = entry.cantFindKey() ?: return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val askedBy =
+                    _requests.value
+                        .orEmpty()
+                        .filter { it.cantFindKey() == key }
+                        .mapNotNull { it.request.requestedBy?.id }
+                val ok = cantFindList.mark(key, entry.item?.title, note, askedBy)
+                showToast(context, if (ok) "Marked as can't find. Whoever asked will be told." else "Couldn't save that. Try again.")
+            }
+        }
+
+        /** Admin: take "Couldn't find it" off again */
+        fun undoCantFind(entry: RequestEntry) {
+            val key = entry.cantFindKey() ?: return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                if (!cantFindList.undo(key)) showToast(context, "Couldn't save that. Try again.")
+            }
+        }
 
         /** Ben shared Seerr, so this person can connect by typing their password once */
         val canConnect = MutableStateFlow(false)
@@ -990,6 +1021,15 @@ class BenflixRequestsViewModel
                         }
                     _requests.value = entries
                     if (!mineOnly) RequestsWaiting.set(entries.count { it.status == RequestStatus.PENDING })
+                    // Benflix: "Couldn't find it" labels; ones that have since arrived are cleared
+                    cantFindList.refresh()
+                    if (isAdmin) {
+                        val arrived = entries.filter { it.available }.mapNotNull { it.cantFindKey() }
+                        val stillMissing = entries.filter { !it.available }.mapNotNull { it.cantFindKey() }.toSet()
+                        cantFindList.forget(arrived.filter { it !in stillMissing })
+                        // A week of "Still looking" with nothing found turns into "Couldn't find it" by itself
+                        if (!mineOnly) cantFindList.autoCheck(results)
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -1533,7 +1573,19 @@ private fun RequestList(
     val query by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val ratings by viewModel.ratings.collectAsState()
+    val cantFind by viewModel.cantFind.collectAsState()
     var confirmAll by remember { mutableStateOf(false) }
+    var cantFindFor by remember { mutableStateOf<RequestEntry?>(null) }
+    cantFindFor?.let { entry ->
+        CantFindDialog(
+            title = entry.item?.title,
+            onDismiss = { cantFindFor = null },
+            onMark = { note ->
+                cantFindFor = null
+                viewModel.markCantFind(entry, note)
+            },
+        )
+    }
     var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
     // Benflix: family search shows family-friendly titles only (Ben's pick)
     val familySearch = !viewModel.isAdmin
@@ -1647,6 +1699,8 @@ private fun RequestList(
                         ) { Text("Approve all $waiting") }
                     }
                 }
+
+                fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
                 val groups =
                     listOf(
                         (if (mineOnly) "Waiting for Ben" else "Waiting for you") to
@@ -1654,6 +1708,12 @@ private fun RequestList(
                         "On the way" to
                             list.filter {
                                 !it.available && it.status != RequestStatus.PENDING &&
+                                    it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE &&
+                                    !it.notFound()
+                            },
+                        "Couldn't find" to
+                            list.filter {
+                                it.notFound() && it.status != RequestStatus.PENDING &&
                                     it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE
                             },
                         "Ready to watch" to list.filter { it.available },
@@ -1668,12 +1728,27 @@ private fun RequestList(
                     }
                     items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
                         Box(Modifier.padding(horizontal = 16.dp)) {
+                            val notFound =
+                                if (entry.available ||
+                                    entry.status == RequestStatus.DECLINED
+                                ) {
+                                    null
+                                } else {
+                                    entry.cantFindKey()?.let { cantFind[it] }
+                                }
+                            // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or undo)
+                            val canMark =
+                                !mineOnly && viewModel.isAdmin && !entry.available && entry.status == RequestStatus.APPROVED
                             RequestRow(
                                 entry = entry,
                                 showWho = !mineOnly,
                                 canAnswer = !mineOnly && entry.status == RequestStatus.PENDING && !entry.available,
                                 onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
                                 onAnswer = { viewModel.answer(entry, it) },
+                                cantFind = notFound,
+                                isAdminList = !mineOnly,
+                                onCantFind = if (canMark && notFound == null) ({ cantFindFor = entry }) else null,
+                                onUndoCantFind = if (canMark && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
                             )
                         }
                     }
@@ -1690,6 +1765,10 @@ private fun RequestRow(
     canAnswer: Boolean,
     onOpen: () -> Unit,
     onAnswer: (Boolean) -> Unit,
+    cantFind: CantFindEntry? = null,
+    isAdminList: Boolean = false,
+    onCantFind: (() -> Unit)? = null,
+    onUndoCantFind: (() -> Unit)? = null,
 ) {
     // Benflix: on phones the buttons go on their own line under the text, so the title and steps get the full width
     val isTv = rememberIsTv()
@@ -1700,7 +1779,17 @@ private fun RequestRow(
         } else if (entry.item != null) {
             Button(onClick = onOpen) { Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false) }
         }
+        onCantFind?.let {
+            Button(onClick = it) { Text("Can't find", maxLines = 1, softWrap = false) }
+        }
+        onUndoCantFind?.let {
+            Button(onClick = it) { Text("Undo", maxLines = 1, softWrap = false) }
+        }
     }
+    val daysWaiting =
+        remember(entry.request.updatedAt, entry.request.createdAt) {
+            BenflixCantFind.daysSince(entry.request.updatedAt ?: entry.request.createdAt)
+        }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
@@ -1754,14 +1843,17 @@ private fun RequestRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                StatusTag(entry)
-                RequestSteps(
-                    approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
-                    downloading = entry.downloading,
-                    percent = entry.downloadPercent,
-                    ready = entry.available,
-                    declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
-                )
+                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, isAdminList = isAdminList)
+                if (cantFind != null) CantFindNoteLine(cantFind)
+                if (cantFind == null) {
+                    RequestSteps(
+                        approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
+                        downloading = entry.downloading,
+                        percent = entry.downloadPercent,
+                        ready = entry.available,
+                        declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
+                    )
+                }
             }
             if (isTv) buttons()
         }
@@ -1775,14 +1867,44 @@ private fun RequestRow(
 }
 
 @Composable
-private fun StatusTag(entry: RequestEntry) {
+private fun StatusTag(
+    entry: RequestEntry,
+    cantFind: CantFindEntry? = null,
+    daysWaiting: Long? = null,
+    isAdminList: Boolean = false,
+) {
+    // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself.
+    val stillLooking = entry.status == RequestStatus.APPROVED && !entry.downloading && daysWaiting != null
     val (text, color) =
         when {
-            entry.available -> "On Benflix" to Color(0xFF3DD68C)
-            entry.status == RequestStatus.PENDING -> "Waiting for Ben" to Color(0xFFF5A524)
-            entry.status == RequestStatus.DECLINED -> "Declined" to Color(0xFFE5484D)
-            entry.status == RequestStatus.FAILURE -> "Something went wrong" to Color(0xFFE5484D)
-            else -> "On the way" to Color(0xFF7AA7FF)
+            entry.available -> {
+                "On Benflix" to Color(0xFF3DD68C)
+            }
+
+            cantFind != null -> {
+                "Couldn't find it" to CANT_FIND_COLOR
+            }
+
+            entry.status == RequestStatus.PENDING -> {
+                "Waiting for Ben" to Color(0xFFF5A524)
+            }
+
+            entry.status == RequestStatus.DECLINED -> {
+                "Declined" to Color(0xFFE5484D)
+            }
+
+            entry.status == RequestStatus.FAILURE -> {
+                "Something went wrong" to Color(0xFFE5484D)
+            }
+
+            stillLooking -> {
+                val days = daysWaiting ?: 0
+                (if (days < 1) "Still looking · started today" else "Still looking · day ${days + 1}") to Color(0xFF7AA7FF)
+            }
+
+            else -> {
+                "On the way" to Color(0xFF7AA7FF)
+            }
         }
     Box(
         modifier =
@@ -1793,6 +1915,12 @@ private fun StatusTag(entry: RequestEntry) {
     ) {
         Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
     }
+}
+
+/** Benflix: the "Couldn't find it" key for this request ("MOVIE-123" / "TV-456") */
+fun RequestEntry.cantFindKey(): String? {
+    val tmdbId = request.media?.tmdbId ?: return null
+    return cantFindKey(SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE, tmdbId)
 }
 
 /** "3 days ago" from Seerr's date text */
