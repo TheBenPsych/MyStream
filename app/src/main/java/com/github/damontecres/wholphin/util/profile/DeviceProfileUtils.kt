@@ -22,6 +22,30 @@ private val downmixSupportedAudioCodecs =
         Codec.Audio.MP3,
     )
 
+/**
+ * Sound formats that media3 can read inside an MPEG-TS stream (see DefaultTsPayloadReaderFactory).
+ * FLAC, Opus, TrueHD/MLP, ALAC, PCM and Vorbis are not among them.
+ */
+internal val tsPlayableAudioCodecs =
+    setOf(
+        Codec.Audio.AAC,
+        Codec.Audio.AAC_LATM,
+        Codec.Audio.AC3,
+        Codec.Audio.EAC3,
+        Codec.Audio.DCA,
+        Codec.Audio.DTS,
+        Codec.Audio.MP2,
+        Codec.Audio.MP3,
+    )
+
+/** [allowed] trimmed to [tsPlayableAudioCodecs], with AAC first so it is what the server converts to */
+internal fun tsAudioCodecs(allowed: Array<String>): Array<String> =
+    allowed
+        .filter { it in tsPlayableAudioCodecs }
+        .sortedBy { if (it == Codec.Audio.AAC) 0 else 1 }
+        .ifEmpty { listOf(Codec.Audio.AAC) }
+        .toTypedArray()
+
 val supportedAudioCodecs =
     arrayOf(
         Codec.Audio.AAC,
@@ -150,7 +174,10 @@ fun createDeviceProfile(
         if (preferAc3ForSurround) {
             audioCodec(Codec.Audio.AC3)
         } else {
-            audioCodec(*allowedAudioCodecs)
+            // Benflix: only sound formats the player can hear inside an HLS (TS) stream. Otherwise
+            // the server may copy e.g. FLAC, Opus or TrueHD sound into the stream as-is, and the
+            // video plays with no sound at all (often after switching audio or skipping ahead).
+            audioCodec(*tsAudioCodecs(allowedAudioCodecs))
         }
 
         copyTimestamps = false

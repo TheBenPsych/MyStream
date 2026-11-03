@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.jellyfin.sdk.model.api.CodecType
 import org.jellyfin.sdk.model.api.DeviceProfile
+import org.jellyfin.sdk.model.api.DlnaProfileType
 import org.jellyfin.sdk.model.api.ProfileConditionValue
 import org.junit.Assert
 import org.junit.Test
@@ -137,5 +138,18 @@ class TestDeviceProfileUtils {
                 forceDisabledHdr = setOf(WholphinVideoRangeType.DOVI.serialName),
             )
         Assert.assertTrue(unsupportedRangeTypes(profile, Codec.Video.AV1).contains(WholphinVideoRangeType.DOVI.serialName))
+    }
+
+    @Test
+    fun `HLS transcodes only ask for sound the player can hear in TS`() {
+        val mediaTest = mockk<MediaCodecCapabilitiesTest>(relaxed = true)
+        val profile = buildProfile(mediaTest)
+        val video = profile.transcodingProfiles.first { it.type == DlnaProfileType.VIDEO }
+        val codecs = video.audioCodec.split(",")
+        Assert.assertEquals(Codec.Audio.AAC, codecs.first())
+        listOf(Codec.Audio.FLAC, Codec.Audio.OPUS, Codec.Audio.TRUEHD, Codec.Audio.ALAC, Codec.Audio.VORBIS).forEach {
+            Assert.assertFalse("$it should not be in ${video.audioCodec}", it in codecs)
+        }
+        Assert.assertTrue(Codec.Audio.EAC3 in codecs)
     }
 }
