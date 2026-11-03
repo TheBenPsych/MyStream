@@ -523,6 +523,7 @@ fun QuickMenuDialog(
 }
 
 /** Asked, Approved, Downloading, Ready, with the current step lit up */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RequestSteps(
     approved: Boolean,
@@ -539,33 +540,41 @@ fun RequestSteps(
             (if (percent != null && !ready) "Downloading $percent%" else "Downloading") to (downloading || ready),
             "Ready" to ready,
         )
-    Row(
+    // Benflix: wraps onto a second line on narrow phone screens instead of squeezing the words
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         steps.forEachIndexed { i, (label, done) ->
-            if (i > 0) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (i > 0) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(width = 14.dp, height = 2.dp)
+                                .background(if (done) Color(0xFF3DD68C) else Color(0xFF3F3F46)),
+                    )
+                }
                 Box(
                     modifier =
                         Modifier
-                            .size(width = 14.dp, height = 2.dp)
+                            .size(8.dp)
+                            .clip(CircleShape)
                             .background(if (done) Color(0xFF3DD68C) else Color(0xFF3F3F46)),
                 )
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
+                    color = if (done) Color.White else MUTED,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(start = 4.dp),
+                )
             }
-            Box(
-                modifier =
-                    Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(if (done) Color(0xFF3DD68C) else Color(0xFF3F3F46)),
-            )
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
-                color = if (done) Color.White else MUTED,
-                modifier = Modifier.padding(start = 4.dp),
-            )
         }
     }
 }

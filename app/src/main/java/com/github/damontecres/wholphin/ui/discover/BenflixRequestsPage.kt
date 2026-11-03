@@ -77,6 +77,7 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -884,6 +885,8 @@ class BenflixRequestsViewModel
                     }
                     requestedIds.update { it + item.requestKey() }
                     showToast(context, "Asked for ${item.title ?: "it"}")
+                    // Benflix: show it in the request list straight away
+                    if (_requests.value != null) fetchRequests(lastMineOnly)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -895,7 +898,16 @@ class BenflixRequestsViewModel
 
         /** Everyone's requests (admin) or just your own */
         fun loadRequests(mineOnly: Boolean) {
-            viewModelScope.launch(WholphinDispatchers.IO) {
+            lastMineOnly = mineOnly
+            viewModelScope.launch(WholphinDispatchers.IO) { fetchRequests(mineOnly) }
+        }
+
+        /** Which list was last shown, so it can be fetched again after Approve / Decline */
+        @Volatile
+        private var lastMineOnly = false
+
+        private suspend fun fetchRequests(mineOnly: Boolean) {
+            run {
                 try {
                     val myId = if (mineOnly) seerrServerRepository.currentUserId.first() else null
                     val results =
@@ -923,7 +935,8 @@ class BenflixRequestsViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load requests")
-                    _requests.value = emptyList()
+                    // Keep what's showing if a refresh fails
+                    if (_requests.value == null) _requests.value = emptyList()
                 }
             }
         }
@@ -1012,16 +1025,24 @@ class BenflixRequestsViewModel
         fun approveAll() {
             val waiting = _requests.value?.filter { it.status == RequestStatus.PENDING }.orEmpty()
             viewModelScope.launch(WholphinDispatchers.IO) {
-                waiting.forEach { answerNow(it, true) }
+                waiting.forEach { answerNow(it, true, refresh = false) }
                 showToast(context, "Approved ${waiting.size}")
+                fetchRequests(lastMineOnly)
             }
         }
 
         private suspend fun answerNow(
             entry: RequestEntry,
             approve: Boolean,
+            refresh: Boolean = true,
         ) {
             val id = entry.request.id ?: return
+            // Benflix: move it right away so the list doesn't look stuck, then check with Seerr
+            val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
+            _requests.update { list ->
+                list?.map { if (it.request.id == id) it.copy(status = newStatus) else it }
+            }
+            RequestsWaiting.set(_requests.value?.count { it.status == RequestStatus.PENDING } ?: 0)
             try {
                 seerrService.api.requestApi.requestRequestIdStatusPost(
                     requestId = id.toString(),
@@ -1032,15 +1053,19 @@ class BenflixRequestsViewModel
                             RequestApi.StatusRequestRequestIdStatusPost.DECLINE
                         },
                 )
-                val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
-                _requests.update { list ->
-                    list?.map { if (it.request.id == id) it.copy(status = newStatus) else it }
-                }
-                RequestsWaiting.set(_requests.value?.count { it.status == RequestStatus.PENDING } ?: 0)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
-                Timber.w(ex, "Could not answer request %s", id)
+                // Jellyfin Enhanced answers in its own shape, which can land here even when it worked,
+                // so the fresh list below decides whether it really went through
+                Timber.w(ex, "Answer for request %s came back odd", id)
+            }
+            if (refresh) {
+                fetchRequests(lastMineOnly)
+                val still = _requests.value?.firstOrNull { it.request.id == id }
+                if (still?.status == RequestStatus.PENDING) {
+                    showToast(context, "Couldn't ${if (approve) "approve" else "decline"} that one. Try again.")
+                }
             }
         }
 
@@ -1591,9 +1616,18 @@ private fun RequestRow(
     onOpen: () -> Unit,
     onAnswer: (Boolean) -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    // Benflix: on phones the buttons go on their own line under the text, so the title and steps get the full width
+    val isTv = rememberIsTv()
+    val buttons: @Composable () -> Unit = {
+        if (canAnswer) {
+            Button(onClick = { onAnswer(true) }) { Text("Approve", maxLines = 1, softWrap = false) }
+            Button(onClick = { onAnswer(false) }) { Text("Decline", maxLines = 1, softWrap = false) }
+        } else if (entry.item != null) {
+            Button(onClick = onOpen) { Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false) }
+        }
+    }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -1601,58 +1635,66 @@ private fun RequestRow(
                 .background(Color(0xFF18181C))
                 .padding(10.dp),
     ) {
-        val adultFlags by AdultContentFlags.flagged.collectAsState()
-        Box(
-            modifier =
-                Modifier
-                    .size(width = 54.dp, height = 80.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF24242A)),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            AsyncImage(
-                model = entry.item?.posterUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            // Benflix: red "ADULT" strip for porn, hentai, softcore or erotica
-            if (entry.item?.let { it.requestKey() in adultFlags } == true) {
-                AdultContentBanner(short = true, modifier = Modifier.align(Alignment.BottomCenter))
+            val adultFlags by AdultContentFlags.flagged.collectAsState()
+            Box(
+                modifier =
+                    Modifier
+                        .size(width = 54.dp, height = 80.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFF24242A)),
+            ) {
+                AsyncImage(
+                    model = entry.item?.posterUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Benflix: red "ADULT" strip for porn, hentai, softcore or erotica
+                if (entry.item?.let { it.requestKey() in adultFlags } == true) {
+                    AdultContentBanner(short = true, modifier = Modifier.align(Alignment.BottomCenter))
+                }
             }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = entry.item?.title ?: "Unknown title",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = if (isTv) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val whenAsked = remember(entry.request.createdAt) { ago(entry.request.createdAt) }
+                Text(
+                    text = listOfNotNull(if (showWho) "Asked by ${entry.who}" else "You asked", whenAsked).joinToString(" · "),
+                    fontSize = 14.sp,
+                    color = Color(0xFFA1A1AA),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                StatusTag(entry)
+                RequestSteps(
+                    approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
+                    downloading = entry.downloading,
+                    percent = entry.downloadPercent,
+                    ready = entry.available,
+                    declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
+                )
+            }
+            if (isTv) buttons()
         }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                text = entry.item?.title ?: "Unknown title",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val whenAsked = remember(entry.request.createdAt) { ago(entry.request.createdAt) }
-            Text(
-                text = listOfNotNull(if (showWho) "Asked by ${entry.who}" else "You asked", whenAsked).joinToString(" · "),
-                fontSize = 14.sp,
-                color = Color(0xFFA1A1AA),
-                maxLines = 1,
-            )
-            StatusTag(entry)
-            RequestSteps(
-                approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
-                downloading = entry.downloading,
-                percent = entry.downloadPercent,
-                ready = entry.available,
-                declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
-            )
-        }
-        if (canAnswer) {
-            Button(onClick = { onAnswer(true) }) { Text("Approve") }
-            Button(onClick = { onAnswer(false) }) { Text("Decline") }
-        } else if (entry.item != null) {
-            Button(onClick = onOpen) { Text(if (entry.available) "Watch" else "Details") }
+        if (!isTv) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                modifier = Modifier.fillMaxWidth(),
+            ) { buttons() }
         }
     }
 }
@@ -1674,7 +1716,7 @@ private fun StatusTag(entry: RequestEntry) {
                 .background(color.copy(alpha = .18f))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
-        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
     }
 }
 
