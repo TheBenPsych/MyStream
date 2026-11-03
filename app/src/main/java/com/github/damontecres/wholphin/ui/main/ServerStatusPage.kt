@@ -568,13 +568,18 @@ fun ServerStatusPage(
         }
     }
 
+    // Benflix: Refresh also tries People and Messages again if they couldn't be read
+    val refreshAll: () -> Unit = {
+        data.refresh()
+        toolsViewModel.retryFailed()
+    }
     val headerBar: @Composable () -> Unit = {
         PageHeader(
             header = header,
             isAdmin = isAdmin,
             loading = loadingParts > 0,
             updatedAt = updatedAt,
-            onRefresh = data::refresh,
+            onRefresh = refreshAll,
             waitingOn = waitingOn,
         )
     }
@@ -631,7 +636,7 @@ fun ServerStatusPage(
                     )
                     ListItem(
                         selected = false,
-                        onClick = data::refresh,
+                        onClick = refreshAll,
                         headlineContent = { Text("Refresh", fontSize = 16.sp) },
                         leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(22.dp)) },
                         modifier = Modifier.padding(top = 12.dp),
@@ -668,7 +673,7 @@ fun ServerStatusPage(
             }
             PhonePullToRefresh(
                 refreshing = loadingParts > 0,
-                onRefresh = data::refresh,
+                onRefresh = refreshAll,
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(
@@ -1024,14 +1029,22 @@ private fun LazyListScope.uploadMeterItem(watching: List<WatchingNow>?) {
 
 /** Benflix: what everyone started watching today and earlier this week */
 private fun LazyListScope.historyItems(history: List<WatchedEntry>?) {
-    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
+    // Benflix: "today" is the TV's own day; the log's times are in UTC
+    val zone = java.time.ZoneId.systemDefault()
+    val today = java.time.LocalDate.now(zone)
     val list =
         history ?: run {
             item { SectionTitle("Watched today") }
             item { LoadingBox("Reading what everyone watched…") }
             return
         }
-    val (todays, earlier) = list.partition { it.at.toLocalDate() == today }
+    val (todays, earlier) =
+        list.partition {
+            it.at
+                .atOffset(java.time.ZoneOffset.UTC)
+                .atZoneSameInstant(zone)
+                .toLocalDate() == today
+        }
     item { SectionTitle("Watched today (${todays.size})") }
     if (todays.isEmpty()) item { ServerActionRow(headline = "Nothing yet today") }
     items(todays.take(HISTORY_SHOWN)) { e -> ServerActionRow(headline = e.text, supporting = e.time) }

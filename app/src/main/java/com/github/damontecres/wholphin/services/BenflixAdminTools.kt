@@ -51,18 +51,42 @@ class BenflixNotes
             kind: NoteKind = NoteKind.NOTE,
         ): BenflixNote? =
             try {
-                displayPreferencesService
-                    .getDisplayPreferences(userId)
-                    .customPrefs[kind.key]
-                    ?.let { decode(it) }
-                    // Benflix: a note that ran out of time doesn't show any more
-                    ?.takeUnless { note -> note.expiresAt != null && note.expiresAt < System.currentTimeMillis() }
+                readOrThrow(userId, kind)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not read the note")
                 null
             }
+
+        private suspend fun readOrThrow(
+            userId: UUID,
+            kind: NoteKind,
+        ): BenflixNote? =
+            displayPreferencesService
+                .getDisplayPreferences(userId)
+                .customPrefs[kind.key]
+                ?.let { decode(it) }
+                // Benflix: a note that ran out of time doesn't show any more
+                ?.takeUnless { note -> note.expiresAt != null && note.expiresAt < System.currentTimeMillis() }
+
+        /**
+         * Benflix: the note as the Server page shows it. A note sent to only some people isn't on Ben's
+         * own Home, so when his copy is empty the first person who has it is read instead.
+         * Throws if the server can't be read.
+         */
+        suspend fun readSent(
+            userId: UUID,
+            kind: NoteKind = NoteKind.NOTE,
+        ): BenflixNote? {
+            readOrThrow(userId, kind)?.let { return it }
+            val others = withContext(WholphinDispatchers.IO) { api.userApi.getUsers().content }
+            for (user in others) {
+                if (user.id == userId) continue
+                read(user.id, kind)?.let { return it }
+            }
+            return null
+        }
 
         fun isDismissed(
             userId: UUID,

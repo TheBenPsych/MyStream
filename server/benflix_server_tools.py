@@ -547,8 +547,14 @@ def tracks_start(mode, folder=None, undo_file=None):
         if _tracks["running"]:
             raise ToolError(409, "The track tool is already running. Wait for it to finish.")
         _tracks.update(running=True, mode=mode, folder=folder or undo_file, lines=[], started=int(time.time()), finished=None, result=None)
-    os.makedirs(TRACK_LOGS, exist_ok=True)
-    threading.Thread(target=_run_tracks, args=(cmd,), daemon=True).start()
+    try:
+        os.makedirs(TRACK_LOGS, exist_ok=True)
+        threading.Thread(target=_run_tracks, args=(cmd,), daemon=True).start()
+    except Exception as e:  # so the tool doesn't stay "running" until the helper restarts
+        with _lock:
+            _tracks["lines"].append(f"Couldn't start the track tool: {e}")
+            _tracks.update(running=False, finished=int(time.time()), result="failed")
+        raise ToolError(500, f"Couldn't start the track tool: {e}")
     return tracks_status()
 
 

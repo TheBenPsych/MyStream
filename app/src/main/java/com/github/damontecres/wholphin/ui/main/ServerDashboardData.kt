@@ -299,6 +299,8 @@ class ServerDashboardData
             loadPart("Disk space", done) { _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty() }
             loadPart("Problem reports", {}) { _problemReports.value = safe { reports.all() } ?: _problemReports.value.orEmpty() }
             loadPart("Tower", {}) { loadTower(fresh = true) }
+            // Benflix: "Watched today / this week" loads on demand, so only read it again once it was opened
+            if (_history.value != null) loadHistory(force = true)
         }
 
         /** Keeps "Watching now" fresh every 15 seconds, only while the Server page is on screen */
@@ -621,7 +623,8 @@ class ServerDashboardData
             private const val PART_WAIT_MS = 10_000L
             private const val RECENT_AT = "recent_at"
             private const val RECENT_EVERY_MS = 60 * 60_000L
-            private const val LOG_LIMIT = 60
+            // Benflix: big enough to hold a whole day of the log (it also has every play, sign-in and so on)
+            private const val LOG_LIMIT = 1_000
             private const val REFRESH_MS = 15_000L
             private const val FRESH_MS = 60_000L
             private const val POSTER_HEIGHT = 240

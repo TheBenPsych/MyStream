@@ -18,7 +18,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
@@ -33,6 +35,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -47,9 +50,14 @@ class MessageNoticeViewModel
     @Inject
     constructor(
         private val messages: BenflixMessages,
-        serverRepository: ServerRepository,
+        private val serverRepository: ServerRepository,
     ) : ViewModel() {
         val waiting: StateFlow<List<BenflixMessage>> = messages.waiting
+
+        /** When saved messages were last checked, so coming back to the app doesn't check too often */
+        @Volatile
+        private var lastCheck = 0L
+        private var foregroundJob: Job? = null
 
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
@@ -58,12 +66,27 @@ class MessageNoticeViewModel
                     .distinctUntilChanged()
                     .collectLatest { userId ->
                         if (userId != null) {
+                            lastCheck = System.currentTimeMillis()
                             // Let Home settle first
                             delay(4_000)
                             messages.checkSaved(userId)
+                            lastCheck = System.currentTimeMillis()
                         }
                     }
             }
+        }
+
+        /** Benflix: the app came back to the front, so look for messages saved while it was away */
+        fun onForeground() {
+            if (System.currentTimeMillis() - lastCheck < FOREGROUND_GAP_MS) return
+            if (foregroundJob?.isActive == true) return
+            foregroundJob =
+                viewModelScope.launch(WholphinDispatchers.IO) {
+                    delay(2_000)
+                    val userId = serverRepository.currentUser?.id ?: return@launch
+                    lastCheck = System.currentTimeMillis()
+                    messages.checkSaved(userId)
+                }
         }
 
         fun done(message: BenflixMessage) = messages.done(message)
@@ -76,6 +99,8 @@ fun MessageLayer(
     viewModel: MessageNoticeViewModel = hiltViewModel(),
 ) {
     val waiting by viewModel.waiting.collectAsState()
+    // Benflix: look for saved messages again when the app comes back to the front
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
     val message = waiting.firstOrNull { it.live || !playing }
     if (!popupTurn("ben-message", BenflixPopups.MESSAGE, message != null)) return
@@ -135,3 +160,6 @@ fun MessageLayer(
 }
 
 private const val LIVE_SHOW_MS = 60_000L
+
+/** Benflix: at most one saved-message check this often when the app comes back to the front */
+private const val FOREGROUND_GAP_MS = 60_000L

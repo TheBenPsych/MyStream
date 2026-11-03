@@ -662,12 +662,20 @@ PAGES.people = (el) => {
     } else if (b.dataset.a === "signout") {
       if (!confirm(`Sign ${u.Name} out on every TV, phone and browser?${u.Id === session.id ? " (Not this page.)" : ""}`)) return;
       busy(b, async () => {
-        const d = await jf("GET", `/Devices?userId=${encodeURIComponent(u.Id)}`);
+        // Jellyfin lists every device the person may use (one row per signed-in account), and deleting a
+        // device id signs out everyone on it. Profiles on one Benflix TV share an id, so only devices this
+        // person is signed in on are used, and ones someone else is also signed in on are left alone.
+        const d = await jf("GET", `/Devices`);
+        const rows = (d && d.Items) || [];
         const mine = "benflix-web-" + deviceId();
-        const devs = ((d && d.Items) || []).filter((x) => x.Id && x.Id !== mine);
+        const shared = new Set(rows.filter((x) => x.LastUserId && x.LastUserId !== u.Id).map((x) => x.Id));
+        const ids = [...new Set(rows.filter((x) => x.Id && x.Id !== mine && x.LastUserId === u.Id).map((x) => x.Id))];
+        const devs = ids.filter((x) => !shared.has(x));
+        const skipped = ids.length - devs.length;
         let n = 0;
-        for (const x of devs) { try { await jf("DELETE", `/Devices?id=${encodeURIComponent(x.Id)}`); n++; } catch (err) {} }
-        return `Signed out on ${n} device${n === 1 ? "" : "s"}.`;
+        for (const x of devs) { try { await jf("DELETE", `/Devices?id=${encodeURIComponent(x)}`); n++; } catch (err) {} }
+        return `Signed out on ${n} device${n === 1 ? "" : "s"}.` +
+          (skipped ? ` ${skipped} left alone because other people are signed in on ${skipped === 1 ? "it" : "them"} too.` : "");
       });
     } else if (b.dataset.a === "remove") {
       if (!confirm(`Remove ${u.Name}'s account? Their watch history goes too. This can't be undone.`)) return;

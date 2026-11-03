@@ -173,28 +173,47 @@ class BenflixServerActions
             )
         }
 
-        /** Signs a person out on every device except this one. Returns how many devices. */
+        /**
+         * Signs a person out on every device except this one. Returns how many devices were signed out
+         * and how many were left alone because someone else is signed in on them too.
+         *
+         * Jellyfin's GET /Devices?userId= lists every device that person may use (usually all of them),
+         * with one row per account signed in, and DELETE /Devices?id= signs out every account using that
+         * device id. All the profiles on one Benflix TV share an id, so only devices this person is signed
+         * in on are used, and a device another person is also signed in on is skipped.
+         */
         suspend fun signOutEverywhere(
             user: UserDto,
             thisDeviceId: String?,
-        ): Int =
+        ): Pair<Int, Int> =
             io {
-                val devices =
+                val rows =
                     api.devicesApi
-                        .getDevices(user.id)
+                        .getDevices()
                         .content.items
-                        .filter { it.id != null && it.id != thisDeviceId }
-                devices.count { device ->
-                    try {
-                        api.devicesApi.deleteDevice(device.id!!)
-                        true
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Could not sign out %s", device.name)
-                        false
+                val shared =
+                    rows
+                        .filter { it.lastUserId != null && it.lastUserId != user.id }
+                        .mapNotNull { it.id }
+                        .toSet()
+                val devices =
+                    rows
+                        .filter { it.lastUserId == user.id && it.id != null && it.id != thisDeviceId }
+                        .distinctBy { it.id }
+                val (skipped, theirs) = devices.partition { it.id in shared }
+                val count =
+                    theirs.count { device ->
+                        try {
+                            api.devicesApi.deleteDevice(device.id!!)
+                            true
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Could not sign out %s", device.name)
+                            false
+                        }
                     }
-                }
+                count to skipped.size
             }
 
         private suspend fun <T> io(block: suspend () -> T): T = withContext(WholphinDispatchers.IO) { block() }
