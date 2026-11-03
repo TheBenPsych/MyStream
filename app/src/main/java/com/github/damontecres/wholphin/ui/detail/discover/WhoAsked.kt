@@ -108,6 +108,11 @@ class WhoAskedViewModel
             asked: AskedBy,
             approve: Boolean,
         ) {
+            // Benflix: update the box right away; Jellyfin Enhanced's reply can look like an error even when it worked
+            val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
+            val wasWaiting = asked.status == RequestStatus.PENDING
+            _asked.update { list -> list.map { if (it.requestId == asked.requestId) it.copy(status = newStatus) else it } }
+            if (wasWaiting) RequestsWaiting.set((RequestsWaiting.count.value - 1).coerceAtLeast(0))
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
                     seerrService.api.requestApi.requestRequestIdStatusPost(
@@ -119,9 +124,6 @@ class WhoAskedViewModel
                                 RequestApi.StatusRequestRequestIdStatusPost.DECLINE
                             },
                     )
-                    val newStatus = if (approve) RequestStatus.APPROVED else RequestStatus.DECLINED
-                    _asked.update { list -> list.map { if (it.requestId == asked.requestId) it.copy(status = newStatus) else it } }
-                    RequestsWaiting.set(RequestsWaiting.count.value - 1)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {

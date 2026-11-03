@@ -153,9 +153,11 @@ fun TabbedPage(
     showTabs: Boolean = true,
     tabContent: @Composable (Int, TabDetails) -> Unit,
 ) {
+    // Benflix: the room kept for the clock is a TV thing; on phones it pushed tabs (like Requests) off-screen
+    val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
     val endPadding =
-        remember(isShowClock) {
-            if (isShowClock) {
+        remember(isShowClock, isTv) {
+            if (isShowClock && isTv) {
                 184.dp
             } else {
                 0.dp
@@ -198,9 +200,11 @@ fun <T> KeyedTabbedPage(
     showTabs: Boolean = true,
     tabContent: @Composable (T, TabDetails) -> Unit,
 ) {
+    // Benflix: the room kept for the clock is a TV thing; on phones it pushed tabs (like Requests) off-screen
+    val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
     val endPadding =
-        remember(isShowClock) {
-            if (isShowClock) {
+        remember(isShowClock, isTv) {
+            if (isShowClock && isTv) {
                 184.dp
             } else {
                 0.dp

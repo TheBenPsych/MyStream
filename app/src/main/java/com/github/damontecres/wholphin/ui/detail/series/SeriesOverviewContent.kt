@@ -166,9 +166,11 @@ fun SeriesOverviewContent(
                         .focusGroup()
                         .bringIntoViewRequester(bringIntoViewRequester),
             ) {
+                // Benflix: no clock room on phones
+                val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
                 val paddingValues =
-                    remember(preferences.appPreferences.interfacePreferences.showClock) {
-                        if (preferences.appPreferences.interfacePreferences.showClock) {
+                    remember(preferences.appPreferences.interfacePreferences.showClock, isTv) {
+                        if (preferences.appPreferences.interfacePreferences.showClock && isTv) {
                             PaddingValues(start = 0.dp, end = 184.dp)
                         } else {
                             PaddingValues(start = 0.dp, end = 16.dp)
