@@ -120,6 +120,38 @@ class BenflixProblems
                             .split(LINE)
                             .filter { it.isNotBlank() && !it.startsWith(report.at.toString() + FIELD) }
                     if (left.isEmpty()) remove(KEY) else put(KEY, left.joinToString(LINE))
+                    // Benflix: tell them it's fixed, on their Home
+                    val fixed = get(FIXED_KEY).orEmpty().split(LINE).filter { it.isNotBlank() }
+                    put(FIXED_KEY, (fixed + (report.at.toString() + FIELD + clean(report.title))).takeLast(MAX_FIXED).joinToString(LINE))
+                }
+            }
+
+        /** Benflix: "Ben fixed ..." notes waiting on this person's Home (time to title) */
+        suspend fun fixedForMe(): List<Pair<Long, String>> =
+            withContext(WholphinDispatchers.IO) {
+                val user = serverRepository.currentUser ?: return@withContext emptyList()
+                displayPreferencesService
+                    .getDisplayPreferences(user.id)
+                    .customPrefs[FIXED_KEY]
+                    .orEmpty()
+                    .split(LINE)
+                    .mapNotNull { line ->
+                        val at = line.substringBefore(FIELD).toLongOrNull() ?: return@mapNotNull null
+                        at to line.substringAfter(FIELD)
+                    }
+            }
+
+        /** Benflix: the person closed the "Ben fixed ..." card */
+        suspend fun dismissFixed(at: Long) =
+            withContext(WholphinDispatchers.IO) {
+                val user = serverRepository.currentUser ?: return@withContext
+                displayPreferencesService.updateDisplayPreferences(user.id) {
+                    val left =
+                        get(FIXED_KEY)
+                            .orEmpty()
+                            .split(LINE)
+                            .filter { it.isNotBlank() && !it.startsWith(at.toString() + FIELD) }
+                    if (left.isEmpty()) remove(FIXED_KEY) else put(FIXED_KEY, left.joinToString(LINE))
                 }
             }
 
@@ -145,6 +177,8 @@ class BenflixProblems
 
         companion object {
             private const val KEY = "benflix.problems"
+            private const val FIXED_KEY = "benflix.fixed"
+            private const val MAX_FIXED = 5
             private const val FIELD = "|"
             private const val LINE = "\n"
             private const val MAX_PER_PERSON = 10

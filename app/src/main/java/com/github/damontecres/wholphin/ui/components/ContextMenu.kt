@@ -212,6 +212,8 @@ fun ContextMenu(
     // Benflix "Mark watched up to here"
     val markUpToViewModel: com.github.damontecres.wholphin.services.MarkWatchedUpToViewModel = hiltViewModel()
     var showFixMatch by remember { mutableStateOf(false) }
+    // Benflix (admins): refresh info and pictures, file details
+    val adminTitle: com.github.damontecres.wholphin.ui.main.AdminTitleViewModel = hiltViewModel()
 
     val dialogItems =
         remember(resources, item, chosenStreams) {
@@ -286,6 +288,23 @@ fun ContextMenu(
                         (item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.SERIES)
                     ) {
                         { showFixMatch = true }
+                    } else {
+                        null
+                    },
+                onRefreshInfo =
+                    if (markUpToViewModel.isAdmin && item.type != BaseItemKind.AUDIO) {
+                        {
+                            adminTitle.refresh(item.id, item.title ?: item.name ?: "this")
+                            onDismissRequest.invoke()
+                        }
+                    } else {
+                        null
+                    },
+                onFileDetails =
+                    if (markUpToViewModel.isAdmin &&
+                        (item.type in supportedPlayableTypes || item.type == BaseItemKind.SERIES || item.type == BaseItemKind.SEASON)
+                    ) {
+                        { adminTitle.fileDetails(item.id) }
                     } else {
                         null
                     },
@@ -377,6 +396,8 @@ fun ContextMenu(
             elevation = 3.dp,
         )
     }
+    com.github.damontecres.wholphin.ui.main
+        .AdminTitleDialogs(adminTitle)
     if (showFixMatch) {
         com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
             item = item,
@@ -433,6 +454,8 @@ private fun buildContextMenuItems(
     onReportProblem: () -> Unit = {},
     onMarkUpTo: () -> Unit = {},
     onFixMatch: (() -> Unit)? = null,
+    onRefreshInfo: (() -> Unit)? = null,
+    onFileDetails: (() -> Unit)? = null,
 ): List<DialogItem> =
     buildList {
         // Songs should not show Go to
@@ -647,6 +670,28 @@ private fun buildContextMenuItems(
                 ) {
                     onFixMatch.invoke()
                 },
+            )
+        }
+        // Benflix (admins): get fresh info and pictures from the internet
+        if (onRefreshInfo != null) {
+            add(
+                DialogItem(
+                    "Refresh info and pictures",
+                    Icons.Default.Refresh,
+                    dismissOnClick = false,
+                    onClick = onRefreshInfo,
+                ),
+            )
+        }
+        // Benflix (admins): the file's size, quality, sound and subtitle tracks
+        if (onFileDetails != null) {
+            add(
+                DialogItem(
+                    "File details",
+                    Icons.Default.Info,
+                    dismissOnClick = false,
+                    onClick = onFileDetails,
+                ),
             )
         }
         // Benflix: catch up a show you watched somewhere else in one go

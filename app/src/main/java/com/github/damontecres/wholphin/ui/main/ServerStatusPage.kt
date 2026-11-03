@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
@@ -110,6 +111,7 @@ enum class ServerSection(
     OVERVIEW("Overview", "How the server is doing, and anything that needs you", Icons.Default.Home),
     NOW("Right now", "Who's watching, and how hard the server works for it", Icons.Default.PlayArrow),
     LIBRARY("Library", "Movie and show numbers, disk space and the library checkup", Icons.AutoMirrored.Filled.List),
+    REQUESTS("Requests", "Movies and shows people asked for, waiting for your yes or no", Icons.Default.Add),
     PEOPLE("People", "Accounts for family and friends", Icons.Default.Person),
     PROBLEMS("Problems", "Problems people reported and problems from the server", Icons.Default.Warning),
     MESSAGES("Messages", "Notes on Home, the welcome note and pop-ups", Icons.Default.Edit),
@@ -277,6 +279,8 @@ fun ServerStatusPage(
     modifier: Modifier = Modifier,
     viewModel: ServerStatusViewModel = hiltViewModel(),
     toolsViewModel: ServerToolsViewModel = hiltViewModel(),
+    adminTitle: AdminTitleViewModel = hiltViewModel(),
+    requestsViewModel: com.github.damontecres.wholphin.ui.discover.BenflixRequestsViewModel = hiltViewModel(),
 ) {
     val isTv = rememberIsTv()
     val data = viewModel.data
@@ -305,8 +309,14 @@ fun ServerStatusPage(
                 viewModel.loadTools()
             }
 
+            ServerSection.REQUESTS -> {
+                requestsViewModel.loadRequests(mineOnly = false)
+            }
+
             ServerSection.MESSAGES -> {
                 toolsViewModel.loadNotes()
+                // For "send to some people"
+                toolsViewModel.loadPeople()
             }
 
             else -> {}
@@ -330,6 +340,10 @@ fun ServerStatusPage(
     val chores by viewModel.chores.collectAsState()
     val libraries by viewModel.libraries.collectAsState()
     val notice by viewModel.notice.collectAsState()
+    val requests by requestsViewModel.requests.collectAsState()
+    val seerrActive by requestsViewModel.active.collectAsState(false)
+    val waitingRequests by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.count
+        .collectAsState()
 
     val lights =
         remember(header, disks, problems, reports, watching) {
@@ -362,8 +376,17 @@ fun ServerStatusPage(
             )
         }
     val needsYou =
-        remember(header, disks, problems, reports) {
+        remember(header, disks, problems, reports, waitingRequests) {
             buildList {
+                if (waitingRequests > 0) {
+                    add(
+                        NeedsYou(
+                            if (waitingRequests == 1) "1 request is waiting for you" else "$waitingRequests requests are waiting for you",
+                            Light.WARN,
+                            ServerSection.REQUESTS,
+                        ),
+                    )
+                }
                 if (header?.online == false) {
                     add(NeedsYou("Benflix can't reach the server. Is Tower on?", Light.BAD, ServerSection.OVERVIEW))
                 }
@@ -444,6 +467,15 @@ fun ServerStatusPage(
                 historyItems(history)
             }
 
+            ServerSection.REQUESTS -> {
+                requestItems(
+                    connected = seerrActive,
+                    requests = requests,
+                    onAnswer = requestsViewModel::answer,
+                    onApproveAll = requestsViewModel::approveAll,
+                )
+            }
+
             ServerSection.TOOLS -> {
                 toolItems(
                     libraries = libraries,
@@ -458,6 +490,7 @@ fun ServerStatusPage(
                 libraryNumberItems(library)
                 diskItems(disks)
                 checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle)
+                spaceItems(toolsState, toolsViewModel, sectionTitle)
             }
 
             ServerSection.PEOPLE -> {
@@ -465,7 +498,14 @@ fun ServerStatusPage(
             }
 
             ServerSection.PROBLEMS -> {
-                problemReportItems(reports, toolsViewModel, { toolsDialog = it }, sectionTitle)
+                problemReportItems(
+                    reports = reports,
+                    viewModel = toolsViewModel,
+                    showDialog = { toolsDialog = it },
+                    sectionTitle = sectionTitle,
+                    onFileDetails = adminTitle::fileDetails,
+                    onFixMatch = adminTitle::openFixMatch,
+                )
                 serverProblemItems(problems)
             }
 
@@ -587,6 +627,7 @@ fun ServerStatusPage(
         }
     }
 
+    AdminTitleDialogs(adminTitle)
     ServerToolsDialogs(
         state = toolsState,
         viewModel = toolsViewModel,
@@ -932,6 +973,87 @@ private fun LazyListScope.historyItems(history: List<WatchedEntry>?) {
 }
 
 private const val HISTORY_SHOWN = 40
+
+/** Benflix: requests waiting for a yes or no, then the latest answered ones */
+private fun LazyListScope.requestItems(
+    connected: Boolean,
+    requests: List<com.github.damontecres.wholphin.ui.discover.RequestEntry>?,
+    onAnswer: (com.github.damontecres.wholphin.ui.discover.RequestEntry, Boolean) -> Unit,
+    onApproveAll: () -> Unit,
+) {
+    if (!connected) {
+        item { SectionTitle("Requests") }
+        item { ServerActionRow(headline = "Seerr isn't connected. Connect it in Settings > Advanced.") }
+        return
+    }
+    val pendingStatus = com.github.damontecres.wholphin.data.model.RequestStatus.PENDING
+    val waiting = requests?.filter { it.status == pendingStatus }
+    item { SectionTitle(if (waiting == null) "Waiting for you" else "Waiting for you (${waiting.size})") }
+    when {
+        waiting == null -> {
+            item { LoadingBox("Reading requests…") }
+        }
+
+        waiting.isEmpty() -> {
+            item { ServerActionRow(headline = "No requests waiting. All caught up!") }
+        }
+
+        else -> {
+            if (waiting.size > 1) {
+                item {
+                    ServerActionRow(
+                        headline = "Approve all ${waiting.size}",
+                        onClick = onApproveAll,
+                        actions =
+                            listOf("Approve all" to onApproveAll),
+                    )
+                }
+            }
+            items(waiting, key = { "req-${it.request.id}" }) { r ->
+                ServerActionRow(
+                    headline = r.item?.title ?: "A request",
+                    supporting =
+                        "Asked by ${r.who}" + (
+                            r.item
+                                ?.releaseDate
+                                ?.year
+                                ?.let { " · $it" } ?: ""
+                        ),
+                    leading = {
+                        AsyncImage(
+                            model = r.item?.posterUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .width(54.dp)
+                                    .height(80.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                        )
+                    },
+                    actions = listOf("Approve" to { onAnswer(r, true) }, "Decline" to { onAnswer(r, false) }),
+                )
+            }
+        }
+    }
+    val answered = requests.orEmpty().filter { it.status != pendingStatus }.take(15)
+    if (answered.isNotEmpty()) {
+        item { SectionTitle("Answered lately") }
+        items(answered, key = { "req-done-${it.request.id}" }) { r ->
+            ServerActionRow(
+                headline = r.item?.title ?: "A request",
+                supporting =
+                    "Asked by ${r.who} · " +
+                        when {
+                            r.available -> "on Benflix now"
+                            r.downloading -> "downloading" + (r.downloadPercent?.let { " ($it%)" } ?: "")
+                            else -> r.status.name.lowercase()
+                        },
+            )
+        }
+    }
+}
 
 /** Benflix: Scan for new stuff, the server's chores and Restart */
 private fun LazyListScope.toolItems(

@@ -274,6 +274,50 @@ class PlaybackViewModel
         /** Benflix: true while this video was moved to MPV for its styled subtitles */
         private var autoMpvActive = false
 
+        /** Benflix: brings the sound back if it drops out (after a skip, a sound switch...) */
+        private val soundWatchdog by lazy {
+            SoundWatchdog(
+                scope = viewModelScope,
+                player = { if (this::player.isInitialized) player else null },
+                videoHasSound = {
+                    state.value.currentPlayback
+                        ?.mediaSourceInfo
+                        ?.mediaStreams
+                        ?.any { it.type == MediaStreamType.AUDIO } == true
+                },
+                onConvertSound = { fullConvert -> convertSoundOnServer(fullConvert) },
+                onNotice = { text ->
+                    if (state.value.notice == null) showNotice(PlayerNotice(title = text, autoHideMs = 5_000L))
+                },
+            )
+        }
+
+        /**
+         * Benflix: the sound didn't come back by itself, so ask the server to send the sound in a
+         * simple format (AAC). With [fullConvert] the picture is converted too.
+         */
+        private fun convertSoundOnServer(fullConvert: Boolean) {
+            viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
+                val currentPlayback = state.value.currentPlayback ?: return@launch
+                Timber.w("No sound, asking the server to convert it (fullConvert=%s)", fullConvert)
+                changeStreams(
+                    item = currentItem.item,
+                    sourceId = currentPlayback.mediaSourceInfo.id,
+                    audioIndex = currentPlayback.audioIndex.takeIf { it >= 0 },
+                    subtitleIndex = currentPlayback.subtitleIndex,
+                    positionMs = player.currentPosition,
+                    enableDirectPlay = false,
+                    enableDirectStream = !fullConvert,
+                    allowAudioStreamCopy = false,
+                )
+                withContext(WholphinDispatchers.Main) {
+                    player.prepare()
+                    player.play()
+                }
+                soundWatchdog.check("sound converted")
+            }
+        }
+
         private suspend fun createPlayer(
             isHdr: Boolean,
             is4k: Boolean,
@@ -742,6 +786,7 @@ class PlaybackViewModel
             enableDirectPlay: Boolean = !this.forceTranscoding,
             enableDirectStream: Boolean = !this.forceTranscoding,
             maxBitrate: Long = this.state.value.maxBitrate,
+            allowAudioStreamCopy: Boolean = enableDirectStream,
         ): Unit =
             withContext(WholphinDispatchers.IO) {
                 val itemId = item.id
@@ -801,7 +846,7 @@ class PlaybackViewModel
                                 enableDirectPlay = enableDirectPlay,
                                 enableDirectStream = enableDirectStream,
                                 allowVideoStreamCopy = enableDirectStream,
-                                allowAudioStreamCopy = enableDirectStream,
+                                allowAudioStreamCopy = allowAudioStreamCopy,
                                 enableTranscoding = true,
                                 autoOpenLiveStream = true,
                             ),
@@ -1094,6 +1139,7 @@ class PlaybackViewModel
                         positionMs = onMain { player.currentPosition },
                         enableDirectPlay = true,
                     )
+                    onMain { soundWatchdog.check("audio switch") }
                 } else {
                     Timber.w("Trying to change audio, but currentPlayback is null")
                 }
@@ -1162,6 +1208,7 @@ class PlaybackViewModel
                         positionMs = onMain { player.currentPosition },
                         enableDirectPlay = true,
                     )
+                    onMain { soundWatchdog.check("subtitle switch") }
                 } else {
                     Timber.w("Trying to change subtitle, but currentPlayback is null")
                 }
@@ -1480,6 +1527,8 @@ class PlaybackViewModel
             positionMs: Long,
         ) {
             noticeJob?.cancel()
+            soundWatchdog.reset()
+            soundWatchdog.check("start")
             firstReadyAt = 0L
             bufferTimes.clear()
             val pending = BenflixPlayerPrefs.pendingNotice
@@ -1870,6 +1919,7 @@ class PlaybackViewModel
         ) {
             if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
                 lastSeekAt = android.os.SystemClock.elapsedRealtime()
+                soundWatchdog.check("seek")
             }
         }
 
@@ -2452,6 +2502,7 @@ class PlaybackViewModel
                             withContext(WholphinDispatchers.Main) {
                                 player.prepare()
                                 player.play()
+                                soundWatchdog.check("fallback")
                             }
                         }
                     }
