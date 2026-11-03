@@ -824,6 +824,20 @@ fun PlaybackPageContent(
                             Text(text = "Always for this show")
                         }
                     }
+                    // Benflix: the same for the credits
+                    if (segment.segment.type == MediaSegmentType.OUTRO &&
+                        state.currentPlayback
+                            ?.item
+                            ?.data
+                            ?.seriesId != null &&
+                        !state.alwaysSkipOutro
+                    ) {
+                        Button(
+                            onClick = { viewModel.alwaysSkipOutroForThisShow(segment.segment.id) },
+                        ) {
+                            Text(text = "Always for this show")
+                        }
+                    }
                     SkipSegmentButton(
                         type = segment.segment.type,
                         onClick = {
@@ -965,10 +979,16 @@ fun PlaybackPageContent(
                     timeLeft = if (autoPlayEnabled) timeLeft.seconds else null,
                     runtime = it.data.runTimeTicks?.ticks,
                     totalCountdown = preferences.appPreferences.playbackPreferences.autoPlayNextDelaySeconds.seconds,
-                    onWatchCredits = {
-                        timeLeft = -1
-                        autoPlayEnabled = false
-                    },
+                    // Benflix: no "Watch credits" once the credits were skipped or the episode ended
+                    onWatchCredits =
+                        if (state.noCreditsLeft) {
+                            null
+                        } else {
+                            {
+                                timeLeft = -1
+                                autoPlayEnabled = false
+                            }
+                        },
                     modifier =
                         Modifier
                             .padding(horizontal = 32.dp, vertical = 40.dp)

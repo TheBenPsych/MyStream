@@ -56,6 +56,7 @@ enum class NoticeAction {
     STOP_SKIPPING_FILLER,
     LOWER_QUALITY,
     STOP_SKIPPING_INTRO,
+    STOP_SKIPPING_OUTRO,
     DISMISS,
 }
 
