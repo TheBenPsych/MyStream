@@ -57,6 +57,7 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.games.DevicePower
+import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.PhonePadActivity
