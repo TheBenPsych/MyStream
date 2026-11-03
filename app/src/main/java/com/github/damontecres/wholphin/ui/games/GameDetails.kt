@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -48,6 +47,7 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalGames
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /** What the game details page shows besides the buttons */

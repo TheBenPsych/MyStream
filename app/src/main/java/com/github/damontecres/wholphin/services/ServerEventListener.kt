@@ -22,10 +22,12 @@ import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
@@ -39,6 +41,7 @@ import org.jellyfin.sdk.model.api.PlayRequest
 import org.jellyfin.sdk.model.api.UserUpdatedMessage
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Listens for basic messages from the server such as messages
@@ -73,26 +76,33 @@ class ServerEventListener
         ) {
             if (server != null && user != null && api.baseUrl != null && api.accessToken != null) {
                 (context as AppCompatActivity).lifecycleScope.launchIO {
-                    api.sessionApi.postCapabilities(
-                        playableMediaTypes = listOf(MediaType.VIDEO),
-                        supportedCommands =
-                            listOf(
-                                GeneralCommandType.DISPLAY_MESSAGE,
-                                GeneralCommandType.SEND_STRING,
-                                // Benflix: phone as the TV remote
-                                GeneralCommandType.MOVE_UP,
-                                GeneralCommandType.MOVE_DOWN,
-                                GeneralCommandType.MOVE_LEFT,
-                                GeneralCommandType.MOVE_RIGHT,
-                                GeneralCommandType.SELECT,
-                                GeneralCommandType.BACK,
-                                GeneralCommandType.GO_HOME,
-                            ),
-                        supportsMediaControl = true,
-                    )
+                    postCapabilities()
                     subscribeToWebSocket()
                 }
             }
+        }
+
+        /**
+         * Tells the server what this Benflix can do, so the phone remote and "Play on TV" can find it.
+         */
+        private suspend fun postCapabilities() {
+            api.sessionApi.postCapabilities(
+                playableMediaTypes = listOf(MediaType.VIDEO),
+                supportedCommands =
+                    listOf(
+                        GeneralCommandType.DISPLAY_MESSAGE,
+                        GeneralCommandType.SEND_STRING,
+                        // Benflix: phone as the TV remote
+                        GeneralCommandType.MOVE_UP,
+                        GeneralCommandType.MOVE_DOWN,
+                        GeneralCommandType.MOVE_LEFT,
+                        GeneralCommandType.MOVE_RIGHT,
+                        GeneralCommandType.SELECT,
+                        GeneralCommandType.BACK,
+                        GeneralCommandType.GO_HOME,
+                    ),
+                supportsMediaControl = true,
+            )
         }
 
         fun subscribeToWebSocket() {
@@ -103,6 +113,21 @@ class ServerEventListener
                     try {
                         // Launch multiple listeners, but stop all if one fails
                         coroutineScope {
+                            // Benflix: check in with the server every few minutes while open, so a TV that's just
+                            // sitting on a page stays findable by the phone remote (and is re-announced after
+                            // the server restarts).
+                            launch {
+                                while (isActive) {
+                                    delay(HEARTBEAT)
+                                    try {
+                                        withContext(WholphinDispatchers.IO) { postCapabilities() }
+                                    } catch (ex: CancellationException) {
+                                        throw ex
+                                    } catch (ex: Exception) {
+                                        Timber.w(ex, "Couldn't check in with the server")
+                                    }
+                                }
+                            }
                             api.webSocket
                                 .subscribe<GeneralCommandMessage>()
                                 .onEach { message ->
@@ -251,6 +276,8 @@ class ServerEventListener
     }
 
 private const val TICKS_PER_MS = 10_000L
+
+private val HEARTBEAT = 4.minutes
 
 /** Marks a SEND_STRING from the Benflix phone remote (typing), not a message to show */
 const val BENFLIX_TYPE = "BenflixType"

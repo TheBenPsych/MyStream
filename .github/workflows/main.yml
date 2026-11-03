@@ -12,18 +12,19 @@ defaults:
   run:
     shell: bash
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A newer push cancels an older build that is still compiling (saves time).
+    # Publishing is a separate job below that is never cancelled halfway.
+    concurrency:
+      group: ${{ github.workflow }}-build-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -81,13 +82,44 @@ jobs:
           name: Benflix-apks
           path: out/*.apk
 
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Never cancel a publish halfway: a cancelled publish used to leave NO release behind
+    # (the old one already deleted, the new one stuck as a hidden draft), so the
+    # Downloader link and the in-app updater both found nothing.
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # Need the history for the "What's new" list
+
+      - name: Get the APKs from the build
+        uses: actions/download-artifact@v5
+        with:
+          name: Benflix-apks
+          path: out
+
       - name: Publish to the "latest-build" release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: 1.0.${{ github.run_number }}
         run: |
           # Read the build history saved in the previous release, before it is replaced
-          gh release view latest-build --json body --jq .body > old-notes.txt 2>/dev/null || : > old-notes.txt
+          # (if only a hidden draft is left by an old cancelled run, its text still has the history)
+          # (gh api prints the error text on a 404, so only keep its output when it worked)
+          if ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest-build" --jq .body > old-notes.txt 2>/dev/null; then
+            : > old-notes.txt
+          fi
+          if [ ! -s old-notes.txt ]; then
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq '[.[] | select(.tag_name == "latest-build")][0].body // ""' > old-notes.txt 2>/dev/null || : > old-notes.txt
+          fi
           prev_sha=$(grep -oE '<!-- app-sha:[0-9a-f]+ -->' old-notes.txt | head -1 | sed -E 's/.*app-sha:([0-9a-f]+).*/\1/' || true)
           if [ -z "$prev_sha" ]; then
             # Releases made before the history existed only name the commit in their text
@@ -118,7 +150,6 @@ jobs:
           [ -s new-titles.txt ] || echo "Small fixes and improvements" > new-titles.txt
           cat new-titles.txt
 
-          gh release delete latest-build --cleanup-tag -y || true
           now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           {
             echo "Newest Benflix build (version $VERSION) from \`main\` (commit ${GITHUB_SHA::7})."
@@ -132,9 +163,46 @@ jobs:
             grep -oE '<!-- app-change:[^>]*-->' old-notes.txt | head -n 150 || true
           } > notes.txt
           cat notes.txt
-          gh release create latest-build \
-            --prerelease --latest=false \
-            --title "v$VERSION" \
-            --target "$GITHUB_SHA" \
-            -F notes.txt \
-            out/*.apk
+
+          # Hidden drafts named latest-build (left by runs cancelled mid-publish) block nothing
+          # but clutter the list, so remove them
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft and .tag_name == "latest-build") | .id' |
+            while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
+
+          release_id=""
+          if out=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest-build" --jq .id 2>/dev/null); then
+            release_id="$out"
+          fi
+          if [ -z "$release_id" ]; then
+            echo "No latest-build release yet, creating it"
+            gh release create latest-build \
+              --prerelease --latest=false \
+              --title "v$VERSION" \
+              --target "$GITHUB_SHA" \
+              -F notes.txt \
+              out/*.apk
+            exit 0
+          fi
+
+          # Update the existing release IN PLACE, so the download links never disappear:
+          # 1. upload each new APK under a temporary name (the old one keeps working meanwhile)
+          mkdir -p next
+          for f in out/*.apk; do cp "$f" "next/next-$(basename "$f")"; done
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" \
+            --jq '.[] | select(.name | startswith("next-")) | .id' |
+            while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"; done
+          gh release upload latest-build next/*.apk
+          # 2. swap: remove the old APK and give the new one its real name (takes a split second)
+          for f in out/*.apk; do
+            name=$(basename "$f")
+            old_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" --jq ".[] | select(.name == \"$name\") | .id")
+            new_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" --jq ".[] | select(.name == \"next-$name\") | .id")
+            [ -n "$old_id" ] && gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$old_id"
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$new_id" -f name="$name" > /dev/null
+          done
+          # 3. point the tag at this build and update the version + "What's new" text last,
+          #    so the app only sees the new version once its APK is in place
+          git tag -f latest-build "$GITHUB_SHA"
+          git push -f origin refs/tags/latest-build
+          gh release edit latest-build --title "v$VERSION" --notes-file notes.txt --prerelease --latest=false

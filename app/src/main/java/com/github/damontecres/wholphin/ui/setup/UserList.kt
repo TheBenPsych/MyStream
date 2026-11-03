@@ -254,7 +254,7 @@ private fun AvatarPickerDialog(
     // Make sure the pick is saved on the device, even if no picture has been drawn yet
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val current = AvatarChoices.get(userId)
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
+    com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismissRequest) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
