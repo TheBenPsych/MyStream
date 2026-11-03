@@ -222,6 +222,8 @@ fun MyBenflixPage(
             }
         }
         val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
+        // Benflix: get the Server page ready in the background for the admin
+        PreloadServerPage(isAdmin = userDto?.policy?.isAdministrator == true && !kids && !GuestMode.isActive)
         if (!kids && !GuestMode.isActive) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),

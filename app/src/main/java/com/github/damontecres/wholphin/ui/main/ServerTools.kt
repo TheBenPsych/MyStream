@@ -1,15 +1,26 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Button
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -29,6 +40,7 @@ import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -48,14 +60,15 @@ import javax.inject.Inject
 data class ServerToolsState(
     val note: BenflixNote? = null,
     val welcome: BenflixNote? = null,
-    val people: List<UserDto> = emptyList(),
+    /** Benflix: null until the People section is first opened */
+    val people: List<UserDto>? = null,
     val checkup: List<CheckupSection>? = null,
     val checkupHidden: Int = 0,
     /** A message to show in a pop-up, like a new password */
     val message: Pair<String, String>? = null,
     val busy: Boolean = false,
-    // Benflix: "Report a problem" reports from everyone
-    val problems: List<ProblemReport> = emptyList(),
+    /** Benflix: true once the notes were read (they load when Messages is first opened) */
+    val notesLoaded: Boolean = false,
 )
 
 @HiltViewModel
@@ -69,37 +82,45 @@ class ServerToolsViewModel
         val navigationManager: NavigationManager,
         private val api: ApiClient,
         private val problems: BenflixProblems,
+        private val dashboard: ServerDashboardData,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ServerToolsState())
         val state: StateFlow<ServerToolsState> = _state
 
         private val userId get() = serverRepository.currentUser?.id
 
-        fun load() {
+        private var notesAsked = false
+        private var peopleAsked = false
+
+        /** Benflix: the notes only load when the Messages section is first opened */
+        fun loadNotes() {
+            if (notesAsked) return
             val id = userId ?: return
-            // Benflix: ask for all three at once and show each as soon as it arrives
+            notesAsked = true
             work(showBusy = false) {
                 val note = notes.read(id)
                 _state.value = _state.value.copy(note = note)
             }
             work(showBusy = false) {
                 val welcome = notes.read(id, NoteKind.WELCOME)
-                _state.value = _state.value.copy(welcome = welcome)
+                _state.value = _state.value.copy(welcome = welcome, notesLoaded = true)
             }
+        }
+
+        /** Benflix: the people list only loads when the People section is first opened */
+        fun loadPeople() {
+            if (peopleAsked) return
+            peopleAsked = true
             work(showBusy = false) {
                 val list = people.list()
                 _state.value = _state.value.copy(people = list)
-            }
-            work(showBusy = false) {
-                val reports = problems.all()
-                _state.value = _state.value.copy(problems = reports)
             }
         }
 
         fun clearProblem(report: ProblemReport) =
             work(showBusy = false) {
                 problems.clear(report)
-                _state.value = _state.value.copy(problems = _state.value.problems - report)
+                dashboard.removeReport(report)
             }
 
         fun openProblem(report: ProblemReport) {
@@ -196,6 +217,7 @@ class ServerToolsViewModel
 
         fun runCheckup() {
             val id = userId ?: return
+            if (_state.value.busy) return
             work {
                 _state.value = _state.value.copy(checkup = checkup.run(id), checkupHidden = checkup.hiddenCount())
             }
@@ -321,176 +343,249 @@ sealed interface ServerToolsDialog {
     ) : ServerToolsDialog
 }
 
-/** The Notes, People and Library checkup sections of the Server page */
-fun LazyListScope.serverToolsItems(
+/**
+ * Benflix: one row on the Server page with its actions as real buttons (no hidden "hold OK").
+ * TV: the buttons sit to the right of the row, so pressing right reaches them.
+ * Phone: the buttons sit under the row so nothing gets squashed or cut off.
+ */
+@Composable
+fun ServerActionRow(
+    headline: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    onClick: () -> Unit = {},
+    /** Extra things under the supporting line, like a progress bar */
+    extra: (@Composable () -> Unit)? = null,
+    leading: (@Composable BoxScope.() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    actions: List<Pair<String, () -> Unit>> = emptyList(),
+) {
+    val isTv = rememberIsTv()
+    val row: @Composable (Modifier) -> Unit = { m ->
+        ListItem(
+            selected = false,
+            onClick = onClick,
+            headlineContent = { Text(headline) },
+            supportingContent =
+                if (supporting != null || extra != null) {
+                    {
+                        Column {
+                            supporting?.let { Text(it) }
+                            extra?.invoke()
+                        }
+                    }
+                } else {
+                    null
+                },
+            leadingContent = leading,
+            trailingContent = trailing,
+            modifier = m,
+        )
+    }
+    if (actions.isEmpty()) {
+        row(modifier.fillMaxWidth())
+    } else if (isTv) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier.fillMaxWidth(),
+        ) {
+            row(Modifier.weight(1f))
+            actions.forEach { (label, action) ->
+                Button(onClick = action) { Text(label, fontSize = 14.sp) }
+            }
+        }
+    } else {
+        Column(modifier = modifier.fillMaxWidth()) {
+            row(Modifier.fillMaxWidth())
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp),
+            ) {
+                actions.forEach { (label, action) ->
+                    Button(onClick = action) { Text(label, fontSize = 14.sp) }
+                }
+            }
+        }
+    }
+}
+
+/** Benflix: problems people sent with "Report a problem" */
+fun LazyListScope.problemReportItems(
+    reports: List<ProblemReport>?,
+    viewModel: ServerToolsViewModel,
+    showDialog: (ServerToolsDialog) -> Unit,
+    sectionTitle: @Composable (String) -> Unit,
+) {
+    item { sectionTitle(if (reports == null) "Problems reported" else "Problems reported (${reports.size})") }
+    if (reports.isNullOrEmpty()) {
+        item {
+            ServerActionRow(headline = if (reports == null) "Checking…" else "Nobody reported a problem. Nice!")
+        }
+        return
+    }
+    items(reports, key = { "problem-${it.userId}-${it.at}" }) { report ->
+        val day =
+            java.time.Instant
+                .ofEpochMilli(report.at)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+        ServerActionRow(
+            headline = "${report.problem}: ${report.title}",
+            supporting = "${report.userName} · ${report.device} · $day",
+            onClick = { viewModel.openProblem(report) },
+            actions =
+                buildList {
+                    if (report.itemId != null) add("Open" to { viewModel.openProblem(report) })
+                    add("Fixed" to { showDialog(ServerToolsDialog.Problem(report)) })
+                },
+        )
+    }
+}
+
+/** Benflix: the note on Home, the welcome note and the pop-up */
+fun LazyListScope.messageItems(
+    state: ServerToolsState,
+    showDialog: (ServerToolsDialog) -> Unit,
+    sectionTitle: @Composable (String) -> Unit,
+) {
+    item { sectionTitle("Note on everyone's Home") }
+    item {
+        ServerActionRow(
+            headline = if (!state.notesLoaded) "Checking…" else state.note?.text ?: "Write a note",
+            supporting =
+                if (state.note == null) {
+                    "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
+                } else {
+                    "Showing on Home now. Click to change it, or save it empty to remove it."
+                },
+            onClick = { showDialog(ServerToolsDialog.WriteNote) },
+        )
+    }
+    item { sectionTitle("Welcome note") }
+    item {
+        ServerActionRow(
+            headline = if (!state.notesLoaded) "Checking…" else state.welcome?.text ?: "Write a welcome note",
+            supporting =
+                if (state.welcome == null) {
+                    "Everyone sees it once, on their first Home screen. Like \"Welcome to Benflix! Ask me if you can't find something.\""
+                } else {
+                    "Welcome note. Click to change it, or save it empty to remove it."
+                },
+            onClick = { showDialog(ServerToolsDialog.WriteWelcome) },
+        )
+    }
+    item { sectionTitle("Pop-up") }
+    item {
+        ServerActionRow(
+            headline = "Pop-up message on every screen",
+            supporting = "Like \"Server restarting in 5 minutes\". It pops up right away on every Benflix screen that's open.",
+            onClick = { showDialog(ServerToolsDialog.WritePopup) },
+        )
+    }
+}
+
+/** Benflix: how long this device took to open Benflix last time */
+fun LazyListScope.startupSpeedItem(sectionTitle: @Composable (String) -> Unit) {
+    item {
+        val context = LocalContext.current
+        val last = remember { StartupTimer.last(context) }
+        if (last != null) {
+            Column {
+                sectionTitle("This device")
+                ServerActionRow(headline = "Start-up speed on this device", supporting = last)
+            }
+        }
+    }
+}
+
+/** Benflix: everyone with an account, and Add a person */
+fun LazyListScope.peopleItems(
+    state: ServerToolsState,
+    showDialog: (ServerToolsDialog) -> Unit,
+    sectionTitle: @Composable (String) -> Unit,
+) {
+    val people = state.people
+    item { sectionTitle(if (people == null) "People" else "People (${people.size})") }
+    item {
+        ServerActionRow(
+            headline = "Add a person",
+            supporting = "Makes their account and gives you a password and install code to send them",
+            onClick = { showDialog(ServerToolsDialog.AddPerson) },
+        )
+    }
+    if (people == null) {
+        item { ServerActionRow(headline = "Checking…") }
+        return
+    }
+    items(people, key = { "person-${it.id}" }) { user ->
+        ServerActionRow(
+            headline = user.name.orEmpty(),
+            supporting =
+                listOfNotNull(
+                    if (user.policy?.isAdministrator == true) "Admin" else null,
+                    if (user.policy?.isDisabled == true) "Turned off" else null,
+                    user.lastActivityDate?.let { "Last seen ${it.toLocalDate()}" } ?: "Never signed in",
+                    awayQualityLabel(user.policy?.remoteClientBitrateLimit)
+                        .takeIf { (user.policy?.remoteClientBitrateLimit ?: 0) > 0 }
+                        ?.let { "Away from home: $it" },
+                ).joinToString(" · "),
+            onClick = { showDialog(ServerToolsDialog.PersonMenu(user)) },
+            actions = listOf("Options" to { showDialog(ServerToolsDialog.PersonMenu(user)) }),
+        )
+    }
+}
+
+/** Benflix: the Library checkup */
+fun LazyListScope.checkupItems(
     state: ServerToolsState,
     viewModel: ServerToolsViewModel,
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
 ) {
-    // Benflix: problems people reported
-    if (state.problems.isNotEmpty()) {
-        item { sectionTitle("Problems reported (${state.problems.size})") }
-        items(state.problems, key = { "problem-${it.userId}-${it.at}" }) { report ->
-            ListItem(
-                selected = false,
-                onClick = { viewModel.openProblem(report) },
-                onLongClick = { showDialog(ServerToolsDialog.Problem(report)) },
-                headlineContent = { Text("${report.problem}: ${report.title}") },
-                supportingContent = {
-                    val day =
-                        java.time.Instant
-                            .ofEpochMilli(report.at)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
-                    Text("${report.userName} · ${report.device} · $day · click to open, hold to mark fixed")
-                },
-            )
-        }
-    }
-
-    // Notes from Ben
-    item { sectionTitle("Note on everyone's Home") }
-    item {
-        ListItem(
-            selected = false,
-            onClick = { showDialog(ServerToolsDialog.WriteNote) },
-            headlineContent = { Text(state.note?.text ?: "Write a note") },
-            supportingContent = {
-                Text(
-                    if (state.note == null) {
-                        "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
-                    } else {
-                        "Showing on Home now. Click to change it, or save it empty to remove it."
-                    },
-                )
-            },
-        )
-    }
-
-    // The welcome note (shown once to each person)
-    item {
-        ListItem(
-            selected = false,
-            onClick = { showDialog(ServerToolsDialog.WriteWelcome) },
-            headlineContent = { Text(state.welcome?.text ?: "Write a welcome note") },
-            supportingContent = {
-                Text(
-                    if (state.welcome == null) {
-                        "Everyone sees it once, on their first Home screen. Like \"Welcome to Benflix! Ask me if you can't find something.\""
-                    } else {
-                        "Welcome note. Click to change it, or save it empty to remove it."
-                    },
-                )
-            },
-        )
-    }
-
-    // Benflix: a pop-up on every screen right now
-    item {
-        ListItem(
-            selected = false,
-            onClick = { showDialog(ServerToolsDialog.WritePopup) },
-            headlineContent = { Text("Pop-up message on every screen") },
-            supportingContent = {
-                Text("Like \"Server restarting in 5 minutes\". It pops up right away on every Benflix screen that's open.")
-            },
-        )
-    }
-
-    // Benflix start-up stopwatch: how long this device took to open Benflix last time
-    item {
-        val context = LocalContext.current
-        val last = remember { StartupTimer.last(context) }
-        if (last != null) {
-            ListItem(
-                selected = false,
-                onClick = {},
-                headlineContent = { Text("Start-up speed on this device") },
-                supportingContent = { Text(last) },
-            )
-        }
-    }
-
-    // Add a person
-    item { sectionTitle("People (${state.people.size})") }
-    item {
-        ListItem(
-            selected = false,
-            onClick = { showDialog(ServerToolsDialog.AddPerson) },
-            headlineContent = { Text("Add a person") },
-            supportingContent = { Text("Makes their account and gives you a password and install code to send them") },
-        )
-    }
-    items(state.people, key = { "person-${it.id}" }) { user ->
-        ListItem(
-            selected = false,
-            onClick = { showDialog(ServerToolsDialog.PersonMenu(user)) },
-            onLongClick = {
-                if (user.policy?.isAdministrator != true) showDialog(ServerToolsDialog.RemovePerson(user))
-            },
-            headlineContent = { Text(user.name.orEmpty()) },
-            supportingContent = {
-                Text(
-                    listOfNotNull(
-                        if (user.policy?.isAdministrator == true) "Admin" else null,
-                        if (user.policy?.isDisabled == true) "Turned off" else null,
-                        user.lastActivityDate?.let { "Last seen ${it.toLocalDate()}" } ?: "Never signed in",
-                        awayQualityLabel(user.policy?.remoteClientBitrateLimit)
-                            .takeIf { (user.policy?.remoteClientBitrateLimit ?: 0) > 0 }
-                            ?.let { "Away from home: $it" },
-                        "click for more",
-                    ).joinToString(" · "),
-                )
-            },
-        )
-    }
-
-    // Library checkup
     item { sectionTitle("Library checkup") }
     val checkup = state.checkup
     if (checkup == null) {
         item {
-            ListItem(
-                selected = false,
+            ServerActionRow(
+                headline = if (state.busy) "Checking…" else "Run a checkup",
+                supporting = "Finds missing episodes, movies with no trailer, anime with no subtitles and low quality movies",
                 onClick = { viewModel.runCheckup() },
-                headlineContent = { Text(if (state.busy) "Checking…" else "Run a checkup") },
-                supportingContent = {
-                    Text(
-                        "Finds missing episodes, movies with no trailer, anime with no subtitles and low quality movies",
-                    )
-                },
             )
         }
-    } else {
-        checkup.forEach { section ->
-            item(key = "checkup-${section.title}") {
-                ListItem(
-                    selected = false,
-                    onClick = {},
-                    headlineContent = { Text("${section.title} (${section.items.size})") },
-                    supportingContent = { if (section.items.isEmpty()) Text("Nothing found. Nice!") },
-                )
-            }
-            items(section.items, key = { "check-${it.key}" }) { found ->
-                ListItem(
-                    selected = false,
-                    onClick = { viewModel.open(found) },
-                    onLongClick = { showDialog(ServerToolsDialog.Hide(found)) },
-                    headlineContent = { Text("    ${found.title}") },
-                    supportingContent = { Text("    ${found.detail} · hold to hide") },
-                )
-            }
+        return
+    }
+    checkup.forEach { section ->
+        item(key = "checkup-${section.title}") {
+            ServerActionRow(
+                headline = "${section.title} (${section.items.size})",
+                supporting = if (section.items.isEmpty()) "Nothing found. Nice!" else null,
+            )
         }
-        if (state.checkupHidden > 0) {
-            item {
-                ListItem(
-                    selected = false,
-                    onClick = { viewModel.unhideAll() },
-                    headlineContent = { Text("Show ${state.checkupHidden} hidden item(s) again") },
-                )
-            }
+        items(section.items, key = { "check-${it.key}" }) { found ->
+            ServerActionRow(
+                headline = found.title,
+                supporting = found.detail,
+                onClick = { viewModel.open(found) },
+                actions =
+                    listOf(
+                        "Open" to { viewModel.open(found) },
+                        "Hide" to { showDialog(ServerToolsDialog.Hide(found)) },
+                    ),
+                modifier = Modifier.padding(start = 16.dp),
+            )
         }
+    }
+    if (state.checkupHidden > 0) {
+        item {
+            ServerActionRow(
+                headline = "Show ${state.checkupHidden} hidden item(s) again",
+                onClick = { viewModel.unhideAll() },
+            )
+        }
+    }
+    item {
+        ServerActionRow(headline = "Run the checkup again", onClick = { viewModel.runCheckup() })
     }
 }
 

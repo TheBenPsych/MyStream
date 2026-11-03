@@ -164,6 +164,9 @@ fun BenflixSettingsPage(
     val currentUser by viewModel.currentUser.collectAsState()
     val currentUserDto by viewModel.currentUserDto.collectAsState()
     val isAdmin = currentUserDto?.policy?.isAdministrator == true
+    // Benflix: get the Server page ready in the background for the admin
+    com.github.damontecres.wholphin.ui.main
+        .PreloadServerPage(isAdmin)
     val sections =
         remember(isTv, isAdmin) { buildSections(isTv).filter { isAdmin || !it.adminOnly } }
     val groupSections = sections.filter { it.group != null }
