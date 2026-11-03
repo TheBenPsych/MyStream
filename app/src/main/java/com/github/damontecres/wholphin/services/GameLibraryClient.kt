@@ -34,13 +34,6 @@ data class GameConsole(
     val slug: String = "",
 )
 
-/** Which Moonlight computer to open, and which app on it */
-data class PlayTarget(
-    val computerUuid: String?,
-    val computerName: String?,
-    val appName: String,
-)
-
 /**
  * Talks to the Benflix games helper on the home server (port 8097, next to Jellyfin). The helper checks
  * the person is signed in to Jellyfin, so there's no separate game library login.
@@ -116,26 +109,6 @@ class GameLibraryClient
                             },
                     )
                 }
-            }
-
-        /** Tells the server which game to start next. Returns where Moonlight should connect. */
-        suspend fun prepare(game: ServerGame): PlayTarget =
-            withContext(Dispatchers.IO) {
-                val json =
-                    JSONObject(
-                        call(
-                            Request
-                                .Builder()
-                                .url("$address/api/play/${game.id}")
-                                .post("{}".toRequestBody("application/json".toMediaType())),
-                        ),
-                    )
-                val computer = json.optJSONObject("computer")
-                PlayTarget(
-                    computerUuid = computer?.optStringOrNull("uuid"),
-                    computerName = computer?.optStringOrNull("name"),
-                    appName = json.optStringOrNull("app") ?: "Benflix",
-                )
             }
 
         /** A JSON answer from the helper, e.g. "/api/rom/12" */
@@ -271,7 +244,7 @@ class GameLibraryException(
 private fun JSONObject.optStringOrNull(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
 
 /**
- * Set while a game is streaming in Moonlight, so coming back to Benflix afterwards returns to the Games tab
+ * Set while a game is playing (in its own process), so coming back to Benflix afterwards returns to the Games tab
  * instead of the "Who's watching?" screen
  */
 object GameStreamReturn {

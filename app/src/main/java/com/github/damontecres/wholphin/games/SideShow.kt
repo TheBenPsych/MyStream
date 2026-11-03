@@ -63,26 +63,42 @@ class SideShow(
             null
         }
 
+    private val sending = mutableListOf<Thread>()
+
+    /** Waits (up to [ms]) for progress reports still being sent, so quitting doesn't cut them off */
+    fun awaitReports(ms: Long) {
+        val until = System.currentTimeMillis() + ms
+        synchronized(sending) { sending.toList() }.forEach { t ->
+            t.join((until - System.currentTimeMillis()).coerceAtLeast(1))
+        }
+    }
+
     private fun post(
         path: String,
         body: JSONObject,
     ) {
-        Thread {
-            try {
-                http
-                    .newCall(
-                        Request
-                            .Builder()
-                            .url(server.trimEnd('/') + path)
-                            .header("X-Emby-Token", token)
-                            .post(body.toString().toRequestBody("application/json".toMediaType()))
-                            .build(),
-                    ).execute()
-                    .close()
-            } catch (e: Exception) {
-                Timber.i("Side show report failed: ${e.message}")
+        lateinit var thread: Thread
+        thread =
+            Thread {
+                try {
+                    http
+                        .newCall(
+                            Request
+                                .Builder()
+                                .url(server.trimEnd('/') + path)
+                                .header("X-Emby-Token", token)
+                                .post(body.toString().toRequestBody("application/json".toMediaType()))
+                                .build(),
+                        ).execute()
+                        .close()
+                } catch (e: Exception) {
+                    Timber.i("Side show report failed: ${e.message}")
+                } finally {
+                    synchronized(sending) { sending.remove(thread) }
+                }
             }
-        }.start()
+        synchronized(sending) { sending.add(thread) }
+        thread.start()
     }
 
     /** Continue watching, then next up. Call off the main thread. */

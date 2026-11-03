@@ -104,13 +104,10 @@ find_arr sonarr 8989
 find_arr radarr 7878
 
 say "Starting the helper (benflix-games on port 8097)"
-# The old streaming setup's folder is shared too while it's still there, so streaming keeps working
-EXTRA=()
-[ -d "$OLD" ] && EXTRA=(-v "$OLD:/benflix:rw")
 docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
-  --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" -e WOLF_URL=http://127.0.0.1:47989 \
-  -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" "${EXTRA[@]}" \
+  --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
+  -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
   -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" \
   python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix >/dev/null 2>&1 || echo "Track tool missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5

@@ -8,10 +8,8 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
   (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
   Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
 - Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
-- Old streaming (admin only, being removed): when someone presses Play, it writes down which game to start,
-  then Benflix opens the "Benflix" app in Moonlight.
 
-Settings come from environment variables: ROMM_URL, ROMM_USER, ROMM_PASS, JELLYFIN_URL, WOLF_URL.
+Settings come from environment variables: ROMM_URL, ROMM_USER, ROMM_PASS, JELLYFIN_URL.
 Started by benflix-games-helper-setup.sh. Only uses the Python standard library.
 """
 
@@ -36,11 +34,9 @@ ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
 ).decode()
 JELLYFIN_URL = os.environ.get("JELLYFIN_URL", "http://127.0.0.1:8096").rstrip("/")
-WOLF_URL = os.environ.get("WOLF_URL", "http://127.0.0.1:47989").rstrip("/")
 ROMS = "/ROMs"  # The same folder the game app sees
 BIOS = "/bios"  # Games/bios on the server
 SAVES = "/saves"  # Games/saves on the server, one folder per Jellyfin account
-NEXT_GAME = "/benflix/next-game"
 SAVE_KINDS = {"srm": 16 * 1024 * 1024, "state": 96 * 1024 * 1024, "png": 4 * 1024 * 1024}
 PORT = int(os.environ.get("PORT", "8097"))
 
@@ -321,32 +317,6 @@ def put_save(user_id, game_id, kind, body, when):
     return {"ok": True}
 
 
-def play(game_id):
-    folder, path = game_path(game_id)
-    core = CORES.get(folder)
-    if core is None:
-        raise HelperError(400, "This console can't be played through Benflix yet.")
-    rom = start_file(path)
-    tmp = NEXT_GAME + ".tmp"
-    with open(tmp, "w") as f:
-        f.write(f"{core}\n{rom}\n")
-    os.chmod(tmp, 0o666)
-    os.replace(tmp, NEXT_GAME)
-    return {"ok": True, "app": "Benflix", "computer": wolf_id()}
-
-
-def wolf_id():
-    """Moonlight knows the server by this id"""
-    try:
-        with urllib.request.urlopen(WOLF_URL + "/serverinfo", timeout=5) as r:
-            text = r.read().decode(errors="replace")
-        m = re.search(r"<uniqueid>([^<]+)</uniqueid>", text)
-        h = re.search(r"<hostname>([^<]+)</hostname>", text)
-        return {"uuid": m.group(1) if m else None, "name": h.group(1) if h else None}
-    except (urllib.error.URLError, OSError):
-        return {"uuid": None, "name": None}
-
-
 class Handler(BaseHTTPRequestHandler):
     def send(self, status, body, content_type="application/json"):
         if not isinstance(body, bytes):
@@ -468,12 +438,6 @@ class Handler(BaseHTTPRequestHandler):
                     if os.path.isfile(f):
                         os.remove(f)
                     return self.send(200, {"ok": True})
-            m = re.fullmatch(r"/api/play/(\d+)", path)
-            if method == "POST" and m:
-                # Old streaming: only the server admin (home upload speed is limited)
-                if not is_admin:
-                    raise HelperError(403, "Streaming games is only on for the server admin.")
-                return self.send(200, play(int(m.group(1))))
             self.send(404, {"error": "Not found"})
         except HelperError as e:
             self.send(e.status, {"error": e.message})
