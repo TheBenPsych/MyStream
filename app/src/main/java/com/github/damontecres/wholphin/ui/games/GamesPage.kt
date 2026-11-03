@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.view.HapticFeedbackConstants
@@ -97,6 +98,7 @@ import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.LocalGames
+import com.github.damontecres.wholphin.games.PhonePadActivity
 import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
@@ -578,6 +580,15 @@ fun GamesPage(
                     }
                 ServerGameCard(
                     game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+                    playWith =
+                        remember(ref.slug) {
+                            val local = LocalConsole.forSlug(ref.slug)
+                            listOfNotNull(
+                                if (local?.remoteFriendly == true) PlayWith.REMOTE else null,
+                                PlayWith.CONTROLLER,
+                                PlayWith.PHONE,
+                            )
+                        },
                     token = viewModel.gamesToken,
                     status = status,
                     progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
@@ -586,6 +597,13 @@ fun GamesPage(
                 )
             }
             DeviceCard(power, isTv)
+            if (!isTv) {
+                ActionTile(
+                    title = "Use this phone as a controller",
+                    subtitle = "For a game playing on a TV in the house",
+                    onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
+                )
+            }
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -778,6 +796,7 @@ private fun ServerGameCard(
     status: String?,
     onClick: () -> Unit,
     progress: Float? = null,
+    playWith: List<PlayWith> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -820,6 +839,18 @@ private fun ServerGameCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
+            // What it plays with: remote (simple games only), controller, phone
+            if (playWith.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp),
+                ) {
+                    playWith.forEach { PlayIcon(it) }
+                }
             }
             if (status != null || !game.playable) {
                 Box(
@@ -1135,6 +1166,32 @@ private fun ScoresCard(
 }
 
 private enum class PlayWith { REMOTE, CONTROLLER, PHONE }
+
+/** A small round icon on a game card: remote, controller or phone */
+@Composable
+private fun PlayIcon(kind: PlayWith) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(24.dp)
+                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(50)),
+    ) {
+        when (kind) {
+            PlayWith.REMOTE -> {
+                RemoteIcon(Modifier.size(width = 6.dp, height = 12.dp))
+            }
+
+            PlayWith.CONTROLLER -> {
+                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+            }
+
+            PlayWith.PHONE -> {
+                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+            }
+        }
+    }
+}
 
 /**
  * A small "works with" chip: an icon plus a word, e.g. a controller icon with "Controller"

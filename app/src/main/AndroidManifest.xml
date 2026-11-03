@@ -80,6 +80,12 @@
             android:process=":game"
             android:theme="@style/Theme.Wholphin"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode" />
+        <!-- Phone as a controller for a game on the TV -->
+        <activity
+            android:name=".games.PhonePadActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Wholphin"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

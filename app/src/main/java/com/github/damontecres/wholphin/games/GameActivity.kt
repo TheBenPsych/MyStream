@@ -102,6 +102,10 @@ class GameActivity : ComponentActivity() {
     private val keyMask = IntArray(4)
     private val axisMask = IntArray(4)
     private var touchMask = 0
+
+    // Phones used as controllers over Wi-Fi (see PhonePad.kt)
+    private val phoneMask = IntArray(4)
+    private var padServer: PhonePadServer? = null
     private val ports = mutableMapOf<Int, Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,6 +132,16 @@ class GameActivity : ComponentActivity() {
         hasSpot = GameSaves.file(saveDir, "state").exists()
         displayHz = screenRefreshRate()
         gamepadSeen = hasGamepad()
+        if (isTv) {
+            padServer =
+                PhonePadServer(
+                    context = this,
+                    consoleKey = console.key,
+                    gameName = gameName,
+                    onButtons = { player, mask -> onPhoneButtons(player, mask) },
+                    onMenu = { runOnUiThread { if (menuOpen) closeMenu() else openMenu() } },
+                ).also { it.start() }
+        }
 
         glView =
             GLSurfaceView(this).apply {
@@ -406,6 +420,7 @@ class GameActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         audio?.release()
+        padServer?.stop()
         audio = null
         if (isFinishing) {
             // Emulators keep their own memory around; a fresh process per game keeps things clean
@@ -429,7 +444,32 @@ class GameActivity : ComponentActivity() {
 
     private fun push(port: Int) {
         val touch = if (port == 0) touchMask else 0
-        RetroNative.setButtons(port, keyMask[port] or axisMask[port] or touch)
+        RetroNative.setButtons(port, keyMask[port] or axisMask[port] or touch or phoneMask[port])
+    }
+
+    /** A phone controller's buttons. While the menu is open, they move around the menu instead. */
+    private fun onPhoneButtons(
+        player: Int,
+        mask: Int,
+    ) {
+        val pressed = mask and phoneMask[player].inv()
+        phoneMask[player] = mask
+        if (!menuOpen) {
+            push(player)
+            return
+        }
+        push(player)
+        val key =
+            when {
+                pressed and RetroButton.bit(RetroButton.UP) != 0 -> KeyEvent.KEYCODE_DPAD_UP
+                pressed and RetroButton.bit(RetroButton.DOWN) != 0 -> KeyEvent.KEYCODE_DPAD_DOWN
+                pressed and (RetroButton.bit(RetroButton.A) or RetroButton.bit(RetroButton.B)) != 0 -> KeyEvent.KEYCODE_DPAD_CENTER
+                else -> return
+            }
+        runOnUiThread {
+            dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, key))
+            dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, key))
+        }
     }
 
     private fun isGamepad(event: KeyEvent): Boolean =
@@ -679,7 +719,8 @@ class GameActivity : ComponentActivity() {
                             listOf(
                                 if (isTv) "Back opens this menu" else "The ☰ circle at the top opens this menu",
                                 "Start + Select together also opens it",
-                            )
+                            ) +
+                            if (isTv) listOf("Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller") else emptyList()
                     lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
                     MenuButton("Done", Modifier.focusRequester(focus)) { showHelp = false }
                 } else {
