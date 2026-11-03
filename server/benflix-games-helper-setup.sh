@@ -25,7 +25,7 @@ HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix-fix-tracks.py; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -113,6 +113,7 @@ docker run -d --name benflix-games --restart unless-stopped --network host \
   >/dev/null && sleep 5
 for _ in 1 2 3 4 5 6; do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
+  echo "  ok  Benflix tools in a PC browser: open http://$HOST_IP:8097 and sign in with your Jellyfin admin login"
 elif curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play; then echo "  ok  http://$HOST_IP:8097 (games only: the Server page tools didn't load)"; else
   echo "  PROBLEM  The helper didn't start. Its log:"
   docker logs --tail 20 benflix-games 2>&1
