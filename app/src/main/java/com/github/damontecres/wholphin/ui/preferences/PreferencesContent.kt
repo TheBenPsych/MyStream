@@ -574,6 +574,14 @@ fun PreferencesContent(
                                         }
                                     }
 
+                                    AppPreference.AniListTracking -> {
+                                        com.github.damontecres.wholphin.ui.main.AniListSetting(
+                                            title = stringResource(pref.title),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
                                     AppPreference.ParentalMore -> {
                                         var showParental by remember { mutableStateOf(false) }
                                         ClickPreference(

@@ -144,4 +144,7 @@
     <string name="benflix_settings_hint_hdr">Which HDR picture types your TV can show</string>
     <string name="benflix_settings_hint_profile_server">Audio and subtitle choices saved on your server</string>
     <string name="benflix_settings_back_hint">Press Back to return to Settings</string>
+    <string name="benflix_anilist_tracking">AniList anime tracking</string>
+    <string name="benflix_anilist_tracking_off">Off. Sign in with your own AniList account and every anime episode you finish on Benflix gets ticked off on your AniList list. Everyone signs in with their own account, and your TVs pick it up from your phone.</string>
+    <string name="benflix_anilist_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your AniList list. Select to sign out.</string>
 </resources>
