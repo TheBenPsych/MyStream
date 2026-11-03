@@ -74,7 +74,6 @@ class PreferencesViewModel
 
         val seerrConnection = seerrServerRepository.connection
 
-
         val releaseNotes = MutableStateFlow<DataLoadingState<Release>>(DataLoadingState.Pending)
 
         val externalPlayers = MutableStateFlow<List<ExternalPlayerApp>>(emptyList())
