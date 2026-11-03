@@ -1217,7 +1217,10 @@ private fun LazyListScope.toolItems(
                     java.time.Instant
                         .ofEpochMilli(plannedRestart)
                         .atZone(java.time.ZoneId.systemDefault())
-                        .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+                        .format(
+                            java.time.format.DateTimeFormatter
+                                .ofPattern("h:mm a"),
+                        )
                 }
             ServerActionRow(
                 headline = "Restart planned for $at",

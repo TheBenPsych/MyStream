@@ -2400,7 +2400,11 @@ class PlaybackViewModel
             if (!this::currentItem.isInitialized) return
             val leaving = currentItem as? PlaylistItem.Media ?: return
             if (leaving.item.type != BaseItemKind.EPISODE) return
-            if (leaving.item.data.userData?.played == true) return
+            if (leaving.item.data.userData
+                    ?.played == true
+            ) {
+                return
+            }
             val manager = favoriteWatchManager ?: return
             val leavingId = leaving.id
             val mark: suspend () -> Unit = {

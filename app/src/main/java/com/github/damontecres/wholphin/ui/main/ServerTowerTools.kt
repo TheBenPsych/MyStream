@@ -289,8 +289,7 @@ internal fun appLight(app: TowerApp): Light =
     }
 
 /** Apps that need a look (shown on "Needs you"). Apps stopped on purpose aren't on it. */
-internal fun brokenApps(status: TowerStatus?): List<TowerApp> =
-    status?.apps.orEmpty().filter { it.problem && it.status != "Never started" }
+internal fun brokenApps(status: TowerStatus?): List<TowerApp> = status?.apps.orEmpty().filter { it.problem && it.status != "Never started" }
 
 /** Overview: "Tower has been on for 3 days" and whether the apps are fine */
 internal fun LazyListScope.towerOverviewItems(
