@@ -516,10 +516,14 @@
     <string name="remove_seerr_server">Remove Seerr Server</string>
     <string name="seerr_server_added">Seerr server added</string>
     <string name="quick_connect">Quick Connect</string>
-    <string name="quick_connect_summary">Authorize another device to log in to your account</string>
+    <string name="quick_connect_summary">Sign another TV or phone in as you with a 6-digit code</string>
     <string name="quick_connect_code">Enter Quick Connect code</string>
+    <string name="quick_connect_how">On the other TV or phone, pick Quick Connect on the sign-in screen. Type the 6-digit code it shows here.</string>
+    <string name="quick_connect_sign_in">Sign it in</string>
+    <string name="quick_connect_busy">Signing in…</string>
+    <string name="quick_connect_failed">That code didn\'t work. Check it and try again (codes only last a few minutes).</string>
     <string name="quick_connect_code_error">Code must be 6 digits</string>
-    <string name="quick_connect_success">Device authorized successfully</string>
+    <string name="quick_connect_success">Done! The other device is signing in now.</string>
     <string name="password">Password</string>
     <string name="username">Username</string>
     <string name="url">URL</string>

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,6 +77,8 @@ private data class SettingsSection(
     val group: PreferenceGroup<AppPreferences>? = null,
     val destination: Destination? = null,
     val adminOnly: Boolean = false,
+    /** Opens a pop-up instead of a page (Quick Connect) */
+    val opensQuickConnect: Boolean = false,
 )
 
 private fun hintFor(
@@ -109,6 +112,17 @@ private fun buildSections(isTv: Boolean): List<SettingsSection> =
             if (group.title == R.string.more) {
                 group.preferences.forEach { pref ->
                     when (pref) {
+                        AppPreference.QuickConnect -> {
+                            add(
+                                SettingsSection(
+                                    title = R.string.quick_connect,
+                                    hint = R.string.quick_connect_summary,
+                                    icon = Icons.Default.Share,
+                                    opensQuickConnect = true,
+                                ),
+                            )
+                        }
+
                         AppPreference.ServerPage -> {
                             add(
                                 SettingsSection(
@@ -181,8 +195,12 @@ fun BenflixSettingsPage(
     var showSearch by remember { mutableStateOf(false) }
 
     val userName = currentUser?.name ?: ""
+    var showQuickConnect by remember { mutableStateOf(false) }
+    if (showQuickConnect) BenflixQuickConnect(onDismiss = { showQuickConnect = false })
     val openSection: (SettingsSection) -> Unit = { section ->
-        if (section.destination != null) {
+        if (section.opensQuickConnect) {
+            showQuickConnect = true
+        } else if (section.destination != null) {
             viewModel.navigationManager.navigateTo(section.destination)
         } else {
             query = ""
