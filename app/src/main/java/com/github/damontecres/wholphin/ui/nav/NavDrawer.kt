@@ -459,6 +459,63 @@ fun NavDrawer(
             clipsOpen = false
             downloadsOpen = false
         }
+        // The same extras the TV has under My Benflix and More
+        val phoneExtras =
+            listOfNotNull(
+                TopNavTab(
+                    title = stringResource(R.string.phone_my_page),
+                    selected = selectedIndex == MY_BENFLIX_INDEX && !clipsOpen && !downloadsOpen,
+                    onClick = {
+                        clipsOpen = false
+                        downloadsOpen = false
+                        viewModel.setIndex(MY_BENFLIX_INDEX)
+                        viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+                    },
+                ),
+                if (KidsMode.isActive) {
+                    null
+                } else {
+                    TopNavTab(
+                        title =
+                            stringResource(R.string.benflix_requests) +
+                                if (requestsWaiting > 0) " ($requestsWaiting)" else "",
+                        selected = selectedIndex == REQUESTS_INDEX && !clipsOpen && !downloadsOpen,
+                        onClick = {
+                            clipsOpen = false
+                            downloadsOpen = false
+                            viewModel.setIndex(REQUESTS_INDEX)
+                            viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
+                        },
+                    )
+                },
+                TopNavTab(
+                    title = stringResource(R.string.mood_quiz),
+                    selected = false,
+                    onClick = {
+                        clipsOpen = false
+                        downloadsOpen = false
+                        viewModel.navigationManager.navigateTo(Destination.MoodQuiz)
+                    },
+                ),
+                TopNavTab(
+                    title = "This or that",
+                    selected = false,
+                    onClick = {
+                        clipsOpen = false
+                        downloadsOpen = false
+                        viewModel.navigationManager.navigateTo(Destination.ThisOrThat)
+                    },
+                ),
+                TopNavTab(
+                    title = stringResource(R.string.watch_in_order),
+                    selected = false,
+                    onClick = {
+                        clipsOpen = false
+                        downloadsOpen = false
+                        viewModel.navigationManager.navigateTo(Destination.WatchOrder)
+                    },
+                ),
+            )
         val phoneTabs =
             tabs.map { tab ->
                 tab.copy(
@@ -513,17 +570,33 @@ fun NavDrawer(
                 PhoneHeader()
             }
             if (!clipsOpen && !downloadsOpen) {
-                DestinationContent(
-                    destination = destination,
-                    preferences = preferences,
-                    onClearBackdrop = onClearBackdrop,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .nestedScroll(headerScroll)
-                            .padding(start = 16.dp, end = 8.dp),
-                )
+                // Benflix: My Benflix on phones shows every library and the extras on the page itself
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.github.damontecres.wholphin.ui.main.LocalPhoneMenu provides
+                        com.github.damontecres.wholphin.ui.main.PhoneMenu(
+                            libraries = phoneTabs.drop(1),
+                            // My page is the page itself
+                            extras = phoneExtras.drop(1),
+                            onClickDownloads = {
+                                clipsOpen = false
+                                downloadsOpen = true
+                            },
+                            onClickSettings = onClickSettings,
+                            onClickProfile = onClickProfile,
+                        ),
+                ) {
+                    DestinationContent(
+                        destination = destination,
+                        preferences = preferences,
+                        onClearBackdrop = onClearBackdrop,
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .nestedScroll(headerScroll)
+                                .padding(start = 16.dp, end = 8.dp),
+                    )
+                }
             }
             PhoneNavBar(
                 tabs = phoneTabs,
@@ -554,63 +627,7 @@ fun NavDrawer(
                 },
                 onClickSettings = onClickSettings,
                 onClickProfile = onClickProfile,
-                // The same extras the TV has under My Benflix and More
-                extras =
-                    listOfNotNull(
-                        TopNavTab(
-                            title = stringResource(R.string.phone_my_page),
-                            selected = selectedIndex == MY_BENFLIX_INDEX && !clipsOpen && !downloadsOpen,
-                            onClick = {
-                                clipsOpen = false
-                                downloadsOpen = false
-                                viewModel.setIndex(MY_BENFLIX_INDEX)
-                                viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
-                            },
-                        ),
-                        if (KidsMode.isActive) {
-                            null
-                        } else {
-                            TopNavTab(
-                                title =
-                                    stringResource(R.string.benflix_requests) +
-                                        if (requestsWaiting > 0) " ($requestsWaiting)" else "",
-                                selected = selectedIndex == REQUESTS_INDEX && !clipsOpen && !downloadsOpen,
-                                onClick = {
-                                    clipsOpen = false
-                                    downloadsOpen = false
-                                    viewModel.setIndex(REQUESTS_INDEX)
-                                    viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
-                                },
-                            )
-                        },
-                        TopNavTab(
-                            title = stringResource(R.string.mood_quiz),
-                            selected = false,
-                            onClick = {
-                                clipsOpen = false
-                                downloadsOpen = false
-                                viewModel.navigationManager.navigateTo(Destination.MoodQuiz)
-                            },
-                        ),
-                        TopNavTab(
-                            title = "This or that",
-                            selected = false,
-                            onClick = {
-                                clipsOpen = false
-                                downloadsOpen = false
-                                viewModel.navigationManager.navigateTo(Destination.ThisOrThat)
-                            },
-                        ),
-                        TopNavTab(
-                            title = stringResource(R.string.watch_in_order),
-                            selected = false,
-                            onClick = {
-                                clipsOpen = false
-                                downloadsOpen = false
-                                viewModel.navigationManager.navigateTo(Destination.WatchOrder)
-                            },
-                        ),
-                    ),
+                extras = phoneExtras,
             )
         }
         return

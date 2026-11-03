@@ -85,8 +85,8 @@ fun PhoneHeader(modifier: Modifier = Modifier) {
 
 /**
  * Benflix on phones: the menu sits along the bottom of the screen where your thumb is.
- * Home, Search, Clips (a feed of trailers), Channels (a TV guide), and My Benflix, which holds your profile,
- * My List, the libraries, Games and settings.
+ * Home, Search, Clips (a feed of trailers), Channels (a TV guide), and My Benflix, a page with your profile,
+ * every library, Games, the extras and your rows (My List, Liked, history).
  */
 @Composable
 fun PhoneNavBar(
@@ -110,12 +110,6 @@ fun PhoneNavBar(
     val home = tabs.firstOrNull()
     // Games and every library live under My Benflix
     val libraries = tabs.filter { it !== home }
-    var showMine by remember { mutableStateOf(false) }
-    var showRemote by remember { mutableStateOf(false) }
-    if (showRemote) {
-        com.github.damontecres.wholphin.ui.components
-            .PhoneRemoteDialog(onDismiss = { showRemote = false })
-    }
     val name =
         if (kids) {
             KidsMode.displayName
@@ -155,7 +149,7 @@ fun PhoneNavBar(
             modifier =
                 Modifier
                     .weight(1f)
-                    .clickable { showMine = true }
+                    .clickable { extras.firstOrNull()?.onClick?.invoke() }
                     .padding(vertical = 4.dp),
         ) {
             Box(
@@ -206,241 +200,6 @@ fun PhoneNavBar(
             }
         }
     }
-
-    if (showMine) {
-        MyBenflixSheet(
-            name = name.orEmpty(),
-            user = user,
-            userImageUrl = if (kids) null else userImageUrl,
-            kids = kids,
-            libraries = libraries,
-            extras = extras,
-            onDismiss = { showMine = false },
-            onClickProfile = onClickProfile,
-            onClickSettings = onClickSettings,
-            onClickDownloads = onClickDownloads,
-            onClickRemote = { showRemote = true },
-        )
-    }
-}
-
-/**
- * The My Benflix menu on phones: a sheet from the bottom that fits on one screen.
- * Your name (tap to switch profile) and Settings, three big tiles (My page, Downloads, TV remote),
- * then every library and the extras as small round buttons.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MyBenflixSheet(
-    name: String,
-    user: JellyfinUser,
-    userImageUrl: String?,
-    kids: Boolean,
-    libraries: List<TopNavTab>,
-    extras: List<TopNavTab>,
-    onDismiss: () -> Unit,
-    onClickProfile: () -> Unit,
-    onClickSettings: () -> Unit,
-    onClickDownloads: () -> Unit,
-    onClickRemote: () -> Unit,
-) {
-    fun go(action: () -> Unit) {
-        onDismiss()
-        action()
-    }
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(
-            contentAlignment = Alignment.BottomCenter,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 520.dp)
-                        .background(SHEET, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                        .border(1.dp, SHEET_LINE, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                        // Stops taps on the sheet itself from closing it
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        ).verticalScroll(rememberScrollState())
-                        .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
-            ) {
-                Box(
-                    Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(width = 40.dp, height = 4.dp)
-                        .background(Color(0xFF4A4A52), RoundedCornerShape(2.dp)),
-                )
-                // Who's watching, plus Settings
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { go(onClickProfile) },
-                    ) {
-                        UserIconCardImage(
-                            id = user.id,
-                            name = name,
-                            imageUrl = userImageUrl,
-                            modifier = Modifier.size(48.dp),
-                        )
-                        Column {
-                            Text(text = name, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-                            Text(
-                                text = stringResource(R.string.phone_switch_profile),
-                                fontSize = 14.sp,
-                                color = MUTED,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                    if (!kids) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier =
-                                Modifier
-                                    .height(44.dp)
-                                    .clip(RoundedCornerShape(22.dp))
-                                    .border(1.dp, Color(0xFF3A3A40), RoundedCornerShape(22.dp))
-                                    .clickable { go(onClickSettings) }
-                                    .padding(horizontal = 16.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = stringResource(R.string.settings), fontSize = 14.sp, color = Color.White)
-                                // Update ready: the "!" leads on to Help inside Settings
-                                if (com.github.damontecres.wholphin.ui.components
-                                        .rememberUpdateAlert()
-                                ) {
-                                    Spacer(Modifier.width(8.dp))
-                                    com.github.damontecres.wholphin.ui.components
-                                        .UpdateBang()
-                                }
-                            }
-                        }
-                    }
-                }
-                // Big tiles
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    extras.firstOrNull()?.let { tab ->
-                        SheetTile(R.string.fa_user, tab.title, tab.selected) { go(tab.onClick) }
-                    }
-                    SheetTile(R.string.fa_download, stringResource(R.string.downloads_title), false) {
-                        go(onClickDownloads)
-                    }
-                    if (!kids) {
-                        SheetTile(R.string.fa_mobile_screen, "TV remote", false) { go(onClickRemote) }
-                    }
-                }
-                if (libraries.isNotEmpty()) {
-                    SectionTitle(stringResource(R.string.phone_browse))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        libraries.forEach { tab ->
-                            SheetChip(tab.title, tab.selected, filled = true) { go(tab.onClick) }
-                        }
-                    }
-                }
-                if (extras.size > 1) {
-                    SectionTitle(stringResource(R.string.phone_extras))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        extras.drop(1).forEach { tab ->
-                            SheetChip(tab.title, tab.selected, filled = false) { go(tab.onClick) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RowScope.SheetTile(
-    faIcon: Int,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        modifier =
-            Modifier
-                .weight(1f)
-                .height(84.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (selected) Color(0xFF34343B) else TILE)
-                .clickable(onClick = onClick)
-                .padding(4.dp),
-    ) {
-        Text(text = stringResource(faIcon), fontFamily = FontAwesome, fontSize = 22.sp, color = Color.White)
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = Color.White,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun SheetChip(
-    title: String,
-    selected: Boolean,
-    filled: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(20.dp)
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .height(40.dp)
-                .clip(shape)
-                .then(
-                    when {
-                        selected -> Modifier.background(Color.White, shape)
-                        filled -> Modifier.background(CHIP, shape)
-                        else -> Modifier.border(1.dp, Color(0xFF3A3A40), shape)
-                    },
-                ).clickable(onClick = onClick)
-                .padding(horizontal = 16.dp),
-    ) {
-        Text(
-            text = title,
-            fontSize = 15.sp,
-            color = if (selected) Color.Black else Color.White,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
-        )
-    }
 }
 
 @Composable
@@ -490,17 +249,6 @@ private fun androidx.compose.foundation.layout.RowScope.PhoneNavItem(
     }
 }
 
-@Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title.uppercase(),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.5.sp,
-        color = UNSELECTED,
-    )
-}
-
 private val BAR_HEIGHT = 64.dp
 private val BAR_HEIGHT_COMPACT = 48.dp
 private val ISLAND = Color(0xF21C1C21)
@@ -508,10 +256,4 @@ private val ISLAND_SHAPE = RoundedCornerShape(28.dp)
 private val PILL_SHAPE = RoundedCornerShape(16.dp)
 private const val PILL_ALPHA = 0.38f
 
-// Benflix Graphite: a clean neutral dark grey (no red tint)
-private val SHEET = Color(0xFF18181C)
-private val SHEET_LINE = Color(0xFF2E2E34)
-private val TILE = Color(0xFF24242A)
-private val CHIP = Color(0xFF2C2C33)
-private val MUTED = Color(0xFFA1A1AA)
 private val UNSELECTED = Color(0xFFB3B3B3)
