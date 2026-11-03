@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +44,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -171,12 +170,15 @@ fun ThisOrThatPage(
             }
 
             state.done -> {
-                Winner(
-                    item = state.champion,
-                    isTv = isTv,
-                    onPlay = { viewModel.navigationManager.navigateTo(Destination.MediaItem(it)) },
-                    onAgain = viewModel::start,
-                )
+                // Shrinks to fit on any TV so the buttons are never below the screen
+                FitScreen(isTv, Modifier.weight(1f)) {
+                    Winner(
+                        item = state.champion,
+                        isTv = isTv,
+                        onPlay = { viewModel.navigationManager.navigateTo(Destination.MediaItem(it)) },
+                        onAgain = viewModel::start,
+                    )
+                }
             }
 
             else -> {
@@ -284,7 +286,7 @@ private fun Winner(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier.padding(bottom = 16.dp),
     ) {
         if (item == null) {
             Text("Not enough to pick from yet. Try again later.", fontSize = 16.sp)

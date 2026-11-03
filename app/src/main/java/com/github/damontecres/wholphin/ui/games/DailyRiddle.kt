@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -317,12 +315,22 @@ fun DailyRiddlePage(
             modifier
                 .fillMaxSize()
                 .background(Color(0xFF0B0B0D))
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 24.dp else 12.dp),
     ) {
+        FitScreen(isTv) { RiddleContent(state, isTv, viewModel) }
+    }
+}
+
+@Composable
+private fun RiddleContent(
+    state: RiddleState,
+    isTv: Boolean,
+    viewModel: DailyRiddleViewModel,
+) {
+    run {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
         ) {
             Text(
@@ -365,11 +373,11 @@ fun DailyRiddlePage(
                                     .fillMaxWidth(if (isTv) 0.7f else 1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFF1C1C1F))
-                                    .padding(if (isTv) 20.dp else 16.dp),
+                                    .padding(horizontal = 20.dp, vertical = if (isTv) 12.dp else 16.dp),
                         ) {
                             Text(
                                 text = "Clue ${i + 1}\n$clue",
-                                fontSize = if (isTv) 22.sp else 18.sp,
+                                fontSize = if (isTv) 20.sp else 18.sp,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
                             )
@@ -381,6 +389,24 @@ fun DailyRiddlePage(
                         if (s.result == null) firstFocus.tryRequestFocus() else nextFocus.tryRequestFocus()
                     }
                     val open = s.choices.filterNot { it in s.wrong }
+                    // The answer and "Next" show above the choices so they are always on screen
+                    s.result?.let { stars ->
+                        Text(
+                            text =
+                                if (stars > 0) {
+                                    "Got it! " + "★".repeat(stars) + "☆".repeat(DailyRiddleViewModel.MAX_STARS - stars)
+                                } else {
+                                    "It was ${s.answer}"
+                                },
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (stars > 0) Color(0xFF46D37A) else BenflixRed,
+                            textAlign = TextAlign.Center,
+                        )
+                        Button(onClick = viewModel::next, modifier = Modifier.focusRequester(nextFocus)) {
+                            Text(if (s.round + 1 < s.rounds) "Next movie" else "See my score")
+                        }
+                    }
                     // Five titles: rows of three on TV (3 + 2), one per row on phones
                     s.choices.chunked(if (isTv) 3 else 1).forEach { row ->
                         Row(
@@ -415,23 +441,6 @@ fun DailyRiddlePage(
                                     Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                                 }
                             }
-                        }
-                    }
-                    s.result?.let { stars ->
-                        Text(
-                            text =
-                                if (stars > 0) {
-                                    "Got it! " + "★".repeat(stars) + "☆".repeat(DailyRiddleViewModel.MAX_STARS - stars)
-                                } else {
-                                    "It was ${s.answer}"
-                                },
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (stars > 0) Color(0xFF46D37A) else BenflixRed,
-                            textAlign = TextAlign.Center,
-                        )
-                        Button(onClick = viewModel::next, modifier = Modifier.focusRequester(nextFocus)) {
-                            Text(if (s.round + 1 < s.rounds) "Next movie" else "See my score")
                         }
                     }
                 }
