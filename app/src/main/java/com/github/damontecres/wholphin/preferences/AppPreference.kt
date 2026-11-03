@@ -1432,6 +1432,18 @@ val basicPreferences =
         ),
     )
 
+/**
+ * Benflix: the only settings Guest sees. A visitor gets the watching basics (subtitle style, audio and
+ * subtitle language, autoplay, skip buttons) and Help, but nothing that changes the owner's profile,
+ * Parental controls, Quick Connect, the Server page, Advanced or app updates.
+ */
+val guestPreferences: Set<AppPreference<AppPreferences, out Any?>> =
+    buildSet {
+        addAll(basicPreferences.first { it.title == R.string.benflix_settings_watching }.preferences)
+        add(AppPreference.HowToUse)
+        add(AppPreference.InstalledVersion)
+    }
+
 private val ExoPlayerSettings =
     listOf(
         AppPreference.FfmpegPreference,

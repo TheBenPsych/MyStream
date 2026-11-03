@@ -296,7 +296,7 @@ fun MyBenflixPage(
         }
         val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
         // Benflix: get the Server page ready in the background for the admin
-        PreloadServerPage(isAdmin = userDto?.policy?.isAdministrator == true && !kids && !GuestMode.isActive)
+        PreloadServerPage(isAdmin = GuestMode.isAdmin(userDto) && !kids)
         if (!kids && !GuestMode.isActive) {
             // Wraps onto a second line on narrow phones
             androidx.compose.foundation.layout.FlowRow(
@@ -304,7 +304,7 @@ fun MyBenflixPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(start = 8.dp),
             ) {
-                if (userDto?.policy?.isAdministrator == true) {
+                if (GuestMode.isAdmin(userDto)) {
                     Button(onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) }) {
                         Text("Server")
                     }

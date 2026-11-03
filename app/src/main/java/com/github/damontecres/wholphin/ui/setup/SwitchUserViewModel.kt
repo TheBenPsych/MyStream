@@ -11,7 +11,9 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.BenflixFunFacts
+import com.github.damontecres.wholphin.services.BenflixParentPin
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
+import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
@@ -33,15 +35,19 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.Jellyfin
 import org.jellyfin.sdk.api.client.HttpClientOptions
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.authenticateUserByName
+import org.jellyfin.sdk.api.client.extensions.displayPreferencesApi
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.quickConnectApi
@@ -56,6 +62,7 @@ import org.jellyfin.sdk.model.api.QuickConnectResult
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel(assistedFactory = SwitchUserViewModel.Factory::class)
@@ -72,6 +79,7 @@ class SwitchUserViewModel
         private val funFacts: BenflixFunFacts,
         private val benflixSeerrLink: BenflixSeerrLink,
         private val profilePictureSync: ProfilePictureSync,
+        private val parentPin: BenflixParentPin,
         @Assisted val server: JellyfinServer,
     ) : ViewModel() {
         @AssistedFactory
@@ -211,6 +219,49 @@ class SwitchUserViewModel
             return current
         }
 
+        /**
+         * Benflix: one parent PIN, bedtime and screen-time limit for the whole TV. Before Kids starts,
+         * look at every saved grown-up on this TV (not just the one whose sign-in Kids borrows), so Kids
+         * uses the newest PIN and limit any of them set. Anyone who can't be reached in a few seconds is
+         * skipped; the TV's own copy still holds the last one it saw.
+         */
+        private suspend fun adoptParentalSettings() {
+            val accounts =
+                state.value.users
+                    .map { it.user }
+                    .filter { it.accessToken != null && !it.requireLogin }
+                    .filterNot { it.name?.trim().equals("kids", ignoreCase = true) }
+            if (accounts.isEmpty()) return
+            val found = ConcurrentHashMap<Int, Map<String, String?>>()
+            withTimeoutOrNull(PARENTAL_LOOKUP_MS) {
+                coroutineScope {
+                    accounts.forEachIndexed { index, user ->
+                        launch {
+                            try {
+                                val prefs =
+                                    jellyfin
+                                        .createApi(server.url, accessToken = user.accessToken)
+                                        .displayPreferencesApi
+                                        .getDisplayPreferences(
+                                            displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
+                                            userId = user.id,
+                                            client = DisplayPreferencesService.DEFAULT_CLIENT,
+                                        ).content
+                                        .customPrefs
+                                found[index] = prefs
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Couldn't read parental settings for a saved grown-up")
+                            }
+                        }
+                    }
+                }
+            }
+            // In the order the profiles are listed, so with older PINs (saved without a time) the first one wins
+            accounts.forEachIndexed { index, user -> found[index]?.let { parentPin.adoptFrom(user.id, it) } }
+        }
+
         fun trySwitchUser(
             user: JellyfinUser,
             kids: Boolean = false,
@@ -219,6 +270,7 @@ class SwitchUserViewModel
         ): Deferred<SwitchUserResult> =
             viewModelScope.async(WholphinDispatchers.IO) {
                 try {
+                    if (kids) adoptParentalSettings()
                     val current =
                         changeUserWithModes(kids, bigKids, guest) {
                             serverRepository.changeUser(server, user)
@@ -500,6 +552,9 @@ data class SwitchUserState(
 
 private const val POSTER_WALL_COUNT = 40
 private const val POSTER_WALL_HEIGHT = 360
+
+/** How long Kids waits to read the other grown-ups' parental settings before it starts anyway */
+private const val PARENTAL_LOOKUP_MS = 4_000L
 
 /**
  * Result of trying to switch users via [SwitchUserViewModel.trySwitchUser]

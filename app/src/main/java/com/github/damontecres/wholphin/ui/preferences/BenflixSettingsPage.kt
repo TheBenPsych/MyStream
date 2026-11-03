@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.basicPreferences
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -106,10 +107,17 @@ private fun iconFor(
     }
 
 /** The sections, built from the same lists the settings search uses, so nothing can go missing */
-private fun buildSections(isTv: Boolean): List<SettingsSection> =
+private fun buildSections(
+    isTv: Boolean,
+    guest: Boolean,
+): List<SettingsSection> =
     buildList {
         basicPreferences.forEach { group ->
-            if (group.title == R.string.more) {
+            val guestHidden =
+                group.title != R.string.benflix_settings_watching && group.title != R.string.benflix_settings_help
+            if (guest && guestHidden) {
+                // Guest: only Watching and Help (no Quick Connect, Server page, Advanced, profile or parental)
+            } else if (group.title == R.string.more) {
                 group.preferences.forEach { pref ->
                     when (pref) {
                         AppPreference.QuickConnect -> {
@@ -177,12 +185,14 @@ fun BenflixSettingsPage(
     val isTv = rememberIsTv()
     val currentUser by viewModel.currentUser.collectAsState()
     val currentUserDto by viewModel.currentUserDto.collectAsState()
-    val isAdmin = currentUserDto?.policy?.isAdministrator == true
+    val guest by GuestMode.active.collectAsState()
+    // Always false for Guest, even on the owner's admin sign-in
+    val isAdmin = !guest && GuestMode.isAdmin(currentUserDto)
     // Benflix: get the Server page ready in the background for the admin
     com.github.damontecres.wholphin.ui.main
         .PreloadServerPage(isAdmin)
     val sections =
-        remember(isTv, isAdmin) { buildSections(isTv).filter { isAdmin || !it.adminOnly } }
+        remember(isTv, isAdmin, guest) { buildSections(isTv, guest).filter { isAdmin || !it.adminOnly } }
     val groupSections = sections.filter { it.group != null }
     // Benflix: an update is ready, so Help shows a red "!" (the update is inside Help)
     val updateAlert =
@@ -199,7 +209,7 @@ fun BenflixSettingsPage(
     if (showQuickConnect) BenflixQuickConnect(onDismiss = { showQuickConnect = false })
     val openSection: (SettingsSection) -> Unit = { section ->
         if (section.opensQuickConnect) {
-            showQuickConnect = true
+            if (!GuestMode.isActive) showQuickConnect = true
         } else if (section.destination != null) {
             viewModel.navigationManager.navigateTo(section.destination)
         } else {

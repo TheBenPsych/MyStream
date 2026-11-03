@@ -264,7 +264,8 @@ fun SwitchUserContent(
                                     onAddUser = {
                                         showAddUserDialog(null)
                                     },
-                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV
+                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV. The parent PIN,
+                                    // bedtime and limit belong to the whole TV (see BenflixParentPin), not this sign-in
                                     kidsUser =
                                         state.users
                                             .map { it.user }

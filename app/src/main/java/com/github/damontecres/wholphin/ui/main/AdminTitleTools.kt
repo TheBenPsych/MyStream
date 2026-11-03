@@ -43,7 +43,10 @@ class AdminTitleViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
     ) : ViewModel() {
-        val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+        val isAdmin: Boolean
+            get() =
+                com.github.damontecres.wholphin.services.GuestMode
+                    .isAdmin(serverRepository.currentUserDto)
 
         /** File details to show (title to text) */
         private val _details = MutableStateFlow<Pair<String, String>?>(null)
