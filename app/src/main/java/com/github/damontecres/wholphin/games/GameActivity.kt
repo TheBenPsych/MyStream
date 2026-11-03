@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
@@ -167,7 +168,7 @@ class GameActivity : ComponentActivity() {
                 if (hasSticks(InputDevice.getDevice(deviceId))) {
                     gamepadSeen = true
                     lastPad = KeyFor.CONTROLLER
-                    showToast("Controller connected: Player ${portFor(deviceId) + 1}")
+                    showToast("Controller connected. Pick players in the menu > Players and remotes")
                 }
             }
 
@@ -564,6 +565,7 @@ class GameActivity : ComponentActivity() {
     private fun closeMenu() {
         menuOpen = false
         pickerBack = null
+        pairingPort = -1
         // Start clean: no button left held down, and no on-screen keyboard (from the show search) keeping the keys
         backHeld = false
         backOpenedMenu = false
@@ -775,31 +777,79 @@ class GameActivity : ComponentActivity() {
 
     private fun hasGamepad(): Boolean = InputDevice.getDeviceIds().any { isPadDevice(InputDevice.getDevice(it)) }
 
-    private val padDevices = mutableMapOf<Int, Boolean>()
-
     /**
-     * A real game controller, not a TV remote. Some remotes say they are "gamepads", so a device only counts
-     * if it has a joystick or all four face buttons (A B X Y).
+     * A real game controller, not a TV remote. Only devices with a joystick count: some TV remotes (TCL) say they
+     * have A/B/X/Y game buttons, which made OK act as Start and the key show "Controller".
      */
     private fun isPadDevice(d: InputDevice?): Boolean {
         if (d == null || d.isVirtual) return false
-        return padDevices.getOrPut(d.id) {
-            val stick = d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
-            val face =
-                d
-                    .hasKeys(
-                        KeyEvent.KEYCODE_BUTTON_A,
-                        KeyEvent.KEYCODE_BUTTON_B,
-                        KeyEvent.KEYCODE_BUTTON_X,
-                        KeyEvent.KEYCODE_BUTTON_Y,
-                    ).all { it }
-            stick || face
+        return when (prefs().getString("dev_kind_" + d.descriptor, null)) {
+            "remote" -> false
+            "controller" -> true
+            else -> d.id !in remoteIds && hasSticks(d)
         }
+    }
+
+    private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)
+
+    /** Which player a device plays as: the one picked on the Players page, else remotes are player 1 */
+    private fun playerPort(d: InputDevice?): Int {
+        if (d == null) return 0
+        val picked = prefs().getInt("dev_port_" + d.descriptor, -1)
+        if (picked in 0..3) return picked
+        return if (isPadDevice(d)) portFor(d.id) else 0
+    }
+
+    /** Remotes and controllers that can play (not the phone's touch screen or a keyboard-only device) */
+    private fun playDevices(): List<InputDevice> =
+        InputDevice
+            .getDeviceIds()
+            .toList()
+            .mapNotNull { InputDevice.getDevice(it) }
+            .filter { d ->
+                !d.isVirtual &&
+                    (
+                        d.sources and InputDevice.SOURCE_DPAD == InputDevice.SOURCE_DPAD ||
+                            d.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+                            hasSticks(d)
+                    )
+            }.distinctBy { it.descriptor }
+
+    // Players page: "press a button on the one for player N"
+    private var pairingPort by mutableIntStateOf(-1)
+    private var devicesChanged by mutableIntStateOf(0)
+
+    private fun pairDevice(
+        d: InputDevice,
+        port: Int,
+    ) {
+        prefs().edit().putInt("dev_port_" + d.descriptor, port).apply()
+        ports.remove(d.id)
+        pairingPort = -1
+        devicesChanged++
+        showToast("${d.name} is now Player ${port + 1}")
     }
 
     private fun hasSticks(d: InputDevice?): Boolean = d != null && d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
 
-    private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { ports.size.coerceAtMost(3) }
+    /** Controllers get a player the first time they press something: the lowest free one */
+    private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { (0..3).firstOrNull { it !in ports.values } ?: 3 }
+
+    /** Devices that pressed OK, Back or a media key: those are TV remotes, even if they say they have a joystick */
+    private val remoteIds = mutableSetOf<Int>()
+
+    private fun noteRemoteKey(event: KeyEvent) {
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE,
+            -> {
+                if (remoteIds.add(event.deviceId)) {
+                    ports.remove(event.deviceId)
+                    gamepadSeen = hasGamepad()
+                }
+            }
+        }
+    }
 
     private fun push(port: Int) {
         val touch = if (port == 0) touchMask else 0
@@ -831,7 +881,7 @@ class GameActivity : ComponentActivity() {
         }
     }
 
-    private fun isGamepad(event: KeyEvent): Boolean = KeyEvent.isGamepadButton(event.keyCode) || isPadDevice(event.device)
+    private fun isGamepad(event: KeyEvent): Boolean = isPadDevice(event.device)
 
     /** Which libretro button a key is, or null */
     private fun buttonFor(
@@ -946,6 +996,17 @@ class GameActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
         val down = event.action == KeyEvent.ACTION_DOWN
+        noteRemoteKey(event)
+        if (menuOpen && pairingPort >= 0 && event.device != null && !event.device.isVirtual) {
+            if (down && event.repeatCount == 0) {
+                if (code == KeyEvent.KEYCODE_BACK && !isPadDevice(event.device) && !isTv) {
+                    pairingPort = -1
+                } else {
+                    pairDevice(event.device, pairingPort)
+                }
+            }
+            return true
+        }
         if (menuOpen || failed) {
             if (code == KeyEvent.KEYCODE_BACK && backOpenedMenu) {
                 // The Back that was held to open the menu: don't close it again when let go
@@ -978,7 +1039,7 @@ class GameActivity : ComponentActivity() {
         }
         if (quitting) return true
         // Back from anything without sticks is the TV remote (some remotes wrongly claim to have A/B/X/Y keys)
-        if (code == KeyEvent.KEYCODE_BACK && isTv && !hasSticks(event.device)) {
+        if (code == KeyEvent.KEYCODE_BACK && isTv && !isPadDevice(event.device)) {
             remoteBack(down, event.repeatCount, event.eventTime - event.downTime, event.flags and KeyEvent.FLAG_LONG_PRESS != 0)
             return true
         }
@@ -995,7 +1056,7 @@ class GameActivity : ComponentActivity() {
         val button = buttonFor(code, gamepad) ?: return super.dispatchKeyEvent(event)
         // Remotes (anything without sticks) always play as player 1. Only real controllers get their own player,
         // so a remote that shows up as a new device (it can after a show starts) never ends up as player 2.
-        val port = if (hasSticks(event.device)) portFor(event.deviceId) else 0
+        val port = playerPort(event.device)
         keyMask[port] =
             if (down) keyMask[port] or RetroButton.bit(button) else keyMask[port] and RetroButton.bit(button).inv()
         push(port)
@@ -1052,7 +1113,7 @@ class GameActivity : ComponentActivity() {
         if (!joystick || event.action != MotionEvent.ACTION_MOVE || menuOpen) return super.dispatchGenericMotionEvent(event)
         if (!gamepadSeen) gamepadSeen = true
         lastPad = KeyFor.CONTROLLER
-        val port = portFor(event.deviceId)
+        val port = playerPort(event.device)
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         val x = event.getAxisValue(MotionEvent.AXIS_X)
@@ -1357,7 +1418,7 @@ class GameActivity : ComponentActivity() {
         }
     }
 
-    private enum class MenuPage { MAIN, HELP, SAVE, LOAD, PICK }
+    private enum class MenuPage { MAIN, HELP, SAVE, LOAD, PICK, PLAYERS }
 
     /** The game menu: a sheet that slides in from the right, with the paused game still showing on the left */
     @Composable
@@ -1408,6 +1469,15 @@ class GameActivity : ComponentActivity() {
                 )
                 when (page) {
                     MenuPage.PICK -> {}
+
+                    MenuPage.PLAYERS -> {
+                        Group("Players")
+                        MenuButton("Back", Icons.AutoMirrored.Filled.ArrowBack, Modifier.focusRequester(focus)) {
+                            pairingPort = -1
+                            page = MenuPage.MAIN
+                        }
+                        PlayersPage()
+                    }
 
                     MenuPage.HELP -> {
                         MenuButton("Done", Icons.Filled.Check, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
@@ -1504,6 +1574,7 @@ class GameActivity : ComponentActivity() {
                         }
                         Group("Controls")
                         MenuButton("Buttons", Icons.Filled.Info) { page = MenuPage.HELP }
+                        MenuButton("Players and remotes", Icons.Filled.Person) { page = MenuPage.PLAYERS }
                         if (isTv || gamepadSeen) {
                             MenuButton(if (sideKey) "Hide the button key" else "Show the button key", Icons.Filled.Edit) {
                                 saveSideKey(!sideKey)
@@ -1517,6 +1588,64 @@ class GameActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /** Like pairing on a Switch: pick which remote or controller is which player, and whether it's a remote or a controller */
+    @Composable
+    private fun PlayersPage() {
+        val waiting = pairingPort
+        if (waiting >= 0) {
+            Text(
+                "Press any button on the remote or controller that should be Player ${waiting + 1}",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            MenuButton("Cancel", Icons.Filled.Close) { pairingPort = -1 }
+            return
+        }
+        Text(
+            "Pick a player, then press a button on that player's remote or controller.",
+            color = Color.White.copy(alpha = 0.75f),
+            fontSize = 15.sp,
+        )
+        for (n in 0..3) {
+            MenuButton("Pair Player ${n + 1}", Icons.Filled.Person) { pairingPort = n }
+        }
+        val devices = remember(devicesChanged) { playDevices() }
+        if (devices.isNotEmpty()) Group("Connected")
+        for (d in devices) {
+            key(d.descriptor, devicesChanged) {
+                val asPad = isPadDevice(d)
+                Text(
+                    "${d.name}: Player ${playerPort(d) + 1}, works as a ${if (asPad) "controller" else "remote"}",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                )
+                MenuButton(if (asPad) "Use it as a remote instead" else "Use it as a controller instead", Icons.Filled.Edit) {
+                    prefs().edit().putString("dev_kind_" + d.descriptor, if (asPad) "remote" else "controller").apply()
+                    ports.remove(d.id)
+                    keyMask.fill(0)
+                    lastPad = if (asPad) KeyFor.REMOTE else KeyFor.CONTROLLER
+                    devicesChanged++
+                }
+            }
+        }
+        MenuButton("Reset players", Icons.Filled.Refresh) {
+            val p = prefs()
+            p
+                .edit()
+                .apply {
+                    p.all.keys
+                        .filter { it.startsWith("dev_port_") || it.startsWith("dev_kind_") }
+                        .forEach { remove(it) }
+                }.apply()
+            ports.clear()
+            keyMask.fill(0)
+            devicesChanged++
+            showToast("Players reset")
         }
     }
 
