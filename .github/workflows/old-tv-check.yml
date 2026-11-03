@@ -1,0 +1,135 @@
+name: Benflix older TV check (emulator)
+
+# Runs Benflix on older Android TV versions (Android 9 / 11) to catch crashes that only happen
+# on older or weaker TVs. Also updates the app over itself, like the in-app updater does.
+# Any crash is printed in the job log.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/project-thread-2thx6l'
+    paths:
+      - '.github/workflows/old-tv-check.yml'
+
+concurrency:
+  group: old-tv-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Build this branch (with 32-bit x86 too, for the old emulators)
+        env:
+          BENFLIX_BUILD: 99999
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          EXTENSIONS_USERNAME: ${{ secrets.EXTENSIONS_USERNAME }}
+          EXTENSIONS_PASSWORD: ${{ secrets.EXTENSIONS_PASSWORD }}
+        run: |
+          if [ -n "$EXTENSIONS_USERNAME" ]; then
+            export ORG_GRADLE_PROJECT_WholphinExtensionsUsername="$EXTENSIONS_USERNAME"
+            export ORG_GRADLE_PROJECT_WholphinExtensionsPassword="$EXTENSIONS_PASSWORD"
+          fi
+          sed -i 's/include("armeabi-v7a", "arm64-v8a", "x86_64")/include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")/' app/build.gradle.kts
+          ./gradlew assembleDefaultRelease --no-daemon
+          cp "$(find app/build/outputs/apk -name '*universal*.apk' | head -1)" app.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk
+          path: app.apk
+
+  tv:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [28, 30]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@v5
+        with:
+          name: apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Set up the emulator
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --list 2>/dev/null | grep -E "system-images;android-${{ matrix.api }};android-tv;x86" | awk '{print $1}' | sort -u > images.txt
+          cat images.txt
+          img=$(grep x86_64 images.txt | head -1)
+          [ -n "$img" ] || img=$(head -1 images.txt)
+          echo "Using $img"
+          echo "IMG=$img" >> $GITHUB_ENV
+          sdkmanager "emulator" "platform-tools" "$img" >/dev/null
+          mkdir -p "$HOME/avd"
+          echo "ANDROID_AVD_HOME=$HOME/avd" >> $GITHUB_ENV
+          export ANDROID_AVD_HOME="$HOME/avd"
+          echo no | avdmanager create avd -n old -k "$img" -d tv_1080p -p "$HOME/avd/old.avd" --force
+          # a weak TV: little memory
+          printf 'hw.ramSize=1536\nvm.heapSize=192\ndisk.dataPartition.size=4G\nhw.keyboard=yes\n' >> "$HOME/avd/old.avd/config.ini"
+      - name: Run Benflix
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
+          adb kill-server || true
+          [ -f ~/.android/adbkey ] || adb keygen ~/.android/adbkey
+          export ADB_VENDOR_KEYS=~/.android/adbkey
+          adb start-server
+          nohup emulator -avd old -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -camera-back none >> emulator.log 2>&1 &
+          timeout 300 adb wait-for-device || true
+          for i in $(seq 1 120); do
+            [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
+            sleep 3
+          done
+          sleep 40
+          adb shell getprop ro.build.version.release
+          adb shell getprop ro.product.cpu.abilist
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          timeout 300 adb install -r -g app.apk
+          PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
+          echo "Package $PKG"
+          crashes() {
+            echo "===== CRASHES ($1) ====="
+            adb logcat -d -b crash || true
+            adb logcat -d | grep -E "FATAL|AndroidRuntime|libc  |DEBUG   |Abort message|OutOfMemory|lowmemorykiller|am_kill|Process .* has died" | tail -80 || true
+            echo "===== END ====="
+          }
+          mkdir -p results
+          # 1) fresh install: sign in, open Home and look around
+          timeout 900 python3 tools/audit/drive.py tv "$PKG" results/fresh || echo "robot exited $?"
+          crashes "fresh install"
+          # 2) update over itself while running, like the in-app updater
+          adb logcat -c; adb logcat -b crash -c
+          adb shell am start -n "$PKG/com.github.damontecres.wholphin.MainActivity"; sleep 15
+          timeout 300 adb install -r -g app.apk
+          sleep 5
+          adb shell am start -W -n "$PKG/com.github.damontecres.wholphin.MainActivity" || true
+          for i in 1 2 3 4 5 6; do sleep 5; adb exec-out screencap -p > results/after-update-$i.png || true; done
+          adb shell input keyevent DPAD_CENTER
+          for i in 1 2 3 4 5 6 7 8; do sleep 5; adb exec-out screencap -p > results/after-update-home-$i.png || true; done
+          crashes "after update"
+          adb shell dumpsys meminfo "$PKG" | head -40 || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: old-tv-${{ matrix.api }}
+          path: results

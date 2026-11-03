@@ -107,6 +107,9 @@ class WholphinApplication :
             reportSendSuccessToast = "Sent crash report!"
         }
         ACRA.errorReporter.putCustomData("SDK_INT", Build.VERSION.SDK_INT.toString())
+        // Benflix: an old copy left running after an update starts fresh instead of crashing
+        com.github.damontecres.wholphin.util.StaleProcessGuard
+            .install(this)
     }
 
     @Inject
