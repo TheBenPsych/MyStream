@@ -443,6 +443,8 @@ class GameActivity : ComponentActivity() {
             saveHere(withSpot = true)
             val sent = GameSaves.upload(saveDir, gameId, address, token)
             if (!sent) Timber.i("Saves will be sent to Tower next time")
+            // Let Jellyfin hear how far the show got before the game player closes
+            sideShow?.awaitReports(4000)
             runOnUiThread { finish() }
         }.start()
     }
@@ -476,7 +478,7 @@ class GameActivity : ComponentActivity() {
         )
         applySound()
         handler.removeCallbacks(reportProgress)
-        handler.postDelayed(reportProgress, 30_000)
+        handler.postDelayed(reportProgress, 10_000)
     }
 
     private fun stopShow() {
