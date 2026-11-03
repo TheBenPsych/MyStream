@@ -8,6 +8,8 @@ import android.media.AudioTrack
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -100,8 +102,26 @@ class GameActivity : ComponentActivity() {
 
     // Buttons: from keys, from sticks/triggers and (player 1) from the touch buttons
     private val keyMask = IntArray(4)
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** TV remote Back works as the B button; holding it for a moment opens the menu */
+    private var backHeld = false
+    private var backOpenedMenu = false
+    private val backHoldOpensMenu =
+        Runnable {
+            if (backHeld) {
+                backOpenedMenu = true
+                keyMask[0] = keyMask[0] and RetroButton.bit(RetroButton.B).inv()
+                push(0)
+                openMenu()
+            }
+        }
     private val axisMask = IntArray(4)
     private var touchMask = 0
+
+    // Phones used as controllers over Wi-Fi (see PhonePad.kt)
+    private val phoneMask = IntArray(4)
+    private var padServer: PhonePadServer? = null
     private val ports = mutableMapOf<Int, Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,6 +148,16 @@ class GameActivity : ComponentActivity() {
         hasSpot = GameSaves.file(saveDir, "state").exists()
         displayHz = screenRefreshRate()
         gamepadSeen = hasGamepad()
+        if (isTv) {
+            padServer =
+                PhonePadServer(
+                    context = this,
+                    consoleKey = console.key,
+                    gameName = gameName,
+                    onButtons = { player, mask -> onPhoneButtons(player, mask) },
+                    onMenu = { runOnUiThread { if (menuOpen) closeMenu() else openMenu() } },
+                ).also { it.start() }
+        }
 
         glView =
             GLSurfaceView(this).apply {
@@ -384,6 +414,23 @@ class GameActivity : ComponentActivity() {
         setPaused(false)
     }
 
+    /** For remotes without enough buttons: the menu can tap Start or Select for you */
+    private fun tapFromMenu(button: Int) {
+        closeMenu()
+        val press =
+            Runnable {
+                keyMask[0] = keyMask[0] or RetroButton.bit(button)
+                push(0)
+            }
+        val release =
+            Runnable {
+                keyMask[0] = keyMask[0] and RetroButton.bit(button).inv()
+                push(0)
+            }
+        handler.postDelayed(press, 150)
+        handler.postDelayed(release, 350)
+    }
+
     override fun onResume() {
         super.onResume()
         glView.onResume()
@@ -405,7 +452,9 @@ class GameActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
         audio?.release()
+        padServer?.stop()
         audio = null
         if (isFinishing) {
             // Emulators keep their own memory around; a fresh process per game keeps things clean
@@ -429,7 +478,32 @@ class GameActivity : ComponentActivity() {
 
     private fun push(port: Int) {
         val touch = if (port == 0) touchMask else 0
-        RetroNative.setButtons(port, keyMask[port] or axisMask[port] or touch)
+        RetroNative.setButtons(port, keyMask[port] or axisMask[port] or touch or phoneMask[port])
+    }
+
+    /** A phone controller's buttons. While the menu is open, they move around the menu instead. */
+    private fun onPhoneButtons(
+        player: Int,
+        mask: Int,
+    ) {
+        val pressed = mask and phoneMask[player].inv()
+        phoneMask[player] = mask
+        if (!menuOpen) {
+            push(player)
+            return
+        }
+        push(player)
+        val key =
+            when {
+                pressed and RetroButton.bit(RetroButton.UP) != 0 -> KeyEvent.KEYCODE_DPAD_UP
+                pressed and RetroButton.bit(RetroButton.DOWN) != 0 -> KeyEvent.KEYCODE_DPAD_DOWN
+                pressed and (RetroButton.bit(RetroButton.A) or RetroButton.bit(RetroButton.B)) != 0 -> KeyEvent.KEYCODE_DPAD_CENTER
+                else -> return
+            }
+        runOnUiThread {
+            dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, key))
+            dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, key))
+        }
     }
 
     private fun isGamepad(event: KeyEvent): Boolean =
@@ -513,12 +587,33 @@ class GameActivity : ComponentActivity() {
                 if (gamepad) RetroButton.START else RetroButton.A
             }
 
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MENU -> {
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                 RetroButton.START
             }
 
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                RetroButton.B
+            // Extra remote buttons, when the remote has them (Fire TV has menu, rewind and fast-forward)
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_7 -> {
+                RetroButton.SELECT
+            }
+
+            KeyEvent.KEYCODE_9 -> {
+                RetroButton.START
+            }
+
+            KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_PROG_RED, KeyEvent.KEYCODE_1 -> {
+                RetroButton.Y
+            }
+
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_PROG_GREEN, KeyEvent.KEYCODE_2 -> {
+                RetroButton.X
+            }
+
+            KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN, KeyEvent.KEYCODE_PROG_YELLOW, KeyEvent.KEYCODE_3 -> {
+                RetroButton.L
+            }
+
+            KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PROG_BLUE, KeyEvent.KEYCODE_4 -> {
+                RetroButton.R
             }
 
             else -> {
@@ -530,6 +625,14 @@ class GameActivity : ComponentActivity() {
         val code = event.keyCode
         val down = event.action == KeyEvent.ACTION_DOWN
         if (menuOpen || failed) {
+            if (code == KeyEvent.KEYCODE_BACK && backOpenedMenu) {
+                // The Back that was held to open the menu: don't close it again when let go
+                if (!down) {
+                    backOpenedMenu = false
+                    backHeld = false
+                }
+                return true
+            }
             if ((code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BUTTON_MODE) && !down) {
                 if (failed) finish() else closeMenu()
                 return true
@@ -545,6 +648,10 @@ class GameActivity : ComponentActivity() {
             return super.dispatchKeyEvent(event)
         }
         if (quitting) return true
+        if (code == KeyEvent.KEYCODE_BACK && isTv && !isGamepad(event)) {
+            remoteBack(down, event.repeatCount)
+            return true
+        }
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_BUTTON_MODE) {
             if (!down) openMenu()
             return true
@@ -567,6 +674,28 @@ class GameActivity : ComponentActivity() {
             openMenu()
         }
         return true
+    }
+
+    /** Remote Back = B straight away (so it's quick in games), held for 0.8 seconds = the menu */
+    private fun remoteBack(
+        down: Boolean,
+        repeat: Int,
+    ) {
+        if (down) {
+            if (repeat > 0 || backHeld) return
+            backHeld = true
+            backOpenedMenu = false
+            keyMask[0] = keyMask[0] or RetroButton.bit(RetroButton.B)
+            push(0)
+            handler.postDelayed(backHoldOpensMenu, 800)
+        } else {
+            backHeld = false
+            handler.removeCallbacks(backHoldOpensMenu)
+            if (!backOpenedMenu) {
+                keyMask[0] = keyMask[0] and RetroButton.bit(RetroButton.B).inv()
+                push(0)
+            }
+        }
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
@@ -677,9 +806,16 @@ class GameActivity : ComponentActivity() {
                     val lines =
                         console.help +
                             listOf(
-                                if (isTv) "Back opens this menu" else "The ☰ circle at the top opens this menu",
+                                if (isTv) "Hold Back for a second to open this menu" else "The ☰ circle at the top opens this menu",
                                 "Start + Select together also opens it",
-                            )
+                            ) +
+                            if (isTv) {
+                                listOf(
+                                    "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
+                                )
+                            } else {
+                                emptyList()
+                            }
                     lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
                     MenuButton("Done", Modifier.focusRequester(focus)) { showHelp = false }
                 } else {
@@ -697,6 +833,10 @@ class GameActivity : ComponentActivity() {
                             }
                             closeMenu()
                         }
+                    }
+                    if (isTv) {
+                        MenuButton("Press Start") { tapFromMenu(RetroButton.START) }
+                        MenuButton("Press Select") { tapFromMenu(RetroButton.SELECT) }
                     }
                     MenuButton("Restart game") {
                         onGameThread { RetroNative.reset() }

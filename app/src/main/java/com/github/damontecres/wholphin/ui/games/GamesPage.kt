@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.view.HapticFeedbackConstants
@@ -97,6 +98,7 @@ import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.LocalGames
+import com.github.damontecres.wholphin.games.PhonePadActivity
 import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
@@ -579,6 +581,15 @@ fun GamesPage(
                     }
                 ServerGameCard(
                     game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+                    playWith =
+                        remember(ref.slug) {
+                            val local = LocalConsole.forSlug(ref.slug)
+                            listOfNotNull(
+                                if (local?.remoteFriendly == true) PlayWith.REMOTE else null,
+                                PlayWith.CONTROLLER,
+                                PlayWith.PHONE,
+                            )
+                        },
                     token = viewModel.gamesToken,
                     status = status,
                     progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
@@ -587,6 +598,13 @@ fun GamesPage(
                 )
             }
             DeviceCard(power, isTv)
+            if (!isTv) {
+                ActionTile(
+                    title = "Use this phone as a controller",
+                    subtitle = "For a game playing on a TV in the house",
+                    onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
+                )
+            }
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -630,14 +648,6 @@ fun GamesPage(
                                 val fit = power.fit(local.power)
                                 if (fit == DevicePower.Fit.TOO_MUCH) null else Triple(c, local, fit)
                             }
-                        }
-                    val notHere =
-                        remember(state) {
-                            state.consoles
-                                .filter { c ->
-                                    val local = LocalConsole.forSlug(c.slug)
-                                    local == null || power.fit(local.power) == DevicePower.Fit.TOO_MUCH
-                                }.map { it.name }
                         }
                     if (playable.isNotEmpty()) {
                         InfoText(
@@ -704,9 +714,6 @@ fun GamesPage(
                         ) {
                             items(console.games, key = { it.id }) { game -> refs[game.id]?.let { Card(it) } }
                         }
-                    }
-                    if (notHere.isNotEmpty()) {
-                        InfoText("Not on this device yet: ${notHere.joinToString(", ")}.")
                     }
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                 }
@@ -790,6 +797,7 @@ private fun ServerGameCard(
     status: String?,
     onClick: () -> Unit,
     progress: Float? = null,
+    playWith: List<PlayWith> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -832,6 +840,18 @@ private fun ServerGameCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
+            // What it plays with: remote (simple games only), controller, phone
+            if (playWith.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp),
+                ) {
+                    playWith.forEach { PlayIcon(it) }
+                }
             }
             if (status != null || !game.playable) {
                 Box(
@@ -1147,6 +1167,32 @@ private fun ScoresCard(
 }
 
 private enum class PlayWith { REMOTE, CONTROLLER, PHONE }
+
+/** A small round icon on a game card: remote, controller or phone */
+@Composable
+private fun PlayIcon(kind: PlayWith) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .size(24.dp)
+                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(50)),
+    ) {
+        when (kind) {
+            PlayWith.REMOTE -> {
+                RemoteIcon(Modifier.size(width = 6.dp, height = 12.dp))
+            }
+
+            PlayWith.CONTROLLER -> {
+                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+            }
+
+            PlayWith.PHONE -> {
+                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+            }
+        }
+    }
+}
 
 /**
  * A small "works with" chip: an icon plus a word, e.g. a controller icon with "Controller"
@@ -1767,7 +1813,10 @@ data class GameChoice(
     val pinned: Boolean,
 )
 
-/** "This TV: MediaTek MT8696 · 4 cores…" and which consoles play well here */
+/**
+ * "This TV: MediaTek MT8696 · 4 cores…" and which consoles play well here. It can take focus, so the
+ * remote can move onto it and the page scrolls to show it.
+ */
 @Composable
 private fun DeviceCard(
     power: DevicePower,
@@ -1775,22 +1824,28 @@ private fun DeviceCard(
 ) {
     val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
     val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF1C1C1C), RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = {},
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-        )
-        Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
-        if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+            if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+        }
     }
 }
 
