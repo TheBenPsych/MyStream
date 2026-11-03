@@ -124,34 +124,72 @@ class AppUpgradeHandler
         }
 
         /**
-         * Copies the font file used by MPV subtitles to the app's files directory
+         * Gets the font MPV uses for subtitles ready in the app's files folder.
+         *
+         * Benflix: the full font (6 MB, with letters for every language) used to ship inside the app and was
+         * copied again on every update. Now the app carries only a small Roboto font, which is put in place
+         * right away so subtitles always show, and the full font is downloaded once in the background and
+         * kept across updates.
          */
         @Synchronized
-        fun copySubfont(overwrite: Boolean) {
+        fun copySubfont(
+            @Suppress("UNUSED_PARAMETER") overwrite: Boolean,
+        ) {
+            val outputFile = File(context.filesDir, SUBFONT_FILE)
+            val fullMarker = File(context.filesDir, "$SUBFONT_FILE.full")
             try {
-                val fontFileName = "subfont.ttf"
-                val outputFile = File(context.filesDir, fontFileName)
-                if (!outputFile.exists() || overwrite) {
-                    // Benflix: copied in the background now, so write to a temp file and swap it in
-                    // at the end. A player starting mid-copy never sees half a font.
-                    val tempFile = File(context.filesDir, "$fontFileName.tmp")
-                    context.assets.open(fontFileName).use { input ->
-                        tempFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
+                if (!outputFile.exists() || outputFile.length() == 0L) {
+                    val tempFile = File(context.filesDir, "$SUBFONT_FILE.tmp")
+                    context.assets.open(SUBFONT_FALLBACK).use { input ->
+                        tempFile.outputStream().use { output -> input.copyTo(output) }
                     }
-                    if (!tempFile.renameTo(outputFile)) {
-                        outputFile.delete()
-                        tempFile.renameTo(outputFile)
-                    }
-                    Timber.i("Wrote font %s to local", fontFileName)
+                    swapIn(tempFile, outputFile)
+                    fullMarker.delete()
+                    Timber.i("Put the small subtitle font in place")
                 }
-//                val oldFontDir = File(context.filesDir, "fonts")
-//                if (oldFontDir.exists()) {
-//                    oldFontDir.deleteRecursively()
-//                }
             } catch (ex: Exception) {
-                Timber.e(ex, "Exception copying subfont.tff")
+                Timber.e(ex, "Exception copying the small subtitle font")
+            }
+            if (fullMarker.exists()) return
+            try {
+                val tempFile = File(context.filesDir, "$SUBFONT_FILE.download")
+                val request =
+                    okhttp3.Request
+                        .Builder()
+                        .url(SUBFONT_URL)
+                        .build()
+                okhttp3
+                    .OkHttpClient()
+                    .newCall(request)
+                    .execute()
+                    .use { response ->
+                        if (!response.isSuccessful) {
+                            Timber.w("Full subtitle font download failed: %s", response.code)
+                            return
+                        }
+                        tempFile.outputStream().use { output -> response.body.byteStream().copyTo(output) }
+                    }
+                if (tempFile.length() < SUBFONT_MIN_BYTES) {
+                    Timber.w("Full subtitle font download was too small (%s bytes)", tempFile.length())
+                    tempFile.delete()
+                    return
+                }
+                swapIn(tempFile, outputFile)
+                fullMarker.createNewFile()
+                Timber.i("Downloaded the full subtitle font")
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't download the full subtitle font, will try again next start")
+            }
+        }
+
+        private fun swapIn(
+            tempFile: File,
+            outputFile: File,
+        ) {
+            // A player starting mid-copy never sees half a font
+            if (!tempFile.renameTo(outputFile)) {
+                outputFile.delete()
+                tempFile.renameTo(outputFile)
             }
         }
 
@@ -160,6 +198,14 @@ class AppUpgradeHandler
             const val VERSION_CODE_PREVIOUS_KEY = "version.previous.code"
             const val VERSION_NAME_CURRENT_KEY = "version.current.name"
             const val VERSION_CODE_CURRENT_KEY = "version.current.code"
+
+            private const val SUBFONT_FILE = "subfont.ttf"
+            private const val SUBFONT_FALLBACK = "font-roboto/Roboto-Regular.ttf"
+
+            /** The full subtitle font, kept in the Benflix repo outside the app so it isn't in every update */
+            private const val SUBFONT_URL =
+                "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/extras/subfont.ttf"
+            private const val SUBFONT_MIN_BYTES = 1_000_000L
         }
 
         /**

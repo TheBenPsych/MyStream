@@ -198,14 +198,67 @@ class LocalGames
             _prep.value = GamePrep(ref.id, text, fraction)
         }
 
+        private fun coreFile(console: LocalConsole) = File(GameSaves.coresDir(context), "${console.core}_libretro_android.so")
+
+        /**
+         * Benflix speed: quietly downloads the emulators for the consoles in the library that this device can
+         * play, one at a time and only on Wi-Fi or a wired connection, so the first game of a console starts
+         * straight away instead of waiting for its emulator.
+         */
+        suspend fun warmCores(slugs: Collection<String>) =
+            withContext(Dispatchers.IO) {
+                if (!onUnmeteredNetwork()) return@withContext
+                val power = DevicePower.get(context)
+                val wanted =
+                    slugs
+                        .mapNotNull { LocalConsole.forSlug(it) }
+                        .filter { power.fit(it.power) != DevicePower.Fit.TOO_MUCH }
+                        .distinctBy { it.core }
+                        .filter { !coreFile(it).let { f -> f.exists() && f.length() > 0 } }
+                for (console in wanted) {
+                    try {
+                        synchronized(lockFor(console)) {
+                            if (!coreFile(console).let { f -> f.exists() && f.length() > 0 }) downloadCore(console)
+                        }
+                        Timber.i("Emulator ready ahead of time: %s", console.core)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Getting emulator %s ahead of time failed", console.core)
+                    }
+                }
+            }
+
+        private fun onUnmeteredNetwork(): Boolean =
+            try {
+                val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+                val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+                caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            } catch (e: Exception) {
+                false
+            }
+
+        /** One lock per emulator, so a game never waits for a different console's emulator to download */
+        private val coreLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+        private fun lockFor(console: LocalConsole): Any = coreLocks.getOrPut(console.core) { Any() }
+
         /** The emulator, from the libretro buildbot (only the first time each one is needed) */
         private fun ensureCore(
             ref: GameRef,
             console: LocalConsole,
         ): File {
-            val target = File(GameSaves.coresDir(context), "${console.core}_libretro_android.so")
+            val target = coreFile(console)
             if (target.exists() && target.length() > 0) return target
             say(ref, "Getting the ${console.title} player…")
+            synchronized(lockFor(console)) {
+                if (target.exists() && target.length() > 0) return target
+                downloadCore(console)
+            }
+            if (!target.exists()) throw GameLibraryException("The ${console.title} player download was empty.")
+            return target
+        }
+
+        private fun downloadCore(console: LocalConsole) {
+            val target = coreFile(console)
             val url = "$BUILDBOT/${DevicePower.coreAbi()}/${console.core}_libretro_android.so.zip"
             try {
                 http.newCall(Request.Builder().url(url).build()).execute().use { response ->
@@ -232,8 +285,6 @@ class LocalGames
                 Timber.w(e, "Downloading emulator ${console.core} failed")
                 throw GameLibraryException("Couldn't download the ${console.title} player. Check this device has internet.")
             }
-            if (!target.exists()) throw GameLibraryException("The ${console.title} player download was empty.")
-            return target
         }
 
         /** BIOS files from Games/bios on Tower, if it has any this console can use */

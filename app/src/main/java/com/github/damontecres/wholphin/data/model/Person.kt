@@ -35,7 +35,13 @@ data class Person(
                 name = dto.name,
                 role = personRole(context, dto.role, dto.type),
                 type = dto.type,
-                imageUrl = api.imageApi.getItemImageUrl(dto.id, ImageType.PRIMARY, tag = dto.primaryImageTag),
+                imageUrl =
+                    api.imageApi.getItemImageUrl(
+                        dto.id,
+                        ImageType.PRIMARY,
+                        maxHeight = PERSON_MAX_HEIGHT,
+                        tag = dto.primaryImageTag,
+                    ),
                 favorite = false,
             )
 
@@ -50,7 +56,13 @@ data class Person(
                 name = dto.name,
                 role = personRole(context, dto.role, dto.type),
                 type = dto.type,
-                imageUrl = api.imageApi.getItemImageUrl(dto.id, ImageType.PRIMARY, tag = dto.primaryImageTag),
+                imageUrl =
+                    api.imageApi.getItemImageUrl(
+                        dto.id,
+                        ImageType.PRIMARY,
+                        maxHeight = PERSON_MAX_HEIGHT,
+                        tag = dto.primaryImageTag,
+                    ),
                 favorite = favorite,
             )
     }
@@ -96,3 +108,6 @@ private val PersonKind.stringRes: Int?
             PersonKind.ALBUM_ARTIST -> R.string.artist
             else -> null
         }
+
+/** Benflix: actor photos are small circles and cards, so they never need to be bigger than this */
+private const val PERSON_MAX_HEIGHT = 720

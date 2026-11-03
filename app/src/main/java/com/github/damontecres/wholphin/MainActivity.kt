@@ -376,6 +376,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        com.github.damontecres.wholphin.ui.util.FastScroll
+            .onKey(event)
         if (screensaverService.state.value.run { show || showDim }) {
             screensaverService.stop(false)
             screensaverService.pulse()

@@ -4,6 +4,10 @@ name: Benflix audit (emulator robot)
 # server, visits every screen, checks every button can be reached with the remote, times loading,
 # and does a random stress test to find crashes. Screenshots and the report go to the "audit-results" branch.
 on:
+  # Benflix: the full robot runs by itself after every new build on main is published
+  workflow_run:
+    workflows: ["MyStream build"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       apk:
@@ -26,6 +30,7 @@ env:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -35,6 +40,8 @@ jobs:
         run: |
           src="${{ github.event.inputs.apk }}"
           if [ -z "$src" ]; then src=$(cat tools/audit/APK_SOURCE 2>/dev/null || echo latest); fi
+          # After a new build is published on main, test exactly what people will install
+          if [ "${{ github.event_name }}" = workflow_run ]; then src=latest; fi
           echo "src=$src" >> "$GITHUB_OUTPUT"
           echo "Testing: $src"
       - name: Setup

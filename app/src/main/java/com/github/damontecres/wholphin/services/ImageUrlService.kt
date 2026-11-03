@@ -251,8 +251,19 @@ class ImageUrlService
             return api.imageApi.getItemImageUrl(
                 itemId = itemId,
                 imageType = imageType,
-                maxWidth = maxWidth ?: if (imageType == ImageType.BACKDROP && noSize) BackdropMaxWidth else null,
-                maxHeight = maxHeight,
+                maxWidth =
+                    maxWidth ?: if (noSize) {
+                        when (imageType) {
+                            ImageType.BACKDROP, ImageType.THUMB, ImageType.ART, ImageType.BANNER -> BackdropMaxWidth
+                            ImageType.LOGO -> LOGO_MAX_WIDTH
+                            else -> null
+                        }
+                    } else {
+                        null
+                    },
+                // Benflix: posters with no size asked for came at full size too (often 2000 x 3000).
+                // No screen shows a poster taller than this, so the picture looks the same and loads faster.
+                maxHeight = maxHeight ?: if (noSize && imageType == ImageType.PRIMARY) PosterMaxHeight else null,
                 width = width?.takeIf { it > 0 },
                 height = height?.takeIf { it > 0 },
                 quality = quality,
@@ -294,6 +305,17 @@ class ImageUrlService
                     maxOf(metrics.widthPixels, metrics.heightPixels).coerceIn(1280, 1920)
                 }.getOrDefault(1920)
             }
+
+            /** Tallest a poster ever needs to be: about the screen's long side, 1080 to 1600 pixels */
+            val PosterMaxHeight: Int by lazy {
+                runCatching {
+                    val metrics = Resources.getSystem().displayMetrics
+                    maxOf(metrics.widthPixels, metrics.heightPixels).coerceIn(1080, 1600)
+                }.getOrDefault(1500)
+            }
+
+            /** Title logos are shown at most about half the screen wide */
+            const val LOGO_MAX_WIDTH = 1000
 
             // Lighter pictures load faster. WebP at 85 looks the same on a TV but is much smaller.
             private const val QUALITY = 85
