@@ -354,17 +354,34 @@ class WatchOrderViewModel
 /**
  * Watch in order: big franchises (Marvel, Star Wars...) as Full story, Essentials or Release order.
  * Everything in the series is shown; ones not on your server are dimmed "Not on Benflix" cards,
- * so the order never has gaps.
+ * so the order never has gaps. In Kids, only the ones Kids can watch show (still in order), and a
+ * franchise with none of them is hidden.
  */
 @Composable
 fun WatchOrderPage(
     modifier: Modifier = Modifier,
     viewModel: WatchOrderViewModel = hiltViewModel(),
 ) {
-    val lists by viewModel.lists.collectAsState()
+    val allLists by viewModel.lists.collectAsState()
+    val kids by KidsMode.active.collectAsState()
+    // Kids: titles they can't watch don't come back from the server, so drop those spots
+    // (instead of showing "Not on Benflix"), and drop franchises left with nothing
+    val lists =
+        remember(allLists, kids) {
+            if (!kids) {
+                allLists
+            } else {
+                allLists
+                    ?.mapValues { (_, list) -> FranchiseList(list.all.filter { it.item != null }) }
+                    ?.filterValues { it.all.isNotEmpty() }
+            }
+        }
+    val franchises =
+        if (lists == null || !kids) Franchise.entries.toList() else Franchise.entries.filter { it in lists }
     var franchiseName by rememberSaveable { mutableStateOf(Franchise.MARVEL.name) }
     var tabName by rememberSaveable { mutableStateOf(OrderTab.FULL.name) }
-    val franchise = Franchise.valueOf(franchiseName)
+    val franchise =
+        Franchise.valueOf(franchiseName).takeIf { it in franchises } ?: franchises.firstOrNull() ?: Franchise.MARVEL
     val tab = OrderTab.valueOf(tabName)
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(lists != null) {
@@ -386,8 +403,16 @@ fun WatchOrderPage(
             LoadingPage(Modifier.fillMaxSize())
             return@Column
         }
+        if (franchises.isEmpty()) {
+            Text(
+                text = "Nothing to watch in order here yet.",
+                fontSize = 16.sp,
+                color = Color(0xFFB5ABAC),
+            )
+            return@Column
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Franchise.entries.forEachIndexed { i, f ->
+            franchises.forEachIndexed { i, f ->
                 OrderChip(
                     text = f.title,
                     on = f == franchise,
@@ -417,7 +442,12 @@ fun WatchOrderPage(
                 OrderTabButton(t.title, t == tab, { tabName = t.name })
             }
             Text(
-                text = "${tab.blurb}  ·  ${shown.count { it.item != null }} of ${shown.size} on Benflix",
+                text =
+                    if (kids) {
+                        "${tab.blurb}  ·  ${shown.size} to watch"
+                    } else {
+                        "${tab.blurb}  ·  ${shown.count { it.item != null }} of ${shown.size} on Benflix"
+                    },
                 fontSize = 13.sp,
                 color = Color(0xFFB5ABAC),
             )

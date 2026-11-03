@@ -183,6 +183,61 @@ fun HomePage(
                         }
                     }
                 }
+            // The long-press menu for a Jellyfin item on any Home row. Only Continue watching & Next up
+            // offer to remove it from that row.
+            fun itemMenu(
+                item: BaseItem,
+                canRemoveContinueWatching: Boolean,
+                canRemoveNextUp: Boolean,
+                deletePosition: RowColumn?,
+            ): ContextMenu =
+                ContextMenu.ForBaseItem(
+                    fromLongClick = true,
+                    item = item,
+                    chosenStreams = null,
+                    showGoTo = true,
+                    showStreamChoices = false,
+                    canDelete =
+                        viewModel.canDelete(
+                            item,
+                            currentAppPrefs,
+                        ),
+                    canRemoveContinueWatching = canRemoveContinueWatching,
+                    canRemoveNextUp = canRemoveNextUp,
+                    actions =
+                        ContextMenuActions(
+                            navigateTo = viewModel.navigationManager::navigateTo,
+                            onClickWatch = viewModel::setWatched,
+                            onClickFavorite = viewModel::setFavorite,
+                            onClickAddPlaylist = { itemId ->
+                                playlistViewModel.loadPlaylists()
+                                showPlaylistDialog = itemId
+                            },
+                            onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
+                            onDeleteItem = {
+                                viewModel.deleteItem(deletePosition ?: position, it)
+                            },
+                            onChooseVersion = { _, _ ->
+                                // Not supported on this page
+                            },
+                            onChooseTracks = {
+                                // Not supported on this page
+                            },
+                            onShowOverview = {
+                                overviewDialog = ItemDetailsDialogInfo(it)
+                                if (it.data.overview == null) {
+                                    // Home rows come without descriptions, so fetch this one
+                                    val itemId = it.id
+                                    scope.launch {
+                                        val text = overviewCache.get(itemId)
+                                        overviewDialog = overviewDialog?.copy(overview = text)
+                                    }
+                                }
+                            },
+                            onClearChosenStreams = {},
+                            onClickRemoveFromNextUp = viewModel::removeFromNextUp,
+                        ),
+                )
             val onLongClickItem =
                 remember {
                     { clickedPosition: RowColumn, item: BaseItem ->
@@ -194,52 +249,25 @@ fun HomePage(
                         val canRemoveNextUp =
                             row?.rowType is HomeRowConfig.NextUp || row?.rowType is HomeRowConfig.ContinueWatchingCombined
                         showContextMenu =
-                            ContextMenu.ForBaseItem(
-                                fromLongClick = true,
+                            itemMenu(
                                 item = item,
-                                chosenStreams = null,
-                                showGoTo = true,
-                                showStreamChoices = false,
-                                canDelete =
-                                    viewModel.canDelete(
-                                        item,
-                                        currentAppPrefs,
-                                    ),
                                 canRemoveContinueWatching = canRemoveContinueWatching,
                                 canRemoveNextUp = canRemoveNextUp,
-                                actions =
-                                    ContextMenuActions(
-                                        navigateTo = viewModel.navigationManager::navigateTo,
-                                        onClickWatch = viewModel::setWatched,
-                                        onClickFavorite = viewModel::setFavorite,
-                                        onClickAddPlaylist = { itemId ->
-                                            playlistViewModel.loadPlaylists()
-                                            showPlaylistDialog = itemId
-                                        },
-                                        onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
-                                        onDeleteItem = {
-                                            viewModel.deleteItem(position, it)
-                                        },
-                                        onChooseVersion = { _, _ ->
-                                            // Not supported on this page
-                                        },
-                                        onChooseTracks = {
-                                            // Not supported on this page
-                                        },
-                                        onShowOverview = {
-                                            overviewDialog = ItemDetailsDialogInfo(it)
-                                            if (it.data.overview == null) {
-                                                // Home rows come without descriptions, so fetch this one
-                                                val itemId = it.id
-                                                scope.launch {
-                                                    val text = overviewCache.get(itemId)
-                                                    overviewDialog = overviewDialog?.copy(overview = text)
-                                                }
-                                            }
-                                        },
-                                        onClearChosenStreams = {},
-                                        onClickRemoveFromNextUp = viewModel::removeFromNextUp,
-                                    ),
+                                deletePosition = null,
+                            )
+                    }
+                }
+            // Benflix: the same menu on the extra poster rows (Top 10, Because you watched, My List...),
+            // which aren't part of the main rows, so nothing to remove them from
+            val onLongClickExtraItem =
+                remember {
+                    { item: BaseItem ->
+                        showContextMenu =
+                            itemMenu(
+                                item = item,
+                                canRemoveContinueWatching = false,
+                                canRemoveNextUp = false,
+                                deletePosition = RowColumn(-1, -1),
                             )
                     }
                 }
@@ -294,6 +322,7 @@ fun HomePage(
                     onClickTrending = { item ->
                         viewModel.navigationManager.navigateTo(item.destination())
                     },
+                    onLongClickTrending = onLongClickExtraItem,
                     trendingMissing = trendingMissing,
                     onClickDiscover = { item ->
                         viewModel.navigationManager.navigateTo(item.destination)
@@ -404,6 +433,7 @@ fun HomePageContent(
     onClickSurprise: () -> Unit = {},
     trending: List<BaseItem> = emptyList(),
     onClickTrending: (BaseItem) -> Unit = {},
+    onLongClickTrending: (BaseItem) -> Unit = {},
     trendingMissing: List<DiscoverItem> = emptyList(),
     themed: ThemedRow? = null,
     monthly: List<ThemedRow> = emptyList(),
@@ -883,6 +913,7 @@ fun HomePageContent(
                                 title = kidsAgain.title,
                                 items = kidsAgain.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -900,6 +931,7 @@ fun HomePageContent(
                                 title = welcomeBack.title,
                                 items = welcomeBack.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -916,6 +948,7 @@ fun HomePageContent(
                             Top10Row(
                                 items = trending,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -933,6 +966,7 @@ fun HomePageContent(
                                 title = stringResource(R.string.top_10_anime),
                                 items = animeTop,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -964,6 +998,7 @@ fun HomePageContent(
                                 title = themed.title,
                                 items = themed.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -980,6 +1015,7 @@ fun HomePageContent(
                                 title = row.title,
                                 items = row.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -996,6 +1032,7 @@ fun HomePageContent(
                                 title = because.title,
                                 items = because.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -1020,6 +1057,8 @@ fun HomePageContent(
                                     title = moodRow.title,
                                     items = moodRow.items,
                                     onClickItem = onClickTrending,
+                                    onLongClickItem = onLongClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                     onFocusItem = { extraFocus = it },
                                     modifier =
                                         Modifier
@@ -1037,6 +1076,7 @@ fun HomePageContent(
                                 title = row.title,
                                 items = row.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -1053,6 +1093,7 @@ fun HomePageContent(
                                 title = row.title,
                                 items = row.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier
@@ -1072,6 +1113,7 @@ fun HomePageContent(
                                 title = row.title,
                                 items = row.items,
                                 onClickItem = onClickTrending,
+                                onLongClickItem = onLongClickTrending,
                                 onFocusItem = { extraFocus = it },
                                 modifier =
                                     Modifier

@@ -230,7 +230,7 @@ fun MyBenflixPage(
                         guest = GuestMode.isActive,
                         onClickParents = { showParentPin = true },
                     )
-                    if (!GuestMode.isActive) MonthStatsCard()
+                    if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard()
                     when {
                         rows == null -> {
                             LoadingPage(Modifier.fillMaxWidth().height(120.dp))
@@ -318,7 +318,7 @@ fun MyBenflixPage(
             }
         }
         // Benflix: this month so far
-        if (!GuestMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
+        if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
         if (showParentPin) {
             ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
         }

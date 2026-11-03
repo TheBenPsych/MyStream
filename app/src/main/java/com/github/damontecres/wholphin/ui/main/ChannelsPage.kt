@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -178,6 +180,10 @@ private fun GuideGrid(
     val windowStart = now - now % HALF_HOUR
     val windowEnd = windowStart + halfHours * HALF_HOUR
     var focused by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
+    // Phones have no remote focus: the first tap on a program picks it (shown up top with a white
+    // border) and a second tap on the same one plays or opens it
+    val isTv = rememberIsTv()
+    var selected by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         delay(80)
@@ -188,7 +194,7 @@ private fun GuideGrid(
         modifier = Modifier.padding(top = 12.dp, start = 8.dp),
     ) {
         // What the focused program is. Read only inside, so moving around the guide redraws just this part
-        GuideHeader(focused = { focused }, now = now)
+        GuideHeader(focused = { if (isTv) focused else selected ?: focused }, now = now)
         // Time ruler
         Row {
             Box(Modifier.width(CHANNEL_COL))
@@ -266,9 +272,14 @@ private fun GuideGrid(
                             val to = minOf(program.endMs, windowEnd)
                             val live = now >= program.startMs && now < program.endMs
                             val isFirst = schedule == list.first() && live
+                            val isSelected =
+                                !isTv &&
+                                    selected?.let { (s, p) -> s.number == schedule.number && p.startMs == program.startMs } == true
                             Surface(
                                 onClick = {
-                                    if (live) {
+                                    if (!isTv && !isSelected) {
+                                        selected = schedule to program
+                                    } else if (live) {
                                         viewModel.watch(schedule)
                                     } else {
                                         viewModel.navigationManager.navigateTo(program.item.destination())
@@ -282,6 +293,15 @@ private fun GuideGrid(
                                         focusedContainerColor = Color.White,
                                         focusedContentColor = Color.Black,
                                     ),
+                                border =
+                                    if (isSelected) {
+                                        ClickableSurfaceDefaults.border(
+                                            border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                                            focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                                        )
+                                    } else {
+                                        ClickableSurfaceDefaults.border()
+                                    },
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 modifier =
                                     Modifier

@@ -754,7 +754,7 @@ class HomeViewModel
                     ) {
                         featuredSourceAsync("tonight") {
                             // Benflix speed: count the fitting movies first, then fetch only the
-                            // few around tonight's spot instead of 200 of them
+                            // few around tonight's spot. Every fitting movie in the library can be picked.
                             val tonightRequest =
                                 baseRequest.copy(
                                     includeItemTypes = listOf(BaseItemKind.MOVIE),
@@ -762,27 +762,44 @@ class HomeViewModel
                                     minCommunityRating = TONIGHT_MIN_RATING,
                                     sortBy = listOf(ItemSortBy.SORT_NAME),
                                 )
-                            val total =
-                                api.itemsApi
-                                    .getItems(tonightRequest.copy(limit = 0, enableTotalRecordCount = true))
-                                    .content.totalRecordCount
-                                    .coerceAtMost(TONIGHT_POOL)
-                            if (total <= 0) {
-                                emptyList()
-                            } else {
-                                val day =
-                                    java.time.LocalDate
-                                        .now()
-                                        .toEpochDay()
-                                val index = Math.floorMod(day * 31 + userDto.id.hashCode(), total.toLong()).toInt()
-                                // A few extra, in case tonight's one got a thumbs down
-                                api.itemsApi
-                                    .getItems(tonightRequest.copy(startIndex = index, limit = TONIGHT_FETCH))
-                                    .content.items
-                                    .firstOrNull { it.userData?.likes != false }
-                                    ?.let { listOf(FeaturedItem(BaseItem(it), FeaturedReason.TONIGHT, becauseOf = userDto.name)) }
-                                    .orEmpty()
-                            }
+                            val day =
+                                java.time.LocalDate
+                                    .now()
+                                    .toEpochDay()
+                            val cacheKey = "$day-${userDto.id}-${KidsMode.level}"
+                            // Tonight's pick from earlier today, if it still fits (not watched or thumbs-downed since)
+                            val cached =
+                                tonightCache
+                                    ?.takeIf { it.first == cacheKey }
+                                    ?.second
+                                    ?.let { id ->
+                                        api.itemsApi
+                                            .getItems(tonightRequest.copy(ids = listOf(id), limit = 1))
+                                            .content.items
+                                            .firstOrNull { it.userData?.likes != false }
+                                    }
+                            val pick =
+                                cached ?: run {
+                                    val total =
+                                        api.itemsApi
+                                            .getItems(tonightRequest.copy(limit = 0, enableTotalRecordCount = true))
+                                            .content.totalRecordCount
+                                    if (total <= 0) {
+                                        null
+                                    } else {
+                                        val index =
+                                            Math.floorMod(day * 31 + userDto.id.hashCode(), total.toLong()).toInt()
+                                        // A few extra, in case tonight's one got a thumbs down
+                                        api.itemsApi
+                                            .getItems(tonightRequest.copy(startIndex = index, limit = TONIGHT_FETCH))
+                                            .content.items
+                                            .firstOrNull { it.userData?.likes != false }
+                                            ?.also { tonightCache = cacheKey to it.id }
+                                    }
+                                }
+                            pick
+                                ?.let { listOf(FeaturedItem(BaseItem(it), FeaturedReason.TONIGHT, becauseOf = userDto.name)) }
+                                .orEmpty()
                         }
                     } else {
                         null
@@ -2382,6 +2399,9 @@ class HomeViewModel
             }
         }
     }
+
+/** Benflix "Tonight's pick": the day's pick (day-user-Kids level key, item id), so it stays put all evening */
+@Volatile private var tonightCache: Pair<String, UUID>? = null
 
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
 @Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null
