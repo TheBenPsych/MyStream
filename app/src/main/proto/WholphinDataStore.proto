@@ -285,6 +285,8 @@ message BenflixPreferences {
   bool auto_mpv_styled_subs = 9;
   // Phones: a light buzz on taps is on unless this is set
   bool haptics_off = 10;
+  // Subtitle menus show only English (plus unlabelled and downloaded) tracks unless this is set
+  bool all_subtitle_languages = 11;
 }
 
 enum BenflixAccent {
