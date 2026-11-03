@@ -71,6 +71,9 @@ data class ServerToolsState(
     val notesLoaded: Boolean = false,
     /** Benflix: the server's libraries, for "Which libraries they see" */
     val libraries: List<org.jellyfin.sdk.model.api.BaseItemDto>? = null,
+    /** Benflix: "What takes the most space" (null until asked) */
+    val space: List<CheckupSection>? = null,
+    val spaceBusy: Boolean = false,
 )
 
 @HiltViewModel
@@ -195,21 +198,26 @@ class ServerToolsViewModel
             }
         }
 
-        fun publishNote(text: String) =
-            work {
-                val count = notes.publish(text)
-                val id = userId
-                _state.value =
-                    _state.value.copy(
-                        note = id?.let { notes.read(it) },
-                        message =
-                            if (text.isBlank()) {
-                                "Note removed" to "It won't show on Home any more."
-                            } else {
-                                "Note sent" to "It will show at the top of Home for $count people."
-                            },
-                    )
-            }
+        fun publishNote(
+            text: String,
+            expiresAt: Long? = null,
+            onlyFor: Set<java.util.UUID>? = null,
+        ) = work {
+            val count = notes.publish(text, NoteKind.NOTE, expiresAt, onlyFor)
+            val id = userId
+            _state.value =
+                _state.value.copy(
+                    note = id?.let { notes.read(it) },
+                    message =
+                        if (text.isBlank()) {
+                            "Note removed" to "It won't show on Home any more."
+                        } else {
+                            "Note sent" to "It will show at the top of Home for $count " +
+                                (if (count == 1) "person" else "people") +
+                                (expiresAt?.let { " until ${untilText(it)}" } ?: "") + "."
+                        },
+                )
+        }
 
         fun publishWelcome(text: String) =
             work {
@@ -299,6 +307,20 @@ class ServerToolsViewModel
                 )
         }
 
+        /** Benflix: the biggest movies and shows, and what nobody watched in a year */
+        fun runSpace() {
+            val id = userId ?: return
+            if (_state.value.spaceBusy) return
+            _state.value = _state.value.copy(spaceBusy = true)
+            work(showBusy = false) {
+                try {
+                    _state.value = _state.value.copy(space = checkup.space(id))
+                } finally {
+                    _state.value = _state.value.copy(spaceBusy = false)
+                }
+            }
+        }
+
         fun unhideAll() {
             checkup.unhideAll()
             runCheckup()
@@ -307,7 +329,10 @@ class ServerToolsViewModel
         fun open(item: CheckupItem) = navigationManager.navigateTo(Destination.MediaItem(item.itemId, item.type))
 
         /** Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open */
-        fun sendPopup(text: String) {
+        fun sendPopup(
+            text: String,
+            onlyFor: Set<java.util.UUID>? = null,
+        ) {
             if (text.isBlank()) return
             work {
                 val sessions =
@@ -315,6 +340,8 @@ class ServerToolsViewModel
                         .getSessions(activeWithinSeconds = 960)
                         .content
                         .filter { it.supportsRemoteControl == true && it.id != null }
+                        // Benflix: only the people Ben picked
+                        .filter { onlyFor == null || it.userId in onlyFor }
                 var sent = 0
                 sessions.forEach { session ->
                     try {
@@ -396,6 +423,19 @@ sealed interface ServerToolsDialog {
 
     data class RemovePerson(
         val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: how long a Home note shows */
+    data class NoteHowLong(
+        val text: String,
+    ) : ServerToolsDialog
+
+    /** Benflix: who gets the Home note or pop-up (everyone, or picked people) */
+    data class SendTo(
+        val text: String,
+        val popup: Boolean,
+        val expiresAt: Long? = null,
+        val picked: Set<java.util.UUID> = emptySet(),
     ) : ServerToolsDialog
 
     /** Benflix: how many screens at once */
@@ -495,6 +535,8 @@ fun LazyListScope.problemReportItems(
     viewModel: ServerToolsViewModel,
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
+    onFileDetails: (java.util.UUID) -> Unit = {},
+    onFixMatch: (java.util.UUID) -> Unit = {},
 ) {
     item { sectionTitle(if (reports == null) "Problems reported" else "Problems reported (${reports.size})") }
     if (reports.isNullOrEmpty()) {
@@ -515,7 +557,16 @@ fun LazyListScope.problemReportItems(
             onClick = { viewModel.openProblem(report) },
             actions =
                 buildList {
-                    if (report.itemId != null) add("Open" to { viewModel.openProblem(report) })
+                    val id = report.itemId
+                    if (id != null) {
+                        add("Open" to { viewModel.openProblem(report) })
+                        // Benflix: the tool that usually fixes this kind of problem
+                        if (report.problem == "Wrong movie or episode") {
+                            add("Fix match" to { onFixMatch(id) })
+                        } else {
+                            add("File details" to { onFileDetails(id) })
+                        }
+                    }
                     add("Fixed" to { showDialog(ServerToolsDialog.Problem(report)) })
                 },
         )
@@ -536,7 +587,8 @@ fun LazyListScope.messageItems(
                 if (state.note == null) {
                     "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
                 } else {
-                    "Showing on Home now. Click to change it, or save it empty to remove it."
+                    "Showing on Home now" + (state.note.expiresAt?.let { " until ${untilText(it)}" } ?: "") +
+                        ". Click to change it, or save it empty to remove it."
                 },
             onClick = { showDialog(ServerToolsDialog.WriteNote) },
         )
@@ -700,8 +752,13 @@ fun ServerToolsDialogs(
                         maxLines = 3,
                     ),
                 onSave = {
-                    onDismiss()
-                    viewModel.publishNote(it)
+                    if (it.isBlank()) {
+                        onDismiss()
+                        viewModel.publishNote(it)
+                    } else {
+                        // Benflix: next, how long it shows and who gets it
+                        showDialog(ServerToolsDialog.NoteHowLong(it))
+                    }
                 },
                 onDismissRequest = onDismiss,
             )
@@ -744,8 +801,7 @@ fun ServerToolsDialogs(
                         maxLines = 3,
                     ),
                 onSave = {
-                    onDismiss()
-                    viewModel.sendPopup(it)
+                    if (it.isBlank()) onDismiss() else showDialog(ServerToolsDialog.SendTo(it, popup = true))
                 },
                 onDismissRequest = onDismiss,
             )
@@ -890,6 +946,83 @@ fun ServerToolsDialogs(
             )
         }
 
+        is ServerToolsDialog.NoteHowLong -> {
+            val day = 24 * 60 * 60 * 1000L
+            DialogPopup(
+                showDialog = true,
+                title = "Show the note until…",
+                dialogItems =
+                    listOf(
+                        null to "I take it down",
+                        day to "Tomorrow (1 day)",
+                        3 * day to "3 days",
+                        7 * day to "1 week",
+                    ).map { (length, label) ->
+                        DialogItem(
+                            headlineContent = { Text(label) },
+                            onClick = {
+                                showDialog(
+                                    ServerToolsDialog.SendTo(
+                                        text = dialog.text,
+                                        popup = false,
+                                        expiresAt = length?.let { System.currentTimeMillis() + it },
+                                    ),
+                                )
+                            },
+                        )
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.SendTo -> {
+            val send: (Set<java.util.UUID>?) -> Unit = { who ->
+                onDismiss()
+                if (dialog.popup) {
+                    viewModel.sendPopup(dialog.text, who)
+                } else {
+                    viewModel.publishNote(dialog.text, dialog.expiresAt, who)
+                }
+            }
+            DialogPopup(
+                showDialog = true,
+                title = if (dialog.popup) "Pop it up for…" else "Put the note on…",
+                dialogItems =
+                    buildList {
+                        add(
+                            DialogItem(
+                                headlineContent = {
+                                    Text(
+                                        if (dialog.picked.isEmpty()) "Everyone" else "Send to ${dialog.picked.size} picked",
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(if (dialog.picked.isEmpty()) "Or tick people below first" else "Only the people ticked below")
+                                },
+                                onClick = { send(dialog.picked.ifEmpty { null }) },
+                            ),
+                        )
+                        state.people.orEmpty().forEach { user ->
+                            add(
+                                DialogItem(
+                                    headlineContent = { Text(user.name.orEmpty()) },
+                                    selected = user.id in dialog.picked,
+                                    onClick = {
+                                        val next = if (user.id in dialog.picked) dialog.picked - user.id else dialog.picked + user.id
+                                        showDialog(dialog.copy(picked = next))
+                                    },
+                                ),
+                            )
+                        }
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
         is ServerToolsDialog.Screens -> {
             val user = dialog.user
             val current = user.policy?.maxActiveSessions ?: 0
@@ -988,7 +1121,8 @@ fun ServerToolsDialogs(
                 title = "Mark \"${dialog.report.title}\" fixed?",
                 body =
                     "${dialog.report.problem}, reported by ${dialog.report.userName} on ${dialog.report.device}. " +
-                        "Their app log was sent to the server's log folder. This takes it off the list.",
+                        "Their app log was sent to the server's log folder. This takes it off the list, " +
+                        "and ${dialog.report.userName} sees \"Ben fixed ${dialog.report.title}\" on their Home.",
                 onCancel = onDismiss,
                 onConfirm = {
                     onDismiss()
@@ -1033,4 +1167,58 @@ fun awayQualityLabel(bitsPerSecond: Int?): String =
 internal fun lastWatched(logLine: String): String {
     val playing = logLine.substringAfter(" is playing ", logLine)
     return playing.substringBeforeLast(" on ").ifBlank { playing }
+}
+
+/** Benflix: like "Wed 9:00 PM" */
+internal fun untilText(at: Long): String =
+    java.time.Instant
+        .ofEpochMilli(at)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(
+            java.time.format.DateTimeFormatter
+                .ofPattern("EEE h:mm a"),
+        )
+
+/** Benflix: "What takes the most space" in the Library section */
+fun LazyListScope.spaceItems(
+    state: ServerToolsState,
+    viewModel: ServerToolsViewModel,
+    sectionTitle: @Composable (String) -> Unit,
+) {
+    item { sectionTitle("What takes the most space") }
+    val space = state.space
+    if (space == null) {
+        item {
+            ServerActionRow(
+                headline = if (state.spaceBusy) "Measuring… (this can take a minute)" else "Find the biggest movies and shows",
+                supporting = "Also lists things nobody has watched in a year, so you know what to delete when space runs low",
+                onClick = { viewModel.runSpace() },
+                actions = if (state.spaceBusy) emptyList() else listOf("Find" to { viewModel.runSpace() }),
+            )
+        }
+        return
+    }
+    space.forEach { section ->
+        item(key = "space-${section.title}") {
+            ServerActionRow(
+                headline = "${section.title} (${section.items.size})",
+                supporting = if (section.items.isEmpty()) "Nothing found" else null,
+            )
+        }
+        items(section.items, key = { "space-${section.title}-${it.key}" }) { found ->
+            ServerActionRow(
+                headline = found.title,
+                supporting = found.detail,
+                onClick = { viewModel.open(found) },
+                actions = listOf("Open" to { viewModel.open(found) }),
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
+    }
+    item {
+        ServerActionRow(
+            headline = if (state.spaceBusy) "Measuring…" else "Measure again",
+            onClick = { viewModel.runSpace() },
+        )
+    }
 }
