@@ -680,6 +680,8 @@ fun LazyListScope.checkupItems(
     viewModel: ServerToolsViewModel,
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
+    /** Benflix: more buttons for some found things, like "Search" for missing episodes (Tower tools) */
+    moreActions: (section: String, found: CheckupItem) -> List<Pair<String, () -> Unit>> = { _, _ -> emptyList() },
 ) {
     item { sectionTitle("Library checkup") }
     val checkup = state.checkup
@@ -706,10 +708,9 @@ fun LazyListScope.checkupItems(
                 supporting = found.detail,
                 onClick = { viewModel.open(found) },
                 actions =
-                    listOf(
-                        "Open" to { viewModel.open(found) },
-                        "Hide" to { showDialog(ServerToolsDialog.Hide(found)) },
-                    ),
+                    listOf("Open" to { viewModel.open(found) }) +
+                        moreActions(section.title, found) +
+                        listOf("Hide" to { showDialog(ServerToolsDialog.Hide(found)) }),
                 modifier = Modifier.padding(start = 16.dp),
             )
         }

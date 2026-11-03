@@ -7,6 +7,7 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
 - Games play ON the TV or phone: Benflix downloads the game's files (/api/rom), any BIOS files it needs
   (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
   Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
+- Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
 - Old streaming (admin only, being removed): when someone presses Play, it writes down which game to start,
   then Benflix opens the "Benflix" app in Moonlight.
 
@@ -24,6 +25,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next to this file
+    import benflix_server_tools as tools
+except ImportError:
+    tools = None
 
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
@@ -378,14 +384,54 @@ class Handler(BaseHTTPRequestHandler):
             data += chunk
         return data
 
+    def read_json(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            return {}
+        if length > 64 * 1024:
+            raise HelperError(413, "That's too big.")
+        try:
+            return json.loads(self.rfile.read(length) or b"{}")
+        except ValueError:
+            raise HelperError(400, "That didn't make sense to the helper.")
+
+    def admin_route(self, method, path, query):
+        """The Server page tools. Returns False when the path isn't one of them."""
+        if tools is None:
+            raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
+        if method == "GET" and path == "/api/admin/tower":
+            return self.send(200, tools.tower(fresh=(query.get("fresh") or ["0"])[0] == "1"))
+        m = re.fullmatch(r"/api/admin/apps/([\w.-]+)/restart", path)
+        if method == "POST" and m:
+            return self.send(200, tools.restart_app(m.group(1)))
+        m = re.fullmatch(r"/api/admin/downloads/(sonarr|radarr)/(\d+)/(retry|replace)", path)
+        if method == "POST" and m:
+            return self.send(200, tools.download_action(m.group(1), int(m.group(2)), m.group(3)))
+        if method == "POST" and path == "/api/admin/search/missing":
+            return self.send(200, tools.search_missing(self.read_json()))
+        if method == "POST" and path == "/api/admin/search/better":
+            return self.send(200, tools.search_better(self.read_json()))
+        if method == "GET" and path == "/api/admin/tracks":
+            return self.send(200, tools.tracks_status())
+        if method == "POST" and path == "/api/admin/tracks":
+            body = self.read_json()
+            return self.send(200, tools.tracks_start(body.get("mode"), body.get("folder"), body.get("undo")))
+        return False
+
     def route(self, method):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
         try:
             if method == "GET" and path == "/health":
-                return self.send(200, {"ok": True, "local_play": True})
+                return self.send(200, {"ok": True, "local_play": True, "server_tools": tools is not None})
             user_id, is_admin = check_signed_in(self.headers.get("X-Benflix-Token", ""))
+            if path.startswith("/api/admin/"):
+                if not is_admin:
+                    raise HelperError(403, "Only the server admin can use the Server page tools.")
+                if self.admin_route(method, path, query) is not False:
+                    return
+                return self.send(404, {"error": "Not found"})
             if method == "GET" and path == "/api/games":
                 return self.send(200, load_games())
             m = re.fullmatch(r"/api/cover/(\d+)", path)
@@ -434,6 +480,8 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass  # The TV stopped the download
         except Exception as e:  # Keep the helper running whatever happens
+            if tools is not None and isinstance(e, tools.ToolError):
+                return self.send(e.status, {"error": e.message})
             self.log_error("Unexpected error: %r", e)
             try:
                 self.send(500, {"error": "Something went wrong in the games helper."})

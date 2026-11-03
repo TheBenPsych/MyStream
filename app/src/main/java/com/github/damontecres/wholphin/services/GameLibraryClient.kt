@@ -134,6 +134,22 @@ class GameLibraryClient
         suspend fun getJson(path: String): JSONObject =
             withContext(Dispatchers.IO) { JSONObject(call(Request.Builder().url(address + path))) }
 
+        /** Benflix Server page tools: sends [body] to the helper and returns its JSON answer */
+        suspend fun postJson(
+            path: String,
+            body: JSONObject = JSONObject(),
+        ): JSONObject =
+            withContext(Dispatchers.IO) {
+                JSONObject(
+                    call(
+                        Request
+                            .Builder()
+                            .url(address + path)
+                            .post(body.toString().toRequestBody("application/json".toMediaType())),
+                    ),
+                )
+            }
+
         /**
          * Downloads a file from the helper (a game file, BIOS or save) into [target], reporting bytes as they arrive.
          * Returns false if the helper says there's no such file.

@@ -97,6 +97,13 @@ fun HomePage(
         viewModel.init()
         onStopOrDispose { }
     }
+    // Benflix: the admin's alert (new problem report, disk nearly full) only shows while Home is on screen
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            com.github.damontecres.wholphin.ui.components.ServerAlertNotice
+                .clear()
+        }
+    }
     // Benflix: the welcome setup, the first time a person uses Benflix
     WelcomeGate()
     val state by viewModel.state.collectAsState()

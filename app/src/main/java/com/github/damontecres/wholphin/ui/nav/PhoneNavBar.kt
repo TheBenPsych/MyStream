@@ -172,13 +172,25 @@ fun PhoneNavBar(
                     modifier = Modifier.size(24.dp),
                 )
                 // Benflix: a red "!" when an update is ready (it's under My Benflix > Settings > Help)
-                if (updateAlert) {
+                val serverAlert =
+                    com.github.damontecres.wholphin.ui.components
+                        .rememberServerAlert()
+                if (updateAlert || serverAlert) {
                     com.github.damontecres.wholphin.ui.components.UpdateBang(
                         size = 14.dp,
                         modifier = Modifier.align(Alignment.TopEnd),
                     )
+                }
+                if (updateAlert) {
                     com.github.damontecres.wholphin.ui.components.UpdateTip(
                         text = stringResource(R.string.benflix_update_tip_phone),
+                        above = true,
+                    )
+                }
+                // Benflix: the admin's alert on Home (new problem report, disk nearly full)
+                if (serverAlert) {
+                    com.github.damontecres.wholphin.ui.components.ServerAlertTip(
+                        where = "Tap My Benflix, then Settings, then Server.",
                         above = true,
                     )
                 }
