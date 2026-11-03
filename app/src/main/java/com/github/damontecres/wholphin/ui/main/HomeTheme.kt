@@ -1477,12 +1477,13 @@ data class HomeTheme(
                 isFriday13(date) -> FRIDAY_13
                 onDay(10, 21, 1) -> BACK_TO_THE_FUTURE_DAY
                 lny != null && !date.isBefore(lny.minusDays(3)) && !date.isAfter(lny.plusDays(3)) -> LUNAR_NEW_YEAR
+                // Before Halloween: some years (2028, 2031...) Mid-Autumn falls in early October
+                near(midAutumnDay, 2, 1) -> MID_AUTUMN
                 month == 10 -> HALLOWEEN
                 month == 11 && day <= 2 -> DAY_OF_THE_DEAD
                 month == 11 && day in 3..5 -> BONFIRE_NIGHT
                 month == 11 && !date.isBefore(thanksgiving.minusDays(4)) && !date.isAfter(thanksgiving.plusDays(1)) -> THANKSGIVING
                 near(easterDay, 3, 1) -> EASTER
-                near(midAutumnDay, 2, 1) -> MID_AUTUMN
                 near(nthSunday(date, 5, 2), 3) -> MOTHERS_DAY
                 near(nthSunday(date, 6, 3), 3) -> FATHERS_DAY
                 onDay(1, 19) -> POPCORN_DAY

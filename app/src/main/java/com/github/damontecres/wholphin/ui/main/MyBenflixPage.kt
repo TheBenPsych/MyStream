@@ -69,8 +69,8 @@ class MyBenflixViewModel
         private val _rows = MutableStateFlow<List<HubRow>?>(null)
 
         companion object {
-            /** Last time's rows per person, so the page shows at once when opened again */
-            private val lastRows = java.util.concurrent.ConcurrentHashMap<java.util.UUID, List<HubRow>>()
+            /** Last time's rows per person and profile, so the page shows at once when opened again */
+            private val lastRows = java.util.concurrent.ConcurrentHashMap<String, List<HubRow>>()
 
             // Continue watching lives on Home, so it isn't repeated here
             private val ROW_TITLES = listOf("My List", "Liked", "Watch history")
@@ -81,6 +81,8 @@ class MyBenflixViewModel
         fun load() {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
+                // Kids, Big kids and Guest each keep their own saved rows, so no grown-up lists flash up
+                val rowsKey = "$userId-${KidsMode.level}-${GuestMode.isActive}"
 
                 suspend fun safe(block: suspend () -> List<BaseItem>): List<BaseItem> =
                     try {
@@ -111,7 +113,7 @@ class MyBenflixViewModel
                     enableTotalRecordCount = false,
                 )
                 // Benflix: show what was there last time straight away, then each row as soon as it's ready
-                lastRows[userId]?.let { _rows.value = it }
+                lastRows[rowsKey]?.let { _rows.value = it }
                 val loaders: List<suspend () -> HubRow> =
                     listOf(
                         suspend {
@@ -162,7 +164,7 @@ class MyBenflixViewModel
                             lock.withLock {
                                 slots[index] = row
                                 // Keep last time's row in its place until the new one arrives
-                                val previous = lastRows[userId].orEmpty()
+                                val previous = lastRows[rowsKey].orEmpty()
                                 val shown =
                                     slots.mapIndexed { i, r -> r ?: previous.firstOrNull { it.title == ROW_TITLES[i] } }
                                 val visible = shown.filterNotNull().filter { it.items.isNotEmpty() }
@@ -172,7 +174,7 @@ class MyBenflixViewModel
                     }
                 }
                 val done = slots.filterNotNull().filter { it.items.isNotEmpty() }
-                lastRows[userId] = done
+                lastRows[rowsKey] = done
                 _rows.value = done
             }
         }

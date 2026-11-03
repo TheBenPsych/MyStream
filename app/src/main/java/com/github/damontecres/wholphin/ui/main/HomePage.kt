@@ -167,12 +167,15 @@ fun HomePage(
 
             val onFocusPosition = remember { { it: RowColumn -> position = it } }
             val currentHomePrefs by rememberUpdatedState(preferences.appPreferences.homePagePreferences)
+            // The handlers below are remembered once, so they read the rows & settings as they are now
+            val currentHomeRows by rememberUpdatedState(homeRows)
+            val currentAppPrefs by rememberUpdatedState(preferences.appPreferences)
             val onClickItem =
                 remember {
                     { clickedPosition: RowColumn, item: BaseItem ->
                         position = clickedPosition
                         if (currentHomePrefs.clickToPlay &&
-                            homeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
+                            currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
                         ) {
                             viewModel.navigationManager.navigateTo(Destination.Playback(item))
                         } else {
@@ -185,7 +188,7 @@ fun HomePage(
                     { clickedPosition: RowColumn, item: BaseItem ->
                         position = clickedPosition
                         val row =
-                            (homeRows.getOrNull(clickedPosition.row) as? HomeRowLoadingState.Success)
+                            (currentHomeRows.getOrNull(clickedPosition.row) as? HomeRowLoadingState.Success)
                         val canRemoveContinueWatching =
                             row?.rowType is HomeRowConfig.ContinueWatching || row?.rowType is HomeRowConfig.ContinueWatchingCombined
                         val canRemoveNextUp =
@@ -200,7 +203,7 @@ fun HomePage(
                                 canDelete =
                                     viewModel.canDelete(
                                         item,
-                                        preferences.appPreferences,
+                                        currentAppPrefs,
                                     ),
                                 canRemoveContinueWatching = canRemoveContinueWatching,
                                 canRemoveNextUp = canRemoveNextUp,
@@ -258,7 +261,7 @@ fun HomePage(
             // Benflix on phones: pull down at the top to load Home again
             com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh(
                 refreshing = refreshing is LoadingState.Loading,
-                onRefresh = viewModel::init,
+                onRefresh = { viewModel.init() },
                 modifier = modifier,
             ) {
                 HomePageContent(

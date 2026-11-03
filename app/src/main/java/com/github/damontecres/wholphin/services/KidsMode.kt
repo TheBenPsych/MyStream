@@ -31,6 +31,15 @@ object KidsMode {
     /** The name shown in the menus: "Kids" or "Big kids" */
     val displayName: String get() = if (isBig) "Big kids" else "Kids"
 
+    /** The Kids level for saved-copy names: "off", "kids" or "bigkids" */
+    val level: String
+        get() =
+            when {
+                !isActive -> "off"
+                isBig -> "bigkids"
+                else -> "kids"
+            }
+
     fun set(
         on: Boolean,
         big: Boolean = false,

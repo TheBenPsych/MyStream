@@ -30,6 +30,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
@@ -92,8 +94,11 @@ class BenflixWrappedViewModel
                 viewModelScope.launch(WholphinDispatchers.IO) {
                     // Let Home settle first
                     delay(6_000)
+                    // Not on Kids or Guest: they'd see the grown-up's year and use up their one showing
+                    if (KidsMode.isActive || GuestMode.isActive) return@launch
                     if (!prefs().getBoolean(key(today.year), false)) {
-                        _wrapped.value = build(today.year)
+                        val year = build(today.year)
+                        if (!KidsMode.isActive && !GuestMode.isActive) _wrapped.value = year
                     }
                 }
             }
@@ -101,7 +106,7 @@ class BenflixWrappedViewModel
 
         fun done() {
             val year = _wrapped.value?.year ?: return
-            prefs().edit { putBoolean(key(year), true) }
+            if (!KidsMode.isActive && !GuestMode.isActive) prefs().edit { putBoolean(key(year), true) }
             _wrapped.value = null
         }
 
@@ -204,7 +209,10 @@ fun BenflixWrappedLayer(
 ) {
     val wrapped by viewModel.wrapped.collectAsState()
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
-    if (!popupTurn("wrapped", BenflixPopups.WRAPPED, wrapped != null && !playing)) return
+    // Never on Kids or Guest (e.g. if the profile changed after the recap was built)
+    val kids by KidsMode.active.collectAsState()
+    val guest by GuestMode.active.collectAsState()
+    if (!popupTurn("wrapped", BenflixPopups.WRAPPED, wrapped != null && !playing && !kids && !guest)) return
     val w = wrapped ?: return
     val focus = remember { FocusRequester() }
     BasicDialog(onDismissRequest = viewModel::done) {

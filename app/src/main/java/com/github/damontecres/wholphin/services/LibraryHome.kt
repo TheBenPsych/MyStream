@@ -709,7 +709,8 @@ class LibraryHomeService
 
         private val weekLock = kotlinx.coroutines.sync.Mutex()
 
-        @Volatile private var week: Pair<Long, Map<java.time.LocalDate, List<BaseItem>>>? = null
+        /** Worked-out weeks, by user + library + Kids level (only used under [weekLock]) */
+        private val week = HashMap<String, Pair<Long, Map<java.time.LocalDate, List<BaseItem>>>>()
 
         /**
          * Benflix: this week's anime calendar, like Crunchyroll's. One row per day, today first,
@@ -738,7 +739,8 @@ class LibraryHomeService
         /** Which shows in the library get an episode on each of the next 7 days (worked out once an hour) */
         private suspend fun weekSchedule(parentId: UUID): Map<LocalDate, List<BaseItem>> =
             weekLock.withLock {
-                week?.takeIf { System.currentTimeMillis() - it.first < HOUR_MS }?.let { return@withLock it.second }
+                val weekKey = "$userId-$parentId-${KidsMode.level}"
+                week[weekKey]?.takeIf { System.currentTimeMillis() - it.first < HOUR_MS }?.let { return@withLock it.second }
                 val airing = aniList.thisWeek()
                 val shows =
                     items(rowRequest(parentId, BaseItemKind.SERIES))
@@ -766,7 +768,7 @@ class LibraryHomeService
                                 .toLocalDate() to show
                         }.groupBy({ it.first }, { it.second })
                         .mapValues { (_, list) -> list.distinctBy { it.id }.map { BaseItem(it) } }
-                week = System.currentTimeMillis() to out
+                week[weekKey] = System.currentTimeMillis() to out
                 Timber.i("This week's anime: %s airings, %s on Benflix", airing.size, out.values.sumOf { it.size })
                 out
             }

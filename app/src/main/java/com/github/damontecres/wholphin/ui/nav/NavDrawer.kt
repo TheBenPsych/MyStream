@@ -348,7 +348,8 @@ fun NavDrawer(
     viewModel: NavDrawerViewModel =
         hiltViewModel(
             LocalView.current.findViewTreeViewModelStoreOwner()!!,
-            key = "${server.id}_${user.id}", // Keyed to the server & user to ensure its reset when switching either
+            // Keyed to the server, user & Kids level to ensure its reset when switching any of them
+            key = "${server.id}_${user.id}_${KidsMode.level}",
         ),
 ) {
     // Keep the highlighted tab right after Back, too

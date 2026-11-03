@@ -156,6 +156,14 @@ fun lunarNewYear(year: Int): LocalDate? =
         2030 -> LocalDate.of(2030, 2, 3)
         2031 -> LocalDate.of(2031, 1, 23)
         2032 -> LocalDate.of(2032, 2, 11)
+        2033 -> LocalDate.of(2033, 1, 31)
+        2034 -> LocalDate.of(2034, 2, 19)
+        2035 -> LocalDate.of(2035, 2, 8)
+        2036 -> LocalDate.of(2036, 1, 28)
+        2037 -> LocalDate.of(2037, 2, 15)
+        2038 -> LocalDate.of(2038, 2, 4)
+        2039 -> LocalDate.of(2039, 1, 24)
+        2040 -> LocalDate.of(2040, 2, 12)
         else -> null
     }
 
@@ -188,6 +196,14 @@ fun midAutumn(year: Int): LocalDate? =
         2030 -> LocalDate.of(2030, 9, 12)
         2031 -> LocalDate.of(2031, 10, 1)
         2032 -> LocalDate.of(2032, 9, 19)
+        2033 -> LocalDate.of(2033, 9, 8)
+        2034 -> LocalDate.of(2034, 9, 27)
+        2035 -> LocalDate.of(2035, 9, 16)
+        2036 -> LocalDate.of(2036, 10, 4)
+        2037 -> LocalDate.of(2037, 9, 24)
+        2038 -> LocalDate.of(2038, 9, 13)
+        2039 -> LocalDate.of(2039, 10, 2)
+        2040 -> LocalDate.of(2040, 9, 20)
         else -> null
     }
 
