@@ -369,7 +369,9 @@ class LocalGames
             val pending = GameSaves.pending(dir)
             // Anything this device still has to send goes first, so it isn't overwritten
             if (pending.isNotEmpty()) {
-                if (!GameSaves.upload(dir, ref.id, client.address, client.token)) return
+                GameSaves.upload(dir, ref.id, client.address, client.token)
+                // Slots an older Tower helper doesn't know yet can wait; the main saves can't
+                if (GameSaves.pending(dir).any { it in GameSaves.MAIN_KINDS }) return
             }
             val info =
                 try {
@@ -421,6 +423,7 @@ class LocalGames
                     .putExtra(GameActivity.EXTRA_TOKEN, client.token)
                     .putExtra(GameActivity.EXTRA_SERVER, client.jellyfinUrl)
                     .putExtra(GameActivity.EXTRA_USER, client.userId)
+                    .putExtra(GameActivity.EXTRA_COVER, game.ref.coverUrl ?: "")
             if (from !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             // Coming back from the game returns to the Games tab, not "Who's watching?"
             GameStreamReturn.pending = true

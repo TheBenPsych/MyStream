@@ -16,7 +16,7 @@ import java.net.SocketTimeoutException
  *
  * The TV game player announces itself on the network (as a "_benflixpad._udp" service), and each phone
  * sends small text messages over UDP:
- *   BFP1 <phone id> HELLO          -> TV answers "BFP1 WELCOME <player> <console> <game name>"
+ *   BFP1 <phone id> HELLO [name]   -> TV answers "BFP1 WELCOME <player> <console> <game name>"
  *   BFP1 <phone id> B <mask>       buttons held (sent many times a second, so a lost message doesn't matter)
  *   BFP1 <phone id> MENU           open or close the game menu
  *   BFP1 <phone id> BYE            the phone stopped
@@ -35,6 +35,7 @@ class PhonePadServer(
     private val gameName: String,
     private val onButtons: (player: Int, mask: Int) -> Unit,
     private val onMenu: () -> Unit,
+    private val onJoin: (player: Int, name: String) -> Unit = { _, _ -> },
 ) {
     private val nsd = context.getSystemService(Context.NSD_SERVICE) as NsdManager
     private var socket: DatagramSocket? = null
@@ -47,6 +48,7 @@ class PhonePadServer(
         var address: SocketAddress,
         var lastSeen: Long,
         var mask: Int = 0,
+        var announced: Boolean = false,
     )
 
     private val phones = mutableMapOf<String, Phone>()
@@ -129,7 +131,7 @@ class PhonePadServer(
         packet: DatagramPacket,
         text: String,
     ) {
-        val parts = text.split(' ')
+        val parts = text.split(' ', limit = 4)
         if (parts.size < 3 || parts[0] != PhonePadProtocol.MAGIC) return
         val id = parts[1].take(40)
         val now = System.currentTimeMillis()
@@ -145,6 +147,10 @@ class PhonePadServer(
         phone.lastSeen = now
         when (parts[2]) {
             "HELLO" -> {
+                if (!phone.announced) {
+                    phone.announced = true
+                    onJoin(phone.player, parts.getOrNull(3)?.take(40)?.ifBlank { null } ?: "A phone")
+                }
                 val reply = "${PhonePadProtocol.MAGIC} WELCOME ${phone.player} $consoleKey ${gameName.replace('\n', ' ')}".toByteArray()
                 s.send(DatagramPacket(reply, reply.size, phone.address))
             }

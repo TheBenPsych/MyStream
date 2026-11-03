@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -67,6 +69,11 @@ class PhonePadActivity : ComponentActivity() {
 
     @Volatile private var lastWelcome = 0L
     private val id = UUID.randomUUID().toString().take(8)
+
+    /** Shown on the TV when this phone joins, e.g. "Mom's Pixel" */
+    private val phoneName by lazy {
+        (Settings.Global.getString(contentResolver, "device_name") ?: Build.MODEL).replace('\n', ' ').take(40)
+    }
     private var socket: DatagramSocket? = null
     private lateinit var nsd: NsdManager
     private var discovering = false
@@ -176,7 +183,7 @@ class PhonePadActivity : ComponentActivity() {
         connected = tv
         lost = false
         lastWelcome = System.currentTimeMillis()
-        send("HELLO")
+        send("HELLO $phoneName")
     }
 
     private fun send(text: String) {
@@ -202,7 +209,7 @@ class PhonePadActivity : ComponentActivity() {
                     val b = "${PhonePadProtocol.MAGIC} $id B $mask".toByteArray()
                     s.send(DatagramPacket(b, b.size, tv.host, tv.port))
                     if (tick % 20 == 0) {
-                        val h = "${PhonePadProtocol.MAGIC} $id HELLO".toByteArray()
+                        val h = "${PhonePadProtocol.MAGIC} $id HELLO $phoneName".toByteArray()
                         s.send(DatagramPacket(h, h.size, tv.host, tv.port))
                     }
                 } catch (_: Exception) {
