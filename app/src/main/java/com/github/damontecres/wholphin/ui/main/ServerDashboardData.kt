@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jellyfin.sdk.api.client.ApiClient
@@ -192,7 +193,13 @@ class ServerDashboardData
 
         private suspend fun loadTower(fresh: Boolean) {
             try {
-                _tower.value = towerTools.status(fresh)
+                val status = towerTools.status(fresh)
+                _tower.value = status
+                // Tower answers about disk space instantly; Jellyfin's own check can take a while
+                // (sleeping disks), so use Tower's until Jellyfin's arrives
+                if (_disks.value.isNullOrEmpty() && status.disks.isNotEmpty()) {
+                    _disks.value = status.disks.map { (name, used, free) -> ServerDisk(name, used, free) }
+                }
                 _towerProblem.value = null
             } catch (ex: CancellationException) {
                 throw ex
@@ -207,6 +214,10 @@ class ServerDashboardData
         /** How many parts are still fetching fresh numbers (the "Loading new stats" note) */
         private val _loading = MutableStateFlow(0)
         val loading: StateFlow<Int> = _loading
+
+        /** Benflix: the parts still loading, like "Disk space" (shown while it's slow) */
+        private val _waitingOn = MutableStateFlow<Set<String>>(emptySet())
+        val waitingOn: StateFlow<Set<String>> = _waitingOn
 
         /** When the numbers were last fully fresh (0 = never) */
         private val _updatedAt = MutableStateFlow(0L)
@@ -275,19 +286,19 @@ class ServerDashboardData
                     }
                 }
             }
-            loadPart(done) {
+            loadPart("Server", done) {
                 val h = safe { loadHeader() }
                 _header.value = h ?: (_header.value?.copy(online = false) ?: ServerHeader(online = false))
             }
-            loadPart(done) {
+            loadPart("Watching now", done) {
                 val list = safe { loadWatching() }
                 _watching.value = list ?: _watching.value ?: emptyList()
             }
-            loadPart(done) { safe { loadLibrary() }?.let { _library.value = it } }
-            loadPart(done) { _problems.value = safe { loadProblems() } ?: _problems.value.orEmpty() }
-            loadPart(done) { _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty() }
-            loadPart({}) { _problemReports.value = safe { reports.all() } ?: _problemReports.value.orEmpty() }
-            loadPart({}) { loadTower(fresh = true) }
+            loadPart("Library numbers", done) { safe { loadLibrary() }?.let { _library.value = it } }
+            loadPart("Server problems", done) { _problems.value = safe { loadProblems() } ?: _problems.value.orEmpty() }
+            loadPart("Disk space", done) { _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty() }
+            loadPart("Problem reports", {}) { _problemReports.value = safe { reports.all() } ?: _problemReports.value.orEmpty() }
+            loadPart("Tower", {}) { loadTower(fresh = true) }
         }
 
         /** Keeps "Watching now" fresh every 15 seconds, only while the Server page is on screen */
@@ -363,14 +374,40 @@ class ServerDashboardData
             _problemReports.update { it?.minus(report) }
         }
 
+        /**
+         * Loads one part on its own. The "Loading new stats" note waits for it at most [PART_WAIT_MS]:
+         * a slow part (like sleeping disks waking up) keeps loading quietly and shows up when it's ready,
+         * but never holds the rest of the page up.
+         */
         private fun loadPart(
+            name: String,
             done: () -> Unit,
             block: suspend () -> Unit,
         ) {
+            // Still loading from last time (a slow part): don't ask again on top of it
+            if (name in _waitingOn.value) {
+                done()
+                return
+            }
             _loading.update { it + 1 }
+            _waitingOn.update { it + name }
+            val started = System.currentTimeMillis()
+            val job =
+                scope.launch(WholphinDispatchers.IO) {
+                    try {
+                        block()
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Server page: %s could not load", name)
+                    } finally {
+                        Timber.i("Server page: %s took %d ms", name, System.currentTimeMillis() - started)
+                        _waitingOn.update { it - name }
+                    }
+                }
             scope.launch(WholphinDispatchers.IO) {
                 try {
-                    block()
+                    withTimeoutOrNull(PART_WAIT_MS) { job.join() }
                 } finally {
                     _loading.update { it - 1 }
                     done()
@@ -558,8 +595,9 @@ class ServerDashboardData
         companion object {
             private const val PREFS = "benflix_server_page"
             private const val ACTIVE_WITHIN_SECONDS = 960
-            private const val RECENT_PAGE = 50
-            private const val MAX_RECENT = 1_000
+            private const val RECENT_PAGE = 500
+            private const val MAX_RECENT = 3_000
+            private const val PART_WAIT_MS = 10_000L
             private const val LOG_LIMIT = 60
             private const val REFRESH_MS = 15_000L
             private const val FRESH_MS = 60_000L
