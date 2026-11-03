@@ -69,6 +69,8 @@ data class ServerToolsState(
     val busy: Boolean = false,
     /** Benflix: true once the notes were read (they load when Messages is first opened) */
     val notesLoaded: Boolean = false,
+    /** Benflix: the server's libraries, for "Which libraries they see" */
+    val libraries: List<org.jellyfin.sdk.model.api.BaseItemDto>? = null,
 )
 
 @HiltViewModel
@@ -83,6 +85,7 @@ class ServerToolsViewModel
         private val api: ApiClient,
         private val problems: BenflixProblems,
         private val dashboard: ServerDashboardData,
+        private val actions: BenflixServerActions,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ServerToolsState())
         val state: StateFlow<ServerToolsState> = _state
@@ -115,7 +118,68 @@ class ServerToolsViewModel
                 val list = people.list()
                 _state.value = _state.value.copy(people = list)
             }
+            work(showBusy = false) {
+                _state.value = _state.value.copy(libraries = actions.libraries())
+            }
         }
+
+        /** Benflix: how many screens they can watch on at the same time (0 = no limit) */
+        fun setScreens(
+            user: UserDto,
+            screens: Int,
+        ) = work {
+            actions.setScreens(user, screens)
+            _state.value =
+                _state.value.copy(
+                    people = people.list(),
+                    message =
+                        "Saved" to
+                            if (screens == 0) {
+                                "${user.name} can watch on as many screens as they like."
+                            } else {
+                                "${user.name} can watch on $screens screen" + (if (screens == 1) "" else "s") + " at the same time."
+                            },
+                )
+        }
+
+        /** Benflix: ticks or unticks one library for a person ([libraryId] null = all libraries) */
+        fun toggleLibrary(
+            user: UserDto,
+            libraryId: java.util.UUID?,
+        ) = work(showBusy = false) {
+            val current = _state.value.people?.firstOrNull { it.id == user.id } ?: user
+            val all =
+                _state.value.libraries
+                    .orEmpty()
+                    .map { it.id }
+            val policy = current.policy
+            val seeing = if (policy == null || policy.enableAllFolders) all else policy.enabledFolders.orEmpty()
+            val next =
+                when {
+                    libraryId == null -> null
+                    libraryId in seeing -> seeing - libraryId
+                    else -> seeing + libraryId
+                }
+            actions.setLibraries(current, next?.takeIf { it.toSet() != all.toSet() })
+            _state.value = _state.value.copy(people = people.list())
+        }
+
+        /** Benflix: signs them out on every device (not this one) */
+        fun signOutEverywhere(user: UserDto) =
+            work {
+                val count = actions.signOutEverywhere(user, api.deviceInfo.id)
+                _state.value =
+                    _state.value.copy(
+                        message =
+                            "Signed out" to
+                                if (count == 0) {
+                                    "${user.name} wasn't signed in anywhere else."
+                                } else {
+                                    "${user.name} was signed out on $count device" + (if (count == 1) "" else "s") +
+                                        ". They'll need their password to sign in again."
+                                },
+                    )
+            }
 
         fun clearProblem(report: ProblemReport) =
             work(showBusy = false) {
@@ -334,6 +398,21 @@ sealed interface ServerToolsDialog {
         val user: UserDto,
     ) : ServerToolsDialog
 
+    /** Benflix: how many screens at once */
+    data class Screens(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: which libraries they see */
+    data class Libraries(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: sign out on every device */
+    data class SignOut(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
     data class Hide(
         val item: CheckupItem,
     ) : ServerToolsDialog
@@ -502,6 +581,7 @@ fun LazyListScope.startupSpeedItem(sectionTitle: @Composable (String) -> Unit) {
 /** Benflix: everyone with an account, and Add a person */
 fun LazyListScope.peopleItems(
     state: ServerToolsState,
+    history: List<WatchedEntry>?,
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
 ) {
@@ -529,7 +609,13 @@ fun LazyListScope.peopleItems(
                     awayQualityLabel(user.policy?.remoteClientBitrateLimit)
                         .takeIf { (user.policy?.remoteClientBitrateLimit ?: 0) > 0 }
                         ?.let { "Away from home: $it" },
-                ).joinToString(" · "),
+                    (user.policy?.maxActiveSessions ?: 0).takeIf { it > 0 }?.let { screensLabel(it) },
+                    history?.let { list ->
+                        val theirs = list.filter { it.userId == user.id }
+                        if (theirs.isEmpty()) "Nothing watched this week" else "${theirs.size} watched this week"
+                    },
+                ).joinToString(" · ") +
+                    (history?.firstOrNull { it.userId == user.id }?.let { "\nLast: ${lastWatched(it.text)}" } ?: ""),
             onClick = { showDialog(ServerToolsDialog.PersonMenu(user)) },
             actions = listOf("Options" to { showDialog(ServerToolsDialog.PersonMenu(user)) }),
         )
@@ -723,6 +809,35 @@ fun ServerToolsDialogs(
                                 onClick = { showDialog(ServerToolsDialog.AwayQuality(user)) },
                             ),
                         )
+                        add(
+                            DialogItem(
+                                headlineContent = { Text("Screens at once: ${screensLabel(user.policy?.maxActiveSessions)}") },
+                                supportingContent = { Text("How many TVs or phones they can watch on at the same time") },
+                                onClick = { showDialog(ServerToolsDialog.Screens(user)) },
+                            ),
+                        )
+                        add(
+                            DialogItem(
+                                headlineContent = {
+                                    Text(
+                                        if (user.policy?.enableAllFolders != false) {
+                                            "Libraries: all"
+                                        } else {
+                                            "Libraries: ${user.policy?.enabledFolders.orEmpty().size} picked"
+                                        },
+                                    )
+                                },
+                                supportingContent = { Text("Which libraries they can see") },
+                                onClick = { showDialog(ServerToolsDialog.Libraries(user)) },
+                            ),
+                        )
+                        add(
+                            DialogItem(
+                                headlineContent = { Text("Sign out everywhere") },
+                                supportingContent = { Text("Like if they lost a phone or hit their screen limit") },
+                                onClick = { showDialog(ServerToolsDialog.SignOut(user)) },
+                            ),
+                        )
                         if (user.policy?.isAdministrator != true) {
                             add(
                                 DialogItem(
@@ -772,6 +887,75 @@ fun ServerToolsDialogs(
                 onDismissRequest = onDismiss,
                 dismissOnClick = false,
                 waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.Screens -> {
+            val user = dialog.user
+            val current = user.policy?.maxActiveSessions ?: 0
+            DialogPopup(
+                showDialog = true,
+                title = "${user.name}: screens at once",
+                dialogItems =
+                    listOf(0, 1, 2, 3, 4, 5).map { n ->
+                        DialogItem(
+                            headlineContent = { Text(screensLabel(n)) },
+                            selected = n == current,
+                            onClick = {
+                                onDismiss()
+                                viewModel.setScreens(user, n)
+                            },
+                        )
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.Libraries -> {
+            // Read the person again each time, so ticks show straight after a change
+            val user = state.people?.firstOrNull { it.id == dialog.user.id } ?: dialog.user
+            val all = user.policy?.enableAllFolders != false
+            val picked = user.policy?.enabledFolders.orEmpty()
+            DialogPopup(
+                showDialog = true,
+                title = "${user.name} can see",
+                dialogItems =
+                    buildList {
+                        add(
+                            DialogItem(
+                                headlineContent = { Text("Everything") },
+                                supportingContent = { Text("Every library, including new ones you add later") },
+                                selected = all,
+                                onClick = { viewModel.toggleLibrary(user, null) },
+                            ),
+                        )
+                        state.libraries.orEmpty().forEach { lib ->
+                            add(
+                                DialogItem(
+                                    headlineContent = { Text(lib.name.orEmpty()) },
+                                    selected = all || lib.id in picked,
+                                    onClick = { viewModel.toggleLibrary(user, lib.id) },
+                                ),
+                            )
+                        }
+                    },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.SignOut -> {
+            ConfirmDialog(
+                title = "Sign ${dialog.user.name} out everywhere?",
+                body = "They're signed out on every TV and phone (not this one). They'll need their password to sign in again.",
+                onCancel = onDismiss,
+                onConfirm = {
+                    onDismiss()
+                    viewModel.signOutEverywhere(dialog.user)
+                },
             )
         }
 
@@ -825,6 +1009,13 @@ fun ServerToolsDialogs(
     }
 }
 
+fun screensLabel(screens: Int?): String =
+    when {
+        screens == null || screens <= 0 -> "No limit"
+        screens == 1 -> "1 screen"
+        else -> "$screens screens"
+    }
+
 /** Benflix: the choices for quality away from home, in bits per second (0 = no limit) */
 val AWAY_QUALITY_CHOICES = listOf(0, 20_000_000, 10_000_000, 8_000_000, 4_000_000, 2_000_000)
 
@@ -837,3 +1028,9 @@ fun awayQualityLabel(bitsPerSecond: Int?): String =
         bitsPerSecond >= 4_000_000 -> "Data saver (4 Mbps)"
         else -> "Low (${bitsPerSecond / 1_000_000} Mbps)"
     }
+
+/** Benflix: "Ben is playing The Office - S1E1 on Living Room TV" becomes "The Office - S1E1" */
+internal fun lastWatched(logLine: String): String {
+    val playing = logLine.substringAfter(" is playing ", logLine)
+    return playing.substringBeforeLast(" on ").ifBlank { playing }
+}
