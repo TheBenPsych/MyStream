@@ -518,22 +518,44 @@ class ServerDashboardData
                 }
 
         /**
-         * Totals, and "added this week". The newest items are asked for a page at a time, and it
-         * stops as soon as one is older than a week, so a normal week takes one small question
-         * instead of fetching 300 items.
+         * Benflix: the library numbers. Jellyfin's "item counts" can take ages on a big library, so each
+         * number is its own quick count. The numbers show as soon as they arrive; "added this week" is
+         * slower, so it's only worked out again once an hour (the saved number shows until then).
          */
-        private suspend fun loadLibrary(): LibraryNumbers =
+        private suspend fun loadLibrary(): LibraryNumbers? =
             coroutineScope {
-                val counts = async { safe { api.libraryApi.getItemCounts().content } }
-                val recent = async { safe { countAddedThisWeek() } }
-                val c = counts.await()
-                LibraryNumbers(
-                    addedThisWeek = recent.await() ?: _library.value?.addedThisWeek ?: 0,
-                    movies = c?.movieCount ?: 0,
-                    shows = c?.seriesCount ?: 0,
-                    episodes = c?.episodeCount ?: 0,
-                )
+                val movies = async { safe { countOf(BaseItemKind.MOVIE) } }
+                val shows = async { safe { countOf(BaseItemKind.SERIES) } }
+                val episodes = async { safe { countOf(BaseItemKind.EPISODE) } }
+                val old = _library.value
+                val counted =
+                    LibraryNumbers(
+                        addedThisWeek = old?.addedThisWeek ?: 0,
+                        movies = movies.await() ?: old?.movies ?: 0,
+                        shows = shows.await() ?: old?.shows ?: 0,
+                        episodes = episodes.await() ?: old?.episodes ?: 0,
+                    )
+                _library.value = counted
+                val lastRecent = prefs().getLong(RECENT_AT, 0L)
+                if (old != null && System.currentTimeMillis() - lastRecent < RECENT_EVERY_MS) return@coroutineScope counted
+                val recent = safe { countAddedThisWeek() } ?: return@coroutineScope counted
+                prefs().edit { putLong(RECENT_AT, System.currentTimeMillis()) }
+                counted.copy(addedThisWeek = recent)
             }
+
+        /** How many of one kind there are: a count only, no titles sent */
+        private suspend fun countOf(kind: BaseItemKind): Int =
+            api.itemsApi
+                .getItems(
+                    GetItemsRequest(
+                        includeItemTypes = listOf(kind),
+                        recursive = true,
+                        limit = 0,
+                        enableImages = false,
+                        enableUserData = false,
+                        enableTotalRecordCount = true,
+                    ),
+                ).content.totalRecordCount
 
         private suspend fun countAddedThisWeek(): Int {
             val weekAgo = LocalDateTime.now(ZoneOffset.UTC).minusDays(7)
@@ -544,7 +566,6 @@ class ServerDashboardData
                     api.itemsApi
                         .getItems(
                             GetItemsRequest(
-                                userId = serverRepository.currentUser?.id,
                                 includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
                                 recursive = true,
                                 sortBy = listOf(ItemSortBy.DATE_CREATED),
@@ -598,6 +619,8 @@ class ServerDashboardData
             private const val RECENT_PAGE = 500
             private const val MAX_RECENT = 3_000
             private const val PART_WAIT_MS = 10_000L
+            private const val RECENT_AT = "recent_at"
+            private const val RECENT_EVERY_MS = 60 * 60_000L
             private const val LOG_LIMIT = 60
             private const val REFRESH_MS = 15_000L
             private const val FRESH_MS = 60_000L
