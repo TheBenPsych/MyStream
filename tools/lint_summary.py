@@ -38,6 +38,9 @@ def main(path: str) -> int:
         where = ""
         if loc is not None:
             f = loc.get("file", "")
+            # Code generated at build time (the Seerr API) isn't ours to fix
+            if "/build/generated/" in f:
+                continue
             f = f.split("/src/main/")[-1] if "/src/main/" in f else f
             where = f"{f}:{loc.get('line', '?')}"
         issues.append((issue.get("id"), issue.get("severity"), where, issue.get("message")))
