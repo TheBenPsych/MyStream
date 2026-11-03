@@ -775,27 +775,11 @@ class GameActivity : ComponentActivity() {
 
     private fun hasGamepad(): Boolean = InputDevice.getDeviceIds().any { isPadDevice(InputDevice.getDevice(it)) }
 
-    private val padDevices = mutableMapOf<Int, Boolean>()
-
     /**
-     * A real game controller, not a TV remote. Some remotes say they are "gamepads", so a device only counts
-     * if it has a joystick or all four face buttons (A B X Y).
+     * A real game controller, not a TV remote. Only devices with a joystick count: some TV remotes (TCL) say they
+     * have A/B/X/Y game buttons, which made OK act as Start and the key show "Controller".
      */
-    private fun isPadDevice(d: InputDevice?): Boolean {
-        if (d == null || d.isVirtual) return false
-        return padDevices.getOrPut(d.id) {
-            val stick = d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
-            val face =
-                d
-                    .hasKeys(
-                        KeyEvent.KEYCODE_BUTTON_A,
-                        KeyEvent.KEYCODE_BUTTON_B,
-                        KeyEvent.KEYCODE_BUTTON_X,
-                        KeyEvent.KEYCODE_BUTTON_Y,
-                    ).all { it }
-            stick || face
-        }
-    }
+    private fun isPadDevice(d: InputDevice?): Boolean = d != null && !d.isVirtual && hasSticks(d)
 
     private fun hasSticks(d: InputDevice?): Boolean = d != null && d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
 
@@ -831,7 +815,7 @@ class GameActivity : ComponentActivity() {
         }
     }
 
-    private fun isGamepad(event: KeyEvent): Boolean = KeyEvent.isGamepadButton(event.keyCode) || isPadDevice(event.device)
+    private fun isGamepad(event: KeyEvent): Boolean = isPadDevice(event.device)
 
     /** Which libretro button a key is, or null */
     private fun buttonFor(
