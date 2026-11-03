@@ -117,6 +117,18 @@ def gpu_busy():
     return None
 
 
+def disks():
+    """Free space where the movies and shows live, straight from Tower (instant, unlike Jellyfin's check)"""
+    try:
+        st = os.statvfs(MEDIA)
+    except OSError:
+        return []
+    total, free = st.f_blocks * st.f_frsize, st.f_bavail * st.f_frsize
+    if total <= 0:
+        return []
+    return [{"name": "Movies and shows", "used": total - free, "free": free}]
+
+
 def up_seconds():
     try:
         with open("/proc/uptime") as f:
@@ -436,7 +448,7 @@ def tower(fresh=False):
     with _lock:
         if not fresh and _cache["data"] is not None and time.time() - _cache["at"] < CACHE_SECONDS:
             return _cache["data"]
-    result = {"up_seconds": up_seconds(), "memory": memory_busy(), "gpu": gpu_busy()}
+    result = {"up_seconds": up_seconds(), "memory": memory_busy(), "gpu": gpu_busy(), "disks": disks()}
     problems = []
     holder = {}
 

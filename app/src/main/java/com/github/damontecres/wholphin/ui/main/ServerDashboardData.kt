@@ -193,7 +193,13 @@ class ServerDashboardData
 
         private suspend fun loadTower(fresh: Boolean) {
             try {
-                _tower.value = towerTools.status(fresh)
+                val status = towerTools.status(fresh)
+                _tower.value = status
+                // Tower answers about disk space instantly; Jellyfin's own check can take a while
+                // (sleeping disks), so use Tower's until Jellyfin's arrives
+                if (_disks.value.isNullOrEmpty() && status.disks.isNotEmpty()) {
+                    _disks.value = status.disks.map { (name, used, free) -> ServerDisk(name, used, free) }
+                }
                 _towerProblem.value = null
             } catch (ex: CancellationException) {
                 throw ex
