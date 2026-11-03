@@ -44,6 +44,11 @@ data class LocalConsole(
     val help: List<String>,
 ) {
     companion object {
+        /** What a plain TV remote does in a game */
+        const val REMOTE_HELP =
+            "Remote: arrows move, OK is A, Back is B (hold Back for the menu), Play/Pause is Start. " +
+                "No Play/Pause? The menu has Press Start and Press Select."
+
         val ALL =
             listOf(
                 LocalConsole(
@@ -55,7 +60,7 @@ data class LocalConsole(
                     power = PowerNeed.LIGHT,
                     remoteFriendly = true,
                     bios = setOf("disksys.rom"),
-                    help = listOf("Remote: arrows move, OK is A, Play/Pause is Start", "Controller: bottom button B, right button A"),
+                    help = listOf(REMOTE_HELP, "Controller: bottom button B, right button A"),
                 ),
                 LocalConsole(
                     key = "snes",
@@ -84,7 +89,7 @@ data class LocalConsole(
                     touch = TouchLayout.TWO_BUTTONS,
                     power = PowerNeed.LIGHT,
                     remoteFriendly = true,
-                    help = listOf("Remote: arrows move, OK is A, Play/Pause is Start", "Controller: bottom button B, right button A"),
+                    help = listOf(REMOTE_HELP, "Controller: bottom button B, right button A"),
                 ),
                 LocalConsole(
                     key = "gba",
@@ -93,8 +98,14 @@ data class LocalConsole(
                     core = "mgba",
                     touch = TouchLayout.GBA,
                     power = PowerNeed.LIGHT,
+                    remoteFriendly = true,
                     bios = setOf("gba_bios.bin"),
-                    help = listOf("Controller: bottom button B, right button A, shoulder buttons L and R"),
+                    help =
+                        listOf(
+                            REMOTE_HELP,
+                            "Remote L and R: channel down and up, or 3 and 4, if your remote has them",
+                            "Controller: bottom button B, right button A, shoulder buttons L and R",
+                        ),
                 ),
                 LocalConsole(
                     key = "psx",
