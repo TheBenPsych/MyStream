@@ -103,6 +103,9 @@ class SearchViewModel
         private var currentQuery: String? = null
         private var combinedMode = false
 
+        /** Benflix speed: the searches still running, stopped when the words change */
+        private val searchJobs: MutableList<kotlinx.coroutines.Job> = java.util.Collections.synchronizedList(mutableListOf())
+
         private val _programDialogState = MutableStateFlow(ProgramDialogState())
         val programDialogState: StateFlow<ProgramDialogState> = _programDialogState
 
@@ -198,6 +201,12 @@ class SearchViewModel
             }
             currentQuery = query
             combinedMode = combined
+            // Benflix speed: stop searching for what was typed before, so the server only works on
+            // the newest words (and an older, slower answer can't replace the new one)
+            synchronized(searchJobs) {
+                searchJobs.forEach { it.cancel() }
+                searchJobs.clear()
+            }
             if (query.isNotNullOrBlank()) {
                 _state.update {
                     it.copy(
@@ -237,105 +246,107 @@ class SearchViewModel
             query: String,
             type: BaseItemKind,
         ) {
-            viewModelScope.launchIO {
-                try {
-                    val items: List<BaseItem> =
-                        when (type) {
-                            BaseItemKind.LIVE_TV_PROGRAM -> {
-                                val request =
-                                    GetItemsRequest(
-                                        searchTerm = query,
-                                        recursive = true,
-                                        includeItemTypes = listOf(type),
-                                        fields = ProgramItemFields,
-                                        limit = SEARCH_LIMIT,
-                                        enableTotalRecordCount = false,
+            searchJobs +=
+                viewModelScope.launchIO {
+                    try {
+                        val items: List<BaseItem> =
+                            when (type) {
+                                BaseItemKind.LIVE_TV_PROGRAM -> {
+                                    val request =
+                                        GetItemsRequest(
+                                            searchTerm = query,
+                                            recursive = true,
+                                            includeItemTypes = listOf(type),
+                                            fields = ProgramItemFields,
+                                            limit = SEARCH_LIMIT,
+                                            enableTotalRecordCount = false,
+                                        )
+                                    api.itemsApi.getItems(request).toBaseItems(api, false)
+                                }
+
+                                BaseItemKind.MUSIC_ARTIST -> {
+                                    api.artistsApi
+                                        .getArtists(
+                                            searchTerm = query,
+                                            fields = SlimItemFields,
+                                            limit = SEARCH_LIMIT,
+                                            enableTotalRecordCount = false,
+                                        ).toBaseItems(api, false)
+                                }
+
+                                BaseItemKind.PERSON -> {
+                                    api.personsApi
+                                        .getPersons(
+                                            searchTerm = query,
+                                            fields = SlimItemFields,
+                                            limit = SEARCH_LIMIT,
+                                        ).toBaseItems(api, false)
+                                }
+
+                                else -> {
+                                    val request =
+                                        GetItemsRequest(
+                                            searchTerm = query,
+                                            recursive = true,
+                                            includeItemTypes = listOf(type),
+                                            fields = SlimItemFields,
+                                            limit = SEARCH_LIMIT,
+                                            enableTotalRecordCount = false,
+                                        )
+                                    withCloseMatches(
+                                        query,
+                                        listOf(type),
+                                        api.itemsApi.getItems(request).toBaseItems(api, false),
                                     )
-                                api.itemsApi.getItems(request).toBaseItems(api, false)
+                                }
                             }
-
-                            BaseItemKind.MUSIC_ARTIST -> {
-                                api.artistsApi
-                                    .getArtists(
-                                        searchTerm = query,
-                                        fields = SlimItemFields,
-                                        limit = SEARCH_LIMIT,
-                                        enableTotalRecordCount = false,
-                                    ).toBaseItems(api, false)
-                            }
-
-                            BaseItemKind.PERSON -> {
-                                api.personsApi
-                                    .getPersons(
-                                        searchTerm = query,
-                                        fields = SlimItemFields,
-                                        limit = SEARCH_LIMIT,
-                                    ).toBaseItems(api, false)
-                            }
-
-                            else -> {
-                                val request =
-                                    GetItemsRequest(
-                                        searchTerm = query,
-                                        recursive = true,
-                                        includeItemTypes = listOf(type),
-                                        fields = SlimItemFields,
-                                        limit = SEARCH_LIMIT,
-                                        enableTotalRecordCount = false,
-                                    )
-                                withCloseMatches(
-                                    query,
-                                    listOf(type),
-                                    api.itemsApi.getItems(request).toBaseItems(api, false),
-                                )
-                            }
-                        }
-                    val sorted =
-                        items.sortedWith(
-                            compareBy<BaseItem> { SearchRelevance.score(it, query) },
-                        )
-                    Timber.v("Search finished for %s, %s results", type, sorted.size)
-                    _state.value.results[type] = SearchResult.Success(sorted)
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.e(ex, "Exception searching for $type")
-                    _state.value.results[type] = SearchResult.Error(ex)
+                        val sorted =
+                            items.sortedWith(
+                                compareBy<BaseItem> { SearchRelevance.score(it, query) },
+                            )
+                        Timber.v("Search finished for %s, %s results", type, sorted.size)
+                        _state.value.results[type] = SearchResult.Success(sorted)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.e(ex, "Exception searching for $type")
+                        _state.value.results[type] = SearchResult.Error(ex)
+                    }
                 }
-            }
         }
 
         private fun searchCombined(query: String) {
-            viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
-                try {
-                    Timber.v("Starting searchCombined")
-                    val request =
-                        GetItemsRequest(
-                            searchTerm = query,
-                            recursive = true,
-                            includeItemTypes = state.value.includedSearchableTypes,
-                            fields = SlimItemFields,
-                            limit = SEARCH_LIMIT,
-                        )
+            searchJobs +=
+                viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
+                    try {
+                        Timber.v("Starting searchCombined")
+                        val request =
+                            GetItemsRequest(
+                                searchTerm = query,
+                                recursive = true,
+                                includeItemTypes = state.value.includedSearchableTypes,
+                                fields = SlimItemFields,
+                                limit = SEARCH_LIMIT,
+                            )
 
-                    val result = api.itemsApi.getItems(request).content
-                    val items =
-                        withCloseMatches(
-                            query,
-                            state.value.includedSearchableTypes,
-                            result.items.map { BaseItem(it, false) },
-                        )
-                    val sorted =
-                        items.sortedWith(
-                            compareBy<BaseItem> { SearchRelevance.score(it, query) },
-                        )
-                    Timber.v("searchCombined complete %s results", sorted.size)
-                    _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
-                } catch (ex: Exception) {
-                    Timber.e(ex, "Exception in combined search")
-                    _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
+                        val result = api.itemsApi.getItems(request).content
+                        val items =
+                            withCloseMatches(
+                                query,
+                                state.value.includedSearchableTypes,
+                                result.items.map { BaseItem(it, false) },
+                            )
+                        val sorted =
+                            items.sortedWith(
+                                compareBy<BaseItem> { SearchRelevance.score(it, query) },
+                            )
+                        Timber.v("searchCombined complete %s results", sorted.size)
+                        _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
+                    } catch (ex: Exception) {
+                        Timber.e(ex, "Exception in combined search")
+                        _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
+                    }
                 }
-            }
         }
 
         /**
@@ -398,19 +409,20 @@ class SearchViewModel
         }
 
         private fun searchSeerr(query: String) {
-            viewModelScope.launchIO {
-                if (seerrActive.first() && state.value.discoverEnabled) {
-                    _state.update { it.copy(seerrResults = SearchResult.Searching) }
-                    // Benflix "Ask for it": only things that are not on Benflix yet
-                    val results =
-                        seerrService
-                            .search(query)
-                            .map { seerrService.createDiscoverItem(it) }
-                            .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
-                            .filter { it.availability != SeerrAvailability.AVAILABLE }
-                    _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
+            searchJobs +=
+                viewModelScope.launchIO {
+                    if (seerrActive.first() && state.value.discoverEnabled) {
+                        _state.update { it.copy(seerrResults = SearchResult.Searching) }
+                        // Benflix "Ask for it": only things that are not on Benflix yet
+                        val results =
+                            seerrService
+                                .search(query)
+                                .map { seerrService.createDiscoverItem(it) }
+                                .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                                .filter { it.availability != SeerrAvailability.AVAILABLE }
+                        _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
+                    }
                 }
-            }
         }
 
         init {

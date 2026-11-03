@@ -299,33 +299,27 @@ class GamesViewModel
                     .split(',')
                     .mapNotNull { it.toIntOrNull() }
                     .toSet()
-            _library.value = LibraryState.Loading
+            // Benflix speed: show the games from last time straight away (if there are any), then
+            // swap in the fresh list when it arrives
+            val hadGames = _library.value is LibraryState.Ready
+            if (!hadGames) _library.value = LibraryState.Loading
             // Look at Tower's BIOS files again, and clear out downloads that never finished
             localGames.forgetBiosList()
             viewModelScope.launch { localGames.clearLeftovers() }
             viewModelScope.launch {
-                _library.value =
-                    try {
-                        val consoles = games.loadLibrary()
-                        if (KidsMode.isActive) {
-                            // Benflix: Kids only get games rated for everyone (unrated ones are left out, like movies)
-                            val kidsConsoles =
-                                consoles
-                                    .map { c -> c.copy(games = c.games.filter { it.kids }) }
-                                    .filter { it.games.isNotEmpty() }
-                            if (kidsConsoles.isEmpty()) {
-                                LibraryState.Failed(
-                                    "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
-                                        "to update it, and games rated E show up here.",
-                                    askAddress = false,
-                                    emptyList(),
-                                )
-                            } else {
-                                LibraryState.Ready(kidsConsoles)
-                            }
-                        } else {
-                            LibraryState.Ready(consoles)
+                var showingSaved = hadGames
+                if (!hadGames) {
+                    games.savedLibrary()?.let { saved ->
+                        val savedState = stateFor(saved)
+                        if (savedState is LibraryState.Ready && _library.value is LibraryState.Loading) {
+                            _library.value = savedState
+                            showingSaved = true
                         }
+                    }
+                }
+                val fresh =
+                    try {
+                        stateFor(games.loadLibrary())
                     } catch (e: GameLibraryException) {
                         LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, visibleDownloads())
                     } catch (e: Exception) {
@@ -336,6 +330,8 @@ class GamesViewModel
                             visibleDownloads(),
                         )
                     }
+                // Couldn't reach the helper but the saved list is on screen: keep showing it
+                if (fresh is LibraryState.Ready || !showingSaved) _library.value = fresh
                 (_library.value as? LibraryState.Ready)?.let { ready ->
                     // Get the emulators for this library's consoles ready in the background (Wi-Fi only)
                     viewModelScope.launch { localGames.warmCores(ready.consoles.map { it.slug }) }
@@ -355,6 +351,27 @@ class GamesViewModel
                 }
             }
         }
+
+        /** The page for [consoles]: Kids only get games rated for everyone (unrated ones are left out, like movies) */
+        private fun stateFor(consoles: List<GameConsole>): LibraryState =
+            if (KidsMode.isActive) {
+                val kidsConsoles =
+                    consoles
+                        .map { c -> c.copy(games = c.games.filter { it.kids }) }
+                        .filter { it.games.isNotEmpty() }
+                if (kidsConsoles.isEmpty()) {
+                    LibraryState.Failed(
+                        "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
+                            "to update it, and games rated E show up here.",
+                        askAddress = false,
+                        emptyList(),
+                    )
+                } else {
+                    LibraryState.Ready(kidsConsoles)
+                }
+            } else {
+                LibraryState.Ready(consoles)
+            }
 
         /** Games downloaded on this device that this profile may see (Kids: only games rated for everyone) */
         fun visibleDownloads(): List<DownloadedGame> =

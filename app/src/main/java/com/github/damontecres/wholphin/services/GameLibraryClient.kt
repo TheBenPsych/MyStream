@@ -128,17 +128,32 @@ class GameLibraryClient
                 false
             }
 
-        /** Works out which address reaches the helper right now: home first, then the internet one */
+        /** Benflix speed: whether the internet address was the one that answered last time */
+        @Volatile
+        private var lastWasAway: Boolean = prefs.getBoolean(KEY_LAST_AWAY, false)
+
+        /**
+         * Works out which address reaches the helper right now: home first, then the internet one.
+         * Benflix speed: whichever answered last time is tried first, so away from home the phone no
+         * longer waits for the home address to time out (about 3 seconds) every time Games opens.
+         */
         suspend fun pickAddress() =
             withContext(Dispatchers.IO) {
                 val home = homeAddress
                 val away = awayAddress
+                val awayFirst = lastWasAway && away != null
                 working =
                     when {
+                        awayFirst && answers(away) -> away
                         home.isNotBlank() && answers(home) -> null
-                        away != null && answers(away) -> away
+                        !awayFirst && away != null && answers(away) -> away
                         else -> null
                     }
+                val nowAway = working != null
+                if (nowAway != lastWasAway) {
+                    lastWasAway = nowAway
+                    prefs.edit().putBoolean(KEY_LAST_AWAY, nowAway).apply()
+                }
                 if (working != null) Timber.i("Games helper reached through the internet address")
             }
 
@@ -146,34 +161,91 @@ class GameLibraryClient
         suspend fun loadLibrary(): List<GameConsole> =
             withContext(Dispatchers.IO) {
                 pickAddress()
-                val base = address
-                val json = JSONObject(call(Request.Builder().url("$base/api/games")))
-                val consoles = json.optJSONArray("consoles") ?: JSONArray()
-                (0 until consoles.length()).map { i ->
-                    val c = consoles.getJSONObject(i)
-                    val games = c.optJSONArray("games") ?: JSONArray()
-                    GameConsole(
-                        name = c.optString("name", "Games"),
-                        slug = c.optString("slug", ""),
-                        games =
-                            (0 until games.length()).map { j ->
-                                val g = games.getJSONObject(j)
-                                ServerGame(
-                                    id = g.optInt("id"),
-                                    name = g.optString("name", "Unknown game"),
-                                    coverUrl = if (g.isNull("cover")) null else base + g.optString("cover"),
-                                    playable = g.optBoolean("playable", true),
-                                    size = g.optLong("size", 0L),
-                                    year = g.optInt("year", 0),
-                                    genres =
-                                        g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
-                                            ?: emptyList(),
-                                    kids = g.optBoolean("kids", false),
-                                )
-                            },
-                    )
+                val text = call(Request.Builder().url("$address/api/games"))
+                val consoles = parseLibrary(text, address)
+                // Benflix speed: kept so Games opens straight away next time
+                savedLibrary = SavedLibrary(token, text)
+                try {
+                    savedLibraryFile().writeText(token.hashCode().toString() + "\n" + text)
+                } catch (e: Exception) {
+                    Timber.w(e, "Couldn't save the game list for next time")
+                }
+                consoles
+            }
+
+        private class SavedLibrary(
+            val token: String,
+            val text: String,
+        )
+
+        @Volatile
+        private var savedLibrary: SavedLibrary? = null
+
+        private fun savedLibraryFile() = java.io.File(context.cacheDir, "benflix-games-library.json")
+
+        /**
+         * Benflix speed: the game list from last time (this sign-in only), shown while the fresh one
+         * loads. Null when there isn't one.
+         */
+        suspend fun savedLibrary(): List<GameConsole>? =
+            withContext(Dispatchers.IO) {
+                try {
+                    val tok = token
+                    if (tok.isBlank()) return@withContext null
+                    val text =
+                        savedLibrary?.takeIf { it.token == tok }?.text
+                            ?: savedLibraryFile()
+                                .takeIf { it.exists() }
+                                ?.readText()
+                                ?.let { saved ->
+                                    val cut = saved.indexOf('\n')
+                                    if (cut > 0 && saved.substring(0, cut) == tok.hashCode().toString()) {
+                                        saved.substring(cut + 1)
+                                    } else {
+                                        null
+                                    }
+                                }
+                            ?: return@withContext null
+                    // Box art from the address that worked last time (home or internet)
+                    val base = working ?: (if (lastWasAway) awayAddress else null) ?: address
+                    parseLibrary(text, base)
+                } catch (e: Exception) {
+                    Timber.w(e, "Couldn't read the saved game list")
+                    null
                 }
             }
+
+        private fun parseLibrary(
+            text: String,
+            base: String,
+        ): List<GameConsole> {
+            val json = JSONObject(text)
+            val consoles = json.optJSONArray("consoles") ?: JSONArray()
+            return (0 until consoles.length()).map { i ->
+                val c = consoles.getJSONObject(i)
+                val games = c.optJSONArray("games") ?: JSONArray()
+                GameConsole(
+                    name = c.optString("name", "Games"),
+                    slug = c.optString("slug", ""),
+                    games =
+                        (0 until games.length()).map { j ->
+                            val g = games.getJSONObject(j)
+                            ServerGame(
+                                id = g.optInt("id"),
+                                name = g.optString("name", "Unknown game"),
+                                coverUrl = if (g.isNull("cover")) null else base + g.optString("cover"),
+                                playable = g.optBoolean("playable", true),
+                                size = g.optLong("size", 0L),
+                                year = g.optInt("year", 0),
+                                genres =
+                                    g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
+                                        ?: emptyList(),
+                                kids = g.optBoolean("kids", false),
+                            )
+                        },
+                )
+            }
+        }
 
         /** A JSON answer from the helper, e.g. "/api/rom/12" */
         suspend fun getJson(path: String): JSONObject =
@@ -287,6 +359,7 @@ class GameLibraryClient
 
         companion object {
             const val PORT = 8097
+            private const val KEY_LAST_AWAY = "last_was_away"
 
             /** Path on Jellyfin's internet address that Tower's web proxy sends to the games helper */
             const val AWAY_PATH = "/benflix-games"
