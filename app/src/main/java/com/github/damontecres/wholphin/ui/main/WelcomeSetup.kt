@@ -544,7 +544,7 @@ class WelcomeViewModel
 
             // Benflix: "2" so everyone, including people from before the welcome setup existed, gets it once
             // (the first version skipped anyone who had already watched something)
-            const val KEY = "benflix.welcomed2"
+            const val KEY = "benflix.welcomed3"
 
             suspend fun markWelcomed(
                 displayPreferencesService: DisplayPreferencesService,
