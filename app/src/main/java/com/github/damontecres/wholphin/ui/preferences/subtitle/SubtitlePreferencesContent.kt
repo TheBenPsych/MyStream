@@ -4,16 +4,13 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -32,22 +29,22 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.SubtitlePreferences
 import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.preferences.resetSubtitles
 import com.github.damontecres.wholphin.ui.ifElse
+import com.github.damontecres.wholphin.ui.preferences.BenflixSettingsHeading
+import com.github.damontecres.wholphin.ui.preferences.BenflixSettingsTitle
 import com.github.damontecres.wholphin.ui.preferences.ClickPreference
 import com.github.damontecres.wholphin.ui.preferences.ComposablePreference
 import com.github.damontecres.wholphin.ui.preferences.PreferenceGroup
 import com.github.damontecres.wholphin.ui.preferences.PreferenceValidation
 import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
+import com.github.damontecres.wholphin.ui.preferences.benflixSettingCard
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
@@ -78,26 +75,18 @@ fun SubtitlePreferencesContent(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + slideInHorizontally { it / 2 },
-        exit = fadeOut() + slideOutHorizontally { it / 2 },
+        enter = fadeIn(),
+        exit = fadeOut(),
         modifier = modifier,
     ) {
         LaunchedEffect(Unit) {
             focusRequester.tryRequestFocus()
         }
+        // Benflix: the same look as the main Settings page (title, grey headings, cards)
         Column(
-            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
+            modifier = Modifier.background(MaterialTheme.colorScheme.background),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-            )
+            BenflixSettingsTitle(title)
             LazyColumn(
                 state = state,
                 horizontalAlignment = Alignment.Start,
@@ -106,16 +95,7 @@ fun SubtitlePreferencesContent(
             ) {
                 prefList.forEachIndexed { groupIndex, group ->
                     item {
-                        Text(
-                            text = stringResource(group.title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Start,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp, bottom = 4.dp),
-                        )
+                        BenflixSettingsHeading(stringResource(group.title))
                     }
                     val groupPreferences =
                         group.preferences +
@@ -158,59 +138,61 @@ fun SubtitlePreferencesContent(
                                         lastFocusRequester,
                                     )
 
-                            when (pref) {
-                                SubtitleSettings.Reset -> {
-                                    ClickPreference(
-                                        title = stringResource(pref.title),
-                                        onClick = {
-                                            scope.launch(ExceptionHandler()) {
-                                                val newValue =
-                                                    SubtitlePreferences
-                                                        .newBuilder()
-                                                        .apply { resetSubtitles() }
-                                                        .build()
-                                                onPreferenceChange.invoke(newValue)
-                                            }
-                                        },
-                                        interactionSource = interactionSource,
-                                        modifier = focusModifier,
-                                    )
-                                }
-
-                                else -> {
-                                    val value = pref.getter.invoke(preferences)
-                                    ComposablePreference(
-                                        preference = pref,
-                                        value = value,
-                                        onNavigate = viewModel.navigationManager::navigateTo,
-                                        onValueChange = { newValue ->
-                                            val validation = pref.validate(preferences, newValue)
-                                            when (validation) {
-                                                is PreferenceValidation.Invalid -> {
-                                                    // TODO?
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            validation.message,
-                                                            Toast.LENGTH_SHORT,
-                                                        ).show()
+                            Box(modifier = benflixSettingCard()) {
+                                when (pref) {
+                                    SubtitleSettings.Reset -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                scope.launch(ExceptionHandler()) {
+                                                    val newValue =
+                                                        SubtitlePreferences
+                                                            .newBuilder()
+                                                            .apply { resetSubtitles() }
+                                                            .build()
+                                                    onPreferenceChange.invoke(newValue)
                                                 }
+                                            },
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
 
-                                                PreferenceValidation.Valid -> {
-                                                    scope.launch(ExceptionHandler()) {
-                                                        onPreferenceChange.invoke(
-                                                            pref.setter(
-                                                                preferences,
-                                                                newValue,
-                                                            ),
-                                                        )
+                                    else -> {
+                                        val value = pref.getter.invoke(preferences)
+                                        ComposablePreference(
+                                            preference = pref,
+                                            value = value,
+                                            onNavigate = viewModel.navigationManager::navigateTo,
+                                            onValueChange = { newValue ->
+                                                val validation = pref.validate(preferences, newValue)
+                                                when (validation) {
+                                                    is PreferenceValidation.Invalid -> {
+                                                        // TODO?
+                                                        Toast
+                                                            .makeText(
+                                                                context,
+                                                                validation.message,
+                                                                Toast.LENGTH_SHORT,
+                                                            ).show()
+                                                    }
+
+                                                    PreferenceValidation.Valid -> {
+                                                        scope.launch(ExceptionHandler()) {
+                                                            onPreferenceChange.invoke(
+                                                                pref.setter(
+                                                                    preferences,
+                                                                    newValue,
+                                                                ),
+                                                            )
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        },
-                                        interactionSource = interactionSource,
-                                        modifier = focusModifier,
-                                    )
+                                            },
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
                                 }
                             }
                         }

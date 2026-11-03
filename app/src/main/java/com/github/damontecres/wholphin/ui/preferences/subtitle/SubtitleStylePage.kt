@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.annotation.Dimension
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -35,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.text.Cue
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.SubtitleView
+import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.SubtitlePreferences
@@ -44,6 +47,7 @@ import com.github.damontecres.wholphin.ui.findActivity
 import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.toSubtitleStyle
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import timber.log.Timber
 
@@ -85,15 +89,13 @@ fun SubtitleStylePage(
     var focusedOnMargin by remember { mutableStateOf(false) }
     var focusedOnImageOpacity by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = modifier,
-    ) {
+    // Benflix: TV shows the live preview with the settings beside it; phones put the preview on
+    // top and the settings below at full width (the old narrow side panel didn't fit a phone)
+    val isTv = rememberIsTv()
+    val preview: @Composable (Modifier) -> Unit = { previewModifier ->
         Box(
             contentAlignment = Alignment.BottomCenter,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .weight(1f),
+            modifier = previewModifier,
         ) {
             Image(
                 painter = painterResource(R.mipmap.eclipse),
@@ -190,6 +192,8 @@ fun SubtitleStylePage(
                 )
             }
         }
+    }
+    val settings: @Composable (Modifier) -> Unit = { settingsModifier ->
         val display = LocalView.current.display
         val prefList =
             remember(isPageForHdrSettings, display) {
@@ -234,10 +238,39 @@ fun SubtitleStylePage(
                 focusedOnMargin = focusedPref == SubtitleSettings.Margin
                 focusedOnImageOpacity = focusedPref == SubtitleSettings.ImageOpacity
             },
-            modifier =
+            modifier = settingsModifier,
+        )
+    }
+    if (isTv) {
+        Row(modifier = modifier) {
+            preview(
+                Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+            )
+            settings(
                 Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(.25f),
-        )
+                    .fillMaxWidth(.32f),
+            )
+        }
+    } else {
+        Column(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+        ) {
+            preview(
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+            )
+            settings(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            )
+        }
     }
 }

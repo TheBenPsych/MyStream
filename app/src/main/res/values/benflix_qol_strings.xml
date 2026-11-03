@@ -135,4 +135,13 @@
     <string name="more_hint_watch_in_order">Marvel, Star Wars and more, in the right order</string>
     <string name="more_hint_mood_quiz">A few quick questions, then a pick</string>
     <string name="more_extras">Extras</string>
+    <!-- Settings pages opened from Settings: the line under the page name on TV -->
+    <string name="benflix_settings_hint_exoplayer">Sound, subtitles and video decoding for the main player</string>
+    <string name="benflix_settings_hint_mpv">Options for the MPV player</string>
+    <string name="benflix_settings_hint_screensaver">What shows when the TV sits idle</string>
+    <string name="benflix_settings_hint_skip">What happens at intros, recaps and credits</string>
+    <string name="benflix_settings_hint_experimental">Try-out features that may change</string>
+    <string name="benflix_settings_hint_hdr">Which HDR picture types your TV can show</string>
+    <string name="benflix_settings_hint_profile_server">Audio and subtitle choices saved on your server</string>
+    <string name="benflix_settings_back_hint">Press Back to return to Settings</string>
 </resources>

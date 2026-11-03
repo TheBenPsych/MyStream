@@ -4,8 +4,6 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -15,14 +13,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,21 +30,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import coil3.SingletonImageLoader
 import coil3.imageLoader
 import com.github.damontecres.wholphin.R
@@ -96,7 +88,6 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
 import com.github.damontecres.wholphin.ui.showToast
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -288,46 +279,27 @@ fun PreferencesContent(
 
     AnimatedVisibility(
         visible = visible,
-        enter = if (hosted) fadeIn() else fadeIn() + slideInHorizontally { it / 2 },
-        exit = fadeOut() + slideOutHorizontally { it / 2 },
+        // Benflix: every settings page now fades in (the old slide-in panel was Wholphin's look)
+        enter = fadeIn(),
+        exit = fadeOut(),
         modifier = modifier,
     ) {
         LaunchedEffect(Unit) {
             // The new Settings page keeps focus on its section menu until you move right
             if (!hosted) focusRequester.tryRequestFocus()
         }
-        Column(
-            modifier =
-                Modifier.ifElse(
-                    !hosted,
-                    Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)),
-                ),
-        ) {
-            if (hosted) {
-                Text(
-                    text =
-                        if (searchResults != null) {
-                            stringResource(R.string.benflix_settings_search_results)
-                        } else {
-                            stringResource(hostedGroup?.title ?: screenTitle)
-                        },
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 44.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp),
-                )
-            } else {
-                Text(
-                    text = stringResource(screenTitle),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                )
-            }
+        Column {
+            // Benflix: big Benflix-font title on every settings page
+            BenflixSettingsTitle(
+                text =
+                    if (hosted && searchResults != null) {
+                        stringResource(R.string.benflix_settings_search_results)
+                    } else if (hosted) {
+                        stringResource(hostedGroup?.title ?: screenTitle)
+                    } else {
+                        stringResource(preferenceScreenOption.benflixPageInfo().title)
+                    },
+            )
             LazyColumn(
                 state = state,
                 horizontalAlignment = Alignment.Start,
@@ -426,18 +398,10 @@ fun PreferencesContent(
                         }
                         return@forEachIndexed
                     }
-                    if (!hosted) {
+                    // Benflix: a small grey heading between groups, only when a page has more than one
+                    if (!hosted && prefList.size > 1) {
                         item {
-                            Text(
-                                text = stringResource(group.title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Start,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp, bottom = 4.dp),
-                            )
+                            BenflixSettingsHeading(stringResource(group.title))
                         }
                     }
                     groupPreferences.forEachIndexed { prefIndex, pref ->
@@ -461,16 +425,8 @@ fun PreferencesContent(
                                         firstFocusRequester,
                                         lastFocusRequester,
                                     )
-                            // Benflix: on the new Settings page each setting sits on its own dark card
-                            val cardModifier =
-                                if (hosted) {
-                                    Modifier
-                                        .padding(vertical = 4.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
-                                } else {
-                                    Modifier
-                                }
+                            // Benflix: each setting sits on its own dark card, on every settings page
+                            val cardModifier = benflixSettingCard()
                             LaunchedEffect(focused) {
                                 if (focused) {
                                     focusedIndex = Pair(groupIndex, prefIndex)
@@ -1073,14 +1029,17 @@ fun PreferencesPage(
             PreferenceScreenOption.EXPERIMENTAL,
             PreferenceScreenOption.HDR_FORMATS,
             -> {
-                PreferencesContent(
-                    initialPreferences,
-                    preferenceScreenOption,
-                    Modifier
-                        .fillMaxWidth(.4f)
-                        .fillMaxHeight()
-                        .align(Alignment.TopEnd),
-                )
+                // Benflix: the same look as the main Settings page (was Wholphin's side panel)
+                BenflixSettingsFrame(
+                    info = preferenceScreenOption.benflixPageInfo(),
+                    modifier = Modifier.fillMaxSize(),
+                ) { contentModifier ->
+                    PreferencesContent(
+                        initialPreferences,
+                        preferenceScreenOption,
+                        contentModifier,
+                    )
+                }
             }
         }
     }
