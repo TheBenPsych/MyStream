@@ -4,7 +4,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -13,15 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +45,6 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun PlaybackController(
     item: BaseItem?,
-    nextState: OverlayViewState?,
     player: Player,
     controllerViewState: ControllerViewState,
     showPlay: Boolean,
@@ -90,37 +87,6 @@ fun PlaybackController(
             currentSegment = currentSegment,
             modifier = Modifier,
         )
-        when (nextState) {
-            OverlayViewState.CHAPTERS -> {
-                Text(
-                    text = stringResource(R.string.chapters),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier =
-                        Modifier
-                            .padding(start = 16.dp, top = 0.dp)
-                            .onFocusChanged {
-                                if (it.isFocused) onChangeState.invoke(nextState)
-                            }.focusable(),
-                )
-            }
-
-            OverlayViewState.QUEUE -> {
-                Text(
-                    text = stringResource(R.string.queue),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier =
-                        Modifier
-                            .padding(start = 16.dp, top = 0.dp)
-                            .onFocusChanged {
-                                if (it.isFocused) onChangeState.invoke(nextState)
-                            }.focusable(),
-                )
-            }
-
-            else -> {
-                Unit
-            }
-        }
     }
 }
 
