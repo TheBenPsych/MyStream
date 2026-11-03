@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.services.BenflixFunFacts
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -24,6 +25,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
@@ -65,6 +67,7 @@ class SwitchUserViewModel
         val imageUrlService: ImageUrlService,
         private val funFacts: BenflixFunFacts,
         private val benflixSeerrLink: BenflixSeerrLink,
+        private val profilePictureSync: ProfilePictureSync,
         @Assisted val server: JellyfinServer,
     ) : ViewModel() {
         @AssistedFactory
@@ -321,6 +324,25 @@ class SwitchUserViewModel
             }
         }
 
+        /** Save a picked profile picture here and on their Jellyfin account, then show the new one */
+        fun pickPicture(
+            user: JellyfinUser,
+            index: Int?,
+        ) {
+            viewModelScope.launchIO {
+                if (profilePictureSync.pick(server.url, user, index)) {
+                    try {
+                        val serverUsers = getUsers()
+                        _state.update { it.copy(users = serverUsers) }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not refresh the profiles")
+                    }
+                }
+            }
+        }
+
         fun removeUser(user: JellyfinUser) {
             viewModelScope.launchIO {
                 serverRepository.removeUser(user)
@@ -332,6 +354,24 @@ class SwitchUserViewModel
         private suspend fun getUsers(): List<JellyfinUserAndImage> =
             withContext(WholphinDispatchers.IO) {
                 val api = jellyfin.createApi(server.url)
+                val publicList =
+                    try {
+                        api.userApi.getPublicUsers().content
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not load public profiles")
+                        emptyList()
+                    }
+                val publicById = publicList.associateBy { it.id }
+
+                // Jellyfin's picture for this person; the tag changes when the picture does, so a new
+                // picture (say, picked on another TV) shows up instead of the old saved copy
+                fun imageUrlFor(id: UUID): String? {
+                    val dto = publicById[id] ?: return api.imageApi.getUserImageUrl(id)
+                    val tag = dto.primaryImageTag ?: return null
+                    return api.imageApi.getUserImageUrl(id, tag = tag)
+                }
                 val knownUsers =
                     serverDao
                         .getServer(server.id)
@@ -340,15 +380,13 @@ class SwitchUserViewModel
                         .map {
                             JellyfinUserAndImage(
                                 user = it,
-                                imageUrl = api.imageApi.getUserImageUrl(it.id),
+                                imageUrl = imageUrlFor(it.id),
                                 known = true,
                             )
                         }
                 val knownUserIds = knownUsers.map { it.user.id }
                 val publicUsers =
-                    api.userApi
-                        .getPublicUsers()
-                        .content
+                    publicList
                         .map {
                             JellyfinUser(
                                 id = it.id,
@@ -360,7 +398,7 @@ class SwitchUserViewModel
                         .map {
                             JellyfinUserAndImage(
                                 user = it,
-                                imageUrl = api.imageApi.getUserImageUrl(it.id),
+                                imageUrl = imageUrlFor(it.id),
                                 known = false,
                             )
                         }

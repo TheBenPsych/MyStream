@@ -86,10 +86,10 @@ data class ShowDone(
     val caughtUp: Boolean,
 )
 
-/** Benflix player settings kept on this device */
+/** Benflix player settings kept on this device (Always skip filler is also saved to the person's account) */
 object BenflixPlayerPrefs {
-    private const val FILE = "benflix_player"
-    private const val ALWAYS_SKIP_FILLER = "alwaysSkipFiller"
+    const val FILE = "benflix_player"
+    const val ALWAYS_SKIP_FILLER = "alwaysSkipFiller"
     private const val LOW_CAP = "stutterCap"
     private const val LOW_CAP_DAY = "stutterCapDay"
 

@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.preferences.SubtitleModePreference
 import com.github.damontecres.wholphin.preferences.updateBenflixPreferences
 import com.github.damontecres.wholphin.services.BenflixSettingsSync
+import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -122,8 +123,18 @@ class WelcomeViewModel
         private val displayPreferencesService: DisplayPreferencesService,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val imageUrlService: ImageUrlService,
+        private val profilePictureSync: ProfilePictureSync,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** Save the picked picture here and on their Jellyfin account, so it follows them */
+        fun pickPicture(index: Int) {
+            val current = serverRepository.current.value ?: return
+            AvatarChoices.set(current.user.id, index)
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                profilePictureSync.pick(current.server.url, current.user, index)
+            }
+        }
+
         private val _step = MutableStateFlow(WelcomeStep.HELLO)
         val step: StateFlow<WelcomeStep> = _step
 
@@ -468,7 +479,7 @@ private fun PictureStep(viewModel: WelcomeViewModel) {
             row.forEachIndexed { col, res ->
                 val index = rowIndex * AVATARS_PER_ROW + col
                 Surface(
-                    onClick = { AvatarChoices.set(userId, index) },
+                    onClick = { viewModel.pickPicture(index) },
                     shape = ClickableSurfaceDefaults.shape(CircleShape),
                     border =
                         ClickableSurfaceDefaults.border(
