@@ -37,6 +37,10 @@ data class PlaybackState(
     val showDone: ShowDone? = null,
     /** Benflix: this profile always skips the intro of this show */
     val alwaysSkipIntro: Boolean = false,
+    /** Benflix: this profile always skips the credits (outro) of this show */
+    val alwaysSkipOutro: Boolean = false,
+    /** Benflix: the credits were skipped or the video ended, so there are no credits left to watch */
+    val noCreditsLeft: Boolean = false,
 ) {
     val hasNext: Boolean get() = (playlistIndex + 1) < playlist.items.size
     val hasPrevious: Boolean get() = playlistIndex > 0

@@ -1270,7 +1270,8 @@ class PlaybackViewModel
 
                                 prefs.showNextUpWhen != ShowNextUpWhen.NEXT_UP_NEVER -> {
                                     Timber.v("Setting next up to ${nextItem.id}")
-                                    _state.update { it.copy(nextUp = nextItem.item) }
+                                    // Benflix: the video has ended, so there are no credits left to watch
+                                    _state.update { it.copy(nextUp = nextItem.item, noCreditsLeft = true) }
                                 }
 
                                 else -> {
@@ -1443,6 +1444,12 @@ class PlaybackViewModel
                 .newKeySet()
         }
 
+        /** Shows this profile always skips the credits (outro) of */
+        private val alwaysSkipOutroSeries: MutableSet<UUID> by lazy {
+            java.util.concurrent.ConcurrentHashMap
+                .newKeySet()
+        }
+
         @Volatile private var alwaysSkipIntroLoaded = false
         private var noticeJob: Job? = null
         private var busyJob: Job? = null
@@ -1457,6 +1464,9 @@ class PlaybackViewModel
 
         /** This show's intro is always skipped (the set can't be asked about null, so movies are checked first) */
         private fun alwaysSkipsIntro(): Boolean = currentSeriesId()?.let { it in alwaysSkipIntroSeries } == true
+
+        /** This show's credits are always skipped */
+        private fun alwaysSkipsOutro(): Boolean = currentSeriesId()?.let { it in alwaysSkipOutroSeries } == true
 
         private fun currentSeriesId(): UUID? = if (this::currentItem.isInitialized) currentItem.item.data.seriesId else null
 
@@ -1479,6 +1489,8 @@ class PlaybackViewModel
                     notice = pending,
                     showDone = null,
                     alwaysSkipIntro = item.data.seriesId?.let { id -> id in alwaysSkipIntroSeries } == true,
+                    alwaysSkipOutro = item.data.seriesId?.let { id -> id in alwaysSkipOutroSeries } == true,
+                    noCreditsLeft = false,
                 )
             }
             watchForBusy(item.id)
@@ -1488,7 +1500,12 @@ class PlaybackViewModel
             noticeJob =
                 viewModelScope.launchIO {
                     loadAlwaysSkipIntro()
-                    _state.update { it.copy(alwaysSkipIntro = seriesId in alwaysSkipIntroSeries) }
+                    _state.update {
+                        it.copy(
+                            alwaysSkipIntro = seriesId in alwaysSkipIntroSeries,
+                            alwaysSkipOutro = seriesId in alwaysSkipOutroSeries,
+                        )
+                    }
                     val series =
                         try {
                             api.userLibraryApi.getItem(seriesId).content
@@ -1695,6 +1712,10 @@ class PlaybackViewModel
                 NoticeAction.STOP_SKIPPING_INTRO -> {
                     currentSeriesId()?.let { setAlwaysSkipIntro(it, false) }
                 }
+
+                NoticeAction.STOP_SKIPPING_OUTRO -> {
+                    currentSeriesId()?.let { setAlwaysSkipOutro(it, false) }
+                }
             }
         }
 
@@ -1713,30 +1734,56 @@ class PlaybackViewModel
             viewModelScope.launchIO { showToast(context, "Benflix will skip this show's intro from now on", Toast.LENGTH_SHORT) }
         }
 
+        /** Benflix "Always for this show" on Skip credits: skip this show's credits now and every time from now on */
+        fun alwaysSkipOutroForThisShow(segmentId: UUID?) {
+            val seriesId = currentSeriesId() ?: return
+            setAlwaysSkipOutro(seriesId, true)
+            updateSegment(segmentId, false)
+            viewModelScope.launchIO { showToast(context, "Benflix will skip this show's credits from now on", Toast.LENGTH_SHORT) }
+        }
+
         private fun setAlwaysSkipIntro(
             seriesId: UUID,
             on: Boolean,
         ) {
             if (on) alwaysSkipIntroSeries.add(seriesId) else alwaysSkipIntroSeries.remove(seriesId)
             _state.update { it.copy(alwaysSkipIntro = on) }
+            saveAlwaysSkip(ALWAYS_SKIP_INTRO_KEY, seriesId, on)
+        }
+
+        private fun setAlwaysSkipOutro(
+            seriesId: UUID,
+            on: Boolean,
+        ) {
+            if (on) alwaysSkipOutroSeries.add(seriesId) else alwaysSkipOutroSeries.remove(seriesId)
+            _state.update { it.copy(alwaysSkipOutro = on) }
+            saveAlwaysSkip(ALWAYS_SKIP_OUTRO_KEY, seriesId, on)
+        }
+
+        /** Saves the per-profile list of shows on the server, so it follows the profile to every device */
+        private fun saveAlwaysSkip(
+            key: String,
+            seriesId: UUID,
+            on: Boolean,
+        ) {
             val userId = serverRepository.currentUser?.id ?: return
             val service = displayPreferencesService ?: return
             viewModelScope.launchIO {
                 try {
                     service.updateDisplayPreferences(userId) {
                         val saved =
-                            this[ALWAYS_SKIP_INTRO_KEY]
+                            this[key]
                                 .orEmpty()
                                 .split('|')
                                 .filter { it.isNotBlank() }
                                 .toMutableSet()
                         if (on) saved.add(seriesId.toString()) else saved.remove(seriesId.toString())
-                        put(ALWAYS_SKIP_INTRO_KEY, saved.joinToString("|"))
+                        put(key, saved.joinToString("|"))
                     }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
-                    Timber.w(ex, "Couldn't save always skip intro")
+                    Timber.w(ex, "Couldn't save always skip %s", key)
                 }
             }
         }
@@ -1746,13 +1793,15 @@ class PlaybackViewModel
             val userId = serverRepository.currentUser?.id ?: return
             val service = displayPreferencesService ?: return
             try {
-                service
-                    .getDisplayPreferences(userId)
-                    .customPrefs[ALWAYS_SKIP_INTRO_KEY]
-                    .orEmpty()
-                    .split('|')
-                    .mapNotNull { it.toUUIDOrNull() }
-                    .let { alwaysSkipIntroSeries.addAll(it) }
+                val custom = service.getDisplayPreferences(userId).customPrefs
+
+                fun ids(key: String) =
+                    custom[key]
+                        .orEmpty()
+                        .split('|')
+                        .mapNotNull { it.toUUIDOrNull() }
+                alwaysSkipIntroSeries.addAll(ids(ALWAYS_SKIP_INTRO_KEY))
+                alwaysSkipOutroSeries.addAll(ids(ALWAYS_SKIP_OUTRO_KEY))
                 alwaysSkipIntroLoaded = true
             } catch (ex: CancellationException) {
                 throw ex
@@ -2056,6 +2105,7 @@ class PlaybackViewModel
                                     creditsReached = true
                                     _state.update { it.copy(currentSegment = null) }
                                 } else if (currentSegment.type == MediaSegmentType.OUTRO &&
+                                    !alwaysSkipsOutro() &&
                                     prefs.showNextUpWhen == ShowNextUpWhen.DURING_CREDITS &&
                                     state.hasNext &&
                                     outroShownSegments.add(currentSegment.id)
@@ -2081,7 +2131,11 @@ class PlaybackViewModel
                                             }
 
                                             MediaSegmentType.OUTRO -> {
-                                                prefs.skipOutros
+                                                if (alwaysSkipsOutro()) {
+                                                    SkipSegmentBehavior.AUTO_SKIP
+                                                } else {
+                                                    prefs.skipOutros
+                                                }
                                             }
 
                                             MediaSegmentType.INTRO -> {
@@ -2102,6 +2156,25 @@ class PlaybackViewModel
                                                 SkipSegmentBehavior.AUTO_SKIP -> {
                                                     if (autoSkippedSegments.add(currentSegment.id)) {
                                                         onMain { player.seekTo(currentSegment.endTicks.ticks.inWholeMilliseconds + 1) }
+                                                        if (currentSegment.type == MediaSegmentType.OUTRO) {
+                                                            _state.update { it.copy(noCreditsLeft = true) }
+                                                        }
+                                                        if (currentSegment.type == MediaSegmentType.OUTRO &&
+                                                            alwaysSkipsOutro() &&
+                                                            prefs.skipOutros != SkipSegmentBehavior.AUTO_SKIP
+                                                        ) {
+                                                            showNotice(
+                                                                PlayerNotice(
+                                                                    title = "Skipped the credits",
+                                                                    actions =
+                                                                        listOf(
+                                                                            "Stop skipping them for this show" to
+                                                                                NoticeAction.STOP_SKIPPING_OUTRO,
+                                                                        ),
+                                                                    autoHideMs = 6_000L,
+                                                                ),
+                                                            )
+                                                        }
                                                         if (currentSegment.type == MediaSegmentType.INTRO &&
                                                             alwaysSkipsIntro() &&
                                                             prefs.skipIntros != SkipSegmentBehavior.AUTO_SKIP
@@ -2155,7 +2228,12 @@ class PlaybackViewModel
                     if (dismissed) {
                         _state.update { it.copy(currentSegment = it.currentSegment?.copy(interacted = true)) }
                     } else {
-                        _state.update { it.copy(currentSegment = null) }
+                        _state.update {
+                            it.copy(
+                                currentSegment = null,
+                                noCreditsLeft = it.noCreditsLeft || segment.type == MediaSegmentType.OUTRO,
+                            )
+                        }
                         onMain { player.seekTo(segment.endTicks.ticks.inWholeMilliseconds + 1) }
                     }
                 }
@@ -2722,6 +2800,9 @@ private const val MOVIE_NEXT_NOTICE_MS = 4 * 60_000L
 
 /** Benflix: per-profile list of shows whose intro is always skipped */
 private const val ALWAYS_SKIP_INTRO_KEY = "benflix.autoSkipIntro"
+
+/** Benflix: per-profile list of shows whose credits (outro) are always skipped */
+private const val ALWAYS_SKIP_OUTRO_KEY = "benflix.autoSkipOutro"
 private const val BUSY_AFTER_MS = 6_000L
 private const val SEEK_GRACE_MS = 3_000L
 private const val STUTTER_WINDOW_MS = 120_000L
