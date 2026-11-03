@@ -1636,8 +1636,11 @@ class GameActivity : ComponentActivity() {
             val p = prefs()
             p
                 .edit()
-                .apply { p.all.keys.filter { it.startsWith("dev_port_") || it.startsWith("dev_kind_") }.forEach { remove(it) } }
-                .apply()
+                .apply {
+                    p.all.keys
+                        .filter { it.startsWith("dev_port_") || it.startsWith("dev_kind_") }
+                        .forEach { remove(it) }
+                }.apply()
             ports.clear()
             keyMask.fill(0)
             devicesChanged++
