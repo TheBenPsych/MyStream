@@ -32,6 +32,13 @@ data class HighScore(
  *   board into every person's settings (only an admin is allowed to do that, like Notes from Ben);
  * - everyone else reads the board from their own settings, with their own newest scores mixed in.
  * So other people's newest scores show up after the admin next opens Games.
+ *
+ * Two people whose names start the same (Ben and Benny) get different codes: the first keeps
+ * "BEN", the next gets "BE2", and so on. The admin works the codes out and saves each person's
+ * code in their settings, so everyone's Benflix uses the same one.
+ *
+ * Ember Road trail markers ride along: each person saves their own markers, and the admin copies
+ * everyone's markers (with their codes) to everyone, the same way as the board.
  */
 @Singleton
 class BenflixHighScores
@@ -56,15 +63,12 @@ class BenflixHighScores
             onMyBests: (Map<String, Int>) -> Unit = {},
         ): Map<String, List<HighScore>> =
             withContext(WholphinDispatchers.IO) {
-                val myName = shortName(userName)
+                var myName = shortName(userName)
                 val myScores = mine.filterValues { it > 0 }
                 try {
-                    val saved =
-                        displayPreferencesService
-                            .getDisplayPreferences(userId)
-                            .customPrefs[KEY_MINE]
-                            ?.let { decodeMine(it) }
-                            .orEmpty()
+                    val prefs = displayPreferencesService.getDisplayPreferences(userId).customPrefs
+                    prefs[KEY_CODE]?.takeIf { it.isNotBlank() }?.let { myName = it }
+                    val saved = prefs[KEY_MINE]?.let { decodeMine(it) }.orEmpty()
                     // Keep the higher of the server's and this device's score, so another TV's best isn't lost
                     val merged = (saved.keys + myScores.keys).associateWith { maxOf(saved[it] ?: 0, myScores[it] ?: 0) }
                     if (merged != saved) {
@@ -87,18 +91,20 @@ class BenflixHighScores
         private suspend fun gather(): Map<String, List<HighScore>> =
             coroutineScope {
                 val users = api.userApi.getUsers().content
+                val codes = uniqueCodes(users.map { it.id to it.name })
+                val marks = mutableListOf<String>()
                 val all =
                     users
                         .map { user ->
                             async {
                                 try {
-                                    val scores =
-                                        displayPreferencesService
-                                            .getDisplayPreferences(user.id)
-                                            .customPrefs[KEY_MINE]
-                                            ?.let { decodeMine(it) }
-                                            .orEmpty()
-                                    shortName(user.name) to scores
+                                    val prefs = displayPreferencesService.getDisplayPreferences(user.id).customPrefs
+                                    val scores = prefs[KEY_MINE]?.let { decodeMine(it) }.orEmpty()
+                                    val code = codes[user.id] ?: shortName(user.name)
+                                    prefs[KEY_EMBER_MARKS]?.takeIf { it.isNotBlank() }?.let { mine ->
+                                        synchronized(marks) { marks += mine.split('\n').filter { it.isNotBlank() }.map { "$code>$it" } }
+                                    }
+                                    code to scores
                                 } catch (ex: CancellationException) {
                                     throw ex
                                 } catch (ex: Exception) {
@@ -113,15 +119,21 @@ class BenflixHighScores
                 }
                 val result = sorted(board)
                 val encoded = encodeBoard(result)
+                val family = marks.joinToString("\n")
                 // Copy the board to everyone without making the Games page wait for it
                 shareScope.launch {
                     users
                         .map { user ->
                             async {
                                 try {
-                                    val current = displayPreferencesService.getDisplayPreferences(user.id).customPrefs[KEY_BOARD]
-                                    if (current != encoded) {
-                                        displayPreferencesService.updateDisplayPreferences(user.id) { put(KEY_BOARD, encoded) }
+                                    val current = displayPreferencesService.getDisplayPreferences(user.id).customPrefs
+                                    val code = codes[user.id]
+                                    if (current[KEY_BOARD] != encoded || current[KEY_CODE] != code || current[KEY_EMBER_FAMILY] != family) {
+                                        displayPreferencesService.updateDisplayPreferences(user.id) {
+                                            put(KEY_BOARD, encoded)
+                                            if (code != null) put(KEY_CODE, code)
+                                            put(KEY_EMBER_FAMILY, family)
+                                        }
                                     }
                                 } catch (ex: CancellationException) {
                                     throw ex
@@ -165,6 +177,37 @@ class BenflixHighScores
         companion object {
             private const val KEY_MINE = "benflix_scores"
             private const val KEY_BOARD = "benflix_scoreboard"
+
+            /** This person's 3-letter code, worked out by the admin so two Bens don't clash */
+            const val KEY_CODE = "benflix_code"
+
+            /** This person's own Ember Road trail markers, one per line */
+            const val KEY_EMBER_MARKS = "benflix_ember_marks"
+
+            /** Everyone's Ember Road trail markers, "CODE>marker" per line, shared by the admin */
+            const val KEY_EMBER_FAMILY = "benflix_ember_family"
+
+            /**
+             * Gives every account a different 3-letter code. Oldest-named first keeps the plain code
+             * (BEN), the next with the same letters gets BE2, then BE3 and so on.
+             */
+            fun uniqueCodes(users: List<Pair<UUID, String?>>): Map<UUID, String> {
+                val taken = mutableSetOf<String>()
+                val result = mutableMapOf<UUID, String>()
+                users.sortedWith(compareBy({ it.second.orEmpty().lowercase() }, { it.first.toString() })).forEach { (id, name) ->
+                    val plain = shortName(name)
+                    var code = plain
+                    var n = 2
+                    while (code in taken) {
+                        val num = n.toString()
+                        code = plain.take((3 - num.length).coerceAtLeast(1)) + num
+                        n++
+                    }
+                    taken += code
+                    result[id] = code
+                }
+                return result
+            }
 
             /** The first 3 letters (or digits) of a name, in capitals, arcade style */
             fun shortName(name: String?): String =

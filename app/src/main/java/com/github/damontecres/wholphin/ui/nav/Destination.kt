@@ -224,6 +224,10 @@ sealed class Destination(
     @Serializable
     data object HigherLower : Destination(true)
 
+    /** Benflix "Ember Road": pixel adventure, carry the dragon egg to Ember Peak */
+    @Serializable
+    data object EmberRoad : Destination(true)
+
     /** Benflix: simple help page (remote buttons and tips) */
     @Serializable
     data object HowTo : Destination(false)

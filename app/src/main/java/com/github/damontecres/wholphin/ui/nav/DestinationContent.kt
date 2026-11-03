@@ -428,6 +428,12 @@ fun DestinationContent(
                 .HigherLowerPage(modifier)
         }
 
+        Destination.EmberRoad -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.games.ember
+                .EmberRoadPage(modifier)
+        }
+
         Destination.DailyRiddle -> {
             com.github.damontecres.wholphin.ui.games
                 .DailyRiddlePage(modifier)

@@ -301,8 +301,11 @@ class EmberEngine(
 
     private fun num(name: String): Int =
         when {
-            name.startsWith("rep.") -> state.rep[name.removePrefix("rep.")] ?: 0
-            else ->
+            name.startsWith("rep.") -> {
+                state.rep[name.removePrefix("rep.")] ?: 0
+            }
+
+            else -> {
                 when (name) {
                     "food" -> state.food
                     "gold" -> state.gold
@@ -326,6 +329,7 @@ class EmberEngine(
                     "progress" -> if (state.legMiles == 0) 0 else state.miles * 100 / state.legMiles
                     else -> 0
                 }
+            }
         }
 
     private fun strings(e: JsonElement): List<String> =
@@ -339,31 +343,94 @@ class EmberEngine(
         for ((key, value) in cond) {
             val ok =
                 when (key) {
-                    "has" -> strings(value).all { it in state.items }
-                    "lacks" -> strings(value).none { it in state.items }
-                    "knows" -> strings(value).all { it in state.spells }
-                    "flag" -> strings(value).all { it in state.flags }
-                    "noflag" -> strings(value).none { it in state.flags }
-                    "role" -> role in strings(value)
-                    "notrole" -> role !in strings(value)
-                    "folk" -> strings(value).any { f -> active.any { it.folk == f } }
-                    "trait" -> strings(value).any { t -> active.any { t in it.traits } }
+                    "has" -> {
+                        strings(value).all { it in state.items }
+                    }
+
+                    "lacks" -> {
+                        strings(value).none { it in state.items }
+                    }
+
+                    "knows" -> {
+                        strings(value).all { it in state.spells }
+                    }
+
+                    "flag" -> {
+                        strings(value).all { it in state.flags }
+                    }
+
+                    "noflag" -> {
+                        strings(value).none { it in state.flags }
+                    }
+
+                    "role" -> {
+                        role in strings(value)
+                    }
+
+                    "notrole" -> {
+                        role !in strings(value)
+                    }
+
+                    "folk" -> {
+                        strings(value).any { f -> active.any { it.folk == f } }
+                    }
+
+                    "trait" -> {
+                        strings(value).any { t -> active.any { t in it.traits } }
+                    }
+
                     "pet" -> {
                         val wanted = (value as? JsonPrimitive)?.booleanOrNull
                         if (wanted != null) hasPet == wanted else hasPet && state.setup.pet in strings(value)
                     }
-                    "kids" -> kids == (value as? JsonPrimitive)?.booleanOrNull
-                    "season" -> season in strings(value)
-                    "weather" -> state.weather in strings(value)
-                    "egg" -> (value as? JsonPrimitive)?.booleanOrNull == eggHere
-                    "hatched" -> (value as? JsonPrimitive)?.booleanOrNull == hatched
-                    "petlost" -> (value as? JsonPrimitive)?.booleanOrNull == (pet != null && state.petGone)
-                    "difficulty" -> state.setup.difficulty in strings(value)
-                    "length" -> state.setup.length in strings(value)
-                    "chance" -> percent((value as? JsonPrimitive)?.intOrNull ?: 50)
-                    "any" -> (value as? JsonArray)?.any { it is JsonObject && check(it) } ?: true
-                    "not" -> !(value is JsonObject && check(value))
-                    else -> compare(key, value)
+
+                    "kids" -> {
+                        kids == (value as? JsonPrimitive)?.booleanOrNull
+                    }
+
+                    "season" -> {
+                        season in strings(value)
+                    }
+
+                    "weather" -> {
+                        state.weather in strings(value)
+                    }
+
+                    "egg" -> {
+                        (value as? JsonPrimitive)?.booleanOrNull == eggHere
+                    }
+
+                    "hatched" -> {
+                        (value as? JsonPrimitive)?.booleanOrNull == hatched
+                    }
+
+                    "petlost" -> {
+                        (value as? JsonPrimitive)?.booleanOrNull == (pet != null && state.petGone)
+                    }
+
+                    "difficulty" -> {
+                        state.setup.difficulty in strings(value)
+                    }
+
+                    "length" -> {
+                        state.setup.length in strings(value)
+                    }
+
+                    "chance" -> {
+                        percent((value as? JsonPrimitive)?.intOrNull ?: 50)
+                    }
+
+                    "any" -> {
+                        (value as? JsonArray)?.any { it is JsonObject && check(it) } ?: true
+                    }
+
+                    "not" -> {
+                        !(value is JsonObject && check(value))
+                    }
+
+                    else -> {
+                        compare(key, value)
+                    }
                 }
             if (!ok) return false
         }
@@ -402,7 +469,9 @@ class EmberEngine(
         state.gold = max(0, state.gold)
         state.herbs = max(0, state.herbs)
         state.dragon = state.dragon.coerceIn(-5, 5)
-        state.rep.keys.toList().forEach { state.rep[it] = (state.rep[it] ?: 0).coerceIn(-5, 5) }
+        state.rep.keys
+            .toList()
+            .forEach { state.rep[it] = (state.rep[it] ?: 0).coerceIn(-5, 5) }
     }
 
     private fun signed(
@@ -914,7 +983,11 @@ class EmberEngine(
     fun eventText(ev: StoryEvent) = textFor(ev.text, ev.kidsText)
 
     /** The choices you can see right now (hidden ones whose "if" isn't met are left out) */
-    fun choices(ev: StoryEvent): List<Pair<Int, Choice>> = ev.choices.withIndex().filter { check(it.value.cond) }.map { it.index to it.value }
+    fun choices(ev: StoryEvent): List<Pair<Int, Choice>> =
+        ev.choices
+            .withIndex()
+            .filter { check(it.value.cond) }
+            .map { it.index to it.value }
 
     fun choiceLabel(c: Choice): String {
         val base = fill(if (kids && c.kidsLabel != null) c.kidsLabel else c.label)
@@ -1158,11 +1231,40 @@ class EmberEngine(
         if (match == null) {
             return Shown(
                 when (verb) {
-                    Verb.LOOK -> "It's just ${t.name}."
-                    Verb.TALK -> if (t.person) "${t.name.replaceFirstChar { it.uppercase() }} has nothing more to say." else "${t.name.replaceFirstChar { it.uppercase() }} doesn't answer. It's not much of a talker."
-                    Verb.TAKE -> if (t.person) "That would be rude." else "You can't take that."
-                    Verb.USE -> if (with != null) "Using ${story.item(with)?.name ?: with} on ${t.name} doesn't do anything." else "You aren't sure how to use that."
-                    Verb.CAST -> castPlain(with, t.name)
+                    Verb.LOOK -> {
+                        "It's just ${t.name}."
+                    }
+
+                    Verb.TALK -> {
+                        if (t.person) {
+                            "${t.name.replaceFirstChar {
+                                it.uppercase()
+                            }} has nothing more to say."
+                        } else {
+                            "${t.name.replaceFirstChar {
+                                it
+                                    .uppercase()
+                            }} doesn't answer. It's not much of a talker."
+                        }
+                    }
+
+                    Verb.TAKE -> {
+                        if (t.person) "That would be rude." else "You can't take that."
+                    }
+
+                    Verb.USE -> {
+                        if (with !=
+                            null
+                        ) {
+                            "Using ${story.item(with)?.name ?: with} on ${t.name} doesn't do anything."
+                        } else {
+                            "You aren't sure how to use that."
+                        }
+                    }
+
+                    Verb.CAST -> {
+                        castPlain(with, t.name)
+                    }
                 },
             )
         }
@@ -1262,14 +1364,63 @@ class EmberEngine(
             Verb.LOOK to listOf("look", "l", "examine", "x", "inspect", "read", "search", "check", "see", "study", "watch"),
             Verb.TALK to listOf("talk", "ask", "speak", "greet", "chat", "hello", "hi", "tell"),
             Verb.TAKE to listOf("take", "get", "grab", "pick", "steal", "collect", "lift"),
-            Verb.USE to listOf("use", "put", "give", "open", "push", "pull", "light", "climb", "tie", "pour", "play", "show", "turn", "ring", "unlock", "drink", "eat", "feed", "pay", "move"),
+            Verb.USE to
+                listOf(
+                    "use",
+                    "put",
+                    "give",
+                    "open",
+                    "push",
+                    "pull",
+                    "light",
+                    "climb",
+                    "tie",
+                    "pour",
+                    "play",
+                    "show",
+                    "turn",
+                    "ring",
+                    "unlock",
+                    "drink",
+                    "eat",
+                    "feed",
+                    "pay",
+                    "move",
+                ),
             Verb.CAST to listOf("cast", "magic", "spell"),
         )
 
-    private val fillerWords = setOf("the", "a", "an", "at", "to", "on", "in", "into", "with", "under", "behind", "of", "my", "up", "around", "inside", "about", "for", "from", "please")
+    private val fillerWords =
+        setOf(
+            "the",
+            "a",
+            "an",
+            "at",
+            "to",
+            "on",
+            "in",
+            "into",
+            "with",
+            "under",
+            "behind",
+            "of",
+            "my",
+            "up",
+            "around",
+            "inside",
+            "about",
+            "for",
+            "from",
+            "please",
+        )
 
     fun typed(raw: String): TypedResult {
-        val text = raw.lowercase().replace(Regex("[^a-z0-9' ]"), " ").trim().replace(Regex(" +"), " ")
+        val text =
+            raw
+                .lowercase()
+                .replace(Regex("[^a-z0-9' ]"), " ")
+                .trim()
+                .replace(Regex(" +"), " ")
         if (text.isBlank()) return TypedResult(false, Shown("Type something to do, like \"look at the well\"."))
         val s = currentStop
         // Secret words first (they only work by typing)
@@ -1295,7 +1446,12 @@ class EmberEngine(
         if (words.isEmpty()) return TypedResult(false, Shown("Hmm?"))
         val first = words.first()
         if (first in listOf("help", "verbs", "commands")) {
-            return TypedResult(true, Shown("Try things like: look at the statue, talk to the miller, take the key, use rope on well, cast light on door. Some secrets only open to typed words."))
+            return TypedResult(
+                true,
+                Shown(
+                    "Try things like: look at the statue, talk to the miller, take the key, use rope on well, cast light on door. Some secrets only open to typed words.",
+                ),
+            )
         }
         if (s == null) return TypedResult(false, Shown("You can type commands when you're at a stop."))
         var verb = verbWords.entries.firstOrNull { first in it.value }?.key
@@ -1304,15 +1460,44 @@ class EmberEngine(
         // "pick up" etc.
         rest = rest.filter { it != "up" }
         val things = visibleThings(s)
+
         fun matchThing(ws: List<String>): Thing? {
             val joined = ws.joinToString(" ")
-            return things.firstOrNull { t -> (listOf(t.name) + t.aliases).any { n -> joined.contains(n.lowercase().removePrefix("the ").removePrefix("a ")) } }
-                ?: things.firstOrNull { t -> ws.any { w -> w.length > 2 && (listOf(t.name) + t.aliases).any { n -> n.lowercase().split(' ').contains(w) } } }
+            return things.firstOrNull { t ->
+                (listOf(t.name) + t.aliases).any { n -> joined.contains(n.lowercase().removePrefix("the ").removePrefix("a ")) }
+            }
+                ?: things.firstOrNull { t ->
+                    ws.any { w ->
+                        w.length > 2 &&
+                            (listOf(t.name) + t.aliases).any { n -> n.lowercase().split(' ').contains(w) }
+                    }
+                }
         }
         return when (verb) {
             Verb.CAST -> {
-                val spell = state.spells.firstOrNull { id -> rest.any { it == id || story.spell(id)?.name?.lowercase()?.contains(it) == true } }
-                val t = matchThing(rest.filter { w -> spell == null || (w != spell && story.spell(spell)?.name?.lowercase()?.contains(w) != true) })
+                val spell =
+                    state.spells.firstOrNull { id ->
+                        rest.any {
+                            it == id || story
+                                .spell(id)
+                                ?.name
+                                ?.lowercase()
+                                ?.contains(it) == true
+                        }
+                    }
+                val t =
+                    matchThing(
+                        rest.filter { w ->
+                            spell == null ||
+                                (
+                                    w != spell && story
+                                        .spell(spell)
+                                        ?.name
+                                        ?.lowercase()
+                                        ?.contains(w) != true
+                                )
+                        },
+                    )
                 if (spell == null) {
                     TypedResult(false, Shown("Which spell? You know: " + state.spells.joinToString { story.spell(it)?.name ?: it } + "."))
                 } else if (t == null) {
@@ -1323,8 +1508,29 @@ class EmberEngine(
             }
 
             Verb.USE -> {
-                val item = state.items.firstOrNull { id -> rest.any { w -> w == id || story.item(id)?.name?.lowercase()?.split(' ')?.contains(w) == true } }
-                val itemWords = item?.let { id -> (story.item(id)?.name?.lowercase()?.split(' ') ?: emptyList()) + id }.orEmpty()
+                val item =
+                    state.items.firstOrNull { id ->
+                        rest.any { w ->
+                            w == id ||
+                                story
+                                    .item(id)
+                                    ?.name
+                                    ?.lowercase()
+                                    ?.split(' ')
+                                    ?.contains(w) == true
+                        }
+                    }
+                val itemWords =
+                    item
+                        ?.let { id ->
+                            (
+                                story
+                                    .item(id)
+                                    ?.name
+                                    ?.lowercase()
+                                    ?.split(' ') ?: emptyList()
+                            ) + id
+                        }.orEmpty()
                 val t = matchThing(rest.filter { it !in itemWords }) ?: if (item == null) matchThing(rest) else null
                 when {
                     t != null -> TypedResult(true, act(Verb.USE, t.id, item))
@@ -1422,7 +1628,20 @@ class EmberEngine(
                 "fish" -> {
                     val food = s * 4
                     state.food += food
-                    Shown(if (s >= 6) "What a catch! Fish for days." else if (s > 0) "A few fish for the pot." else "Not a single bite.", listOf("+$food food"))
+                    Shown(
+                        if (s >=
+                            6
+                        ) {
+                            "What a catch! Fish for days."
+                        } else if (s >
+                            0
+                        ) {
+                            "A few fish for the pot."
+                        } else {
+                            "Not a single bite."
+                        },
+                        listOf("+$food food"),
+                    )
                 }
 
                 "herbs" -> {
@@ -1435,7 +1654,22 @@ class EmberEngine(
                     val dmg = max(0, 4 - s / 2)
                     state.cart -= dmg
                     clampAll()
-                    Shown(if (dmg == 0) "Not a scratch! Fine driving." else "The cart takes a few knocks.", if (dmg > 0) listOf("Cart damaged") else emptyList())
+                    Shown(
+                        if (dmg ==
+                            0
+                        ) {
+                            "Not a scratch! Fine driving."
+                        } else {
+                            "The cart takes a few knocks."
+                        },
+                        if (dmg >
+                            0
+                        ) {
+                            listOf("Cart damaged")
+                        } else {
+                            emptyList()
+                        },
+                    )
                 }
 
                 else -> {

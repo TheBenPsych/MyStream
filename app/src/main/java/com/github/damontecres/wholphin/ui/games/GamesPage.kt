@@ -111,6 +111,19 @@ fun GamesPage(
         Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = focusRequester)
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = remember { FocusRequester() })
 
+        // Benflix "Ember Road": the pixel adventure, for everyone (it has a Kids version built in)
+        MovieGameTile(
+            title = "Ember Road",
+            subtitle =
+                "A pixel adventure: carry a dragon egg across a wild magical land with your family. " +
+                    "Every journey is different. Phones can join in.",
+            icon = R.string.fa_dragon,
+            colors = listOf(Color(0xFFB8281E), Color(0xFF2B1B4D)),
+            onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) },
+            isTv = isTv,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         // Benflix "Guess the movie" and the daily riddle, made from your own movies
         val movieGames =
             listOf<@Composable (Modifier) -> Unit>(

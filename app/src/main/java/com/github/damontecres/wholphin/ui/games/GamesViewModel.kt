@@ -522,6 +522,7 @@ class GamesViewModel
                     HigherLowerViewModel.BOARD_KEY to "Higher or Lower",
                     DailyRiddleViewModel.BOARD_KEY to "Movie riddle",
                     "GUESS_THE_MOVIE" to "Guess the movie",
+                    com.github.damontecres.wholphin.ui.games.ember.EmberViewModel.BOARD_KEY to "Ember Road",
                 )
 
             /** What each board ranks, shown under its name */
@@ -529,6 +530,7 @@ class GamesViewModel
                 mapOf(
                     HigherLowerViewModel.BOARD_KEY to "best streak",
                     DailyRiddleViewModel.BOARD_KEY to "most points in a run",
+                    com.github.damontecres.wholphin.ui.games.ember.EmberViewModel.BOARD_KEY to "most points in a journey",
                 )
         }
     }

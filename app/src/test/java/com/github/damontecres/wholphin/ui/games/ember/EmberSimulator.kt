@@ -43,14 +43,26 @@ object EmberSimulator {
                 Member(
                     name = "P$i",
                     folk = folks[r.nextInt(4)],
-                    traits = story.traits.shuffled(r).take(2).map { it.id },
+                    traits =
+                        story.traits
+                            .shuffled(r)
+                            .take(2)
+                            .map { it.id },
                     leader = i == 0,
                 )
             }
         val e =
             EmberEngine.newRun(
                 story,
-                RunSetup(members = members, role = role, pet = story.names.pets[r.nextInt(4)].id, length = length, difficulty = difficulty, kids = kids, seed = seed),
+                RunSetup(
+                    members = members,
+                    role = role,
+                    pet = story.names.pets[r.nextInt(4)].id,
+                    length = length,
+                    difficulty = difficulty,
+                    kids = kids,
+                    seed = seed,
+                ),
             )
         var actions = 0
         var events = 0
@@ -97,9 +109,23 @@ object EmberSimulator {
                         val verb = Verb.entries[r.nextInt(Verb.entries.size)]
                         val with =
                             when (verb) {
-                                Verb.USE -> if (e.state.items.isNotEmpty() && r.nextBoolean()) e.state.items[r.nextInt(e.state.items.size)] else null
-                                Verb.CAST -> e.state.spells[r.nextInt(e.state.spells.size)]
-                                else -> null
+                                Verb.USE -> {
+                                    if (e.state.items.isNotEmpty() &&
+                                        r.nextBoolean()
+                                    ) {
+                                        e.state.items[r.nextInt(e.state.items.size)]
+                                    } else {
+                                        null
+                                    }
+                                }
+
+                                Verb.CAST -> {
+                                    e.state.spells[r.nextInt(e.state.spells.size)]
+                                }
+
+                                else -> {
+                                    null
+                                }
                             }
                         e.act(verb, t.id, with)
                         if (e.state.phase == Phase.RESULT) e.continueOn()
@@ -143,11 +169,21 @@ object EmberSimulator {
         val sb = StringBuilder()
         for (length in listOf("short", "medium", "long")) {
             for ((difficulty, kids) in listOf("easy" to false, "normal" to false, "hard" to false, "normal" to true)) {
-                val results = (1..runs).map { play(story, it * 7919L + length.hashCode() + difficulty.hashCode() + (if (kids) 5 else 0), length, difficulty, kids) }
-                val endings = results.groupingBy { it.ending }.eachCount().entries.sortedByDescending { it.value }
+                val results =
+                    (1..runs).map {
+                        play(story, it * 7919L + length.hashCode() + difficulty.hashCode() + (if (kids) 5 else 0), length, difficulty, kids)
+                    }
+                val endings =
+                    results
+                        .groupingBy { it.ending }
+                        .eachCount()
+                        .entries
+                        .sortedByDescending { it.value }
                 sb.appendLine(
                     "$length $difficulty${if (kids) " KIDS" else ""}: days ${results.map { it.days }.average().toInt()} " +
-                        "events ${"%.1f".format(results.map { it.events }.average())} stops ${"%.1f".format(results.map { it.stops }.average())} " +
+                        "events ${"%.1f".format(
+                            results.map { it.events }.average(),
+                        )} stops ${"%.1f".format(results.map { it.stops }.average())} " +
                         "score ${results.map { it.score }.average().toInt()} party ${"%.1f".format(results.map { it.party }.average())}",
                 )
                 sb.appendLine("   " + endings.joinToString { "${it.key} ${it.value * 100 / runs}%" })
