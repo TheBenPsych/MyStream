@@ -38,6 +38,10 @@ ROMS = "/ROMs"  # The same folder the game app sees
 BIOS = "/bios"  # Games/bios on the server
 SAVES = "/saves"  # Games/saves on the server, one folder per Jellyfin account
 SAVE_KINDS = {"srm": 16 * 1024 * 1024, "state": 96 * 1024 * 1024, "png": 4 * 1024 * 1024}
+# The three save slots from the game menu, each with a picture
+for _slot in (1, 2, 3):
+    SAVE_KINDS[f"state{_slot}"] = SAVE_KINDS["state"]
+    SAVE_KINDS[f"png{_slot}"] = SAVE_KINDS["png"]
 PORT = int(os.environ.get("PORT", "8097"))
 
 # Which RetroArch emulator (core) plays each console. Keys are RomM folder names.
@@ -423,7 +427,7 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/save/(\d+)", path)
             if method == "GET" and m:
                 return self.send(200, save_info(user_id, int(m.group(1))))
-            m = re.fullmatch(r"/api/save/(\d+)/(srm|state|png)", path)
+            m = re.fullmatch(r"/api/save/(\d+)/(srm|state[1-3]?|png[1-3]?)", path)
             if m:
                 game_id, kind = int(m.group(1)), m.group(2)
                 f = os.path.join(save_dir(user_id, game_id), "save." + kind)

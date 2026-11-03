@@ -16,10 +16,14 @@ import java.util.concurrent.TimeUnit
  *   save.srm   the game's own save (like the battery in a cartridge, or a PlayStation memory card)
  *   save.state "pick up where you left off" (the exact moment you quit)
  *   save.png   a small picture of that moment, for the Continue playing row
+ *   save.state1..3 / save.png1..3  the three save slots from the game menu, each with its picture
  *   pending    which of those still need sending to Tower (for when Tower couldn't be reached)
  */
 object GameSaves {
-    val KINDS = listOf("srm", "state", "png")
+    val KINDS = listOf("srm", "state", "png", "state1", "png1", "state2", "png2", "state3", "png3")
+
+    /** Without these sent, a device mustn't pull older saves over its own */
+    val MAIN_KINDS = setOf("srm", "state", "png")
 
     private val http by lazy {
         OkHttpClient

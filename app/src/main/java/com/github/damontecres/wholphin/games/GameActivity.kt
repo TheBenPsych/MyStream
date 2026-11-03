@@ -19,6 +19,7 @@ import android.view.TextureView
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -37,10 +40,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -53,7 +73,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,10 +89,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.text.Cue
 import androidx.palette.graphics.Palette
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -156,6 +179,18 @@ class GameActivity : ComponentActivity() {
         }
     private var showShape by mutableFloatStateOf(16f / 9f)
     private var showTitle by mutableStateOf("")
+    private var showItem: SideShowItem? = null
+    private var showCues by mutableStateOf<List<Cue>>(emptyList())
+
+    /** While the show picker is open, Back steps back inside it */
+    private var pickerBack: (() -> Unit)? = null
+    private val showTick =
+        object : Runnable {
+            override fun run() {
+                sideShow?.tick()
+                handler.postDelayed(this, 1000)
+            }
+        }
 
     /** 0 = show and game, 1 = show only, 2 = game only */
     private var soundMode by mutableIntStateOf(0)
@@ -417,7 +452,11 @@ class GameActivity : ComponentActivity() {
     )
 
     /** Saves the game's own save, your exact spot and a picture of it on this device. Returns false if it couldn't. */
-    private fun saveHere(withSpot: Boolean): Boolean {
+    private fun saveHere(
+        withSpot: Boolean,
+        slot: Int = 0,
+    ): Boolean {
+        val end = if (slot in 1..3) slot.toString() else ""
         if (!loaded) return false
         val saved =
             onGameThread {
@@ -437,9 +476,9 @@ class GameActivity : ComponentActivity() {
                 }
             }
             saved.state?.let {
-                writeAtomic(GameSaves.file(saveDir, "state"), it)
-                changed.add("state")
-                runOnUiThread { hasSpot = true }
+                writeAtomic(GameSaves.file(saveDir, "state$end"), it)
+                changed.add("state$end")
+                if (slot == 0) runOnUiThread { hasSpot = true }
             }
             saved.picture?.let { px ->
                 val w = px[0]
@@ -448,8 +487,8 @@ class GameActivity : ComponentActivity() {
                     val bmp = Bitmap.createBitmap(px, 2, w, w, h, Bitmap.Config.ARGB_8888)
                     val tmp = File(saveDir, "save.png.tmp")
                     tmp.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                    tmp.renameTo(GameSaves.file(saveDir, "png"))
-                    changed.add("png")
+                    tmp.renameTo(GameSaves.file(saveDir, "png$end"))
+                    changed.add("png$end")
                 }
             }
         } catch (e: Exception) {
@@ -513,23 +552,52 @@ class GameActivity : ComponentActivity() {
 
     private fun startShow(item: SideShowItem) {
         val show = sideShow ?: return
+        val first = !showOn
         showTitle = item.title
+        showItem = item
         showOn = true
-        showSize = ShowSize.SIDE
+        if (first) showSize = ShowSize.SIDE
+        show.onCues = { cues -> runOnUiThread { showCues = cues } }
         show.play(
             item = item,
             view = showView,
             onShape = { showShape = it.coerceIn(1f, 2.6f) },
-            onEnded = { runOnUiThread { stopShow() } },
+            onEnded = { runOnUiThread { playNextOrStop() } },
         )
         applySound()
         handler.removeCallbacks(reportProgress)
         handler.postDelayed(reportProgress, 10_000)
+        handler.removeCallbacks(showTick)
+        handler.postDelayed(showTick, 1000)
+    }
+
+    /** At the end of an episode the next one starts by itself (intros get skipped) */
+    private fun playNextOrStop() {
+        val item = showItem
+        val show = sideShow
+        if (item == null || show == null || item.type != "Episode") {
+            stopShow()
+            return
+        }
+        Thread {
+            val next = runCatching { show.nextEpisode(item) }.getOrNull()
+            runOnUiThread {
+                if (next == null || !showOn) {
+                    stopShow()
+                } else {
+                    showToast("Up next: ${next.subtitle}".take(60))
+                    startShow(next)
+                }
+            }
+        }.start()
     }
 
     private fun stopShow() {
         sideShow?.stop()
         handler.removeCallbacks(reportProgress)
+        handler.removeCallbacks(showTick)
+        showItem = null
+        showCues = emptyList()
         showOn = false
         showSize = ShowSize.SIDE
         applySound()
@@ -545,6 +613,7 @@ class GameActivity : ComponentActivity() {
             }
         audio?.setVolume(game)
         sideShow?.volume = if (soundMode == 2) 0f else 1f
+        sideShow?.setMuted(soundMode == 2)
     }
 
     private fun saveSideKey(on: Boolean) {
@@ -841,7 +910,8 @@ class GameActivity : ComponentActivity() {
                 return true
             }
             if ((code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BUTTON_MODE) && !down) {
-                if (failed) finish() else closeMenu()
+                val back = pickerBack
+                if (failed) finish() else if (back != null) back() else closeMenu()
                 return true
             }
             if (code == KeyEvent.KEYCODE_BUTTON_A && failed) {
@@ -990,7 +1060,7 @@ class GameActivity : ComponentActivity() {
                     if (failed) {
                         val focus = remember { FocusRequester() }
                         LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-                        MenuButton("Back to Benflix", Modifier.focusRequester(focus)) { finish() }
+                        MenuButton("Back to Benflix", modifier = Modifier.focusRequester(focus)) { finish() }
                     }
                 }
             }
@@ -1141,6 +1211,27 @@ class GameActivity : ComponentActivity() {
                             .offset(r.x, r.y)
                             .size(r.w, r.h),
                 )
+                if (showCues.isNotEmpty()) {
+                    Box(
+                        contentAlignment = Alignment.BottomCenter,
+                        modifier =
+                            Modifier
+                                .offset(r.x, r.y)
+                                .size(r.w, r.h)
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            showCues.mapNotNull { it.text?.toString() }.joinToString("\n"),
+                            color = Color.White,
+                            fontSize = if (r.w < 300.dp) 11.sp else 15.sp,
+                            textAlign = TextAlign.Center,
+                            modifier =
+                                Modifier
+                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
             }
             s.key?.let { r ->
                 Box(
@@ -1203,160 +1294,254 @@ class GameActivity : ComponentActivity() {
         }
     }
 
+    private enum class MenuPage { MAIN, HELP, SAVE, LOAD, PICK }
+
+    /** The game menu: a sheet that slides in from the right, with the paused game still showing on the left */
     @Composable
     private fun Menu() {
-        var showHelp by remember { mutableStateOf(false) }
-        var picking by remember { mutableStateOf(false) }
-        var choices by remember { mutableStateOf<List<SideShowItem>?>(null) }
+        var page by remember { mutableStateOf(MenuPage.MAIN) }
+        var slotsChanged by remember { mutableIntStateOf(0) }
         val focus = remember { FocusRequester() }
-        LaunchedEffect(showHelp, picking, choices) { runCatching { focus.requestFocus() } }
-        LaunchedEffect(picking) {
-            if (picking) choices = withContext(Dispatchers.IO) { sideShow?.choices().orEmpty() }
+        LaunchedEffect(page) { runCatching { focus.requestFocus() } }
+        val sheetWidth = if (isTv) 440.dp else 360.dp
+        if (page == MenuPage.PICK) {
+            ShowPicker(
+                show = sideShow,
+                isTv = isTv,
+                tint = panelTint,
+                firstFocus = focus,
+                registerBack = { pickerBack = it },
+                onPick = { item ->
+                    startShow(item)
+                    page = MenuPage.MAIN
+                    closeMenu()
+                },
+                onCancel = { page = MenuPage.MAIN },
+            )
+            return
         }
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.78f)),
-            contentAlignment = Alignment.Center,
+                .background(Color.Black.copy(alpha = 0.35f)),
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier =
                     Modifier
-                        .width(if (isTv) 420.dp else 340.dp)
+                        .align(Alignment.CenterEnd)
+                        .width(sheetWidth)
+                        .fillMaxHeight()
+                        .background(Brush.verticalGradient(listOf(panelTint.copy(alpha = 0.5f), Color(0xF20D0B0C), Color(0xFA0D0B0C))))
                         .verticalScroll(rememberScrollState())
-                        .padding(vertical = 24.dp),
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
             ) {
-                Text(gameName, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                if (picking) {
-                    val list = choices
-                    when {
-                        list == null -> {
-                            Text("Loading your shows…", color = Color.White, fontSize = 17.sp)
-                            MenuButton("Cancel", Modifier.focusRequester(focus)) { picking = false }
-                        }
+                Text(gameName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                Text(
+                    listOfNotNull(console.title, (playedTodayMs() / 60_000).takeIf { it > 0 }?.let { "played $it min today" })
+                        .joinToString(" · "),
+                    color = Color.White.copy(alpha = 0.65f),
+                    fontSize = 14.sp,
+                )
+                when (page) {
+                    MenuPage.HELP -> {
+                        MenuButton("Done", Icons.Filled.Check, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
+                        if (isTv) ButtonKey(console, KeyFor.REMOTE, Modifier.fillMaxWidth())
+                        ButtonKey(console, KeyFor.CONTROLLER, Modifier.fillMaxWidth())
+                        if (isTv) PhoneTip()
+                        Text(
+                            if (isTv) "Hold Back for a second to open this menu. Start + Select together also opens it." else "The ☰ circle opens this menu.",
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 15.sp,
+                        )
+                    }
 
-                        list.isEmpty() -> {
-                            Text(
-                                "Nothing in Continue watching or Next up yet. Start a show in Benflix first.",
-                                color = Color.White,
-                                fontSize = 17.sp,
-                                textAlign = TextAlign.Center,
-                            )
-                            MenuButton("OK", Modifier.focusRequester(focus)) { picking = false }
-                        }
-
-                        else -> {
-                            Text("Pick something to watch on the side", color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
-                            list.forEachIndexed { i, item ->
-                                val label = if (item.subtitle.isBlank()) item.title else "${item.title} · ${item.subtitle}"
-                                MenuButton(label, if (i == 0) Modifier.focusRequester(focus) else Modifier) {
-                                    picking = false
-                                    startShow(item)
+                    MenuPage.SAVE, MenuPage.LOAD -> {
+                        val saving = page == MenuPage.SAVE
+                        Group(if (saving) "Save to a slot" else "Load a save")
+                        MenuButton("Back", Icons.AutoMirrored.Filled.ArrowBack, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
+                        key(slotsChanged) {
+                            if (!saving && hasSpot) {
+                                SlotButton("Where you last stopped", GameSaves.file(saveDir, "state"), GameSaves.file(saveDir, "png")) {
+                                    onGameThread {
+                                        GameSaves.file(saveDir, "state").takeIf { it.exists() }?.let { RetroNative.loadState(it.readBytes()) }
+                                    }
+                                    page = MenuPage.MAIN
                                     closeMenu()
+                                    showToast("Loaded where you last stopped")
                                 }
                             }
-                            MenuButton("Cancel") { picking = false }
+                            for (n in 1..3) {
+                                val state = GameSaves.file(saveDir, "state$n")
+                                if (!saving && !state.exists()) continue
+                                SlotButton("Slot $n", state, GameSaves.file(saveDir, "png$n")) {
+                                    if (saving) {
+                                        Thread {
+                                            val ok = saveHere(withSpot = true, slot = n)
+                                            if (ok) sendToTower()
+                                            runOnUiThread {
+                                                slotsChanged++
+                                                page = MenuPage.MAIN
+                                                closeMenu()
+                                                showToast(if (ok) "Saved to slot $n" else "Couldn't save just now")
+                                            }
+                                        }.start()
+                                    } else {
+                                        onGameThread { RetroNative.loadState(state.readBytes()) }
+                                        page = MenuPage.MAIN
+                                        closeMenu()
+                                        showToast("Loaded slot $n")
+                                    }
+                                }
+                            }
                         }
                     }
-                } else if (showHelp) {
-                    val lines =
-                        console.help +
-                            listOf(
-                                if (isTv) "Hold Back for a second to open this menu" else "The ☰ circle at the top opens this menu",
-                                "Start + Select together also opens it",
-                            ) +
-                            if (isTv) {
-                                listOf(
-                                    "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
-                                )
-                            } else {
-                                emptyList()
-                            }
-                    MenuButton("Done", Modifier.focusRequester(focus)) { showHelp = false }
-                    if (isTv) ButtonKey(console, KeyFor.REMOTE, Modifier.fillMaxWidth())
-                    ButtonKey(console, KeyFor.CONTROLLER, Modifier.fillMaxWidth())
-                    lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
-                } else {
-                    MenuButton("Resume", Modifier.focusRequester(focus)) { closeMenu() }
-                    MenuButton("Save my spot") {
-                        Thread {
-                            val ok = saveHere(withSpot = true)
-                            if (ok) sendToTower()
-                            runOnUiThread {
-                                closeMenu()
-                                showToast(if (ok) "Saved" else "Couldn't save just now")
-                            }
-                        }.start()
-                    }
-                    if (hasSpot) {
-                        MenuButton("Go back to my saved spot") {
-                            onGameThread {
-                                GameSaves.file(saveDir, "state").takeIf { it.exists() }?.let { RetroNative.loadState(it.readBytes()) }
-                            }
+
+                    MenuPage.MAIN -> {
+                        Group("Game")
+                        MenuButton("Resume", Icons.Filled.PlayArrow, Modifier.focusRequester(focus)) { closeMenu() }
+                        MenuButton("Save", Icons.Filled.Add) { page = MenuPage.SAVE }
+                        if (hasSpot || (1..3).any { GameSaves.file(saveDir, "state$it").exists() }) {
+                            MenuButton("Load", Icons.Filled.DateRange) { page = MenuPage.LOAD }
+                        }
+                        MenuButton("Restart game", Icons.Filled.Refresh) {
+                            onGameThread { RetroNative.reset() }
                             closeMenu()
                         }
-                    }
-                    if (isTv) {
-                        MenuButton("Press Start") { tapFromMenu(RetroButton.START) }
-                        MenuButton("Press Select") { tapFromMenu(RetroButton.SELECT) }
-                    }
-                    if (sideShow != null && canSideShow) {
-                        if (!showOn) {
-                            MenuButton("Watch a show on the side") {
-                                choices = null
-                                picking = true
-                            }
-                        } else {
-                            MenuButton("Show size: ${showSize.label.removePrefix("Show: ")}") { nextShowSize() }
-                            val sound =
-                                when (soundMode) {
-                                    0 -> "Sound: show and game"
-                                    1 -> "Sound: show only"
-                                    else -> "Sound: game only"
+                        if (sideShow != null && canSideShow) {
+                            Group("Watch")
+                            if (!showOn) {
+                                MenuButton("Watch a show on the side", Icons.Filled.Face) { page = MenuPage.PICK }
+                            } else {
+                                MenuButton("Change the show", Icons.Filled.Face) { page = MenuPage.PICK }
+                                MenuButton("Size: ${showSize.label.removePrefix("Show: ")}", Icons.Filled.Menu) { nextShowSize() }
+                                val sound =
+                                    when (soundMode) {
+                                        0 -> "Sound: show and game"
+                                        1 -> "Sound: show only"
+                                        else -> "Sound: game only"
+                                    }
+                                MenuButton(sound, Icons.Filled.Notifications) {
+                                    soundMode = (soundMode + 1) % 3
+                                    applySound()
                                 }
-                            MenuButton(sound) {
-                                soundMode = (soundMode + 1) % 3
-                                applySound()
+                                MenuButton("Stop $showTitle".take(40), Icons.Filled.Close) { stopShow() }
                             }
-                            MenuButton("Stop $showTitle".take(40)) { stopShow() }
                         }
+                        Group("Controls")
+                        MenuButton("Buttons", Icons.Filled.Info) { page = MenuPage.HELP }
+                        if (isTv || gamepadSeen) {
+                            MenuButton(if (sideKey) "Hide the button key" else "Show the button key", Icons.Filled.Edit) {
+                                saveSideKey(!sideKey)
+                            }
+                        }
+                        if (isTv) {
+                            MenuButton("Press Start", Icons.AutoMirrored.Filled.ArrowForward) { tapFromMenu(RetroButton.START) }
+                            MenuButton("Press Select", Icons.AutoMirrored.Filled.ArrowForward) { tapFromMenu(RetroButton.SELECT) }
+                        }
+                        MenuButton("Quit and save", Icons.AutoMirrored.Filled.ExitToApp) { quit() }
                     }
-                    if (isTv || gamepadSeen) {
-                        MenuButton(if (sideKey) "Hide the button key" else "Show the button key on the side") { saveSideKey(!sideKey) }
-                    }
-                    MenuButton("Restart game") {
-                        onGameThread { RetroNative.reset() }
-                        closeMenu()
-                    }
-                    MenuButton("Buttons") { showHelp = true }
-                    MenuButton("Quit and save") { quit() }
                 }
             }
         }
     }
 
     @Composable
+    private fun Group(title: String) {
+        Text(
+            title.uppercase(),
+            color = Color.White.copy(alpha = 0.55f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.padding(top = 10.dp, start = 4.dp),
+        )
+    }
+
+    /** A save slot: its picture, its name and when it was saved (or "Empty") */
+    @Composable
+    private fun SlotButton(
+        title: String,
+        state: File,
+        picture: File,
+        onClick: () -> Unit,
+    ) {
+        val interaction = remember { MutableInteractionSource() }
+        val focused by interaction.collectIsFocusedAsState()
+        val shape = RoundedCornerShape(14.dp)
+        val image =
+            remember(picture.path, picture.lastModified()) {
+                if (picture.exists()) android.graphics.BitmapFactory.decodeFile(picture.path)?.asImageBitmap() else null
+            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (focused) Color.White else Color(0xFF242424), shape)
+                    .border(2.dp, if (focused) Color.White else Color(0xFF3A3A3A), shape)
+                    .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                    .padding(8.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(96.dp, 64.dp)
+                        .background(Color.Black, RoundedCornerShape(8.dp)),
+            ) {
+                if (image != null) {
+                    Image(image, null, contentScale = ContentScale.Fit, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
+                } else {
+                    Text("Empty", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                }
+            }
+            Column {
+                Text(title, color = if (focused) Color.Black else Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (state.exists()) savedAgo(state.lastModified()) else "Empty",
+                    color = (if (focused) Color.Black else Color.White).copy(alpha = 0.65f),
+                    fontSize = 13.sp,
+                )
+            }
+        }
+    }
+
+    private fun savedAgo(time: Long): String {
+        val min = (System.currentTimeMillis() - time) / 60_000
+        return when {
+            min < 1 -> "Saved just now"
+            min < 60 -> "Saved $min min ago"
+            min < 24 * 60 -> "Saved ${min / 60} h ago"
+            else -> "Saved ${min / (24 * 60)} days ago"
+        }
+    }
+
+    @Composable
     private fun MenuButton(
         text: String,
+        icon: ImageVector? = null,
         modifier: Modifier = Modifier,
         onClick: () -> Unit,
     ) {
         val interaction = remember { MutableInteractionSource() }
         val focused by interaction.collectIsFocusedAsState()
         val shape = RoundedCornerShape(28.dp)
-        Box(
-            contentAlignment = Alignment.Center,
+        val fg = if (focused) Color.Black else Color.White
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (icon == null) Arrangement.Center else Arrangement.spacedBy(14.dp),
             modifier =
                 modifier
                     .fillMaxWidth()
-                    .background(if (focused) Color.White else Color(0xFF2A2A2A), shape)
-                    .border(2.dp, if (focused) Color.White else Color(0xFF4A4A4A), shape)
+                    .background(if (focused) Color.White else Color(0xFF242424), shape)
+                    .border(2.dp, if (focused) Color.White else Color(0xFF3A3A3A), shape)
                     .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-                    .padding(vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            Text(text, color = if (focused) Color.Black else Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            if (icon != null) Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(22.dp))
+            Text(text, color = fg, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 
