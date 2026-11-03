@@ -622,3 +622,100 @@ fun ApproveAllDialog(
         }
     }
 }
+
+/** One season in the season picker */
+data class PickableSeason(
+    val number: Int,
+    val name: String,
+    val episodes: Int?,
+    // Already on Benflix, downloading or asked for
+    val taken: Boolean,
+)
+
+/** A show and its seasons, waiting for the person to pick which ones to ask for */
+data class SeasonPick(
+    val item: DiscoverItem,
+    val seasons: List<PickableSeason>,
+)
+
+/** Pick which seasons of a show to ask for */
+@Composable
+fun SeasonPickDialog(
+    pick: SeasonPick,
+    onDismiss: () -> Unit,
+    onAsk: (List<Int>) -> Unit,
+) {
+    val open = remember(pick) { pick.seasons.filter { !it.taken }.map { it.number } }
+    var chosen by remember(pick) { mutableStateOf(setOf<Int>()) }
+    BasicDialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 460.dp)
+                    .fillMaxWidth()
+                    .padding(22.dp),
+        ) {
+            Text(
+                text = pick.item.title.orEmpty(),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text("Pick the seasons you want", fontSize = 15.sp, color = MUTED)
+            if (open.size > 1) {
+                val all = chosen.containsAll(open)
+                Button(onClick = { chosen = if (all) emptySet() else open.toSet() }) {
+                    Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1)
+                }
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier =
+                    Modifier
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                pick.seasons.forEach { season ->
+                    val picked = season.number in chosen
+                    Button(
+                        onClick = { chosen = if (picked) chosen - season.number else chosen + season.number },
+                        enabled = !season.taken,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        val extra =
+                            when {
+                                season.taken -> "already asked for or on Benflix"
+                                season.episodes != null && season.episodes > 0 -> "${season.episodes} episodes"
+                                else -> null
+                            }
+                        Text(
+                            text = listOfNotNull((if (picked) "✓  " else "") + season.name, extra).joinToString("  ·  "),
+                            fontWeight = if (picked) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { onAsk(chosen.sorted()) },
+                    enabled = chosen.isNotEmpty(),
+                ) {
+                    Text(
+                        when (chosen.size) {
+                            0 -> "Ask"
+                            1 -> "Ask for 1 season"
+                            else -> "Ask for ${chosen.size} seasons"
+                        },
+                        maxLines = 1,
+                    )
+                }
+                Button(onClick = onDismiss) { Text("Cancel", maxLines = 1) }
+            }
+        }
+    }
+}

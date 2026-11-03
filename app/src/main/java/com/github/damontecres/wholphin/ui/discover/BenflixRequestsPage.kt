@@ -852,27 +852,54 @@ class BenflixRequestsViewModel
             combine(searchRaw, requestedIds) { list, requested -> list?.map { markRequested(it, requested) } }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-        /** One press to ask for a title (every season for a show) */
+        private val _seasonPick = MutableStateFlow<SeasonPick?>(null)
+
+        /** A show waiting for its seasons to be picked before asking */
+        val seasonPick: StateFlow<SeasonPick?> = _seasonPick
+
+        fun closeSeasonPick() {
+            _seasonPick.value = null
+        }
+
+        /** Ask for a title. Movies go straight away; shows open the season picker first (Ben's pick) */
         fun ask(item: DiscoverItem) {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
                     if (item.type == SeerrItemType.TV) {
+                        val tv = seerrService.api.tvApi.tvTvIdGet(tvId = item.id)
+                        // Seasons already on Benflix, downloading or asked for can't be picked again
+                        val taken = mutableSetOf<Int>()
+                        tv.mediaInfo?.seasons?.forEach { season ->
+                            val availability = SeerrAvailability.from(season.status) ?: SeerrAvailability.UNKNOWN
+                            if (availability != SeerrAvailability.UNKNOWN && availability != SeerrAvailability.DELETED) {
+                                season.seasonNumber?.let { taken += it }
+                            }
+                        }
+                        tv.mediaInfo
+                            ?.requests
+                            ?.filter {
+                                it.is4k != true &&
+                                    it.status != RequestStatus.DECLINED.status &&
+                                    it.status != RequestStatus.FAILURE.status
+                            }?.forEach { request -> request.seasons?.forEach { s -> s.seasonNumber?.let { taken += it } } }
                         val seasons =
-                            seerrService.api.tvApi
-                                .tvTvIdGet(tvId = item.id)
-                                .seasons
-                                ?.mapNotNull { it.seasonNumber }
-                                ?.filter { it > 0 }
+                            tv.seasons
                                 .orEmpty()
-                        seerrService.api.requestApi.requestPost(
-                            RequestPostRequest(
-                                mediaId = item.id,
-                                mediaType = RequestPostRequest.MediaType.TV,
-                                seasons = seasons,
-                                is4k = false,
-                                tags = emptyList(),
-                            ),
-                        )
+                                .mapNotNull { season ->
+                                    val number = season.seasonNumber ?: return@mapNotNull null
+                                    if (number <= 0) return@mapNotNull null
+                                    PickableSeason(
+                                        number = number,
+                                        name = season.name?.takeIf { it.isNotBlank() } ?: "Season $number",
+                                        episodes = season.episodeCount,
+                                        taken = number in taken,
+                                    )
+                                }.sortedBy { it.number }
+                        if (seasons.isEmpty() || seasons.all { it.taken }) {
+                            showToast(context, "Every season is already asked for or on Benflix")
+                            return@launch
+                        }
+                        _seasonPick.value = SeasonPick(item, seasons)
                     } else {
                         seerrService.api.requestApi.requestPost(
                             RequestPostRequest(
@@ -882,11 +909,8 @@ class BenflixRequestsViewModel
                                 tags = emptyList(),
                             ),
                         )
+                        asked(item)
                     }
-                    requestedIds.update { it + item.requestKey() }
-                    showToast(context, "Asked for ${item.title ?: "it"}")
-                    // Benflix: show it in the request list straight away
-                    if (_requests.value != null) fetchRequests(lastMineOnly)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -894,6 +918,41 @@ class BenflixRequestsViewModel
                     showToast(context, "Couldn't ask for that one. Try from its page.")
                 }
             }
+        }
+
+        /** Ask for the seasons picked in the season picker */
+        fun askSeasons(
+            item: DiscoverItem,
+            seasons: List<Int>,
+        ) {
+            _seasonPick.value = null
+            if (seasons.isEmpty()) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    seerrService.api.requestApi.requestPost(
+                        RequestPostRequest(
+                            mediaId = item.id,
+                            mediaType = RequestPostRequest.MediaType.TV,
+                            seasons = seasons,
+                            is4k = false,
+                            tags = emptyList(),
+                        ),
+                    )
+                    asked(item)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Asking for seasons failed for %s", item.id)
+                    showToast(context, "Couldn't ask for that one. Try from its page.")
+                }
+            }
+        }
+
+        private suspend fun asked(item: DiscoverItem) {
+            requestedIds.update { it + item.requestKey() }
+            showToast(context, "Asked for ${item.title ?: "it"}")
+            // Benflix: show it in the request list straight away
+            if (_requests.value != null) fetchRequests(lastMineOnly)
         }
 
         /** Everyone's requests (admin) or just your own */
@@ -1281,6 +1340,14 @@ private fun FindShelf(
             showLanguage = !viewModel.viaJellyfin,
         )
     }
+    val seasonPick by viewModel.seasonPick.collectAsState()
+    seasonPick?.let { pick ->
+        SeasonPickDialog(
+            pick = pick,
+            onDismiss = viewModel::closeSeasonPick,
+            onAsk = { viewModel.askSeasons(pick.item, it) },
+        )
+    }
     menuItem?.let { item ->
         QuickMenuDialog(
             item = item,
@@ -1493,6 +1560,14 @@ private fun RequestList(
                 confirmAll = false
                 viewModel.approveAll()
             },
+        )
+    }
+    val seasonPick by viewModel.seasonPick.collectAsState()
+    seasonPick?.let { pick ->
+        SeasonPickDialog(
+            pick = pick,
+            onDismiss = viewModel::closeSeasonPick,
+            onAsk = { viewModel.askSeasons(pick.item, it) },
         )
     }
     menuItem?.let { item ->
