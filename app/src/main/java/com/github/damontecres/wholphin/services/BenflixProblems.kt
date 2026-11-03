@@ -13,6 +13,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
@@ -82,23 +85,29 @@ class BenflixProblems
         /** Everyone's reports, newest first (admins) */
         suspend fun all(): List<ProblemReport> =
             withContext(WholphinDispatchers.IO) {
-                api.userApi
-                    .getUsers()
-                    .content
-                    .flatMap { user ->
-                        try {
-                            displayPreferencesService
-                                .getDisplayPreferences(user.id)
-                                .customPrefs[KEY]
-                                .orEmpty()
-                                .split(LINE)
-                                .mapNotNull { decode(it, user.id, user.name.orEmpty()) }
-                        } catch (ex: CancellationException) {
-                            throw ex
-                        } catch (ex: Exception) {
-                            emptyList()
-                        }
-                    }.sortedByDescending { it.at }
+                // Benflix: ask about everyone at the same time instead of one person after another
+                val users = api.userApi.getUsers().content
+                coroutineScope {
+                    users
+                        .map { user ->
+                            async {
+                                try {
+                                    displayPreferencesService
+                                        .getDisplayPreferences(user.id)
+                                        .customPrefs[KEY]
+                                        .orEmpty()
+                                        .split(LINE)
+                                        .mapNotNull { decode(it, user.id, user.name.orEmpty()) }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    emptyList()
+                                }
+                            }
+                        }.awaitAll()
+                        .flatten()
+                        .sortedByDescending { it.at }
+                }
             }
 
         /** Ben fixed it (or it's not a problem): take it off the list */
