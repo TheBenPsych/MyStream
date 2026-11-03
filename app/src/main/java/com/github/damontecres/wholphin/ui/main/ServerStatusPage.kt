@@ -30,11 +30,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+<<<<<<< HEAD
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
+=======
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+>>>>>>> origin/claude/project-thread-km8cg5
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -89,6 +95,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+<<<<<<< HEAD
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,6 +104,12 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.model.api.BaseItemDto
+=======
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.sessionApi
+>>>>>>> origin/claude/project-thread-km8cg5
 import org.jellyfin.sdk.model.api.PlaystateCommand
 import timber.log.Timber
 import javax.inject.Inject
@@ -113,7 +126,10 @@ enum class ServerSection(
     PEOPLE("People", "Accounts for family and friends", Icons.Default.Person),
     PROBLEMS("Problems", "Problems people reported and problems from the server", Icons.Default.Warning),
     MESSAGES("Messages", "Notes on Home, the welcome note and pop-ups", Icons.Default.Edit),
+<<<<<<< HEAD
     TOOLS("Tools", "Scan for new stuff, the server's chores, and restarting Jellyfin", Icons.Default.Build),
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
 }
 
 /** Benflix: green, gold or red for the traffic lights */
@@ -133,6 +149,7 @@ class ServerStatusViewModel
         private val api: ApiClient,
         val serverRepository: ServerRepository,
         val data: ServerDashboardData,
+<<<<<<< HEAD
         private val actions: BenflixServerActions,
     ) : ViewModel() {
         /** A short result to show in a pop-up (title to text) */
@@ -252,6 +269,9 @@ class ServerStatusViewModel
                 null
             }
 
+=======
+    ) : ViewModel() {
+>>>>>>> origin/claude/project-thread-km8cg5
         fun stop(sessionId: String) {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
@@ -294,6 +314,7 @@ fun ServerStatusPage(
         when (section) {
             ServerSection.PEOPLE -> {
                 toolsViewModel.loadPeople()
+<<<<<<< HEAD
                 data.loadHistory()
             }
 
@@ -303,6 +324,8 @@ fun ServerStatusPage(
 
             ServerSection.TOOLS -> {
                 viewModel.loadTools()
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
             }
 
             ServerSection.MESSAGES -> {
@@ -324,12 +347,15 @@ fun ServerStatusPage(
     val loadingParts by data.loading.collectAsState()
     val updatedAt by data.updatedAt.collectAsState()
     var stopping by remember { mutableStateOf<WatchingNow?>(null) }
+<<<<<<< HEAD
     var messaging by remember { mutableStateOf<WatchingNow?>(null) }
     var askRestart by remember { mutableStateOf(false) }
     val history by data.history.collectAsState()
     val chores by viewModel.chores.collectAsState()
     val libraries by viewModel.libraries.collectAsState()
     val notice by viewModel.notice.collectAsState()
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
 
     val lights =
         remember(header, disks, problems, reports, watching) {
@@ -433,6 +459,7 @@ fun ServerStatusPage(
             }
 
             ServerSection.NOW -> {
+<<<<<<< HEAD
                 uploadMeterItem(watching)
                 watchingItems(
                     watching = watching,
@@ -452,6 +479,9 @@ fun ServerStatusPage(
                     onChore = viewModel::runChore,
                     onRestart = { askRestart = true },
                 )
+=======
+                watchingItems(watching, isTv) { stopping = it }
+>>>>>>> origin/claude/project-thread-km8cg5
             }
 
             ServerSection.LIBRARY -> {
@@ -461,7 +491,11 @@ fun ServerStatusPage(
             }
 
             ServerSection.PEOPLE -> {
+<<<<<<< HEAD
                 peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
+=======
+                peopleItems(toolsState, { toolsDialog = it }, sectionTitle)
+>>>>>>> origin/claude/project-thread-km8cg5
             }
 
             ServerSection.PROBLEMS -> {
@@ -666,7 +700,10 @@ fun ServerStatusPage(
 }
 
 private const val MANY_PROBLEMS = 3
+<<<<<<< HEAD
 private const val CHORE_CHECKS = 200
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
 
 /** Benflix: the server's name, whether it answers, and how fresh the numbers are */
 @Composable
@@ -826,8 +863,11 @@ private fun LazyListScope.watchingItems(
     watching: List<WatchingNow>?,
     isTv: Boolean,
     onStop: (WatchingNow) -> Unit,
+<<<<<<< HEAD
     onPause: (WatchingNow) -> Unit,
     onMessage: (WatchingNow) -> Unit,
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
 ) {
     item { SectionTitle(if (watching == null) "Watching now" else "Watching now (${watching.size})") }
     when {
@@ -844,6 +884,7 @@ private fun LazyListScope.watchingItems(
                 ServerActionRow(
                     headline = "${w.who} · ${w.what}" + if (w.paused) " (paused)" else "",
                     supporting =
+<<<<<<< HEAD
                         listOf(
                             w.device,
                             w.app,
@@ -851,13 +892,20 @@ private fun LazyListScope.watchingItems(
                             w.mbps?.let { "%.1f Mbps".format(it) }.orEmpty(),
                             if (w.away) "away from home" else "",
                         ).filter { it.isNotBlank() }
+=======
+                        listOf(w.device, w.app, w.timeLeft.orEmpty())
+                            .filter { it.isNotBlank() }
+>>>>>>> origin/claude/project-thread-km8cg5
                             .joinToString(" · "),
                     extra = {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
                             w.progress?.let { ProgressLine(it) }
                             // Phones: the long "how it plays" note goes under, so it never gets cut off
                             if (!isTv) StatusChip(text = w.howItPlays, color = if (w.converting) WarnGold else GoodGreen)
+<<<<<<< HEAD
                             w.why?.let { Text(text = "Why: $it", fontSize = 13.sp, color = WarnGold) }
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
                         }
                     },
                     leading = {
@@ -879,6 +927,7 @@ private fun LazyListScope.watchingItems(
                         } else {
                             null
                         },
+<<<<<<< HEAD
                     onClick = { onPause(w) },
                     actions =
                         listOf(
@@ -886,12 +935,17 @@ private fun LazyListScope.watchingItems(
                             "Message" to { onMessage(w) },
                             "Stop" to { onStop(w) },
                         ),
+=======
+                    onClick = { onStop(w) },
+                    actions = listOf("Stop" to { onStop(w) }),
+>>>>>>> origin/claude/project-thread-km8cg5
                 )
             }
         }
     }
 }
 
+<<<<<<< HEAD
 /** Benflix: how much of the home internet all the streams use together */
 private fun LazyListScope.uploadMeterItem(watching: List<WatchingNow>?) {
     val list = watching.orEmpty()
@@ -993,6 +1047,8 @@ private fun LazyListScope.toolItems(
     }
 }
 
+=======
+>>>>>>> origin/claude/project-thread-km8cg5
 @Composable
 private fun ProgressLine(share: Float) {
     Box(
