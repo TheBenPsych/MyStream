@@ -857,7 +857,11 @@ private fun GlanceRow(
                 onClick = { onClick(s) },
                 headlineContent = { Text(label, fontSize = 15.sp, maxLines = 1) },
                 leadingContent = { Dot(light) },
-                modifier = Modifier.width(170.dp),
+                modifier =
+                    Modifier
+                        .width(170.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(ServerCardColor),
             )
         }
     }
@@ -1269,7 +1273,8 @@ internal fun LoadingBox(text: String) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .padding(vertical = 3.dp)
+                .background(ServerCardColor, RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
@@ -1287,12 +1292,14 @@ private val BadRed = Color(0xFFE5484D)
 
 @Composable
 internal fun SectionTitle(text: String) {
+    // Benflix: a small grey heading over each group of cards, like the Settings pages
     Text(
-        text = text,
-        fontSize = 20.sp,
+        text = text.uppercase(),
+        fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = 14.dp, bottom = 2.dp),
+        letterSpacing = 1.2.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 18.dp, bottom = 4.dp),
     )
 }
 
@@ -1322,7 +1329,7 @@ private fun BigNumber(
     Column(
         modifier =
             modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .background(ServerCardColor, RoundedCornerShape(12.dp))
                 .padding(12.dp),
     ) {
         // Benflix: a dash while the number is still loading
@@ -1345,7 +1352,7 @@ private fun DiskBar(disk: ServerDisk) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .background(ServerCardColor, RoundedCornerShape(12.dp))
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
