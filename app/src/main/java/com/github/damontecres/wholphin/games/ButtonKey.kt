@@ -173,7 +173,6 @@ fun ButtonKey(
     }
 }
 
-<<<<<<< HEAD
 /** A little drawing of a TV remote or a game controller */
 @Composable
 fun PadIcon(
@@ -249,22 +248,11 @@ fun SmartKey(
     pad: KeyFor,
     modifier: Modifier = Modifier,
     showPhoneTip: Boolean = true,
-=======
-/**
- * The key on the side of the game (TV): the remote and the controller next to each other, and how to
- * use a phone as a controller.
- */
-@Composable
-fun SideKeys(
-    console: LocalConsole,
-    modifier: Modifier = Modifier,
->>>>>>> origin/main
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier,
     ) {
-<<<<<<< HEAD
         ButtonKey(console, pad, compact = true)
         if (showPhoneTip) {
             Text(
@@ -273,31 +261,6 @@ fun SideKeys(
                 fontSize = 11.sp,
             )
             PhoneTip()
-=======
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ButtonKey(console, KeyFor.REMOTE, Modifier.weight(1f), compact = true)
-            ButtonKey(console, KeyFor.CONTROLLER, Modifier.weight(1f), compact = true)
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(22.dp)
-                        .background(PadGrey, RoundedCornerShape(6.dp))
-                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
-            ) {
-                Text("📱", fontSize = 11.sp)
-            }
-            Text(
-                "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 12.sp,
-            )
->>>>>>> origin/main
         }
     }
 }
