@@ -26,3 +26,6 @@
 
 # Keep external/native functions
 -keep class com.suyashbelekar.exoplayerhdrutils.libdovi.LibDovi { *; }
+
+# Benflix: Google's cast library finds this class by the name written in the manifest
+-keep class com.github.damontecres.wholphin.services.BenflixCastOptions { *; }

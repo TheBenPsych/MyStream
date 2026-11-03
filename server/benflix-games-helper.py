@@ -117,6 +117,8 @@ CORES = {
 # For games that are a folder of files, the file to start from (best first)
 START_FILES = (".m3u", ".cue", ".gdi", ".chd", ".iso", ".rvz", ".wbfs", ".cso", ".pbp")
 
+AWAY_PATH = "/benflix-games"
+
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _lock = threading.Lock()
@@ -529,7 +531,16 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
+        # Away from home the app comes in through Tower's web proxy at https://<jellyfin address>/benflix-games.
+        # Some proxies keep that start of the path, some drop it; both work.
+        via_internet = bool(self.headers.get("X-Forwarded-For") or self.headers.get("X-Real-IP"))
+        if path == AWAY_PATH or path.startswith(AWAY_PATH + "/"):
+            path = path[len(AWAY_PATH):] or "/"
+            via_internet = True
         try:
+            if via_internet and (path.startswith("/api/admin/") or path.startswith("/api/web") or path in ("/", "/web", "/index.html")):
+                # Tower's tools (restarting apps, fixing files) only work from home, never through the internet
+                raise HelperError(403, "Tower's tools only work at home.")
             if method == "GET" and path == "/health":
                 return self.send(200, {"ok": True, "local_play": True, "server_tools": tools is not None, "web": True})
             if method == "GET" and path in ("/", "/web", "/index.html"):
