@@ -83,6 +83,9 @@ enum class CantFindOutcome {
  * (the admin can write to everyone's, like the Home notes in [BenflixAdminTools]). Each device reads its
  * own user's copy.
  *
+ * The 7 days only start once the title is out plus a few weeks ([SearchClock]), so new and upcoming
+ * releases are never marked by themselves.
+ *
  * Ben's pick (2026-11-03): once marked, it's taken out of Radarr / Sonarr (through Seerr) so they stop searching,
  * and blocked in Seerr so nobody can ask for it again. The card stays for good. "Try again" undoes the block.
  * A show with some episodes already on Benflix is never taken out of Sonarr, since that would delete them.
@@ -267,6 +270,9 @@ class BenflixCantFind
                                 } catch (ex: Exception) {
                                     null
                                 } ?: return@mapNotNull null
+                            // Ben's rule: not out yet (or out less than a few weeks) doesn't count
+                            val looking = asks.mapNotNull { SearchClock.of(it, raw).daysLooking }.maxOrNull()
+                            if (looking == null || looking < AUTO_DAYS) return@mapNotNull null
                             val media = raw["mediaInfo"] as? JsonObject
                             // Something is downloading, so it was found after all
                             if ((media?.get("downloadStatus") as? JsonArray).orEmpty().isNotEmpty()) return@mapNotNull null

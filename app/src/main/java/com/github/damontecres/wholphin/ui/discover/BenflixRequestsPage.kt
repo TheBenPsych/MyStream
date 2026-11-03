@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.SearchClock
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
@@ -168,6 +169,8 @@ data class RequestEntry(
     // Benflix: being downloaded right now, and how far along (when the server knows)
     val downloading: Boolean = false,
     val downloadPercent: Int? = null,
+    // Benflix: when the 7-day "Still looking" clock starts (waits for release + a few weeks)
+    val clock: SearchClock? = null,
 )
 
 @HiltViewModel
@@ -1098,13 +1101,16 @@ class BenflixRequestsViewModel
             // Benflix: how far the download is, for the progress steps
             var percent: Int? = null
             var downloading = false
+            var clock: SearchClock? = null
             if (!available && status == RequestStatus.APPROVED && tmdbId != null) {
                 try {
                     val kind = if (SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE) "movie" else "tv"
-                    val media =
+                    val details =
                         seerrService.api
                             .getRaw("/$kind/$tmdbId")
-                            ?.let { Json.parseToJsonElement(it).jsonObject["mediaInfo"] as? JsonObject }
+                            ?.let { Json.parseToJsonElement(it).jsonObject }
+                    clock = SearchClock.of(request, details)
+                    val media = details?.get("mediaInfo") as? JsonObject
                     val downloads = (media?.get("downloadStatus") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
                     if (downloads.isNotEmpty()) {
                         downloading = true
@@ -1126,6 +1132,7 @@ class BenflixRequestsViewModel
                 available = available,
                 downloading = downloading,
                 downloadPercent = percent,
+                clock = clock,
             )
         }
 
@@ -1904,8 +1911,12 @@ private fun StatusTag(
     daysWaiting: Long? = null,
     isAdminList: Boolean = false,
 ) {
-    // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself.
-    val stillLooking = entry.status == RequestStatus.APPROVED && !entry.downloading && daysWaiting != null
+    // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself,
+    // but the week only starts once it's out plus a few weeks (Ben's rule)
+    val clock = entry.clock
+    val waiting = entry.status == RequestStatus.APPROVED && !entry.downloading
+    val looking = if (clock != null) clock.daysLooking else daysWaiting
+    val stillLooking = waiting && looking != null
     val (text, color) =
         when {
             entry.available -> {
@@ -1928,8 +1939,17 @@ private fun StatusTag(
                 "Something went wrong" to Color(0xFFE5484D)
             }
 
+            waiting && clock?.notOut == true -> {
+                val out = clock?.outOn?.let { BenflixCantFind.niceDate(it.toString()) }
+                (if (out != null) "Not out yet · out $out" else "Not out yet") to Color(0xFF7AA7FF)
+            }
+
+            waiting && clock?.justOut == true -> {
+                "Just came out · searching" to Color(0xFF7AA7FF)
+            }
+
             stillLooking -> {
-                val days = daysWaiting ?: 0
+                val days = looking ?: 0
                 (if (days < 1) "Still looking · started today" else "Still looking · day ${days + 1}") to Color(0xFF7AA7FF)
             }
 
