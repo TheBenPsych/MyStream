@@ -209,6 +209,7 @@ class HigherLowerViewModel
         companion object {
             private const val POOL_SIZE = 200
             private const val MIN_MOVIES = 6
+
             /** The "Highest scores" board's key: best streak */
             const val BOARD_KEY = "HIGHER_LOWER_STREAK"
             private const val REVEAL_MS = 1_600L
