@@ -734,10 +734,10 @@ class HomeViewModel
     }
 
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
-@Volatile private var onThisDayCache: Pair<String, List<UUID>>? = null
+@Volatile internal var onThisDayCache: Pair<String, List<UUID>>? = null
 
 /** Benflix: Seerr's trending list and when it was fetched */
-@Volatile private var trendingCache: Pair<Long, List<DiscoverItem>>? = null
+@Volatile internal var trendingCache: Pair<Long, List<DiscoverItem>>? = null
 
 /**
  * Whether a row is a "is watching" type
