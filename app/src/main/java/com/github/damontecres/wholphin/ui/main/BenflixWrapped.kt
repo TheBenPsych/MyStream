@@ -30,6 +30,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.BenflixWatchTime
+import com.github.damontecres.wholphin.services.WatchTime
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
@@ -53,6 +55,7 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 /** One profile's year on Benflix */
@@ -78,6 +81,7 @@ class BenflixWrappedViewModel
         @param:ApplicationContext private val context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val watchTime: BenflixWatchTime,
     ) : ViewModel() {
         private val _wrapped = MutableStateFlow<WrappedYear?>(null)
         val wrapped: StateFlow<WrappedYear?> = _wrapped
@@ -124,7 +128,8 @@ class BenflixWrappedViewModel
                         ).content
                         .items
                         .filter { it.userData?.lastPlayedDate?.year == year }
-                summarize(year, played)
+                val real = serverRepository.currentUser?.id?.let { watchTime.read(it) }
+                summarize(year, played, real)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -135,12 +140,20 @@ class BenflixWrappedViewModel
         private fun summarize(
             year: Int,
             played: List<BaseItemDto>,
+            real: WatchTime?,
         ): WrappedYear? {
             if (played.size < MIN_WATCHED) return null
             val movies = played.filter { it.type == BaseItemKind.MOVIE }
             val episodes = played.filter { it.type == BaseItemKind.EPISODE }
-            val ticks = played.sumOf { (it.runTimeTicks ?: 0L) * (it.userData?.playCount?.coerceAtLeast(1) ?: 1) }
-            val hours = (ticks / TICKS_PER_HOUR).toInt()
+            // Benflix's own count of real watching; anything from before it started counting uses the full length
+            val sinceMs = real?.sinceMs
+            val ticks =
+                played
+                    .filter { item ->
+                        sinceMs == null ||
+                            (item.userData?.lastPlayedDate?.toInstant(ZoneOffset.UTC)?.toEpochMilli() ?: 0L) < sinceMs
+                    }.sumOf { (it.runTimeTicks ?: 0L) * (it.userData?.playCount?.coerceAtLeast(1) ?: 1) }
+            val hours = (ticks / TICKS_PER_HOUR).toInt() + ((real?.seconds(year) ?: 0L) / 3600L).toInt()
             val topShows =
                 episodes
                     .groupingBy { it.seriesName.orEmpty() }
