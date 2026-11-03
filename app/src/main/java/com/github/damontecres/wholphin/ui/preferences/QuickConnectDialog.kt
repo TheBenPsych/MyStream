@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,15 +17,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.components.EditTextBox
 import com.github.damontecres.wholphin.ui.components.TextButton
@@ -35,7 +34,8 @@ import com.github.damontecres.wholphin.ui.touch.Dialog
 fun QuickConnectDialog(
     onSubmit: (String) -> Unit,
     onDismissRequest: () -> Unit,
-    elevation: Dp = 3.dp,
+    serverError: String? = null,
+    busy: Boolean = false,
 ) {
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
@@ -66,22 +66,29 @@ fun QuickConnectDialog(
             modifier =
                 Modifier
                     .padding(16.dp)
-                    .width(360.dp)
+                    .widthIn(max = 380.dp)
+                    .fillMaxWidth()
+                    // Benflix: plain graphite, not the reddish-brown elevation tint
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(elevation),
-                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF18181C),
+                        shape = RoundedCornerShape(12.dp),
                     ),
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier =
                     Modifier
-                        .padding(16.dp),
+                        .padding(20.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.quick_connect_code),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    text = stringResource(R.string.quick_connect),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                )
+                Text(
+                    text = stringResource(R.string.quick_connect_how),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFBBBBBB),
                 )
 
                 EditTextBox(
@@ -107,9 +114,9 @@ fun QuickConnectDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                if (showError) {
+                if (showError || serverError != null) {
                     Text(
-                        text = stringResource(R.string.quick_connect_code_error),
+                        text = if (showError) stringResource(R.string.quick_connect_code_error) else serverError.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(start = 8.dp),
@@ -117,8 +124,8 @@ fun QuickConnectDialog(
                 }
 
                 TextButton(
-                    stringRes = R.string.submit,
-                    onClick = onSubmitCode,
+                    stringRes = if (busy) R.string.quick_connect_busy else R.string.quick_connect_sign_in,
+                    onClick = { if (!busy) onSubmitCode() },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
             }

@@ -59,7 +59,7 @@ val LocalPhoneMenu = compositionLocalOf<PhoneMenu?> { null }
 
 /**
  * The top of My Benflix on phones (it's a page of its own, no pop-up):
- * who's watching with Settings, round buttons (Downloads, TV remote, Parents),
+ * who's watching with Settings, round buttons (Downloads, TV remote, Parents, Quick Connect),
  * then every library and the extras as same-size icon tiles, four to a row.
  */
 @Composable
@@ -75,6 +75,11 @@ fun PhoneMyBenflixHeader(
 ) {
     var showRemote by remember { mutableStateOf(false) }
     if (showRemote) PhoneRemoteDialog(onDismiss = { showRemote = false })
+    var showQuickConnect by remember { mutableStateOf(false) }
+    if (showQuickConnect) {
+        com.github.damontecres.wholphin.ui.preferences
+            .BenflixQuickConnect(onDismiss = { showQuickConnect = false })
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(18.dp),
         modifier = modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp),
@@ -136,8 +141,12 @@ fun PhoneMyBenflixHeader(
             if (!kids && !guest) {
                 RoundButton(R.string.fa_user_shield, "Parents", onClickParents)
             }
+            // Sign another TV or phone in with the code it shows
+            if (!kids) {
+                RoundButton(R.string.fa_link, stringResource(R.string.quick_connect)) { showQuickConnect = true }
+            }
             // Keeps the buttons the same size as with four
-            repeat(4 - listOf(true, !kids, !kids && !guest).count { it }) { Spacer(Modifier.weight(1f)) }
+            repeat(4 - listOf(true, !kids, !kids && !guest, !kids).count { it }) { Spacer(Modifier.weight(1f)) }
         }
         if (menu.libraries.isNotEmpty()) {
             TileGrid(stringResource(R.string.phone_browse), menu.libraries)

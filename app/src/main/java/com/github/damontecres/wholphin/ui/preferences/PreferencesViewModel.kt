@@ -30,12 +30,10 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.ServerVersionSupported
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
-import com.github.damontecres.wholphin.util.LoadingState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -76,8 +74,6 @@ class PreferencesViewModel
 
         val seerrConnection = seerrServerRepository.connection
 
-        private val _quickConnectStatus = MutableStateFlow<LoadingState>(LoadingState.Pending)
-        val quickConnectStatus: StateFlow<LoadingState> = _quickConnectStatus
 
         val releaseNotes = MutableStateFlow<DataLoadingState<Release>>(DataLoadingState.Pending)
 
@@ -180,27 +176,6 @@ class PreferencesViewModel
         fun removeLoginAndPin(user: JellyfinUser) {
             viewModelScope.launchIO(ExceptionHandler(autoToast = true)) {
                 serverRepository.updateUserAuth(user, null, false)
-            }
-        }
-
-        fun resetQuickConnectStatus() {
-            _quickConnectStatus.value = LoadingState.Pending
-        }
-
-        fun authorizeQuickConnect(code: String) {
-            viewModelScope.launchIO {
-                _quickConnectStatus.value = LoadingState.Loading
-                try {
-                    val success = serverRepository.authorizeQuickConnect(code)
-                    _quickConnectStatus.value =
-                        if (success) {
-                            LoadingState.Success
-                        } else {
-                            LoadingState.Error("Authorization failed")
-                        }
-                } catch (e: Exception) {
-                    _quickConnectStatus.value = LoadingState.Error(e)
-                }
             }
         }
 

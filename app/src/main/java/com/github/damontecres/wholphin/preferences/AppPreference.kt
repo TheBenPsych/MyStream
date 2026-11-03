@@ -1425,6 +1425,7 @@ val basicPreferences =
             title = R.string.more,
             preferences =
                 buildList {
+                    add(AppPreference.QuickConnect)
                     add(AppPreference.ServerPage)
                     add(AppPreference.AdvancedSettings)
                 },
@@ -1571,7 +1572,7 @@ val advancedPreferences =
                     buildList<AppPreference<AppPreferences, out Any?>> {
                         // Benflix: requests (Seerr) moved here from the main Settings page
                         if (BuildConfig.DISCOVER_ENABLED) add(AppPreference.SeerrIntegration)
-                        add(AppPreference.QuickConnect)
+                        // Benflix: Quick Connect now sits on the main Settings page
                         add(AppPreference.SendAppLogs)
                         add(AppPreference.SendCrashReports)
                         add(AppPreference.DebugLogging)
