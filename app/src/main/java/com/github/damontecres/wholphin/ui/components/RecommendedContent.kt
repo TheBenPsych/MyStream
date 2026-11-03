@@ -605,15 +605,16 @@ fun RecommendedContent(
                 },
                 onFocusPosition = {
                     position = it
+                    // Benflix: the banner reports row -1, and rows can still be loading, so keep the index in range
                     val nonEmptyRowBefore =
                         state.rows
-                            .subList(0, it.row)
+                            .subList(0, it.row.coerceIn(0, state.rows.size))
                             .count {
                                 it is HomeRowLoadingState.Success && it.items.isEmpty()
                             }
                     onFocusPosition?.invoke(
                         RowColumn(
-                            it.row - nonEmptyRowBefore,
+                            if (it.row < 0) it.row else it.row - nonEmptyRowBefore,
                             it.column,
                         ),
                     )
