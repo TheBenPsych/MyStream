@@ -39,6 +39,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.canRequestTv
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.services.jellyfinId
@@ -58,6 +59,7 @@ import com.github.damontecres.wholphin.ui.components.QuickDetailsText
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.listToDotString
@@ -239,6 +241,9 @@ fun DiscoverSeriesDetailsContent(
     onLongClickSimilar: (Int, DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
+    val cantFindKeys by CantFindBlocked.keys.collectAsState()
+    val cantFindNow = series.id?.let { cantFindKey(false, it) }?.let { it in cantFindKeys } == true
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -300,6 +305,7 @@ fun DiscoverSeriesDetailsContent(
                                 }
                             },
                             canRequest = userConfig.canRequestTv,
+                            cantFind = cantFindNow,
                             canCancel = canCancel,
                             trailers = trailers,
                             trailerOnClick = trailerOnClick,

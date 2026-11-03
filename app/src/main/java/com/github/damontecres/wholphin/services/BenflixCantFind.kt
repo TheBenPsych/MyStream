@@ -18,9 +18,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.UUID
@@ -49,7 +51,28 @@ data class CantFindEntry(
     val auto: Boolean = false,
     /** Ben pressed Undo: keep looking, and don't mark it by itself again */
     val keepLooking: Boolean = false,
+    /** Poster, so the card still shows after Seerr has dropped the request */
+    val posterUrl: String? = null,
 )
+
+/** Benflix: keys of titles marked "Couldn't find it", for the Ask-button guard in SeerrApiClient and card strips */
+object CantFindBlocked {
+    val keys = MutableStateFlow<Set<String>>(emptySet())
+}
+
+/** What happened in Seerr / Radarr / Sonarr after marking */
+enum class CantFindOutcome {
+    /** Saved, taken out of Radarr/Sonarr and blocked in Seerr */
+    STOPPED,
+
+    /** Saved, but a show with some episodes already on Benflix was left in Sonarr */
+    KEPT_PARTIAL,
+
+    /** Saved, but Seerr wouldn't take it out of Radarr/Sonarr */
+    SAVED_ONLY,
+
+    FAILED,
+}
 
 /**
  * Benflix: "Couldn't find it". When an approved request can't be found anywhere (often old or rare stuff),
@@ -58,7 +81,11 @@ data class CantFindEntry(
  *
  * Seerr has no place for this, so the list is kept in every Benflix user's Jellyfin display settings
  * (the admin can write to everyone's, like the Home notes in [BenflixAdminTools]). Each device reads its
- * own user's copy. Radarr / Sonarr keep searching, and once the title arrives the label just stops showing.
+ * own user's copy.
+ *
+ * Ben's pick (2026-11-03): once marked, it's taken out of Radarr / Sonarr (through Seerr) so they stop searching,
+ * and blocked in Seerr so nobody can ask for it again. The card stays for good. "Try again" undoes the block.
+ * A show with some episodes already on Benflix is never taken out of Sonarr, since that would delete them.
  */
 @Singleton
 class BenflixCantFind
@@ -80,6 +107,7 @@ class BenflixCantFind
         private fun show(list: List<CantFindEntry>) {
             all = list
             _entries.value = list.filter { !it.keepLooking }.associateBy { it.key }
+            CantFindBlocked.keys.value = _entries.value.keys
         }
 
         private val mutex = Mutex()
@@ -124,27 +152,86 @@ class BenflixCantFind
             title: String?,
             note: String?,
             askedBy: List<Int>,
-        ): Boolean =
-            change { list ->
-                val old = list.firstOrNull { it.key == key }
-                val entry =
-                    CantFindEntry(
-                        key = key,
-                        title = title ?: old?.title,
-                        note = note?.trim()?.take(MAX_NOTE)?.takeIf { it.isNotEmpty() },
-                        date = LocalDate.now().toString(),
-                        askedBy = (old?.askedBy.orEmpty() + askedBy).distinct(),
-                    )
-                (list.filter { it.key != key } + entry).takeLast(MAX_ENTRIES)
+            posterUrl: String? = null,
+        ): CantFindOutcome {
+            val saved =
+                change { list ->
+                    val old = list.firstOrNull { it.key == key }
+                    val entry =
+                        CantFindEntry(
+                            key = key,
+                            title = title ?: old?.title,
+                            note = note?.trim()?.take(MAX_NOTE)?.takeIf { it.isNotEmpty() },
+                            date = LocalDate.now().toString(),
+                            askedBy = (old?.askedBy.orEmpty() + askedBy).distinct(),
+                            posterUrl = posterUrl ?: old?.posterUrl,
+                        )
+                    (list.filter { it.key != key } + entry).takeLast(MAX_ENTRIES)
+                }
+            if (!saved) return CantFindOutcome.FAILED
+            return stopSearching(key, title)
+        }
+
+        /** Takes it out of Radarr / Sonarr and blocks it in Seerr */
+        private suspend fun stopSearching(
+            key: String,
+            title: String?,
+        ): CantFindOutcome =
+            withContext(WholphinDispatchers.IO) {
+                val isMovie = key.startsWith("MOVIE")
+                val tmdbId = key.substringAfter('-').toIntOrNull() ?: return@withContext CantFindOutcome.SAVED_ONLY
+                try {
+                    val seerr = seerrService.api
+                    val raw = seerr.getRaw(if (isMovie) "/movie/$tmdbId" else "/tv/$tmdbId")?.let { Json.parseToJsonElement(it).jsonObject }
+                    val media = raw?.get("mediaInfo") as? JsonObject
+                    val status = (media?.get("status") as? JsonPrimitive)?.intOrNull
+                    if (status == SeerrAvailability.PARTIALLY_AVAILABLE.status || status == SeerrAvailability.AVAILABLE.status) {
+                        return@withContext CantFindOutcome.KEPT_PARTIAL
+                    }
+                    val mediaId = (media?.get("id") as? JsonPrimitive)?.contentOrNull
+                    // Out of Radarr / Sonarr (nothing was downloaded, so there are no files to lose)
+                    val removed = mediaId == null || seerr.sendRaw("DELETE", "/media/$mediaId/file") in 200..299
+                    // Blocked in Seerr, so it can't be asked for again
+                    val name = title ?: ((raw?.get("title") ?: raw?.get("name")) as? JsonPrimitive)?.contentOrNull
+                    val body =
+                        buildJsonObject {
+                            put("tmdbId", tmdbId)
+                            put("mediaType", if (isMovie) "movie" else "tv")
+                            name?.let { put("title", it) }
+                        }.toString()
+                    val blocked = seerr.sendRaw("POST", "/blacklist", body) in 200..299
+                    Timber.i("Couldn't find %s: removed=%s blocked=%s", key, removed, blocked)
+                    if (removed && blocked) CantFindOutcome.STOPPED else CantFindOutcome.SAVED_ONLY
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not stop the search for %s", key)
+                    CantFindOutcome.SAVED_ONLY
+                }
             }
 
         /** Admin: take the label off again. It keeps searching and won't be marked by itself again. */
-        suspend fun undo(key: String): Boolean =
-            change { list ->
-                val old = list.firstOrNull { it.key == key }
-                val kept = old?.copy(keepLooking = true) ?: CantFindEntry(key = key, date = LocalDate.now().toString(), keepLooking = true)
-                (list.filter { it.key != key } + kept).takeLast(MAX_ENTRIES)
+        suspend fun undo(key: String): Boolean {
+            val saved =
+                change { list ->
+                    val old = list.firstOrNull { it.key == key }
+                    val kept =
+                        old?.copy(keepLooking = true)
+                            ?: CantFindEntry(key = key, date = LocalDate.now().toString(), keepLooking = true)
+                    (list.filter { it.key != key } + kept).takeLast(MAX_ENTRIES)
+                }
+            // Take the Seerr block off so it can be asked for again
+            key.substringAfter('-').toIntOrNull()?.let { tmdbId ->
+                withContext(WholphinDispatchers.IO) {
+                    try {
+                        seerrService.api.sendRaw("DELETE", "/blacklist/$tmdbId")
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not unblock %s", key)
+                    }
+                }
             }
+            return saved
+        }
 
         /**
          * Admin: approved requests with nothing found after [AUTO_DAYS] days become "Couldn't find it" by themselves
@@ -186,7 +273,9 @@ class BenflixCantFind
                             val status = (media?.get("status") as? JsonPrimitive)?.intOrNull
                             if (status == SeerrAvailability.AVAILABLE.status) return@mapNotNull null
                             val title = ((raw["title"] ?: raw["name"]) as? JsonPrimitive)?.contentOrNull
+                            val poster = (raw["posterPath"] as? JsonPrimitive)?.contentOrNull?.let { TMDB_POSTER + it }
                             CantFindEntry(
+                                posterUrl = poster,
                                 key = key!!,
                                 title = title,
                                 date = LocalDate.now().toString(),
@@ -195,10 +284,12 @@ class BenflixCantFind
                             )
                         }
                     if (toMark.isEmpty()) return@withContext
-                    change { current ->
-                        val have = current.map { it.key }.toSet()
-                        (current + toMark.filter { it.key !in have }).takeLast(MAX_ENTRIES)
-                    }
+                    val saved =
+                        change { current ->
+                            val have = current.map { it.key }.toSet()
+                            (current + toMark.filter { it.key !in have }).takeLast(MAX_ENTRIES)
+                        }
+                    if (saved) toMark.forEach { stopSearching(it.key, it.title) }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -289,6 +380,7 @@ class BenflixCantFind
             const val KEY = "benflix.cantfind.v1"
             const val MAX_NOTE = 140
             const val MAX_ENTRIES = 300
+            private const val TMDB_POSTER = "https://image.tmdb.org/t/p/w342"
 
             /** Days of "Still looking" before a request turns into "Couldn't find it" by itself */
             const val AUTO_DAYS = 7L

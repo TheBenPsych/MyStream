@@ -39,7 +39,11 @@ fun ExpandableDiscoverButtons(
     modifier: Modifier = Modifier,
     pendingOnClick: () -> Unit = {},
     isAdmin: Boolean = true,
+    // Benflix: Ben couldn't find it, so the Ask button turns into a "Couldn't find it" label
+    cantFind: Boolean = false,
 ) {
+    val blocked =
+        cantFind && availability != SeerrAvailability.AVAILABLE && availability != SeerrAvailability.PARTIALLY_AVAILABLE
     val firstFocus = remember { FocusRequester() }
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -49,7 +53,7 @@ fun ExpandableDiscoverButtons(
                 .focusGroup()
                 .focusRestorer(firstFocus),
     ) {
-        val text =
+        val baseText =
             when (availability) {
                 // Benflix: family members "ask Ben", the admin just requests
                 SeerrAvailability.UNKNOWN -> if (isAdmin) R.string.request else R.string.benflix_ask_to_add
@@ -68,7 +72,8 @@ fun ExpandableDiscoverButtons(
                 // TODO Blocklist
                 SeerrAvailability.BLOCKLISTED -> R.string.unavailable
             }
-        val icon =
+        val text = if (blocked) R.string.benflix_cant_find else baseText
+        val baseIcon =
             when (availability) {
                 SeerrAvailability.UNKNOWN -> R.string.fa_download
 
@@ -85,13 +90,14 @@ fun ExpandableDiscoverButtons(
                 // TODO
                 SeerrAvailability.BLOCKLISTED -> R.string.fa_xmark
             }
+        val icon = if (blocked) R.string.fa_xmark else baseIcon
         item("first") {
             ExpandableFaButton(
                 title = text,
                 iconStringRes = icon,
                 enabled =
                     when (availability) {
-                        SeerrAvailability.UNKNOWN -> canRequest
+                        SeerrAvailability.UNKNOWN -> canRequest || blocked
 
                         SeerrAvailability.PENDING,
                         SeerrAvailability.PROCESSING,
@@ -99,11 +105,13 @@ fun ExpandableDiscoverButtons(
                         SeerrAvailability.AVAILABLE,
                         -> true
 
+                        // Benflix: stays focusable on TV so the page still has a first button; pressing does nothing
                         SeerrAvailability.BLOCKLISTED,
                         SeerrAvailability.DELETED,
-                        -> false
+                        -> blocked
                     },
                 onClick = {
+                    if (blocked) return@ExpandableFaButton
                     when (availability) {
                         SeerrAvailability.UNKNOWN -> {
                             requestOnClick.invoke()
@@ -134,7 +142,8 @@ fun ExpandableDiscoverButtons(
                         .onFocusChanged(buttonOnFocusChanged),
             )
         }
-        if (availability == SeerrAvailability.PARTIALLY_AVAILABLE) {
+        // Benflix: no asking for the missing seasons once Ben couldn't find them
+        if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind) {
             item("request_partial") {
                 ExpandableFaButton(
                     title = R.string.request,

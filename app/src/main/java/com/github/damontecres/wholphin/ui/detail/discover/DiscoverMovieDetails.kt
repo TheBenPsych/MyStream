@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.canRequestMovies
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.ui.Cards
@@ -57,6 +58,7 @@ import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -207,6 +209,9 @@ fun DiscoverMovieDetailsContent(
     onLongClickSimilar: (Int, DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
+    val cantFindKeys by CantFindBlocked.keys.collectAsState()
+    val cantFindNow = movie.id?.let { cantFindKey(true, it) }?.let { it in cantFindKeys } == true
     val scope = rememberCoroutineScope()
     var position by rememberInt(0)
     val focusRequesters = remember { List(RECOMMENDED_ROW + 1) { FocusRequester() } }
@@ -260,6 +265,7 @@ fun DiscoverMovieDetailsContent(
                             }
                         },
                         canRequest = userConfig.canRequestMovies,
+                        cantFind = cantFindNow,
                         canCancel = canCancel,
                         trailers = trailers,
                         trailerOnClick = trailerOnClick,

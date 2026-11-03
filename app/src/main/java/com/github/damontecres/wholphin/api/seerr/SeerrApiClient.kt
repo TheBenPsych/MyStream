@@ -1,13 +1,17 @@
 package com.github.damontecres.wholphin.api.seerr
 
 import com.github.damontecres.wholphin.api.seerr.infrastructure.ApiClient
+import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import okhttp3.Call
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import timber.log.Timber
 
 class SeerrApiClient(
@@ -30,6 +34,18 @@ class SeerrApiClient(
             .cookieJar(cookieJar)
             .addInterceptor {
                 Timber.d("SeerrApiClient: ${it.request().method} ${it.request().url}")
+                // Benflix: titles Ben couldn't find can't be asked for again, from any Ask button
+                blockedRequestFor(it.request())?.let { key ->
+                    Timber.i("Not asking for %s: marked Couldn't find it", key)
+                    return@addInterceptor okhttp3.Response
+                        .Builder()
+                        .request(it.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(403)
+                        .message("Couldn't find it")
+                        .body("{\"message\":\"Couldn't find it\"}".toResponseBody("application/json".toMediaType()))
+                        .build()
+                }
                 it.proceed(
                     it
                         .request()
@@ -58,6 +74,27 @@ class SeerrApiClient(
                 .url(baseUrl.trimEnd('/') + path)
                 .build()
         return client.newCall(request).execute().use { if (it.isSuccessful) it.body.string() else null }
+    }
+
+    /** Benflix: send any Seerr address with a method and optional JSON body. Returns the HTTP code (0 = no answer). */
+    fun sendRaw(
+        method: String,
+        path: String,
+        json: String? = null,
+    ): Int {
+        val body = json?.toRequestBody("application/json".toMediaType())
+        val request =
+            okhttp3.Request
+                .Builder()
+                .url(baseUrl.trimEnd('/') + path)
+                .method(method, body ?: if (method == "POST" || method == "PUT") "".toRequestBody() else null)
+                .build()
+        return try {
+            client.newCall(request).execute().use { it.code }
+        } catch (ex: java.io.IOException) {
+            Timber.w(ex, "Seerr %s %s failed", method, path)
+            0
+        }
     }
 
     private fun <T : ApiClient> create(initializer: (String, Call.Factory) -> T): Lazy<T> =
@@ -117,6 +154,24 @@ private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
         }
     }
     return null
+}
+
+/** Benflix: the "Couldn't find it" key when this is a new request for a blocked title */
+private fun blockedRequestFor(request: okhttp3.Request): String? {
+    if (request.method != "POST" || !request.url.encodedPath.trimEnd('/').endsWith("/request")) return null
+    val blocked = CantFindBlocked.keys.value
+    if (blocked.isEmpty()) return null
+    return try {
+        val buffer = okio.Buffer()
+        request.body?.writeTo(buffer) ?: return null
+        val json = kotlinx.serialization.json.Json.parseToJsonElement(buffer.readUtf8()) as? kotlinx.serialization.json.JsonObject
+        val type = (json?.get("mediaType") as? kotlinx.serialization.json.JsonPrimitive)?.content
+        val id = (json?.get("mediaId") as? kotlinx.serialization.json.JsonPrimitive)?.content
+        val key = (if (type == "movie") "MOVIE" else "TV") + "-$id"
+        key.takeIf { type != null && id != null && it in blocked }
+    } catch (ex: Exception) {
+        null
+    }
 }
 
 private val DISCOVER_PATH = Regex("^.*/jellyseerr/discover/(movies|tv)$")

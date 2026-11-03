@@ -200,16 +200,25 @@ class BenflixRequestsViewModel
                         .orEmpty()
                         .filter { it.cantFindKey() == key }
                         .mapNotNull { it.request.requestedBy?.id }
-                val ok = cantFindList.mark(key, entry.item?.title, note, askedBy)
-                showToast(context, if (ok) "Marked as can't find. Whoever asked will be told." else "Couldn't save that. Try again.")
+                showToast(context, cantFindList.mark(key, entry.item?.title, note, askedBy, entry.item?.posterUrl).message())
             }
         }
 
+        /** Seerr id of whoever is signed in, for their own "Couldn't find it" cards */
+        val mySeerrId = seerrServerRepository.currentUserId
+
         /** Admin: take "Couldn't find it" off again */
         fun undoCantFind(entry: RequestEntry) {
-            val key = entry.cantFindKey() ?: return
+            undoCantFind(entry.cantFindKey() ?: return)
+        }
+
+        /** Admin: take "Couldn't find it" off again, and unblock it in Seerr */
+        fun undoCantFind(key: String) {
             viewModelScope.launch(WholphinDispatchers.IO) {
-                if (!cantFindList.undo(key)) showToast(context, "Couldn't save that. Try again.")
+                showToast(
+                    context,
+                    if (cantFindList.undo(key)) "Unblocked. Ask for it again to start a new search." else "Couldn't save that. Try again.",
+                )
             }
         }
 
@@ -893,8 +902,16 @@ class BenflixRequestsViewModel
         }
 
         /** Ask for a title. Movies go straight away; shows open the season picker first (Ben's pick) */
+        /** Benflix: Ben couldn't find it, so it can't be asked for again */
+        private suspend fun blocked(item: DiscoverItem): Boolean {
+            if (item.requestKey() !in cantFindList.entries.value) return false
+            showToast(context, "Ben couldn't find this one, so it can't be asked for again.")
+            return true
+        }
+
         fun ask(item: DiscoverItem) {
             viewModelScope.launch(WholphinDispatchers.IO) {
+                if (blocked(item)) return@launch
                 try {
                     if (item.type == SeerrItemType.TV) {
                         val tv = seerrService.api.tvApi.tvTvIdGet(tvId = item.id)
@@ -1574,6 +1591,7 @@ private fun RequestList(
     val searchResults by viewModel.searchResults.collectAsState()
     val ratings by viewModel.ratings.collectAsState()
     val cantFind by viewModel.cantFind.collectAsState()
+    val myId by viewModel.mySeerrId.collectAsState(initial = null)
     var confirmAll by remember { mutableStateOf(false) }
     var cantFindFor by remember { mutableStateOf<RequestEntry?>(null) }
     cantFindFor?.let { entry ->
@@ -1669,12 +1687,22 @@ private fun RequestList(
                 return@LazyColumn
             }
         }
+        // Benflix: "Couldn't find it" cards stay for good, even after Seerr has dropped the request
+        val extras =
+            if (list == null || arrivedOnly == true) {
+                emptyList()
+            } else {
+                val shown = all.orEmpty().mapNotNull { it.cantFindKey() }.toSet()
+                cantFind.values.filter { entry ->
+                    entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
+                }
+            }
         when {
             list == null -> {
                 item { LoadingPage(Modifier.height(240.dp)) }
             }
 
-            list.isEmpty() -> {
+            list.isEmpty() && extras.isEmpty() -> {
                 item {
                     Text(
                         text =
@@ -1701,44 +1729,36 @@ private fun RequestList(
                 }
 
                 fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
+                val stillAsking = { it: RequestEntry -> !it.notFound() }
                 val groups =
                     listOf(
                         (if (mineOnly) "Waiting for Ben" else "Waiting for you") to
-                            list.filter { !it.available && it.status == RequestStatus.PENDING },
+                            list.filter { !it.available && it.status == RequestStatus.PENDING && stillAsking(it) },
                         "On the way" to
                             list.filter {
                                 !it.available && it.status != RequestStatus.PENDING &&
                                     it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE &&
                                     !it.notFound()
                             },
-                        "Couldn't find" to
-                            list.filter {
-                                it.notFound() && it.status != RequestStatus.PENDING &&
-                                    it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE
-                            },
+                        "Couldn't find" to list.filter { it.notFound() },
                         "Ready to watch" to list.filter { it.available },
                         "Declined" to
                             list.filter {
-                                !it.available && (it.status == RequestStatus.DECLINED || it.status == RequestStatus.FAILURE)
+                                !it.available && (it.status == RequestStatus.DECLINED || it.status == RequestStatus.FAILURE) &&
+                                    stillAsking(it)
                             },
-                    ).filter { it.second.isNotEmpty() }
+                    ).filter { it.second.isNotEmpty() || (it.first == "Couldn't find" && extras.isNotEmpty()) }
                 groups.forEach { (title, entries) ->
+                    val extraCount = if (title == "Couldn't find") extras.size else 0
                     item(key = "group-$title") {
-                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size) }
+                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size + extraCount) }
                     }
                     items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
                         Box(Modifier.padding(horizontal = 16.dp)) {
-                            val notFound =
-                                if (entry.available ||
-                                    entry.status == RequestStatus.DECLINED
-                                ) {
-                                    null
-                                } else {
-                                    entry.cantFindKey()?.let { cantFind[it] }
-                                }
-                            // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or undo)
-                            val canMark =
-                                !mineOnly && viewModel.isAdmin && !entry.available && entry.status == RequestStatus.APPROVED
+                            val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
+                            // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or try again)
+                            val isBen = !mineOnly && viewModel.isAdmin && !entry.available
+                            val canMark = isBen && entry.status == RequestStatus.APPROVED
                             RequestRow(
                                 entry = entry,
                                 showWho = !mineOnly,
@@ -1748,8 +1768,19 @@ private fun RequestList(
                                 cantFind = notFound,
                                 isAdminList = !mineOnly,
                                 onCantFind = if (canMark && notFound == null) ({ cantFindFor = entry }) else null,
-                                onUndoCantFind = if (canMark && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
+                                onUndoCantFind = if (isBen && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
                             )
+                        }
+                    }
+                    if (extraCount > 0) {
+                        items(extras, key = { "cant-find-${it.key}" }) { entry ->
+                            Box(Modifier.padding(horizontal = 16.dp)) {
+                                CantFindOnlyRow(
+                                    entry = entry,
+                                    onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
+                                    onTryAgain = if (viewModel.isAdmin && !mineOnly) ({ viewModel.undoCantFind(entry.key) }) else null,
+                                )
+                            }
                         }
                     }
                 }
@@ -1783,7 +1814,7 @@ private fun RequestRow(
             Button(onClick = it) { Text("Can't find", maxLines = 1, softWrap = false) }
         }
         onUndoCantFind?.let {
-            Button(onClick = it) { Text("Undo", maxLines = 1, softWrap = false) }
+            Button(onClick = it) { Text("Try again", maxLines = 1, softWrap = false) }
         }
     }
     val daysWaiting =

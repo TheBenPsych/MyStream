@@ -96,6 +96,7 @@
     <!-- Ask for it -->
     <string name="benflix_not_on_benflix">Not on Benflix yet</string>
     <string name="benflix_ask_to_add">Ask Ben to add it</string>
+    <string name="benflix_cant_find">Couldn\'t find it</string>
     <string name="benflix_connect_requests">Can\'t find it? Turn on requests</string>
     <string name="benflix_connect_requests_summary">Sign in to requests once (Settings, More, Seerr) and you can ask for any movie or show</string>
 
