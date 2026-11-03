@@ -33,6 +33,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -41,6 +42,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.services.requestedArrived
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
@@ -102,15 +104,33 @@ class RequestArrivedViewModel
         private suspend fun check(seerrUserId: Int) {
             try {
                 val mine =
-                    seerrService.api.requestApi
-                        .requestGet(take = 40, skip = 0, requestedBy = seerrUserId)
-                        .results
-                        .orEmpty()
-                        .filter { it.requestedBy?.id == seerrUserId }
-                val here = mine.filter { it.media?.status == SeerrAvailability.AVAILABLE.status && it.id != null }
+                    seerrService
+                        .allRequests(requestedBy = seerrUserId, max = 200)
+                        .filter { it.requestedBy?.id == seerrUserId && it.id != null }
                 val prefs = prefs()
-                val firstTime = !prefs.contains(key())
-                val seen = prefs.getStringSet(key(), emptySet()).orEmpty()
+                val firstTime = !OrderedSeen.has(prefs, key())
+                val seen = OrderedSeen.read(prefs, key()).toSet()
+                // Benflix: a show counts once the seasons asked for are in, even if other seasons are still missing
+                val here =
+                    mine.filter { request ->
+                        when {
+                            request.media?.status == SeerrAvailability.AVAILABLE.status -> {
+                                true
+                            }
+
+                            request.id.toString() in seen -> {
+                                false
+                            }
+
+                            request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status -> {
+                                requestedSeasonsHere(request)
+                            }
+
+                            else -> {
+                                false
+                            }
+                        }
+                    }
                 val fresh = here.filter { it.id.toString() !in seen }
                 if (firstTime) {
                     markSeen(here.mapNotNull { it.id })
@@ -144,10 +164,28 @@ class RequestArrivedViewModel
             }
         }
 
+        /** For a show asked for by season that's partly here: are the seasons asked for all in? */
+        private suspend fun requestedSeasonsHere(request: MediaRequest): Boolean {
+            val tmdbId = request.media?.tmdbId ?: return false
+            if (SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE) return false
+            return try {
+                request.requestedArrived(
+                    seerrService.api.tvApi
+                        .tvTvIdGet(tvId = tmdbId)
+                        .mediaInfo
+                        ?.seasons,
+                )
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not look up the seasons of %s", tmdbId)
+                false
+            }
+        }
+
         private fun markSeen(ids: List<Int>) {
-            val prefs = prefs()
-            val seen = prefs.getStringSet(key(), emptySet()).orEmpty() + ids.map { it.toString() }
-            prefs.edit().putStringSet(key(), seen.toList().takeLast(MAX_SEEN).toSet()).apply()
+            // Benflix: kept in order, so only the oldest are dropped
+            OrderedSeen.add(prefs(), key(), ids.map { it.toString() }, MAX_SEEN)
         }
 
         fun done(

@@ -12,7 +12,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -41,12 +44,18 @@ class RequestsBadgeViewModel
     ) : ViewModel() {
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
-                // Let the first screen load first
-                delay(8_000)
-                while (isActive) {
-                    refresh()
-                    delay(5 * 60_000L)
-                }
+                serverRepository.currentUserDtoFlow
+                    .map { it?.id to (it?.policy?.isAdministrator == true) }
+                    .distinctUntilChanged()
+                    .collectLatest {
+                        // Benflix: a different profile never sees the last person's number, and gets a fresh count straight away
+                        RequestsWaiting.set(0)
+                        delay(1_000)
+                        while (isActive) {
+                            refresh()
+                            delay(5 * 60_000L)
+                        }
+                    }
             }
         }
 
