@@ -178,7 +178,38 @@ def _nice_name(name):
     return name
 
 
-def _plain_status(state, status):
+# Exit codes Docker gives an app that was stopped on purpose: 0 (stopped cleanly), 143 (asked to stop) and
+# 137 (made to stop after it didn't in time, unless it ran out of memory)
+STOPPED_CODES = (0, 137, 143)
+
+
+def _exit_code(status):
+    m = re.search(r"Exited \((-?\d+)\)", status or "")
+    return int(m.group(1)) if m else None
+
+
+def _out_of_memory(container_id):
+    if not container_id:
+        return False
+    try:
+        info = _docker("GET", f"/containers/{urllib.parse.quote(container_id)}/json", timeout=10) or {}
+        return bool((info.get("State") or {}).get("OOMKilled"))
+    except ToolError:
+        return False
+
+
+def _problem(state, status, code, oom):
+    """True when an app needs a look: keeps restarting, not answering, or stopped by itself with an error"""
+    if state == "running":
+        return "unhealthy" in (status or "")
+    if state in ("restarting", "dead"):
+        return True
+    if state == "exited":
+        return oom or (code is not None and code not in STOPPED_CODES)
+    return False  # paused, created (never started) and the like were left that way on purpose
+
+
+def _plain_status(state, status, code=None, oom=False):
     status = status or ""
     if state == "running":
         if "unhealthy" in status:
@@ -191,8 +222,15 @@ def _plain_status(state, status):
         return "Paused"
     if state == "created":
         return "Never started"
-    m = re.search(r"Exited \((\d+)\) (.+)", status)
-    return f"Stopped {m.group(2)}" if m else "Stopped"
+    if state == "dead":
+        return "Broken (Docker couldn't stop it properly)"
+    m = re.search(r"Exited \((-?\d+)\) (.+)", status)
+    when = f" {m.group(2)}" if m else ""
+    if oom:
+        return f"Ran out of memory and stopped{when}"
+    if code is not None and code not in STOPPED_CODES:
+        return f"Stopped by itself with an error{when}"
+    return f"Stopped{when}"
 
 
 def apps():
@@ -202,13 +240,21 @@ def apps():
         name = (c.get("Names") or ["/?"])[0].lstrip("/")
         state = c.get("State") or ""
         status = c.get("Status") or ""
+        code = _exit_code(status) if state == "exited" else None
+        # 137 can also mean it ran out of memory, which is worth knowing about
+        oom = code == 137 and _out_of_memory(c.get("Id"))
+        problem = _problem(state, status, code, oom)
         out.append(
             {
                 "name": name,
                 "nice": _nice_name(name),
                 "running": state == "running",
                 "ok": state == "running" and "unhealthy" not in status,
-                "status": _plain_status(state, status),
+                # Needs a look (red). An app stopped on purpose isn't a problem, it just shows as Stopped (grey).
+                "problem": problem,
+                "state": state,
+                "exit_code": code,
+                "status": _plain_status(state, status, code, oom),
                 "restartable": name.lower() != SELF,
             }
         )
@@ -306,9 +352,11 @@ def _download(app, r):
     size = r.get("size") or 0
     left = r.get("sizeleft") or 0
     pct = int(round(100 * (size - left) / size)) if size else 0
+    series, season = None, None
     if app == "sonarr":
         series = (r.get("series") or {}).get("title")
         ep = r.get("episode") or {}
+        season = ep.get("seasonNumber") if ep else r.get("seasonNumber")
         if series and ep:
             title = f"{series} S{ep.get('seasonNumber', 0):02d}E{ep.get('episodeNumber', 0):02d}"
         else:
@@ -336,7 +384,54 @@ def _download(app, r):
         "paused": status == "paused",
         "queued": status in ("queued", "delay"),
         "why": _plain_why(message, state, status) if stuck else None,
+        # A season pack is one download with a row per episode; these let the rows be shown as one
+        "download_id": r.get("downloadId"),
+        "series": series,
+        "season": season,
+        "episodes": 1,
+        "pack": False,
     }
+
+
+def _group_packs(rows):
+    """Sonarr lists a season pack once per episode. Shows it once: "Show – Season 2 (10 episodes)"."""
+    out, groups = [], {}
+    for d in rows:
+        key = d.get("download_id")
+        if not key:
+            out.append(d)
+            continue
+        if key not in groups:
+            groups[key] = []
+            out.append(key)
+        groups[key].append(d)
+    result = []
+    for item in out:
+        if not isinstance(item, str):
+            result.append(item)
+            continue
+        rows = groups[item]
+        if len(rows) == 1:
+            result.append(rows[0])
+            continue
+        first = dict(rows[0])
+        seasons = sorted({r["season"] for r in rows if r.get("season") is not None})
+        show = first.get("series") or "Unknown"
+        if len(seasons) == 1:
+            first["title"] = f"{show} – Season {seasons[0]} ({len(rows)} episodes)"
+        else:
+            first["title"] = f"{show} – {len(rows)} episodes"
+        stuck = [r for r in rows if r["stuck"]]
+        first["stuck"] = bool(stuck)
+        first["why"] = stuck[0]["why"] if stuck else None
+        first["left"] = None if stuck else next((r["left"] for r in rows if r.get("left")), None)
+        first["pct"] = min(r["pct"] for r in rows)
+        first["paused"] = all(r["paused"] for r in rows)
+        first["queued"] = all(r["queued"] for r in rows)
+        first["episodes"] = len(rows)
+        first["pack"] = True
+        result.append(first)
+    return result
 
 
 def downloads():
@@ -347,11 +442,27 @@ def downloads():
         extra = "includeSeries=true&includeEpisode=true" if app == "sonarr" else "includeMovie=true"
         try:
             page = _arr(app, "GET", f"/api/v3/queue?page=1&pageSize=100&{extra}") or {}
-            out.extend(_download(app, r) for r in page.get("records") or [])
+            rows = [_download(app, r) for r in page.get("records") or []]
+            out.extend(_group_packs(rows) if app == "sonarr" else rows)
         except ToolError as e:
             problems.append(e.message)
     out.sort(key=lambda d: (not d["stuck"], d["queued"], -d["pct"]))
     return out, problems
+
+
+def _pack_size(app, queue_id):
+    """How many queue rows (episodes) share this row's download, 1 when it's not a pack"""
+    if app != "sonarr":
+        return 1
+    try:
+        page = _arr(app, "GET", "/api/v3/queue?page=1&pageSize=100") or {}
+    except ToolError:
+        return 1
+    records = page.get("records") or []
+    mine = next((r for r in records if r.get("id") == int(queue_id)), None)
+    if not mine or not mine.get("downloadId"):
+        return 1
+    return sum(1 for r in records if r.get("downloadId") == mine["downloadId"])
 
 
 def download_action(app, queue_id, action):
@@ -362,12 +473,20 @@ def download_action(app, queue_id, action):
         _arr(app, "POST", "/api/v3/command", {"name": "RefreshMonitoredDownloads"})
         message = f"{nice} is checking its downloads again."
     elif action == "replace":
+        episodes = _pack_size(app, queue_id)
+        # One delete removes the whole download (every episode in a season pack goes with it)
         _arr(
             app,
             "DELETE",
             f"/api/v3/queue/{int(queue_id)}?removeFromClient=true&blocklist=true&skipRedownload=false",
         )
-        message = f"Removed. {nice} won't pick that download again and is looking for another one."
+        if episodes > 1:
+            message = (
+                f"Removed the whole pack ({episodes} episodes). {nice} won't pick it again "
+                "and is looking for another copy of each episode."
+            )
+        else:
+            message = f"Removed. {nice} won't pick that download again and is looking for another one."
     else:
         raise ToolError(404, "Not found")
     _forget()

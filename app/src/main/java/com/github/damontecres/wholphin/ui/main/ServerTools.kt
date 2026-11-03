@@ -383,7 +383,9 @@ class ServerToolsViewModel
 
         /**
          * Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open.
-         * When Ben picked people, anyone who isn't on right now gets it saved for the next time they open Benflix.
+         * When Ben picked people, it's also saved for each of them first, so anyone whose Benflix isn't really open
+         * (in the background, or closed) sees it the next time they open it. A screen that shows it live takes the
+         * saved copy off, so it only shows once.
          */
         fun sendPopup(
             text: String,
@@ -392,11 +394,23 @@ class ServerToolsViewModel
             if (text.isBlank()) return
             work {
                 val header = "Message from Ben"
+                // Benflix: save first, so a screen that shows it live can take the saved copy off straight away
+                val savedFor = mutableSetOf<java.util.UUID>()
+                onlyFor?.forEach { id ->
+                    try {
+                        benflixMessages.saveFor(id, header, text)
+                        savedFor += id
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save the message for %s", id)
+                    }
+                }
                 val sessions =
                     api.sessionApi
                         .getSessions(activeWithinSeconds = 960)
                         .content
-                        .filter { it.supportsRemoteControl == true && it.id != null }
+                        .filter { it.supportsRemoteControl && it.id != null }
                         // Benflix: only the people Ben picked
                         .filter { onlyFor == null || it.userId in onlyFor }
                 var sent = 0
@@ -407,8 +421,13 @@ class ServerToolsViewModel
                             sessionId = session.id!!,
                             data = MessageCommand(header = header, text = text, timeoutMs = 15_000L),
                         )
-                        sent++
-                        session.userId?.let { reached += it }
+                        // Benflix: only a Benflix app that's connected right now really shows it. The server only
+                        // marks a session as remote-controllable while its app is connected, and Benflix drops
+                        // that connection when it goes to the background.
+                        if (session.deviceId?.startsWith(BENFLIX_DEVICE_PREFIX) == true) {
+                            sent++
+                            session.userId?.let { reached += it }
+                        }
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -420,22 +439,13 @@ class ServerToolsViewModel
                 if (onlyFor != null) {
                     val names =
                         (_state.value.people ?: people.list()).associate { it.id to it.name.orEmpty() }
-                    (onlyFor - reached).forEach { id ->
-                        try {
-                            benflixMessages.saveFor(id, header, text)
-                            later += names[id] ?: "Someone"
-                        } catch (ex: CancellationException) {
-                            throw ex
-                        } catch (ex: Exception) {
-                            Timber.w(ex, "Could not save the message for %s", id)
-                        }
-                    }
+                    (savedFor - reached).forEach { id -> later += names[id] ?: "Someone" }
                 }
                 val now =
                     if (sent == 0) {
                         null
                     } else {
-                        "It showed on $sent screen" + (if (sent == 1) "" else "s") + " right away."
+                        "It showed on $sent Benflix screen" + (if (sent == 1) "" else "s") + " right away."
                     }
                 val saved =
                     if (later.isEmpty()) {
@@ -736,6 +746,9 @@ fun LazyListScope.messageItems(
         )
     }
 }
+
+/** Benflix: the device id every Benflix app has, so other Jellyfin apps aren't counted as reached */
+private const val BENFLIX_DEVICE_PREFIX = "benflix-"
 
 private const val NOTES_FAILED = "Couldn't read the notes. Press Refresh to try again."
 

@@ -264,7 +264,8 @@ PAGES.overview = (el) => {
       if (current !== "overview") return;
       const watching = (sessions || []).filter((s) => s.NowPlayingItem);
       const apps = t.apps || [];
-      const down = apps.filter((a) => !a.ok);
+      // Apps stopped on purpose aren't a problem, only ones that keep restarting or stopped with an error
+      const down = apps.filter((a) => (a.problem ?? !a.ok) && a.status !== "Never started");
       const stuck = (t.downloads || []).filter((d) => d.stuck);
       let html = problemsNote(t.problems);
       if (info) html += `<p class="sub" style="margin-top:-12px">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</p>`;
@@ -301,7 +302,7 @@ PAGES.apps = (el) => {
       let html = problemsNote(t.problems);
       if (!t.apps) { $("#ap").innerHTML = html || loading("No apps found."); return; }
       html += `<div class="list">` + t.apps.map((a) => `
-        <div class="item"><span class="dot ${a.ok ? "" : a.running ? "warn" : "bad"}"></span>
+        <div class="item"><span class="dot ${a.ok ? "" : a.running ? "warn" : (a.problem ?? true) ? "bad" : "off"}"></span>
           <div class="grow"><div class="t">${esc(a.nice)}</div><div class="s">${esc(a.status)}</div></div>
           <div class="acts">${a.restartable ? `<button class="btn small" data-restart="${esc(a.name)}" data-nice="${esc(a.nice)}">Restart</button>` : ""}</div>
         </div>`).join("") + `</div>`;
@@ -336,7 +337,7 @@ PAGES.downloads = (el) => {
           </div>
           <div class="acts">
             <button class="btn small" data-act="retry" data-app="${d.app}" data-id="${d.id}">Try again</button>
-            <button class="btn small" data-act="replace" data-app="${d.app}" data-id="${d.id}" data-title="${esc(d.title)}">Get a different copy</button>
+            <button class="btn small" data-act="replace" data-app="${d.app}" data-id="${d.id}" data-title="${esc(d.title)}" data-episodes="${d.episodes || 1}">${(d.episodes || 1) > 1 ? "Get a different copy of the whole pack" : "Get a different copy"}</button>
           </div>
         </div>`).join("") || `<div class="empty">Nothing downloading right now.</div>`) + `</div>`;
       $("#dl").innerHTML = html;
@@ -344,7 +345,11 @@ PAGES.downloads = (el) => {
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-act]"); if (!b) return;
-    if (b.dataset.act === "replace" && !confirm(`Remove this download of ${b.dataset.title} and look for a different copy?`)) return;
+    const episodes = Number(b.dataset.episodes || 1);
+    const ask = episodes > 1
+      ? `${b.dataset.title} is one download with all ${episodes} episodes in it. Remove the whole pack and look for another copy of each episode?`
+      : `Remove this download of ${b.dataset.title} and look for a different copy?`;
+    if (b.dataset.act === "replace" && !confirm(ask)) return;
     b.disabled = true;
     try { toast((await call("POST", `/api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
     catch (err) { toast(err.message); }
