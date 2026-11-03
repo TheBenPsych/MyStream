@@ -1059,7 +1059,6 @@ fun HomePageContent(
                                     items = moodRow.items,
                                     onClickItem = onClickTrending,
                                     onLongClickItem = onLongClickTrending,
-                                    onLongClickItem = onLongClickTrending,
                                     onFocusItem = { extraFocus = it },
                                     modifier =
                                         Modifier
