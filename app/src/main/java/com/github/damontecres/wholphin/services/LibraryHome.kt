@@ -5,6 +5,8 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.createStudioDestination
 import com.github.damontecres.wholphin.ui.AspectRatio
+import com.github.damontecres.wholphin.ui.Cards
+import com.github.damontecres.wholphin.ui.DetailItemFields
 import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.main.FeaturedItem
@@ -13,7 +15,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.withLock
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.artistsApi
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.studiosApi
@@ -29,6 +33,7 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.SeriesStatus
 import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetAlbumArtistsRequest
 import org.jellyfin.sdk.model.api.request.GetGenresRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
@@ -51,12 +56,19 @@ enum class LibraryKind {
     ANIME_SHOWS,
     ANIME_MOVIES,
     STANDUP,
+    MUSIC,
     OTHER,
     ;
 
     val isAnime: Boolean get() = this == ANIME_SHOWS || this == ANIME_MOVIES
 
-    val itemType: BaseItemKind get() = if (this == SHOWS || this == ANIME_SHOWS) BaseItemKind.SERIES else BaseItemKind.MOVIE
+    val itemType: BaseItemKind
+        get() =
+            when (this) {
+                SHOWS, ANIME_SHOWS -> BaseItemKind.SERIES
+                MUSIC -> BaseItemKind.MUSIC_ALBUM
+                else -> BaseItemKind.MOVIE
+            }
 
     companion object {
         fun from(
@@ -65,6 +77,7 @@ enum class LibraryKind {
         ): LibraryKind {
             val lower = name.orEmpty().lowercase()
             return when {
+                collectionType == CollectionType.MUSIC -> MUSIC
                 "anime" in lower && collectionType == CollectionType.TVSHOWS -> ANIME_SHOWS
                 "anime" in lower -> ANIME_MOVIES
                 "stand" in lower || "comed" in lower -> STANDUP
@@ -83,6 +96,8 @@ enum class LibraryKind {
 class LibraryShelf(
     initialTitle: String,
     val viewOptions: HomeRowViewOptions = HomeRowViewOptions(),
+    /** Set for rows whose tiles start music instead of opening a page */
+    val onClick: (suspend (BaseItem) -> Unit)? = null,
     val load: suspend (LibraryShelf) -> List<BaseItem>,
 ) {
     @Volatile var title: String = initialTitle
@@ -99,6 +114,8 @@ class LibraryHomeService
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val dubIndex: AnimeDubIndex,
+        private val musicService: MusicService,
+        private val aniList: AniListService,
     ) {
         private val kinds = ConcurrentHashMap<UUID, LibraryKind>()
         private val names = ConcurrentHashMap<UUID, String>()
@@ -116,6 +133,11 @@ class LibraryHomeService
 
         /** The rotating banner: unwatched picks, and for shows also ones with new episodes */
         suspend fun featured(
+            parentId: UUID,
+            kind: LibraryKind,
+        ): List<FeaturedItem> = if (kind == LibraryKind.MUSIC) musicFeatured(parentId) else videoFeatured(parentId, kind)
+
+        private suspend fun videoFeatured(
             parentId: UUID,
             kind: LibraryKind,
         ): List<FeaturedItem> =
@@ -181,7 +203,7 @@ class LibraryHomeService
                     parentId = parentId,
                     includeItemTypes = listOf(kind.itemType),
                     recursive = true,
-                    isPlayed = false,
+                    isPlayed = if (kind == LibraryKind.MUSIC) null else false,
                     sortBy = listOf(ItemSortBy.RANDOM),
                     limit = 1,
                 ),
@@ -198,8 +220,156 @@ class LibraryHomeService
                 LibraryKind.ANIME_SHOWS -> animeShowShelves(parentId)
                 LibraryKind.ANIME_MOVIES -> animeMovieShelves(parentId)
                 LibraryKind.STANDUP -> standUpShelves(parentId)
+                LibraryKind.MUSIC -> musicShelves(parentId)
                 LibraryKind.OTHER -> emptyList()
             }
+
+        // ---------- Music ----------
+
+        /** Artists with a big picture, for the banner; its play button shuffles their songs */
+        private suspend fun musicFeatured(parentId: UUID): List<FeaturedItem> =
+            artists(parentId, sortBy = ItemSortBy.RANDOM, limit = 40)
+                .filter { !it.backdropImageTags.isNullOrEmpty() }
+                .take(FEATURED_COUNT)
+                .map { FeaturedItem(BaseItem(it), FeaturedReason.PICK) }
+
+        private suspend fun artists(
+            parentId: UUID,
+            sortBy: ItemSortBy,
+            limit: Int,
+        ): List<BaseItemDto> =
+            api.artistsApi
+                .getAlbumArtists(
+                    GetAlbumArtistsRequest(
+                        userId = userId,
+                        parentId = parentId,
+                        fields = SlimItemFields,
+                        sortBy = listOf(sortBy),
+                        sortOrder = listOf(SortOrder.DESCENDING),
+                        enableUserData = true,
+                        limit = limit,
+                    ),
+                ).content.items
+
+        /** Shuffles every song by this artist and starts playing */
+        suspend fun shuffleArtist(artist: BaseItem) {
+            val songs =
+                items(
+                    GetItemsRequest(
+                        userId = userId,
+                        artistIds = listOf(artist.id),
+                        includeItemTypes = listOf(BaseItemKind.AUDIO),
+                        recursive = true,
+                        fields = DetailItemFields,
+                        sortBy = listOf(ItemSortBy.RANDOM),
+                        limit = SONGS,
+                    ),
+                ).map { BaseItem(it) }
+            musicService.setQueue(songs, true)
+        }
+
+        private fun musicShelves(parentId: UUID): List<LibraryShelf> =
+            listOf(
+                LibraryShelf("Played lately", SQUARE_ROW) { playedLately(parentId) },
+                LibraryShelf("Artists", SQUARE_ROW) {
+                    artists(parentId, sortBy = ItemSortBy.RANDOM, limit = 60)
+                        .filter { !it.imageTags.isNullOrEmpty() }
+                        .take(ROW)
+                        .map { BaseItem(it) }
+                },
+                LibraryShelf(
+                    "Artist mix",
+                    SQUARE_ROW,
+                    onClick = { artist -> musicService.startInstantMix(artist.id) },
+                ) {
+                    // The artists played most, each tile starts a mix of them and similar music
+                    artists(parentId, sortBy = ItemSortBy.PLAY_COUNT, limit = 40)
+                        .filter { !it.imageTags.isNullOrEmpty() }
+                        .take(ROW)
+                        .map { dto -> BaseItem(dto.copy(name = "${dto.name} mix")) }
+                },
+                LibraryShelf(
+                    "Music by decade",
+                    SQUARE_ROW,
+                    onClick = { tile -> tile.data.productionYear?.let { shuffleDecade(parentId, it) } },
+                ) { decadeTiles(parentId) },
+            )
+
+        /** Albums with songs played lately, newest first */
+        private suspend fun playedLately(parentId: UUID): List<BaseItem> {
+            val songs =
+                items(
+                    GetItemsRequest(
+                        userId = userId,
+                        parentId = parentId,
+                        includeItemTypes = listOf(BaseItemKind.AUDIO),
+                        recursive = true,
+                        isPlayed = true,
+                        sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                        sortOrder = listOf(SortOrder.DESCENDING),
+                        enableImages = false,
+                        limit = 150,
+                    ),
+                )
+            val albumIds = songs.mapNotNull { it.albumId }.distinct().take(ROW)
+            if (albumIds.isEmpty()) return emptyList()
+            val albums =
+                items(
+                    GetItemsRequest(userId = userId, ids = albumIds, fields = SlimItemFields, enableUserData = true),
+                ).associateBy { it.id }
+            return albumIds.mapNotNull { albums[it] }.map { BaseItem(it) }
+        }
+
+        /**
+         * One tile per decade that has music here, showing an album from then. Picking one shuffles
+         * songs from that decade. The tile's year says which decade it is.
+         */
+        private suspend fun decadeTiles(parentId: UUID): List<BaseItem> =
+            coroutineScope {
+                MUSIC_DECADES
+                    .map { start ->
+                        async {
+                            safe {
+                                items(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        parentId = parentId,
+                                        includeItemTypes = listOf(BaseItemKind.MUSIC_ALBUM),
+                                        recursive = true,
+                                        years = (start..start + 9).toList(),
+                                        imageTypes = listOf(ImageType.PRIMARY),
+                                        fields = SlimItemFields,
+                                        sortBy = listOf(ItemSortBy.RANDOM),
+                                        limit = 1,
+                                    ),
+                                ).map { album ->
+                                    BaseItem(album.copy(name = "The ${decadeName(start)}", productionYear = start))
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                    .flatten()
+            }
+
+        private suspend fun shuffleDecade(
+            parentId: UUID,
+            start: Int,
+        ) {
+            val songs =
+                items(
+                    GetItemsRequest(
+                        userId = userId,
+                        parentId = parentId,
+                        includeItemTypes = listOf(BaseItemKind.AUDIO),
+                        recursive = true,
+                        years = (start..start + 9).toList(),
+                        fields = DetailItemFields,
+                        sortBy = listOf(ItemSortBy.RANDOM),
+                        limit = SONGS,
+                    ),
+                ).map { BaseItem(it) }
+            musicService.setQueue(songs, true)
+        }
 
         // ---------- Movies ----------
 
@@ -535,6 +705,72 @@ class LibraryHomeService
             ).map { BaseItem(it) }
         }
 
+        // ---------- This week's anime ----------
+
+        private val weekLock = kotlinx.coroutines.sync.Mutex()
+
+        @Volatile private var week: Pair<Long, Map<java.time.LocalDate, List<BaseItem>>>? = null
+
+        /**
+         * Benflix: this week's anime calendar, like Crunchyroll's. One row per day, today first,
+         * with the shows on Benflix that get a new episode that day (from AniList's air dates).
+         */
+        fun weekShelves(parentId: UUID): List<LibraryShelf> {
+            val today = LocalDate.now()
+            return (0..6).map { offset ->
+                val day = today.plusDays(offset.toLong())
+                val name =
+                    when (offset) {
+                        0 -> "Today"
+                        1 -> "Tomorrow"
+                        else -> day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+                    }
+                LibraryShelf(name) { shelf ->
+                    val shows = weekSchedule(parentId)[day].orEmpty()
+                    if (shows.isNotEmpty()) {
+                        shelf.title = "$name · ${shows.size} new ${if (shows.size == 1) "episode" else "episodes"}"
+                    }
+                    shows
+                }
+            }
+        }
+
+        /** Which shows in the library get an episode on each of the next 7 days (worked out once an hour) */
+        private suspend fun weekSchedule(parentId: UUID): Map<LocalDate, List<BaseItem>> =
+            weekLock.withLock {
+                week?.takeIf { System.currentTimeMillis() - it.first < HOUR_MS }?.let { return@withLock it.second }
+                val airing = aniList.thisWeek()
+                val shows =
+                    items(rowRequest(parentId, BaseItemKind.SERIES))
+                        .map { dto ->
+                            dto to listOfNotNull(dto.name, dto.originalTitle).map { AniListService.clean(it) }.filter { it.length >= 3 }
+                        }
+                val zone = java.time.ZoneId.systemDefault()
+                val out =
+                    airing
+                        .mapNotNull { a ->
+                            val titles = a.titles.map { AniListService.clean(it) }
+                            // The longest show name that the airing title starts with, so "Naruto" doesn't take "Naruto Shippuden"
+                            val show =
+                                shows
+                                    .mapNotNull { (dto, names) ->
+                                        names
+                                            .filter { n -> titles.any { t -> t == n || t.startsWith(n) } }
+                                            .maxOfOrNull { it.length }
+                                            ?.let { dto to it }
+                                    }.maxByOrNull { it.second }
+                                    ?.first ?: return@mapNotNull null
+                            java.time.Instant
+                                .ofEpochSecond(a.airingAt)
+                                .atZone(zone)
+                                .toLocalDate() to show
+                        }.groupBy({ it.first }, { it.second })
+                        .mapValues { (_, list) -> list.distinctBy { it.id }.map { BaseItem(it) } }
+                week = System.currentTimeMillis() to out
+                Timber.i("This week's anime: %s airings, %s on Benflix", airing.size, out.values.sumOf { it.size })
+                out
+            }
+
         /** Rows for the Seasons tab: shows that started in each of the last few anime seasons */
         fun seasonShelves(parentId: UUID): List<LibraryShelf> =
             AnimeSeason.recent(SEASONS_SHOWN).map { season ->
@@ -837,6 +1073,17 @@ class LibraryHomeService
 
         companion object {
             const val ROW = 20
+            private const val HOUR_MS = 60L * 60 * 1000
+            private const val SONGS = 200
+            private val MUSIC_DECADES = listOf(2020, 2010, 2000, 1990, 1980, 1970, 1960, 1950)
+
+            val SQUARE_ROW =
+                HomeRowViewOptions(
+                    aspectRatio = AspectRatio.SQUARE,
+                    heightDp = Cards.HEIGHT_EPISODE,
+                    showTitles = true,
+                    useSeries = false,
+                )
             private const val FEATURED_COUNT = 6
             private const val PEOPLE_MAX = 15
             private const val SEASONS_SHOWN = 8

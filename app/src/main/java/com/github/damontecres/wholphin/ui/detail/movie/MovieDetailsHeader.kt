@@ -78,6 +78,9 @@ fun MovieDetailsHeader(
             // Benflix: SUB / DUB on anime
             val subDub = remember(dto.id) { if (BenflixAnimeTracks.isAnime(dto)) SubDub.label(dto) else null }
             subDub?.let { SubDubTag(it, Modifier.padding(start = HeaderUtils.startPadding)) }
+            // Benflix: the AniList fan score on anime movies
+            com.github.damontecres.wholphin.ui.detail.series
+                .AnimeFacts(movie, Modifier.padding(start = HeaderUtils.startPadding))
 
             dto.genres?.letNotEmpty {
                 GenreText(it, Modifier.padding(start = HeaderUtils.startPadding))

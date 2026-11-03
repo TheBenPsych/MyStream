@@ -1,11 +1,15 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import androidx.compose.runtime.collectAsState
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -84,6 +88,56 @@ object BenflixDubChoice {
                 track.isForced || listOf("sign", "song", "s&s").any { name(track).contains(it) }
             }
     }
+}
+
+/**
+ * Benflix: how far an anime's English dub goes. Episodes without English voices get a SUB ONLY
+ * badge, but only in shows where some episodes do have them.
+ */
+object DubCoverage {
+    private val _subOnly = MutableStateFlow<Set<UUID>>(emptySet())
+    val subOnly: StateFlow<Set<UUID>> = _subOnly
+
+    internal fun add(ids: Collection<UUID>) {
+        if (ids.isNotEmpty()) _subOnly.update { it + ids }
+    }
+
+    /**
+     * "English voices: episodes 1 to 24" (or "all episodes"), from episodes with their media
+     * streams; null when no episode has English voices. Also marks the SUB ONLY episodes.
+     */
+    fun workOut(
+        episodes: List<BaseItemDto>,
+        number: (BaseItemDto) -> Int?,
+    ): String? {
+        val withAudio = episodes.filter { ep -> ep.mediaStreams.orEmpty().any { it.type == MediaStreamType.AUDIO } }
+        if (withAudio.isEmpty()) return null
+        val dubbed =
+            withAudio.filter { ep ->
+                ep.mediaStreams.orEmpty().any { it.type == MediaStreamType.AUDIO && BenflixDubChoice.isEnglish(it.language) }
+            }
+        if (dubbed.isEmpty()) return null
+        val missing = withAudio - dubbed.toSet()
+        add(missing.map { it.id })
+        if (missing.isEmpty()) return "English voices: all episodes"
+        val numbers = dubbed.mapNotNull(number).sorted()
+        val ranges = mutableListOf<IntRange>()
+        numbers.forEach { n ->
+            val last = ranges.lastOrNull()
+            if (last != null && n <= last.last + 1) ranges[ranges.size - 1] = last.first..maxOf(last.last, n) else ranges += n..n
+        }
+        val words =
+            ranges.take(3).joinToString(", ") { if (it.first == it.last) "${it.first}" else "${it.first} to ${it.last}" } +
+                if (ranges.size > 3) " and more" else ""
+        return "English voices: ${if (numbers.size == 1) "episode" else "episodes"} $words"
+    }
+}
+
+/** The SUB ONLY badge for this episode */
+@androidx.compose.runtime.Composable
+fun subOnlyFor(item: com.github.damontecres.wholphin.data.model.BaseItem?): Boolean {
+    if (item?.type != BaseItemKind.EPISODE) return false
+    return item.id in DubCoverage.subOnly.collectAsState().value
 }
 
 /** Whether an anime has English voices (dub), Japanese voices with subtitles (sub), or both */

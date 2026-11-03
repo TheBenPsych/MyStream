@@ -35,6 +35,7 @@ import com.github.damontecres.wholphin.ui.data.ArtistSortOptions
 import com.github.damontecres.wholphin.ui.data.SongSortOptions
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import dagger.assisted.Assisted
@@ -117,7 +118,8 @@ fun CollectionFolderMusic(
     val tabs =
         remember {
             listOf(
-                TabDetails(R.string.recommended),
+                // Benflix: the music mini Home
+                TabDetails(StringStringProvider("Home")),
                 TabDetails(R.string.albums),
                 TabDetails(R.string.artists),
                 TabDetails(R.string.genres),

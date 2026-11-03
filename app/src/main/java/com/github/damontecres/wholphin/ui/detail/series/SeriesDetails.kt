@@ -788,6 +788,10 @@ fun SeriesDetailsContent(
                         },
                     )
                 }
+                // Benflix: anime movies in watch order, fan genres, characters and voices (anime only)
+                item {
+                    AnimeRows(series)
+                }
                 if (detailSections.size > 1) {
                     item {
                         TabRow(
@@ -965,6 +969,8 @@ fun SeriesDetailsHeader(
                     )
                 }
             }
+            // Benflix: AniList score, next episode countdown and how far the English dub goes (anime only)
+            AnimeFacts(series, Modifier.padding(start = HeaderUtils.startPadding))
             dto.studios?.let {
                 val studios = remember { series.studioNames }
                 GenreText(

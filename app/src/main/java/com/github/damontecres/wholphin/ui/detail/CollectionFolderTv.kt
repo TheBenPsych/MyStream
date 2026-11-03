@@ -25,6 +25,7 @@ import com.github.damontecres.wholphin.ui.components.LibraryShelfTab
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.RecommendedTvShow
 import com.github.damontecres.wholphin.ui.components.SHELVES_SEASONS
+import com.github.damontecres.wholphin.ui.components.SHELVES_WEEK
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
@@ -53,6 +54,7 @@ private enum class TvTab(
     DUBBED("Dubbed"),
     SUBBED("Subbed"),
     SEASONS("Seasons"),
+    WEEK("This week"),
     GENRES("Genres"),
     STUDIOS("Studios"),
 }
@@ -73,7 +75,7 @@ fun CollectionFolderTv(
     val tabIds =
         remember(kind) {
             if (kind == LibraryKind.ANIME_SHOWS) {
-                listOf(TvTab.HOME, TvTab.ALL, TvTab.DUBBED, TvTab.SUBBED, TvTab.SEASONS, TvTab.GENRES, TvTab.STUDIOS)
+                listOf(TvTab.HOME, TvTab.ALL, TvTab.DUBBED, TvTab.SUBBED, TvTab.WEEK, TvTab.SEASONS, TvTab.GENRES, TvTab.STUDIOS)
             } else {
                 listOf(TvTab.HOME, TvTab.ALL, TvTab.GENRES, TvTab.STUDIOS)
             }
@@ -150,6 +152,17 @@ fun CollectionFolderTv(
                     preferences = preferences,
                     parentId = destination.itemId,
                     shelfSet = SHELVES_SEASONS,
+                    suggestionsType = BaseItemKind.SERIES,
+                    onFocusPosition = { pos -> showHeader = pos.row < 1 },
+                    modifier = contentModifier,
+                )
+            }
+
+            TvTab.WEEK -> {
+                LibraryShelfTab(
+                    preferences = preferences,
+                    parentId = destination.itemId,
+                    shelfSet = SHELVES_WEEK,
                     suggestionsType = BaseItemKind.SERIES,
                     onFocusPosition = { pos -> showHeader = pos.row < 1 },
                     modifier = contentModifier,
