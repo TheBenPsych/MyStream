@@ -1794,6 +1794,7 @@ class PlaybackViewModel
             val service = displayPreferencesService ?: return
             try {
                 val custom = service.getDisplayPreferences(userId).customPrefs
+
                 fun ids(key: String) =
                     custom[key]
                         .orEmpty()
