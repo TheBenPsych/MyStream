@@ -39,12 +39,14 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
+import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
+import com.github.damontecres.wholphin.ui.discover.CantFindStrip
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import kotlinx.coroutines.delay
@@ -155,8 +157,13 @@ fun DiscoverItemCard(
                 // once the title's details have been looked up. Requests page only (Ben asked, 2026-11-02)
                 val adultFlags by AdultContentFlags.flagged.collectAsState()
                 val adult = showAdultBanner && item != null && "${item.type.name}-${item.id}" in adultFlags
+                // Benflix: orange "COULDN'T FIND" strip, also Requests page only
+                val cantFindKeys by CantFindBlocked.keys.collectAsState()
+                val cantFind = showAdultBanner && item != null && "${item.type.name}-${item.id}" in cantFindKeys
                 if (adult) {
                     AdultContentBanner(modifier = Modifier.align(Alignment.BottomCenter))
+                } else if (cantFind) {
+                    CantFindStrip(modifier = Modifier.align(Alignment.BottomCenter))
                 }
                 if (cornerNote != null) {
                     CardBadge(
@@ -165,7 +172,7 @@ fun DiscoverItemCard(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = 6.dp, end = 6.dp, bottom = if (adult) 24.dp else 6.dp),
+                                .padding(start = 6.dp, end = 6.dp, bottom = if (adult || cantFind) 24.dp else 6.dp),
                     )
                 }
             }
