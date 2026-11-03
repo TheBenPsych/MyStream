@@ -867,6 +867,7 @@ class PlaybackViewModel
                                 api.videosApi.getVideoStreamUrl(
                                     itemId = itemId,
                                     mediaSourceId = source.id,
+                                    liveStreamId = source.liveStreamId,
                                     static = true,
                                     tag = source.eTag,
                                     playSessionId = response.playSessionId,
