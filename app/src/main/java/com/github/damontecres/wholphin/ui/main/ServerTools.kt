@@ -28,8 +28,8 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
-import com.github.damontecres.wholphin.services.BenflixNote
 import com.github.damontecres.wholphin.services.BenflixMessages
+import com.github.damontecres.wholphin.services.BenflixNote
 import com.github.damontecres.wholphin.services.BenflixNotes
 import com.github.damontecres.wholphin.services.BenflixPeople
 import com.github.damontecres.wholphin.services.BenflixProblems
@@ -1270,7 +1270,6 @@ internal fun lastWatched(logLine: String): String {
     return playing.substringBeforeLast(" on ").ifBlank { playing }
 }
 
-/** Benflix: like "Wed 9:00 PM" */
 /** "Sam", "Sam and Alex", "Sam, Alex and Jo" */
 internal fun listNames(names: List<String>): String =
     when (names.size) {
@@ -1279,6 +1278,8 @@ internal fun listNames(names: List<String>): String =
         else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
     }
 
+
+/** Benflix: like "Wed 9:00 PM" */
 internal fun untilText(at: Long): String =
     java.time.Instant
         .ofEpochMilli(at)
