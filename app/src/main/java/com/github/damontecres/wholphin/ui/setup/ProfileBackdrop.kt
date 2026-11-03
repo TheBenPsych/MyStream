@@ -302,34 +302,30 @@ fun HolidayScene(
     modifier: Modifier = Modifier,
 ) {
     val lite = LiteMode.isOn(LocalContext.current)
+    // Benflix: once this holiday's recorded video is on the device, play it instead of drawing live
+    val video = rememberSceneVideo(effect)
+    if (!lite && video != null) {
+        androidx.compose.foundation.layout.Box(modifier = modifier.clipToBounds()) {
+            SceneVideo(video, Modifier.matchParentSize())
+            Canvas(modifier = Modifier.matchParentSize()) { sceneVignette() }
+        }
+        return
+    }
     // The newest finished picture, and a counter that changes with each new one so the screen redraws
     val frame = remember { mutableStateOf<ImageBitmap?>(null) }
     val frameNo = remember { mutableIntStateOf(0) }
     LaunchedEffect(effect, lite) {
         withContext(Dispatchers.Default) {
-            val statics = SceneStatics()
+            val painter = ScenePainter(effect)
             // three pictures in turn, so the one on screen is never the one being painted
             val pictures = List(3) { ImageBitmap(SCENE_W, SCENE_H) }
-            val painter = CanvasDrawScope()
-            val sceneScale = SCENE_W / VW
             val start = System.nanoTime()
             var n = 0
             while (isActive) {
                 val began = System.nanoTime()
                 val t = STILL_SECONDS + if (lite) 0f else (began - start) / 1_000_000_000f
                 val picture = pictures[n % pictures.size]
-                painter.draw(
-                    Density(1f),
-                    LayoutDirection.Ltr,
-                    androidx.compose.ui.graphics
-                        .Canvas(picture),
-                    Size(SCENE_W.toFloat(), SCENE_H.toFloat()),
-                ) {
-                    drawRect(Color.Black)
-                    withTransform({ scale(sceneScale, sceneScale, pivot = Offset.Zero) }) {
-                        drawScene(effect, t, statics)
-                    }
-                }
+                painter.paint(picture, t)
                 frame.value = picture
                 frameNo.intValue = ++n
                 if (lite) break
@@ -353,29 +349,63 @@ fun HolidayScene(
                 filterQuality = FilterQuality.Low,
             )
         }
-        // Soft vignette so the profiles and text stay easy to read
-        drawRect(
-            Brush.verticalGradient(
-                0f to Color.Black.copy(alpha = .35f),
-                .3f to Color.Transparent,
-                .6f to Color.Transparent,
-                1f to Color.Black.copy(alpha = .55f),
-            ),
-        )
-        drawRect(
-            Brush.radialGradient(
-                .35f to Color.Transparent,
-                1f to Color.Black.copy(alpha = .5f),
-                center = center,
-                radius = size.maxDimension * .7f,
-            ),
-        )
+        sceneVignette()
     }
 }
 
+/** Soft vignette so the profiles and text stay easy to read */
+private fun DrawScope.sceneVignette() {
+    drawRect(
+        Brush.verticalGradient(
+            0f to Color.Black.copy(alpha = .35f),
+            .3f to Color.Transparent,
+            .6f to Color.Transparent,
+            1f to Color.Black.copy(alpha = .55f),
+        ),
+    )
+    drawRect(
+        Brush.radialGradient(
+            .35f to Color.Transparent,
+            1f to Color.Black.copy(alpha = .5f),
+            center = center,
+            radius = size.maxDimension * .7f,
+        ),
+    )
+}
+
 /** The size of the painted scene picture (a quarter of a 1080p screen; it is soft and dimmed anyway) */
-private const val SCENE_W = 960
-private const val SCENE_H = 540
+internal const val SCENE_W = 960
+internal const val SCENE_H = 540
+
+/**
+ * Paints one moment ([t] seconds in) of a holiday scene into a 960 x 540 picture. Used live on screen,
+ * and by the scene recorder that turns each scene into a short looping video (see SceneVideos).
+ */
+internal class ScenePainter(
+    private val effect: LogoEffect,
+) {
+    private val statics = SceneStatics()
+    private val drawScope = CanvasDrawScope()
+
+    fun paint(
+        picture: ImageBitmap,
+        t: Float,
+    ) {
+        val sceneScale = SCENE_W / VW
+        drawScope.draw(
+            Density(1f),
+            LayoutDirection.Ltr,
+            androidx.compose.ui.graphics
+                .Canvas(picture),
+            Size(SCENE_W.toFloat(), SCENE_H.toFloat()),
+        ) {
+            drawRect(Color.Black)
+            withTransform({ scale(sceneScale, sceneScale, pivot = Offset.Zero) }) {
+                drawScene(effect, t, statics)
+            }
+        }
+    }
+}
 
 /** About 25 pictures a second, always leaving the background thread a short rest */
 private const val SCENE_FRAME_MS = 40L
