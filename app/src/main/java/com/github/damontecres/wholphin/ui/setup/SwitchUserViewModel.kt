@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.WholphinApplication
+import com.github.damontecres.wholphin.data.CurrentUser
 import com.github.damontecres.wholphin.data.JellyfinServerDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.BenflixFunFacts
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.ProfileModes
 import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
@@ -182,10 +186,43 @@ class SwitchUserViewModel
             }
         }
 
-        fun trySwitchUser(user: JellyfinUser): Deferred<SwitchUserResult> =
+        /**
+         * Benflix: switch with Kids / Guest set the way the tile asked. They're on while signing in
+         * (so nothing loads unfiltered), go back to how they were if it fails, and are saved on success.
+         */
+        private suspend fun changeUserWithModes(
+            kids: Boolean,
+            big: Boolean,
+            guest: Boolean,
+            change: suspend () -> CurrentUser,
+        ): CurrentUser {
+            val wasKids = KidsMode.isActive
+            val wasBig = KidsMode.isBig
+            val wasGuest = GuestMode.isActive
+            ProfileModes.set(kids, big, guest)
+            val current =
+                try {
+                    change()
+                } catch (ex: Throwable) {
+                    ProfileModes.set(wasKids, wasBig, wasGuest)
+                    throw ex
+                }
+            ProfileModes.save(context, current.user.id)
+            return current
+        }
+
+        fun trySwitchUser(
+            user: JellyfinUser,
+            kids: Boolean = false,
+            bigKids: Boolean = false,
+            guest: Boolean = false,
+        ): Deferred<SwitchUserResult> =
             viewModelScope.async(WholphinDispatchers.IO) {
                 try {
-                    val current = serverRepository.changeUser(server, user)
+                    val current =
+                        changeUserWithModes(kids, bigKids, guest) {
+                            serverRepository.changeUser(server, user)
+                        }
                     navigationManager.reloadHome()
                     setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
                     SwitchUserResult.Success
@@ -235,7 +272,9 @@ class SwitchUserViewModel
                     // Benflix: keep the password in memory so Requests (Seerr) can sign them in too
                     authenticationResult.user?.id?.let { benflixSeerrLink.rememberPassword(it, password) }
                     val current =
-                        serverRepository.changeUser(server.url, authenticationResult, existingUser)
+                        changeUserWithModes(kids = false, big = false, guest = false) {
+                            serverRepository.changeUser(server.url, authenticationResult, existingUser)
+                        }
                     setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error logging in user")
@@ -292,11 +331,13 @@ class SwitchUserViewModel
                             QuickConnectDto(secret = quickConnectStatus.secret),
                         )
                         val current =
-                            serverRepository.changeUser(
-                                server.url,
-                                authenticationResult,
-                                existingUser,
-                            )
+                            changeUserWithModes(kids = false, big = false, guest = false) {
+                                serverRepository.changeUser(
+                                    server.url,
+                                    authenticationResult,
+                                    existingUser,
+                                )
+                            }
                         setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
                     } catch (_: CancellationException) {
                         // no-op, user may have canceled

@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,8 +75,41 @@ fun ParentalControlsDialog(
     val scope = rememberCoroutineScope()
     val hasPin by viewModel.hasPin.collectAsState()
     var checked by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { viewModel.refreshPin() }
+    // Benflix: nothing opens until the parent PIN has been read. If it can't be read, that's not "no PIN".
+    var pinTries by remember { mutableIntStateOf(0) }
+    var pinLoaded by remember { mutableStateOf(false) }
+    var pinError by remember { mutableStateOf(false) }
+    LaunchedEffect(pinTries) {
+        pinError = false
+        val state = viewModel.loadPin()
+        pinLoaded = state != null
+        pinError = state == null
+    }
     var step by remember { mutableStateOf(ParentalStep.MENU) }
+    if (!pinLoaded) {
+        BasicDialog(onDismissRequest = onDismiss) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.widthIn(max = 480.dp).padding(20.dp),
+            ) {
+                Text("Parental controls", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                if (pinError) {
+                    val retryFocus = remember { FocusRequester() }
+                    LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
+                    Text("Couldn't check the parent PIN, try again")
+                    ListItem(
+                        selected = false,
+                        onClick = { pinTries++ },
+                        headlineContent = { Text("Try again") },
+                        modifier = Modifier.focusRequester(retryFocus),
+                    )
+                } else {
+                    Text("Checking the parent PIN…")
+                }
+            }
+        }
+        return
+    }
     val current = if (hasPin && !checked && step != ParentalStep.PIN) ParentalStep.CHECK else step
 
     if (current == ParentalStep.PIN) {

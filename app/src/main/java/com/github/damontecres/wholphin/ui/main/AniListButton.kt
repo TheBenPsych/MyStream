@@ -29,6 +29,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.AniListSync
+import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,10 +55,13 @@ class AniListButtonViewModel
             val intent = sync.signInIntent()
             try {
                 if (intent.resolveActivity(context.packageManager) != null) {
+                    // Coming back from the browser isn't "away" (no Who's watching)
+                    ResumeTimer.expectedTrip = true
                     context.startActivity(intent)
                     return
                 }
             } catch (ex: Exception) {
+                ResumeTimer.expectedTrip = false
                 Timber.w(ex, "Could not open the AniList sign-in page")
             }
             Toast

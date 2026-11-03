@@ -136,15 +136,27 @@ class BedtimeViewModel
         fun refreshPin() {
             val userId = serverRepository.currentUser?.id ?: return
             viewModelScope.launch(WholphinDispatchers.IO) {
-                val has = parentPin.hasPin(userId)
+                val state = parentPin.pinState(userId)
+                val has = state == true
                 BenflixBedtime.pinSet = has
-                _hasPin.value = has
+                // Couldn't read it: keep what we knew, so Parental controls doesn't think there's no PIN
+                if (state != null) _hasPin.value = has
                 _locked.value = BenflixBedtime.lockedNow()
                 val minutes = parentPin.kidsDailyMinutes(userId)
                 BenflixScreenTime.limitMinutes = minutes
                 _dailyMinutes.value = minutes
                 _timeUp.value = BenflixScreenTime.lockedNow()
             }
+        }
+
+        /** Read the parent PIN now: true/false if one is set, null if it couldn't be checked */
+        suspend fun loadPin(): Boolean? {
+            val userId = serverRepository.currentUser?.id ?: return null
+            val state = withContext(WholphinDispatchers.IO) { parentPin.pinState(userId) } ?: return null
+            BenflixBedtime.pinSet = state
+            _hasPin.value = state
+            _locked.value = BenflixBedtime.lockedNow()
+            return state
         }
 
         suspend fun checkPin(pin: String): Boolean {

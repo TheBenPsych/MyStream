@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +62,7 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.DownloadCallback
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.Release
+import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.OneTimeLaunchedEffect
@@ -71,6 +75,7 @@ import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.LoadingState
 import com.github.damontecres.wholphin.util.Version
@@ -250,6 +255,8 @@ fun InstallUpdatePage(
     fun openInstaller(uri: Uri) {
         fun launch(plainView: Boolean): Boolean =
             try {
+                // Coming back from the installer isn't "away" (no Who's watching)
+                ResumeTimer.expectedTrip = true
                 context.startActivity(
                     viewModel.updater
                         .installIntent(uri, plainView)
@@ -257,6 +264,7 @@ fun InstallUpdatePage(
                 )
                 true
             } catch (ex: ActivityNotFoundException) {
+                ResumeTimer.expectedTrip = false
                 Timber.w(ex, "No installer for plainView=%s", plainView)
                 false
             }
@@ -299,6 +307,8 @@ fun InstallUpdatePage(
         }
         pendingRelease = release
         try {
+            // Coming back from Android's settings isn't "away", so the download carries on
+            ResumeTimer.expectedTrip = true
             unknownSourcesLauncher.launch(
                 Intent(
                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -307,6 +317,7 @@ fun InstallUpdatePage(
             )
         } catch (ex: ActivityNotFoundException) {
             // Some TVs don't have this screen, the installer will ask instead
+            ResumeTimer.expectedTrip = false
             Timber.w(ex, "No unknown sources settings screen")
             pendingRelease = null
             viewModel.installRelease(release)
@@ -359,7 +370,7 @@ fun InstallUpdatePage(
                 LaunchedEffect(release) {
                     if (viewModel.updater.installWhenOpened) {
                         viewModel.updater.installWhenOpened = false
-                        startUpdate(release)
+                        if (release.version.isGreaterThan(viewModel.currentVersion)) startUpdate(release)
                     }
                 }
                 val alreadyDownloaded =
@@ -408,6 +419,41 @@ fun InstallUpdatePageContent(
     modifier: Modifier = Modifier,
     alreadyDownloaded: Boolean = false,
 ) {
+    // Benflix: only offer the download when it's really newer than what's installed
+    val newer = release.version.isGreaterThan(currentVersion)
+    if (!rememberIsTv()) {
+        // Phones: heading, version and buttons on top, the release notes below, all scrolling together
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+        ) {
+            UpdateActions(
+                currentVersion = currentVersion,
+                release = release,
+                newer = newer,
+                alreadyDownloaded = alreadyDownloaded,
+                onInstallRelease = onInstallRelease,
+                onCancel = onCancel,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ReleaseNotes(
+                release,
+                installed = currentVersion,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ).padding(16.dp),
+            )
+        }
+        return
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier,
@@ -460,41 +506,67 @@ fun InstallUpdatePageContent(
                 ReleaseNotes(release, installed = currentVersion)
             }
         }
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        UpdateActions(
+            currentVersion = currentVersion,
+            release = release,
+            newer = newer,
+            alreadyDownloaded = alreadyDownloaded,
+            onInstallRelease = onInstallRelease,
+            onCancel = onCancel,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .align(Alignment.CenterVertically)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                        shape = RoundedCornerShape(16.dp),
-                    ).padding(16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.update_available),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "$currentVersion => " + release.version.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            // Start on the Download button, so one OK press on the remote starts the update
-            val downloadFocus = remember { FocusRequester() }
-            LaunchedEffect(Unit) { downloadFocus.requestFocusWhenReady() }
+                    .align(Alignment.CenterVertically),
+        )
+    }
+}
+
+/** The heading, versions and buttons of the update page ("You're up to date" when nothing is newer) */
+@Composable
+private fun UpdateActions(
+    currentVersion: Version,
+    release: Release,
+    newer: Boolean,
+    alreadyDownloaded: Boolean,
+    onInstallRelease: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier =
+            modifier
+                .background(
+                    MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                    shape = RoundedCornerShape(16.dp),
+                ).padding(16.dp),
+    ) {
+        Text(
+            text = if (newer) stringResource(R.string.update_available) else "You're up to date",
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = if (newer) "$currentVersion => " + release.version.toString() else currentVersion.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        // Start on the Download button (or Cancel when there's nothing to get), so one OK press works
+        val firstFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { firstFocus.requestFocusWhenReady() }
+        if (newer) {
             TextButton(
                 stringRes = if (alreadyDownloaded) R.string.install_now else R.string.download_and_update,
                 onClick = onInstallRelease,
-                modifier = Modifier.focusRequester(downloadFocus),
-            )
-            TextButton(
-                stringRes = R.string.cancel,
-                onClick = onCancel,
+                modifier = Modifier.focusRequester(firstFocus),
             )
         }
+        TextButton(
+            stringRes = R.string.cancel,
+            onClick = onCancel,
+            modifier = if (newer) Modifier else Modifier.focusRequester(firstFocus),
+        )
     }
 }
 

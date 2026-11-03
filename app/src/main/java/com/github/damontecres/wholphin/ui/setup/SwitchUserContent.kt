@@ -116,9 +116,8 @@ fun SwitchUserContent(
         bigKids: Boolean = false,
         guest: Boolean = false,
     ) {
-        KidsMode.set(kids, bigKids)
-        GuestMode.set(guest)
-        val result = viewModel.trySwitchUser(user)
+        // Kids / Guest are set by the view model, and only kept if the switch works
+        val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
         scope.launch {
             when (val r = result.await()) {
                 is SwitchUserResult.Error -> {

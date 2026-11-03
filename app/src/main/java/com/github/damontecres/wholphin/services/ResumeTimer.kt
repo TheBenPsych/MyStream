@@ -22,6 +22,13 @@ object ResumeTimer {
     @Volatile
     var resumeAllowed: Boolean = false
 
+    /**
+     * Set right before Benflix opens another screen it expects to come back from (the AniList sign-in,
+     * Android's "Install unknown apps" screen or installer), so coming back isn't treated as being away
+     */
+    @Volatile
+    var expectedTrip: Boolean = false
+
     /** The app just went to the background */
     fun markLeft(context: Context) {
         try {

@@ -21,6 +21,17 @@ class BenflixParentPin
     ) {
         suspend fun hasPin(userId: UUID): Boolean = savedHash(userId) != null
 
+        /** Whether a parent PIN is set, or null if it couldn't be read (so callers don't take that as "no PIN") */
+        suspend fun pinState(userId: UUID): Boolean? =
+            try {
+                readHash(userId) != null
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't read the parent PIN")
+                null
+            }
+
         suspend fun check(
             userId: UUID,
             pin: String,
@@ -61,9 +72,12 @@ class BenflixParentPin
             BenflixScreenTime.limitMinutes = minutes.coerceAtLeast(0)
         }
 
+        private suspend fun readHash(userId: UUID): String? =
+            displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY]?.takeIf { it.isNotBlank() }
+
         private suspend fun savedHash(userId: UUID): String? =
             try {
-                displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY]?.takeIf { it.isNotBlank() }
+                readHash(userId)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {

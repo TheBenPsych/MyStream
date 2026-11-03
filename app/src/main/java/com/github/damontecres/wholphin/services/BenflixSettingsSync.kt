@@ -39,7 +39,7 @@ import javax.inject.Singleton
  *
  * Things that only make sense on one device (player choice, Lite mode, download folders, Night mode sound,
  * which tiles the Who's watching screen shows, the games server address) are not synced.
- * Changes made while the Kids profile is open are never saved to the grown-up's account.
+ * Changes made while the Kids or Guest profile is open are never saved to the grown-up's account.
  */
 @Singleton
 class BenflixSettingsSync
@@ -66,6 +66,7 @@ class BenflixSettingsSync
             readyUserId = null
             _ready.value = null
             var nextUpMoved = true
+            var loaded = false
             try {
                 val customPrefs =
                     displayPreferencesService
@@ -96,11 +97,18 @@ class BenflixSettingsSync
                 } else {
                     lastSynced = null
                 }
+                loaded = true
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not load saved Benflix settings")
                 lastSynced = null
+            }
+            // Couldn't read their saved settings: don't save this device's settings (maybe the last
+            // person's) over theirs. Uploads stay off until their settings load next time.
+            if (!loaded) {
+                _ready.value = userId
+                return
             }
             if (!nextUpMoved) moveNextUpCountdown(userId)
             readyUserId = userId
@@ -207,7 +215,7 @@ class BenflixSettingsSync
 
         private suspend fun upload(prefs: AppPreferences) {
             val userId = serverRepository.currentUser?.id ?: return
-            if (userId != readyUserId || KidsMode.isActive) return
+            if (userId != readyUserId || KidsMode.isActive || GuestMode.isActive) return
             // Remember their colour on this device for the Who's watching tiles
             ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
             val encoded = Base64.encodeToString(prefs.personalPart().toByteArray(), Base64.NO_WRAP)

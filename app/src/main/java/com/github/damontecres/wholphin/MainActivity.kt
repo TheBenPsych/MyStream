@@ -400,9 +400,11 @@ class MainActivity : AppCompatActivity() {
     override fun onRestart() {
         super.onRestart()
         Timber.d("onRestart")
-        if (GameStreamReturn.pending) {
-            // Back from playing a game: stay where we were (the Games tab)
+        if (GameStreamReturn.pending || ResumeTimer.expectedTrip || playExternalViewModel.launched.value) {
+            // Back from playing a game (stay on the Games tab), the external player, the AniList
+            // sign-in or the updater's Android screens: stay where we were
             GameStreamReturn.pending = false
+            ResumeTimer.expectedTrip = false
             ResumeTimer.resumeAllowed = true
             return
         }
