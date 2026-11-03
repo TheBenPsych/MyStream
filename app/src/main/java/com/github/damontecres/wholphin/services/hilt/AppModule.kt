@@ -96,6 +96,16 @@ object AppModule {
         OkHttpClient
             .Builder()
             .apply {
+                // Benflix speed: OkHttp only lets 5 requests talk to one server at a time. Pictures and
+                // Home's rows all go to Jellyfin, so on a fresh start (nothing saved yet) rows waited in
+                // line behind dozens of posters. Jellyfin handles far more than 5 at once.
+                dispatcher(
+                    okhttp3.Dispatcher().apply {
+                        maxRequests = 64
+                        maxRequestsPerHost = 16
+                    },
+                )
+                connectionPool(okhttp3.ConnectionPool(16, 5, java.util.concurrent.TimeUnit.MINUTES))
                 // TODO user agent, timeouts, logging, etc
                 // Benflix Kids profile: only kid-rated movies & shows
                 addInterceptor(KidsMode.interceptor)
