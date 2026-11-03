@@ -9,6 +9,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.BenflixPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
 import com.github.damontecres.wholphin.ui.playback.BenflixPlayerPrefs
@@ -37,9 +38,14 @@ import javax.inject.Singleton
  *
  * Their profile picture, "Always skip filler" and the Dubbed/Subbed pick for each anime follow them too.
  *
- * Things that only make sense on one device (player choice, Lite mode, download folders, Night mode sound,
- * which tiles the Who's watching screen shows, the games server address) are not synced.
- * Changes made while the Kids profile is open are never saved to the grown-up's account.
+ * Things that only make sense on one device are not synced: player choice, Lite mode, refresh rate and
+ * other display options, the screensaver, download folders, Night mode sound, which tiles the Who's
+ * watching screen shows, the games server address, and these Benflix ones (see [withoutDeviceParts]):
+ * the come-back timer ("Ask Who's watching again after"), mobile data quality, tap vibration on phones,
+ * and "Styled subtitles in MPV" (it depends on whether this device can run MPV).
+ * So the device check's picks (Lite mode and screensaver motion, see BenflixDeviceCheck) and the Kids
+ * bedtime hour stay on the device they were made for.
+ * Changes made while the Kids or Guest profile is open are never saved to the grown-up's account.
  */
 @Singleton
 class BenflixSettingsSync
@@ -66,6 +72,7 @@ class BenflixSettingsSync
             readyUserId = null
             _ready.value = null
             var nextUpMoved = true
+            var loaded = false
             try {
                 val customPrefs =
                     displayPreferencesService
@@ -96,11 +103,18 @@ class BenflixSettingsSync
                 } else {
                     lastSynced = null
                 }
+                loaded = true
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not load saved Benflix settings")
                 lastSynced = null
+            }
+            // Couldn't read their saved settings: don't save this device's settings (maybe the last
+            // person's) over theirs. Uploads stay off until their settings load next time.
+            if (!loaded) {
+                _ready.value = userId
+                return
             }
             if (!nextUpMoved) moveNextUpCountdown(userId)
             readyUserId = userId
@@ -207,7 +221,7 @@ class BenflixSettingsSync
 
         private suspend fun upload(prefs: AppPreferences) {
             val userId = serverRepository.currentUser?.id ?: return
-            if (userId != readyUserId || KidsMode.isActive) return
+            if (userId != readyUserId || KidsMode.isActive || GuestMode.isActive) return
             // Remember their colour on this device for the Who's watching tiles
             ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
             val encoded = Base64.encodeToString(prefs.personalPart().toByteArray(), Base64.NO_WRAP)
@@ -242,7 +256,7 @@ fun AppPreferences.personalPart(): AppPreferences {
     val ui = interfacePreferences
     return AppPreferences
         .newBuilder()
-        .setBenflixPreferences(benflixPreferences)
+        .setBenflixPreferences(benflixPreferences.withoutDeviceParts())
         .setPlaybackPreferences(
             PlaybackPreferences
                 .newBuilder()
@@ -275,7 +289,8 @@ fun AppPreferences.withPersonal(saved: AppPreferences): AppPreferences {
     val p = saved.playbackPreferences
     val ui = saved.interfacePreferences
     return toBuilder()
-        .setBenflixPreferences(saved.benflixPreferences)
+        // Their saved Benflix settings, but this device keeps its own device-only ones
+        .setBenflixPreferences(saved.benflixPreferences.withDevicePartsFrom(benflixPreferences))
         .setPlaybackPreferences(
             playbackPreferences
                 .toBuilder()
@@ -302,3 +317,28 @@ fun AppPreferences.withPersonal(saved: AppPreferences): AppPreferences {
                 .build(),
         ).build()
 }
+
+/**
+ * Benflix settings that belong to this device, not the person: never saved to the account, and never
+ * taken from it (older saved copies may still hold them; they're ignored).
+ * - resume_minutes: the come-back timer ("Ask Who's watching again after"), a shared TV vs. your own phone
+ * - mobile_data_quality: only matters on a phone's mobile data
+ * - haptics_off: tap vibration, phones only
+ * - auto_mpv_styled_subs: needs MPV, which not every device can run
+ */
+private fun BenflixPreferences.withoutDeviceParts(): BenflixPreferences =
+    toBuilder()
+        .clearResumeMinutes()
+        .clearMobileDataQuality()
+        .clearHapticsOff()
+        .clearAutoMpvStyledSubs()
+        .build()
+
+/** These settings with [device]'s own device-only settings kept */
+private fun BenflixPreferences.withDevicePartsFrom(device: BenflixPreferences): BenflixPreferences =
+    toBuilder()
+        .setResumeMinutes(device.resumeMinutes)
+        .setMobileDataQualityValue(device.mobileDataQualityValue)
+        .setHapticsOff(device.hapticsOff)
+        .setAutoMpvStyledSubs(device.autoMpvStyledSubs)
+        .build()

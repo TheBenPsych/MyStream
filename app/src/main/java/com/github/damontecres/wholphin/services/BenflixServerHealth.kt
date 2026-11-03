@@ -114,7 +114,8 @@ class BenflixServerHealth
             }
 
         companion object {
-            private const val LOG_LIMIT = 40
+            // Benflix: big enough to hold a whole day of the log (it also has every play, sign-in and so on)
+            private const val LOG_LIMIT = 1_000
             private const val MIN_PROBLEMS = 3
         }
     }

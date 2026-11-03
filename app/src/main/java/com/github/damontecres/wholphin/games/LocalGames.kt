@@ -31,6 +31,8 @@ data class GameRef(
     val consoleName: String,
     val coverUrl: String?,
     val size: Long = 0,
+    /** Rated for everyone, so it shows on the Kids profile (also kept with downloads, for when Tower can't be reached) */
+    val kids: Boolean = false,
 )
 
 /** A game kept on this device */
@@ -83,7 +85,20 @@ class LocalGames
         private val _prep = MutableStateFlow<GamePrep?>(null)
         val prep: StateFlow<GamePrep?> = _prep
 
-        private var biosList: List<Pair<String, String>>? = null
+        @Volatile private var biosList: List<Pair<String, String>>? = null
+
+        /** Forgets Tower's BIOS list, so new BIOS files are seen (Reload / Try again on the Games page) */
+        fun forgetBiosList() {
+            biosList = null
+        }
+
+        private val _downloadsVersion = MutableStateFlow(0)
+
+        /** Goes up whenever a game is downloaded, changed or removed, so lists of downloads can refresh */
+        val downloadsVersion: StateFlow<Int> = _downloadsVersion
+
+        /** Games being downloaded right now (their folders aren't cleared out as leftovers) */
+        private val downloading = mutableSetOf<Int>()
 
         /**
          * Benflix: the Kids tile uses the grown-up's account, so its saves are kept apart on this device and
@@ -134,6 +149,8 @@ class LocalGames
                             consoleName = j.optString("console"),
                             coverUrl = j.optString("cover").ifBlank { null },
                             size = j.optLong("bytes"),
+                            // Games downloaded before this was kept count as not for kids
+                            kids = j.optBoolean("kids", false),
                         ),
                     startFile = start,
                     bytes = j.optLong("bytes"),
@@ -161,7 +178,9 @@ class LocalGames
                     .put("bytes", bytes)
                     .put("played", System.currentTimeMillis())
                     .put("pinned", pinned)
+                    .put("kids", ref.kids)
             prefs.edit().putString("game_${ref.id}", j.toString()).apply()
+            _downloadsVersion.value++
         }
 
         fun setPinned(
@@ -176,7 +195,25 @@ class LocalGames
         fun remove(id: Int) {
             gameDir(id).deleteRecursively()
             prefs.edit().remove("game_$id").apply()
+            _downloadsVersion.value++
         }
+
+        /**
+         * Clears out half-finished downloads: game folders with no record of a finished download that aren't
+         * downloading right now (for example the app was closed, or the internet dropped, part way through).
+         */
+        suspend fun clearLeftovers() =
+            withContext(Dispatchers.IO) {
+                GameSaves.romsDir(context).listFiles()?.forEach { dir ->
+                    val id = dir.name.toIntOrNull() ?: return@forEach
+                    if (!dir.isDirectory) return@forEach
+                    synchronized(downloading) {
+                        if (id in downloading || prefs.contains("game_$id")) return@forEach
+                        Timber.i("Clearing out a half-finished download (game %s)", id)
+                        dir.deleteRecursively()
+                    }
+                }
+            }
 
         private fun gameDir(id: Int) = File(GameSaves.romsDir(context), id.toString())
 
@@ -337,9 +374,28 @@ class LocalGames
         ): File {
             val dir = gameDir(ref.id)
             downloaded(ref.id)?.let { have ->
-                record(have.ref.copy(coverUrl = ref.coverUrl ?: have.ref.coverUrl), have.startFile, have.bytes, pinned ?: have.pinned)
+                record(
+                    have.ref.copy(coverUrl = ref.coverUrl ?: have.ref.coverUrl, kids = ref.kids),
+                    have.startFile,
+                    have.bytes,
+                    pinned ?: have.pinned,
+                )
                 return File(dir, have.startFile)
             }
+            synchronized(downloading) { downloading.add(ref.id) }
+            try {
+                return downloadGame(ref, console, pinned, dir)
+            } finally {
+                synchronized(downloading) { downloading.remove(ref.id) }
+            }
+        }
+
+        private suspend fun downloadGame(
+            ref: GameRef,
+            console: LocalConsole,
+            pinned: Boolean?,
+            dir: File,
+        ): File {
             say(ref, "Getting ready…")
             val manifest = client.getJson("/api/rom/${ref.id}")
             val files =
@@ -349,6 +405,10 @@ class LocalGames
             var start = manifest.optString("start").ifBlank { files.firstOrNull()?.first ?: "" }
             val total = files.sumOf { it.second }.coerceAtLeast(1)
             makeSpace(total, keep = ref.id)
+            // Clear out what an earlier, unfinished download left behind. Whole files of the right size are kept
+            // (they're skipped below); half-written ".part" files and anything else are removed.
+            val wanted = files.map { it.first.substringBefore('/') }.toSet()
+            dir.listFiles()?.forEach { f -> if (f.name !in wanted) f.deleteRecursively() }
             dir.mkdirs()
             var before = 0L
             for ((name, size) in files) {
@@ -492,6 +552,8 @@ class LocalGames
                     .putExtra(GameActivity.EXTRA_SERVER, client.jellyfinUrl)
                     .putExtra(GameActivity.EXTRA_USER, client.userId)
                     .putExtra(GameActivity.EXTRA_COVER, game.ref.coverUrl ?: "")
+                    .putExtra(GameActivity.EXTRA_KIDS, KidsMode.isActive)
+                    .putExtra(GameActivity.EXTRA_BIG_KIDS, KidsMode.isActive && KidsMode.isBig)
             if (from !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             // Coming back from the game returns to the Games tab, not "Who's watching?"
             GameStreamReturn.pending = true

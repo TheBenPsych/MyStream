@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.filter.FilterValueOption
 import com.github.damontecres.wholphin.data.filter.ItemFilterBy
@@ -140,7 +141,12 @@ fun CollectionDetails(
             { filter: GetItemsFilter -> viewModel.changeFilter(filter) }
         }
     val onClickPlay = { _: RowColumn, item: BaseItem ->
-        viewModel.navigateTo(Destination.Playback(item = item))
+        viewModel.play(item)
+    }
+    LifecycleResumeEffect(itemId) {
+        viewModel.onResumePage()
+
+        onPauseOrDispose { }
     }
     val onClickPlayAll =
         remember {

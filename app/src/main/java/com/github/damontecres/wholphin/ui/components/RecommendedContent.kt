@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -222,6 +223,72 @@ class RecommendedViewModel
                 }
                 // Benflix: everything is in, even if every row came back empty
                 _state.update { it.copy(loading = LoadingState.Success) }
+            }
+        }
+
+        /**
+         * Benflix: coming back (e.g. from the player), reload just the rows that depend on what was
+         * watched (Continue watching, Next up, Finish the season, Played lately). Random rows stay put.
+         */
+        fun refreshProgressRows() {
+            if (state.value.loading != LoadingState.Success) return
+            viewModelScope.launchIO {
+                val limit =
+                    userPreferencesService.flow
+                        .first()
+                        .appPreferences.homePagePreferences.maxItemsPerRow
+                recommendedRows.forEachIndexed { index, row ->
+                    if (row.title !in PROGRESS_ROW_TITLES) return@forEachIndexed
+                    launchIO {
+                        val title = ResStringProvider(row.title)
+                        val items =
+                            try {
+                                execute(row, limit)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Could not refresh %s", title)
+                                return@launchIO
+                            }
+                        setRow(index, HomeRowLoadingState.Success(title, items, viewOptions, showViewMore = items.size >= limit))
+                    }
+                }
+                shelves.forEachIndexed { shelfIndex, shelf ->
+                    if (shelf.title !in PROGRESS_SHELF_TITLES) return@forEachIndexed
+                    launchIO {
+                        val items =
+                            try {
+                                shelf.load(shelf)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Could not refresh the %s row", shelf.title)
+                                return@launchIO
+                            }
+                        setRow(
+                            recommendedRows.size + shelfIndex,
+                            HomeRowLoadingState.Success(
+                                StringStringProvider(shelf.title),
+                                items,
+                                shelf.viewOptions,
+                                showViewMore = items.size >= LibraryHomeService.ROW,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        private fun setRow(
+            index: Int,
+            row: HomeRowLoadingState,
+        ) {
+            _state.update {
+                if (index !in it.rows.indices) {
+                    it
+                } else {
+                    it.copy(rows = it.rows.toMutableList().apply { set(index, row) })
+                }
             }
         }
 
@@ -516,6 +583,10 @@ const val SHELVES_SEASONS = "seasons"
 const val SHELVES_DECADES = "decades"
 const val SHELVES_WEEK = "week"
 
+/** Benflix: rows that change after watching something, reloaded when coming back to the page */
+private val PROGRESS_ROW_TITLES = setOf(R.string.continue_watching, R.string.next_up)
+private val PROGRESS_SHELF_TITLES = setOf("Played lately", "Finish the season")
+
 data class RecommendedRow<T>(
     val title: Int,
     val handler: RequestHandler<T>,
@@ -537,6 +608,11 @@ fun RecommendedContent(
 
     OneTimeLaunchedEffect {
         viewModel.init()
+    }
+    // Benflix: back from the player, Continue watching & co. show the new progress (like Home)
+    LifecycleStartEffect(Unit) {
+        viewModel.refreshProgressRows()
+        onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()
 

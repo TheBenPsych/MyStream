@@ -465,7 +465,8 @@ internal fun ConsoleGrid(
 internal fun StorageCard(
     games: List<DownloadedGame>,
     isTv: Boolean,
-    onRemove: (DownloadedGame) -> Unit,
+    /** Null when games can't be deleted here (Kids) */
+    onRemove: ((DownloadedGame) -> Unit)?,
 ) {
     val context = LocalContext.current
     val stats =
@@ -490,7 +491,7 @@ internal fun StorageCard(
     var managing by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(12.dp)
     Surface(
-        onClick = { if (games.isNotEmpty()) managing = true },
+        onClick = { if (games.isNotEmpty() && onRemove != null) managing = true },
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
@@ -526,14 +527,15 @@ internal fun StorageCard(
                         "No games downloaded on this device yet"
                     } else {
                         "Games on this device: ${LocalGames.mb(gamesBytes)} (${games.size}). " +
-                            (if (used > 0.9f) "Getting full! " else "") + "Select to delete some."
+                            (if (used > 0.9f) "Getting full! " else "") +
+                            if (onRemove != null) "Select to delete some." else ""
                     },
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = .8f),
             )
         }
     }
-    if (managing) {
+    if (managing && onRemove != null) {
         val focus = remember { FocusRequester() }
         com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = { managing = false }) {
             LaunchedEffect(Unit) { focus.tryRequestFocus() }

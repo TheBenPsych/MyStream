@@ -57,10 +57,16 @@ sealed interface TowerAsk {
     data class Replace(
         val download: TowerDownload,
     ) : TowerAsk {
-        override val title get() = "Remove and search again?"
+        override val title get() =
+            if (download.episodes > 1) "Remove the whole season pack?" else "Remove and search again?"
         override val body get() =
-            "This deletes the stuck download of ${download.title}, makes sure it's never picked again, " +
-                "and looks for a different copy."
+            if (download.episodes > 1) {
+                "${download.title} is one download with all ${download.episodes} episodes in it. This deletes the " +
+                    "whole pack, makes sure it's never picked again, and looks for another copy of each episode."
+            } else {
+                "This deletes the stuck download of ${download.title}, makes sure it's never picked again, " +
+                    "and looks for a different copy."
+            }
     }
 
     data class FixTracks(
@@ -270,16 +276,20 @@ private fun undoDate(file: String): String =
         "from $d/$mo/$y $h:$mi"
     } ?: file
 
-/** The light for an app: green running, gold running but not answering, red stopped */
+/**
+ * The light for an app: green running, gold running but not answering, red when it keeps restarting or stopped
+ * by itself with an error, grey when it was stopped on purpose
+ */
 internal fun appLight(app: TowerApp): Light =
     when {
         app.ok -> Light.GOOD
         app.running -> Light.WARN
-        else -> Light.BAD
+        app.problem -> Light.BAD
+        else -> Light.UNKNOWN
     }
 
-/** Apps that matter and aren't running (shown on "Needs you") */
-internal fun brokenApps(status: TowerStatus?): List<TowerApp> = status?.apps.orEmpty().filter { !it.ok && it.status != "Never started" }
+/** Apps that need a look (shown on "Needs you"). Apps stopped on purpose aren't on it. */
+internal fun brokenApps(status: TowerStatus?): List<TowerApp> = status?.apps.orEmpty().filter { it.problem && it.status != "Never started" }
 
 /** Overview: "Tower has been on for 3 days" and whether the apps are fine */
 internal fun LazyListScope.towerOverviewItems(
@@ -298,7 +308,12 @@ internal fun LazyListScope.towerOverviewItems(
                         listOfNotNull(
                             status.cpu?.let { "Processor $it% busy" },
                             status.apps?.let {
-                                if (broken.isEmpty()) "all ${it.size} apps running" else "${broken.size} app(s) stopped"
+                                val running = it.count { a -> a.running }
+                                when {
+                                    broken.isNotEmpty() -> "${broken.size} app(s) need a look"
+                                    running == it.size -> "all ${it.size} apps running"
+                                    else -> "$running of ${it.size} apps running"
+                                }
                             },
                             status.downloads.size
                                 .takeIf { it > 0 }
@@ -395,7 +410,8 @@ internal fun LazyListScope.towerDownloadItems(
                 actions =
                     listOf(
                         "Check again" to { viewModel.checkAgain(d) },
-                        "Remove and search again" to { viewModel.ask(TowerAsk.Replace(d)) },
+                        (if (d.episodes > 1) "Remove the whole pack and search again" else "Remove and search again") to
+                            { viewModel.ask(TowerAsk.Replace(d)) },
                     ),
             )
         }

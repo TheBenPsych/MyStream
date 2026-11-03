@@ -62,6 +62,7 @@ fun PinEntry(
         )
         if (isTv) PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
         PinEntryDots(input.length, Modifier.align(Alignment.CenterHorizontally))
+        if (isTv) PinBackHint(input.isNotEmpty(), Modifier.align(Alignment.CenterHorizontally))
         if (!isTv) {
             // Phones have no remote, so the PIN is typed on these buttons
             PhonePinPad(
@@ -80,6 +81,15 @@ fun PinEntry(
                 Modifier
                     .align(Alignment.CenterHorizontally)
                     .onKeyEvent {
+                        if (isPinDeleteKey(it)) {
+                            // Benflix: Back takes off the last press (and closes when nothing is entered)
+                            if (input.isEmpty()) return@onKeyEvent false
+                            if (it.type == KeyEventType.KeyUp) {
+                                input = input.dropLast(1)
+                                onTextChange.invoke(input)
+                            }
+                            return@onKeyEvent true
+                        }
                         if (it.type == KeyEventType.KeyUp) {
                             var str = input
                             str +=
@@ -132,13 +142,31 @@ fun PinEntryCreate(
 ) {
     var input by remember { mutableStateOf("") }
     val isTv = rememberIsTv()
+
+    // Benflix: the entered numbers are cleared after each try, so after "Incorrect" they can start again
+    fun confirm() {
+        val pin = input
+        input = ""
+        onTextChange.invoke(input)
+        onConfirm?.invoke(pin)
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
             modifier
                 .onKeyEvent {
                     if (isEnterKey(it)) {
-                        onConfirm?.invoke(input)
+                        // Only once per press (not again when the button comes back up)
+                        if (it.type == KeyEventType.KeyDown && it.nativeKeyEvent.repeatCount == 0) confirm()
+                        return@onKeyEvent true
+                    }
+                    if (isPinDeleteKey(it)) {
+                        // Benflix: Back takes off the last press (and closes when nothing is entered)
+                        if (input.isEmpty()) return@onKeyEvent false
+                        if (it.type == KeyEventType.KeyUp) {
+                            input = input.dropLast(1)
+                            onTextChange.invoke(input)
+                        }
                         return@onKeyEvent true
                     }
                     if (it.type == KeyEventType.KeyUp) {
@@ -177,6 +205,7 @@ fun PinEntryCreate(
         )
         if (isTv) PinArrowRow(Modifier.align(Alignment.CenterHorizontally))
         PinEntryDots(input.length, Modifier.align(Alignment.CenterHorizontally))
+        if (isTv) PinBackHint(input.isNotEmpty(), Modifier.align(Alignment.CenterHorizontally))
         if (!isTv) {
             // Phones have no remote, so the PIN is typed on these buttons
             PhonePinPad(
@@ -184,7 +213,7 @@ fun PinEntryCreate(
                     input = if (key == null) input.dropLast(1) else input + key
                     onTextChange.invoke(input)
                 },
-                onConfirm = onConfirm?.let { { it.invoke(input) } },
+                onConfirm = onConfirm?.let { { confirm() } },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         } else if (onConfirm != null) {
@@ -275,6 +304,24 @@ private fun PadKey(
             color = if (highlight) MaterialTheme.colorScheme.onPrimary else Color.White,
         )
     }
+}
+
+/** Back on the remote (or Backspace / Delete on a keyboard) takes off the last press */
+private fun isPinDeleteKey(event: androidx.compose.ui.input.key.KeyEvent): Boolean =
+    event.key == Key.Back || event.key == Key.Backspace || event.key == Key.Delete
+
+/** On TV, a note that Back takes off the last press (kept in place so the dialog doesn't jump) */
+@Composable
+private fun PinBackHint(
+    show: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = if (show) "Pressed the wrong one? Press Back to take it off" else " ",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 private val PAD_KEY = 64.dp

@@ -41,6 +41,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
@@ -196,7 +197,13 @@ class GuessTheMovieViewModel
         fun best(): Int = prefs.getInt(bestKey(), 0)
 
         private fun bestKey(): String {
-            val profile = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            // Guest scores are kept apart from the owner's, like the Movie riddle
+            val profile =
+                when {
+                    GuestMode.isActive -> "guest"
+                    KidsMode.isActive -> "kids"
+                    else -> serverRepository.currentUser?.id?.toString() ?: "guest"
+                }
             return "${profile}_GUESS_THE_MOVIE"
         }
 

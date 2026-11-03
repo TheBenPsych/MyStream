@@ -10,6 +10,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -137,32 +138,36 @@ class ProfilePictureSync
                                 .delete()
                                 .build()
                         }
-                    okHttpClient.newCall(request).execute().use { response ->
-                        // Taking off a picture that isn't there is fine
-                        if (!response.isSuccessful && !(res == null && response.code == 404)) {
-                            Timber.w("Could not save the profile picture: %s", response.code)
+                    val uploaded =
+                        okHttpClient.newCall(request).execute().use { response ->
+                            // Taking off a picture that isn't there is fine
+                            val ok = response.isSuccessful || (res == null && response.code == 404)
+                            if (!ok) Timber.w("Could not save the profile picture: %s", response.code)
+                            ok
                         }
-                    }
-                    // Remember which one it is, so other devices can highlight it and draw it crisply
+                    // Remember which one it is, so other devices can highlight it and draw it crisply.
+                    // Same lock as Settings follow you, so neither undoes the other's change.
                     val api = jellyfin.createApi(serverUrl, accessToken = token)
-                    val current =
-                        api.displayPreferencesApi
-                            .getDisplayPreferences(
-                                displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
-                                userId = userId,
-                                client = DisplayPreferencesService.DEFAULT_CLIENT,
-                            ).content
-                    val customPrefs =
-                        current.customPrefs.toMutableMap().apply {
-                            put(KEY, (index ?: AUTOMATIC).toString())
-                        }
-                    api.displayPreferencesApi.updateDisplayPreferences(
-                        displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
-                        userId = userId,
-                        client = DisplayPreferencesService.DEFAULT_CLIENT,
-                        data = current.copy(customPrefs = customPrefs),
-                    )
-                    true
+                    DisplayPreferencesService.WRITE_LOCK.withLock {
+                        val current =
+                            api.displayPreferencesApi
+                                .getDisplayPreferences(
+                                    displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
+                                    userId = userId,
+                                    client = DisplayPreferencesService.DEFAULT_CLIENT,
+                                ).content
+                        val customPrefs =
+                            current.customPrefs.toMutableMap().apply {
+                                put(KEY, (index ?: AUTOMATIC).toString())
+                            }
+                        api.displayPreferencesApi.updateDisplayPreferences(
+                            displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
+                            userId = userId,
+                            client = DisplayPreferencesService.DEFAULT_CLIENT,
+                            data = current.copy(customPrefs = customPrefs),
+                        )
+                    }
+                    uploaded
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {

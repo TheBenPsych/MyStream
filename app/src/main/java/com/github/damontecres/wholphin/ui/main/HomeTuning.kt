@@ -51,7 +51,6 @@ internal const val COLLECTIONS_MIN = 3
 internal const val TRAILER_DELAY_MS = 1_500L
 internal const val TONIGHT_FROM_HOUR = 18
 internal const val TONIGHT_MIN_RATING = 7.0
-internal const val TONIGHT_POOL = 200
 internal const val TONIGHT_FETCH = 4
 internal const val SECOND_WAVE_MAX_WAIT_MS = 2_500L
 internal const val SLOW_ROWS_REFRESH_MS = 10 * 60 * 1000L

@@ -8,6 +8,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
@@ -53,7 +55,7 @@ data class SearchClock(
             request: MediaRequest,
             details: JsonObject?,
         ): SearchClock {
-            val asked = day(request.updatedAt ?: request.createdAt)
+            val asked = localDay(request.updatedAt ?: request.createdAt)
             // Couldn't look it up: go by when it was asked for, like before
             if (details == null) return SearchClock(notOut = false, outOn = null, startsOn = asked)
             val isMovie = SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE
@@ -125,6 +127,23 @@ data class SearchClock(
 
         private fun JsonObject.text(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull
 
+        /**
+         * Benflix: Seerr's request times are UTC moments ("2026-03-04T23:30:00.000Z"), so they're turned into the
+         * day it was here, not the UTC day (which is a day off in the evening in the Americas).
+         */
+        fun localDay(text: String?): LocalDate? =
+            try {
+                text?.let {
+                    OffsetDateTime
+                        .parse(it)
+                        .atZoneSameInstant(ZoneId.systemDefault())
+                        .toLocalDate()
+                }
+            } catch (ex: Exception) {
+                day(text)
+            }
+
+        /** A plain date (TMDB release and air dates are days, not moments, so no time zone change) */
         private fun day(text: String?): LocalDate? =
             text?.takeIf { it.length >= 10 }?.let {
                 try {

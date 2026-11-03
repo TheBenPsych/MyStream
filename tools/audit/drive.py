@@ -509,6 +509,70 @@ def sign_in():
         time.sleep(2)
 
 
+def welcome_setup():
+    """The first-time welcome setup opens over Home for an account that hasn't done it: go through every step"""
+    if wait_for(r"^Step 1 of \d+$", 25) is None:
+        log("welcome setup: didn't open (this account already did it)")
+        REPORT["welcome"] = "not shown"
+        return
+    REPORT["welcome"] = "started"
+    # what to press on each step, in order of preference. There's no Skip any more, and Back (on every
+    # step after the first) is never pressed; the search box on the favourites step is left alone.
+    # Hello: Let's go. Device check, picture, subtitles, a TV that already has a PIN, favourites: Next.
+    # Easy read: Looks good. Parent PIN: No thanks. Hide genres (last): Done. Then the finish screen: Go to Home.
+    buttons = [r"^Let's go$", r"^Next", r"^Looks good$", r"^No thanks$", r"^Done$"]
+    seen = []
+    finished = False
+    for _ in range(30):
+        root = dump()
+        step = find(root, r"^Step \d+ of \d+$")
+        if step is None:
+            # the "You're all set" screen has no step dots
+            n = find(root, r"^Go to Home$")
+            if n is not None:
+                shot("welcome-finish")
+                tap(n)
+                finished = True
+            break
+        label = step.get("content-desc") or step.get("text") or ""
+        if label not in seen:
+            seen.append(label)
+            shot("welcome-" + label.split()[1])
+        # subtitles: pick a mode first (Next stays off until one is picked)
+        # (once picked it shows a tick; on TV the explanation underneath can also read just
+        # "Only for other languages", so don't keep pressing it)
+        n = find(root, r"^Only for other languages$")
+        if n is not None and find(root, r"^✓ ") is None:
+            tap(n)
+            time.sleep(1.5)
+            continue
+        # favourites: pick 3 posters before Next turns on
+        if find(root, r"^Pick a few things you love$") is not None:
+            unpicked = [p for p in nodes(root) if re.match(r"^Poster: (?!.*\(picked\)$)", p.get("content-desc") or "")]
+            picked = [p for p in nodes(root) if re.match(r"^Poster: .*\(picked\)$", p.get("content-desc") or "")]
+            if len(picked) < 3 and unpicked:
+                tap(unpicked[0])
+                time.sleep(1.5)
+                continue
+        for b in buttons:
+            n = find(root, b)
+            if n is not None:
+                tap(n)
+                time.sleep(2)
+                break
+        else:
+            REPORT["problems"].append({"type": "welcome setup: no button to go on", "text": label})
+            break
+    REPORT["welcome_steps"] = seen
+    if not finished:
+        REPORT["problems"].append({"type": "welcome setup: never reached Go to Home"})
+    if wait_for(HOME_RE, 30) is None:
+        REPORT["problems"].append({"type": "welcome setup didn't end on Home"})
+    else:
+        REPORT["welcome"] = "finished"
+        log(f"welcome setup done: {len(seen)} steps")
+
+
 def main():
     global focus_sweep, monkey
     if SMOKE:
@@ -526,6 +590,7 @@ def main():
         shot(f"start-{i}")
     sign_in()
     shot("after-login")
+    welcome_setup()
     for name in ["close", "later", "not now", "dismiss", "ok", "skip"]:
         n = find(dump(), rf"^{name}$")
         if n is not None:

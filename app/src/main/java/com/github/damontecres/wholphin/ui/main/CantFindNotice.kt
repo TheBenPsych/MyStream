@@ -109,7 +109,7 @@ class CantFindNoticeViewModel
         private suspend fun check(seerrUserId: Int) {
             try {
                 cantFind.refresh(force = true)
-                val told = prefs().getStringSet(key(), emptySet()).orEmpty()
+                val told = OrderedSeen.read(prefs(), key()).toSet()
                 val mine =
                     cantFind.entries.value.values
                         .filter { seerrUserId in it.askedBy && it.tell() !in told }
@@ -154,8 +154,8 @@ class CantFindNoticeViewModel
 
         private fun markTold(entries: List<CantFindEntry>) {
             if (entries.isEmpty()) return
-            val told = prefs().getStringSet(key(), emptySet()).orEmpty() + entries.map { it.tell() }
-            prefs().edit().putStringSet(key(), told.toList().takeLast(MAX_TOLD).toSet()).apply()
+            // Benflix: kept in order, so only the oldest are dropped
+            OrderedSeen.add(prefs(), key(), entries.map { it.tell() }, MAX_TOLD)
         }
 
         fun done(

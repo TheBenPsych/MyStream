@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -63,6 +66,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -164,11 +168,22 @@ private fun GuideGrid(
 ) {
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
-    // The guide starts at the last half hour and shows the next few hours
-    val now = remember { System.currentTimeMillis() }
+    // The guide starts at the last half hour and shows the next few hours. The clock ticks each
+    // minute, so "on now" and the red line keep up while the guide stays open
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L - System.currentTimeMillis() % 60_000L)
+            now = System.currentTimeMillis()
+        }
+    }
     val windowStart = now - now % HALF_HOUR
     val windowEnd = windowStart + halfHours * HALF_HOUR
     var focused by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
+    // Phones have no remote focus: the first tap on a program picks it (shown up top with a white
+    // border) and a second tap on the same one plays or opens it
+    val isTv = rememberIsTv()
+    var selected by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         delay(80)
@@ -179,7 +194,7 @@ private fun GuideGrid(
         modifier = Modifier.padding(top = 12.dp, start = 8.dp),
     ) {
         // What the focused program is. Read only inside, so moving around the guide redraws just this part
-        GuideHeader(focused = { focused }, now = now)
+        GuideHeader(focused = { if (isTv) focused else selected ?: focused }, now = now)
         // Time ruler
         Row {
             Box(Modifier.width(CHANNEL_COL))
@@ -257,9 +272,14 @@ private fun GuideGrid(
                             val to = minOf(program.endMs, windowEnd)
                             val live = now >= program.startMs && now < program.endMs
                             val isFirst = schedule == list.first() && live
+                            val isSelected =
+                                !isTv &&
+                                    selected?.let { (s, p) -> s.number == schedule.number && p.startMs == program.startMs } == true
                             Surface(
                                 onClick = {
-                                    if (live) {
+                                    if (!isTv && !isSelected) {
+                                        selected = schedule to program
+                                    } else if (live) {
                                         viewModel.watch(schedule)
                                     } else {
                                         viewModel.navigationManager.navigateTo(program.item.destination())
@@ -273,6 +293,15 @@ private fun GuideGrid(
                                         focusedContainerColor = Color.White,
                                         focusedContentColor = Color.Black,
                                     ),
+                                border =
+                                    if (isSelected) {
+                                        ClickableSurfaceDefaults.border(
+                                            border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                                            focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                                        )
+                                    } else {
+                                        ClickableSurfaceDefaults.border()
+                                    },
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 modifier =
                                     Modifier
@@ -335,14 +364,16 @@ private fun GuideHeader(
     now: Long,
 ) {
     val imageUrlService = LocalImageUrlService.current
+    // Phones get a smaller picture and title, so the title isn't squeezed by a TV-sized picture
+    val isTv = rememberIsTv()
     Row(
-        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isTv) 28.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(HEADER_HEIGHT)
-                .padding(end = 32.dp),
+                .height(if (isTv) HEADER_HEIGHT else PHONE_HEADER_HEIGHT)
+                .padding(end = if (isTv) 32.dp else 8.dp),
     ) {
         val pair = focused()
         Column(
@@ -365,8 +396,8 @@ private fun GuideHeader(
             Text(
                 text = program.name().uppercase(),
                 fontFamily = BenflixTitleFont,
-                fontSize = 36.sp,
-                lineHeight = 36.sp,
+                fontSize = if (isTv) 36.sp else 22.sp,
+                lineHeight = if (isTv) 36.sp else 22.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -390,7 +421,7 @@ private fun GuideHeader(
                     text = it,
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = .72f),
-                    maxLines = 2,
+                    maxLines = if (isTv) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 620.dp),
                 )
@@ -515,6 +546,9 @@ private const val GUIDE_HOURS = 3L
 private const val BANNER_MS = 4_000L
 private val CHANNEL_COL = 160.dp
 private val HEADER_HEIGHT = 170.dp
+
+/** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */
+private val PHONE_HEADER_HEIGHT = 110.dp
 private val BenflixRed = Color(0xFFE5484D)
 
 /** Each channel's badge colours */

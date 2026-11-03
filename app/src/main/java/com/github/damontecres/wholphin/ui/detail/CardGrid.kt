@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.playback.isBackwardButton
 import com.github.damontecres.wholphin.ui.playback.isForwardButton
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -476,7 +477,7 @@ fun <T : CardGridItem> CardGrid(
                 Spacer(
                     Modifier
                         .padding(start = 16.dp)
-                        .width(letterHorizontalPadding * 2 + letterButtonSize),
+                        .width(letterHorizontalPadding * 2 + letterButtonSize()),
                 )
             }
         }
@@ -484,7 +485,13 @@ fun <T : CardGridItem> CardGrid(
 }
 
 private val letterHorizontalPadding = 2.dp
-private val letterButtonSize = 14.dp
+private val tvLetterButtonSize = 14.dp
+
+// Benflix on phones: letters are tapped, not focused, so they need a finger-sized target
+private val phoneLetterButtonSize = 24.dp
+
+@Composable
+private fun letterButtonSize(): Dp = if (rememberIsTv()) tvLetterButtonSize else phoneLetterButtonSize
 
 @Composable
 fun JumpButtons(
@@ -530,6 +537,8 @@ fun AlphabetButtons(
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val isTv = rememberIsTv()
+    val buttonSize = letterButtonSize()
 
     val index = remember(letters, currentLetter) { letters.indexOf(currentLetter) }
     LaunchedEffect(currentLetter) {
@@ -577,7 +586,12 @@ fun AlphabetButtons(
             val itemAlpha =
                 when {
                     isCurrentLetter && !alphabetPickerFocused -> 1f
+
                     alphabetPickerFocused -> .85f
+
+                    // Phones never focus the picker, so keep every letter readable
+                    !isTv -> .85f
+
                     else -> .25f
                 }
 
@@ -586,14 +600,14 @@ fun AlphabetButtons(
             Box(
                 modifier =
                     Modifier
-                        .size(letterButtonSize)
+                        .size(buttonSize)
                         .clip(CircleShape)
                         .alpha(itemAlpha),
             ) {
                 Button(
                     modifier =
                         Modifier
-                            .size(letterButtonSize)
+                            .size(buttonSize)
                             .focusRequester(focusRequesters[index]),
                     contentPadding = PaddingValues(0.dp), // No padding to maximize text space
                     interactionSource = interactionSource,

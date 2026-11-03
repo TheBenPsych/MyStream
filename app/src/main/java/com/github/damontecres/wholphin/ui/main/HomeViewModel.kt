@@ -51,7 +51,9 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
@@ -59,6 +61,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
@@ -120,6 +123,14 @@ class HomeViewModel
 
         internal var dataLoadingJob: Job? = null
 
+        /** The current load's background rows (banner, extra rows), cancelled when a new load starts */
+        @Volatile
+        internal var backgroundLoadJob: Job? = null
+
+        /** The banner's own load finished (it wasn't cut short by a newer load) */
+        @Volatile
+        internal var featuredLoaded = false
+
         /** Benflix: when the rows that rarely change were last loaded */
         @Volatile
         internal var slowRowsLoadedAt = 0L
@@ -144,6 +155,7 @@ class HomeViewModel
                     )
 //                    Timber.v("userDto=%s", userDto)
                     dataLoadingJob?.cancel()
+                    backgroundLoadJob?.cancel()
                     if (userDto == null) {
                         Timber.d("UserDto is null")
                         mutableState.update { HomeState.EMPTY }
@@ -173,7 +185,11 @@ class HomeViewModel
         /** Benflix: the banner on screen came from last time's snapshot, the rest of it isn't applied yet */
         internal var bannerFromSnapshot = false
 
-        fun init() {
+        /**
+         * Load Home again. [afterChange]: something was just changed (watched, favourite...), so if
+         * a load is already running, load once more after it instead of skipping.
+         */
+        fun init(afterChange: Boolean = false) {
             viewModelScope.launchIO {
                 Timber.d("init HomeViewModel")
                 StartupTimer.mark(StartupTimer.HOME_OPEN)
@@ -213,6 +229,11 @@ class HomeViewModel
                         }
                     } else {
                         Timber.v("Data loading job is active")
+                        if (afterChange) {
+                            // Load again once this load ends, so the change shows up
+                            dataLoadingJob?.join()
+                            init()
+                        }
                     }
                 }
             }
@@ -226,6 +247,12 @@ class HomeViewModel
             // Benflix Home keeps only Continue watching / Next up from the server's home sections.
             // "Recently added" rows for each library live on that library's own page.
             val settings = allSettings.copy(rows = allSettings.rows.filter { isWatchingRow(it.config) })
+            // The extra rows load in the background under their own job, which is cancelled when the
+            // next load starts, so an old load can't overwrite a newer one
+            backgroundLoadJob?.cancel()
+            val loadJob = SupervisorJob(viewModelScope.coroutineContext[Job])
+            backgroundLoadJob = loadJob
+            val loadScope = CoroutineScope(viewModelScope.coroutineContext + loadJob)
             try {
                 val preferences = userPreferencesService.getCurrent()
                 val prefs = preferences.appPreferences.homePagePreferences
@@ -287,18 +314,25 @@ class HomeViewModel
                 // The top of the screen loads first: the banner, Top 10 and Continue watching.
                 // Rows further down start a moment later, so they don't slow down what you see first.
                 bannerFromSnapshot = false
-                if (!refresh || state.featured.isEmpty()) {
-                    viewModelScope.launchIO { loadFeatured(userDto) }
+                if (!refresh || state.featured.isEmpty() || !featuredLoaded) {
+                    featuredLoaded = false
+                    loadScope.launchIO {
+                        loadFeatured(userDto)
+                        featuredLoaded = true
+                    }
+                } else {
+                    // Keep the banner's order, but drop or update "Pick up where you left off" slides
+                    loadScope.launchIO { refreshFeaturedResume(userDto) }
                 }
-                viewModelScope.launchIO { loadTrending(userDto) }
-                if (KidsMode.isActive) viewModelScope.launchIO { loadKidsAgain(userDto.id) }
+                loadScope.launchIO { loadTrending(userDto) }
+                if (KidsMode.isActive) loadScope.launchIO { loadKidsAgain(userDto.id) }
 
                 val semaphore = Semaphore(4)
 
                 val deferred =
                     settings.rows
                         .map { row ->
-                            viewModelScope.async(WholphinDispatchers.IO) {
+                            loadScope.async(WholphinDispatchers.IO) {
                                 semaphore.withPermit {
                                     Timber.v("Fetching row: %s", row)
                                     try {
@@ -343,45 +377,53 @@ class HomeViewModel
 
                 val loadStart = System.currentTimeMillis()
                 SpeedStats.homeFromSaved = snapshot != null
-                viewModelScope.launchIO {
+                loadScope.launchIO {
                     // Wait for the top rows (or at most a couple of seconds), then load the rest
                     withTimeoutOrNull(SECOND_WAVE_MAX_WAIT_MS) { deferred.awaitAll() }
                     SpeedStats.homeTopRowsMs = System.currentTimeMillis() - loadStart
                     // Random rows are picked once per visit, so they don't reshuffle (and move the
                     // focused row) every time you come back from watching something
                     if (!refresh || state.themed == null) {
-                        viewModelScope.launchIO { loadThemed(userDto) }
+                        loadScope.launchIO { loadThemed(userDto) }
                     }
                     if (!refresh || state.monthly.isEmpty()) {
-                        viewModelScope.launchIO { loadMonthly(userDto) }
+                        loadScope.launchIO { loadMonthly(userDto) }
                     }
                     // Benflix: coming back to Home within a few minutes keeps rows that rarely change
                     // (New on Benflix, holiday picks, Top collections) instead of asking for them again
                     val now = System.currentTimeMillis()
                     val reloadSlowRows = !refresh || now - slowRowsLoadedAt > SLOW_ROWS_REFRESH_MS
-                    if (reloadSlowRows) slowRowsLoadedAt = now
-                    viewModelScope.launchIO { loadBecause(userDto) }
-                    if (reloadSlowRows) viewModelScope.launchIO { loadNewest(userDto) }
-                    viewModelScope.launchIO { loadMyList(userDto) }
-                    if (reloadSlowRows) viewModelScope.launchIO { loadCelebration(userDto) }
-                    viewModelScope.launchIO { loadComeBack(userDto) }
-                    viewModelScope.launchIO { loadWelcomeBack(userDto) }
-                    if (!refresh || state.world.isEmpty()) viewModelScope.launchIO { loadWorld(userDto) }
-                    if (!refresh || state.airing == null) viewModelScope.launchIO { loadAiring(userDto) }
+                    // Only counted as loaded once they finish, so a load cut short by a newer one
+                    // doesn't leave them missing for the next few minutes
+                    val slowJobs = mutableListOf<Job>()
+                    loadScope.launchIO { loadBecause(userDto) }
+                    if (reloadSlowRows) slowJobs += loadScope.launchIO { loadNewest(userDto) }
+                    loadScope.launchIO { loadMyList(userDto) }
+                    if (reloadSlowRows) slowJobs += loadScope.launchIO { loadCelebration(userDto) }
+                    loadScope.launchIO { loadComeBack(userDto) }
+                    loadScope.launchIO { loadWelcomeBack(userDto) }
+                    if (!refresh || state.world.isEmpty()) loadScope.launchIO { loadWorld(userDto) }
+                    if (!refresh || state.airing == null) loadScope.launchIO { loadAiring(userDto) }
                     if (!refresh || state.spotlight == null) {
-                        viewModelScope.launchIO { loadSpotlight(userDto) }
+                        loadScope.launchIO { loadSpotlight(userDto) }
                     }
                     if (!refresh || state.animeRows.isEmpty()) {
-                        viewModelScope.launchIO { loadAnimeRows(userDto) }
+                        loadScope.launchIO { loadAnimeRows(userDto) }
                     }
                     delay(THIRD_WAVE_DELAY_MS)
                     if (!refresh || state.genreRows.isEmpty()) {
-                        viewModelScope.launchIO { loadGenreRows(userDto) }
+                        loadScope.launchIO { loadGenreRows(userDto) }
                     }
-                    if (reloadSlowRows) viewModelScope.launchIO { loadCollections(userDto) }
+                    if (reloadSlowRows) {
+                        slowJobs += loadScope.launchIO { loadCollections(userDto) }
+                        loadScope.launchIO {
+                            slowJobs.joinAll()
+                            slowRowsLoadedAt = now
+                        }
+                    }
                     // Studio tiles are no longer on Home; which movies belong to which collection
                     // is worked out quietly in the background and saved for a day
-                    viewModelScope.launchIO { buildCollectionIndex(userDto.id) }
+                    loadScope.launchIO { buildCollectionIndex(userDto.id) }
                     // Once everything has had time to load, remember this Home for next time
                     delay(SNAPSHOT_SAVE_DELAY_MS)
                     saveHomeSnapshot(userDto.id)
@@ -447,9 +489,9 @@ class HomeViewModel
         // Benflix speed: the saved Home used to be thrown away by every app update (and Benflix
         // updates often), so the first start after an update waited for the banner. Only bump
         // HOME_SNAPSHOT_FORMAT when the saved format really changes.
-        internal fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.isActive}-$HOME_SNAPSHOT_FORMAT"
+        internal fun homeSnapshotKey(userId: UUID) = "home-$userId-${KidsMode.level}-$HOME_SNAPSHOT_FORMAT"
 
-        internal fun homeBannerKey(userId: UUID) = "home-banner-$userId-${KidsMode.isActive}-$HOME_SNAPSHOT_FORMAT"
+        internal fun homeBannerKey(userId: UUID) = "home-banner-$userId-${KidsMode.level}-$HOME_SNAPSHOT_FORMAT"
 
         internal fun readHomeBanner(userId: UUID): List<SnapshotFeatured>? =
             diskCache.read(homeBannerKey(userId), ListSerializer(SnapshotFeatured.serializer()), HOME_SNAPSHOT_MAX_AGE_MS)
@@ -640,24 +682,36 @@ class HomeViewModel
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                 val favorite = !item.favorite
                 favoriteWatchManager.setFavorite(item.id, favorite)
-                mutableState.update { state ->
-                    state.copy(
-                        featured =
-                            state.featured.map {
-                                if (it.item.id == item.id) {
-                                    val data = it.item.data
-                                    it.copy(
-                                        item =
-                                            it.item.copy(
-                                                data = data.copy(userData = data.userData?.copy(isFavorite = favorite)),
-                                            ),
-                                    )
-                                } else {
-                                    it
-                                }
-                            },
-                    )
+                markFeaturedFavorite(item.id, favorite)
+                // The My List row changes too, like favouriting from a row's menu
+                withContext(WholphinDispatchers.Main) {
+                    init(afterChange = true)
                 }
+            }
+        }
+
+        /** Keep the banner's My List heart in step with a favourite change */
+        private fun markFeaturedFavorite(
+            itemId: UUID,
+            favorite: Boolean,
+        ) {
+            mutableState.update { state ->
+                state.copy(
+                    featured =
+                        state.featured.map {
+                            if (it.item.id == itemId) {
+                                val data = it.item.data
+                                it.copy(
+                                    item =
+                                        it.item.copy(
+                                            data = data.copy(userData = data.userData?.copy(isFavorite = favorite)),
+                                        ),
+                                )
+                            } else {
+                                it
+                            }
+                        },
+                )
             }
         }
 
@@ -667,7 +721,7 @@ class HomeViewModel
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setWatched(itemId, played)
             withContext(WholphinDispatchers.Main) {
-                init()
+                init(afterChange = true)
             }
         }
 
@@ -676,8 +730,9 @@ class HomeViewModel
             favorite: Boolean,
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setFavorite(itemId, favorite)
+            markFeaturedFavorite(itemId, favorite)
             withContext(WholphinDispatchers.Main) {
-                init()
+                init(afterChange = true)
             }
         }
 
@@ -724,7 +779,7 @@ class HomeViewModel
                 viewModelScope.launchDefault {
                     serverRepository.currentUser?.id?.let { userId ->
                         latestNextUpService.removeFromNextUp(userId, item)
-                        init()
+                        init(afterChange = true)
                     }
                 }
             } else {
@@ -732,6 +787,9 @@ class HomeViewModel
             }
         }
     }
+
+/** Benflix "Tonight's pick": the day's pick (day-user-Kids level key, item id), so it stays put all evening */
+@Volatile internal var tonightCache: Pair<String, UUID>? = null
 
 /** Benflix "On this day": which movies came out on today's date (worked out once a day) */
 @Volatile internal var onThisDayCache: Pair<String, List<UUID>>? = null

@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
@@ -83,6 +84,17 @@ class DiscoverSeriesViewModel
 
         init {
             init()
+            // Benflix: an admin answered a request on this page (Who asked), so the seasons and buttons catch up
+            viewModelScope.launchIO {
+                RequestAnswered.events.collect { key ->
+                    if (key == RequestAnswered.key(false, item.id)) {
+                        fetchAndSetItem().await()?.let {
+                            updateSeasonStatus(it)
+                            updateAvailability()
+                        }
+                    }
+                }
+            }
         }
 
         private fun fetchAndSetItem(): Deferred<TvDetails?> =
@@ -118,7 +130,8 @@ class DiscoverSeriesViewModel
                             }
                         _state.update { it.copy(rating = rating) }
                     }
-                    if (state.value.similar.isEmpty()) {
+                    // Benflix: no Seerr "More like this" / "Recommended" rows in Kids (they aren't rating-checked)
+                    if (state.value.similar.isEmpty() && !KidsMode.isActive) {
                         viewModelScope.launchIO {
                             val result =
                                 seerrService.api.tvApi
@@ -229,11 +242,13 @@ class DiscoverSeriesViewModel
                             if (current == null || new.status > current.status) {
                                 seasonStatus[season.seasonNumber] = new
                             }
-                            editable[season.seasonNumber] =
+                            val mine =
                                 currentUserId == req.requestedBy?.id && (
                                     req.status == RequestStatus.PENDING.status ||
                                         req.status == RequestStatus.DECLINED.status
                                 )
+                            // Benflix: someone else's request for the same season doesn't lock yours
+                            editable[season.seasonNumber] = editable[season.seasonNumber] == true || mine
                         }
                     }
                 }
@@ -429,8 +444,13 @@ class DiscoverSeriesViewModel
 
         fun cancelRequest(id: Int) {
             viewModelScope.launchIO {
-                state.value.tvSeries.successValue?.mediaInfo?.requests?.firstOrNull()?.let {
-                    // TODO handle multiple requests? Or just delete self's request?
+                // Benflix: only ever the signed-in user's own request, never someone else's
+                ownCancellableRequest(
+                    userConfig.firstOrNull(),
+                    state.value.tvSeries.successValue
+                        ?.mediaInfo
+                        ?.requests,
+                )?.let {
                     try {
                         seerrService.api.requestApi.requestRequestIdDelete(it.id.toString())
                     } catch (ex: CancellationException) {

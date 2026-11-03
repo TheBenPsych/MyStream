@@ -37,6 +37,13 @@ object GuestMode {
     private const val PREFS = "benflix_guest"
     private const val TILE_KEY = "tile"
 
+    /**
+     * The one place that says whether admin tools show (Server page, title tools, file paths).
+     * Always false for Guest, even when the owner whose sign-in Guest borrows is an admin.
+     */
+    fun isAdmin(user: com.github.damontecres.wholphin.data.model.ServerUserConfig?): Boolean =
+        !isActive && user?.policy?.isAdministrator == true
+
     fun set(on: Boolean) {
         if (_active.value != on) Timber.i("Guest mode: %s", on)
         _active.value = on

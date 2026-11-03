@@ -40,6 +40,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,9 @@ object UpdateNotice {
 fun rememberUpdateAlert(): Boolean {
     val version by UpdateNotice.version.collectAsState()
     val kids by KidsMode.active.collectAsState()
-    return version != null && !kids
+    // Guest can't install updates either, so no "!" for them
+    val guest by GuestMode.active.collectAsState()
+    return version != null && !kids && !guest
 }
 
 /** The little red circle with a white "!" */
@@ -121,7 +124,8 @@ fun UpdateTip(
     above: Boolean,
 ) {
     val show by UpdateNotice.tip.collectAsState()
-    NoticeTip(text, above, show, UpdateNotice::hideTip)
+    val guest by GuestMode.active.collectAsState()
+    NoticeTip(text, above, show && !guest, UpdateNotice::hideTip)
 }
 
 /**
@@ -159,7 +163,8 @@ object ServerAlertNotice {
 fun rememberServerAlert(): Boolean {
     val text by ServerAlertNotice.text.collectAsState()
     val kids by KidsMode.active.collectAsState()
-    return text != null && !kids
+    val guest by GuestMode.active.collectAsState()
+    return text != null && !kids && !guest
 }
 
 /** The admin's alert bubble. [where] says how to get to the Server page, like "Open Settings, then Server." */
@@ -172,8 +177,9 @@ fun ServerAlertTip(
     val show by ServerAlertNotice.tip.collectAsState()
     // Waits for the update bubble to finish first, so two never show at once
     val updateTip by UpdateNotice.tip.collectAsState()
+    val guest by GuestMode.active.collectAsState()
     val current = text ?: return
-    NoticeTip("$current $where", above, show && !updateTip, ServerAlertNotice::hideTip)
+    NoticeTip("$current $where", above, show && !updateTip && !guest, ServerAlertNotice::hideTip)
 }
 
 @Composable

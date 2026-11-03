@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +46,7 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.GuestMode
@@ -74,8 +76,41 @@ fun ParentalControlsDialog(
     val scope = rememberCoroutineScope()
     val hasPin by viewModel.hasPin.collectAsState()
     var checked by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { viewModel.refreshPin() }
+    // Benflix: nothing opens until the parent PIN has been read. If it can't be read, that's not "no PIN".
+    var pinTries by remember { mutableIntStateOf(0) }
+    var pinLoaded by remember { mutableStateOf(false) }
+    var pinError by remember { mutableStateOf(false) }
+    LaunchedEffect(pinTries) {
+        pinError = false
+        val state = viewModel.loadPin()
+        pinLoaded = state != null
+        pinError = state == null
+    }
     var step by remember { mutableStateOf(ParentalStep.MENU) }
+    if (!pinLoaded) {
+        BasicDialog(onDismissRequest = onDismiss) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.widthIn(max = 480.dp).padding(20.dp),
+            ) {
+                Text("Parental controls", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                if (pinError) {
+                    val retryFocus = remember { FocusRequester() }
+                    LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
+                    Text("Couldn't check the parent PIN, try again")
+                    ListItem(
+                        selected = false,
+                        onClick = { pinTries++ },
+                        headlineContent = { Text("Try again") },
+                        modifier = Modifier.focusRequester(retryFocus),
+                    )
+                } else {
+                    Text("Checking the parent PIN…")
+                }
+            }
+        }
+        return
+    }
     val current = if (hasPin && !checked && step != ParentalStep.PIN) ParentalStep.CHECK else step
 
     if (current == ParentalStep.PIN) {
@@ -130,9 +165,9 @@ fun ParentalControlsDialog(
                         supportingContent = {
                             Text(
                                 if (hasPin) {
-                                    "Kids goes to bed at 9 PM. Change or turn off the PIN."
+                                    "Kids goes to bed at ${BenflixBedtime.label()}. Change or turn off the PIN."
                                 } else {
-                                    "Set one to put Kids to bed at 9 PM. Without it, Kids stays unlocked."
+                                    "Set one to put Kids to bed at ${BenflixBedtime.label()}. Without it, Kids stays unlocked."
                                 },
                             )
                         },

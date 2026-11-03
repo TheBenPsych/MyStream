@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -273,7 +274,13 @@ fun SeriesOverviewContent(
                                             ?: 0.0,
                                     onClick = {
                                         epPosition = episodeIndex
-                                        if (episode != null) onClick.invoke(episode)
+                                        if (!isTv && episodeIndex != position.episodeRowIndex) {
+                                            // Benflix phones: taps don't move focus, so the first tap
+                                            // picks the episode and a second tap plays it
+                                            onFocusEpisode.invoke(episodeIndex)
+                                        } else if (episode != null) {
+                                            onClick.invoke(episode)
+                                        }
                                     },
                                     onLongClick = {
                                         epPosition = episodeIndex
@@ -288,6 +295,13 @@ fun SeriesOverviewContent(
                                             ).ifElse(
                                                 episodeIndex == epPosition,
                                                 Modifier.focusRequester(episodeRowFocusRequester),
+                                            ).ifElse(
+                                                !isTv && episodeIndex == position.episodeRowIndex,
+                                                Modifier.border(
+                                                    2.dp,
+                                                    Color.White,
+                                                    RoundedCornerShape(8.dp),
+                                                ),
                                             ).background(
                                                 if (episodeIndex != position.episodeRowIndex) {
                                                     Color.Black

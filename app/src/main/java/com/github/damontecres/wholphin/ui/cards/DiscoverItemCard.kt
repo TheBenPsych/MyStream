@@ -181,6 +181,7 @@ fun DiscoverItemCard(
             Text(
                 text = item?.title ?: "",
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -193,6 +194,7 @@ fun DiscoverItemCard(
             Text(
                 text = subtitleOverride ?: item?.releaseDate?.year?.toString() ?: "",
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Normal,

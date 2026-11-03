@@ -48,6 +48,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -410,6 +411,61 @@ class CollectionViewModel
                 refreshCollection()
             } else if (position != null) {
                 refreshItem(itemId, position, false)
+            }
+        }
+
+        /** Benflix: the first resume is the page opening, which has just loaded everything */
+        private var firstResume = true
+
+        /** Benflix: coming back from the player, reload resume spots and watched marks */
+        fun onResumePage() {
+            if (firstResume) {
+                firstResume = false
+                return
+            }
+            viewModelScope.launchIO {
+                // The player may still be reporting "stopped"
+                delay(1_000L)
+                val state = state.value
+                val pagers =
+                    if (state.viewOptions.separateTypes) {
+                        state.separateItems.values.mapNotNull {
+                            (it as? HomeRowLoadingState.Success)?.items as? ApiRequestPager<*>
+                        }
+                    } else {
+                        listOfNotNull(state.items as? ApiRequestPager<*>)
+                    }
+                pagers.forEach {
+                    try {
+                        it.refresh()
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not refresh collection items")
+                    }
+                }
+            }
+        }
+
+        /** Benflix: Play reads the latest resume spot, not the one from when the row loaded */
+        fun play(item: BaseItem) {
+            viewModelScope.launchIO {
+                val positionMs =
+                    try {
+                        api.userLibraryApi
+                            .getItem(item.id)
+                            .content
+                            .let { BaseItem(it, false) }
+                            .resumeMs
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not refresh %s before playing", item.id)
+                        item.resumeMs
+                    }
+                withContext(WholphinDispatchers.Main) {
+                    navigationManager.navigateTo(Destination.Playback(item.id, positionMs))
+                }
             }
         }
 

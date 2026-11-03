@@ -225,6 +225,8 @@ internal suspend fun PlaybackViewModel.checkSkipped(
         val index = episodes.indexOfFirst { it.id == item.id }
         val previous = episodes.getOrNull(index - 1)?.takeIf { index > 0 } ?: return
         if ((previous.parentIndexNumber ?: 0) == 0 || previous.userData?.played == true) return
+        // Benflix: they've just watched it (Next / autoplay moved on from it)
+        if (previous.id in movedOnFrom) return
         val label =
             if (previous.parentIndexNumber == item.data.parentIndexNumber) {
                 "episode ${previous.indexNumber}"

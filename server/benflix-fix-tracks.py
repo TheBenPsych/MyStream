@@ -465,8 +465,13 @@ def main():
         ap.error("give a folder, for example /media/Anime")
 
     os.makedirs(args.log_dir, exist_ok=True)
-    stamp = dt.datetime.now().strftime("%Y-%m-%d_%H%M")
+    # To the second, plus a counter, so two runs close together never overwrite each other's files
+    base = dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
     mode = "apply" if args.apply else "preview"
+    stamp, n = base, 1
+    while any(os.path.exists(os.path.join(args.log_dir, name)) for name in (f"{mode}-{stamp}.txt", f"undo-{stamp}.json")):
+        n += 1
+        stamp = f"{base}-{n}"
     report_path = os.path.join(args.log_dir, f"{mode}-{stamp}.txt")
     csv_path = os.path.join(args.log_dir, f"{mode}-{stamp}.csv")
     undo_path = os.path.join(args.log_dir, f"undo-{stamp}.json")

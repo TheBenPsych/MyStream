@@ -170,11 +170,11 @@ class GamesViewModel
         private val _towerRecent = MutableStateFlow<List<Pair<Int, Long>>>(emptyList())
         val towerRecent: StateFlow<List<Pair<Int, Long>>> = _towerRecent
 
-        /** Favourite games (the heart), per account */
+        /** Favourite games (the heart), per account; Kids and Guest have their own, like scores */
         private val _favourites = MutableStateFlow<Set<Int>>(emptySet())
         val favourites: StateFlow<Set<Int>> = _favourites
 
-        private fun favKey() = "fav_${serverRepository.currentUser?.id ?: "guest"}"
+        private fun favKey() = "fav_$profile"
 
         fun toggleFavourite(id: Int) {
             val now = if (id in _favourites.value) _favourites.value - id else _favourites.value + id
@@ -300,6 +300,9 @@ class GamesViewModel
                     .mapNotNull { it.toIntOrNull() }
                     .toSet()
             _library.value = LibraryState.Loading
+            // Look at Tower's BIOS files again, and clear out downloads that never finished
+            localGames.forgetBiosList()
+            viewModelScope.launch { localGames.clearLeftovers() }
             viewModelScope.launch {
                 _library.value =
                     try {
@@ -324,13 +327,13 @@ class GamesViewModel
                             LibraryState.Ready(consoles)
                         }
                     } catch (e: GameLibraryException) {
-                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, visibleDownloads())
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
                         LibraryState.Failed(
                             "Couldn't load your games (${e.javaClass.simpleName}).",
                             askAddress = false,
-                            localGames.downloaded(),
+                            visibleDownloads(),
                         )
                     }
                 (_library.value as? LibraryState.Ready)?.let { ready ->
@@ -352,6 +355,10 @@ class GamesViewModel
                 }
             }
         }
+
+        /** Games downloaded on this device that this profile may see (Kids: only games rated for everyone) */
+        fun visibleDownloads(): List<DownloadedGame> =
+            localGames.downloaded().let { all -> if (KidsMode.isActive) all.filter { it.ref.kids } else all }
 
         /** Shows the Play / Resume choices for a game */
         fun choose(ref: GameRef) {
@@ -445,8 +452,11 @@ class GamesViewModel
             reload()
         }
 
-        /** Benflix "Continue playing": the last few games played, newest first, as "id:time" */
-        private fun recentKey() = "recent_${serverRepository.currentUser?.id ?: "guest"}"
+        /**
+         * Benflix "Continue playing": the last few games played, newest first, as "id:time".
+         * Kids and Guest have their own list, like scores
+         */
+        private fun recentKey() = "recent_$profile"
 
         private fun rememberPlayed(id: Int) {
             val now = System.currentTimeMillis()
@@ -475,7 +485,15 @@ class GamesViewModel
                 }
 
         private val profile: String
-            get() = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            get() =
+                when {
+                    // Guest scores are kept apart from the owner's, like the Movie riddle
+                    GuestMode.isActive -> "guest"
+
+                    KidsMode.isActive -> "kids"
+
+                    else -> serverRepository.currentUser?.id?.toString() ?: "guest"
+                }
 
         private fun key(game: BuiltInGame): String = "${profile}_${game.name}"
 
@@ -501,7 +519,10 @@ class GamesViewModel
         fun best(game: BuiltInGame): Int = prefs.getInt(key(game), 0)
 
         /** This account's best in a movie game (Higher or Lower, Movie riddle, Guess the movie) */
-        fun bestExtra(boardKey: String): Int = prefs.getInt("${serverRepository.currentUser?.id ?: "guest"}_$boardKey", 0)
+        fun bestExtra(boardKey: String): Int {
+            val owner = if (GuestMode.isActive) "guest" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            return prefs.getInt("${owner}_$boardKey", 0)
+        }
 
         /** Saves the score if it's a new best, and says whether it was */
         fun submit(

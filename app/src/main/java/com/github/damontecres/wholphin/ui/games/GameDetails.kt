@@ -47,6 +47,7 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalGames
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -293,9 +294,10 @@ fun GameDetailsPage(
                         if (!isTv) {
                             DetailButton(if (choice.pinned) "Stop keeping for trips" else "Keep for trips") { onKeep(!choice.pinned) }
                         }
-                        if (choice.downloaded) DetailButton("Remove from this device", onClick = onRemove)
+                        // Kids can't remove games from the device
+                        if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this device", onClick = onRemove)
                     }
-                    if (choice.downloaded) {
+                    if (choice.downloaded && !KidsMode.isActive) {
                         Text(
                             "Removing frees up space. Your saves are kept on Tower.",
                             fontSize = 12.sp,

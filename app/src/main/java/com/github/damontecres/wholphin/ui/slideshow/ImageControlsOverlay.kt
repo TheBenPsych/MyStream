@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,7 +27,9 @@ import androidx.tv.material3.Icon
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
+import com.github.damontecres.wholphin.ui.components.LocalAlwaysShowButtonLabels
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
@@ -61,122 +64,124 @@ fun ImageControlsOverlay(
         }
     }
 
-    LazyRow(
-        modifier =
-            modifier
-                .focusGroup(),
-        contentPadding = PaddingValues(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        item {
-            ExpandablePlayButton(
-                title = if (slideshowEnabled) R.string.stop_slideshow else R.string.play_slideshow,
-                icon =
-                    painterResource(
-                        if (slideshowEnabled) {
-                            R.drawable.baseline_pause_24
-                        } else {
-                            R.drawable.baseline_play_arrow_24
-                        },
-                    ),
-                resume = Duration.ZERO,
-                onClick = {
-                    if (slideshowEnabled) {
-                        slideshowControls.stopSlideshow()
-                    } else {
-                        slideshowControls.startSlideshow()
-                        onDismiss.invoke()
-                    }
-                },
-                modifier =
-                    Modifier
-                        .focusRequester(focusRequester)
-                        .onFocusChanged(onFocused),
-            )
-        }
-        if (isImageClip) {
+    // Phones: always show each button's name, since taps don't focus them
+    CompositionLocalProvider(LocalAlwaysShowButtonLabels provides !rememberIsTv()) {
+        LazyRow(
+            modifier =
+                modifier
+                    .focusGroup(),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             item {
-                Button(
-                    onClick = playPauseOnClick,
+                ExpandablePlayButton(
+                    title = if (slideshowEnabled) R.string.stop_slideshow else R.string.play_slideshow,
+                    icon =
+                        painterResource(
+                            if (slideshowEnabled) {
+                                R.drawable.baseline_pause_24
+                            } else {
+                                R.drawable.baseline_play_arrow_24
+                            },
+                        ),
+                    resume = Duration.ZERO,
+                    onClick = {
+                        if (slideshowEnabled) {
+                            slideshowControls.stopSlideshow()
+                        } else {
+                            slideshowControls.startSlideshow()
+                            onDismiss.invoke()
+                        }
+                    },
                     modifier =
                         Modifier
+                            .focusRequester(focusRequester)
                             .onFocusChanged(onFocused),
-                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (isPlaying) R.drawable.baseline_play_arrow_24 else R.drawable.baseline_pause_24,
-                            ),
-                        contentDescription = null,
+                )
+            }
+            if (isImageClip) {
+                item {
+                    Button(
+                        onClick = playPauseOnClick,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (isPlaying) R.drawable.baseline_play_arrow_24 else R.drawable.baseline_pause_24,
+                                ),
+                            contentDescription = null,
+                        )
+                    }
+                }
+            } else {
+                // Regular image
+                item {
+                    ExpandableFaButton(
+                        title = R.string.rotate_left,
+                        iconStringRes = R.string.fa_rotate_left,
+                        onClick = { onRotate(-90) },
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                    )
+                }
+                item {
+                    ExpandableFaButton(
+                        title = R.string.rotate_right,
+                        iconStringRes = R.string.fa_rotate_right,
+                        onClick = { onRotate(90) },
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                    )
+                }
+                item {
+                    ExpandableFaButton(
+                        title = R.string.zoom_in,
+                        iconStringRes = R.string.fa_magnifying_glass_plus,
+                        onClick = { onZoom(.15f) },
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                    )
+                }
+                item {
+                    ExpandableFaButton(
+                        title = R.string.zoom_out,
+                        iconStringRes = R.string.fa_magnifying_glass_minus,
+                        onClick = { onZoom(-.15f) },
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                    )
+                }
+                item {
+                    ExpandableFaButton(
+                        title = R.string.reset,
+                        iconStringRes = R.string.fa_arrows_rotate,
+                        onClick = onReset,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
+                    )
+                }
+                item {
+                    ExpandableFaButton(
+                        title = R.string.filter,
+                        iconStringRes = R.string.fa_sliders,
+                        onClick = onShowFilterDialogClick,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(onFocused),
                     )
                 }
             }
-        } else {
-            // Regular image
-            item {
-                ExpandableFaButton(
-                    title = R.string.rotate_left,
-                    iconStringRes = R.string.fa_rotate_left,
-                    onClick = { onRotate(-90) },
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-            item {
-                ExpandableFaButton(
-                    title = R.string.rotate_right,
-                    iconStringRes = R.string.fa_rotate_right,
-                    onClick = { onRotate(90) },
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-            item {
-                ExpandableFaButton(
-                    title = R.string.zoom_in,
-                    iconStringRes = R.string.fa_magnifying_glass_plus,
-                    onClick = { onZoom(.15f) },
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-            item {
-                ExpandableFaButton(
-                    title = R.string.zoom_out,
-                    iconStringRes = R.string.fa_magnifying_glass_minus,
-                    onClick = { onZoom(-.15f) },
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-            item {
-                ExpandableFaButton(
-                    title = R.string.reset,
-                    iconStringRes = R.string.fa_arrows_rotate,
-                    onClick = onReset,
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-            item {
-                ExpandableFaButton(
-                    title = R.string.filter,
-                    iconStringRes = R.string.fa_sliders,
-                    onClick = onShowFilterDialogClick,
-                    modifier =
-                        Modifier
-                            .onFocusChanged(onFocused),
-                )
-            }
-        }
-        // More button
+            // More button
 //        item {
 //            ExpandablePlayButton(
 //                title = R.string.more,
@@ -186,6 +191,7 @@ fun ImageControlsOverlay(
 //                modifier = Modifier.onFocusChanged(onFocused),
 //            )
 //        }
+        }
     }
 }
 
