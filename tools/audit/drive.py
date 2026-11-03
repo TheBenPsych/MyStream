@@ -509,6 +509,41 @@ def sign_in():
         time.sleep(2)
 
 
+def welcome_setup():
+    """The first-time welcome setup opens over Home for an account that hasn't done it: go through every step"""
+    if wait_for(r"^Step 1 of \d+$", 25) is None:
+        log("welcome setup: didn't open (this account already did it)")
+        REPORT["welcome"] = "not shown"
+        return
+    REPORT["welcome"] = "started"
+    # what to press on each step, in order of preference (never Skip: the point is to test every step)
+    buttons = [r"^Let's go$", r"^Next$", r"Only for other languages$", r"^Looks good$", r"^No thanks$", r"^PIN is set\. Next$", r"^Done"]
+    seen = []
+    for _ in range(12):
+        root = dump()
+        step = find(root, r"^Step \d+ of \d+$")
+        if step is None:
+            break
+        label = step.get("text")
+        seen.append(label)
+        shot("welcome-" + label.split()[1])
+        for b in buttons:
+            n = find(root, b)
+            if n is not None:
+                tap(n)
+                time.sleep(2)
+                break
+        else:
+            REPORT["problems"].append({"type": "welcome setup: no button to go on", "text": label})
+            break
+    REPORT["welcome_steps"] = seen
+    if wait_for(HOME_RE, 30) is None:
+        REPORT["problems"].append({"type": "welcome setup didn't end on Home"})
+    else:
+        REPORT["welcome"] = "finished"
+        log(f"welcome setup done: {len(seen)} steps")
+
+
 def main():
     global focus_sweep, monkey
     if SMOKE:
@@ -526,6 +561,7 @@ def main():
         shot(f"start-{i}")
     sign_in()
     shot("after-login")
+    welcome_setup()
     for name in ["close", "later", "not now", "dismiss", "ok", "skip"]:
         n = find(dump(), rf"^{name}$")
         if n is not None:

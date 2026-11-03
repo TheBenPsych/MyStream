@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -262,7 +264,9 @@ class WelcomeViewModel
         companion object {
             private const val POSTER_POOL = 80
             private const val POSTERS_SHOWN = 24
-            const val KEY = "benflix.welcomed"
+            // Benflix: "2" so everyone, including people from before the welcome setup existed, gets it once
+            // (the first version skipped anyone who had already watched something)
+            const val KEY = "benflix.welcomed2"
 
             suspend fun markWelcomed(
                 displayPreferencesService: DisplayPreferencesService,
@@ -272,8 +276,8 @@ class WelcomeViewModel
     }
 
 /**
- * Decides once per sign-in whether to open the welcome setup. People who have already watched
- * something on Benflix (everyone from before this update) skip it.
+ * Decides once per sign-in whether to open the welcome setup. Every grown-up account gets it once,
+ * new or old; after Done or Skip it's remembered on the server, so it never shows again on any device.
  */
 @HiltViewModel
 class WelcomeGateViewModel
@@ -296,17 +300,7 @@ class WelcomeGateViewModel
                     withTimeoutOrNull(SYNC_WAIT_MS) { settingsSync.ready.first { it == userId } }
                     val prefs = displayPreferencesService.getDisplayPreferences(userId).customPrefs
                     if (prefs[WelcomeViewModel.KEY] != null) return@launch
-                    val hasWatched =
-                        api.itemsApi
-                            .getItems(
-                                GetItemsRequest(userId = userId, recursive = true, isPlayed = true, limit = 1),
-                            ).content.items
-                            .isNotEmpty()
-                    if (hasWatched) {
-                        WelcomeViewModel.markWelcomed(displayPreferencesService, userId)
-                    } else {
-                        withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(Destination.Welcome) }
-                    }
+                    withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(Destination.Welcome) }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -464,6 +458,7 @@ private fun HelloStep(viewModel: WelcomeViewModel) {
     StepButtons(viewModel, nextLabel = "Let's go", focus = focus)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PictureStep(viewModel: WelcomeViewModel) {
     val userId = viewModel.userId ?: return
@@ -474,35 +469,40 @@ private fun PictureStep(viewModel: WelcomeViewModel) {
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
     StepTitle("Pick your picture and colour")
     Text("Your picture", fontSize = 18.sp, color = Color.White)
-    BenflixAvatars.chunked(AVATARS_PER_ROW).forEachIndexed { rowIndex, row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            row.forEachIndexed { col, res ->
-                val index = rowIndex * AVATARS_PER_ROW + col
-                Surface(
-                    onClick = { viewModel.pickPicture(index) },
-                    shape = ClickableSurfaceDefaults.shape(CircleShape),
-                    border =
-                        ClickableSurfaceDefaults.border(
-                            border = Border(BorderStroke(3.dp, if (index == chosen) accent.toColor() else Color.Transparent)),
-                            focusedBorder = Border(BorderStroke(3.dp, Color.White)),
-                        ),
-                    modifier =
-                        Modifier
-                            .size(64.dp)
-                            .then(if (index == 0) Modifier.focusRequester(focus) else Modifier),
-                ) {
-                    Image(
-                        painter = painterResource(res),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    )
-                }
+    // Benflix: a flowing row, so the pictures wrap on a phone instead of running off the edge
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        maxItemsInEachRow = AVATARS_PER_ROW,
+    ) {
+        BenflixAvatars.forEachIndexed { index, res ->
+            Surface(
+                onClick = { viewModel.pickPicture(index) },
+                shape = ClickableSurfaceDefaults.shape(CircleShape),
+                border =
+                    ClickableSurfaceDefaults.border(
+                        border = Border(BorderStroke(3.dp, if (index == chosen) accent.toColor() else Color.Transparent)),
+                        focusedBorder = Border(BorderStroke(3.dp, Color.White)),
+                    ),
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .then(if (index == 0) Modifier.focusRequester(focus) else Modifier),
+            ) {
+                Image(
+                    painter = painterResource(res),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                )
             }
         }
     }
     Text("Your colour", fontSize = 18.sp, color = Color.White, modifier = Modifier.padding(top = 8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
         ProfileThemeChoices.forEach { color ->
             Surface(
                 onClick = { viewModel.setAccent(color) },
@@ -520,6 +520,7 @@ private fun PictureStep(viewModel: WelcomeViewModel) {
     StepButtons(viewModel)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SubtitlesStep(viewModel: WelcomeViewModel) {
     val chosen by viewModel.subtitles.collectAsState()
@@ -532,7 +533,10 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
             "Always on" to SubtitleModePreference.ALWAYS,
             "Only for other languages" to SubtitleModePreference.SMART,
         )
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         options.forEachIndexed { i, (label, mode) ->
             val selected = chosen == mode
             Button(
