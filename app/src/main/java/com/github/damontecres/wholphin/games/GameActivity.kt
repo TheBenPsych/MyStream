@@ -1350,6 +1350,8 @@ class GameActivity : ComponentActivity() {
                     fontSize = 14.sp,
                 )
                 when (page) {
+                    MenuPage.PICK -> {}
+
                     MenuPage.HELP -> {
                         MenuButton("Done", Icons.Filled.Check, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
                         if (isTv) ButtonKey(console, KeyFor.REMOTE, Modifier.fillMaxWidth())
