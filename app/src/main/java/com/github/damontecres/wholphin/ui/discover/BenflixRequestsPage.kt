@@ -901,7 +901,6 @@ class BenflixRequestsViewModel
             _seasonPick.value = null
         }
 
-        /** Ask for a title. Movies go straight away; shows open the season picker first (Ben's pick) */
         /** Benflix: Ben couldn't find it, so it can't be asked for again */
         private suspend fun blocked(item: DiscoverItem): Boolean {
             if (item.requestKey() !in cantFindList.entries.value) return false
@@ -909,6 +908,7 @@ class BenflixRequestsViewModel
             return true
         }
 
+        /** Ask for a title. Movies go straight away; shows open the season picker first (Ben's pick) */
         fun ask(item: DiscoverItem) {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 if (blocked(item)) return@launch

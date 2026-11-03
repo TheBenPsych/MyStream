@@ -158,13 +158,21 @@ private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
 
 /** Benflix: the "Couldn't find it" key when this is a new request for a blocked title */
 private fun blockedRequestFor(request: okhttp3.Request): String? {
-    if (request.method != "POST" || !request.url.encodedPath.trimEnd('/').endsWith("/request")) return null
+    if (request.method != "POST" ||
+        !request.url.encodedPath
+            .trimEnd('/')
+            .endsWith("/request")
+    ) {
+        return null
+    }
     val blocked = CantFindBlocked.keys.value
     if (blocked.isEmpty()) return null
     return try {
         val buffer = okio.Buffer()
         request.body?.writeTo(buffer) ?: return null
-        val json = kotlinx.serialization.json.Json.parseToJsonElement(buffer.readUtf8()) as? kotlinx.serialization.json.JsonObject
+        val json =
+            kotlinx.serialization.json.Json
+                .parseToJsonElement(buffer.readUtf8()) as? kotlinx.serialization.json.JsonObject
         val type = (json?.get("mediaType") as? kotlinx.serialization.json.JsonPrimitive)?.content
         val id = (json?.get("mediaId") as? kotlinx.serialization.json.JsonPrimitive)?.content
         val key = (if (type == "movie") "MOVIE" else "TV") + "-$id"
