@@ -92,7 +92,6 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
-import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -727,7 +726,6 @@ fun PreferencesContent(
                                             title = stringResource(pref.title),
                                             onClick = {
                                                 if (currentUser != null) {
-                                                    viewModel.resetQuickConnectStatus()
                                                     showQuickConnectDialog = true
                                                 }
                                             },
@@ -916,34 +914,7 @@ fun PreferencesContent(
     )
 
     if (showQuickConnectDialog) {
-        val quickConnectStatus by viewModel.quickConnectStatus.collectAsState(LoadingState.Pending)
-        val successMessage = stringResource(R.string.quick_connect_success)
-
-        LaunchedEffect(quickConnectStatus) {
-            when (val status = quickConnectStatus) {
-                LoadingState.Success -> {
-                    Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
-                    showQuickConnectDialog = false
-                }
-
-                is LoadingState.Error -> {
-                    val errorMessage = status.message ?: "Authorization failed"
-                    Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
-                }
-
-                else -> {}
-            }
-        }
-
-        QuickConnectDialog(
-            onSubmit = { code ->
-                viewModel.authorizeQuickConnect(code)
-            },
-            onDismissRequest = {
-                viewModel.resetQuickConnectStatus()
-                showQuickConnectDialog = false
-            },
-        )
+        BenflixQuickConnect(onDismiss = { showQuickConnectDialog = false })
     }
     if (showVersionDialog) {
         LaunchedEffect(Unit) {

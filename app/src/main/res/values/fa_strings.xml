@@ -83,5 +83,6 @@
     <string name="fa_list_ol" translatable="false">&#xf0cb;</string>
     <string name="fa_circle_plus" translatable="false">&#xf055;</string>
     <string name="fa_scale_balanced" translatable="false">&#xf24e;</string>
+    <string name="fa_link" translatable="false">&#xf0c1;</string>
     <string name="fa_chevron_down" translatable="false">&#xf078;</string>
 </resources>
