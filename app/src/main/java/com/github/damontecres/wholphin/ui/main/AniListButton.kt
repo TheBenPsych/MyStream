@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -27,6 +28,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.AniListSync
 import com.github.damontecres.wholphin.ui.launchIO
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,7 +87,52 @@ fun AniListButton(viewModel: AniListButtonViewModel = hiltViewModel()) {
         Text(if (name == null) "AniList" else "AniList: $name")
     }
     if (showSignOut) {
-        Dialog(onDismissRequest = { showSignOut = false }) {
+        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut)
+    }
+}
+
+/** Benflix: the AniList row in Settings > Profile, with what it does */
+@Composable
+fun AniListSetting(
+    title: String,
+    modifier: Modifier = Modifier,
+    interactionSource: androidx.compose.foundation.interaction.MutableInteractionSource =
+        remember {
+            androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+        },
+    viewModel: AniListButtonViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { viewModel.refresh() }
+    val name by viewModel.sync.name.collectAsState()
+    var showSignOut by remember { mutableStateOf(false) }
+    com.github.damontecres.wholphin.ui.preferences.ClickPreference(
+        title = title,
+        onClick = { if (name == null) viewModel.signIn(context) else showSignOut = true },
+        modifier = modifier,
+        summary =
+            if (name == null) {
+                stringResource(R.string.benflix_anilist_tracking_off)
+            } else {
+                stringResource(R.string.benflix_anilist_tracking_on, name.orEmpty())
+            },
+        onLongClick = null,
+        interactionSource = interactionSource,
+    )
+    if (showSignOut) {
+        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut)
+    }
+}
+
+@Composable
+private fun AniListSignOutDialog(
+    name: String,
+    onDismiss: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    run {
+        Dialog(onDismissRequest = onDismiss) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier =
@@ -107,11 +154,11 @@ fun AniListButton(viewModel: AniListButtonViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { showSignOut = false }) { Text("Keep") }
+                    Button(onClick = onDismiss) { Text("Keep") }
                     Button(
                         onClick = {
-                            viewModel.signOut()
-                            showSignOut = false
+                            onSignOut()
+                            onDismiss()
                         },
                     ) { Text("Sign out", color = Color.Unspecified) }
                 }

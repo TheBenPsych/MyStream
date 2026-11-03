@@ -1048,6 +1048,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_parent_pin,
             )
 
+        /** Benflix: tick off finished anime on the person's own AniList account */
+        val AniListTracking =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_anilist_tracking,
+            )
+
         /** Benflix: Big kids tile, Guest tile and what Kids watched this week */
         val ParentalMore =
             AppClickablePreference<AppPreferences>(
@@ -1344,6 +1350,7 @@ val basicPreferences =
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
                     AppPreference.HiddenGenresPref,
+                    AppPreference.AniListTracking,
                     AppPreference.UserInterfaceLanguage,
                     AppPreference.ResumeTimer,
                     AppPreference.SignInAuto,
