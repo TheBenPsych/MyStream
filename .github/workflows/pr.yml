@@ -42,3 +42,27 @@ jobs:
           ./gradlew clean assembleDefaultDebug testDefaultDebugUnitTest --no-daemon
           apks=$(find app/build/outputs \( -name '*.apk' -or -name '*.aab' \) -print0 | tr '\0' ',' | sed 's/,$//')
           echo "apks=$apks" >> "$GITHUB_OUTPUT"
+
+  # Android's own checker. It looks for code that would crash on older Android
+  # versions (Android 9 TVs, Android 11 TVs) and other common mistakes.
+  # It only reports for now, so old warnings don't block a build.
+  android-check:
+    runs-on: ubuntu-latest
+    needs: pre-commit
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Run Android checks
+        run: ./gradlew lintDefaultDebug --continue --no-daemon || true
+      - name: Show problems that can crash older Android
+        run: python3 tools/lint_summary.py app/build/reports/lint-results-defaultDebug.xml
+      - name: Upload full report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-check-report
+          path: app/build/reports/lint-results-defaultDebug.*
