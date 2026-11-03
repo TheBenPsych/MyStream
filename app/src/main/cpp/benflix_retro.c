@@ -354,12 +354,15 @@ JNIEXPORT jboolean JNICALL JNI_FN(load)(JNIEnv *env, jobject thiz, jstring jcore
     return JNI_TRUE;
 }
 
-/* [frames per second, sound sample rate] */
+/* [frames per second, sound sample rate, picture shape (width / height)] */
 JNIEXPORT jdoubleArray JNICALL JNI_FN(timing)(JNIEnv *env, jobject thiz) {
-    jdouble values[2] = {av_info.timing.fps > 0 ? av_info.timing.fps : 60.0,
-                         av_info.timing.sample_rate > 0 ? av_info.timing.sample_rate : 44100.0};
-    jdoubleArray out = (*env)->NewDoubleArray(env, 2);
-    (*env)->SetDoubleArrayRegion(env, out, 0, 2, values);
+    double shape = av_info.geometry.aspect_ratio > 0 ? av_info.geometry.aspect_ratio
+                   : (av_info.geometry.base_height > 0 ? (double)av_info.geometry.base_width / av_info.geometry.base_height : 4.0 / 3.0);
+    jdouble values[3] = {av_info.timing.fps > 0 ? av_info.timing.fps : 60.0,
+                         av_info.timing.sample_rate > 0 ? av_info.timing.sample_rate : 44100.0,
+                         shape};
+    jdoubleArray out = (*env)->NewDoubleArray(env, 3);
+    (*env)->SetDoubleArrayRegion(env, out, 0, 3, values);
     return out;
 }
 

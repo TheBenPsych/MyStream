@@ -138,3 +138,54 @@ data class LocalConsole(
         fun forSlug(slug: String): LocalConsole? = ALL.firstOrNull { slug.lowercase() in it.slugs }
     }
 }
+
+/** What each libretro button is called on the real console's pad (only the buttons the console has) */
+fun buttonLabels(touch: TouchLayout): Map<Int, String> =
+    when (touch) {
+        TouchLayout.TWO_BUTTONS -> {
+            mapOf(RetroButton.A to "A", RetroButton.B to "B", RetroButton.START to "Start", RetroButton.SELECT to "Select")
+        }
+
+        TouchLayout.GBA -> {
+            mapOf(
+                RetroButton.A to "A",
+                RetroButton.B to "B",
+                RetroButton.L to "L",
+                RetroButton.R to "R",
+                RetroButton.START to "Start",
+                RetroButton.SELECT to "Select",
+            )
+        }
+
+        TouchLayout.SNES -> {
+            mapOf(
+                RetroButton.A to "A",
+                RetroButton.B to "B",
+                RetroButton.X to "X",
+                RetroButton.Y to "Y",
+                RetroButton.L to "L",
+                RetroButton.R to "R",
+                RetroButton.START to "Start",
+                RetroButton.SELECT to "Select",
+            )
+        }
+
+        TouchLayout.GENESIS -> {
+            mapOf(RetroButton.Y to "A", RetroButton.B to "B", RetroButton.A to "C", RetroButton.START to "Start")
+        }
+
+        TouchLayout.PLAYSTATION -> {
+            mapOf(
+                RetroButton.B to "✕",
+                RetroButton.A to "○",
+                RetroButton.Y to "□",
+                RetroButton.X to "△",
+                RetroButton.L to "L1",
+                RetroButton.R to "R1",
+                RetroButton.L2 to "L2",
+                RetroButton.R2 to "R2",
+                RetroButton.START to "Start",
+                RetroButton.SELECT to "Select",
+            )
+        }
+    }
