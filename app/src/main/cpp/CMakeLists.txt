@@ -4,4 +4,4 @@ project(benflixretro C)
 
 add_library(benflixretro SHARED benflix_retro.c)
 target_compile_options(benflixretro PRIVATE -O2 -Wall)
-target_link_libraries(benflixretro android log GLESv2 dl)
+target_link_libraries(benflixretro android log GLESv3 EGL dl)

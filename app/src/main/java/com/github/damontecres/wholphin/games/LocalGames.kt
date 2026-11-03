@@ -255,7 +255,8 @@ class LocalGames
                 for ((name, path) in list) {
                     val lower = name.lowercase(Locale.US)
                     if (lower !in console.bios) continue
-                    val target = File(if (console.biosFolder.isEmpty()) system else File(system, console.biosFolder).apply { mkdirs() }, lower)
+                    val target =
+                        File(if (console.biosFolder.isEmpty()) system else File(system, console.biosFolder).apply { mkdirs() }, lower)
                     if (target.exists()) continue
                     say(ref, "Getting BIOS files…")
                     client.download("/api/bios/file?path=" + android.net.Uri.encode(path), target)

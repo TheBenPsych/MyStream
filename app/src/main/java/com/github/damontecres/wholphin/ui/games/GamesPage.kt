@@ -2132,6 +2132,7 @@ private val CONSOLE_PHOTOS =
         "wonderswan-color" to "WonderSwan-Color-Blue-Left.jpg",
         "virtualboy" to "Virtual-Boy-Set.jpg",
         "colecovision" to "ColecoVision-wController-L.jpg",
+        "n64" to "Nintendo-64-wController-L.jpg",
     )
 
 @Composable

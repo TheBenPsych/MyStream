@@ -285,9 +285,16 @@ class GameActivity : ComponentActivity() {
                 ).also { it.start() }
         }
 
+        // 3D emulators (N64) draw with OpenGL ES 3 themselves, which very old TVs don't have
+        val gles3 =
+            (getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager).deviceConfigurationInfo.reqGlEsVersion >= 0x30000
+        if (console.hwRender && !gles3) {
+            failed = true
+            message = "This TV or phone can't draw ${console.title} games. Try a newer TV box or phone."
+        }
         glView =
             GLSurfaceView(this).apply {
-                setEGLContextClientVersion(2)
+                setEGLContextClientVersion(if (console.hwRender && gles3) 3 else 2)
                 preserveEGLContextOnPause = true
                 setRenderer(
                     object : GLSurfaceView.Renderer {
@@ -832,6 +839,38 @@ class GameActivity : ComponentActivity() {
 
     private fun hasSticks(d: InputDevice?): Boolean = d != null && d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
 
+    // N64: arrows (remote, phone, keyboard) push the stick; a real stick wins while it's being moved
+    private val stickMoved = BooleanArray(4)
+    private val arrowStick = BooleanArray(4)
+
+    /** Turns arrow presses into a full push of the stick and takes them out of the d-pad (the controller's d-pad stays a d-pad) */
+    private fun arrowsToStick(
+        port: Int,
+        mask: Int,
+        hatMask: Int,
+    ): Int {
+        val dirs =
+            RetroButton.bit(RetroButton.UP) or RetroButton.bit(RetroButton.DOWN) or
+                RetroButton.bit(RetroButton.LEFT) or RetroButton.bit(RetroButton.RIGHT)
+        val arrows = (mask and hatMask.inv()) and dirs
+        if (stickMoved[port]) return mask and arrows.inv()
+        val x =
+            when {
+                arrows and RetroButton.bit(RetroButton.LEFT) != 0 -> -32767
+                arrows and RetroButton.bit(RetroButton.RIGHT) != 0 -> 32767
+                else -> 0
+            }
+        val y =
+            when {
+                arrows and RetroButton.bit(RetroButton.UP) != 0 -> -32767
+                arrows and RetroButton.bit(RetroButton.DOWN) != 0 -> 32767
+                else -> 0
+            }
+        if (arrows != 0 || arrowStick[port]) RetroNative.setStick(port, 0, x, y)
+        arrowStick[port] = arrows != 0
+        return mask and arrows.inv()
+    }
+
     /** Controllers get a player the first time they press something: the lowest free one */
     private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { (0..3).firstOrNull { it !in ports.values } ?: 3 }
 
@@ -854,6 +893,7 @@ class GameActivity : ComponentActivity() {
     private fun push(port: Int) {
         val touch = if (port == 0) touchMask else 0
         var mask = keyMask[port] or axisMask[port] or touch or phoneMask[port]
+        if (console.analog) mask = arrowsToStick(port, mask, axisMask[port])
         // One-button consoles (Atari 2600): any face button fires, so the remote's OK works too
         if (console.touch == TouchLayout.ONE_BUTTON) {
             val face = RetroButton.bit(RetroButton.A) or RetroButton.bit(RetroButton.Y) or RetroButton.bit(RetroButton.X)
@@ -1127,15 +1167,21 @@ class GameActivity : ComponentActivity() {
         val lt = maxOf(event.getAxisValue(MotionEvent.AXIS_LTRIGGER), event.getAxisValue(MotionEvent.AXIS_BRAKE))
         val rt = maxOf(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS))
         var mask = 0
-        if (hatX < -0.5f || x < -0.5f) mask = mask or RetroButton.bit(RetroButton.LEFT)
-        if (hatX > 0.5f || x > 0.5f) mask = mask or RetroButton.bit(RetroButton.RIGHT)
-        if (hatY < -0.5f || y < -0.5f) mask = mask or RetroButton.bit(RetroButton.UP)
-        if (hatY > 0.5f || y > 0.5f) mask = mask or RetroButton.bit(RetroButton.DOWN)
+        // Consoles with a real stick (N64) get the stick as a stick; the others get it as the d-pad
+        val sx = if (console.analog) 0f else x
+        val sy = if (console.analog) 0f else y
+        if (hatX < -0.5f || sx < -0.5f) mask = mask or RetroButton.bit(RetroButton.LEFT)
+        if (hatX > 0.5f || sx > 0.5f) mask = mask or RetroButton.bit(RetroButton.RIGHT)
+        if (hatY < -0.5f || sy < -0.5f) mask = mask or RetroButton.bit(RetroButton.UP)
+        if (hatY > 0.5f || sy > 0.5f) mask = mask or RetroButton.bit(RetroButton.DOWN)
+        stickMoved[port] = abs(x) > 0.15f || abs(y) > 0.15f
         if (lt > 0.5f) mask = mask or RetroButton.bit(RetroButton.L2)
         if (rt > 0.5f) mask = mask or RetroButton.bit(RetroButton.R2)
         axisMask[port] = mask
         push(port)
-        RetroNative.setStick(port, 0, (x * 32767).toInt(), (y * 32767).toInt())
+        if (!console.analog || stickMoved[port] || !arrowStick[port]) {
+            RetroNative.setStick(port, 0, (x * 32767).toInt(), (y * 32767).toInt())
+        }
         RetroNative.setStick(
             port,
             1,

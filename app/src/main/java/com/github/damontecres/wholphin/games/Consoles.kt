@@ -22,6 +22,9 @@ enum class TouchLayout {
 
     /** D-pad, buttons 1 to 6, Coin Start (arcade) */
     ARCADE,
+
+    /** Stick, A B, four C buttons, Z R L, Start (Nintendo 64) */
+    N64,
 }
 
 /** How much power a console needs from the TV or phone, see [DevicePower] */
@@ -48,6 +51,10 @@ data class LocalConsole(
     val bios: Set<String> = emptySet(),
     /** Sub-folder of the system folder the emulator looks in for its BIOS files ("" = the system folder itself) */
     val biosFolder: String = "",
+    /** A 3D emulator that draws with OpenGL ES 3 itself (N64) */
+    val hwRender: Boolean = false,
+    /** Moving uses the analog stick: arrows on the remote, phone and keyboard push the stick all the way */
+    val analog: Boolean = false,
     val options: Map<String, String> = emptyMap(),
     val help: List<String>,
 ) {
@@ -265,10 +272,36 @@ data class LocalConsole(
                             "Games must be FinalBurn Neo .zip sets. Neo Geo games also need neogeo.zip in Games/bios on Tower",
                         ),
                 ),
+                LocalConsole(
+                    key = "n64",
+                    title = "Nintendo 64",
+                    slugs = setOf("n64", "nintendo-64", "nintendo64"),
+                    core = "mupen64plus_next_gles3",
+                    touch = TouchLayout.N64,
+                    power = PowerNeed.HEAVY,
+                    hwRender = true,
+                    analog = true,
+                    options =
+                        mapOf(
+                            "mupen64plus-rdp-plugin" to "gliden64",
+                            "mupen64plus-rsp-plugin" to "hle",
+                            "mupen64plus-cpucore" to "dynamic_recompiler",
+                            "mupen64plus-43screensize" to "640x480",
+                            "mupen64plus-ThreadedRenderer" to "False",
+                            "mupen64plus-alt-map" to "True",
+                            "mupen64plus-pak1" to "memory",
+                        ),
+                    help =
+                        listOf(
+                            "Controller: left stick moves, bottom button A, left button B, triggers Z and R",
+                            "C buttons: the right stick, or right button, top button and the bumpers",
+                            "Needs a strong TV box (like an Nvidia Shield) or a good phone",
+                        ),
+                ),
             )
 
         /** Consoles on the way, shown as "coming later" instead of hidden */
-        val LATER = setOf("n64")
+        val LATER = emptySet<String>()
 
         fun forSlug(slug: String): LocalConsole? = ALL.firstOrNull { slug.lowercase() in it.slugs }
     }
@@ -307,6 +340,21 @@ fun buttonLabels(touch: TouchLayout): Map<Int, String> =
 
         TouchLayout.GENESIS -> {
             mapOf(RetroButton.Y to "A", RetroButton.B to "B", RetroButton.A to "C", RetroButton.START to "Start")
+        }
+
+        TouchLayout.N64 -> {
+            mapOf(
+                RetroButton.B to "A",
+                RetroButton.Y to "B",
+                RetroButton.X to "C↑",
+                RetroButton.A to "C↓",
+                RetroButton.L to "C←",
+                RetroButton.R to "C→",
+                RetroButton.L2 to "Z",
+                RetroButton.R2 to "R",
+                RetroButton.SELECT to "L",
+                RetroButton.START to "Start",
+            )
         }
 
         TouchLayout.ONE_BUTTON -> {

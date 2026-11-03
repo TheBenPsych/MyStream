@@ -3,7 +3,8 @@
  *
  * An emulator ("core", e.g. mGBA for Game Boy Advance) is a separate .so file that Benflix downloads.
  * This file opens it, gives it the game, runs it one frame at a time, draws each frame with OpenGL ES 2
- * (sharp pixels, kept to the game's shape), collects its sound for Kotlin to play, and tells it which
+ * (sharp pixels, kept to the game's shape; 3D emulators like N64 draw into an OpenGL ES 3 picture themselves),
+ * collects its sound for Kotlin to play, and tells it which
  * buttons are held. Everything here runs on the game's GL thread, except setting buttons.
  */
 #include <jni.h>
@@ -13,7 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <android/log.h>
-#include <GLES2/gl2.h>
+#include <EGL/egl.h>
+#include <GLES3/gl3.h>
 #include "libretro.h"
 
 #define TAG "BenflixGames"
@@ -60,6 +62,25 @@ static struct retro_system_av_info av_info;
 static unsigned frame_w, frame_h;
 /* Turned picture (arcade games made for an upright screen, like Pac-Man): 0-3 quarter turns anticlockwise */
 static unsigned rotation;
+
+/* ---------- 3D emulators (N64): they draw with OpenGL themselves, into our framebuffer ---------- */
+static struct retro_hw_render_callback hw;
+static int hw_on;    /* The emulator asked to draw with OpenGL */
+static int hw_ready; /* Our framebuffer exists and the emulator was told it can draw */
+static GLuint hw_fbo, hw_tex, hw_depth;
+static unsigned hw_w, hw_h;
+
+static uintptr_t hw_get_framebuffer(void) { return hw_fbo; }
+
+static retro_proc_address_t hw_get_proc_address(const char *sym) {
+    void *p = (void *)eglGetProcAddress(sym);
+    if (!p) {
+        static void *gles;
+        if (!gles) gles = dlopen("libGLESv3.so", RTLD_NOW | RTLD_LOCAL);
+        if (gles) p = dlsym(gles, sym);
+    }
+    return (retro_proc_address_t)p;
+}
 
 /* The game's shape (width / height) as shown, after any turn */
 static double shown_aspect(void) {
@@ -150,6 +171,24 @@ static bool environment(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_SET_ROTATION:
             if (data) rotation = *(const unsigned *)data & 3;
             return true;
+        case RETRO_ENVIRONMENT_SET_HW_RENDER: {
+            struct retro_hw_render_callback *cb = (struct retro_hw_render_callback *)data;
+            int ok = cb->context_type == RETRO_HW_CONTEXT_OPENGLES2 || cb->context_type == RETRO_HW_CONTEXT_OPENGLES3 ||
+                     (cb->context_type == RETRO_HW_CONTEXT_OPENGLES_VERSION && cb->version_major <= 3);
+            if (!ok) {
+                LOGW("The emulator wants a graphics type Benflix doesn't have (%d)", (int)cb->context_type);
+                return false;
+            }
+            cb->get_current_framebuffer = hw_get_framebuffer;
+            cb->get_proc_address = hw_get_proc_address;
+            hw = *cb;
+            hw_on = 1;
+            LOGI("3D emulator: OpenGL ES type %d", (int)cb->context_type);
+            return true;
+        }
+        case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
+            if (data) *(unsigned *)data = RETRO_HW_CONTEXT_OPENGLES3;
+            return true;
         case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
             return true;
         case RETRO_ENVIRONMENT_GET_LANGUAGE:
@@ -185,6 +224,13 @@ static void ensure_frame(size_t pixels) {
 }
 
 static void video_refresh(const void *data, unsigned width, unsigned height, size_t pitch) {
+    if (data == RETRO_HW_FRAME_BUFFER_VALID) {
+        /* A 3D emulator drew this frame into our framebuffer */
+        frame_w = width;
+        frame_h = height;
+        frame_new = 1;
+        return;
+    }
     if (!data || width == 0 || height == 0) return; /* "Same picture as last time" */
     ensure_frame((size_t)width * height);
     frame_w = width;
@@ -284,6 +330,9 @@ JNIEXPORT void JNICALL JNI_FN(setOption)(JNIEnv *env, jobject thiz, jstring key,
 /* Opens the emulator and starts the game. Returns false (and logs why) if it can't. */
 JNIEXPORT jboolean JNICALL JNI_FN(load)(JNIEnv *env, jobject thiz, jstring jcore, jstring jgame, jstring jsystem, jstring jsave) {
     rotation = 0;
+    hw_on = 0;
+    hw_ready = 0;
+    memset(&hw, 0, sizeof(hw));
     char core_path[1024], game_path[1024];
     copy_jstring(env, jcore, core_path, sizeof(core_path));
     copy_jstring(env, jgame, game_path, sizeof(game_path));
@@ -455,6 +504,31 @@ JNIEXPORT jboolean JNICALL JNI_FN(setSaveRam)(JNIEnv *env, jobject thiz, jbyteAr
 JNIEXPORT jintArray JNICALL JNI_FN(snapshot)(JNIEnv *env, jobject thiz) {
     if (frame_w == 0 || frame_h == 0) return NULL;
     size_t count = (size_t)frame_w * frame_h;
+    if (hw_on) {
+        if (!hw_ready || frame_w > hw_w || frame_h > hw_h) return NULL;
+        uint32_t *rgba = (uint32_t *)malloc(count * 4);
+        if (!rgba) return NULL;
+        glBindFramebuffer(GL_FRAMEBUFFER, hw_fbo);
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+        glReadPixels(0, 0, (GLsizei)frame_w, (GLsizei)frame_h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        jintArray hout = (*env)->NewIntArray(env, (jsize)(count + 2));
+        jint *hpx = (*env)->GetIntArrayElements(env, hout, NULL);
+        hpx[0] = (jint)frame_w;
+        hpx[1] = (jint)frame_h;
+        for (unsigned y = 0; y < frame_h; y++) {
+            /* OpenGL reads bottom row first */
+            unsigned sy = hw.bottom_left_origin ? frame_h - 1 - y : y;
+            for (unsigned x = 0; x < frame_w; x++) {
+                uint32_t p = rgba[(size_t)sy * frame_w + x]; /* 0xAABBGGRR */
+                hpx[(size_t)y * frame_w + x + 2] =
+                    (jint)(0xFF000000u | ((p & 0xFFu) << 16) | (p & 0xFF00u) | ((p >> 16) & 0xFFu));
+            }
+        }
+        (*env)->ReleaseIntArrayElements(env, hout, hpx, 0);
+        free(rgba);
+        return hout;
+    }
     jintArray out = (*env)->NewIntArray(env, (jsize)(count + 2));
     jint *px = (*env)->GetIntArrayElements(env, out, NULL);
     px[0] = (jint)frame_w;
@@ -501,6 +575,41 @@ static GLuint compile(GLenum type, const char *src) {
     return s;
 }
 
+/* Makes the framebuffer a 3D emulator draws into, then tells it it can start (again, after the surface is remade) */
+static void hw_setup(void) {
+    if (hw_ready && hw.context_destroy) hw.context_destroy();
+    hw_w = av_info.geometry.max_width > 0 ? av_info.geometry.max_width : 640;
+    hw_h = av_info.geometry.max_height > 0 ? av_info.geometry.max_height : 480;
+    if (av_info.geometry.base_width > hw_w) hw_w = av_info.geometry.base_width;
+    if (av_info.geometry.base_height > hw_h) hw_h = av_info.geometry.base_height;
+    glGenTextures(1, &hw_tex);
+    glBindTexture(GL_TEXTURE_2D, hw_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)hw_w, (GLsizei)hw_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    /* 3D games look best smoothed */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenFramebuffers(1, &hw_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, hw_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, hw_tex, 0);
+    hw_depth = 0;
+    if (hw.depth) {
+        glGenRenderbuffers(1, &hw_depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, hw_depth);
+        glRenderbufferStorage(GL_RENDERBUFFER, hw.stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)hw_w, (GLsizei)hw_h);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, hw.stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, hw_depth);
+    }
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) LOGW("3D framebuffer isn't ready (0x%x)", status);
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    hw_ready = 1;
+    LOGI("3D framebuffer %ux%u, depth %d, stencil %d", hw_w, hw_h, (int)hw.depth, (int)hw.stencil);
+    if (hw.context_reset) hw.context_reset();
+}
+
 /* Called whenever the GL surface is (re)made */
 JNIEXPORT void JNICALL JNI_FN(glInit)(JNIEnv *env, jobject thiz) {
     program = glCreateProgram();
@@ -521,6 +630,7 @@ JNIEXPORT void JNICALL JNI_FN(glInit)(JNIEnv *env, jobject thiz) {
     tex_w = tex_h = 0;
     tex_is_8888 = -1;
     frame_new = frame_w > 0;
+    if (hw_on) hw_setup();
 }
 
 JNIEXPORT void JNICALL JNI_FN(glResize)(JNIEnv *env, jobject thiz, jint w, jint h) {
@@ -529,13 +639,32 @@ JNIEXPORT void JNICALL JNI_FN(glResize)(JNIEnv *env, jobject thiz, jint w, jint 
 }
 
 JNIEXPORT void JNICALL JNI_FN(glDraw)(JNIEnv *env, jobject thiz) {
+    if (hw_on) {
+        /* Undo whatever the 3D emulator left switched on */
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_STENCIL_TEST);
+        glDisable(GL_BLEND);
+        glDisable(GL_SCISSOR_TEST);
+        glDisable(GL_CULL_FACE);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glActiveTexture(GL_TEXTURE0);
+        glBindSampler(0, 0);
+    }
     glViewport(0, 0, view_w, view_h);
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     if (frame_w == 0 || frame_h == 0) return;
 
-    glBindTexture(GL_TEXTURE_2D, texture);
     int is8888 = pixel_format == RETRO_PIXEL_FORMAT_XRGB8888;
+    if (hw_on) {
+        glBindTexture(GL_TEXTURE_2D, hw_tex);
+        frame_new = 0;
+    } else {
+        glBindTexture(GL_TEXTURE_2D, texture);
+    }
     if (frame_new) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, is8888 ? 4 : 2);
         if (frame_w != tex_w || frame_h != tex_h || is8888 != tex_is_8888) {
@@ -560,7 +689,16 @@ JNIEXPORT void JNICALL JNI_FN(glDraw)(JNIEnv *env, jobject thiz) {
     float sx = 1.0f, sy = 1.0f;
     if (view_aspect > aspect) sx = aspect / view_aspect; else sy = view_aspect / aspect;
     /* Corners anticlockwise from bottom left; a turned game takes its picture corners from further round */
-    static const float uv[4][2] = {{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}};
+    float uv[4][2] = {{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}};
+    if (hw_on && hw_w > 0 && hw_h > 0) {
+        /* Only the part of the framebuffer the emulator drew in; OpenGL pictures start at the bottom */
+        float u = (float)frame_w / (float)hw_w, v = (float)frame_h / (float)hw_h;
+        float bottom = hw.bottom_left_origin ? 0.0f : v, top = hw.bottom_left_origin ? v : 0.0f;
+        uv[0][0] = 0.0f, uv[0][1] = bottom;
+        uv[1][0] = u, uv[1][1] = bottom;
+        uv[2][0] = u, uv[2][1] = top;
+        uv[3][0] = 0.0f, uv[3][1] = top;
+    }
     const float *bl = uv[(0 + 4 - rotation) % 4], *br = uv[(1 + 4 - rotation) % 4];
     const float *tr = uv[(2 + 4 - rotation) % 4], *tl = uv[(3 + 4 - rotation) % 4];
     float quad[] = {
