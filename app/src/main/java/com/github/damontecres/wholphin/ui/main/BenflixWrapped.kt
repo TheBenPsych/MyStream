@@ -151,7 +151,12 @@ class BenflixWrappedViewModel
                 played
                     .filter { item ->
                         sinceMs == null ||
-                            (item.userData?.lastPlayedDate?.toInstant(ZoneOffset.UTC)?.toEpochMilli() ?: 0L) < sinceMs
+                            (
+                                item.userData
+                                    ?.lastPlayedDate
+                                    ?.toInstant(ZoneOffset.UTC)
+                                    ?.toEpochMilli() ?: 0L
+                            ) < sinceMs
                     }.sumOf { (it.runTimeTicks ?: 0L) * (it.userData?.playCount?.coerceAtLeast(1) ?: 1) }
             val hours = (ticks / TICKS_PER_HOUR).toInt() + ((real?.seconds(year) ?: 0L) / 3600L).toInt()
             val topShows =

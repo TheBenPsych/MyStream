@@ -163,7 +163,11 @@ class BenflixWatchTime
                     value.split(';').forEach { part ->
                         val key = part.substringBefore('=', "")
                         val number = part.substringAfter('=').toLongOrNull() ?: return@forEach
-                        if (key == "since") since = number else if (key.isNotBlank()) ms[key] = number
+                        if (key == "since") {
+                            since = number
+                        } else if (key.isNotBlank()) {
+                            ms[key] = number
+                        }
                     }
                     return Counts(since, ms)
                 }
