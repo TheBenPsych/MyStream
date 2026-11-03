@@ -393,15 +393,30 @@ class GamesViewModel
                     .split(',')
                     .mapNotNull { it.toIntOrNull() }
                     .toSet()
-            if (KidsMode.isActive) {
-                _library.value = LibraryState.Hidden
-                return
-            }
             _library.value = LibraryState.Loading
             viewModelScope.launch {
                 _library.value =
                     try {
-                        LibraryState.Ready(games.loadLibrary())
+                        val consoles = games.loadLibrary()
+                        if (KidsMode.isActive) {
+                            // Benflix: Kids only get games rated for everyone (unrated ones are left out, like movies)
+                            val kidsConsoles =
+                                consoles
+                                    .map { c -> c.copy(games = c.games.filter { it.kids }) }
+                                    .filter { it.games.isNotEmpty() }
+                            if (kidsConsoles.isEmpty()) {
+                                LibraryState.Failed(
+                                    "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
+                                        "to update it, and games rated E show up here.",
+                                    askAddress = false,
+                                    emptyList(),
+                                )
+                            } else {
+                                LibraryState.Ready(kidsConsoles)
+                            }
+                        } else {
+                            LibraryState.Ready(consoles)
+                        }
                     } catch (e: GameLibraryException) {
                         LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
                     } catch (e: Exception) {
@@ -416,7 +431,7 @@ class GamesViewModel
                     // Get the emulators for this library's consoles ready in the background (Wi-Fi only)
                     viewModelScope.launch { localGames.warmCores(ready.consoles.map { it.slug }) }
                 }
-                if (_library.value is LibraryState.Ready) {
+                if (_library.value is LibraryState.Ready && !KidsMode.isActive) {
                     localGames.sendWaitingSaves()
                     _towerRecent.value =
                         try {
@@ -692,14 +707,15 @@ fun GamesPage(
                     )
                 },
             )
-        if (isTv) {
+        // Benflix: the movie games show posters from the whole library, so they're not on the Kids profile
+        if (!KidsMode.isActive && isTv) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.height(IntrinsicSize.Min),
             ) {
                 movieGames.forEach { it(Modifier.weight(1f).fillMaxHeight()) }
             }
-        } else {
+        } else if (!KidsMode.isActive) {
             movieGames.forEach { it(Modifier.fillMaxWidth()) }
         }
 
@@ -1876,7 +1892,7 @@ private fun Leaderboards(
 ) {
     val games =
         BuiltInGame.entries.map { it.name to it.title } +
-            GamesViewModel.BOARD_EXTRA_GAMES.entries.map { it.key to it.value }
+            if (KidsMode.isActive) emptyList() else GamesViewModel.BOARD_EXTRA_GAMES.entries.map { it.key to it.value }
     val mine =
         remember(board) {
             BuiltInGame.entries.associate { it.name to viewModel.best(it) } +

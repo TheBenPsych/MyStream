@@ -6,6 +6,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.GameLibraryException
 import com.github.damontecres.wholphin.services.GameStreamReturn
+import com.github.damontecres.wholphin.services.KidsMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,14 @@ class LocalGames
 
         private var biosList: List<Pair<String, String>>? = null
 
-        val user: String get() = serverRepository.currentUser?.id?.toString() ?: "guest"
+        /**
+         * Benflix: the Kids tile uses the grown-up's account, so its saves are kept apart on this device and
+         * not sent to Tower (where they'd mix with the grown-up's saves).
+         */
+        private val kidsTile: Boolean get() = KidsMode.isActive
+
+        val user: String get() =
+            (serverRepository.currentUser?.id?.toString() ?: "guest").let { if (kidsTile) "$it-kids" else it }
 
         fun saveDir(gameId: Int): File = GameSaves.saveDir(context, user, gameId)
 
@@ -93,10 +101,14 @@ class LocalGames
 
         /** True if Tower has a "pick up where you left off" save (null if Tower can't be reached) */
         suspend fun hasServerResume(gameId: Int): Boolean? =
-            try {
-                client.getJson("/api/save/$gameId").has("state")
-            } catch (_: Exception) {
-                null
+            if (kidsTile) {
+                false
+            } else {
+                try {
+                    client.getJson("/api/save/$gameId").has("state")
+                } catch (_: Exception) {
+                    null
+                }
             }
 
         // ---------- What's downloaded ----------
@@ -418,6 +430,7 @@ class LocalGames
 
         /** Takes Tower's saves when they're newer than this device's (for example, played on another TV) */
         private suspend fun syncSaves(ref: GameRef) {
+            if (kidsTile) return
             val dir = saveDir(ref.id)
             val pending = GameSaves.pending(dir)
             // Anything this device still has to send goes first, so it isn't overwritten
@@ -449,6 +462,7 @@ class LocalGames
         /** Sends saves made while Tower couldn't be reached */
         suspend fun sendWaitingSaves() =
             withContext(Dispatchers.IO) {
+                if (kidsTile) return@withContext
                 try {
                     GameSaves.uploadAll(context, user, client.address, client.token)
                 } catch (e: Exception) {
@@ -473,6 +487,7 @@ class LocalGames
                     .putExtra(GameActivity.EXTRA_CONSOLE, game.console.key)
                     .putExtra(GameActivity.EXTRA_RESUME, resume)
                     .putExtra(GameActivity.EXTRA_ADDRESS, client.address)
+                    .putExtra(GameActivity.EXTRA_LOCAL_SAVES, kidsTile)
                     .putExtra(GameActivity.EXTRA_TOKEN, client.token)
                     .putExtra(GameActivity.EXTRA_SERVER, client.jellyfinUrl)
                     .putExtra(GameActivity.EXTRA_USER, client.userId)

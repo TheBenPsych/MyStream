@@ -64,6 +64,7 @@ class PlayOnTvViewModel
     constructor(
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        val cast: com.github.damontecres.wholphin.services.CastToTv,
     ) : ViewModel() {
         /** null while looking */
         private val _screens = MutableStateFlow<List<BenflixScreen>?>(null)
@@ -200,20 +201,46 @@ fun PlayOnTvButton(
         Text("Play on TV", fontWeight = FontWeight.Bold)
     }
     if (open) {
+        // Benflix: TVs with Chromecast built in show up too, even without Benflix on them
+        val castScreens by viewModel.cast.screens.collectAsState()
+        val castOk = remember { viewModel.cast.available }
+        androidx.compose.runtime.DisposableEffect(castOk) {
+            if (castOk) viewModel.cast.startLooking()
+            onDispose { if (castOk) viewModel.cast.stopLooking() }
+        }
         BasicDialog(onDismissRequest = { open = false }) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.widthIn(min = 280.dp, max = 420.dp).padding(20.dp),
             ) {
                 Text("Play on which TV?", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                castScreens.forEach { screen ->
+                    ListItem(
+                        selected = false,
+                        onClick = {
+                            val sent = viewModel.cast.play(screen, item, position)
+                            open = false
+                            val text = if (sent) "Casting to ${screen.name}…" else "Couldn't reach ${screen.name}"
+                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                        },
+                        headlineContent = { Text(screen.name) },
+                        supportingContent = { Text("Chromecast") },
+                    )
+                }
                 when (val list = screens) {
                     null -> {
                         Text("Looking for TVs…")
                     }
 
                     else -> {
-                        if (list.isEmpty()) {
-                            Text("No TV found. Open Benflix on the TV, then try again.")
+                        if (list.isEmpty() && castScreens.isEmpty()) {
+                            Text(
+                                if (castOk) {
+                                    "No TV found. Open Benflix on the TV, or check the Chromecast TV is on the same Wi-Fi."
+                                } else {
+                                    "No TV found. Open Benflix on the TV, then try again."
+                                },
+                            )
                         }
                         list.forEach { screen ->
                             ListItem(

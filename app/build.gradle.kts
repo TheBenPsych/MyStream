@@ -330,6 +330,9 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     implementation(libs.androidx.profileinstaller)
+    // Benflix: cast from the phone to any TV with Chromecast built in
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.mediarouter)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)

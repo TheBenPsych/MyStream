@@ -58,8 +58,12 @@ material = "1.14.0"
 compileSdk = "37"
 targetSdk = "37"
 minSdk = "23"
+playServicesCast = "21.5.0"
+mediarouter = "1.7.0"
 
 [libraries]
+play-services-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "playServicesCast" }
+androidx-mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 wholphin-extensions-mpv = { module = "com.github.damontecres.wholphin.mpv:wholphin-mpv", version.ref = "wholphin-extensions" }
 wholphin-extensions-ffmpeg = { module = "com.github.damontecres.wholphin.media3:decoder-ffmpeg", version.ref = "wholphin-extensions" }

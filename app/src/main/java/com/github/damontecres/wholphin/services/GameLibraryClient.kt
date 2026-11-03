@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,6 +28,8 @@ data class ServerGame(
     /** The year it came out, 0 if unknown */
     val year: Int = 0,
     val genres: List<String> = emptyList(),
+    /** Rated for everyone, so it shows on the Kids profile */
+    val kids: Boolean = false,
 )
 
 /** One console and its games, e.g. "Nintendo 64" */
@@ -59,8 +62,19 @@ class GameLibraryClient
         /** Address typed in by hand, if the automatic one doesn't work */
         val customAddress: String get() = prefs.getString("address", "") ?: ""
 
-        /** The helper's address: the Jellyfin server's address with port 8097, unless one was typed in */
+        /**
+         * Benflix: the address that answered last time [pickAddress] looked. Away from home that's the
+         * internet address (the same one Jellyfin uses, plus /benflix-games), at home the normal one.
+         */
+        @Volatile
+        private var working: String? = null
+
+        /** The helper's address: the one that works right now, else the Jellyfin server's address with port 8097 */
         val address: String
+            get() = working ?: homeAddress
+
+        /** The helper's address at home: the Jellyfin server's address with port 8097, unless one was typed in */
+        private val homeAddress: String
             get() {
                 customAddress.takeIf { it.isNotBlank() }?.let { return it }
                 val host =
@@ -87,9 +101,51 @@ class GameLibraryClient
             prefs.edit().putString("address", value).apply()
         }
 
+        /**
+         * The helper through the internet, for playing away from home: Jellyfin's own https address with
+         * /benflix-games on the end (Tower's web proxy sends that on to the helper). Null when Jellyfin isn't
+         * reached over https.
+         */
+        private val awayAddress: String?
+            get() {
+                val url = serverRepository.currentServer?.url?.toHttpUrlOrNull() ?: return null
+                if (!url.isHttps) return null
+                return url.scheme + "://" + url.host + (if (url.port != 443) ":${url.port}" else "") + AWAY_PATH
+            }
+
+        private val quickHttp by lazy {
+            http
+                .newBuilder()
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .build()
+        }
+
+        private fun answers(base: String): Boolean =
+            try {
+                quickHttp.newCall(Request.Builder().url("$base/health").build()).execute().use { it.isSuccessful }
+            } catch (_: Exception) {
+                false
+            }
+
+        /** Works out which address reaches the helper right now: home first, then the internet one */
+        suspend fun pickAddress() =
+            withContext(Dispatchers.IO) {
+                val home = homeAddress
+                val away = awayAddress
+                working =
+                    when {
+                        home.isNotBlank() && answers(home) -> null
+                        away != null && answers(away) -> away
+                        else -> null
+                    }
+                if (working != null) Timber.i("Games helper reached through the internet address")
+            }
+
         /** Every game in the library, grouped by console. Throws with a friendly message when it can't. */
         suspend fun loadLibrary(): List<GameConsole> =
             withContext(Dispatchers.IO) {
+                pickAddress()
                 val base = address
                 val json = JSONObject(call(Request.Builder().url("$base/api/games")))
                 val consoles = json.optJSONArray("consoles") ?: JSONArray()
@@ -112,6 +168,7 @@ class GameLibraryClient
                                     genres =
                                         g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                                             ?: emptyList(),
+                                    kids = g.optBoolean("kids", false),
                                 )
                             },
                     )
@@ -230,6 +287,9 @@ class GameLibraryClient
 
         companion object {
             const val PORT = 8097
+
+            /** Path on Jellyfin's internet address that Tower's web proxy sends to the games helper */
+            const val AWAY_PATH = "/benflix-games"
 
             /** "10.0.0.58" -> "http://10.0.0.58:8097" */
             fun normalizeAddress(input: String): String {
