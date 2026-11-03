@@ -98,6 +98,8 @@ fun UserList(
     /** Benflix Guest tile: watch without saving anything to the owner's account */
     showGuest: Boolean = false,
     onGuest: (JellyfinUser) -> Unit = {},
+    /** A profile picture was picked (null = automatic). Saved to their Jellyfin account so it follows them. */
+    onPickPicture: (JellyfinUser, Int?) -> Unit = { user, index -> AvatarChoices.set(user.id, index) },
 ) {
     var showDeleteDialog by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
     var pickPictureFor by remember { mutableStateOf<JellyfinUserAndImage?>(null) }
@@ -119,7 +121,7 @@ fun UserList(
             }
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(24.dp), // Spacing to accommodate 20% scale
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 16.dp), // Increased padding to accommodate 20% scale
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp), // Room for the 20% zoom
                 modifier =
                     Modifier
                         .wrapContentWidth()
@@ -233,18 +235,20 @@ fun UserList(
         AvatarPickerDialog(
             userId = user.user.id,
             name = user.user.name,
+            onPick = { index -> onPickPicture.invoke(user.user, index) },
             onDismissRequest = { pickPictureFor = null },
         )
     }
 }
 
 /**
- * Pick a Benflix profile picture. Saved on this device.
+ * Pick a Benflix profile picture. [onPick] saves it (null = automatic).
  */
 @Composable
 private fun AvatarPickerDialog(
     userId: UUID,
     name: String?,
+    onPick: (Int?) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
     // Make sure the pick is saved on the device, even if no picture has been drawn yet
@@ -271,7 +275,7 @@ private fun AvatarPickerDialog(
                         val index = rowIndex * 4 + col
                         Surface(
                             onClick = {
-                                AvatarChoices.set(userId, index)
+                                onPick.invoke(index)
                                 onDismissRequest.invoke()
                             },
                             shape = ClickableSurfaceDefaults.shape(CircleShape),
@@ -305,7 +309,7 @@ private fun AvatarPickerDialog(
                 }
             }
             Button(onClick = {
-                AvatarChoices.set(userId, null)
+                onPick.invoke(null)
                 onDismissRequest.invoke()
             }) {
                 Text(stringResource(R.string.use_automatic_picture))
@@ -315,7 +319,8 @@ private fun AvatarPickerDialog(
 }
 
 /**
- * Profile pictures picked in Benflix, kept on this device by profile id
+ * Profile pictures picked in Benflix by profile id. This is this device's copy; ProfilePictureSync
+ * also saves each pick to the person's Jellyfin account so it follows them to other devices.
  */
 object AvatarChoices {
     private val choices = androidx.compose.runtime.mutableStateMapOf<UUID, Int>()
@@ -363,7 +368,7 @@ private fun UserIconCard(
     var imageError by remember { mutableStateOf(false) }
 
     // Card dimensions - circular card
-    val cardSize = Cards.serverUserCircle
+    val cardSize = LocalProfileTileSize.current
 
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
@@ -377,7 +382,7 @@ private fun UserIconCard(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
     ) {
         // Rounded square tile with colored background, like a streaming service profile
         Surface(
@@ -542,12 +547,12 @@ private fun AddUserCard(
     val addUserColor = MaterialTheme.colorScheme.surfaceVariant
 
     // Card dimensions - circular card (same as user cards)
-    val cardSize = Cards.height2x3 * 0.75f // ~120dp
+    val cardSize = LocalProfileTileSize.current
 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp), // Increased to accommodate 20% scale
+        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
     ) {
         // Rounded square tile with colored background, like a streaming service profile
         Surface(
@@ -609,6 +614,12 @@ private fun AddUserCard(
 
 private val ProfileTileShape = RoundedCornerShape(10.dp)
 
+/**
+ * How big the Who's watching tiles are. The screen makes them smaller when space is short
+ * (small TVs, holiday greetings) so the names under them always fit.
+ */
+val LocalProfileTileSize = androidx.compose.runtime.compositionLocalOf { Cards.serverUserCircle }
+
 internal val BenflixAvatars =
     listOf(
         R.drawable.benflix_avatar_0,
@@ -644,11 +655,11 @@ private fun KidsProfileCard(
     modifier: Modifier = Modifier,
     big: Boolean = false,
 ) {
-    val cardSize = Cards.serverUserCircle
+    val cardSize = LocalProfileTileSize.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
     ) {
         Surface(
             onClick = onClick,
@@ -705,11 +716,11 @@ private fun GuestProfileCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardSize = Cards.serverUserCircle
+    val cardSize = LocalProfileTileSize.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
     ) {
         Surface(
             onClick = onClick,

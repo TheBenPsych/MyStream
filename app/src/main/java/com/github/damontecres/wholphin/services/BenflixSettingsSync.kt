@@ -11,17 +11,21 @@ import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
+import com.github.damontecres.wholphin.ui.playback.BenflixPlayerPrefs
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.UUID
+import org.json.JSONObject
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,7 +35,10 @@ import javax.inject.Singleton
  * profile colour, late-night look and so on) are saved to their Jellyfin account. When they
  * sign in on another TV or phone, or pick their profile on a shared TV, their settings come back.
  *
- * Things that only make sense on one device (player choice, Lite mode, download folders) are not synced.
+ * Their profile picture, "Always skip filler" and the Dubbed/Subbed pick for each anime follow them too.
+ *
+ * Things that only make sense on one device (player choice, Lite mode, download folders, Night mode sound,
+ * which tiles the Who's watching screen shows, the games server address) are not synced.
  * Changes made while the Kids profile is open are never saved to the grown-up's account.
  */
 @Singleton
@@ -42,6 +49,7 @@ class BenflixSettingsSync
         private val displayPreferencesService: DisplayPreferencesService,
         private val preferencesDataStore: DataStore<AppPreferences>,
         private val serverRepository: ServerRepository,
+        private val profilePictureSync: ProfilePictureSync,
     ) {
         /** The user whose saved settings have been loaded on this device (uploads wait until then) */
         @Volatile private var readyUserId: UUID? = null
@@ -64,6 +72,11 @@ class BenflixSettingsSync
                         .getDisplayPreferences(userId)
                         .customPrefs
                 nextUpMoved = customPrefs[NEXT_UP_MOVED_KEY] != null
+                serverRepository.current.value
+                    ?.takeIf { it.user.id == userId }
+                    ?.let { profilePictureSync.restore(it.server.url, it.user, customPrefs) }
+                customPrefs[EXTRAS_KEY]?.let { restoreExtras(it) }
+                lastExtras = customPrefs[EXTRAS_KEY]
                 val saved = customPrefs[KEY]
                 if (saved != null) {
                     val parsed = AppPreferences.parseFrom(Base64.decode(saved, Base64.NO_WRAP))
@@ -94,7 +107,54 @@ class BenflixSettingsSync
             _ready.value = userId
             // Save this device's settings as theirs if they have none saved yet
             upload(preferencesDataStore.data.first())
+            uploadExtras()
         }
+
+        @Volatile private var lastExtras: String? = null
+
+        /** Benflix settings kept outside the main settings: Always skip filler and the anime Dubbed/Subbed picks */
+        private fun extrasNow(): String =
+            JSONObject()
+                .put(EXTRA_SKIP_FILLER, BenflixPlayerPrefs.alwaysSkipFiller(context))
+                .put(EXTRA_DUB, JSONObject(BenflixDubChoice.all()))
+                .toString()
+
+        private fun restoreExtras(saved: String) {
+            try {
+                val json = JSONObject(saved)
+                if (json.has(EXTRA_SKIP_FILLER)) {
+                    BenflixPlayerPrefs.setAlwaysSkipFiller(context, json.getBoolean(EXTRA_SKIP_FILLER))
+                }
+                json.optJSONObject(EXTRA_DUB)?.let { dub ->
+                    BenflixDubChoice.replaceAll(dub.keys().asSequence().associateWith { dub.getString(it) })
+                }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not read saved Benflix extras")
+            }
+        }
+
+        private suspend fun uploadExtras() {
+            val userId = serverRepository.currentUser?.id ?: return
+            if (userId != readyUserId || KidsMode.isActive || GuestMode.isActive) return
+            val encoded = extrasNow()
+            if (encoded == lastExtras) return
+            try {
+                displayPreferencesService.updateDisplayPreferences(userId) { put(EXTRAS_KEY, encoded) }
+                lastExtras = encoded
+                Timber.i("Saved Benflix extras to the account")
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not save Benflix extras")
+            }
+        }
+
+        /** Nudged whenever Always skip filler or a Dubbed/Subbed pick changes */
+        private val extrasChanged = MutableStateFlow(0)
+
+        // Kept here so Android doesn't forget the listener (it only holds on to it weakly)
+        private val extrasListener =
+            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> extrasChanged.value++ }
 
         /**
          * The next-episode countdown used to start at 15 seconds. Ben wanted 5, so anyone still on the
@@ -129,10 +189,20 @@ class BenflixSettingsSync
         /** Watches for setting changes and saves them to the person's account a few seconds later */
         @OptIn(FlowPreview::class)
         suspend fun watchForChanges() {
-            preferencesDataStore.data
-                .distinctUntilChanged { old, new -> old.personalPart() == new.personalPart() }
-                .debounce(3_000)
-                .collect { upload(it) }
+            coroutineScope {
+                launch {
+                    listOf(BenflixPlayerPrefs.FILE, BenflixDubChoice.PREFS).forEach {
+                        context.getSharedPreferences(it, Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(extrasListener)
+                    }
+                    extrasChanged
+                        .debounce(3_000)
+                        .collect { uploadExtras() }
+                }
+                preferencesDataStore.data
+                    .distinctUntilChanged { old, new -> old.personalPart() == new.personalPart() }
+                    .debounce(3_000)
+                    .collect { upload(it) }
+            }
         }
 
         private suspend fun upload(prefs: AppPreferences) {
@@ -160,6 +230,9 @@ class BenflixSettingsSync
             private const val PREFS = "benflix_settings_sync"
             private const val NEXT_UP_MOVED_KEY = "benflix.nextup5"
             private const val OLD_NEXT_UP_SECONDS = 15L
+            private const val EXTRAS_KEY = "benflix.extras.v1"
+            private const val EXTRA_SKIP_FILLER = "skipFiller"
+            private const val EXTRA_DUB = "dub"
         }
     }
 

@@ -43,6 +43,8 @@ class BenflixHighScores
             userName: String?,
             isAdmin: Boolean,
             mine: Map<String, Int>,
+            /** This account's bests from every device, so a new TV or phone shows the right "Your best" */
+            onMyBests: (Map<String, Int>) -> Unit = {},
         ): Map<String, List<HighScore>> =
             withContext(WholphinDispatchers.IO) {
                 val myName = shortName(userName)
@@ -59,6 +61,7 @@ class BenflixHighScores
                     if (merged != saved) {
                         displayPreferencesService.updateDisplayPreferences(userId) { put(KEY_MINE, encodeMine(merged)) }
                     }
+                    if (mine.isNotEmpty()) onMyBests(merged)
                     if (isAdmin) gatherAndShare() else readBoard(userId, myName, merged)
                 } catch (ex: CancellationException) {
                     throw ex

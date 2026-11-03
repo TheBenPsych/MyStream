@@ -35,12 +35,12 @@ import javax.inject.Singleton
  * Benflix: which way this device plays an anime show or movie, picked by opening it from the
  * Dubbed or Subbed tab of an anime page. DUB = English voices (with signs & songs subtitles if
  * there are any), SUB = Japanese voices with the full English subtitles.
- * Saved on this device until it's opened from the other tab.
+ * Saved until it's opened from the other tab, and saved to the person's account so it follows them.
  */
 object BenflixDubChoice {
     enum class Mode { DUB, SUB }
 
-    private const val PREFS = "benflix_dub_choice"
+    const val PREFS = "benflix_dub_choice"
     private val modes = ConcurrentHashMap<String, Mode>()
 
     @Volatile private var prefs: android.content.SharedPreferences? = null
@@ -67,6 +67,21 @@ object BenflixDubChoice {
     }
 
     fun modeFor(item: BaseItemDto): Mode? = modes[keyFor(item)]
+
+    /** Every saved choice (show or movie id to DUB or SUB), so Settings sync can save them to the account */
+    fun all(): Map<String, String> = modes.mapValues { it.value.name }
+
+    /** Swap in the choices saved on the person's account (when they sign in or pick their profile) */
+    fun replaceAll(saved: Map<String, String>) {
+        val parsed = saved.mapNotNull { (id, mode) -> runCatching { Mode.valueOf(mode) }.getOrNull()?.let { id to it } }.toMap()
+        if (parsed == modes.toMap()) return
+        modes.clear()
+        modes.putAll(parsed)
+        val editor = prefs?.edit() ?: return
+        editor.clear()
+        parsed.forEach { (id, mode) -> editor.putString(id, mode.name) }
+        editor.apply()
+    }
 
     private val ENGLISH = setOf("eng", "en", "english")
 

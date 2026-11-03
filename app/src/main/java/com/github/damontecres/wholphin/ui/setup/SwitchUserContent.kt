@@ -58,6 +58,7 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.holidayFor
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.EditTextBox
@@ -162,6 +163,10 @@ fun SwitchUserContent(
         LoadingState.Success -> {
             // A drawn holiday scene on holidays, otherwise a slow wall of the server's posters
             val holiday = remember { holidayFor(LocalDate.now()) }
+            // Smaller TVs (and older ones like TCL Android 9 sets) have little height to spare, so the
+            // greeting gets smaller, the server name is left off and the tiles shrink to leave room for the names
+            val shortScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < SHORT_SCREEN_DP
+            val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
             Box(
                 modifier =
                     modifier
@@ -178,96 +183,111 @@ fun SwitchUserContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    Box(
+                    androidx.compose.foundation.layout.BoxWithConstraints(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(24.dp),
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    // A soft dark glow behind the text and profiles, with no hard edges
-                                    .drawBehind {
-                                        val glow =
-                                            Brush.radialGradient(
-                                                0f to Color.Black.copy(alpha = .6f),
-                                                .45f to Color.Black.copy(alpha = .4f),
-                                                .72f to Color.Transparent,
-                                                center = center,
-                                                radius = size.width / 2,
-                                            )
-                                        scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
-                                            drawCircle(glow, radius = size.width / 2, center = center)
-                                        }
-                                    }.padding(16.dp),
-                        ) {
+                        // Everything around the tiles, so the tiles (and the names under them) always fit
+                        val greetingSize = if (shortScreen) 34 else 52
+                        val headerDp =
+                            (if (holiday != null) greetingSize * 1.35f + 8 else 0f) + (if (shortScreen) 44f else 44f + 8 + 28) * fontScale
+                        val aroundTilesDp = 32 + headerDp + 24 + 24 + 10 + 30 * fontScale + 24 + 56
+                        val tileSize =
+                            ((maxHeight.value - aroundTilesDp) / 1.1f)
+                                .coerceIn(MIN_TILE_DP, Cards.serverUserCircle.value)
+                                .dp
+                        androidx.compose.runtime.CompositionLocalProvider(LocalProfileTileSize provides tileSize) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(24.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        // A soft dark glow behind the text and profiles, with no hard edges
+                                        .drawBehind {
+                                            val glow =
+                                                Brush.radialGradient(
+                                                    0f to Color.Black.copy(alpha = .6f),
+                                                    .45f to Color.Black.copy(alpha = .4f),
+                                                    .72f to Color.Transparent,
+                                                    center = center,
+                                                    radius = size.width / 2,
+                                                )
+                                            scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
+                                                drawCircle(glow, radius = size.width / 2, center = center)
+                                            }
+                                        }.padding(16.dp),
                             ) {
-                                // The holiday greeting, big and in the holiday's own lettering
-                                holiday?.let {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    // The holiday greeting, big and in the holiday's own lettering
+                                    holiday?.let {
+                                        Text(
+                                            text = it.text,
+                                            fontFamily = holidayFont(it.effect),
+                                            fontSize = (if (shortScreen) 34 else 52).sp,
+                                            color = Color(it.color),
+                                            textAlign = TextAlign.Center,
+                                            style =
+                                                TextStyle(
+                                                    shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
+                                                ),
+                                        )
+                                    }
                                     Text(
-                                        text = it.text,
-                                        fontFamily = holidayFont(it.effect),
-                                        fontSize = 52.sp,
-                                        color = Color(it.color),
-                                        textAlign = TextAlign.Center,
-                                        style =
-                                            TextStyle(
-                                                shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
-                                            ),
+                                        text = stringResource(R.string.select_user),
+                                        style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
+                                    // The server's name is left off on small screens to make room for the names
+                                    if (!shortScreen) {
+                                        Text(
+                                            text = server.name ?: server.url,
+                                            style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                 }
-                                Text(
-                                    text = stringResource(R.string.select_user),
-                                    style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Text(
-                                    text = server.name ?: server.url,
-                                    style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                UserList(
+                                    users = state.users,
+                                    currentUser = currentUser,
+                                    onSwitchUser = { user ->
+                                        if (user.accessToken == null || user.requireLogin) {
+                                            showAddUserDialog(user)
+                                        } else if (user.hasPin) {
+                                            switchUserWithPin = user
+                                        } else {
+                                            trySwitchUser(user)
+                                        }
+                                    },
+                                    onAddUser = {
+                                        showAddUserDialog(null)
+                                    },
+                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV
+                                    kidsUser =
+                                        state.users
+                                            .map { it.user }
+                                            .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
+                                            ?.firstOrNull { it.accessToken != null && !it.requireLogin },
+                                    onKids = { user -> trySwitchUser(user, kids = true) },
+                                    showBigKids = remember { KidsMode.bigKidsTile(context) },
+                                    onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
+                                    showGuest = remember { GuestMode.tileOn(context) },
+                                    onGuest = { user -> trySwitchUser(user, guest = true) },
+                                    onRemoveUser = { user ->
+                                        viewModel.removeUser(user)
+                                    },
+                                    onPickPicture = { user, index -> viewModel.pickPicture(user, index) },
+                                    onSwitchServer = {
+                                        viewModel.setupNavigationManager.navigateTo(
+                                            SetupDestination.ServerList,
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
-                            UserList(
-                                users = state.users,
-                                currentUser = currentUser,
-                                onSwitchUser = { user ->
-                                    if (user.accessToken == null || user.requireLogin) {
-                                        showAddUserDialog(user)
-                                    } else if (user.hasPin) {
-                                        switchUserWithPin = user
-                                    } else {
-                                        trySwitchUser(user)
-                                    }
-                                },
-                                onAddUser = {
-                                    showAddUserDialog(null)
-                                },
-                                // Built-in Kids profile, using a saved grown-up sign-in on this TV
-                                kidsUser =
-                                    state.users
-                                        .map { it.user }
-                                        .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
-                                        ?.firstOrNull { it.accessToken != null && !it.requireLogin },
-                                onKids = { user -> trySwitchUser(user, kids = true) },
-                                showBigKids = remember { KidsMode.bigKidsTile(context) },
-                                onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
-                                showGuest = remember { GuestMode.tileOn(context) },
-                                onGuest = { user -> trySwitchUser(user, guest = true) },
-                                onRemoveUser = { user ->
-                                    viewModel.removeUser(user)
-                                },
-                                onSwitchServer = {
-                                    viewModel.setupNavigationManager.navigateTo(
-                                        SetupDestination.ServerList,
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
                         }
                     }
                     // Benflix: a "Did you know?" fact at the bottom middle, below Switch server
@@ -599,3 +619,9 @@ private fun FunFactCard(
         }
     }
 }
+
+/** Screens shorter than this (in dp) get the compact Who's watching layout */
+private const val SHORT_SCREEN_DP = 600
+
+/** The smallest the Who's watching tiles get */
+private const val MIN_TILE_DP = 72f

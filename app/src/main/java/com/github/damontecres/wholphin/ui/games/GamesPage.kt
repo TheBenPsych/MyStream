@@ -366,7 +366,15 @@ class GamesViewModel
                         BOARD_EXTRA_GAMES.keys.associateWith { prefs.getInt("${user.id}_$it", 0) }
                 }
             viewModelScope.launch {
-                _board.value = highScores.sync(user.id, user.name, isAdmin && !KidsMode.isActive && !GuestMode.isActive, mine)
+                _board.value =
+                    highScores.sync(user.id, user.name, isAdmin && !KidsMode.isActive && !GuestMode.isActive, mine) { bests ->
+                        // Bring back best scores made on other devices (or before a reinstall)
+                        val editor = prefs.edit()
+                        bests.forEach { (game, score) ->
+                            if (game in mine.keys && score > prefs.getInt("${user.id}_$game", 0)) editor.putInt("${user.id}_$game", score)
+                        }
+                        editor.apply()
+                    }
             }
         }
 
