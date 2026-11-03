@@ -95,7 +95,14 @@ class BenflixSeerrLink
                         if (method == SeerrAuthMethod.API_KEY) {
                             seerrServerRepository.addAndChangeServer(login.url, login.secret)
                         } else {
-                            seerrServerRepository.addAndChangeServer(login.url, method, login.username, login.secret)
+                            // A Jellyfin sign-in uses today's Jellyfin name, so renaming the account keeps working
+                            val name =
+                                if (method == SeerrAuthMethod.JELLYFIN) {
+                                    user.name?.takeIf { it.isNotBlank() } ?: login.username
+                                } else {
+                                    login.username
+                                }
+                            seerrServerRepository.addAndChangeServer(login.url, method, name, login.secret)
                         }
                         return true
                     } catch (ex: CancellationException) {
