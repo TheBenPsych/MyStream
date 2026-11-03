@@ -68,6 +68,7 @@ import com.github.damontecres.wholphin.services.StreamChoiceResult
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
+import com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter
 import com.github.damontecres.wholphin.ui.playback.SimpleMediaStream
 import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -667,8 +668,11 @@ fun chooseStream(
     preferredSubtitleLanguage: String?,
     onClick: (Int) -> Unit,
 ): DialogParams {
-    val filteredStreams = streams.filter { it.type == type }
     val currentIndex = streamChoice?.stream?.index
+    val filteredStreams =
+        BenflixSubtitleFilter
+            .visible(streams, keepIndex = currentIndex)
+            .filter { it.type == type }
     return DialogParams(
         fromLongClick = false,
         title = resources.getString(R.string.choose_stream, resources.getString(resourceFor(type))),

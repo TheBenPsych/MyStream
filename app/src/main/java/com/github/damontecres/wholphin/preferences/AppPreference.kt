@@ -1229,6 +1229,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_auto_mpv_off,
             )
 
+        val EnglishSubtitlesOnly =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_english_subs_only,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.allSubtitleLanguages },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { allSubtitleLanguages = !value }
+                },
+                summaryOn = R.string.benflix_english_subs_only_on,
+                summaryOff = R.string.benflix_english_subs_only_off,
+            )
+
         val LateNightStart =
             AppChoicePreference<AppPreferences, Int>(
                 title = R.string.benflix_late_night_start,
@@ -1370,6 +1382,7 @@ val basicPreferences =
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
                     AppPreference.AutoMpvStyledSubs,
+                    AppPreference.EnglishSubtitlesOnly,
                 ),
         ),
         PreferenceGroup(

@@ -37,18 +37,19 @@ internal fun PlaybackViewModel.getSubtitleStreams(mediaSource: MediaSourceInfo):
         serverRepository.currentUserDto
             ?.configuration
             ?.subtitleLanguagePreference
-    return mediaSource.mediaStreams
-        ?.filter { it.type == MediaStreamType.SUBTITLE }
+    return BenflixSubtitleFilter
+        .visible(mediaSource.mediaStreams.orEmpty())
+        .filter { it.type == MediaStreamType.SUBTITLE }
         .let {
             if (subtitleLanguagePreference.isNotNullOrBlank()) {
-                it?.sortedByDescending { it.language != null && subtitleLanguagePreference == it.language }
+                it.sortedByDescending { it.language != null && subtitleLanguagePreference == it.language }
             } else {
                 it
             }
-        }?.map {
+        }.map {
             // TODO should use a string provider instead
             SimpleMediaStream.from(context.resources, it, true)
-        }.orEmpty()
+        }
 }
 
 /**
