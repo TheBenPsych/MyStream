@@ -106,6 +106,10 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var userPreferencesDataStore: DataStore<AppPreferences>
 
+    /** Benflix: ticks off finished anime episodes on AniList */
+    @Inject
+    lateinit var aniListSync: com.github.damontecres.wholphin.services.AniListSync
+
     @Inject
     lateinit var userPreferencesService: UserPreferencesService
 
@@ -254,6 +258,7 @@ class MainActivity : AppCompatActivity() {
         // skip Who's watching (checked against the timer in Settings)
         val checkResume = savedInstanceState?.getBoolean(KEY_IN_APP, false) == true
         if (savedInstanceState == null) ResumeTimer.clear(this)
+        if (aniListSync.isSignInReturn(intent)) aniListSync.finishSignIn(intent)
         viewModel.appStart(intent, resume = if (checkResume) null else false)
         setContent {
             PhoneFit {
@@ -486,6 +491,11 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         Timber.v("onNewIntent")
+        // Benflix: back from signing in to AniList; stay on the page that was open
+        if (aniListSync.isSignInReturn(intent)) {
+            aniListSync.finishSignIn(intent)
+            return
+        }
         setIntent(intent)
         viewModel.appStart(intent, resume = ResumeTimer.resumeAllowed)
     }

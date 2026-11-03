@@ -163,6 +163,7 @@ class MyBenflixViewModel
  * Your own corner of Benflix on the TV: who's watching, what you're in the middle of,
  * your list, what you liked and what you watched lately
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MyBenflixPage(
     modifier: Modifier = Modifier,
@@ -225,8 +226,10 @@ fun MyBenflixPage(
         // Benflix: get the Server page ready in the background for the admin
         PreloadServerPage(isAdmin = userDto?.policy?.isAdministrator == true && !kids && !GuestMode.isActive)
         if (!kids && !GuestMode.isActive) {
-            Row(
+            // Wraps onto a second line on narrow phones
+            androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(start = 8.dp),
             ) {
                 if (userDto?.policy?.isAdministrator == true) {
@@ -238,6 +241,8 @@ fun MyBenflixPage(
                 Button(onClick = { showParentPin = true }) {
                     Text("Parental controls")
                 }
+                // Benflix: tick off finished anime episodes on AniList
+                AniListButton()
             }
         }
         // Benflix: this month so far

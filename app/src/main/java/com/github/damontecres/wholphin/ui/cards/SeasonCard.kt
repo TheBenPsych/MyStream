@@ -35,6 +35,7 @@ import com.github.damontecres.wholphin.services.FillerKind
 import com.github.damontecres.wholphin.services.animeEpisodeLabel
 import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.services.finaleTagFor
+import com.github.damontecres.wholphin.services.subOnlyFor
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
@@ -78,6 +79,7 @@ fun SeasonCard(
         aspectRatio = aspectRatio,
         fillerTag = fillerTagFor(item),
         finaleTag = finaleTagFor(item),
+        subOnly = subOnlyFor(item),
     )
 }
 
@@ -148,6 +150,8 @@ fun SeasonCard(
     fillerTag: FillerKind? = null,
     // Benflix: SEASON FINALE / SERIES FINALE
     finaleTag: String? = null,
+    // Benflix: an anime episode with no English voices, when others in the show have them
+    subOnly: Boolean = false,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     // Do not use `by` here, this way we are Defer reads and recompositions to only when modifier calculates
@@ -205,6 +209,16 @@ fun SeasonCard(
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
+                                .padding(6.dp),
+                    )
+                }
+                if (subOnly) {
+                    CardBadge(
+                        text = "SUB ONLY",
+                        background = SUB_ONLY_COLOR,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
                                 .padding(6.dp),
                     )
                 }
@@ -284,3 +298,6 @@ fun rememberFocusedAfterDelay(interactionSource: MutableInteractionSource): andr
 val FINALE_COLOR =
     androidx.compose.ui.graphics
         .Color(0xFF8C1D18)
+
+/** Benflix: the SUB ONLY badge's colour */
+private val SUB_ONLY_COLOR = Color(0xFF37474F)

@@ -135,6 +135,7 @@ class RecommendedViewModel
                         SHELVES_HOME -> libraryHome.homeShelves(parentId, kind)
                         SHELVES_SEASONS -> libraryHome.seasonShelves(parentId)
                         SHELVES_DECADES -> libraryHome.decadeShelves(parentId)
+                        SHELVES_WEEK -> libraryHome.weekShelves(parentId)
                         else -> emptyList()
                     }
                 if (shelfSet == SHELVES_HOME && kind != LibraryKind.OTHER) loadFeatured()
@@ -235,6 +236,51 @@ class RecommendedViewModel
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load the banner for %s", parentId)
                 }
+            }
+        }
+
+        /** Opens a tile, or for the music rows that start music (mixes, decades), starts it */
+        fun clickItem(
+            position: RowColumn,
+            item: BaseItem,
+        ) {
+            val shelf = shelves.getOrNull(position.row - recommendedRows.size)
+            val action = shelf?.onClick
+            if (action == null) {
+                navigationManager.navigateTo(item.destination())
+                return
+            }
+            viewModelScope.launchIO {
+                try {
+                    action(item)
+                    withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(Destination.NowPlaying) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not start %s", item.name)
+                    showToast(context, "Couldn't start that music")
+                }
+            }
+        }
+
+        /** The banner's play button: artists get their songs shuffled, everything else plays or opens */
+        fun playFeatured(item: BaseItem) {
+            if (item.type == BaseItemKind.MUSIC_ARTIST) {
+                viewModelScope.launchIO {
+                    try {
+                        libraryHome.shuffleArtist(item)
+                        withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(Destination.NowPlaying) }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not shuffle %s", item.name)
+                        showToast(context, "Couldn't start that music")
+                    }
+                }
+            } else if (item.type.playable) {
+                navigationManager.navigateTo(Destination.Playback(item))
+            } else {
+                navigationManager.navigateTo(item.destination())
             }
         }
 
@@ -468,6 +514,7 @@ data class RecommendedState(
 const val SHELVES_HOME = "home"
 const val SHELVES_SEASONS = "seasons"
 const val SHELVES_DECADES = "decades"
+const val SHELVES_WEEK = "week"
 
 data class RecommendedRow<T>(
     val title: Int,
@@ -538,9 +585,7 @@ fun RecommendedContent(
             HomePageContent(
                 homeRows = state.rows,
                 position = position,
-                onClickItem = { _, item ->
-                    viewModel.navigationManager.navigateTo(item.destination())
-                },
+                onClickItem = viewModel::clickItem,
                 onLongClickItem = { position, item ->
                     showContextMenu =
                         ContextMenu.ForBaseItem(
@@ -581,13 +626,7 @@ fun RecommendedContent(
                 modifier = modifier,
                 // Benflix mini Home: a banner like Home's, for this library
                 featured = state.featured,
-                onClickFeaturedPlay = { item ->
-                    if (item.type.playable) {
-                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                    } else {
-                        viewModel.navigationManager.navigateTo(item.destination())
-                    }
-                },
+                onClickFeaturedPlay = viewModel::playFeatured,
                 onClickFeaturedInfo = { item -> viewModel.navigationManager.navigateTo(item.destination()) },
                 onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
                 onClickSurprise = viewModel::surpriseMe,
