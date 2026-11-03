@@ -25,7 +25,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
@@ -52,6 +51,7 @@ import org.jellyfin.sdk.model.api.QuickConnectDto
 import org.jellyfin.sdk.model.api.QuickConnectResult
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
+import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel(assistedFactory = SwitchUserViewModel.Factory::class)

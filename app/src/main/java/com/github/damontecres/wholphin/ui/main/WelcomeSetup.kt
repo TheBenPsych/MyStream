@@ -61,12 +61,12 @@ import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.preferences.SubtitleModePreference
 import com.github.damontecres.wholphin.preferences.updateBenflixPreferences
 import com.github.damontecres.wholphin.services.BenflixSettingsSync
-import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
