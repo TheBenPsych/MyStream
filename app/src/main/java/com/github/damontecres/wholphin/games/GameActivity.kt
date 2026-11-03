@@ -804,6 +804,7 @@ class GameActivity : ComponentActivity() {
     private fun playDevices(): List<InputDevice> =
         InputDevice
             .getDeviceIds()
+            .toList()
             .mapNotNull { InputDevice.getDevice(it) }
             .filter { d ->
                 !d.isVirtual &&
