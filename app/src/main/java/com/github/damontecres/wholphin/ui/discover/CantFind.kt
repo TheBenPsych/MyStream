@@ -125,7 +125,9 @@ fun CantFindDialog(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Whoever asked will be told, and the title's page will say so. It keeps searching, so if a copy turns up it still downloads. Pick a note:",
+                text =
+                    "Whoever asked will be told, and the title's page will say so. " +
+                        "It keeps searching, so if a copy turns up it still downloads. Pick a note:",
                 color = Color(0xFFCFCFD6),
                 fontSize = 15.sp,
             )
@@ -210,7 +212,12 @@ fun CantFindBlock(
         ) {
             Box(Modifier.padding(top = 2.dp)) {
                 Text(
-                    text = if (entry.auto) "We looked for a week, but couldn't find this yet" else "Ben looked, but couldn't find this yet",
+                    text =
+                        if (entry.auto) {
+                            "We looked for a week, but couldn't find this yet"
+                        } else {
+                            "Ben looked, but couldn't find this yet"
+                        },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = CANT_FIND_COLOR,

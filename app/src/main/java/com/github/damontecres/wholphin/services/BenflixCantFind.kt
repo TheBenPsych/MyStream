@@ -183,7 +183,8 @@ class BenflixCantFind
                             val media = raw["mediaInfo"] as? JsonObject
                             // Something is downloading, so it was found after all
                             if ((media?.get("downloadStatus") as? JsonArray).orEmpty().isNotEmpty()) return@mapNotNull null
-                            if ((media?.get("status") as? JsonPrimitive)?.intOrNull == SeerrAvailability.AVAILABLE.status) return@mapNotNull null
+                            val status = (media?.get("status") as? JsonPrimitive)?.intOrNull
+                            if (status == SeerrAvailability.AVAILABLE.status) return@mapNotNull null
                             val title = ((raw["title"] ?: raw["name"]) as? JsonPrimitive)?.contentOrNull
                             CantFindEntry(
                                 key = key!!,

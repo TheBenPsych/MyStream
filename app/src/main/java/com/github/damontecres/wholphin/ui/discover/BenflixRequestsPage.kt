@@ -1699,6 +1699,7 @@ private fun RequestList(
                         ) { Text("Approve all $waiting") }
                     }
                 }
+
                 fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
                 val groups =
                     listOf(
@@ -1727,7 +1728,14 @@ private fun RequestList(
                     }
                     items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
                         Box(Modifier.padding(horizontal = 16.dp)) {
-                            val notFound = if (entry.available || entry.status == RequestStatus.DECLINED) null else entry.cantFindKey()?.let { cantFind[it] }
+                            val notFound =
+                                if (entry.available ||
+                                    entry.status == RequestStatus.DECLINED
+                                ) {
+                                    null
+                                } else {
+                                    entry.cantFindKey()?.let { cantFind[it] }
+                                }
                             // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or undo)
                             val canMark =
                                 !mineOnly && viewModel.isAdmin && !entry.available && entry.status == RequestStatus.APPROVED
@@ -1837,13 +1845,15 @@ private fun RequestRow(
                 )
                 StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, isAdminList = isAdminList)
                 if (cantFind != null) CantFindNoteLine(cantFind)
-                if (cantFind == null) RequestSteps(
-                    approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
-                    downloading = entry.downloading,
-                    percent = entry.downloadPercent,
-                    ready = entry.available,
-                    declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
-                )
+                if (cantFind == null) {
+                    RequestSteps(
+                        approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
+                        downloading = entry.downloading,
+                        percent = entry.downloadPercent,
+                        ready = entry.available,
+                        declined = entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE,
+                    )
+                }
             }
             if (isTv) buttons()
         }

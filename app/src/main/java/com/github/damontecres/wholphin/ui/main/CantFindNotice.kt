@@ -233,7 +233,8 @@ fun CantFindLayer(
                 Text(
                     text =
                         if (notice.entry.auto) {
-                            "We looked for this one for a week but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself."
+                            "We looked for this one for a week but couldn't find a copy yet. " +
+                                "If one turns up, it'll come to Benflix by itself."
                         } else {
                             "Ben looked for this one but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself."
                         },
