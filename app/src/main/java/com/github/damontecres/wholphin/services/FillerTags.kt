@@ -110,7 +110,8 @@ class FillerService
         @param:ApplicationContext private val context: Context,
         @param:StandardOkHttpClient private val http: OkHttpClient,
     ) {
-        private val done = mutableSetOf<UUID>()
+        // Benflix: touched from the screen and from background threads, so it must be thread-safe
+        private val done: MutableSet<UUID> = java.util.Collections.synchronizedSet(mutableSetOf())
 
         private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

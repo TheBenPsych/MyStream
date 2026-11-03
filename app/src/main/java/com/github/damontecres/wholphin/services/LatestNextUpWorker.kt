@@ -29,9 +29,9 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @HiltWorker
@@ -119,7 +119,8 @@ class LatestNextUpSchedulerService
                     repeatInterval = 4.hours.toJavaDuration(),
                 ).setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
-                    15.minutes.toJavaDuration(),
+                    15L,
+                    TimeUnit.MINUTES,
                 ).setConstraints(constraints)
                     .setInputData(
                         workDataOf(

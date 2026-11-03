@@ -20,11 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ActivityScoped
@@ -104,12 +103,13 @@ class SuggestionsSchedulerService
                 ).setConstraints(constraints)
                     .setBackoffCriteria(
                         BackoffPolicy.EXPONENTIAL,
-                        15.minutes.toJavaDuration(),
+                        15L,
+                        TimeUnit.MINUTES,
                     ).setInputData(inputData)
                     .addTag("user:$userId")
 
             val initialDelaySeconds = initialDelaySecondsProvider().coerceIn(60L, 180L)
-            periodicWorkRequestBuilder.setInitialDelay(initialDelaySeconds.seconds.toJavaDuration())
+            periodicWorkRequestBuilder.setInitialDelay(initialDelaySeconds, TimeUnit.SECONDS)
 
             Timber.i("Scheduling periodic SuggestionsWorker with ${initialDelaySeconds}s delay")
 
