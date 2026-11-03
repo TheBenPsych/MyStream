@@ -380,7 +380,7 @@ class GamesViewModel
                 linkedMapOf(
                     HigherLowerViewModel.BOARD_KEY to ("Higher or Lower" to "Best streak"),
                     "GUESS_THE_MOVIE" to ("Guess the movie" to "Most points"),
-                    DailyRiddleViewModel.BOARD_KEY to ("Daily movie riddle" to "Days in a row"),
+                    DailyRiddleViewModel.BOARD_KEY to ("Movie riddle" to "Best streak"),
                 )
         }
     }
@@ -425,7 +425,7 @@ fun GamesPage(
         )
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
-        // Benflix "Guess the movie" and the daily riddle, made from your own movies
+        // Benflix "Guess the movie", the movie riddle and Higher or Lower, made from your own movies
         val movieGames =
             listOf<@Composable (Modifier) -> Unit>(
                 { mod ->
@@ -441,8 +441,8 @@ fun GamesPage(
                 },
                 { mod ->
                     MovieGameTile(
-                        title = "Daily movie riddle",
-                        subtitle = "Five movie riddles a day, the same for the whole family. Play every day to grow your streak!",
+                        title = "Movie riddle",
+                        subtitle = "Clues get easier as the clock runs down. Guess right to keep going, one miss ends your run!",
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
@@ -1118,7 +1118,7 @@ private fun WorksWith(
 }
 
 /**
- * A colourful tile for the movie games (Guess the movie, Daily riddle, Higher or Lower).
+ * A colourful tile for the movie games (Guess the movie, Movie riddle, Higher or Lower).
  * The whole title and description always show: nothing is cut off. On TV the icon sits next to the
  * title so the text gets the full width of the tile.
  */
