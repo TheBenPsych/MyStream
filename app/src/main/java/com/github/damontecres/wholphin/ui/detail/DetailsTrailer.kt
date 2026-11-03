@@ -180,14 +180,15 @@ class DetailsTrailerViewModel
                     val p =
                         player ?: ExoPlayer
                             .Builder(context)
-                            // Benflix: take the audio focus, so it doesn't play over other apps
+                            // Benflix: media audio attributes, but no audio focus. The trailer starts
+                            // muted, and taking focus would pause other apps' music on phones
                             .setAudioAttributes(
                                 AudioAttributes
                                     .Builder()
                                     .setUsage(C.USAGE_MEDIA)
                                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                                     .build(),
-                                true,
+                                false,
                             )
                             .build()
                             .also { newPlayer ->
