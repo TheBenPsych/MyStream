@@ -219,6 +219,8 @@ class MarkWatchedUpToViewModel
                     if (index < 0) return@launchIO
                     val toMark = episodes.take(index + 1).filter { it.userData?.played != true }
                     toMark.forEach { api.playStateApi.markPlayedItem(it.id) }
+                    // Benflix: AniList only needs the last one (it never moves backwards)
+                    AniListSync.instance?.markedWatched(episode.id)
                     showToast(
                         context,
                         if (toMark.size == 1) "Marked 1 episode as watched" else "Marked ${toMark.size} episodes as watched",

@@ -122,7 +122,7 @@ object AniListFacts {
  * Benflix: anime facts from AniList (anilist.co), which is free and needs no account.
  *
  * AniList allows about 90 requests a minute (sometimes only 30), so requests wait their turn,
- * at most one every 2 seconds, and back off when AniList says to slow down. Answers are saved
+ * at most one a second, and back off when AniList says to slow down. Answers are saved
  * on the device so pages don't ask again for days. Whole libraries are matched 10 shows per
  * request, which also gives each show its fan genres (Shonen, Isekai...).
  */
@@ -553,7 +553,7 @@ class AniListService
 
         companion object {
             private const val URL = "https://graphql.anilist.co"
-            private const val MIN_GAP_MS = 2_000L
+            private const val MIN_GAP_MS = 1_000L
             private const val MAX_TRIES = 3
             private const val BATCH = 10
 

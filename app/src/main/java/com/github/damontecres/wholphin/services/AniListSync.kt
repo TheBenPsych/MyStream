@@ -190,6 +190,9 @@ class AniListSync
             }
         }
 
+        /** Marked as watched by hand (or "watched up to here"): counts like finishing it */
+        fun markedWatched(itemId: UUID) = watched(itemId, 1, 1)
+
         /** Sends what's waiting, oldest first. Stops at the first problem and tries again next time. */
         fun sendQueue() {
             scope.launch {
@@ -247,7 +250,9 @@ class AniListSync
             repeat(MAX_SEASONS) {
                 val (sequel, count) = aniList.sequelOf(mediaId)
                 if (count == null || number <= count || sequel == null) {
-                    save(token, mediaId, number, count)
+                    if (save(token, mediaId, number, count)) {
+                        showToast(context, "Ticked off on AniList: ${series.name} episode $number")
+                    }
                     return
                 }
                 number -= count
@@ -260,7 +265,7 @@ class AniListSync
             mediaId: Int,
             progress: Int,
             episodes: Int?,
-        ) {
+        ): Boolean {
             val current =
                 aniList
                     .signedInQuery(
@@ -270,7 +275,7 @@ class AniListSync
                     )?.let { (it["Media"] as? JsonObject)?.get("mediaListEntry") as? JsonObject }
             val had = (current?.get("progress") as? JsonPrimitive)?.intOrNull ?: 0
             val hadStatus = (current?.get("status") as? JsonPrimitive)?.contentOrNull
-            if (had >= progress && hadStatus != "PLANNING") return
+            if (had >= progress && hadStatus != "PLANNING") return false
             val status = if (episodes != null && progress >= episodes) "COMPLETED" else "CURRENT"
             aniList.signedInQuery(
                 "mutation (\$id: Int, \$p: Int, \$s: MediaListStatus) { SaveMediaListEntry(mediaId: \$id, progress: \$p, status: \$s) { id } }",
@@ -282,6 +287,7 @@ class AniListSync
                 token,
             )
             Timber.i("AniList: %s episode %s (%s)", mediaId, progress, status)
+            return true
         }
 
         companion object {

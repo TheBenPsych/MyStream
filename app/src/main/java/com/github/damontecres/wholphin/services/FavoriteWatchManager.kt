@@ -25,7 +25,10 @@ class FavoriteWatchManager
         ): UserItemDataDto {
             datePlayedService.invalidate(itemId)
             return if (played) {
-                api.playStateApi.markPlayedItem(itemId).content
+                api.playStateApi.markPlayedItem(itemId).content.also {
+                    // Benflix: an anime episode marked watched is ticked off on AniList too
+                    AniListSync.instance?.markedWatched(itemId)
+                }
             } else {
                 api.playStateApi.markUnplayedItem(itemId).content
             }
