@@ -1275,11 +1275,11 @@ fun BenflixRequestsPage(
         tabs = tabs,
         modifier = modifier,
     ) { index, _ ->
+        // Last tab: everyone's requests with Approve / Decline (admin), or what you asked for and what arrived
         when (index) {
             0 -> FindShelf(FindSection.MOVIES, viewModel)
             1 -> FindShelf(FindSection.SHOWS, viewModel)
             2 -> FindShelf(FindSection.ANIME, viewModel)
-            // Admin: everyone's requests with Approve / Decline. Everyone else: what they asked for and what arrived
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
     }
@@ -1810,12 +1810,7 @@ private fun RequestList(
                             when (arrivedOnly) {
                                 true -> "Nothing you asked for has arrived yet."
                                 false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
-                                null ->
-                                    if (mineOnly) {
-                                        "You haven't asked for anything yet. Find something on the Movies, Shows or Anime tab and ask for it."
-                                    } else {
-                                        "No requests yet."
-                                    }
+                                null -> if (mineOnly) NOTHING_ASKED_YET else "No requests yet."
                             },
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2122,3 +2117,6 @@ private fun PasswordDialog(
         }
     }
 }
+
+private const val NOTHING_ASKED_YET =
+    "You haven't asked for anything yet. Find something on the Movies, Shows or Anime tab and ask for it."
