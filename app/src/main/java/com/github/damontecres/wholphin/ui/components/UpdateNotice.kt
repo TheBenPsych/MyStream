@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
@@ -90,11 +91,12 @@ fun rememberUpdateAlert(): Boolean {
     return version != null && !kids && !guest
 }
 
-/** The little red circle with a white "!" */
+/** The little red circle with a white "!" (or a small number, for requests that are here) */
 @Composable
 fun UpdateBang(
     modifier: Modifier = Modifier,
     size: Dp = 16.dp,
+    text: String = "!",
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -104,9 +106,9 @@ fun UpdateBang(
                 .background(UPDATE_RED, CircleShape),
     ) {
         Text(
-            text = "!",
+            text = text,
             color = Color.White,
-            fontSize = (size.value * .72f).sp,
+            fontSize = (size.value * (if (text.length > 1) .56f else .72f)).sp,
             lineHeight = (size.value * .72f).sp,
             fontWeight = FontWeight.Black,
         )
@@ -182,20 +184,102 @@ fun ServerAlertTip(
     NoticeTip("$current $where", above, show && !updateTip && !guest, ServerAlertNotice::hideTip)
 }
 
+/**
+ * Benflix: "Your request is here!" as a quiet notice instead of a pop-up (Ben asked 2026-11-03).
+ * - A small red number sits on More (TV) or My Benflix (phone), and on My Benflix in the More menu,
+ *   until you open My Benflix, where the "Your requests are here" row lists them.
+ * - Each new arrival gets its own tip bubble for 7 seconds, one after another, oldest first.
+ */
+object RequestReadyNotice {
+    data class Tip(
+        val requestId: Int,
+        val title: String,
+        val posterUrl: String?,
+    )
+
+    private val _count = MutableStateFlow(0)
+
+    /** How many arrived requests you haven't looked at in My Benflix yet */
+    val count: StateFlow<Int> = _count
+
+    private val _tips = MutableStateFlow<List<Tip>>(emptyList())
+
+    /** Bubbles still to show, in order. The first one is on screen. */
+    val tips: StateFlow<List<Tip>> = _tips
+
+    /** Called once a bubble has had its turn */
+    var onTipShown: (Tip) -> Unit = {}
+
+    fun setCount(count: Int) {
+        _count.value = count
+    }
+
+    fun addTips(tips: List<Tip>) {
+        _tips.value = (_tips.value + tips.filter { t -> _tips.value.none { it.requestId == t.requestId } })
+    }
+
+    fun clear() {
+        _count.value = 0
+        _tips.value = emptyList()
+    }
+
+    internal fun tipDone(tip: Tip) {
+        _tips.value = _tips.value.filter { it.requestId != tip.requestId }
+        onTipShown(tip)
+    }
+
+    /** Each bubble fades away by itself after this long */
+    const val TIP_MS = 7_000L
+}
+
+/** How many request arrivals to show on the red number (0 = none, and always 0 for Kids and Guest) */
+@Composable
+fun rememberRequestReadyCount(): Int {
+    val count by RequestReadyNotice.count.collectAsState()
+    val kids by KidsMode.active.collectAsState()
+    val guest by GuestMode.active.collectAsState()
+    return if (kids || guest) 0 else count
+}
+
+/** The "Your request is here" bubble. [where] says how to find it, like "It's in More, then My Benflix." */
+@Composable
+fun RequestReadyTip(
+    where: String,
+    above: Boolean,
+) {
+    val tips by RequestReadyNotice.tips.collectAsState()
+    // Waits for the update and Server bubbles first, so two never show at once
+    val updateTip by UpdateNotice.tip.collectAsState()
+    val serverTip by ServerAlertNotice.tip.collectAsState()
+    val guest by GuestMode.active.collectAsState()
+    val tip = tips.firstOrNull() ?: return
+    NoticeTip(
+        text = "Your request is here: ${tip.title}! $where",
+        above = above,
+        show = !updateTip && !serverTip && !guest,
+        onHidden = { RequestReadyNotice.tipDone(tip) },
+        durationMs = RequestReadyNotice.TIP_MS,
+        poster = tip.posterUrl,
+    )
+}
+
 @Composable
 private fun NoticeTip(
     text: String,
     above: Boolean,
     show: Boolean,
     onHidden: () -> Unit,
+    durationMs: Long = UpdateNotice.TIP_MS,
+    poster: String? = null,
 ) {
     val kids by KidsMode.active.collectAsState()
     if (kids) return
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(show) {
+    // Keyed on the text too, so the next request's bubble starts its own count
+    LaunchedEffect(show, text) {
         if (show) {
             visible = true
-            delay(UpdateNotice.TIP_MS)
+            delay(durationMs)
             visible = false
             delay(400)
             onHidden()
@@ -225,7 +309,20 @@ private fun NoticeTip(
                             .background(TIP_BG, RoundedCornerShape(10.dp))
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
-                    UpdateBang(size = 18.dp)
+                    if (poster != null) {
+                        coil3.compose.AsyncImage(
+                            model = poster,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(width = 32.dp, height = 48.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF333338)),
+                        )
+                    } else {
+                        UpdateBang(size = 18.dp)
+                    }
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = text,

@@ -62,6 +62,7 @@ class MyBenflixViewModel
         private val api: ApiClient,
         val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
+        private val requestReady: RequestReadyService,
     ) : ViewModel() {
         /** The profile picture, the same one the top bar shows */
         fun userImageUrl(userId: java.util.UUID): String = api.imageApi.getUserImageUrl(userId)
@@ -73,7 +74,10 @@ class MyBenflixViewModel
             private val lastRows = java.util.concurrent.ConcurrentHashMap<String, List<HubRow>>()
 
             // Continue watching lives on Home, so it isn't repeated here
-            private val ROW_TITLES = listOf("My List", "Liked", "Watch history")
+            private val ROW_TITLES = listOf("My List", REQUESTS_ROW, "Liked", "Watch history")
+
+            /** Benflix: things you asked for in Requests that are now on Benflix, newest first */
+            const val REQUESTS_ROW = "Your requests are here"
         }
 
         val rows: StateFlow<List<HubRow>?> = _rows
@@ -124,6 +128,31 @@ class MyBenflixViewModel
                                         .getItems(request(filters = listOf(ItemFilter.IS_FAVORITE), sortBy = ItemSortBy.DATE_CREATED))
                                         .content.items
                                         .map { BaseItem(it) }
+                                },
+                            )
+                        },
+                        suspend {
+                            HubRow(
+                                REQUESTS_ROW,
+                                safe {
+                                    if (KidsMode.isActive || GuestMode.isActive) return@safe emptyList()
+                                    // Look again (at most once a minute), then the red number goes since you're here
+                                    requestReady.refresh()
+                                    requestReady.markAllSeen()
+                                    val order = requestReady.ready.value.mapNotNull { it.jellyfinId }
+                                    if (order.isEmpty()) return@safe emptyList()
+                                    val found =
+                                        api.itemsApi
+                                            .getItems(
+                                                GetItemsRequest(
+                                                    userId = userId,
+                                                    ids = order,
+                                                    fields = HomeItemFields,
+                                                    enableTotalRecordCount = false,
+                                                ),
+                                            ).content.items
+                                            .associateBy { it.id }
+                                    order.mapNotNull { id -> found[id]?.let { BaseItem(it) } }
                                 },
                             )
                         },

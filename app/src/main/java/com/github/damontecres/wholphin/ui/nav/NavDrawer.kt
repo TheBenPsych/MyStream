@@ -669,6 +669,10 @@ fun NavDrawer(
             },
             hint = stringResource(R.string.more_hint_my_benflix),
             isProfile = true,
+            // Benflix: requests that have arrived and you haven't looked at yet
+            badge =
+                com.github.damontecres.wholphin.ui.components
+                    .rememberRequestReadyCount(),
         )
     // Home, Channels, Games, Requests (not for Kids). My Benflix is the first thing under More.
     val mainTabs =
