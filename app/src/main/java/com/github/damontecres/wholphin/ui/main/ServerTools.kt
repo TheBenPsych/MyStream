@@ -29,6 +29,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
 import com.github.damontecres.wholphin.services.BenflixNote
+import com.github.damontecres.wholphin.services.BenflixMessages
 import com.github.damontecres.wholphin.services.BenflixNotes
 import com.github.damontecres.wholphin.services.BenflixPeople
 import com.github.damontecres.wholphin.services.BenflixProblems
@@ -92,6 +93,7 @@ class ServerToolsViewModel
         private val problems: BenflixProblems,
         private val dashboard: ServerDashboardData,
         private val actions: BenflixServerActions,
+        private val benflixMessages: BenflixMessages,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ServerToolsState())
         val state: StateFlow<ServerToolsState> = _state
@@ -331,13 +333,17 @@ class ServerToolsViewModel
 
         fun open(item: CheckupItem) = navigationManager.navigateTo(Destination.MediaItem(item.itemId, item.type))
 
-        /** Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open */
+        /**
+         * Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open.
+         * When Ben picked people, anyone who isn't on right now gets it saved for the next time they open Benflix.
+         */
         fun sendPopup(
             text: String,
             onlyFor: Set<java.util.UUID>? = null,
         ) {
             if (text.isBlank()) return
             work {
+                val header = "Message from Ben"
                 val sessions =
                     api.sessionApi
                         .getSessions(activeWithinSeconds = 960)
@@ -346,26 +352,57 @@ class ServerToolsViewModel
                         // Benflix: only the people Ben picked
                         .filter { onlyFor == null || it.userId in onlyFor }
                 var sent = 0
+                val reached = mutableSetOf<java.util.UUID>()
                 sessions.forEach { session ->
                     try {
                         api.sessionApi.sendMessageCommand(
                             sessionId = session.id!!,
-                            data = MessageCommand(header = "Message from Ben", text = text, timeoutMs = 15_000L),
+                            data = MessageCommand(header = header, text = text, timeoutMs = 15_000L),
                         )
                         sent++
+                        session.userId?.let { reached += it }
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
                         Timber.w(ex, "Could not send the pop-up to %s", session.deviceName)
                     }
                 }
+                // Benflix: picked people who aren't on Benflix right now see it next time they open it
+                val later = mutableListOf<String>()
+                if (onlyFor != null) {
+                    val names =
+                        (_state.value.people ?: people.list()).associate { it.id to it.name.orEmpty() }
+                    (onlyFor - reached).forEach { id ->
+                        try {
+                            benflixMessages.saveFor(id, header, text)
+                            later += names[id] ?: "Someone"
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Could not save the message for %s", id)
+                        }
+                    }
+                }
+                val now =
+                    if (sent == 0) {
+                        null
+                    } else {
+                        "It showed on $sent screen" + (if (sent == 1) "" else "s") + " right away."
+                    }
+                val saved =
+                    if (later.isEmpty()) {
+                        null
+                    } else {
+                        listNames(later) + (if (later.size == 1) " isn't" else " aren't") +
+                            " on Benflix right now, so it will pop up the next time they open it."
+                    }
                 _state.value =
                     _state.value.copy(
                         message =
-                            if (sent == 0) {
+                            if (now == null && saved == null) {
                                 "Nobody to send to" to "No Benflix screens are open right now."
                             } else {
-                                "Pop-up sent" to "It showed on $sent screen" + (if (sent == 1) "" else "s") + " right away."
+                                (if (now != null) "Pop-up sent" else "Message saved") to listOfNotNull(now, saved).joinToString(" ")
                             },
                     )
             }
@@ -407,6 +444,11 @@ sealed interface ServerToolsDialog {
     data object WriteWelcome : ServerToolsDialog
 
     data object WritePopup : ServerToolsDialog
+
+    /** Benflix: a pop-up message for one person (from their People menu) */
+    data class WritePopupTo(
+        val user: UserDto,
+    ) : ServerToolsDialog
 
     data object AddPerson : ServerToolsDialog
 
@@ -628,8 +670,10 @@ fun LazyListScope.messageItems(
     item { sectionTitle("Pop-up") }
     item {
         ServerActionRow(
-            headline = "Pop-up message on every screen",
-            supporting = "Like \"Server restarting in 5 minutes\". It pops up right away on every Benflix screen that's open.",
+            headline = "Send a pop-up message",
+            supporting =
+                "To everyone, or tick just the people you want. It pops up right away. " +
+                    "Someone you picked who isn't on Benflix sees it the next time they open it.",
             onClick = { showDialog(ServerToolsDialog.WritePopup) },
         )
     }
@@ -810,7 +854,7 @@ fun ServerToolsDialogs(
             StringInputDialog(
                 input =
                     StringInput(
-                        title = "Pop-up message on every screen",
+                        title = "Send a pop-up message",
                         value = "",
                         keyboardOptions =
                             KeyboardOptions(
@@ -822,6 +866,28 @@ fun ServerToolsDialogs(
                     ),
                 onSave = {
                     if (it.isBlank()) onDismiss() else showDialog(ServerToolsDialog.SendTo(it, popup = true))
+                },
+                onDismissRequest = onDismiss,
+            )
+        }
+
+        is ServerToolsDialog.WritePopupTo -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = "Message to ${dialog.user.name.orEmpty()}",
+                        value = "",
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Done,
+                            ),
+                        onSubmit = {},
+                        maxLines = 3,
+                    ),
+                onSave = {
+                    onDismiss()
+                    if (it.isNotBlank()) viewModel.sendPopup(it, setOf(dialog.user.id))
                 },
                 onDismissRequest = onDismiss,
             )
@@ -867,6 +933,15 @@ fun ServerToolsDialogs(
                 title = user.name.orEmpty(),
                 dialogItems =
                     buildList {
+                        add(
+                            DialogItem(
+                                headlineContent = { Text("Send a message") },
+                                supportingContent = {
+                                    Text("Pops up on their screen now, or the next time they open Benflix")
+                                },
+                                onClick = { showDialog(ServerToolsDialog.WritePopupTo(user)) },
+                            ),
+                        )
                         add(
                             DialogItem(
                                 headlineContent = { Text("New password") },
@@ -1019,7 +1094,13 @@ fun ServerToolsDialogs(
                                     )
                                 },
                                 supportingContent = {
-                                    Text(if (dialog.picked.isEmpty()) "Or tick people below first" else "Only the people ticked below")
+                                    Text(
+                                        if (dialog.picked.isEmpty()) {
+                                            "Or tick people below first"
+                                        } else {
+                                            "Only the people ticked below. Anyone not on now sees it next time."
+                                        },
+                                    )
                                 },
                                 onClick = { send(dialog.picked.ifEmpty { null }) },
                             ),
@@ -1190,6 +1271,14 @@ internal fun lastWatched(logLine: String): String {
 }
 
 /** Benflix: like "Wed 9:00 PM" */
+/** "Sam", "Sam and Alex", "Sam, Alex and Jo" */
+internal fun listNames(names: List<String>): String =
+    when (names.size) {
+        0 -> ""
+        1 -> names[0]
+        else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
+    }
+
 internal fun untilText(at: Long): String =
     java.time.Instant
         .ofEpochMilli(at)

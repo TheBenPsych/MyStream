@@ -341,6 +341,10 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.BedtimeLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix: pop-up messages from Ben
+                                                com.github.damontecres.wholphin.ui.main.MessageLayer(
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
                                                 // Benflix: "Your request is here!"
                                                 com.github.damontecres.wholphin.ui.main.RequestArrivedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),

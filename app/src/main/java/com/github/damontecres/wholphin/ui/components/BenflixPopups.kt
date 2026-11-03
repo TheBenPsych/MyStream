@@ -12,6 +12,7 @@ object BenflixPopups {
     internal val waiting = mutableStateMapOf<String, Int>()
 
     const val BEDTIME = 100
+    const val MESSAGE = 90
     const val WIND_DOWN = 40
     const val REQUEST_ARRIVED = 35
     const val CANT_FIND = 34
