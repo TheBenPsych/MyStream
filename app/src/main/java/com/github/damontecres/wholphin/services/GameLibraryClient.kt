@@ -24,6 +24,9 @@ data class ServerGame(
     val playable: Boolean,
     /** Size of the game's file(s) on the server, 0 if unknown */
     val size: Long = 0,
+    /** The year it came out, 0 if unknown */
+    val year: Int = 0,
+    val genres: List<String> = emptyList(),
 )
 
 /** One console and its games, e.g. "Nintendo 64" */
@@ -105,6 +108,10 @@ class GameLibraryClient
                                     coverUrl = if (g.isNull("cover")) null else base + g.optString("cover"),
                                     playable = g.optBoolean("playable", true),
                                     size = g.optLong("size", 0L),
+                                    year = g.optInt("year", 0),
+                                    genres =
+                                        g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
+                                            ?: emptyList(),
                                 )
                             },
                     )
