@@ -557,15 +557,29 @@ class GameActivity : ComponentActivity() {
 
     // ---------- Buttons ----------
 
-    private fun hasGamepad(): Boolean =
-        InputDevice.getDeviceIds().any { id ->
-            val d = InputDevice.getDevice(id) ?: return@any false
-            !d.isVirtual &&
-                (
-                    d.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
-                        d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
-                )
+    private fun hasGamepad(): Boolean = InputDevice.getDeviceIds().any { isPadDevice(InputDevice.getDevice(it)) }
+
+    private val padDevices = mutableMapOf<Int, Boolean>()
+
+    /**
+     * A real game controller, not a TV remote. Some remotes say they are "gamepads", so a device only counts
+     * if it has a joystick or all four face buttons (A B X Y).
+     */
+    private fun isPadDevice(d: InputDevice?): Boolean {
+        if (d == null || d.isVirtual) return false
+        return padDevices.getOrPut(d.id) {
+            val stick = d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+            val face =
+                d
+                    .hasKeys(
+                        KeyEvent.KEYCODE_BUTTON_A,
+                        KeyEvent.KEYCODE_BUTTON_B,
+                        KeyEvent.KEYCODE_BUTTON_X,
+                        KeyEvent.KEYCODE_BUTTON_Y,
+                    ).all { it }
+            stick || face
         }
+    }
 
     private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { ports.size.coerceAtMost(3) }
 
@@ -599,10 +613,7 @@ class GameActivity : ComponentActivity() {
         }
     }
 
-    private fun isGamepad(event: KeyEvent): Boolean =
-        event.source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
-            event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK ||
-            KeyEvent.isGamepadButton(event.keyCode)
+    private fun isGamepad(event: KeyEvent): Boolean = KeyEvent.isGamepadButton(event.keyCode) || isPadDevice(event.device)
 
     /** Which libretro button a key is, or null */
     private fun buttonFor(
