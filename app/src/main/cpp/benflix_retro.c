@@ -57,9 +57,19 @@ static int option_count;
 
 static enum retro_pixel_format pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 static struct retro_system_av_info av_info;
+static unsigned frame_w, frame_h;
+/* Turned picture (arcade games made for an upright screen, like Pac-Man): 0-3 quarter turns anticlockwise */
+static unsigned rotation;
+
+/* The game's shape (width / height) as shown, after any turn */
+static double shown_aspect(void) {
+    double a = av_info.geometry.aspect_ratio > 0 ? av_info.geometry.aspect_ratio
+               : (av_info.geometry.base_height > 0 ? (double)av_info.geometry.base_width / av_info.geometry.base_height
+                  : (frame_h > 0 ? (double)frame_w / frame_h : 4.0 / 3.0));
+    return (rotation & 1) ? 1.0 / a : a;
+}
 
 /* ---------- Picture ---------- */
-static unsigned frame_w, frame_h;
 static uint16_t *frame565;  /* For 0RGB1555 and RGB565 cores */
 static uint32_t *frame8888; /* For XRGB8888 cores, stored as RGBA bytes */
 static size_t frame_cap;
@@ -134,9 +144,11 @@ static bool environment(unsigned cmd, void *data) {
         case RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO:
         case RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS:
         case RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL:
-        case RETRO_ENVIRONMENT_SET_ROTATION:
         case RETRO_ENVIRONMENT_SET_MESSAGE:
         case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY:
+            return true;
+        case RETRO_ENVIRONMENT_SET_ROTATION:
+            if (data) rotation = *(const unsigned *)data & 3;
             return true;
         case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
             return true;
@@ -271,6 +283,7 @@ JNIEXPORT void JNICALL JNI_FN(setOption)(JNIEnv *env, jobject thiz, jstring key,
 
 /* Opens the emulator and starts the game. Returns false (and logs why) if it can't. */
 JNIEXPORT jboolean JNICALL JNI_FN(load)(JNIEnv *env, jobject thiz, jstring jcore, jstring jgame, jstring jsystem, jstring jsave) {
+    rotation = 0;
     char core_path[1024], game_path[1024];
     copy_jstring(env, jcore, core_path, sizeof(core_path));
     copy_jstring(env, jgame, game_path, sizeof(game_path));
@@ -356,8 +369,7 @@ JNIEXPORT jboolean JNICALL JNI_FN(load)(JNIEnv *env, jobject thiz, jstring jcore
 
 /* [frames per second, sound sample rate, picture shape (width / height)] */
 JNIEXPORT jdoubleArray JNICALL JNI_FN(timing)(JNIEnv *env, jobject thiz) {
-    double shape = av_info.geometry.aspect_ratio > 0 ? av_info.geometry.aspect_ratio
-                   : (av_info.geometry.base_height > 0 ? (double)av_info.geometry.base_width / av_info.geometry.base_height : 4.0 / 3.0);
+    double shape = shown_aspect();
     jdouble values[3] = {av_info.timing.fps > 0 ? av_info.timing.fps : 60.0,
                          av_info.timing.sample_rate > 0 ? av_info.timing.sample_rate : 44100.0,
                          shape};
@@ -466,6 +478,7 @@ JNIEXPORT jintArray JNICALL JNI_FN(snapshot)(JNIEnv *env, jobject thiz) {
 JNIEXPORT void JNICALL JNI_FN(unload)(JNIEnv *env, jobject thiz) {
     if (game_loaded) c_unload_game();
     game_loaded = 0;
+    rotation = 0;
     if (core_ready) c_deinit();
     core_ready = 0;
     /* The emulator stays open: some can't be opened twice. The game runs in its own process anyway. */
@@ -542,15 +555,19 @@ JNIEXPORT void JNICALL JNI_FN(glDraw)(JNIEnv *env, jobject thiz) {
     }
 
     /* Keep the game's shape, as big as fits, centred */
-    float aspect = av_info.geometry.aspect_ratio > 0 ? av_info.geometry.aspect_ratio : (float)frame_w / (float)frame_h;
+    float aspect = (float)shown_aspect();
     float view_aspect = (float)view_w / (float)view_h;
     float sx = 1.0f, sy = 1.0f;
     if (view_aspect > aspect) sx = aspect / view_aspect; else sy = view_aspect / aspect;
+    /* Corners anticlockwise from bottom left; a turned game takes its picture corners from further round */
+    static const float uv[4][2] = {{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}};
+    const float *bl = uv[(0 + 4 - rotation) % 4], *br = uv[(1 + 4 - rotation) % 4];
+    const float *tr = uv[(2 + 4 - rotation) % 4], *tl = uv[(3 + 4 - rotation) % 4];
     float quad[] = {
-        -sx, -sy, 0.0f, 1.0f,
-        sx, -sy, 1.0f, 1.0f,
-        -sx, sy, 0.0f, 0.0f,
-        sx, sy, 1.0f, 0.0f,
+        -sx, -sy, bl[0], bl[1],
+        sx, -sy, br[0], br[1],
+        -sx, sy, tl[0], tl[1],
+        sx, sy, tr[0], tr[1],
     };
     glUseProgram(program);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);

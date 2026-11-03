@@ -853,7 +853,13 @@ class GameActivity : ComponentActivity() {
 
     private fun push(port: Int) {
         val touch = if (port == 0) touchMask else 0
-        RetroNative.setButtons(port, keyMask[port] or axisMask[port] or touch or phoneMask[port])
+        var mask = keyMask[port] or axisMask[port] or touch or phoneMask[port]
+        // One-button consoles (Atari 2600): any face button fires, so the remote's OK works too
+        if (console.touch == TouchLayout.ONE_BUTTON) {
+            val face = RetroButton.bit(RetroButton.A) or RetroButton.bit(RetroButton.Y) or RetroButton.bit(RetroButton.X)
+            if (mask and face != 0) mask = mask or RetroButton.bit(RetroButton.B)
+        }
+        RetroNative.setButtons(port, mask)
     }
 
     /** A phone controller's buttons. While the menu is open, they move around the menu instead. */

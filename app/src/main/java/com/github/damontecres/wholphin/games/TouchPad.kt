@@ -92,6 +92,23 @@ private fun layoutFor(
                 )
             }
 
+            TouchLayout.ONE_BUTTON -> {
+                listOf(PadButton("FIRE", RetroButton.B, at(0f, 0f), Size(b * 2.6f, b * 2.6f), true))
+            }
+
+            TouchLayout.ARCADE -> {
+                // Two rows of three, like an arcade stick: punches on top, kicks below (Street Fighter)
+                val small = Size(b * 1.6f, b * 1.6f)
+                listOf(
+                    PadButton("1", RetroButton.B, at(-0.78f, 0.38f), small, true),
+                    PadButton("2", RetroButton.A, at(0f, 0.38f), small, true),
+                    PadButton("3", RetroButton.R, at(0.78f, 0.38f), small, true),
+                    PadButton("4", RetroButton.Y, at(-0.78f, -0.38f), small, true),
+                    PadButton("5", RetroButton.X, at(0f, -0.38f), small, true),
+                    PadButton("6", RetroButton.L, at(0.78f, -0.38f), small, true),
+                )
+            }
+
             TouchLayout.GENESIS -> {
                 listOf(
                     PadButton("A", RetroButton.Y, at(-0.7f, 0.25f), round, true),
@@ -130,10 +147,12 @@ private fun layoutFor(
     val middle =
         buildList {
             val selectAt = Offset(w / 2 - small.width * 0.65f, sy)
-            if (touch != TouchLayout.GENESIS) add(PadButton("SELECT", RetroButton.SELECT, selectAt, small, false))
+            if (touch != TouchLayout.GENESIS) {
+                add(PadButton(if (touch == TouchLayout.ARCADE) "COIN" else "SELECT", RetroButton.SELECT, selectAt, small, false))
+            }
             add(
                 PadButton(
-                    "START",
+                    if (touch == TouchLayout.ONE_BUTTON) "RESET" else "START",
                     RetroButton.START,
                     Offset(if (touch == TouchLayout.GENESIS) w / 2 else w / 2 + small.width * 0.65f, sy),
                     small,
