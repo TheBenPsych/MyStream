@@ -36,6 +36,7 @@ class RecordHolidayScenes {
                 ?.split(',')
                 ?.map { it.trim() }
                 ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
         LogoEffect.entries
             .filter { it != LogoEffect.NONE && (only == null || it.name in only) }
             .forEach { record(it, File(out, it.name)) }

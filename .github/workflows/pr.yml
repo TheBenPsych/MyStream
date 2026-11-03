@@ -82,13 +82,24 @@ jobs:
           else
             img="system-images;android-34;google_apis;x86_64"; device=pixel_6
           fi
-          sdkmanager "emulator" "platform-tools" "$img" >/dev/null
+          # GitHub's download of the emulator sometimes comes back broken: try again, then skip (not an app problem)
+          ok=0
+          for attempt in 1 2 3; do
+            if sdkmanager "emulator" "platform-tools" "$img" >/dev/null; then ok=1; break; fi
+            echo "Emulator download failed (attempt $attempt), retrying"; sleep 10
+          done
+          if [ $ok != 1 ]; then
+            echo "::warning::GitHub couldn't download the pretend ${{ matrix.mode }}, so the robot check was skipped (not an app problem)."
+            echo "ROBOT_SKIP=1" >> $GITHUB_ENV
+            exit 0
+          fi
           mkdir -p "$HOME/avd"
           echo "ANDROID_AVD_HOME=$HOME/avd" >> $GITHUB_ENV
           export ANDROID_AVD_HOME="$HOME/avd"
           echo no | avdmanager create avd -n robot -k "$img" -d $device -p "$HOME/avd/robot.avd" --force
           printf 'hw.ramSize=4096\ndisk.dataPartition.size=4G\nhw.keyboard=yes\n' >> "$HOME/avd/robot.avd/config.ini"
       - name: Run the quick robot check
+        if: env.ROBOT_SKIP != '1'
         run: |
           SDK=$ANDROID_HOME
           export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
