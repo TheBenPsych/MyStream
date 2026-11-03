@@ -169,10 +169,26 @@ fun PhoneNavBar(
                 val serverAlert =
                     com.github.damontecres.wholphin.ui.components
                         .rememberServerAlert()
+                // Benflix: requests that have arrived show as a small red number (an update "!" wins)
+                val readyCount =
+                    com.github.damontecres.wholphin.ui.components
+                        .rememberRequestReadyCount()
                 if (updateAlert || serverAlert) {
                     com.github.damontecres.wholphin.ui.components.UpdateBang(
                         size = 14.dp,
                         modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                } else if (readyCount > 0) {
+                    com.github.damontecres.wholphin.ui.components.UpdateBang(
+                        size = 16.dp,
+                        text = if (readyCount > 9) "9+" else readyCount.toString(),
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                }
+                if (!kids) {
+                    com.github.damontecres.wholphin.ui.components.RequestReadyTip(
+                        where = "Tap My Benflix to find it.",
+                        above = true,
                     )
                 }
                 if (updateAlert) {

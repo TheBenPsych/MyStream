@@ -233,13 +233,29 @@ fun TopNavBar(
             }
         }
         if (moreTabs.isNotEmpty()) {
+            // Benflix: "Your request is here" shows on More, since My Benflix (with the list) is in there
+            val readyCount =
+                com.github.damontecres.wholphin.ui.components
+                    .rememberRequestReadyCount()
             TopNavTabButton(
                 tab =
                     TopNavTab(
                         title = stringResource(R.string.more),
                         selected = moreSelected,
                         onClick = { showMore = true },
+                        badge = readyCount,
                     ),
+                tip =
+                    if (kids) {
+                        null
+                    } else {
+                        {
+                            com.github.damontecres.wholphin.ui.components.RequestReadyTip(
+                                where = "It's in More, then My Benflix.",
+                                above = false,
+                            )
+                        }
+                    },
                 modifier =
                     tabModifier(MORE_KEY)
                         .onGloballyPositioned { moreX = it.positionInWindow().x }
@@ -359,6 +375,7 @@ private fun browseTitle(browseTabs: List<TopNavTab>): String =
 private fun TopNavTabButton(
     tab: TopNavTab,
     modifier: Modifier = Modifier,
+    tip: (@Composable () -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -397,6 +414,8 @@ private fun TopNavTabButton(
                         .padding(horizontal = 6.dp, vertical = 1.dp),
             )
         }
+        // Benflix: a tip bubble that points at this tab (it never takes focus)
+        tip?.let { Box { it() } }
     }
 }
 
