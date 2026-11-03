@@ -29,10 +29,7 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.client.extensions.systemApi
-<<<<<<< HEAD
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
-=======
->>>>>>> origin/claude/project-thread-km8cg5
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
@@ -66,7 +63,6 @@ data class WatchingNow(
     val progress: Float?,
     /** Benflix: like "38 min left" */
     val timeLeft: String?,
-<<<<<<< HEAD
     /** Benflix: why the server has to convert it, in plain words (null when it doesn't) */
     val why: String? = null,
     /** Benflix: how much of the internet connection it uses, in Mbps (null when unknown) */
@@ -81,8 +77,6 @@ data class WatchedEntry(
     val userId: java.util.UUID,
     val at: LocalDateTime,
     val time: String,
-=======
->>>>>>> origin/claude/project-thread-km8cg5
 )
 
 /** Benflix: one server problem from Jellyfin's log, in plain English, with repeats counted */
@@ -178,13 +172,10 @@ class ServerDashboardData
         private val _problemReports = MutableStateFlow<List<ProblemReport>?>(null)
         val problemReports: StateFlow<List<ProblemReport>?> = _problemReports
 
-<<<<<<< HEAD
         /** Benflix: what everyone started watching this week, newest first (null until asked) */
         private val _history = MutableStateFlow<List<WatchedEntry>?>(null)
         val history: StateFlow<List<WatchedEntry>?> = _history
 
-=======
->>>>>>> origin/claude/project-thread-km8cg5
         /** How many parts are still fetching fresh numbers (the "Loading new stats" note) */
         private val _loading = MutableStateFlow(0)
         val loading: StateFlow<Int> = _loading
@@ -295,7 +286,6 @@ class ServerDashboardData
             }
         }
 
-<<<<<<< HEAD
         /** Benflix: loads "Watched today / this week" (only when Right now or People is opened) */
         fun loadHistory(force: Boolean = false) {
             if (!force && _history.value != null) return
@@ -339,8 +329,6 @@ class ServerDashboardData
             return source?.bitrate?.also { bitrates[key] = it }
         }
 
-=======
->>>>>>> origin/claude/project-thread-km8cg5
         fun removeReport(report: ProblemReport) {
             _problemReports.update { it?.minus(report) }
         }
@@ -385,15 +373,12 @@ class ServerDashboardData
                 .content
                 .filter { it.nowPlayingItem != null }
                 .map { s ->
-<<<<<<< HEAD
                     val directMbps =
                         if (s.playState?.playMethod != PlayMethod.TRANSCODE) {
                             directBitrate(s.nowPlayingItem!!.id, s.playState?.mediaSourceId)
                         } else {
                             null
                         }
-=======
->>>>>>> origin/claude/project-thread-km8cg5
                     val item = s.nowPlayingItem!!
                     val method = s.playState?.playMethod
                     val transcode = s.transcodingInfo
@@ -444,12 +429,9 @@ class ServerDashboardData
                             },
                         converting = converting,
                         paused = s.playState?.isPaused == true,
-<<<<<<< HEAD
                         why = if (converting) transcode?.let { whyConverting(it) } else null,
                         mbps = ((if (converting) transcode?.bitrate else directMbps) ?: 0).takeIf { it > 0 }?.let { it / 1_000_000.0 },
                         away = isAwayFromHome(s.remoteEndPoint),
-=======
->>>>>>> origin/claude/project-thread-km8cg5
                         posterUrl =
                             api.imageApi.getItemImageUrl(
                                 itemId = if (item.type == BaseItemKind.EPISODE) item.seriesId ?: item.id else item.id,
@@ -553,10 +535,7 @@ class ServerDashboardData
             private const val FRESH_MS = 60_000L
             private const val POSTER_HEIGHT = 240
             private const val TICKS_PER_MINUTE = 600_000_000L
-<<<<<<< HEAD
             private const val HISTORY_LIMIT = 300
-=======
->>>>>>> origin/claude/project-thread-km8cg5
         }
     }
 
@@ -640,7 +619,6 @@ fun PreloadServerPage(isAdmin: Boolean) {
             .preload()
     }
 }
-<<<<<<< HEAD
 
 /**
  * Benflix: why Jellyfin has to convert a stream, in plain words with what usually fixes it.
@@ -697,5 +675,3 @@ internal fun isAwayFromHome(address: String?): Boolean {
     }
     return true
 }
-=======
->>>>>>> origin/claude/project-thread-km8cg5
