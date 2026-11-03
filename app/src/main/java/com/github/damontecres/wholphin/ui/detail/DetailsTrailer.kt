@@ -189,8 +189,7 @@ class DetailsTrailerViewModel
                                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                                     .build(),
                                 false,
-                            )
-                            .build()
+                            ).build()
                             .also { newPlayer ->
                                 newPlayer.volume = 0f
                                 newPlayer.addListener(

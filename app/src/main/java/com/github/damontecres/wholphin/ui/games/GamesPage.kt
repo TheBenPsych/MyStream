@@ -580,7 +580,9 @@ class GamesViewModel
                 when {
                     // Guest scores are kept apart from the owner's, like the Movie riddle
                     GuestMode.isActive -> "guest"
+
                     KidsMode.isActive -> "kids"
+
                     else -> serverRepository.currentUser?.id?.toString() ?: "guest"
                 }
 

@@ -586,9 +586,12 @@ fun AlphabetButtons(
             val itemAlpha =
                 when {
                     isCurrentLetter && !alphabetPickerFocused -> 1f
+
                     alphabetPickerFocused -> .85f
+
                     // Phones never focus the picker, so keep every letter readable
                     !isTv -> .85f
+
                     else -> .25f
                 }
 

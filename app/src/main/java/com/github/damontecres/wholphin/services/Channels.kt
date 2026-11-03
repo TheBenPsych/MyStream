@@ -166,8 +166,19 @@ object ChannelSession {
     ): List<ChannelSchedule> {
         val today = LocalDate.now()
         // Kids and Big kids get different line-ups, and hiding a genre changes today's guide
-        val level = if (!kids) "off" else if (KidsMode.isBig) "bigkids" else "kids"
-        val genres = HiddenGenres.hidden.sorted().joinToString("|").hashCode()
+        val level =
+            if (!kids) {
+                "off"
+            } else if (KidsMode.isBig) {
+                "bigkids"
+            } else {
+                "kids"
+            }
+        val genres =
+            HiddenGenres.hidden
+                .sorted()
+                .joinToString("|")
+                .hashCode()
         val key = "$userId-$level-$genres-$today"
         if (key == builtFor && schedules.isNotEmpty()) return schedules
         val fileName = "channels-$key-v$CACHE_VERSION"

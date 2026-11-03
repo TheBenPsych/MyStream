@@ -359,177 +359,178 @@ class BenflixRequestsViewModel
                 _failedRows.update { if (failed.get()) it + key else it - key }
                 loadingRows.remove(key)
             }
-            viewModelScope.launch(WholphinDispatchers.IO) {
-                if (filters.narrowed) {
-                    // Benflix: several filters together make one list of results, a few pages long
-                    val pages =
-                        coroutineScope {
-                            (1..3).map { page -> async { narrowedPage(section, filters, page) } }.awaitAll()
+            viewModelScope
+                .launch(WholphinDispatchers.IO) {
+                    if (filters.narrowed) {
+                        // Benflix: several filters together make one list of results, a few pages long
+                        val pages =
+                            coroutineScope {
+                                (1..3).map { page -> async { narrowedPage(section, filters, page) } }.awaitAll()
+                            }
+                        if (pages.any { it == null }) failed.set(true)
+                        val titles = listOf("Results", "More results", "Even more")
+                        done(pages.mapIndexed { i, items -> FindRow(titles[i], items.orEmpty()) })
+                        return@launch
+                    }
+                    val today = LocalDate.now().toString()
+                    val movieGenre = genre?.movieId?.toString()
+                    val tvGenre = genre?.tvId?.toString()
+
+                    suspend fun safe(block: suspend () -> List<DiscoverItem>): List<DiscoverItem> =
+                        try {
+                            block()
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Find new stuff row failed")
+                            failed.set(true)
+                            emptyList()
                         }
-                    if (pages.any { it == null }) failed.set(true)
-                    val titles = listOf("Results", "More results", "Even more")
-                    done(pages.mapIndexed { i, items -> FindRow(titles[i], items.orEmpty()) })
-                    return@launch
-                }
-                val today = LocalDate.now().toString()
-                val movieGenre = genre?.movieId?.toString()
-                val tvGenre = genre?.tvId?.toString()
 
-                suspend fun safe(block: suspend () -> List<DiscoverItem>): List<DiscoverItem> =
-                    try {
-                        block()
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Find new stuff row failed")
-                        failed.set(true)
-                        emptyList()
+                    suspend fun movies(
+                        sortBy: String,
+                        genres: String? = movieGenre,
+                        keywords: String? = null,
+                        from: String? = null,
+                        minVotes: Int? = null,
+                    ) = safe {
+                        seerrService.api.searchApi
+                            .discoverMoviesGet(
+                                page = 1,
+                                genre = genres,
+                                keywords = keywords,
+                                sortBy = topRatedSort(sortBy, minVotes),
+                                primaryReleaseDateGte = from,
+                                voteCountGte = minVotes,
+                                voteAverageGte = topRatedFloor(minVotes),
+                            ).results
+                            ?.map { seerrService.createDiscoverItem(it) }
+                            .orEmpty()
                     }
 
-                suspend fun movies(
-                    sortBy: String,
-                    genres: String? = movieGenre,
-                    keywords: String? = null,
-                    from: String? = null,
-                    minVotes: Int? = null,
-                ) = safe {
-                    seerrService.api.searchApi
-                        .discoverMoviesGet(
-                            page = 1,
-                            genre = genres,
-                            keywords = keywords,
-                            sortBy = topRatedSort(sortBy, minVotes),
-                            primaryReleaseDateGte = from,
-                            voteCountGte = minVotes,
-                            voteAverageGte = topRatedFloor(minVotes),
-                        ).results
-                        ?.map { seerrService.createDiscoverItem(it) }
-                        .orEmpty()
-                }
-
-                suspend fun shows(
-                    sortBy: String,
-                    genres: String? = tvGenre,
-                    keywords: String? = null,
-                    from: String? = null,
-                    minVotes: Int? = null,
-                ) = safe {
-                    seerrService.api.searchApi
-                        .discoverTvGet(
-                            page = 1,
-                            genre = genres,
-                            keywords = keywords,
-                            sortBy = topRatedSort(sortBy, minVotes),
-                            firstAirDateGte = from,
-                            voteCountGte = minVotes,
-                            voteAverageGte = topRatedFloor(minVotes),
-                        ).results
-                        ?.map { seerrService.createDiscoverItem(it) }
-                        .orEmpty()
-                }
-
-                val rows =
-                    coroutineScope {
-                        when (section) {
-                            FindSection.MOVIES -> {
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending now",
-                                            if (genre == null) {
-                                                safe { seerrService.trending().filter { it.type == SeerrItemType.MOVIE } }
-                                            } else {
-                                                movies("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Popular", movies("popularity.desc")) },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            if (genre == null) {
-                                                safe { seerrService.upcomingMovies() }
-                                            } else {
-                                                movies("popularity.desc", from = today)
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Top rated", movies("vote_average.desc", minVotes = 1000)) },
-                                )
-                            }
-
-                            FindSection.SHOWS -> {
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending now",
-                                            if (genre == null) {
-                                                safe { seerrService.trending().filter { it.type == SeerrItemType.TV } }
-                                            } else {
-                                                shows("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Popular", shows("popularity.desc")) },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            if (genre == null) {
-                                                safe { seerrService.upcomingTv() }
-                                            } else {
-                                                shows("popularity.desc", from = today)
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Top rated", shows("vote_average.desc", minVotes = 500)) },
-                                )
-                            }
-
-                            FindSection.ANIME -> {
-                                val showGenres = listOfNotNull(ANIMATION_GENRE, tvGenre).joinToString(",")
-                                val movieGenres = listOfNotNull(ANIMATION_GENRE, movieGenre).joinToString(",")
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending anime shows",
-                                            shows(
-                                                "popularity.desc",
-                                                genres = showGenres,
-                                                keywords = ANIME_KEYWORD,
-                                                from = LocalDate.now().minusMonths(6).toString(),
-                                            ),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Popular anime shows",
-                                            shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Anime movies",
-                                            movies("popularity.desc", genres = movieGenres, keywords = ANIME_KEYWORD),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD, from = today),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Top rated anime",
-                                            shows("vote_average.desc", genres = showGenres, keywords = ANIME_KEYWORD, minVotes = 200),
-                                        )
-                                    },
-                                )
-                            }
-                        }.awaitAll()
+                    suspend fun shows(
+                        sortBy: String,
+                        genres: String? = tvGenre,
+                        keywords: String? = null,
+                        from: String? = null,
+                        minVotes: Int? = null,
+                    ) = safe {
+                        seerrService.api.searchApi
+                            .discoverTvGet(
+                                page = 1,
+                                genre = genres,
+                                keywords = keywords,
+                                sortBy = topRatedSort(sortBy, minVotes),
+                                firstAirDateGte = from,
+                                voteCountGte = minVotes,
+                                voteAverageGte = topRatedFloor(minVotes),
+                            ).results
+                            ?.map { seerrService.createDiscoverItem(it) }
+                            .orEmpty()
                     }
-                done(rows)
-            }.invokeOnCompletion { loadingRows.remove(key) }
+
+                    val rows =
+                        coroutineScope {
+                            when (section) {
+                                FindSection.MOVIES -> {
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending now",
+                                                if (genre == null) {
+                                                    safe { seerrService.trending().filter { it.type == SeerrItemType.MOVIE } }
+                                                } else {
+                                                    movies("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Popular", movies("popularity.desc")) },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                if (genre == null) {
+                                                    safe { seerrService.upcomingMovies() }
+                                                } else {
+                                                    movies("popularity.desc", from = today)
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Top rated", movies("vote_average.desc", minVotes = 1000)) },
+                                    )
+                                }
+
+                                FindSection.SHOWS -> {
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending now",
+                                                if (genre == null) {
+                                                    safe { seerrService.trending().filter { it.type == SeerrItemType.TV } }
+                                                } else {
+                                                    shows("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Popular", shows("popularity.desc")) },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                if (genre == null) {
+                                                    safe { seerrService.upcomingTv() }
+                                                } else {
+                                                    shows("popularity.desc", from = today)
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Top rated", shows("vote_average.desc", minVotes = 500)) },
+                                    )
+                                }
+
+                                FindSection.ANIME -> {
+                                    val showGenres = listOfNotNull(ANIMATION_GENRE, tvGenre).joinToString(",")
+                                    val movieGenres = listOfNotNull(ANIMATION_GENRE, movieGenre).joinToString(",")
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending anime shows",
+                                                shows(
+                                                    "popularity.desc",
+                                                    genres = showGenres,
+                                                    keywords = ANIME_KEYWORD,
+                                                    from = LocalDate.now().minusMonths(6).toString(),
+                                                ),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Popular anime shows",
+                                                shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Anime movies",
+                                                movies("popularity.desc", genres = movieGenres, keywords = ANIME_KEYWORD),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD, from = today),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Top rated anime",
+                                                shows("vote_average.desc", genres = showGenres, keywords = ANIME_KEYWORD, minVotes = 200),
+                                            )
+                                        },
+                                    )
+                                }
+                            }.awaitAll()
+                        }
+                    done(rows)
+                }.invokeOnCompletion { loadingRows.remove(key) }
         }
 
         private val _failedRows = MutableStateFlow<Set<String>>(emptySet())

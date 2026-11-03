@@ -264,6 +264,7 @@ class WelcomeViewModel
         companion object {
             private const val POSTER_POOL = 80
             private const val POSTERS_SHOWN = 24
+
             // Benflix: "2" so everyone, including people from before the welcome setup existed, gets it once
             // (the first version skipped anyone who had already watched something)
             const val KEY = "benflix.welcomed2"

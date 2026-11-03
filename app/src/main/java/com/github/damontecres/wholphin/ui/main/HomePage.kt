@@ -183,6 +183,7 @@ fun HomePage(
                         }
                     }
                 }
+
             // The long-press menu for a Jellyfin item on any Home row. Only Continue watching & Next up
             // offer to remove it from that row.
             fun itemMenu(
@@ -1058,7 +1059,7 @@ fun HomePageContent(
                                     items = moodRow.items,
                                     onClickItem = onClickTrending,
                                     onLongClickItem = onLongClickTrending,
-                                onLongClickItem = onLongClickTrending,
+                                    onLongClickItem = onLongClickTrending,
                                     onFocusItem = { extraFocus = it },
                                     modifier =
                                         Modifier

@@ -623,6 +623,7 @@ class ServerDashboardData
             private const val PART_WAIT_MS = 10_000L
             private const val RECENT_AT = "recent_at"
             private const val RECENT_EVERY_MS = 60 * 60_000L
+
             // Benflix: big enough to hold a whole day of the log (it also has every play, sign-in and so on)
             private const val LOG_LIMIT = 1_000
             private const val REFRESH_MS = 15_000L

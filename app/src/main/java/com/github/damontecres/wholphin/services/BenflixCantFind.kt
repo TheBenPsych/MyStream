@@ -449,8 +449,7 @@ class BenflixCantFind
             const val AUTO_DAYS = 7L
 
             /** Calendar days (here, not UTC) since Seerr's date text */
-            fun daysSince(date: String?): Long? =
-                SearchClock.localDay(date)?.let { ChronoUnit.DAYS.between(it, LocalDate.now()) }
+            fun daysSince(date: String?): Long? = SearchClock.localDay(date)?.let { ChronoUnit.DAYS.between(it, LocalDate.now()) }
 
             /** "MOVIE-123" / "TV-456" for a Seerr request */
             fun MediaRequest.cantFindKey(): String? {
