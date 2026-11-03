@@ -69,6 +69,7 @@ class AppUpgradeHandler
         private val mostRecentServerProvider: MostRecentServerProvider,
         private val playbackLanguageChoiceDao: PlaybackLanguageChoiceDao,
         private val seriesTrackChoiceDao: SeriesTrackChoiceDao,
+        private val deviceProfileService: DeviceProfileService,
     ) {
         val pkgInfo: PackageInfo get() = context.packageManager.getPackageInfo(context.packageName, 0)
         val currentVersion: Version get() = Version.fromString(pkgInfo.versionName!!)
@@ -122,6 +123,12 @@ class AppUpgradeHandler
             }
             Timber.i("App upgrade complete")
         }
+
+        /**
+         * Benflix: after every app update, look at this device again and re-apply the device check's
+         * picks (Lite mode, screensaver motion), quietly. Settings the person changed themselves stay.
+         */
+        suspend fun rerunDeviceCheck() = BenflixDeviceCheck.rerun(context, appPreferences, deviceProfileService.mediaCodecCapabilitiesTest)
 
         /**
          * Gets the font MPV uses for subtitles ready in the app's files folder.

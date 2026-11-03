@@ -701,6 +701,8 @@ class MainActivityViewModel
             // before sign-in on every update, which took about 2 s on older TVs. Copy it on the side.
             viewModelScope.launch(WholphinDispatchers.IO) {
                 appUpgradeHandler.copySubfont(needUpgrade)
+                // Benflix: look at this device again after an update (quietly; never undoes the person's own choices)
+                if (needUpgrade) appUpgradeHandler.rerunDeviceCheck()
             }
         }
 

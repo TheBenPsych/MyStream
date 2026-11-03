@@ -187,12 +187,55 @@ class BenflixParentPin
     }
 
 /**
- * Benflix bedtime for the Kids profile: from 9 PM until 6 AM, Kids is locked, but only when the
- * family has set a parent PIN. With no PIN, Kids stays unlocked. Whatever is playing gets to
- * finish first; the next episode won't start. A grown-up's PIN unlocks 30 more minutes.
+ * Benflix bedtime for the Kids profile: from bedtime (8, 9 or 10 PM, 9 PM unless the family picked
+ * another) until 6 AM, Kids is locked, but only when the family has set a parent PIN. With no PIN,
+ * Kids stays unlocked. Whatever is playing gets to finish first; the next episode won't start.
+ * A grown-up's PIN unlocks 30 more minutes.
+ *
+ * Like the parent PIN, the bedtime belongs to the whole TV: it's kept on this device only.
  */
 object BenflixBedtime {
-    val BEDTIME: LocalTime = LocalTime.of(21, 0)
+    const val DEFAULT_BEDTIME_HOUR = 21
+
+    /** The bedtimes a family can pick (24-hour clock) */
+    val BEDTIME_HOURS = listOf(20, 21, 22)
+
+    private const val DEVICE_FILE = "benflix_parental_device"
+    private const val BEDTIME_HOUR_KEY = "bedtimeHour"
+
+    /** This TV's bedtime hour (loaded with [load]) */
+    @Volatile var bedtimeHour = DEFAULT_BEDTIME_HOUR
+
+    val BEDTIME: LocalTime get() = LocalTime.of(bedtimeHour, 0)
+
+    /** Reads this TV's bedtime */
+    fun load(context: Context) {
+        val hour =
+            context
+                .getSharedPreferences(DEVICE_FILE, Context.MODE_PRIVATE)
+                .getInt(BEDTIME_HOUR_KEY, DEFAULT_BEDTIME_HOUR)
+        bedtimeHour = if (hour in BEDTIME_HOURS) hour else DEFAULT_BEDTIME_HOUR
+    }
+
+    /** Sets this TV's bedtime: one of [BEDTIME_HOURS] */
+    fun setBedtimeHour(
+        context: Context,
+        hour: Int,
+    ) {
+        val value = if (hour in BEDTIME_HOURS) hour else DEFAULT_BEDTIME_HOUR
+        context.getSharedPreferences(DEVICE_FILE, Context.MODE_PRIVATE).edit { putInt(BEDTIME_HOUR_KEY, value) }
+        bedtimeHour = value
+    }
+
+    /** "9 PM" */
+    fun label(hour: Int = bedtimeHour): String =
+        when {
+            hour == 0 -> "12 AM"
+            hour < 12 -> "$hour AM"
+            hour == 12 -> "12 PM"
+            else -> "${hour - 12} PM"
+        }
+
     val WAKE_UP: LocalTime = LocalTime.of(6, 0)
     const val MORE_TIME_MS = 30 * 60_000L
 

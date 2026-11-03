@@ -46,6 +46,7 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixScreenTime
 import com.github.damontecres.wholphin.services.GuestMode
@@ -164,9 +165,9 @@ fun ParentalControlsDialog(
                         supportingContent = {
                             Text(
                                 if (hasPin) {
-                                    "Kids goes to bed at 9 PM. Change or turn off the PIN."
+                                    "Kids goes to bed at ${BenflixBedtime.label()}. Change or turn off the PIN."
                                 } else {
-                                    "Set one to put Kids to bed at 9 PM. Without it, Kids stays unlocked."
+                                    "Set one to put Kids to bed at ${BenflixBedtime.label()}. Without it, Kids stays unlocked."
                                 },
                             )
                         },

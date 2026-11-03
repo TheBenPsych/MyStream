@@ -43,6 +43,8 @@ import javax.inject.Singleton
  * watching screen shows, the games server address, and these Benflix ones (see [withoutDeviceParts]):
  * the come-back timer ("Ask Who's watching again after"), mobile data quality, tap vibration on phones,
  * and "Styled subtitles in MPV" (it depends on whether this device can run MPV).
+ * So the device check's picks (Lite mode and screensaver motion, see BenflixDeviceCheck) and the Kids
+ * bedtime hour stay on the device they were made for.
  * Changes made while the Kids or Guest profile is open are never saved to the grown-up's account.
  */
 @Singleton

@@ -108,6 +108,7 @@ class BedtimeViewModel
 
         init {
             BenflixScreenTime.load(context)
+            BenflixBedtime.load(context)
             viewModelScope.launch {
                 var lastUser: java.util.UUID? = null
                 while (isActive) {
@@ -460,7 +461,7 @@ fun ParentPinDialog(
                         if (pin == pending) {
                             scope.launch {
                                 if (setPin(pin)) {
-                                    toast("Parent PIN saved. Kids goes to bed at 9 PM.")
+                                    toast("Parent PIN saved. Kids goes to bed at ${BenflixBedtime.label()}.")
                                     onDone(true)
                                 } else {
                                     toast("Couldn't save the PIN. Try again.")
