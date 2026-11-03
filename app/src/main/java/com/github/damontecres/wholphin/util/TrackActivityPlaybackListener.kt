@@ -1,8 +1,10 @@
 package com.github.damontecres.wholphin.util
 
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.playback.CurrentPlayback
 import kotlinx.coroutines.CoroutineScope
@@ -31,13 +33,32 @@ import kotlin.time.Duration.Companion.seconds
 class TrackActivityPlaybackListener(
     private val api: ApiClient,
     private val player: Player,
+    /** Benflix: count real watch time for the monthly and yearly stats (movies and episodes only) */
+    countWatchTime: Boolean = false,
     private val getState: () -> PlaybackItemState?,
 ) : Player.Listener {
+    private val watchUser = if (countWatchTime) BenflixWatchTime.instance?.currentUserId() else null
+
+    /** When it last started playing (or was last counted), 0 while paused or stopped */
+    private var playingSinceMs = 0L
+
+    /** Adds the time played since last time; null = keep counting only if it was already playing */
+    @Synchronized
+    private fun countWatched(stillPlaying: Boolean?) {
+        if (watchUser == null) return
+        val now = SystemClock.elapsedRealtime()
+        if (playingSinceMs > 0) {
+            BenflixWatchTime.instance?.add(watchUser, (now - playingSinceMs).coerceIn(0L, MAX_STEP_MS))
+        }
+        playingSinceMs = if (stillPlaying ?: (playingSinceMs > 0)) now else 0L
+    }
+
     private val coroutineScope = CoroutineScope(WholphinDispatchers.Main)
     private val task: TimerTask =
         object : TimerTask() {
             override fun run() {
                 try {
+                    countWatched(stillPlaying = null)
                     saveActivity(-1L)
                 } catch (ex: Exception) {
                     Timber.w(ex, "Exception during track activity timer")
@@ -80,6 +101,8 @@ class TrackActivityPlaybackListener(
 //        player.removeListener(this)
         task.cancel()
         TIMER.purge()
+        countWatched(false)
+        BenflixWatchTime.instance?.flush(watchUser)
         val position = player.currentPosition.milliseconds
         // Benflix: a finished anime episode gets ticked off on AniList (if the person signed in)
         getState.invoke()?.let { state ->
@@ -106,6 +129,7 @@ class TrackActivityPlaybackListener(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        countWatched(isPlaying)
         if (initialized) {
             saveActivity(-1)
         } else if (isPlaying) {
@@ -166,6 +190,8 @@ class TrackActivityPlaybackListener(
 
     companion object {
         private const val TAG = "TrackActivityPlaybackListener"
+
+        private const val MAX_STEP_MS = 60_000L
 
         private val TIMER by lazy { Timer("$TAG-timer", true) }
     }

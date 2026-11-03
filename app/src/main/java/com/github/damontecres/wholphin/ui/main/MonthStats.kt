@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -38,6 +39,9 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.YearMonth
+import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -58,6 +62,7 @@ class MonthStatsViewModel
     constructor(
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val watchTime: BenflixWatchTime,
     ) : ViewModel() {
         private val _stats = MutableStateFlow<MonthStats?>(null)
         val stats: StateFlow<MonthStats?> = _stats
@@ -77,8 +82,10 @@ class MonthStatsViewModel
         }
 
         /**
-         * Jellyfin remembers when each thing was last watched, so this counts everything last watched this
-         * month (and how far into it). A movie watched twice this month counts once.
+         * Jellyfin remembers when each thing was last watched, so this lists everything last watched this
+         * month. The time is Benflix's own count of real watching (paused time and skipped bits don't
+         * count, rewatching does). Anything watched before Benflix started counting, or before the
+         * 1st, falls back to how far into it the person got.
          */
         private suspend fun build(): MonthStats? {
             val userId = serverRepository.currentUser?.id ?: return null
@@ -99,12 +106,17 @@ class MonthStatsViewModel
                     ).content.items
                     .filter { it.userData?.lastPlayedDate?.isAfter(start) == true }
             if (watched.isEmpty()) return null
+            val real = watchTime.read(userId)
+            val sinceMs = real.sinceMs
             val ticks =
-                watched.sumOf { item ->
-                    val runtime = item.runTimeTicks ?: 0L
-                    if (item.userData?.played == true) runtime else (item.userData?.playbackPositionTicks ?: 0L).coerceAtMost(runtime)
-                }
-            val totalMinutes = (ticks / 600_000_000L).toInt()
+                watched
+                    .filter { item ->
+                        sinceMs == null || (item.userData?.lastPlayedDate?.let { toMs(it) } ?: 0L) < sinceMs
+                    }.sumOf { item ->
+                        val runtime = item.runTimeTicks ?: 0L
+                        if (item.userData?.played == true) runtime else (item.userData?.playbackPositionTicks ?: 0L).coerceAtMost(runtime)
+                    }
+            val totalMinutes = (ticks / 600_000_000L).toInt() + (real.seconds(YearMonth.now()) / 60L).toInt()
             val topShowEntry =
                 watched
                     .filter { it.type == BaseItemKind.EPISODE && !it.seriesName.isNullOrBlank() }
@@ -144,6 +156,9 @@ class MonthStatsViewModel
                 topShow = topShowEntry?.value?.firstOrNull()?.seriesName,
             )
         }
+
+        // Jellyfin dates are in UTC
+        private fun toMs(date: LocalDateTime) = date.toInstant(ZoneOffset.UTC).toEpochMilli()
     }
 
 /** "Your November": hours watched, top genre and most-watched show */
