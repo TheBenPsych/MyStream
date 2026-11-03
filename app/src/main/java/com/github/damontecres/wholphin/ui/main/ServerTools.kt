@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -8,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -467,6 +470,7 @@ sealed interface ServerToolsDialog {
  * TV: the buttons sit to the right of the row, so pressing right reaches them.
  * Phone: the buttons sit under the row so nothing gets squashed or cut off.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ServerActionRow(
     headline: String,
@@ -501,13 +505,21 @@ fun ServerActionRow(
             modifier = m,
         )
     }
+    // Benflix: every row sits on its own dark rounded card, like the Settings pages, so the page
+    // isn't a wall of floating text on black
+    val card =
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(ServerCardColor)
     if (actions.isEmpty()) {
-        row(modifier.fillMaxWidth())
+        row(card)
     } else if (isTv) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = modifier.fillMaxWidth(),
+            modifier = card.padding(end = 12.dp),
         ) {
             row(Modifier.weight(1f))
             actions.forEach { (label, action) ->
@@ -515,11 +527,13 @@ fun ServerActionRow(
             }
         }
     } else {
-        Column(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = card) {
             row(Modifier.fillMaxWidth())
-            Row(
+            // Buttons wrap onto a second line when they don't fit
+            androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 12.dp, bottom = 12.dp),
             ) {
                 actions.forEach { (label, action) ->
                     Button(onClick = action) { Text(label, fontSize = 14.sp) }
@@ -528,6 +542,11 @@ fun ServerActionRow(
         }
     }
 }
+
+/** Benflix: the Server page's card colour (neutral graphite, no red tint) */
+internal val ServerCardColor =
+    androidx.compose.ui.graphics
+        .Color(0xFF1C1C21)
 
 /** Benflix: problems people sent with "Report a problem" */
 fun LazyListScope.problemReportItems(

@@ -516,7 +516,9 @@ def tracks_status():
 def tracks_start(mode, folder=None, undo_file=None):
     if not tracks_ready():
         raise ToolError(503, "The track tool isn't set up on the server yet. Run the Benflix setup command again.")
-    cmd = [sys.executable, "-u", TRACKS_SCRIPT, "--log-dir", TRACK_LOGS]
+    # Ben's qBittorrent stops seeding after a minute, so files that still have a second copy in Downloads
+    # are safe to edit (otherwise most new episodes would be skipped)
+    cmd = [sys.executable, "-u", TRACKS_SCRIPT, "--log-dir", TRACK_LOGS, "--include-hardlinked"]
     if mode in ("preview", "apply"):
         if folder not in _folders():
             raise ToolError(400, "Pick one of the folders.")

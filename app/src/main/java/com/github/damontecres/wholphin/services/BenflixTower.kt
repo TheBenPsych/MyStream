@@ -1,5 +1,8 @@
 package com.github.damontecres.wholphin.services
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.systemApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.json.JSONArray
 import org.json.JSONObject
@@ -67,8 +70,57 @@ class BenflixTower
     @Inject
     constructor(
         private val helper: GameLibraryClient,
+        private val api: ApiClient,
     ) {
-        suspend fun status(fresh: Boolean = false): TowerStatus {
+        /**
+         * Runs [block]. When Benflix uses an internet address for Jellyfin (like a duckdns name), the helper
+         * isn't reachable there, so this asks Jellyfin for Tower's home address, tries that, and keeps it
+         * (it fixes the Games page on this device too).
+         */
+        private suspend fun <T> atHome(block: suspend () -> T): T =
+            try {
+                block()
+            } catch (ex: GameLibraryException) {
+                if (!ex.askAddress) throw ex
+                val home = if (helper.customAddress.isBlank()) homeAddress() else null
+                if (home == null) throw notAtHome(ex)
+                helper.saveAddress(home)
+                try {
+                    block()
+                } catch (again: GameLibraryException) {
+                    if (again.askAddress) {
+                        helper.saveAddress("")
+                        throw notAtHome(again)
+                    }
+                    throw again
+                }
+            }
+
+        private suspend fun homeAddress(): String? =
+            try {
+                val local =
+                    api.systemApi
+                        .getSystemInfo()
+                        .content.localAddress
+                        ?.toHttpUrlOrNull()
+                        ?.host
+                local?.takeIf { it != helper.address.toHttpUrlOrNull()?.host }
+            } catch (ex: kotlinx.coroutines.CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                null
+            }
+
+        private fun notAtHome(cause: GameLibraryException) =
+            GameLibraryException(
+                "Couldn't reach Tower. The Tower tools only work when this device is at home on your Wi-Fi.",
+                askAddress = true,
+                cause = cause,
+            )
+
+        suspend fun status(fresh: Boolean = false): TowerStatus = atHome { readStatus(fresh) }
+
+        private suspend fun readStatus(fresh: Boolean): TowerStatus {
             val j = helper.getJson("/api/admin/tower" + if (fresh) "?fresh=1" else "")
             return TowerStatus(
                 upSeconds = j.longOrNull("up_seconds"),
@@ -122,7 +174,7 @@ class BenflixTower
         /** Asks Radarr to look for a better copy of a movie */
         suspend fun searchBetter(movie: BaseItemDto): String = message(helper.postJson("/api/admin/search/better", ids(movie)))
 
-        suspend fun tracks(): TrackTidy = tidy(helper.getJson("/api/admin/tracks"))
+        suspend fun tracks(): TrackTidy = atHome { tidy(helper.getJson("/api/admin/tracks")) }
 
         /** [mode] is "preview", "apply" or "undo" */
         suspend fun startTracks(

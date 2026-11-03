@@ -197,12 +197,7 @@ class ServerDashboardData
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: com.github.damontecres.wholphin.services.GameLibraryException) {
-                _towerProblem.value =
-                    if (ex.askAddress) {
-                        "Tower tools need the Benflix helper on the server. Run the Benflix setup command on Tower once."
-                    } else {
-                        ex.message
-                    }
+                _towerProblem.value = ex.message
             } catch (ex: Exception) {
                 Timber.w(ex, "Server page: Tower tools could not load")
                 _towerProblem.value = "Couldn't read Tower's tools. Try again in a moment."
