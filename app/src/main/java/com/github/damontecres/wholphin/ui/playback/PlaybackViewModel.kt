@@ -156,6 +156,7 @@ import java.time.LocalDateTime
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -262,6 +263,8 @@ class PlaybackViewModel
                     it.release()
                     player.removeListener(it)
                 }
+                // Benflix: "stopped" was just sent, and this player is going away, so don't send it again
+                this@PlaybackViewModel.activityListener = null
                 this@PlaybackViewModel.trackChangeListener?.let {
                     player.removeListener(it)
                 }
@@ -444,9 +447,17 @@ class PlaybackViewModel
             // Benflix: the details page may already have it ready
             val queriedItem = playbackPrep?.take(itemId) ?: api.userLibraryApi.getItem(itemId).content
             // Benflix Smart resume: when coming back to something, start a few seconds early
+            // Only when actually resuming the saved spot: not a chapter pick or other chosen start,
+            // and not something that's never been played
+            val savedPositionMs = (queriedItem.userData?.playbackPositionTicks ?: 0L) / 10_000L
+            val lastPlayed = queriedItem.userData?.lastPlayedDate
+            val isResume =
+                positionMs > 0 &&
+                    lastPlayed != null &&
+                    abs(positionMs - savedPositionMs) <= SMART_RESUME_MATCH_MS
             val smartRewindMs =
-                if (positionMs > 0 && !preferences.appPreferences.benflixPreferences.smartResumeOff) {
-                    SmartResume.rewindMs(queriedItem.userData?.lastPlayedDate)
+                if (isResume && !preferences.appPreferences.benflixPreferences.smartResumeOff) {
+                    SmartResume.rewindMs(lastPlayed)
                 } else {
                     0L
                 }
@@ -1572,6 +1583,9 @@ class PlaybackViewModel
                 }
         }
 
+        /** Benflix: episodes this player moved on from with Next / autoplay */
+        @Volatile private var movedOnFrom: Set<UUID> = emptySet()
+
         /** Benflix: "You haven't seen episode 4 yet. Watch it first?" */
         private suspend fun checkSkipped(
             item: BaseItem,
@@ -1595,6 +1609,8 @@ class PlaybackViewModel
                 val index = episodes.indexOfFirst { it.id == item.id }
                 val previous = episodes.getOrNull(index - 1)?.takeIf { index > 0 } ?: return
                 if ((previous.parentIndexNumber ?: 0) == 0 || previous.userData?.played == true) return
+                // Benflix: they've just watched it (Next / autoplay moved on from it)
+                if (previous.id in movedOnFrom) return
                 val label =
                     if (previous.parentIndexNumber == item.data.parentIndexNumber) {
                         "episode ${previous.indexNumber}"
@@ -2373,6 +2389,8 @@ class PlaybackViewModel
                 viewModelScope.launch(WholphinDispatchers.Main) { navigationManager.goBack() }
                 return
             }
+            // Benflix: don't ask "You haven't seen it yet" about the episode they're moving on from
+            if (this::itemId.isInitialized) movedOnFrom = movedOnFrom + itemId
             viewModelScope.launchDefault {
                 playlistMutex.withLock {
                     val state = state.value
@@ -2839,6 +2857,9 @@ class PlaybackViewModel
     }
 
 private const val WHAT_DID_THEY_SAY_MS = 12_000L
+
+/** Benflix Smart resume: how close the start must be to the saved spot to count as resuming */
+private const val SMART_RESUME_MATCH_MS = 2_000L
 
 /** Show the after-credits notice this close to the end, if there are no credits marks */
 private const val AFTER_CREDITS_NOTICE_MS = 5 * 60_000L

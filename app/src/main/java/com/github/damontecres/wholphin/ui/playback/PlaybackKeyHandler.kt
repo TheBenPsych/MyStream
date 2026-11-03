@@ -40,7 +40,7 @@ class PlaybackKeyHandler(
     private var lastSkipBackAt = 0L
 
     /** Benflix "What did they say?": two quick rewinds in a row */
-    private fun noteSkipBack() {
+    fun noteSkipBack() {
         val now = System.currentTimeMillis()
         if (now - lastSkipBackAt < DOUBLE_SKIP_BACK_MS) {
             lastSkipBackAt = 0L
@@ -176,6 +176,7 @@ class PlaybackKeyHandler(
             KeyEventType.KeyUp -> {
                 if (!handledByRepeat(isBack = isBack)) {
                     seekWithMultiplier(isBack = isBack, multiplier = 1)
+                    if (isBack) noteSkipBack()
                 }
                 setHandledByRepeat(isBack = isBack, handled = false)
                 true

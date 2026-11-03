@@ -358,15 +358,61 @@ class SeriesViewModel
             navigationManager.navigateTo(Destination.Playback(first, 0L))
         }
 
+        /** Benflix: the first resume is the page opening, which has just loaded everything */
+        private var firstResume = true
+
         fun onResumePage() {
             state.value.series.successValue?.let { item ->
                 viewModelScope.launchDefault { backdropService.submit(item) }
+                val returning = !firstResume
+                firstResume = false
                 // Benflix: something may have been watched since, so find the next episode again
                 nextUpReady = null
                 viewModelScope.launchIO {
+                    // Coming back from the player, which may still be reporting "stopped"
+                    if (returning) delay(RESUME_REFRESH_DELAY_MS)
                     findNextUp()?.let { prepareNextUp(it, item.data) }
                 }
-                viewModelScope.launchIO { loadProgress(item) }
+                viewModelScope.launchIO {
+                    if (returning) delay(RESUME_REFRESH_DELAY_MS)
+                    loadProgress(item)
+                }
+                if (returning) {
+                    viewModelScope.launchIO {
+                        delay(RESUME_REFRESH_DELAY_MS)
+                        refreshAfterReturn()
+                    }
+                }
+            }
+        }
+
+        /** Benflix: reload what playback may have changed (watched state and resume spots) */
+        private suspend fun refreshAfterReturn() {
+            try {
+                val series =
+                    api.userLibraryApi
+                        .getItem(seriesId)
+                        .content
+                        .let(::BaseItem)
+                _state.update { it.copy(series = DataLoadingState.Success(series)) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not refresh series %s", seriesId)
+            }
+            state.value.inlineSeasonIndex
+                .takeIf { it >= 0 }
+                ?.let { showSeasonEpisodes(it) }
+            (state.value.episodes as? EpisodeList.Success)?.let { eps ->
+                try {
+                    (state.value.seasons as? ApiRequestPager<*>)?.refresh()
+                    eps.episodes.refresh()
+                    _state.update { it.copy(episodes = eps) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not refresh episodes for %s", seriesId)
+                }
             }
         }
 
@@ -827,6 +873,9 @@ class SeriesViewModel
             appPreferences: AppPreferences,
         ): Boolean = mediaManagementService.canDelete(item, appPreferences)
     }
+
+/** Benflix: wait for the player to finish reporting before re-reading progress */
+private const val RESUME_REFRESH_DELAY_MS = 1_000L
 
 sealed interface EpisodeList {
     data object Loading : EpisodeList

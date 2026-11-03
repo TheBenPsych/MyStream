@@ -76,8 +76,17 @@ class TrackActivityPlaybackListener(
         }
     }
 
+    @Volatile
+    private var released = false
+
+    /**
+     * Reports "stopped" once. Call it before the player itself is released, since it reads the
+     * position from the player (a released player can report 0, which would wipe the resume spot)
+     */
     fun release() {
 //        player.removeListener(this)
+        if (released) return
+        released = true
         task.cancel()
         TIMER.purge()
         val position = player.currentPosition.milliseconds
