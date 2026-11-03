@@ -121,6 +121,68 @@ fun UpdateTip(
     above: Boolean,
 ) {
     val show by UpdateNotice.tip.collectAsState()
+    NoticeTip(text, above, show, UpdateNotice::hideTip)
+}
+
+/**
+ * Benflix: the admin's "something needs you" alert on Home (a new problem report, a nearly full disk).
+ * It looks like the update notice: a red "!" on the cogwheel (TV) or My Benflix (phone) and a tip bubble
+ * for a few seconds. It only shows while Home is on screen, and never for Kids.
+ */
+object ServerAlertNotice {
+    private val _text = MutableStateFlow<String?>(null)
+
+    /** What the alert says (null = nothing new) */
+    val text: StateFlow<String?> = _text
+
+    private val _tip = MutableStateFlow(false)
+    val tip: StateFlow<Boolean> = _tip
+
+    fun show(text: String) {
+        _text.value = text
+        _tip.value = true
+    }
+
+    fun hideTip() {
+        _tip.value = false
+    }
+
+    /** Home went away, or the admin opened the Server page */
+    fun clear() {
+        _text.value = null
+        _tip.value = false
+    }
+}
+
+/** True when the admin's red "!" for the Server page should show */
+@Composable
+fun rememberServerAlert(): Boolean {
+    val text by ServerAlertNotice.text.collectAsState()
+    val kids by KidsMode.active.collectAsState()
+    return text != null && !kids
+}
+
+/** The admin's alert bubble. [where] says how to get to the Server page, like "Open Settings, then Server." */
+@Composable
+fun ServerAlertTip(
+    where: String,
+    above: Boolean,
+) {
+    val text by ServerAlertNotice.text.collectAsState()
+    val show by ServerAlertNotice.tip.collectAsState()
+    // Waits for the update bubble to finish first, so two never show at once
+    val updateTip by UpdateNotice.tip.collectAsState()
+    val current = text ?: return
+    NoticeTip("$current $where", above, show && !updateTip, ServerAlertNotice::hideTip)
+}
+
+@Composable
+private fun NoticeTip(
+    text: String,
+    above: Boolean,
+    show: Boolean,
+    onHidden: () -> Unit,
+) {
     val kids by KidsMode.active.collectAsState()
     if (kids) return
     var visible by remember { mutableStateOf(false) }
@@ -130,7 +192,7 @@ fun UpdateTip(
             delay(UpdateNotice.TIP_MS)
             visible = false
             delay(400)
-            UpdateNotice.hideTip()
+            onHidden()
         } else {
             visible = false
         }

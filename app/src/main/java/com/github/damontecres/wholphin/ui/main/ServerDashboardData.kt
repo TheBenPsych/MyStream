@@ -148,6 +148,7 @@ class ServerDashboardData
         private val serverRepository: ServerRepository,
         private val health: BenflixServerHealth,
         private val reports: BenflixProblems,
+        private val towerTools: com.github.damontecres.wholphin.services.BenflixTower,
         @param:IoCoroutineScope private val scope: CoroutineScope,
     ) {
         private val json = Json { ignoreUnknownKeys = true }
@@ -175,6 +176,38 @@ class ServerDashboardData
         /** Benflix: what everyone started watching this week, newest first (null until asked) */
         private val _history = MutableStateFlow<List<WatchedEntry>?>(null)
         val history: StateFlow<List<WatchedEntry>?> = _history
+
+        /** Benflix: what the helper on Tower says (apps, downloads, how busy), null until it answers */
+        private val _tower = MutableStateFlow<com.github.damontecres.wholphin.services.TowerStatus?>(null)
+        val tower: StateFlow<com.github.damontecres.wholphin.services.TowerStatus?> = _tower
+
+        /** Why the helper on Tower couldn't answer (not set up yet, not reachable), null when it's fine */
+        private val _towerProblem = MutableStateFlow<String?>(null)
+        val towerProblem: StateFlow<String?> = _towerProblem
+
+        /** Asks the helper on Tower again (after restarting an app or fixing a download) */
+        fun refreshTower(fresh: Boolean = true) {
+            scope.launch(WholphinDispatchers.IO) { loadTower(fresh) }
+        }
+
+        private suspend fun loadTower(fresh: Boolean) {
+            try {
+                _tower.value = towerTools.status(fresh)
+                _towerProblem.value = null
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: com.github.damontecres.wholphin.services.GameLibraryException) {
+                _towerProblem.value =
+                    if (ex.askAddress) {
+                        "Tower tools need the Benflix helper on the server. Run the Benflix setup command on Tower once."
+                    } else {
+                        ex.message
+                    }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Server page: Tower tools could not load")
+                _towerProblem.value = "Couldn't read Tower's tools. Try again in a moment."
+            }
+        }
 
         /** How many parts are still fetching fresh numbers (the "Loading new stats" note) */
         private val _loading = MutableStateFlow(0)
@@ -259,6 +292,7 @@ class ServerDashboardData
             loadPart(done) { _problems.value = safe { loadProblems() } ?: _problems.value.orEmpty() }
             loadPart(done) { _disks.value = safe { health.readDisks() } ?: _disks.value.orEmpty() }
             loadPart({}) { _problemReports.value = safe { reports.all() } ?: _problemReports.value.orEmpty() }
+            loadPart({}) { loadTower(fresh = true) }
         }
 
         /** Keeps "Watching now" fresh every 15 seconds, only while the Server page is on screen */
@@ -269,6 +303,7 @@ class ServerDashboardData
                     while (isActive) {
                         delay(REFRESH_MS)
                         safe { loadWatching() }?.let { _watching.value = it }
+                        loadTower(fresh = false)
                     }
                 }
         }

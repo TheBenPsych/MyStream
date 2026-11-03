@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -112,14 +113,15 @@ enum class ServerSection(
     NOW("Right now", "Who's watching, and how hard the server works for it", Icons.Default.PlayArrow),
     LIBRARY("Library", "Movie and show numbers, disk space and the library checkup", Icons.AutoMirrored.Filled.List),
     REQUESTS("Requests", "Movies and shows people asked for, waiting for your yes or no", Icons.Default.Add),
+    DOWNLOADS("Downloads", "What's downloading, stuck downloads, and your apps on Tower", Icons.Default.KeyboardArrowDown),
     PEOPLE("People", "Accounts for family and friends", Icons.Default.Person),
     PROBLEMS("Problems", "Problems people reported and problems from the server", Icons.Default.Warning),
     MESSAGES("Messages", "Notes on Home, the welcome note and pop-ups", Icons.Default.Edit),
-    TOOLS("Tools", "Scan for new stuff, the server's chores, and restarting Jellyfin", Icons.Default.Build),
+    TOOLS("Tools", "Scan for new stuff, the server's chores, tidy track names, and restarting Jellyfin", Icons.Default.Build),
 }
 
 /** Benflix: green, gold or red for the traffic lights */
-private enum class Light { GOOD, WARN, BAD, UNKNOWN }
+internal enum class Light { GOOD, WARN, BAD, UNKNOWN }
 
 /** Benflix: one thing on the "Needs you" card */
 private data class NeedsYou(
@@ -281,12 +283,17 @@ fun ServerStatusPage(
     toolsViewModel: ServerToolsViewModel = hiltViewModel(),
     adminTitle: AdminTitleViewModel = hiltViewModel(),
     requestsViewModel: com.github.damontecres.wholphin.ui.discover.BenflixRequestsViewModel = hiltViewModel(),
+    towerViewModel: ServerTowerViewModel = hiltViewModel(),
 ) {
     val isTv = rememberIsTv()
     val data = viewModel.data
     val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
     val isAdmin = userDto?.policy?.isAdministrator == true
     LaunchedEffect(isAdmin) { if (isAdmin) data.preload() }
+    LaunchedEffect(Unit) {
+        com.github.damontecres.wholphin.ui.components.ServerAlertNotice
+            .clear()
+    }
     // "Watching now" only keeps checking while this page is on screen
     LifecycleResumeEffect(isAdmin) {
         if (isAdmin) data.startWatching()
@@ -307,6 +314,11 @@ fun ServerStatusPage(
 
             ServerSection.TOOLS -> {
                 viewModel.loadTools()
+                towerViewModel.loadTracks()
+            }
+
+            ServerSection.DOWNLOADS -> {
+                data.refreshTower()
             }
 
             ServerSection.REQUESTS -> {
@@ -344,9 +356,13 @@ fun ServerStatusPage(
     val seerrActive by requestsViewModel.active.collectAsState(false)
     val waitingRequests by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.count
         .collectAsState()
+    val tower by data.tower.collectAsState()
+    val towerProblem by data.towerProblem.collectAsState()
+    val tracks by towerViewModel.tracks.collectAsState()
+    val tracksProblem by towerViewModel.tracksProblem.collectAsState()
 
     val lights =
-        remember(header, disks, problems, reports, watching) {
+        remember(header, disks, problems, reports, watching, tower) {
             mapOf(
                 ServerSection.OVERVIEW to
                     when {
@@ -366,6 +382,13 @@ fun ServerStatusPage(
                         disks.orEmpty().any { it.nearlyFull } -> Light.WARN
                         else -> Light.GOOD
                     },
+                ServerSection.DOWNLOADS to
+                    when {
+                        tower == null -> Light.UNKNOWN
+                        brokenApps(tower).isNotEmpty() -> Light.BAD
+                        tower?.downloads.orEmpty().any { it.stuck } -> Light.WARN
+                        else -> Light.GOOD
+                    },
                 ServerSection.PROBLEMS to
                     when {
                         problems == null && reports == null -> Light.UNKNOWN
@@ -376,8 +399,20 @@ fun ServerStatusPage(
             )
         }
     val needsYou =
-        remember(header, disks, problems, reports, waitingRequests) {
+        remember(header, disks, problems, reports, waitingRequests, tower) {
             buildList {
+                brokenApps(tower).forEach {
+                    add(NeedsYou("${it.nice} isn't running properly on Tower", Light.BAD, ServerSection.DOWNLOADS))
+                }
+                tower?.downloads.orEmpty().count { it.stuck }.takeIf { it > 0 }?.let {
+                    add(
+                        NeedsYou(
+                            if (it == 1) "1 download is stuck" else "$it downloads are stuck",
+                            Light.WARN,
+                            ServerSection.DOWNLOADS,
+                        ),
+                    )
+                }
                 if (waitingRequests > 0) {
                     add(
                         NeedsYou(
@@ -450,6 +485,7 @@ fun ServerStatusPage(
                         onClick = { section = ServerSection.NOW },
                     )
                 }
+                towerOverviewItems(tower, towerProblem) { section = ServerSection.DOWNLOADS }
                 libraryNumberItems(library)
                 diskItems(disks)
                 startupSpeedItem(sectionTitle)
@@ -457,6 +493,7 @@ fun ServerStatusPage(
 
             ServerSection.NOW -> {
                 uploadMeterItem(watching)
+                towerBusyItems(tower)
                 watchingItems(
                     watching = watching,
                     isTv = isTv,
@@ -476,6 +513,10 @@ fun ServerStatusPage(
                 )
             }
 
+            ServerSection.DOWNLOADS -> {
+                towerDownloadItems(tower, towerProblem, towerViewModel)
+            }
+
             ServerSection.TOOLS -> {
                 toolItems(
                     libraries = libraries,
@@ -484,12 +525,20 @@ fun ServerStatusPage(
                     onChore = viewModel::runChore,
                     onRestart = { askRestart = true },
                 )
+                trackTidyItems(tracks, tracksProblem, towerViewModel)
             }
 
             ServerSection.LIBRARY -> {
                 libraryNumberItems(library)
                 diskItems(disks)
-                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle)
+                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
+                    when {
+                        tower == null -> emptyList()
+                        title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
+                        title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
+                        else -> emptyList()
+                    }
+                }
                 spaceItems(toolsState, toolsViewModel, sectionTitle)
             }
 
@@ -693,6 +742,7 @@ fun ServerStatusPage(
             onConfirm = viewModel::clearNotice,
         )
     }
+    ServerTowerDialogs(towerViewModel)
     stopping?.let { w ->
         ConfirmDialog(
             title = "Stop ${w.who}'s stream?",
@@ -796,6 +846,7 @@ private fun GlanceRow(
             ServerSection.OVERVIEW to "Server",
             ServerSection.NOW to (watchingCount?.let { "$it watching" } ?: "Watching"),
             ServerSection.LIBRARY to "Disks",
+            ServerSection.DOWNLOADS to "Apps",
             ServerSection.PROBLEMS to "Problems",
         )
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -842,7 +893,7 @@ private fun SectionChip(
 }
 
 @Composable
-private fun Dot(
+internal fun Dot(
     light: Light,
     size: androidx.compose.ui.unit.Dp = 12.dp,
 ) {
@@ -1116,7 +1167,7 @@ private fun LazyListScope.toolItems(
 }
 
 @Composable
-private fun ProgressLine(share: Float) {
+internal fun ProgressLine(share: Float) {
     Box(
         modifier =
             Modifier
@@ -1206,7 +1257,7 @@ private fun LazyListScope.serverProblemItems(problems: List<ServerProblem>?) {
 
 /** Benflix: a grey box with a gently pulsing line, shown where a section is still loading */
 @Composable
-private fun LoadingBox(text: String) {
+internal fun LoadingBox(text: String) {
     val pulse = rememberInfiniteTransition(label = "loading")
     val alpha by pulse.animateFloat(
         initialValue = 0.35f,
@@ -1235,7 +1286,7 @@ private val WarnGold = Color(0xFFF2B84B)
 private val BadRed = Color(0xFFE5484D)
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text = text,
         fontSize = 20.sp,

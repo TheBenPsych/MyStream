@@ -265,13 +265,25 @@ fun TopNavBar(
                     selected = false,
                     onClick = onClickSettings,
                 )
-                if (updateAlert) {
+                // Benflix: the admin's alert on Home (new problem report, disk nearly full) looks the same
+                val serverAlert =
+                    com.github.damontecres.wholphin.ui.components
+                        .rememberServerAlert()
+                if (updateAlert || serverAlert) {
                     com.github.damontecres.wholphin.ui.components.UpdateBang(
                         size = 14.dp,
                         modifier = Modifier.align(Alignment.TopEnd),
                     )
+                }
+                if (updateAlert) {
                     com.github.damontecres.wholphin.ui.components.UpdateTip(
                         text = stringResource(R.string.benflix_update_tip_tv),
+                        above = false,
+                    )
+                }
+                if (serverAlert) {
+                    com.github.damontecres.wholphin.ui.components.ServerAlertTip(
+                        where = "Open Settings, then Server.",
                         above = false,
                     )
                 }

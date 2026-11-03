@@ -1,5 +1,6 @@
 #!/bin/bash
-# Benflix games helper: lets Benflix play your RomM games right on the TV or phone.
+# Benflix helper: lets Benflix play your RomM games right on the TV or phone, and powers the
+# Tower tools on Benflix's Server page (apps, downloads, how busy Tower is, track tidy).
 # The helper sends each game's files, your BIOS files and your saves to Benflix, and keeps the saves
 # (one folder per Jellyfin account) in Games/saves. Safe to run again any time.
 #
@@ -11,21 +12,25 @@ ROMS=$GAMES/roms
 BIOS=$GAMES/bios
 SAVES=$GAMES/saves
 APP=/mnt/user/appdata/benflix-games
+MEDIA=/mnt/user/Homelab/Media
+TRACKS=/mnt/user/appdata/benflix-tracks
 OLD=/mnt/user/appdata/wolf/benflix
 RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES"
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-if curl -fsSL "$RAW/benflix-games-helper.py" -o "$APP/benflix-games-helper.py"; then echo "  ok"; else
-  echo "  PROBLEM  Couldn't download it. Check the server has internet."
-  exit 1
-fi
+for f in benflix-games-helper.py benflix_server_tools.py benflix-fix-tracks.py; do
+  if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
+    echo "  PROBLEM  Couldn't download $f. Check the server has internet."
+    exit 1
+  fi
+done
 
 say "RomM login for the helper"
 ENV=$APP/helper.env
@@ -69,16 +74,49 @@ if [ -n "$JF" ]; then echo "  ok  $JF"; else
   echo "  PROBLEM  Couldn't find Jellyfin on port 8096. Send this output to Claude."
 fi
 
+say "Connecting Sonarr and Radarr (for the Server page)"
+# Reads each app's key from its own settings file, then finds an address the helper can reach
+TOOLS_ENV=$APP/tools.env
+: >"$TOOLS_ENV"
+chmod 600 "$TOOLS_ENV"
+find_arr() { # $1 = sonarr or radarr, $2 = usual port
+  local c cfg key port base ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i "$1" | head -1)
+  if [ -z "$c" ]; then echo "  skip  No $1 app found"; return; fi
+  cfg=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")/config.xml
+  if [ ! -f "$cfg" ]; then echo "  PROBLEM  Couldn't find $1's settings file ($cfg)"; return; fi
+  key=$(sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' "$cfg" | head -1)
+  port=$(sed -n 's:.*<Port>\(.*\)</Port>.*:\1:p' "$cfg" | head -1)
+  base=$(sed -n 's:.*<UrlBase>\(.*\)</UrlBase>.*:\1:p' "$cfg" | head -1)
+  [ -n "$port" ] || port=$2
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port$base" "http://$HOST_IP:$port$base" ${ipaddr:+"http://$ipaddr:$port$base"}; do
+    if curl -fs -m 5 -H "X-Api-Key: $key" "$u/api/v3/system/status" >/dev/null; then
+      NAME=$(echo "$1" | tr '[:lower:]' '[:upper:]')
+      printf '%s_URL=%s\n%s_KEY=%s\n' "$NAME" "$u" "$NAME" "$key" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but couldn't reach it on port $port. Send this output to Claude."
+}
+find_arr sonarr 8989
+find_arr radarr 7878
+
 say "Starting the helper (benflix-games on port 8097)"
 # The old streaming setup's folder is shared too while it's still there, so streaming keeps working
 EXTRA=()
 [ -d "$OLD" ] && EXTRA=(-v "$OLD:/benflix:rw")
 docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
-  --env-file "$ENV" -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" -e WOLF_URL=http://127.0.0.1:47989 \
+  --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" -e WOLF_URL=http://127.0.0.1:47989 \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" "${EXTRA[@]}" \
-  python:3.12-alpine python -u /app/benflix-games-helper.py >/dev/null && sleep 3
-if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play; then echo "  ok  http://$HOST_IP:8097"; else
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" \
+  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix >/dev/null 2>&1 || echo "Track tool missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
+  >/dev/null && sleep 5
+for _ in 1 2 3 4 5 6; do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
+if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
+elif curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play; then echo "  ok  http://$HOST_IP:8097 (games only: the Server page tools didn't load)"; else
   echo "  PROBLEM  The helper didn't start. Its log:"
   docker logs --tail 20 benflix-games 2>&1
   exit 1
@@ -93,3 +131,4 @@ have "gba_bios.bin" "Game Boy Advance (optional)"
 
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."
+echo "The Server page (My Benflix > Server) now shows your apps, downloads and how busy Tower is."

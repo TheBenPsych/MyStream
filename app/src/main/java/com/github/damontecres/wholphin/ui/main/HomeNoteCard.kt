@@ -43,6 +43,7 @@ import javax.inject.Inject
 class HomeNoteViewModel
     @Inject
     constructor(
+        @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
         private val notes: BenflixNotes,
         private val serverRepository: ServerRepository,
         private val health: BenflixServerHealth,
@@ -90,6 +91,7 @@ class HomeNoteViewModel
                 if (KidsMode.isActive || GuestMode.isActive) return@launch
                 if (serverRepository.currentUserDto?.policy?.isAdministrator == true) {
                     _headsUp.value = health.headsUp()
+                    checkServerAlert()
                 }
             }
             viewModelScope.launch {
@@ -108,6 +110,41 @@ class HomeNoteViewModel
             }
         }
 
+        /**
+         * Benflix: the admin's alert (red "!" + tip bubble, like updates) when a new problem report arrived
+         * since last time, or a disk is nearly full (once a day). Only while Home is on screen.
+         */
+        private suspend fun checkServerAlert() {
+            val prefs = context.getSharedPreferences(ALERT_PREFS, android.content.Context.MODE_PRIVATE)
+            try {
+                val newest = problems.all().firstOrNull()
+                val seen = prefs.getLong(SEEN_REPORT, 0L)
+                if (newest != null && newest.at > seen) {
+                    prefs.edit().putLong(SEEN_REPORT, newest.at).apply()
+                    // The very first time, don't alert about old reports
+                    if (seen > 0L) {
+                        com.github.damontecres.wholphin.ui.components.ServerAlertNotice
+                            .show("${newest.userName} reported a problem: ${newest.problem} (${newest.title}).")
+                        return
+                    }
+                }
+                val today =
+                    java.time.LocalDate
+                        .now()
+                        .toString()
+                val full = health.readDisks().filter { it.nearlyFull }.maxByOrNull { it.usedShare }
+                if (full != null && prefs.getString(DISK_DAY, null) != today) {
+                    prefs.edit().putString(DISK_DAY, today).apply()
+                    com.github.damontecres.wholphin.ui.components.ServerAlertNotice
+                        .show("The disk with ${full.name} is ${(full.usedShare * 100).toInt()}% full.")
+                }
+            } catch (ex: kotlinx.coroutines.CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                timber.log.Timber.w(ex, "Could not check for server alerts")
+            }
+        }
+
         fun dismiss() {
             val userId = serverRepository.currentUser?.id ?: return
             val (note, kind) = _note.value ?: return
@@ -121,6 +158,10 @@ class HomeNoteViewModel
             }
         }
     }
+
+private const val ALERT_PREFS = "benflix_server_alert"
+private const val SEEN_REPORT = "seen_report_at"
+private const val DISK_DAY = "disk_alert_day"
 
 /** "A note from Ben" card near the top of Home. Shows until the person closes it. */
 @Composable
