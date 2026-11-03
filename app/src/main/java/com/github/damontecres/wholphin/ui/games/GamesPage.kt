@@ -585,6 +585,7 @@ fun GamesPage(
                     modifier = cardSize,
                 )
             }
+            DeviceCard(power, isTv)
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -1745,6 +1746,42 @@ data class GameChoice(
     val downloaded: Boolean,
     val pinned: Boolean,
 )
+
+/**
+ * "This TV: MediaTek MT8696 · 4 cores…" and which consoles play well here. It can take focus, so the
+ * remote can move onto it and the page scrolls to show it.
+ */
+@Composable
+private fun DeviceCard(
+    power: DevicePower,
+    isTv: Boolean,
+) {
+    val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
+    val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = {},
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+            if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+        }
+    }
+}
 
 /** Play, Resume or Start over, plus "Keep for trips" on phones */
 @Composable
