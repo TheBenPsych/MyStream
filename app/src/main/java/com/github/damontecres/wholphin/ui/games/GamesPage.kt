@@ -2122,6 +2122,17 @@ private val CONSOLE_PHOTOS =
         "gbc" to "Nintendo-Game-Boy-Color-FL.jpg",
         "gba" to "Nintendo-Game-Boy-Advance-Purple-FL.jpg",
         "psx" to "PSX-Console-wController.jpg",
+        "atari2600" to "Atari-2600-Wood-4Sw-Set.jpg",
+        "atari7800" to "Atari-7800-Console-Set.jpg",
+        "lynx" to "Atari-Lynx-II-Handheld-Angled.jpg",
+        "tg16" to "TurboGrafx16-Console-Set.jpg",
+        "turbografx16--1" to "TurboGrafx16-Console-Set.jpg",
+        "ngpc" to "Neo-Geo-Pocket-Color-Blue-Left.jpg",
+        "neo-geo-pocket-color" to "Neo-Geo-Pocket-Color-Blue-Left.jpg",
+        "wonderswan-color" to "WonderSwan-Color-Blue-Left.jpg",
+        "virtualboy" to "Virtual-Boy-Set.jpg",
+        "colecovision" to "ColecoVision-wController-L.jpg",
+        "n64" to "Nintendo-64-wController-L.jpg",
     )
 
 @Composable

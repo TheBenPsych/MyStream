@@ -80,6 +80,15 @@ fun consoleColour(slug: String): Color =
         "gba" -> Color(0xFF3949AB)
         "psx" -> Color(0xFF455A64)
         "n64" -> Color(0xFF2E7D32)
+        "atari2600", "atari-2600" -> Color(0xFF6D4C41)
+        "atari7800", "atari-7800" -> Color(0xFF424242)
+        "lynx", "atari-lynx" -> Color(0xFFE65100)
+        "tg16", "turbografx16--1", "turbografx-16", "pce", "pc-engine", "pcengine" -> Color(0xFFF57C00)
+        "ngp", "ngpc", "neo-geo-pocket", "neo-geo-pocket-color" -> Color(0xFF0277BD)
+        "wonderswan", "wonderswan-color", "ws", "wsc" -> Color(0xFF00838F)
+        "virtualboy", "virtual-boy", "vb" -> Color(0xFFB71C1C)
+        "colecovision", "coleco" -> Color(0xFF37474F)
+        "arcade", "fbneo", "mame", "cps1", "cps2", "cps3", "neogeoaes", "neogeomvs" -> Color(0xFF6A1B9A)
         else -> Color(0xFF37474F)
     }
 

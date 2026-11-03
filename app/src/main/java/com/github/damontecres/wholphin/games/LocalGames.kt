@@ -255,7 +255,8 @@ class LocalGames
                 for ((name, path) in list) {
                     val lower = name.lowercase(Locale.US)
                     if (lower !in console.bios) continue
-                    val target = File(system, lower)
+                    val target =
+                        File(if (console.biosFolder.isEmpty()) system else File(system, console.biosFolder).apply { mkdirs() }, lower)
                     if (target.exists()) continue
                     say(ref, "Getting BIOS files…")
                     client.download("/api/bios/file?path=" + android.net.Uri.encode(path), target)
@@ -304,7 +305,8 @@ class LocalGames
                 dir.deleteRecursively()
                 throw GameLibraryException("This game is a .7z or .rar file. Re-pack it as .zip (or unzipped) in RomM to play it here.")
             }
-            if (lower.endsWith(".zip") && console.key != "psx") {
+            // PlayStation and arcade games stay zipped (arcade emulators read the .zip set itself)
+            if (lower.endsWith(".zip") && console.key != "psx" && console.key != "arcade") {
                 say(ref, "Unpacking…")
                 start = unzipBiggest(File(dir, start), dir) ?: throw GameLibraryException("That game's .zip file looks empty.")
             }

@@ -92,6 +92,36 @@ private fun layoutFor(
                 )
             }
 
+            TouchLayout.N64 -> {
+                // Big A and B, with the four small yellow C buttons above them
+                val c = Size(b * 1.3f, b * 1.3f)
+                listOf(
+                    PadButton("A", RetroButton.B, at(0.3f, 0.55f), round, true),
+                    PadButton("B", RetroButton.Y, at(-0.45f, 0.2f), round, true),
+                    PadButton("C↑", RetroButton.X, at(0.35f, -0.85f), c, true),
+                    PadButton("C↓", RetroButton.A, at(0.35f, -0.2f), c, true),
+                    PadButton("C←", RetroButton.L, at(0.02f, -0.52f), c, true),
+                    PadButton("C→", RetroButton.R, at(0.68f, -0.52f), c, true),
+                )
+            }
+
+            TouchLayout.ONE_BUTTON -> {
+                listOf(PadButton("FIRE", RetroButton.B, at(0f, 0f), Size(b * 2.6f, b * 2.6f), true))
+            }
+
+            TouchLayout.ARCADE -> {
+                // Two rows of three, like an arcade stick: punches on top, kicks below (Street Fighter)
+                val small = Size(b * 1.6f, b * 1.6f)
+                listOf(
+                    PadButton("1", RetroButton.B, at(-0.78f, 0.38f), small, true),
+                    PadButton("2", RetroButton.A, at(0f, 0.38f), small, true),
+                    PadButton("3", RetroButton.R, at(0.78f, 0.38f), small, true),
+                    PadButton("4", RetroButton.Y, at(-0.78f, -0.38f), small, true),
+                    PadButton("5", RetroButton.X, at(0f, -0.38f), small, true),
+                    PadButton("6", RetroButton.L, at(0.78f, -0.38f), small, true),
+                )
+            }
+
             TouchLayout.GENESIS -> {
                 listOf(
                     PadButton("A", RetroButton.Y, at(-0.7f, 0.25f), round, true),
@@ -103,6 +133,13 @@ private fun layoutFor(
     val pill = Size(u * 0.26f, u * 0.1f)
     val shoulders =
         when (touch) {
+            TouchLayout.N64 -> {
+                listOf(
+                    PadButton("Z", RetroButton.L2, Offset(margin + pill.width / 2, margin + pill.height / 2), pill, false),
+                    PadButton("R", RetroButton.R2, Offset(w - margin - pill.width / 2, margin + pill.height / 2), pill, false),
+                )
+            }
+
             TouchLayout.GBA, TouchLayout.SNES -> {
                 listOf(
                     PadButton("L", RetroButton.L, Offset(margin + pill.width / 2, margin + pill.height / 2), pill, false),
@@ -130,10 +167,18 @@ private fun layoutFor(
     val middle =
         buildList {
             val selectAt = Offset(w / 2 - small.width * 0.65f, sy)
-            if (touch != TouchLayout.GENESIS) add(PadButton("SELECT", RetroButton.SELECT, selectAt, small, false))
+            if (touch != TouchLayout.GENESIS) {
+                val label =
+                    when (touch) {
+                        TouchLayout.ARCADE -> "COIN"
+                        TouchLayout.N64 -> "L"
+                        else -> "SELECT"
+                    }
+                add(PadButton(label, RetroButton.SELECT, selectAt, small, false))
+            }
             add(
                 PadButton(
-                    "START",
+                    if (touch == TouchLayout.ONE_BUTTON) "RESET" else "START",
                     RetroButton.START,
                     Offset(if (touch == TouchLayout.GENESIS) w / 2 else w / 2 + small.width * 0.65f, sy),
                     small,

@@ -80,16 +80,21 @@ private fun keyLines(
                 name(RetroButton.R)?.let { add(KeyLine("RB", PadGrey, false, it)) }
                 name(RetroButton.L2)?.let { add(KeyLine("LT", PadGrey, false, it)) }
                 name(RetroButton.R2)?.let { add(KeyLine("RT", PadGrey, false, it)) }
-                add(KeyLine("☰", PadGrey, true, "Start"))
+                add(KeyLine("☰", PadGrey, true, name(RetroButton.START) ?: "Start"))
                 name(RetroButton.SELECT)?.let { add(KeyLine("⧉", PadGrey, true, it)) }
                 add(KeyLine("Ⓧ", PadGrey, true, "Menu"))
             }
 
             KeyFor.REMOTE -> {
                 add(KeyLine("▲▼", PadGrey, false, "Move"))
-                name(RetroButton.A)?.let { add(KeyLine("OK", PadGrey, true, it)) }
-                name(RetroButton.B)?.let { add(KeyLine("Back", PadGrey, false, it)) }
-                add(KeyLine("⏯", PadGrey, true, "Start"))
+                if (console.touch == TouchLayout.ONE_BUTTON) {
+                    // One-button consoles: OK fires (Back still works too)
+                    name(RetroButton.B)?.let { add(KeyLine("OK", PadGrey, true, it)) }
+                } else {
+                    name(RetroButton.A)?.let { add(KeyLine("OK", PadGrey, true, it)) }
+                    name(RetroButton.B)?.let { add(KeyLine("Back", PadGrey, false, it)) }
+                }
+                add(KeyLine("⏯", PadGrey, true, name(RetroButton.START) ?: "Start"))
                 name(RetroButton.SELECT)?.let { add(KeyLine("≡", PadGrey, true, it)) }
                 name(RetroButton.Y)?.let { add(KeyLine("⏪", PadGrey, true, it)) }
                 name(RetroButton.X)?.let { add(KeyLine("⏩", PadGrey, true, it)) }
