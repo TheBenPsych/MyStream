@@ -82,7 +82,7 @@ class SideShow(
                     Request
                         .Builder()
                         .url(server.trimEnd('/') + path)
-                        .header("X-Emby-Token", token)
+                        .header("Authorization", "MediaBrowser Token=\"$token\"")
                         .build(),
                 ).execute()
                 .use { r -> if (r.isSuccessful) JSONObject(r.body.string()) else null }
@@ -114,7 +114,7 @@ class SideShow(
                             Request
                                 .Builder()
                                 .url(server.trimEnd('/') + path)
-                                .header("X-Emby-Token", token)
+                                .header("Authorization", "MediaBrowser Token=\"$token\"")
                                 .post(body.toString().toRequestBody("application/json".toMediaType()))
                                 .build(),
                         ).execute()
@@ -133,7 +133,7 @@ class SideShow(
 
     private fun enc(text: String) = URLEncoder.encode(text, "UTF-8")
 
-    private fun image(id: String) = server.trimEnd('/') + "/Items/$id/Images/Primary?maxHeight=360&quality=85&api_key=$token"
+    private fun image(id: String) = server.trimEnd('/') + "/Items/$id/Images/Primary?maxHeight=360&quality=85&ApiKey=$token"
 
     private fun toItem(j: JSONObject): SideShowItem? {
         val id = j.optString("Id").ifBlank { return null }
@@ -304,7 +304,7 @@ class SideShow(
                         ?: texts.firstOrNull { !it.optBoolean("IsForced") }
                         ?: texts.firstOrNull()
                 pick?.let {
-                    sub = server.trimEnd('/') + "/Videos/${item.id}/${item.id}/Subtitles/${it.optInt("Index")}/0/Stream.vtt?api_key=$token"
+                    sub = server.trimEnd('/') + "/Videos/${item.id}/${item.id}/Subtitles/${it.optInt("Index")}/0/Stream.vtt?ApiKey=$token"
                 }
             }
             get("/MediaSegments/${item.id}?includeSegmentTypes=Intro")?.optJSONArray("Items")?.let { segs ->
@@ -333,7 +333,7 @@ class SideShow(
     ) {
         session = UUID.randomUUID().toString().replace("-", "")
         val url =
-            server.trimEnd('/') + "/Videos/${item.id}/master.m3u8?MediaSourceId=${item.id}&api_key=$token" +
+            server.trimEnd('/') + "/Videos/${item.id}/master.m3u8?MediaSourceId=${item.id}&ApiKey=$token" +
                 "&PlaySessionId=$session&DeviceId=benflix-side-show&VideoCodec=h264&AudioCodec=aac" +
                 "&MaxWidth=1280&MaxHeight=720&VideoBitrate=3000000&AudioBitrate=160000&TranscodingMaxAudioChannels=2" +
                 "&SegmentContainer=ts&MinSegments=1&BreakOnNonKeyFrames=true"
