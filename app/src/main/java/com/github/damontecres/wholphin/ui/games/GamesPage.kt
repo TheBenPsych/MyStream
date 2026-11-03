@@ -1,10 +1,8 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
-import android.net.Uri
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -94,16 +92,19 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.games.DevicePower
+import com.github.damontecres.wholphin.games.DownloadedGame
+import com.github.damontecres.wholphin.games.GameRef
+import com.github.damontecres.wholphin.games.LocalConsole
+import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.GameLibraryException
-import com.github.damontecres.wholphin.services.GameStreamReturn
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.PlayTarget
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -203,14 +204,16 @@ enum class TouchMode {
 
 /** What the "Your games" part of the Games tab is showing */
 sealed interface LibraryState {
-    /** Kids profile, or not the server admin: streamed games are admin-only for now (home upload speed) */
+    /** Kids profile: your own games aren't shown there */
     data object Hidden : LibraryState
 
     data object Loading : LibraryState
 
+    /** Tower couldn't be reached. Games already downloaded on this device can still be played. */
     data class Failed(
         val message: String,
         val askAddress: Boolean,
+        val downloaded: List<DownloadedGame> = emptyList(),
     ) : LibraryState
 
     data class Ready(
@@ -230,6 +233,7 @@ class GamesViewModel
         val navigationManager: NavigationManager,
         private val games: GameLibraryClient,
         private val highScores: BenflixHighScores,
+        val localGames: LocalGames,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
 
@@ -242,6 +246,10 @@ class GamesViewModel
         /** The game being started right now, so a second press doesn't start two */
         private val _starting = MutableStateFlow<Int?>(null)
         val starting: StateFlow<Int?> = _starting
+
+        /** The game whose Play / Resume choices are showing */
+        private val _choice = MutableStateFlow<GameChoice?>(null)
+        val choice: StateFlow<GameChoice?> = _choice
 
         /** "Highest scores": game id to every account's best, highest first (null while loading) */
         private val _board = MutableStateFlow<Map<String, List<HighScore>>?>(null)
@@ -268,8 +276,7 @@ class GamesViewModel
         }
 
         fun reload() {
-            val isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true
-            if (KidsMode.isActive || !isAdmin) {
+            if (KidsMode.isActive) {
                 _library.value = LibraryState.Hidden
                 return
             }
@@ -279,12 +286,99 @@ class GamesViewModel
                     try {
                         LibraryState.Ready(games.loadLibrary())
                     } catch (e: GameLibraryException) {
-                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress)
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
-                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).", askAddress = false)
+                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).", askAddress = false, localGames.downloaded())
                     }
+                if (_library.value is LibraryState.Ready) localGames.sendWaitingSaves()
             }
+        }
+
+        /** Shows the Play / Resume choices for a game */
+        fun choose(ref: GameRef) {
+            if (_starting.value != null) return
+            val have = localGames.downloaded(ref.id)
+            _choice.value =
+                GameChoice(
+                    ref = ref,
+                    resume = localGames.hasLocalResume(ref.id),
+                    downloaded = have != null,
+                    pinned = have?.pinned == true,
+                )
+            viewModelScope.launch {
+                val server = localGames.hasServerResume(ref.id)
+                if (server == true) _choice.value = _choice.value?.takeIf { it.ref.id == ref.id }?.copy(resume = true)
+            }
+        }
+
+        fun closeChoice() {
+            _choice.value = null
+        }
+
+        /** Gets the game ready (downloads what's missing) and starts it on this device */
+        fun playHere(
+            context: Context,
+            ref: GameRef,
+            resume: Boolean,
+            pin: Boolean? = null,
+        ) {
+            if (_starting.value != null) return
+            _choice.value = null
+            _starting.value = ref.id
+            rememberPlayed(ref.id)
+            viewModelScope.launch {
+                try {
+                    val game = localGames.prepare(ref, pin)
+                    localGames.launch(context, game, resume)
+                } catch (e: GameLibraryException) {
+                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Timber.w(e, "Starting a game failed")
+                    Toast.makeText(context, "Couldn't start ${ref.name}.", Toast.LENGTH_LONG).show()
+                } finally {
+                    _starting.value = null
+                }
+            }
+        }
+
+        /** "Keep for trips" on or off. Turning it on downloads the game now. */
+        fun setKeep(
+            context: Context,
+            ref: GameRef,
+            keep: Boolean,
+        ) {
+            _choice.value = null
+            if (!keep) {
+                localGames.setPinned(ref.id, false)
+                Toast.makeText(context, "${ref.name} can be cleared out again when space runs low.", Toast.LENGTH_LONG).show()
+                return
+            }
+            if (_starting.value != null) return
+            _starting.value = ref.id
+            viewModelScope.launch {
+                try {
+                    localGames.prepare(ref, pinned = true)
+                    Toast.makeText(context, "${ref.name} is saved on this device. It plays without internet.", Toast.LENGTH_LONG).show()
+                } catch (e: GameLibraryException) {
+                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Timber.w(e, "Downloading a game failed")
+                    Toast.makeText(context, "Couldn't download ${ref.name}.", Toast.LENGTH_LONG).show()
+                } finally {
+                    _starting.value = null
+                }
+            }
+        }
+
+        fun removeDownload(
+            context: Context,
+            ref: GameRef,
+        ) {
+            _choice.value = null
+            localGames.remove(ref.id)
+            Toast.makeText(context, "Removed ${ref.name} from this device. Your saves are kept.", Toast.LENGTH_LONG).show()
+            reload()
         }
 
         fun setAddress(address: String) {
@@ -292,36 +386,14 @@ class GamesViewModel
             reload()
         }
 
-        /** Tells the server which game to start, then opens it in Moonlight */
-        fun play(
-            context: Context,
-            game: ServerGame,
-        ) {
-            if (_starting.value != null) return
-            _starting.value = game.id
-            rememberPlayed(game)
-            viewModelScope.launch {
-                try {
-                    openGameStream(context, game, games.prepare(game))
-                } catch (e: GameLibraryException) {
-                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    Timber.w(e, "Starting a game failed")
-                    Toast.makeText(context, "Couldn't start ${game.name}.", Toast.LENGTH_LONG).show()
-                } finally {
-                    _starting.value = null
-                }
-            }
-        }
-
-        /** Benflix "Continue playing": the last few streamed games, newest first, as "id:time" */
+        /** Benflix "Continue playing": the last few games played, newest first, as "id:time" */
         private fun recentKey() = "recent_${serverRepository.currentUser?.id ?: "guest"}"
 
-        private fun rememberPlayed(game: ServerGame) {
+        private fun rememberPlayed(id: Int) {
             val now = System.currentTimeMillis()
             val list =
-                listOf("${game.id}:$now") +
-                    recentPlayed().filter { it.first != game.id }.map { "${it.first}:${it.second}" }
+                listOf("$id:$now") +
+                    recentPlayed().filter { it.first != id }.map { "${it.first}:${it.second}" }
             prefs.edit().putString(recentKey(), list.take(RECENT_GAMES).joinToString(",")).apply()
         }
 
@@ -476,7 +548,7 @@ fun GamesPage(
         LaunchedEffect(Unit) { viewModel.refreshBoard() }
         board?.let { HighestScores(it, isTv = isTv) }
 
-        // Your own games, from the RomM game library on the server (admin only for now)
+        // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
         if (library != LibraryState.Hidden) {
             Text(
                 text = "Your games",
@@ -484,6 +556,32 @@ fun GamesPage(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(top = 8.dp),
             )
+            val power = remember { DevicePower.get(context) }
+            val prep by viewModel.localGames.prep.collectAsState()
+            val cardSize =
+                Modifier.size(
+                    width = if (isTv) 150.dp else 110.dp,
+                    height = if (isTv) 210.dp else 154.dp,
+                )
+
+            @Composable
+            fun Card(ref: GameRef) {
+                val status =
+                    when {
+                        prep?.gameId == ref.id -> prep?.text
+                        starting == ref.id -> "Starting…"
+                        else -> null
+                    }
+                ServerGameCard(
+                    game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+                    token = viewModel.gamesToken,
+                    status = status,
+                    progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
+                    onClick = { viewModel.choose(ref) },
+                    modifier = cardSize,
+                )
+            }
+            DeviceCard(power, isTv)
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -499,17 +597,64 @@ fun GamesPage(
                             ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
                         }
                     }
+                    if (state.downloaded.isNotEmpty()) {
+                        Text(
+                            text = "Saved on this device",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        InfoText("These play without Tower. Your saves are sent to Tower next time it can be reached.")
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                        ) {
+                            items(state.downloaded, key = { "dl-${it.ref.id}" }) { Card(it.ref) }
+                        }
+                    }
                 }
 
                 is LibraryState.Ready -> {
                     if (state.consoles.isEmpty()) {
                         InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                     }
-                    InfoText("Press a game to play it. Start + Select together quits and saves your spot. Hold Start for the game menu.")
+                    // Only consoles this device can play (some may be a bit slow)
+                    val playable =
+                        remember(state) {
+                            state.consoles.mapNotNull { c ->
+                                val local = LocalConsole.forSlug(c.slug) ?: return@mapNotNull null
+                                val fit = power.fit(local.power)
+                                if (fit == DevicePower.Fit.TOO_MUCH) null else Triple(c, local, fit)
+                            }
+                        }
+                    val notHere =
+                        remember(state) {
+                            state.consoles
+                                .filter { c ->
+                                    val local = LocalConsole.forSlug(c.slug)
+                                    local == null || power.fit(local.power) == DevicePower.Fit.TOO_MUCH
+                                }.map { it.name }
+                        }
+                    if (playable.isNotEmpty()) {
+                        InfoText(
+                            if (isTv) {
+                                "Press a game to play it on this TV. Any Bluetooth controller works. Back opens the game menu."
+                            } else {
+                                "Tap a game to play it on this phone with on-screen buttons, or a Bluetooth controller."
+                            },
+                        )
+                    }
+                    val refs =
+                        remember(state) {
+                            playable
+                                .flatMap { (c, _, _) ->
+                                    c.games.map {
+                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size)
+                                    }
+                                }.toMap()
+                        }
                     val recent =
                         remember(state, starting) {
-                            val byId = state.consoles.flatMap { c -> c.games.map { it.id to (it to c.name) } }.toMap()
-                            viewModel.recentPlayed().mapNotNull { (id, time) -> byId[id]?.let { Triple(it.first, it.second, time) } }
+                            viewModel.recentPlayed().mapNotNull { (id, time) -> refs[id]?.let { it to time } }
                         }
                     if (recent.isNotEmpty()) {
                         Text(
@@ -521,21 +666,11 @@ fun GamesPage(
                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                         ) {
-                            items(recent, key = { "recent-${it.first.id}" }) { (game, consoleName, time) ->
+                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    ServerGameCard(
-                                        game = game,
-                                        token = viewModel.gamesToken,
-                                        starting = starting == game.id,
-                                        onClick = { viewModel.play(context, game) },
-                                        modifier =
-                                            Modifier.size(
-                                                width = if (isTv) 150.dp else 110.dp,
-                                                height = if (isTv) 210.dp else 154.dp,
-                                            ),
-                                    )
+                                    Card(ref)
                                     Text(
-                                        text = "$consoleName · ${playedAgo(time)}",
+                                        text = "${ref.consoleName} · ${playedAgo(time)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -545,9 +680,16 @@ fun GamesPage(
                             }
                         }
                     }
-                    state.consoles.forEach { console ->
+                    playable.forEach { (console, local, fit) ->
+                        val notes =
+                            listOfNotNull(
+                                if (fit == DevicePower.Fit.MAY_BE_SLOW) "may be slow on this ${if (isTv) "TV" else "phone"}" else null,
+                                if (isTv && local.remoteFriendly) "works with the remote" else null,
+                            )
                         Text(
-                            text = "${console.name} (${console.games.size})",
+                            text =
+                                "${console.name} (${console.games.size})" +
+                                    if (notes.isEmpty()) "" else "  ·  " + notes.joinToString(" · "),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
@@ -555,21 +697,28 @@ fun GamesPage(
                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                         ) {
-                            items(console.games, key = { it.id }) { game ->
-                                ServerGameCard(
-                                    game = game,
-                                    token = viewModel.gamesToken,
-                                    starting = starting == game.id,
-                                    onClick = { viewModel.play(context, game) },
-                                    modifier = Modifier.size(width = if (isTv) 150.dp else 110.dp, height = if (isTv) 210.dp else 154.dp),
-                                )
-                            }
+                            items(console.games, key = { it.id }) { game -> refs[game.id]?.let { Card(it) } }
                         }
+                    }
+                    if (notHere.isNotEmpty()) {
+                        InfoText("Not on this device yet: ${notHere.joinToString(", ")}.")
                     }
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                 }
             }
         }
+    }
+
+    val choice by viewModel.choice.collectAsState()
+    choice?.let { c ->
+        GameChoiceDialog(
+            choice = c,
+            isTv = isTv,
+            onPlay = { resume -> viewModel.playHere(context, c.ref, resume) },
+            onKeep = { keep -> viewModel.setKeep(context, c.ref, keep) },
+            onRemove = { viewModel.removeDownload(context, c.ref) },
+            onDismiss = { viewModel.closeChoice() },
+        )
     }
 
     if (askAddress) {
@@ -633,8 +782,9 @@ private fun ActionTile(
 private fun ServerGameCard(
     game: ServerGame,
     token: String,
-    starting: Boolean,
+    status: String?,
     onClick: () -> Unit,
+    progress: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -678,7 +828,7 @@ private fun ServerGameCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            if (starting || !game.playable) {
+            if (status != null || !game.playable) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier =
@@ -686,8 +836,17 @@ private fun ServerGameCard(
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = .65f)),
                 ) {
+                    if (progress != null) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth(progress)
+                                .height(6.dp)
+                                .background(Color(0xFFE50914)),
+                        )
+                    }
                     Text(
-                        text = if (starting) "Starting…" else "Can't play here yet",
+                        text = status ?: "Can't play here yet",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -700,50 +859,6 @@ private fun ServerGameCard(
     }
 }
 
-/**
- * Opens the game in Moonlight, which streams it from the server. Moonlight goes straight to the "Benflix" app
- * there, which starts the game the server was just told about. If Moonlight isn't installed, opens its store page.
- */
-private fun openGameStream(
-    context: Context,
-    game: ServerGame,
-    target: PlayTarget,
-) {
-    val direct =
-        Intent()
-            .setClassName(MOONLIGHT_PACKAGE, "$MOONLIGHT_PACKAGE.ShortcutTrampoline")
-            .putExtra("AppName", target.appName)
-            // A fresh Moonlight task holding only the game, so when the game ends you land back in Benflix
-            // (not on Moonlight's own screens left over from opening Moonlight by hand)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-    target.computerUuid?.let { direct.putExtra("UUID", it) }
-    target.computerName?.let { direct.putExtra("Name", it) }
-    try {
-        GameStreamReturn.pending = true
-        context.startActivity(direct)
-        return
-    } catch (e: Exception) {
-        GameStreamReturn.pending = false
-        Timber.w(e, "Couldn't open Moonlight directly")
-    }
-    val pm = context.packageManager
-    val launch = pm.getLeanbackLaunchIntentForPackage(MOONLIGHT_PACKAGE) ?: pm.getLaunchIntentForPackage(MOONLIGHT_PACKAGE)
-    if (launch != null) {
-        Toast.makeText(context, "Opening ${game.name}: choose the Benflix app in Moonlight", Toast.LENGTH_LONG).show()
-        context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        return
-    }
-    Toast.makeText(context, "Install the free Moonlight app to play your games", Toast.LENGTH_LONG).show()
-    try {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$MOONLIGHT_PACKAGE")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
-    } catch (_: Exception) {
-        // No app store on this device; the message above explains what to do
-    }
-}
-
-private const val MOONLIGHT_PACKAGE = "com.limelight"
 
 /** "today", "yesterday", "3 days ago", "last week" or a date */
 private fun playedAgo(time: Long): String {
@@ -1631,3 +1746,112 @@ private fun HighestScores(
 
 /** How many accounts show under each game on "Highest scores" */
 private const val BOARD_ROWS = 5
+
+/** What the Play / Resume choices for one game show */
+data class GameChoice(
+    val ref: GameRef,
+    val resume: Boolean,
+    val downloaded: Boolean,
+    val pinned: Boolean,
+)
+
+/** "This TV: MediaTek MT8696 · 4 cores…" and which consoles play well here */
+@Composable
+private fun DeviceCard(
+    power: DevicePower,
+    isTv: Boolean,
+) {
+    val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
+    val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF1C1C1C), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
+        Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+        if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+    }
+}
+
+/** Play, Resume or Start over, plus "Keep for trips" on phones */
+@Composable
+private fun GameChoiceDialog(
+    choice: GameChoice,
+    isTv: Boolean,
+    onPlay: (resume: Boolean) -> Unit,
+    onKeep: (Boolean) -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        LaunchedEffect(Unit) { focus.tryRequestFocus() }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 420.dp)
+                    .background(Color(0xFF1C1C1C), RoundedCornerShape(16.dp))
+                    .padding(24.dp),
+        ) {
+            Text(choice.ref.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                text =
+                    choice.ref.consoleName +
+                        if (choice.ref.size > 0 && !choice.downloaded) " · ${LocalGames.mb(choice.ref.size)} download" else "",
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = .75f),
+            )
+            if (choice.resume) {
+                ChoiceButton("Resume", "Pick up where you left off", Modifier.focusRequester(focus)) { onPlay(true) }
+                ChoiceButton("Start over", "From the title screen. In-game saves are kept.") { onPlay(false) }
+            } else {
+                ChoiceButton("Play", if (choice.downloaded) "On this device" else "Downloads it to this device first", Modifier.focusRequester(focus)) {
+                    onPlay(false)
+                }
+            }
+            if (!isTv) {
+                if (choice.pinned) {
+                    ChoiceButton("Stop keeping for trips", "Lets it be cleared out when space runs low") { onKeep(false) }
+                } else {
+                    ChoiceButton("Keep for trips", "Saves it on this phone so it plays without internet") { onKeep(true) }
+                }
+            }
+            if (choice.downloaded) {
+                ChoiceButton("Remove from this device", "Frees up space. Your saves are kept.") { onRemove() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceButton(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(subtitle, fontSize = 13.sp, color = Color.White.copy(alpha = .75f))
+        }
+    }
+}

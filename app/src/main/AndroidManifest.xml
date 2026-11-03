@@ -73,6 +73,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Benflix game player: its own process, so an emulator can never crash Benflix -->
+        <activity
+            android:name=".games.GameActivity"
+            android:exported="false"
+            android:process=":game"
+            android:theme="@style/Theme.Wholphin"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

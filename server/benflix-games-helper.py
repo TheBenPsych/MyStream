@@ -4,11 +4,14 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
 - Benflix asks it for the game list. It checks the person is signed in to Jellyfin (and isn't a kids
   account), then reads the games from RomM using the RomM login saved on the server. So nobody has to
   type a RomM login on the TV.
-- When someone presses Play, it writes down which game to start, then Benflix opens the "Benflix" app in
-  Moonlight. That app (in Wolf) reads the note and starts the game straight away in RetroArch.
+- Games play ON the TV or phone: Benflix downloads the game's files (/api/rom), any BIOS files it needs
+  (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
+  Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
+- Old streaming (admin only, being removed): when someone presses Play, it writes down which game to start,
+  then Benflix opens the "Benflix" app in Moonlight.
 
 Settings come from environment variables: ROMM_URL, ROMM_USER, ROMM_PASS, JELLYFIN_URL, WOLF_URL.
-Started by benflix-games-setup.sh. Only uses the Python standard library.
+Started by benflix-games-helper-setup.sh. Only uses the Python standard library.
 """
 
 import base64
@@ -29,7 +32,10 @@ ROMM_AUTH = "Basic " + base64.b64encode(
 JELLYFIN_URL = os.environ.get("JELLYFIN_URL", "http://127.0.0.1:8096").rstrip("/")
 WOLF_URL = os.environ.get("WOLF_URL", "http://127.0.0.1:47989").rstrip("/")
 ROMS = "/ROMs"  # The same folder the game app sees
+BIOS = "/bios"  # Games/bios on the server
+SAVES = "/saves"  # Games/saves on the server, one folder per Jellyfin account
 NEXT_GAME = "/benflix/next-game"
+SAVE_KINDS = {"srm": 16 * 1024 * 1024, "state": 96 * 1024 * 1024, "png": 4 * 1024 * 1024}
 PORT = int(os.environ.get("PORT", "8097"))
 
 # Which RetroArch emulator (core) plays each console. Keys are RomM folder names.
@@ -82,7 +88,7 @@ CORES = {
 START_FILES = (".m3u", ".cue", ".gdi", ".chd", ".iso", ".rvz", ".wbfs", ".cso", ".pbp")
 
 _games = {}  # RomM id -> (platform folder, file name)
-_tokens = {}  # Jellyfin token -> time it was checked
+_tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _lock = threading.Lock()
 
 
@@ -108,12 +114,13 @@ def romm_get(path, raw=False):
 
 
 def check_signed_in(token):
-    """Only people signed in to Jellyfin get the games, and not kids accounts"""
+    """Only people signed in to Jellyfin get the games, and not kids accounts. Returns (account id, is admin)."""
     if not token:
         raise HelperError(401, "Sign in to Benflix first.")
     with _lock:
-        if time.time() - _tokens.get(token, 0) < 600:
-            return
+        known = _tokens.get(token)
+        if known and time.time() - known[0] < 600:
+            return known[1], known[2]
     req = urllib.request.Request(
         JELLYFIN_URL + "/Users/Me", headers={"Authorization": f'MediaBrowser Token="{token}"', "Accept": "application/json"}
     )
@@ -127,11 +134,13 @@ def check_signed_in(token):
     policy = user.get("Policy") or {}
     if policy.get("MaxParentalRating") is not None or user.get("Name", "").lower() == "kids":
         raise HelperError(403, "Games aren't available on kids accounts.")
-    # For now only the server admin can stream games (home upload speed is limited)
-    if not policy.get("IsAdministrator"):
-        raise HelperError(403, "Streaming games is only on for the server admin for now.")
+    user_id = re.sub(r"[^0-9a-fA-F-]", "", str(user.get("Id", "")))
+    if not user_id:
+        raise HelperError(502, "Jellyfin didn't say who you are.")
+    is_admin = bool(policy.get("IsAdministrator"))
     with _lock:
-        _tokens[token] = time.time()
+        _tokens[token] = (time.time(), user_id, is_admin)
+    return user_id, is_admin
 
 
 def load_games():
@@ -147,12 +156,13 @@ def load_games():
         total = page.get("total") if isinstance(page, dict) else None
         if len(items) < 250 or (total is not None and offset >= total):
             break
-    consoles = {}
+    consoles, slugs = {}, {}
     with _lock:
         for g in games:
             folder = g.get("platform_fs_slug") or g.get("platform_slug") or ""
             _games[g["id"]] = (folder, g.get("fs_name") or "")
             name = g.get("platform_display_name") or g.get("platform_custom_name") or g.get("platform_name") or folder
+            slugs[name] = folder
             has_cover = bool(g.get("path_cover_large") or g.get("path_cover_small") or g.get("url_cover"))
             consoles.setdefault(name, []).append(
                 {
@@ -160,11 +170,13 @@ def load_games():
                     "name": g.get("name") or g.get("fs_name_no_tags") or g.get("fs_name") or "Unknown game",
                     "cover": f"/api/cover/{g['id']}" if has_cover else None,
                     "playable": folder in CORES,
+                    "size": g.get("fs_size_bytes") or 0,
                 }
             )
     return {
         "consoles": [
-            {"name": n, "games": sorted(gs, key=lambda x: x["name"].lower())} for n, gs in sorted(consoles.items())
+            {"name": n, "slug": slugs.get(n, ""), "games": sorted(gs, key=lambda x: x["name"].lower())}
+            for n, gs in sorted(consoles.items())
         ]
     }
 
@@ -203,19 +215,111 @@ def start_file(path):
     return os.path.join(path, max(files, key=lambda f: os.path.getsize(os.path.join(path, f))))
 
 
-def play(game_id):
+def game_path(game_id):
+    """Where a game lives in the ROMs folder: (console folder, full path of its file or folder)"""
     with _lock:
         known = _games.get(game_id)
     if known is None:
         g = romm_get(f"/api/roms/{game_id}")
         known = (g.get("platform_fs_slug") or g.get("platform_slug") or "", g.get("fs_name") or "")
+        with _lock:
+            _games[game_id] = known
     folder, name = known
-    core = CORES.get(folder)
-    if core is None:
-        raise HelperError(400, "This console can't be played through Benflix yet.")
     path = os.path.realpath(os.path.join(ROMS, folder, name))
     if not path.startswith(ROMS + "/") or not name:
         raise HelperError(400, "That game's file name looks wrong.")
+    return folder, path
+
+
+def rom_files(game_id):
+    """The files Benflix downloads to play a game on the TV/phone, and which one to start"""
+    folder, path = game_path(game_id)
+    start = start_file(path)
+    if os.path.isfile(path):
+        files = [os.path.basename(path)]
+    else:
+        files = sorted(f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+    return {
+        "console": folder,
+        "start": os.path.basename(start),
+        "files": [{"name": f, "size": os.path.getsize(os.path.join(os.path.dirname(start), f))} for f in files],
+    }
+
+
+def rom_file(game_id, name):
+    _, path = game_path(game_id)
+    base = path if os.path.isdir(path) else os.path.dirname(path)
+    full = os.path.realpath(os.path.join(base, name))
+    if os.path.dirname(full) != os.path.realpath(base) or not os.path.isfile(full):
+        raise HelperError(404, "That game file wasn't found on the server.")
+    if os.path.isfile(path) and full != path:
+        raise HelperError(404, "That game file wasn't found on the server.")
+    return full
+
+
+def bios_list():
+    """Every file in Games/bios (any sub-folder), so Benflix can fetch the ones its emulators need"""
+    out = []
+    if os.path.isdir(BIOS):
+        for root, _, files in os.walk(BIOS):
+            for f in files:
+                full = os.path.join(root, f)
+                out.append({"name": f, "path": os.path.relpath(full, BIOS), "size": os.path.getsize(full)})
+    return {"files": sorted(out, key=lambda x: x["path"].lower())}
+
+
+def bios_file(rel):
+    full = os.path.realpath(os.path.join(BIOS, rel))
+    if not full.startswith(os.path.realpath(BIOS) + "/") or not os.path.isfile(full):
+        raise HelperError(404, "That BIOS file wasn't found on the server.")
+    return full
+
+
+def save_dir(user_id, game_id):
+    return os.path.join(SAVES, user_id, str(game_id))
+
+
+def save_info(user_id, game_id):
+    """Which saves this account has for a game, and when they were made (milliseconds)"""
+    d = save_dir(user_id, game_id)
+    out = {}
+    for kind in SAVE_KINDS:
+        f = os.path.join(d, "save." + kind)
+        if os.path.isfile(f):
+            out[kind] = {"time": int(os.path.getmtime(f) * 1000), "size": os.path.getsize(f)}
+    return out
+
+
+def recent_saves(user_id):
+    """This account's games with a "pick up where you left off" save, newest first"""
+    base = os.path.join(SAVES, user_id)
+    out = []
+    if os.path.isdir(base):
+        for g in os.listdir(base):
+            f = os.path.join(base, g, "save.state")
+            if g.isdigit() and os.path.isfile(f):
+                out.append({"id": int(g), "time": int(os.path.getmtime(f) * 1000)})
+    return {"games": sorted(out, key=lambda x: -x["time"])[:20]}
+
+
+def put_save(user_id, game_id, kind, body, when):
+    d = save_dir(user_id, game_id)
+    os.makedirs(d, exist_ok=True)
+    f = os.path.join(d, "save." + kind)
+    tmp = f + ".tmp"
+    with open(tmp, "wb") as out:
+        out.write(body)
+    os.replace(tmp, f)
+    if when:
+        os.utime(f, (when / 1000, when / 1000))
+    return {"ok": True}
+
+
+def play(game_id):
+    folder, path = game_path(game_id)
+    core = CORES.get(folder)
+    if core is None:
+        raise HelperError(400, "This console can't be played through Benflix yet.")
     rom = start_file(path)
     tmp = NEXT_GAME + ".tmp"
     with open(tmp, "w") as f:
@@ -249,33 +353,104 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_file(self, path):
+        size = os.path.getsize(path)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(size))
+        self.end_headers()
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(1024 * 1024)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+
+    def read_body(self, limit):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0 or length > limit:
+            raise HelperError(413, "That save is too big.")
+        data = b""
+        while len(data) < length:
+            chunk = self.rfile.read(min(1024 * 1024, length - len(data)))
+            if not chunk:
+                raise HelperError(400, "The save didn't arrive in one piece.")
+            data += chunk
+        return data
+
     def route(self, method):
-        path = urllib.parse.urlparse(self.path).path
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
         try:
             if method == "GET" and path == "/health":
-                return self.send(200, {"ok": True})
-            check_signed_in(self.headers.get("X-Benflix-Token", ""))
+                return self.send(200, {"ok": True, "local_play": True})
+            user_id, is_admin = check_signed_in(self.headers.get("X-Benflix-Token", ""))
             if method == "GET" and path == "/api/games":
                 return self.send(200, load_games())
             m = re.fullmatch(r"/api/cover/(\d+)", path)
             if method == "GET" and m:
                 data, ctype = cover(int(m.group(1)))
                 return self.send(200, data, ctype)
+            m = re.fullmatch(r"/api/rom/(\d+)", path)
+            if method == "GET" and m:
+                return self.send(200, rom_files(int(m.group(1))))
+            m = re.fullmatch(r"/api/rom/(\d+)/file", path)
+            if method == "GET" and m:
+                return self.send_file(rom_file(int(m.group(1)), (query.get("name") or [""])[0]))
+            if method == "GET" and path == "/api/bios":
+                return self.send(200, bios_list())
+            if method == "GET" and path == "/api/bios/file":
+                return self.send_file(bios_file((query.get("path") or [""])[0]))
+            if method == "GET" and path == "/api/saves/recent":
+                return self.send(200, recent_saves(user_id))
+            m = re.fullmatch(r"/api/save/(\d+)", path)
+            if method == "GET" and m:
+                return self.send(200, save_info(user_id, int(m.group(1))))
+            m = re.fullmatch(r"/api/save/(\d+)/(srm|state|png)", path)
+            if m:
+                game_id, kind = int(m.group(1)), m.group(2)
+                f = os.path.join(save_dir(user_id, game_id), "save." + kind)
+                if method == "GET":
+                    if not os.path.isfile(f):
+                        raise HelperError(404, "No save yet.")
+                    return self.send_file(f)
+                if method == "PUT":
+                    when = int((query.get("time") or ["0"])[0] or 0)
+                    return self.send(200, put_save(user_id, game_id, kind, self.read_body(SAVE_KINDS[kind]), when))
+                if method == "DELETE":
+                    if os.path.isfile(f):
+                        os.remove(f)
+                    return self.send(200, {"ok": True})
             m = re.fullmatch(r"/api/play/(\d+)", path)
             if method == "POST" and m:
+                # Old streaming: only the server admin (home upload speed is limited)
+                if not is_admin:
+                    raise HelperError(403, "Streaming games is only on for the server admin.")
                 return self.send(200, play(int(m.group(1))))
             self.send(404, {"error": "Not found"})
         except HelperError as e:
             self.send(e.status, {"error": e.message})
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # The TV stopped the download
         except Exception as e:  # Keep the helper running whatever happens
             self.log_error("Unexpected error: %r", e)
-            self.send(500, {"error": "Something went wrong in the games helper."})
+            try:
+                self.send(500, {"error": "Something went wrong in the games helper."})
+            except OSError:
+                pass
 
     def do_GET(self):
         self.route("GET")
 
     def do_POST(self):
         self.route("POST")
+
+    def do_PUT(self):
+        self.route("PUT")
+
+    def do_DELETE(self):
+        self.route("DELETE")
 
 
 if __name__ == "__main__":

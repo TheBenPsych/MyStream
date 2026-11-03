@@ -1,6 +1,7 @@
 -keepattributes SourceFile,LineNumberTable
 
 -keep class com.github.damontecres.wholphin.mpv.MPVLib { *; }
+-keep class com.github.damontecres.wholphin.games.RetroNative { *; }
 
 -keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
 -keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
