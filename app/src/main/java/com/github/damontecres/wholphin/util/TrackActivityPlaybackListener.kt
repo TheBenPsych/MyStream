@@ -81,6 +81,11 @@ class TrackActivityPlaybackListener(
         task.cancel()
         TIMER.purge()
         val position = player.currentPosition.milliseconds
+        // Benflix: a finished anime episode gets ticked off on AniList (if the person signed in)
+        getState.invoke()?.let { state ->
+            com.github.damontecres.wholphin.services.AniListSync.instance
+                ?.watched(state.itemId, position.inWholeMilliseconds, player.duration)
+        }
         launch("reportPlaybackStopped") {
             getState.invoke()?.let { state ->
                 Timber.v("reportPlaybackStopped for ${state.itemId} at $position")

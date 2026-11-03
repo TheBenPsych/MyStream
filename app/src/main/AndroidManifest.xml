@@ -39,6 +39,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="video/*" />
         </intent>
+        <!-- Benflix: a web browser for signing in to AniList -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
 
     <application
@@ -70,6 +75,17 @@
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="wholphin" />
+            </intent-filter>
+            <!-- Benflix: AniList sends people back here after they sign in -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="anilist"
+                    android:scheme="benflix" />
             </intent-filter>
         </activity>
 

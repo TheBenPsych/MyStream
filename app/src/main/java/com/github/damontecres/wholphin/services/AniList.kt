@@ -37,6 +37,9 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** The person's AniList sign-in no longer works */
+class AniListSignedOutException : Exception("AniList sign-in expired")
+
 /** A voice actor, from AniList */
 @Serializable
 data class AniListVoice(
@@ -459,14 +462,45 @@ class AniListService
             return out
         }
 
+        /** AniList's next season of a show (its TV sequel) and how many episodes an entry has */
+        internal suspend fun sequelOf(id: Int): Pair<Int?, Int?> {
+            val cacheName = "anilist-sequel-$id"
+            diskCache.read(cacheName, ListSerializer(Int.serializer()), WEEK_MS)?.let { saved ->
+                return saved.getOrNull(0)?.takeIf { it > 0 } to saved.getOrNull(1)?.takeIf { it > 0 }
+            }
+            val m = query(SEQUEL_QUERY, vars { put("id", id) })?.obj("Media") ?: return null to null
+            val episodes = m.int("episodes")
+            val sequel =
+                m
+                    .obj("relations")
+                    ?.arr("edges")
+                    .orEmpty()
+                    .mapNotNull { it as? JsonObject }
+                    .firstOrNull { e ->
+                        e.str("relationType") == "SEQUEL" && e.obj("node")?.str("format") in SEASON_FORMATS
+                    }?.obj("node")
+                    ?.int("id")
+            // Still-airing shows can get their episode count later, so only save finished ones for long
+            if (episodes != null) diskCache.write(cacheName, ListSerializer(Int.serializer()), listOf(sequel ?: 0, episodes))
+            return sequel to episodes
+        }
+
         // --- talking to AniList ---
 
         private fun vars(build: JsonObjectBuilder.() -> Unit) = buildJsonObject(build)
+
+        /** A question that needs the person's AniList sign-in (their list) */
+        internal suspend fun signedInQuery(
+            text: String,
+            variables: JsonObject,
+            token: String,
+        ): JsonObject? = query(text, variables, token)
 
         /** Sends one question to AniList, waiting its turn; null if AniList had no answer */
         private suspend fun query(
             text: String,
             variables: JsonObject,
+            token: String? = null,
         ): JsonObject? =
             gate.withLock {
                 withContext(WholphinDispatchers.IO) {
@@ -487,6 +521,7 @@ class AniListService
                                 .Builder()
                                 .url(URL)
                                 .header("Accept", "application/json")
+                                .apply { if (token != null) header("Authorization", "Bearer $token") }
                                 .post(body)
                                 .build()
                         val throttled =
@@ -499,6 +534,9 @@ class AniListService
                                     true
                                 } else {
                                     val answer = response.body.string()
+                                    if (response.code == 401 || (response.code == 400 && token != null && "Invalid token" in answer)) {
+                                        throw AniListSignedOutException()
+                                    }
                                     if (!response.isSuccessful && response.code != 404) {
                                         throw IllegalStateException("AniList answered ${response.code}")
                                     }
@@ -573,6 +611,18 @@ class AniListService
                     }
                 return "query ($params) {\n$parts\n}"
             }
+
+            private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
+
+            private val SEQUEL_QUERY =
+                """
+                query (${'$'}id: Int) {
+                  Media(id: ${'$'}id, type: ANIME) {
+                    id episodes
+                    relations { edges { relationType node { id format } } }
+                  }
+                }
+                """.trimIndent()
 
             private val WEEK_QUERY =
                 """
