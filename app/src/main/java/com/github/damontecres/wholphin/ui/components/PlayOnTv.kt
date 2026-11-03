@@ -77,16 +77,26 @@ class PlayOnTvViewModel
                         withContext(WholphinDispatchers.IO) {
                             val me = serverRepository.currentUser?.id
                             val myDevice = api.deviceInfo.id
+                            // No "active in the last N minutes" filter: the server only counts playing or signing in as
+                            // activity, so a TV that's just open on a page used to vanish after a while. The server
+                            // already only lists Benflix apps that are connected right now (supportsRemoteControl).
+                            // Any profile is fine (the TV is often on Kids or someone else's profile); the server
+                            // decides who's allowed to control which TV.
                             api.sessionApi
-                                .getSessions(controllableByUserId = me, activeWithinSeconds = ACTIVE_WITHIN_SECONDS)
+                                .getSessions(controllableByUserId = me)
                                 .content
                                 .filter {
                                     it.deviceId?.startsWith(BENFLIX_DEVICE_PREFIX) == true &&
                                         it.deviceId != myDevice &&
-                                        it.supportsRemoteControl &&
-                                        it.userId == me
-                                }.distinctBy { it.deviceId }
-                                .mapNotNull { s -> s.id?.let { BenflixScreen(it, s.deviceName ?: "Benflix") } }
+                                        it.supportsRemoteControl
+                                }.sortedByDescending { it.lastActivityDate }
+                                .distinctBy { it.deviceId }
+                                .mapNotNull { s ->
+                                    val device = s.deviceName ?: "Benflix"
+                                    val name =
+                                        if (s.userId != me && !s.userName.isNullOrBlank()) "$device (${s.userName})" else device
+                                    s.id?.let { BenflixScreen(it, name) }
+                                }
                         }
                     } catch (ex: CancellationException) {
                         throw ex
@@ -161,7 +171,6 @@ class PlayOnTvViewModel
 
         companion object {
             private const val BENFLIX_DEVICE_PREFIX = "benflix-"
-            private const val ACTIVE_WITHIN_SECONDS = 960
             private const val TICKS_PER_MS = 10_000L
         }
     }
@@ -204,7 +213,7 @@ fun PlayOnTvButton(
 
                     else -> {
                         if (list.isEmpty()) {
-                            Text("No TV found. Open Benflix on the TV (signed in as you), then try again.")
+                            Text("No TV found. Open Benflix on the TV, then try again.")
                         }
                         list.forEach { screen ->
                             ListItem(
@@ -255,7 +264,7 @@ fun PhoneRemoteDialog(
 
                     else -> {
                         if (list.isEmpty()) {
-                            Text("No TV found. Open Benflix on the TV (signed in as you), then try again.")
+                            Text("No TV found. Open Benflix on the TV, then try again.")
                             RemoteKey("Look again") { viewModel.look() }
                         }
                         list.forEach { s -> RemoteKey(s.name, wide = true) { screen = s } }
