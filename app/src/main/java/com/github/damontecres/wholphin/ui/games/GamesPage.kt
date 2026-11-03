@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.os.StatFs
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -46,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -597,6 +599,11 @@ fun GamesPage(
                 )
             }
             DeviceCard(power, isTv)
+            StorageCard(
+                games = remember(library) { viewModel.localGames.downloaded() },
+                isTv = isTv,
+                onRemove = { viewModel.removeDownload(context, it.ref) },
+            )
             if (!isTv) {
                 ActionTile(
                     title = "Use this phone as a controller",
@@ -694,24 +701,50 @@ fun GamesPage(
                             }
                         }
                     }
-                    playable.forEach { (console, local, fit) ->
+                    var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
+                    val open = playable.firstOrNull { it.first.slug == openSlug }
+                    BackHandler(enabled = open != null) { openSlug = null }
+                    if (open == null) {
+                        // A grid of consoles: photo, name and how many games. Press one to see its games.
+                        if (playable.isNotEmpty()) {
+                            Text(
+                                text = "Consoles",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
+                        ConsoleGrid(playable = playable, isTv = isTv, onOpen = { openSlug = it })
+                    } else {
+                        val (console, local, fit) = open
                         val notes =
                             listOfNotNull(
                                 if (fit == DevicePower.Fit.MAY_BE_SLOW) "may be slow on this ${if (isTv) "TV" else "phone"}" else null,
                                 if (isTv && local.remoteFriendly) "works with the remote" else null,
                             )
+                        ActionTile(title = "← All consoles", subtitle = console.name, onClick = { openSlug = null })
                         Text(
                             text =
                                 "${console.name} (${console.games.size})" +
                                     if (notes.isEmpty()) "" else "  ·  " + notes.joinToString(" · "),
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                        ) {
-                            items(console.games, key = { it.id }) { game -> refs[game.id]?.let { Card(it) } }
+                        val rows =
+                            remember(console, recent) {
+                                consoleRows(console, recent.map { it.first.id }, viewModel.localGames.downloaded().map { it.ref.id })
+                            }
+                        rows.forEach { (title, games) ->
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                            ) {
+                                items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
+                            }
                         }
                     }
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
@@ -1836,6 +1869,238 @@ private fun DeviceCard(
             )
             Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
             if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+        }
+    }
+}
+
+/** Rows inside one console: played lately, on this device, then all games (split by letter when there are lots) */
+private fun consoleRows(
+    console: GameConsole,
+    recentIds: List<Int>,
+    downloadedIds: List<Int>,
+): List<Pair<String, List<ServerGame>>> {
+    val byId = console.games.associateBy { it.id }
+    val rows = mutableListOf<Pair<String, List<ServerGame>>>()
+    recentIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "Played lately" to it }
+    downloadedIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "On this device" to it }
+    val sorted = console.games.sortedBy { it.name.lowercase() }
+    if (sorted.size <= 24) {
+        rows += "All games" to sorted
+    } else {
+        sorted
+            .groupBy {
+                val c = it.name.firstOrNull()?.uppercaseChar() ?: '#'
+                if (c in 'A'..'Z') c.toString() else "#"
+            }.toSortedMap()
+            .forEach { (letter, games) -> rows += letter to games }
+    }
+    return rows
+}
+
+/** Public domain console photos (by Evan Amos, Wikimedia Commons), by RomM console name */
+private fun consolePhoto(slug: String): String? =
+    CONSOLE_PHOTOS[slug]?.let { "https://commons.wikimedia.org/wiki/Special:FilePath/$it?width=480" }
+
+private val CONSOLE_PHOTOS =
+    mapOf(
+        "nes" to "NES-Console-Set.jpg",
+        "famicom" to "NES-Console-Set.jpg",
+        "snes" to "SNES-Mod1-Console-Set.jpg",
+        "sfam" to "SNES-Mod1-Console-Set.jpg",
+        "genesis" to "Sega-Genesis-Mk2-6button.jpg",
+        "genesis-slash-megadrive" to "Sega-Genesis-Mk2-6button.jpg",
+        "megadrive" to "Sega-Genesis-Mk2-6button.jpg",
+        "sms" to "Sega-Master-System-Set.jpg",
+        "gamegear" to "Game-Gear-Handheld.jpg",
+        "gb" to "Game-Boy-FL.jpg",
+        "gbc" to "Nintendo-Game-Boy-Color-FL.jpg",
+        "gba" to "Nintendo-Game-Boy-Advance-Purple-FL.jpg",
+        "psx" to "PSX-Console-wController.jpg",
+    )
+
+/** The console tiles at the top of "Your games" */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ConsoleGrid(
+    playable: List<Triple<GameConsole, LocalConsole, DevicePower.Fit>>,
+    isTv: Boolean,
+    onOpen: (String) -> Unit,
+) {
+    val tileWidth = if (isTv) 220.dp else 160.dp
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        playable.forEach { (console, local, fit) ->
+            val shape = RoundedCornerShape(14.dp)
+            Surface(
+                onClick = { onOpen(console.slug) },
+                shape = ClickableSurfaceDefaults.shape(shape),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+                border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+                colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF2A2A2A)),
+                modifier = Modifier.width(tileWidth),
+            ) {
+                Column {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(tileWidth * 0.62f)
+                                .background(Color(0xFFF2F2F2)),
+                    ) {
+                        // The name shows until (or if) the photo loads over it
+                        Text(local.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        consolePhoto(console.slug)?.let { photo ->
+                            AsyncImage(
+                                model = photo,
+                                contentDescription = console.name,
+                                contentScale = ContentScale.Fit,
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
+                            )
+                        }
+                    }
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            console.name,
+                            fontSize = if (isTv) 17.sp else 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text =
+                                "${console.games.size} ${if (console.games.size == 1) "game" else "games"}" +
+                                    when {
+                                        fit == DevicePower.Fit.MAY_BE_SLOW -> " · may be slow"
+                                        isTv && local.remoteFriendly -> " · remote OK"
+                                        else -> ""
+                                    },
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = .75f),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** How full this device is, with a bar, and a place to delete downloaded games (saves are kept) */
+@Composable
+private fun StorageCard(
+    games: List<DownloadedGame>,
+    isTv: Boolean,
+    onRemove: (DownloadedGame) -> Unit,
+) {
+    val context = LocalContext.current
+    val stats =
+        remember(games) {
+            try {
+                val fs = StatFs(context.filesDir.path)
+                fs.totalBytes to fs.availableBytes
+            } catch (_: Exception) {
+                0L to 0L
+            }
+        }
+    val (total, free) = stats
+    if (total <= 0) return
+    val used = (total - free).toFloat() / total
+    val gamesBytes = games.sumOf { it.bytes }
+    val barColor =
+        when {
+            used > 0.9f -> Color(0xFFE5484D)
+            used > 0.75f -> Color(0xFFF5A524)
+            else -> Color(0xFF46A758)
+        }
+    var managing by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = { if (games.isNotEmpty()) managing = true },
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = (if (isTv) "TV storage: " else "Phone storage: ") + "${LocalGames.mb(free)} free of ${LocalGames.mb(total)}",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(Color.White.copy(alpha = .15f), RoundedCornerShape(4.dp)),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(used.coerceIn(0.02f, 1f))
+                        .height(8.dp)
+                        .background(barColor, RoundedCornerShape(4.dp)),
+                )
+            }
+            Text(
+                text =
+                    if (games.isEmpty()) {
+                        "No games downloaded on this device yet"
+                    } else {
+                        "Games on this device: ${LocalGames.mb(gamesBytes)} (${games.size}). " +
+                            (if (used > 0.9f) "Getting full! " else "") + "Select to delete some."
+                    },
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = .8f),
+            )
+        }
+    }
+    if (managing) {
+        val focus = remember { FocusRequester() }
+        androidx.compose.ui.window.Dialog(onDismissRequest = { managing = false }) {
+            LaunchedEffect(Unit) { focus.tryRequestFocus() }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier =
+                    Modifier
+                        .widthIn(max = 460.dp)
+                        .heightIn(max = 560.dp)
+                        .background(Color(0xFF1C1C1C), RoundedCornerShape(16.dp))
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+            ) {
+                Text("Games on this device", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    "Deleting a game only frees up space. Your saves and saved spots are kept, and the game " +
+                        "downloads again next time you play it.",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = .75f),
+                )
+                ChoiceButton("Done", "Close this list", Modifier.focusRequester(focus)) { managing = false }
+                games.forEach { g ->
+                    ChoiceButton(
+                        "Delete ${g.ref.name}",
+                        "${g.ref.consoleName} · ${LocalGames.mb(g.bytes)}" + if (g.pinned) " · kept for trips" else "",
+                    ) {
+                        onRemove(g)
+                        if (games.size <= 1) managing = false
+                    }
+                }
+            }
         }
     }
 }

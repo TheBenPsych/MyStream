@@ -78,6 +78,14 @@ class GameLibraryClient
         /** Sent with every request (and box art), so the helper knows who's signed in */
         val token: String get() = serverRepository.currentUser?.accessToken ?: ""
 
+        /** The Jellyfin server and user, for watching a show next to a game */
+        val jellyfinUrl: String get() = serverRepository.currentServer?.url ?: ""
+        val userId: String get() =
+            serverRepository.currentUser
+                ?.id
+                ?.toString()
+                ?.replace("-", "") ?: ""
+
         fun saveAddress(input: String) {
             val value = if (input.isBlank()) "" else normalizeAddress(input)
             prefs.edit().putString("address", value).apply()

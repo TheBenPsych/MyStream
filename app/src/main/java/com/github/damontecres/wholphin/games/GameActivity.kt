@@ -13,6 +13,7 @@ import android.os.Looper
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.TextureView
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,10 +24,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +39,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,13 +52,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -99,6 +109,27 @@ class GameActivity : ComponentActivity() {
     private var failed by mutableStateOf(false)
     private var gamepadSeen by mutableStateOf(false)
     private var hasSpot by mutableStateOf(false)
+
+    // The button key and a show next to the game (see ButtonKey.kt and SideShow.kt)
+    private var gameShape by mutableFloatStateOf(4f / 3f)
+    private var sideKey by mutableStateOf(true)
+    private var sideShow: SideShow? = null
+    private var canSideShow = false
+    private var showOn by mutableStateOf(false)
+    private var showBig by mutableStateOf(false)
+    private var showShape by mutableFloatStateOf(16f / 9f)
+    private var showTitle by mutableStateOf("")
+
+    /** 0 = show and game, 1 = show only, 2 = game only */
+    private var soundMode by mutableIntStateOf(0)
+    private val showView by lazy { TextureView(this) }
+    private val reportProgress =
+        object : Runnable {
+            override fun run() {
+                sideShow?.reportProgress()
+                handler.postDelayed(this, 30_000)
+            }
+        }
 
     // Buttons: from keys, from sticks/triggers and (player 1) from the touch buttons
     private val keyMask = IntArray(4)
@@ -148,6 +179,21 @@ class GameActivity : ComponentActivity() {
         hasSpot = GameSaves.file(saveDir, "state").exists()
         displayHz = screenRefreshRate()
         gamepadSeen = hasGamepad()
+        sideKey = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("side_key", true)
+        val power = DevicePower.get(this)
+        canSideShow =
+            when (console.power) {
+                PowerNeed.LIGHT -> power.ramGb >= 1.5
+                PowerNeed.MEDIUM -> power.score >= 2.4 && power.ramGb >= 2.5
+                PowerNeed.HEAVY -> false
+            }
+        sideShow =
+            SideShow(
+                context = this,
+                server = intent.getStringExtra(EXTRA_SERVER).orEmpty(),
+                userId = intent.getStringExtra(EXTRA_USER).orEmpty(),
+                token = token,
+            ).takeIf { it.available }
         if (isTv) {
             padServer =
                 PhonePadServer(
@@ -231,6 +277,8 @@ class GameActivity : ComponentActivity() {
         }
         val timing = RetroNative.timing()
         fps = timing[0]
+        val shape = timing.getOrElse(2) { 4.0 / 3.0 }.toFloat().takeIf { it in 0.5f..3f } ?: (4f / 3f)
+        runOnUiThread { gameShape = shape }
         oneToOne = abs(displayHz - fps) < 1.0
         startAudio(timing[1].toInt())
         loaded = true
@@ -390,6 +438,7 @@ class GameActivity : ComponentActivity() {
         menuOpen = false
         message = "Saving your spot…"
         audio?.pause()
+        stopShow()
         Thread {
             saveHere(withSpot = true)
             val sent = GameSaves.upload(saveDir, gameId, address, token)
@@ -414,6 +463,47 @@ class GameActivity : ComponentActivity() {
         setPaused(false)
     }
 
+    private fun startShow(item: SideShowItem) {
+        val show = sideShow ?: return
+        showTitle = item.title
+        showOn = true
+        showBig = false
+        show.play(
+            item = item,
+            view = showView,
+            onShape = { showShape = it.coerceIn(1f, 2.6f) },
+            onEnded = { runOnUiThread { stopShow() } },
+        )
+        applySound()
+        handler.removeCallbacks(reportProgress)
+        handler.postDelayed(reportProgress, 30_000)
+    }
+
+    private fun stopShow() {
+        sideShow?.stop()
+        handler.removeCallbacks(reportProgress)
+        showOn = false
+        showBig = false
+        applySound()
+    }
+
+    private fun applySound() {
+        val game =
+            when {
+                !showOn -> 1f
+                soundMode == 1 -> 0f
+                soundMode == 0 -> 0.5f
+                else -> 1f
+            }
+        audio?.setVolume(game)
+        sideShow?.volume = if (soundMode == 2) 0f else 1f
+    }
+
+    private fun setSideKey(on: Boolean) {
+        sideKey = on
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("side_key", on).apply()
+    }
+
     /** For remotes without enough buttons: the menu can tap Start or Select for you */
     private fun tapFromMenu(button: Int) {
         closeMenu()
@@ -435,12 +525,14 @@ class GameActivity : ComponentActivity() {
         super.onResume()
         glView.onResume()
         if (!menuOpen) setPaused(false)
+        if (showOn) sideShow?.resume()
     }
 
     override fun onPause() {
         // Save on this device first (the game thread stops when the view pauses)
         if (loaded && !quitting) saveHere(withSpot = true)
         setPaused(true)
+        sideShow?.pause()
         glView.onPause()
         super.onPause()
     }
@@ -453,6 +545,7 @@ class GameActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        sideShow?.stop()
         audio?.release()
         padServer?.stop()
         audio = null
@@ -749,7 +842,7 @@ class GameActivity : ComponentActivity() {
                     }
                 },
         ) {
-            AndroidView(factory = { glView }, modifier = Modifier.fillMaxSize())
+            SideBySide()
             if (!isTv && !gamepadSeen && !menuOpen && message == null) {
                 TouchPad(
                     touch = console.touch,
@@ -781,11 +874,127 @@ class GameActivity : ComponentActivity() {
         }
     }
 
+    /** Where the game, the show and the button key go on the screen */
+    private class Spots(
+        val game: Rect,
+        val show: Rect?,
+        val key: Rect?,
+    )
+
+    private class Rect(
+        val x: Dp,
+        val y: Dp,
+        val w: Dp,
+        val h: Dp,
+    )
+
+    /** Fits something of [shape] (width / height) inside w x h, centred at x, y */
+    private fun fit(
+        x: Dp,
+        y: Dp,
+        w: Dp,
+        h: Dp,
+        shape: Float,
+    ): Rect {
+        val fw = min(w, h * shape)
+        val fh = fw / shape
+        return Rect(x + (w - fw) / 2, y + (h - fh) / 2, fw, fh)
+    }
+
+    private fun spots(
+        w: Dp,
+        h: Dp,
+    ): Spots {
+        val pad = 12.dp
+        val keyWanted = sideKey && message == null && (isTv || gamepadSeen)
+        return when {
+            showOn && showBig -> {
+                // Big show on the left; the game (and key) small on the right
+                val panel = w * 0.3f
+                val main = w - panel
+                val gw = panel - pad * 2
+                val game = fit(main + pad, pad, gw, min(h * 0.45f, gw / gameShape), gameShape)
+                val keyTop = game.y + game.h + pad
+                Spots(
+                    game = game,
+                    show = fit(0.dp, 0.dp, main, h, showShape),
+                    key = if (keyWanted) Rect(main + pad, keyTop, gw, h - keyTop - pad) else null,
+                )
+            }
+
+            showOn -> {
+                // The game on the left where its black bar was; the show (and key) on the right
+                val panel = maxOf(w * 0.28f, w - h * gameShape)
+                val main = w - panel
+                val vw = panel - pad * 2
+                val show = fit(main + pad, pad, vw, min(h * 0.45f, vw / showShape), showShape)
+                val keyTop = show.y + show.h + pad
+                Spots(
+                    game = Rect(0.dp, 0.dp, main, h),
+                    show = show,
+                    key = if (keyWanted) Rect(main + pad, keyTop, vw, h - keyTop - pad) else null,
+                )
+            }
+
+            keyWanted -> {
+                val panel = maxOf(w * 0.17f, w - h * gameShape)
+                Spots(
+                    game = Rect(0.dp, 0.dp, w - panel, h),
+                    show = null,
+                    key = Rect(w - panel + pad, pad, panel - pad * 2, h - pad * 2),
+                )
+            }
+
+            else -> {
+                Spots(Rect(0.dp, 0.dp, w, h), null, null)
+            }
+        }
+    }
+
+    @Composable
+    private fun SideBySide() {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val s = spots(maxWidth, maxHeight)
+            AndroidView(
+                factory = { glView },
+                modifier =
+                    Modifier
+                        .offset(s.game.x, s.game.y)
+                        .size(s.game.w, s.game.h),
+            )
+            s.show?.let { r ->
+                AndroidView(
+                    factory = { showView },
+                    modifier =
+                        Modifier
+                            .offset(r.x, r.y)
+                            .size(r.w, r.h),
+                )
+            }
+            s.key?.let { r ->
+                Box(
+                    contentAlignment = if (s.show == null) Alignment.CenterStart else Alignment.TopStart,
+                    modifier =
+                        Modifier
+                            .offset(r.x, r.y)
+                            .size(r.w, r.h),
+                ) {
+                    ButtonKey(console, if (gamepadSeen) KeyFor.CONTROLLER else KeyFor.REMOTE, compact = true)
+                }
+            }
+        }
+    }
+
     @Composable
     private fun Menu() {
         var showHelp by remember { mutableStateOf(false) }
+        var picking by remember { mutableStateOf(false) }
+        var choices by remember { mutableStateOf<List<SideShowItem>?>(null) }
         val focus = remember { FocusRequester() }
-        LaunchedEffect(showHelp) { runCatching { focus.requestFocus() } }
+        LaunchedEffect(showHelp, picking, choices) { runCatching { focus.requestFocus() } }
+        LaunchedEffect(picking) {
+            if (picking) choices = withContext(Dispatchers.IO) { sideShow?.choices().orEmpty() }
+        }
         Box(
             Modifier
                 .fillMaxSize()
@@ -802,7 +1011,38 @@ class GameActivity : ComponentActivity() {
                         .padding(vertical = 24.dp),
             ) {
                 Text(gameName, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                if (showHelp) {
+                if (picking) {
+                    val list = choices
+                    when {
+                        list == null -> {
+                            Text("Loading your shows…", color = Color.White, fontSize = 17.sp)
+                            MenuButton("Cancel", Modifier.focusRequester(focus)) { picking = false }
+                        }
+
+                        list.isEmpty() -> {
+                            Text(
+                                "Nothing in Continue watching or Next up yet. Start a show in Benflix first.",
+                                color = Color.White,
+                                fontSize = 17.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                            MenuButton("OK", Modifier.focusRequester(focus)) { picking = false }
+                        }
+
+                        else -> {
+                            Text("Pick something to watch on the side", color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
+                            list.forEachIndexed { i, item ->
+                                val label = if (item.subtitle.isBlank()) item.title else "${item.title} · ${item.subtitle}"
+                                MenuButton(label, if (i == 0) Modifier.focusRequester(focus) else Modifier) {
+                                    picking = false
+                                    startShow(item)
+                                    closeMenu()
+                                }
+                            }
+                            MenuButton("Cancel") { picking = false }
+                        }
+                    }
+                } else if (showHelp) {
                     val lines =
                         console.help +
                             listOf(
@@ -816,8 +1056,10 @@ class GameActivity : ComponentActivity() {
                             } else {
                                 emptyList()
                             }
-                    lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
                     MenuButton("Done", Modifier.focusRequester(focus)) { showHelp = false }
+                    if (isTv) ButtonKey(console, KeyFor.REMOTE, Modifier.fillMaxWidth())
+                    ButtonKey(console, KeyFor.CONTROLLER, Modifier.fillMaxWidth())
+                    lines.forEach { Text(it, color = Color.White.copy(alpha = 0.85f), fontSize = 17.sp, textAlign = TextAlign.Center) }
                 } else {
                     MenuButton("Resume", Modifier.focusRequester(focus)) { closeMenu() }
                     MenuButton("Save my spot") {
@@ -837,6 +1079,33 @@ class GameActivity : ComponentActivity() {
                     if (isTv) {
                         MenuButton("Press Start") { tapFromMenu(RetroButton.START) }
                         MenuButton("Press Select") { tapFromMenu(RetroButton.SELECT) }
+                    }
+                    if (sideShow != null && canSideShow) {
+                        if (!showOn) {
+                            MenuButton("Watch a show on the side") {
+                                choices = null
+                                picking = true
+                            }
+                        } else {
+                            MenuButton(if (showBig) "Make the game big" else "Make the show big") {
+                                showBig = !showBig
+                                closeMenu()
+                            }
+                            val sound =
+                                when (soundMode) {
+                                    0 -> "Sound: show and game"
+                                    1 -> "Sound: show only"
+                                    else -> "Sound: game only"
+                                }
+                            MenuButton(sound) {
+                                soundMode = (soundMode + 1) % 3
+                                applySound()
+                            }
+                            MenuButton("Stop $showTitle".take(40)) { stopShow() }
+                        }
+                    }
+                    if (isTv || gamepadSeen) {
+                        MenuButton(if (sideKey) "Hide the button key" else "Show the button key on the side") { setSideKey(!sideKey) }
                     }
                     MenuButton("Restart game") {
                         onGameThread { RetroNative.reset() }
@@ -883,5 +1152,8 @@ class GameActivity : ComponentActivity() {
         const val EXTRA_RESUME = "resume"
         const val EXTRA_ADDRESS = "address"
         const val EXTRA_TOKEN = "token"
+        const val EXTRA_SERVER = "server"
+        const val EXTRA_USER = "user"
+        private const val PREFS = "game_player"
     }
 }
