@@ -499,7 +499,7 @@ class GameActivity : ComponentActivity() {
         sideShow?.volume = if (soundMode == 2) 0f else 1f
     }
 
-    private fun setSideKey(on: Boolean) {
+    private fun saveSideKey(on: Boolean) {
         sideKey = on
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("side_key", on).apply()
     }
@@ -1105,7 +1105,7 @@ class GameActivity : ComponentActivity() {
                         }
                     }
                     if (isTv || gamepadSeen) {
-                        MenuButton(if (sideKey) "Hide the button key" else "Show the button key on the side") { setSideKey(!sideKey) }
+                        MenuButton(if (sideKey) "Hide the button key" else "Show the button key on the side") { saveSideKey(!sideKey) }
                     }
                     MenuButton("Restart game") {
                         onGameThread { RetroNative.reset() }
