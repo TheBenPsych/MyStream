@@ -74,7 +74,9 @@ sealed interface RiddleState {
     data class Playing(
         /** Riddles solved so far in this run */
         val streak: Int,
-        /** This profile's best run before this one */
+        /** Points so far in this run */
+        val score: Int,
+        /** This profile's best score before this run */
         val best: Int,
         /** Clues shown so far, hardest first (an easier one shows as time runs down) */
         val clues: List<String>,
@@ -87,10 +89,13 @@ sealed interface RiddleState {
         val right: Boolean? = null,
         /** The wrong pick, if there was one */
         val picked: String? = null,
+        /** Points won for this riddle, once answered right */
+        val points: Int = 0,
     ) : RiddleState
 
     data class Over(
         val streak: Int,
+        val score: Int,
         val best: Int,
         val newBest: Boolean,
         /** The riddle that ended the run, and whether time ran out */
@@ -103,7 +108,8 @@ sealed interface RiddleState {
  * Benflix "Movie riddle": movies from your own library, one after another. Each has three
  * clues that get easier as the clock runs down, and five titles to pick from. Pick right before
  * time runs out to go to the next riddle; one wrong pick (or running out of time) ends the run.
- * The "Highest scores" board ranks the most riddles solved in a row.
+ * Faster answers win more points (waiting for easier clues costs points), and the
+ * "Highest scores" board ranks the most points in one run.
  */
 @HiltViewModel
 class DailyRiddleViewModel
@@ -167,7 +173,7 @@ class DailyRiddleViewModel
                         _state.value = RiddleState.Problem("Couldn't find movies with enough details for riddles.")
                         return@launch
                     }
-                    show(riddle, streak = 0)
+                    show(riddle, streak = 0, score = 0)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -211,11 +217,13 @@ class DailyRiddleViewModel
         private fun show(
             riddle: Riddle,
             streak: Int,
+            score: Int,
         ) {
             val total = totalSeconds
             _state.value =
                 RiddleState.Playing(
                     streak = streak,
+                    score = score,
                     best = best(),
                     clues = riddle.clues.take(1),
                     choices = riddle.choices,
@@ -247,7 +255,9 @@ class DailyRiddleViewModel
             if (playing.right != null) return
             timer?.cancel()
             if (choice == playing.answer) {
-                _state.value = playing.copy(right = true, streak = playing.streak + 1)
+                val points = points(playing.secondsLeft, playing.totalSeconds)
+                val score = playing.score + points
+                _state.value = playing.copy(right = true, streak = playing.streak + 1, score = score, points = points)
                 viewModelScope.launch {
                     delay(REVEAL_MS)
                     val riddle =
@@ -261,9 +271,9 @@ class DailyRiddleViewModel
                         }
                     if (riddle == null) {
                         // Couldn't get another one: count the run as finished, not lost
-                        finish(playing.streak + 1, playing.answer, timedOut = false)
+                        finish(playing.streak + 1, score, playing.answer, timedOut = false)
                     } else {
-                        show(riddle, playing.streak + 1)
+                        show(riddle, playing.streak + 1, score)
                     }
                 }
             } else {
@@ -279,20 +289,27 @@ class DailyRiddleViewModel
             _state.value = playing.copy(right = false, picked = picked)
             viewModelScope.launch {
                 delay(REVEAL_MS)
-                finish(playing.streak, playing.answer, timedOut)
+                finish(playing.streak, playing.score, playing.answer, timedOut)
             }
         }
 
         private fun finish(
             streak: Int,
+            score: Int,
             answer: String,
             timedOut: Boolean,
         ) {
             val best = best()
-            val newBest = streak > best
-            if (newBest) prefs.edit { putInt(bestKey(), streak) }
-            _state.value = RiddleState.Over(streak, maxOf(best, streak), newBest, answer, timedOut)
+            val newBest = score > best
+            if (newBest) prefs.edit { putInt(bestKey(), score) }
+            _state.value = RiddleState.Over(streak, score, maxOf(best, score), newBest, answer, timedOut)
         }
+
+        /** 100 points for a right answer, plus up to 400 more the faster you answer */
+        private fun points(
+            secondsLeft: Int,
+            totalSeconds: Int,
+        ): Int = MIN_POINTS + SPEED_POINTS * secondsLeft / totalSeconds
 
         override fun onCleared() {
             timer?.cancel()
@@ -365,9 +382,11 @@ class DailyRiddleViewModel
             private const val KIDS_SECONDS = 30
             private const val TRIES = 4
             private const val REVEAL_MS = 1_600L
+            private const val MIN_POINTS = 100
+            private const val SPEED_POINTS = 400
 
-            /** The "Highest scores" board's key: most riddles solved in a row */
-            const val BOARD_KEY = "MOVIE_RIDDLE_STREAK"
+            /** The "Highest scores" board's key: most points in one run */
+            const val BOARD_KEY = "MOVIE_RIDDLE_POINTS"
         }
     }
 
@@ -423,7 +442,7 @@ private fun RiddleContent(
 
             is RiddleState.Over -> {
                 Text(
-                    text = if (s.newBest) "New best streak!" else "Run over: ${s.streak} in a row",
+                    text = if (s.newBest) "New best score!" else "Run over: %,d points".format(s.score),
                     fontFamily = BenflixTitleFont,
                     fontSize = 40.sp,
                     color = Color.White,
@@ -431,9 +450,10 @@ private fun RiddleContent(
                 )
                 Text(
                     text =
-                        (if (s.newBest) "${s.streak} riddles in a row.\n" else "") +
+                        (if (s.newBest) "%,d points. ".format(s.score) else "") +
+                            "${s.streak} " + (if (s.streak == 1) "riddle" else "riddles") + " in a row.\n" +
                             (if (s.timedOut) "Time ran out. " else "") +
-                            "It was ${s.answer}.\nYour best streak: ${s.best}",
+                            "It was ${s.answer}.\nYour best: %,d points".format(s.best),
                     fontSize = 20.sp,
                     color = Color.White.copy(alpha = .85f),
                     textAlign = TextAlign.Center,
@@ -452,7 +472,7 @@ private fun RiddleRound(
     onPick: (String) -> Unit,
 ) {
     Text(
-        text = "Streak ${s.streak}  ·  Your best ${maxOf(s.best, s.streak)}",
+        text = "Score %,d  ·  Streak ${s.streak}  ·  Best %,d".format(s.score, maxOf(s.best, s.score)),
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,
         color = Color(0xFFFFC94D),
@@ -487,7 +507,7 @@ private fun RiddleRound(
         )
     }
     Text(
-        "Which movie is it? One guess. Easier clues show as time runs down.",
+        "Which movie is it? One guess. Answer fast for more points, or wait for easier clues.",
         fontSize = 16.sp,
         color = Color.White.copy(alpha = .75f),
         textAlign = TextAlign.Center,
@@ -514,7 +534,7 @@ private fun RiddleRound(
     Text(
         text =
             when (s.right) {
-                true -> "Got it! Next riddle…"
+                true -> "Got it! +${s.points} points"
                 false -> if (s.picked == null) "Time's up! It was ${s.answer}" else "Nope, it was ${s.answer}"
                 null -> " "
             },

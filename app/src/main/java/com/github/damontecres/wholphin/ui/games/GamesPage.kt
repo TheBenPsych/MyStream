@@ -380,7 +380,7 @@ class GamesViewModel
                 linkedMapOf(
                     HigherLowerViewModel.BOARD_KEY to ("Higher or Lower" to "Best streak"),
                     "GUESS_THE_MOVIE" to ("Guess the movie" to "Most points"),
-                    DailyRiddleViewModel.BOARD_KEY to ("Movie riddle" to "Best streak"),
+                    DailyRiddleViewModel.BOARD_KEY to ("Movie riddle" to "Most points"),
                 )
         }
     }
@@ -442,7 +442,7 @@ fun GamesPage(
                 { mod ->
                     MovieGameTile(
                         title = "Movie riddle",
-                        subtitle = "Clues get easier as the clock runs down. Guess right to keep going, one miss ends your run!",
+                        subtitle = "Clues get easier as the clock runs down, but fast answers score more. One miss ends your run!",
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
