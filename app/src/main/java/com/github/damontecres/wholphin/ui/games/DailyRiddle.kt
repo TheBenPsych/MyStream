@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -154,6 +155,13 @@ class DailyRiddleViewModel
 
         fun best(): Int = prefs.getInt(bestKey(), 0)
 
+        /** True while the screen isn't showing (the countdown waits) */
+        private var paused = false
+
+        fun setPaused(value: Boolean) {
+            paused = value
+        }
+
         /** Start a new run */
         fun load() {
             timer?.cancel()
@@ -239,6 +247,8 @@ class DailyRiddleViewModel
                     var left = total
                     while (left > 0) {
                         delay(1_000)
+                        // The clock stops while the app is hidden (Home button, screen off, another app on top)
+                        if (paused) continue
                         left--
                         val playing = _state.value as? RiddleState.Playing ?: return@launch
                         if (playing.right != null) return@launch
@@ -397,6 +407,11 @@ fun DailyRiddlePage(
 ) {
     val state by viewModel.state.collectAsState()
     val isTv = rememberIsTv()
+    // Pause the 20-second clock while the app is hidden, and carry on when it's back
+    LifecycleResumeEffect(viewModel) {
+        viewModel.setPaused(false)
+        onPauseOrDispose { viewModel.setPaused(true) }
+    }
     Box(
         contentAlignment = Alignment.TopCenter,
         modifier =

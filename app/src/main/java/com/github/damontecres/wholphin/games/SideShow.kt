@@ -13,6 +13,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.exoplayer.ExoPlayer
+import com.github.damontecres.wholphin.services.KidsMode
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -65,6 +66,8 @@ class SideShow(
             .Builder()
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
+            // On the Kids tile, only movies & shows rated for kids (unrated ones too are left out)
+            .addInterceptor(KidsMode.interceptor)
             .build()
     private var player: ExoPlayer? = null
     private var playing: SideShowItem? = null
@@ -383,6 +386,8 @@ class SideShow(
             false,
         )
         if (item.startMs > 0) p.seekTo(item.startMs)
+        // The sound setting ("Sound: game only") may have been picked before this player existed
+        p.volume = wantedVolume
         p.prepare()
         p.playWhenReady = true
         player = p
@@ -409,9 +414,13 @@ class SideShow(
         post("/Sessions/Playing/Progress", report(item, p.currentPosition).put("IsPaused", !p.isPlaying))
     }
 
+    /** Kept even while no show is on, so the next show (or the next episode) starts at the chosen sound */
+    private var wantedVolume = 1f
+
     var volume: Float
-        get() = player?.volume ?: 1f
+        get() = player?.volume ?: wantedVolume
         set(value) {
+            wantedVolume = value
             player?.volume = value
         }
 

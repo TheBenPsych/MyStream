@@ -394,6 +394,9 @@ class GamesViewModel
                     .mapNotNull { it.toIntOrNull() }
                     .toSet()
             _library.value = LibraryState.Loading
+            // Look at Tower's BIOS files again, and clear out downloads that never finished
+            localGames.forgetBiosList()
+            viewModelScope.launch { localGames.clearLeftovers() }
             viewModelScope.launch {
                 _library.value =
                     try {
@@ -418,13 +421,13 @@ class GamesViewModel
                             LibraryState.Ready(consoles)
                         }
                     } catch (e: GameLibraryException) {
-                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, visibleDownloads())
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
                         LibraryState.Failed(
                             "Couldn't load your games (${e.javaClass.simpleName}).",
                             askAddress = false,
-                            localGames.downloaded(),
+                            visibleDownloads(),
                         )
                     }
                 (_library.value as? LibraryState.Ready)?.let { ready ->
@@ -446,6 +449,10 @@ class GamesViewModel
                 }
             }
         }
+
+        /** Games downloaded on this device that this profile may see (Kids: only games rated for everyone) */
+        fun visibleDownloads(): List<DownloadedGame> =
+            localGames.downloaded().let { all -> if (KidsMode.isActive) all.filter { it.ref.kids } else all }
 
         /** Shows the Play / Resume choices for a game */
         fun choose(ref: GameRef) {
@@ -569,7 +576,13 @@ class GamesViewModel
                 }
 
         private val profile: String
-            get() = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            get() =
+                when {
+                    // Guest scores are kept apart from the owner's, like the Movie riddle
+                    GuestMode.isActive -> "guest"
+                    KidsMode.isActive -> "kids"
+                    else -> serverRepository.currentUser?.id?.toString() ?: "guest"
+                }
 
         private fun key(game: BuiltInGame): String = "${profile}_${game.name}"
 
@@ -595,7 +608,10 @@ class GamesViewModel
         fun best(game: BuiltInGame): Int = prefs.getInt(key(game), 0)
 
         /** This account's best in a movie game (Higher or Lower, Movie riddle, Guess the movie) */
-        fun bestExtra(boardKey: String): Int = prefs.getInt("${serverRepository.currentUser?.id ?: "guest"}_$boardKey", 0)
+        fun bestExtra(boardKey: String): Int {
+            val owner = if (GuestMode.isActive) "guest" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            return prefs.getInt("${owner}_$boardKey", 0)
+        }
 
         /** Saves the score if it's a new best, and says whether it was */
         fun submit(
@@ -686,8 +702,8 @@ fun GamesPage(
                 },
                 { mod ->
                     MovieGameTile(
-                        title = "Daily movie riddle",
-                        subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
+                        title = "Movie riddle",
+                        subtitle = "Guess the movie from its clues. Five choices, and it keeps going until you miss!",
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
@@ -762,10 +778,18 @@ fun GamesPage(
                 )
             }
             DeviceCard(power, isTv)
+            // Refreshes after a game is downloaded or removed, not only when the library reloads
+            val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
             StorageCard(
-                games = remember(library) { viewModel.localGames.downloaded() },
+                games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
                 isTv = isTv,
-                onRemove = { viewModel.removeDownload(context, it.ref) },
+                // Kids can't delete games from the device
+                onRemove =
+                    if (KidsMode.isActive) {
+                        null
+                    } else {
+                        { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
+                    },
             )
             if (!isTv) {
                 ActionTile(
@@ -783,11 +807,17 @@ fun GamesPage(
 
                 is LibraryState.Failed -> {
                     InfoText(state.message)
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val retryTiles: @Composable () -> Unit = {
                         ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
                         if (state.askAddress) {
                             ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
                         }
+                    }
+                    // Two tiles side by side are wider than a phone, so on phones they go one under the other
+                    if (isTv) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { retryTiles() }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { retryTiles() }
                     }
                     if (state.downloaded.isNotEmpty()) {
                         Text(
@@ -832,7 +862,7 @@ fun GamesPage(
                             playable
                                 .flatMap { (c, _, _) ->
                                     c.games.map {
-                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size)
+                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
                                     }
                                 }.toMap()
                         }
@@ -2287,7 +2317,8 @@ private fun ConsoleGrid(
 private fun StorageCard(
     games: List<DownloadedGame>,
     isTv: Boolean,
-    onRemove: (DownloadedGame) -> Unit,
+    /** Null when games can't be deleted here (Kids) */
+    onRemove: ((DownloadedGame) -> Unit)?,
 ) {
     val context = LocalContext.current
     val stats =
@@ -2312,7 +2343,7 @@ private fun StorageCard(
     var managing by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(12.dp)
     Surface(
-        onClick = { if (games.isNotEmpty()) managing = true },
+        onClick = { if (games.isNotEmpty() && onRemove != null) managing = true },
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
@@ -2348,14 +2379,15 @@ private fun StorageCard(
                         "No games downloaded on this device yet"
                     } else {
                         "Games on this device: ${LocalGames.mb(gamesBytes)} (${games.size}). " +
-                            (if (used > 0.9f) "Getting full! " else "") + "Select to delete some."
+                            (if (used > 0.9f) "Getting full! " else "") +
+                            if (onRemove != null) "Select to delete some." else ""
                     },
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = .8f),
             )
         }
     }
-    if (managing) {
+    if (managing && onRemove != null) {
         val focus = remember { FocusRequester() }
         com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = { managing = false }) {
             LaunchedEffect(Unit) { focus.tryRequestFocus() }
