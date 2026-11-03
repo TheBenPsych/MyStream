@@ -291,6 +291,7 @@ class GamesViewModel
                 val got =
                     try {
                         val j = games.getJson("/api/info/$id")
+
                         fun list(name: String): List<String> {
                             val a = j.optJSONArray(name) ?: return emptyList()
                             return (0 until a.length()).map { a.optString(it) }

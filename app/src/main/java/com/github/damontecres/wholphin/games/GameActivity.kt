@@ -666,7 +666,12 @@ class GameActivity : ComponentActivity() {
         if (added > 0) {
             runCatching {
                 val f = File(saveDir, "playtime")
-                val before = f.takeIf { it.exists() }?.readText()?.trim()?.toLongOrNull() ?: 0L
+                val before =
+                    f
+                        .takeIf { it.exists() }
+                        ?.readText()
+                        ?.trim()
+                        ?.toLongOrNull() ?: 0L
                 f.writeText((before + added).toString())
             }
         }
