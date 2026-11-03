@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -50,7 +52,6 @@ import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
-import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -70,7 +71,9 @@ class MyBenflixViewModel
         companion object {
             /** Last time's rows per person, so the page shows at once when opened again */
             private val lastRows = java.util.concurrent.ConcurrentHashMap<java.util.UUID, List<HubRow>>()
-            private val ROW_TITLES = listOf("Continue watching", "My List", "Liked", "Watch history")
+
+            // Continue watching lives on Home, so it isn't repeated here
+            private val ROW_TITLES = listOf("My List", "Liked", "Watch history")
         }
 
         val rows: StateFlow<List<HubRow>?> = _rows
@@ -111,18 +114,6 @@ class MyBenflixViewModel
                 lastRows[userId]?.let { _rows.value = it }
                 val loaders: List<suspend () -> HubRow> =
                     listOf(
-                        suspend {
-                            HubRow(
-                                "Continue watching",
-                                safe {
-                                    api.itemsApi
-                                        .getResumeItems(
-                                            GetResumeItemsRequest(userId = userId, limit = ROW_MAX, fields = HomeItemFields),
-                                        ).content.items
-                                        .map { BaseItem(it, true) }
-                                },
-                            )
-                        },
                         suspend {
                             HubRow(
                                 "My List",
@@ -204,6 +195,57 @@ fun MyBenflixPage(
     val kids by KidsMode.active.collectAsState()
     var showParentPin by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { bedtimeViewModel.refreshPin() }
+    // Benflix phones: My Benflix is a page of its own (libraries and extras on it), and it all scrolls together
+    val phoneMenu = LocalPhoneMenu.current
+    if (phoneMenu != null &&
+        !com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    ) {
+        val name =
+            if (kids) {
+                KidsMode.displayName
+            } else if (GuestMode.isActive) {
+                "Guest"
+            } else {
+                user?.name.orEmpty()
+            }
+        if (showParentPin) {
+            ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
+        }
+        HubRows(
+            rows = rows.orEmpty(),
+            onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
+            modifier = modifier,
+            autoFocus = false,
+            header = {
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    PhoneMyBenflixHeader(
+                        menu = phoneMenu,
+                        userId = user?.id,
+                        name = name.orEmpty(),
+                        userImageUrl = if (kids) null else user?.let { remember(it.id) { viewModel.userImageUrl(it.id) } },
+                        kids = kids,
+                        guest = GuestMode.isActive,
+                        onClickParents = { showParentPin = true },
+                    )
+                    if (!GuestMode.isActive) MonthStatsCard()
+                    when {
+                        rows == null -> {
+                            LoadingPage(Modifier.fillMaxWidth().height(120.dp))
+                        }
+
+                        rows?.isEmpty() == true -> {
+                            Text(
+                                text = "Nothing here yet. Add things to My List or give them a thumbs up.",
+                                fontSize = 16.sp,
+                            )
+                        }
+                    }
+                }
+            },
+        )
+        return
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,

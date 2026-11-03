@@ -230,9 +230,12 @@ fun HubRows(
     onClickItem: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
+    // Phones: don't jump past the header to the first poster
+    autoFocus: Boolean = true,
 ) {
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(rows) {
+        if (!autoFocus) return@LaunchedEffect
         // Wait a frame so the first poster is on screen before it takes focus
         kotlinx.coroutines.delay(80)
         firstFocus.tryRequestFocus()
