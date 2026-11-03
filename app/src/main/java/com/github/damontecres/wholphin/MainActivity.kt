@@ -174,6 +174,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         instance = this
+        com.github.damontecres.wholphin.services.BenflixDubChoice
+            .load(this)
         com.github.damontecres.wholphin.util.StartupTimer
             .mark(com.github.damontecres.wholphin.util.StartupTimer.SCREEN)
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")

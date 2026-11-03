@@ -11,23 +11,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.filter.DefaultTvFilterOptions
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.CollectionFolderFilter
 import com.github.damontecres.wholphin.data.model.GetItemsFilter
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.LibraryKind
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.components.CollectionFolderView
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
+import com.github.damontecres.wholphin.ui.components.LibraryShelfTab
+import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.RecommendedTvShow
+import com.github.damontecres.wholphin.ui.components.SHELVES_SEASONS
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
 import com.github.damontecres.wholphin.ui.components.ViewOptionsPoster
 import com.github.damontecres.wholphin.ui.data.SeriesSortOptions
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
@@ -40,6 +44,19 @@ class CollectionFolderTvViewModel
         val navigationManager: NavigationManager,
     ) : ViewModel()
 
+/** Benflix: the tabs a shows library can have */
+private enum class TvTab(
+    val title: String,
+) {
+    HOME("Home"),
+    ALL("All"),
+    DUBBED("Dubbed"),
+    SUBBED("Subbed"),
+    SEASONS("Seasons"),
+    GENRES("Genres"),
+    STUDIOS("Studios"),
+}
+
 @Composable
 fun CollectionFolderTv(
     preferences: UserPreferences,
@@ -47,15 +64,21 @@ fun CollectionFolderTv(
     modifier: Modifier = Modifier,
     viewModel: CollectionFolderTvViewModel = hiltViewModel(),
 ) {
-    val tabs =
-        remember {
-            listOf(
-                TabDetails(R.string.recommended),
-                TabDetails(R.string.library),
-                TabDetails(R.string.genres),
-                TabDetails(R.string.studios),
-            )
+    // Benflix: anime gets Dubbed, Subbed and Seasons tabs; wait the moment it takes to tell
+    val kind = rememberLibraryKind(destination.itemId)
+    if (kind == null) {
+        LoadingPage(modifier)
+        return
+    }
+    val tabIds =
+        remember(kind) {
+            if (kind == LibraryKind.ANIME_SHOWS) {
+                listOf(TvTab.HOME, TvTab.ALL, TvTab.DUBBED, TvTab.SUBBED, TvTab.SEASONS, TvTab.GENRES, TvTab.STUDIOS)
+            } else {
+                listOf(TvTab.HOME, TvTab.ALL, TvTab.GENRES, TvTab.STUDIOS)
+            }
         }
+    val tabs = remember(tabIds) { tabIds.map { TabDetails(StringStringProvider(it.title)) } }
     val onClickItem =
         remember {
             { position: Int, item: BaseItem ->
@@ -71,24 +94,23 @@ fun CollectionFolderTv(
         modifier = modifier,
         showTabs = showHeader,
     ) { tabIndex, tabDetails ->
-        when (tabIndex) {
-            // Recommended
-            0 -> {
+        val contentModifier =
+            Modifier
+                .fillMaxSize()
+                .focusRequester(tabDetails.contentFocusRequester)
+        when (tabIds.getOrNull(tabIndex)) {
+            TvTab.HOME -> {
                 RecommendedTvShow(
                     preferences = preferences,
                     parentId = destination.itemId,
                     onFocusPosition = { pos ->
                         showHeader = pos.row < 1
                     },
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                 )
             }
 
-            // Library
-            1 -> {
+            TvTab.ALL -> {
                 CollectionFolderView(
                     preferences = preferences,
                     itemId = destination.itemId,
@@ -104,10 +126,7 @@ fun CollectionFolderTv(
                     sortOptions = SeriesSortOptions,
                     filterOptions = DefaultTvFilterOptions,
                     defaultViewOptions = ViewOptionsPoster,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                     positionCallback = { columns, position ->
                         showHeader = position < columns
                     },
@@ -117,32 +136,44 @@ fun CollectionFolderTv(
                 )
             }
 
-            // Genres
-            2 -> {
+            TvTab.DUBBED, TvTab.SUBBED -> {
+                AnimeDubTab(
+                    parentId = destination.itemId,
+                    kind = kind,
+                    dubbed = tabIds[tabIndex] == TvTab.DUBBED,
+                    modifier = contentModifier,
+                )
+            }
+
+            TvTab.SEASONS -> {
+                LibraryShelfTab(
+                    preferences = preferences,
+                    parentId = destination.itemId,
+                    shelfSet = SHELVES_SEASONS,
+                    suggestionsType = BaseItemKind.SERIES,
+                    onFocusPosition = { pos -> showHeader = pos.row < 1 },
+                    modifier = contentModifier,
+                )
+            }
+
+            TvTab.GENRES -> {
                 GenreCardGrid(
                     itemId = destination.itemId,
                     includeItemTypes = listOf(BaseItemKind.SERIES),
                     collectionType = CollectionType.TVSHOWS,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                 )
             }
 
-            // Studios
-            3 -> {
+            TvTab.STUDIOS -> {
                 StudioCardGrid(
                     itemId = destination.itemId,
                     includeItemTypes = listOf(BaseItemKind.SERIES),
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                 )
             }
 
-            else -> {
+            null -> {
                 ErrorMessage("Invalid tab index $tabIndex", null)
             }
         }

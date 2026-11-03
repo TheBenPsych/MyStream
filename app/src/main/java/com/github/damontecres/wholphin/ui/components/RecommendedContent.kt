@@ -21,6 +21,9 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LibraryHomeService
+import com.github.damontecres.wholphin.services.LibraryKind
+import com.github.damontecres.wholphin.services.LibraryShelf
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -38,11 +41,15 @@ import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.detail.music.addToQueue
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.main.FeaturedItem
 import com.github.damontecres.wholphin.ui.main.HomePageContent
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.playback.playable
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.toBaseItems
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
@@ -60,6 +67,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
@@ -81,10 +89,12 @@ class RecommendedViewModel
         private val mediaManagementService: MediaManagementService,
         private val suggestionService: SuggestionService,
         val serverReportService: ServerReportService,
+        private val libraryHome: LibraryHomeService,
         @Assisted private val parentId: UUID,
         @Assisted private val suggestionsType: BaseItemKind,
         @Assisted private val recommendedRows: List<RecommendedRow<*>>,
         @Assisted private val viewOptions: HomeRowViewOptions,
+        @Assisted private val shelfSet: String,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -93,11 +103,17 @@ class RecommendedViewModel
                 suggestionsType: BaseItemKind,
                 recommendedRows: List<RecommendedRow<*>>,
                 viewOptions: HomeRowViewOptions,
+                shelfSet: String,
             ): RecommendedViewModel
         }
 
         private val _state = MutableStateFlow(RecommendedState())
         val state: StateFlow<RecommendedState> = _state
+
+        /** Benflix: the library's own rows (mini Home), and whether the Suggestions row comes last */
+        private var shelves: List<LibraryShelf> = emptyList()
+        private val withSuggestions: Boolean get() = shelfSet == SHELVES_HOME
+        private var kind: LibraryKind = LibraryKind.OTHER
 
         fun init() {
             viewModelScope.launchDefault {
@@ -105,12 +121,36 @@ class RecommendedViewModel
                     userPreferencesService.flow
                         .first()
                         .appPreferences.homePagePreferences.maxItemsPerRow
+                kind =
+                    try {
+                        libraryHome.kindOf(parentId)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not tell what kind of library %s is", parentId)
+                        LibraryKind.OTHER
+                    }
+                shelves =
+                    when (shelfSet) {
+                        SHELVES_HOME -> libraryHome.homeShelves(parentId, kind)
+                        SHELVES_SEASONS -> libraryHome.seasonShelves(parentId)
+                        SHELVES_DECADES -> libraryHome.decadeShelves(parentId)
+                        else -> emptyList()
+                    }
+                if (shelfSet == SHELVES_HOME && kind != LibraryKind.OTHER) loadFeatured()
                 _state.update {
                     it.copy(
                         loading = LoadingState.Loading,
                         rows =
                             recommendedRows.map { HomeRowLoadingState.Loading(ResStringProvider(it.title)) } +
-                                listOf(HomeRowLoadingState.Loading(ResStringProvider(R.string.suggestions))),
+                                shelves.map { HomeRowLoadingState.Loading(StringStringProvider(it.title)) } +
+                                if (withSuggestions) {
+                                    listOf(
+                                        HomeRowLoadingState.Loading(ResStringProvider(R.string.suggestions)),
+                                    )
+                                } else {
+                                    emptyList()
+                                },
                     )
                 }
                 val jobs =
@@ -139,8 +179,38 @@ class RecommendedViewModel
                                 )
                             }
                         }
-                    }
-                fetchSuggestions()
+                    } +
+                        shelves.mapIndexed { shelfIndex, shelf ->
+                            val index = recommendedRows.size + shelfIndex
+                            viewModelScope.launchIO {
+                                val items =
+                                    try {
+                                        shelf.load(shelf)
+                                    } catch (ex: CancellationException) {
+                                        throw ex
+                                    } catch (ex: Exception) {
+                                        // A row that can't load is left out instead of showing an error
+                                        Timber.w(ex, "Could not load the %s row", shelf.title)
+                                        emptyList()
+                                    }
+                                val result =
+                                    HomeRowLoadingState.Success(
+                                        StringStringProvider(shelf.title),
+                                        items,
+                                        shelf.viewOptions,
+                                        showViewMore = items.size >= LibraryHomeService.ROW,
+                                    )
+                                _state.update {
+                                    it.copy(
+                                        rows =
+                                            it.rows.toMutableList().apply {
+                                                set(index, result)
+                                            },
+                                    )
+                                }
+                            }
+                        }
+                if (withSuggestions) fetchSuggestions()
                 jobs.forEachIndexed { index, job ->
                     job.join()
                     val row = state.value.rows[index]
@@ -148,6 +218,59 @@ class RecommendedViewModel
                         // Report loading success once the first non-empty row is ready
                         _state.update { it.copy(loading = LoadingState.Success) }
                     }
+                }
+                // Benflix: everything is in, even if every row came back empty
+                _state.update { it.copy(loading = LoadingState.Success) }
+            }
+        }
+
+        /** Benflix: the banner at the top of the mini Home */
+        private fun loadFeatured() {
+            viewModelScope.launchIO {
+                try {
+                    val featured = libraryHome.featured(parentId, kind)
+                    _state.update { it.copy(featured = featured) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not load the banner for %s", parentId)
+                }
+            }
+        }
+
+        fun surpriseMe() {
+            viewModelScope.launchIO {
+                try {
+                    val item = libraryHome.surprise(parentId, kind)
+                    if (item != null) {
+                        withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(item.destination()) }
+                    } else {
+                        withContext(WholphinDispatchers.Main) { showToast(context, "Nothing unwatched to pick from") }
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Surprise me failed")
+                }
+            }
+        }
+
+        fun toggleFeaturedFavorite(item: BaseItem) {
+            viewModelScope.launchIO {
+                val favorite = !item.favorite
+                favoriteWatchManager.setFavorite(item.id, favorite)
+                _state.update { state ->
+                    state.copy(
+                        featured =
+                            state.featured.map {
+                                if (it.item.id == item.id) {
+                                    val data = it.item.data
+                                    it.copy(item = it.item.copy(data = data.copy(userData = data.userData?.copy(isFavorite = favorite))))
+                                } else {
+                                    it
+                                }
+                            },
+                    )
                 }
             }
         }
@@ -337,7 +460,14 @@ class RecommendedViewModel
 data class RecommendedState(
     val loading: LoadingState = LoadingState.Pending,
     val rows: List<HomeRowLoadingState> = emptyList(),
+    /** Benflix: the mini Home banner */
+    val featured: List<FeaturedItem> = emptyList(),
 )
+
+/** Benflix: which rows a [RecommendedViewModel] shows besides its fixed ones */
+const val SHELVES_HOME = "home"
+const val SHELVES_SEASONS = "seasons"
+const val SHELVES_DECADES = "decades"
 
 data class RecommendedRow<T>(
     val title: Int,
@@ -449,6 +579,18 @@ fun RecommendedContent(
                 showViewMore = true,
                 onClickViewMore = viewModel::onClickViewMore,
                 modifier = modifier,
+                // Benflix mini Home: a banner like Home's, for this library
+                featured = state.featured,
+                onClickFeaturedPlay = { item ->
+                    if (item.type.playable) {
+                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                    } else {
+                        viewModel.navigationManager.navigateTo(item.destination())
+                    }
+                },
+                onClickFeaturedInfo = { item -> viewModel.navigationManager.navigateTo(item.destination()) },
+                onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
+                onClickSurprise = viewModel::surpriseMe,
             )
         }
     }
@@ -488,4 +630,37 @@ fun RecommendedContent(
             elevation = 3.dp,
         )
     }
+}
+
+/**
+ * Benflix: a tab made only of a library's own rows, such as Seasons (anime) or Decades (movies)
+ */
+@Composable
+fun LibraryShelfTab(
+    preferences: UserPreferences,
+    parentId: UUID,
+    shelfSet: String,
+    suggestionsType: BaseItemKind,
+    onFocusPosition: (RowColumn) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: RecommendedViewModel =
+        hiltViewModel<RecommendedViewModel, RecommendedViewModel.Factory>(
+            key = "$parentId-$shelfSet",
+            creationCallback = {
+                it.create(
+                    parentId = parentId,
+                    suggestionsType = suggestionsType,
+                    recommendedRows = emptyList(),
+                    viewOptions = HomeRowViewOptions(),
+                    shelfSet = shelfSet,
+                )
+            },
+        ),
+) {
+    RecommendedContent(
+        preferences = preferences,
+        viewModel = viewModel,
+        onFocusPosition = onFocusPosition,
+        modifier = modifier,
+    )
 }

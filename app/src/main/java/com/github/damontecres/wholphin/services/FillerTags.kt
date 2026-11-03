@@ -52,6 +52,50 @@ object FillerTags {
     }
 }
 
+/**
+ * Benflix: each anime episode's number counted from the very first episode, like fans count
+ * long shows (Naruto Shippuden episode 135 instead of S7 E5). Only for shows with more than one season.
+ */
+object AnimeEpisodeNumbers {
+    private val _numbers = MutableStateFlow<Map<UUID, Int>>(emptyMap())
+    val numbers: StateFlow<Map<UUID, Int>> = _numbers
+
+    internal fun add(found: Map<UUID, Int>) {
+        if (found.isNotEmpty()) _numbers.update { it + found }
+    }
+
+    /** Season 1 starts at 1, each later season after the highest episode number of the one before */
+    fun workOut(episodes: List<BaseItemDto>): Map<UUID, Int> {
+        val seasons = episodes.filter { it.indexNumber != null }.groupBy { it.parentIndexNumber ?: 1 }.toSortedMap()
+        if (seasons.size < 2) return emptyMap()
+        val out = mutableMapOf<UUID, Int>()
+        var before = 0
+        seasons.values.forEach { eps ->
+            // Some libraries already number later seasons on from earlier ones
+            val offset = if ((eps.minOf { it.indexNumber!! }) > before) 0 else before
+            eps.forEach { out[it.id] = it.indexNumber!! + offset }
+            before = maxOf(before, eps.maxOf { (it.indexNumberEnd ?: it.indexNumber!!) + offset })
+        }
+        return out
+    }
+
+    /** "Episode 135" for an anime episode whose number across the show is known, else null */
+    fun label(item: BaseItem?): String? {
+        if (item?.type != BaseItemKind.EPISODE) return null
+        val number = _numbers.value[item.id] ?: return null
+        if (number == item.indexNumber) return null
+        return "Episode $number"
+    }
+}
+
+/** "Episode 135" for this anime episode (number across the whole show), or null */
+@Composable
+fun animeEpisodeLabel(item: BaseItem?): String? {
+    if (item?.type != BaseItemKind.EPISODE) return null
+    AnimeEpisodeNumbers.numbers.collectAsState().value
+    return AnimeEpisodeNumbers.label(item)
+}
+
 /** The FILLER / MIXED tag for this episode, or null */
 @Composable
 fun fillerTagFor(item: BaseItem?): FillerKind? {
@@ -80,9 +124,6 @@ class FillerService
             withContext(WholphinDispatchers.IO) {
                 try {
                     if (!isAnime(api, series, userId)) return@withContext
-                    val names = listOfNotNull(series.name, series.data.originalTitle).distinct()
-                    val show = names.firstNotNullOfOrNull { showFor(slug(it)) } ?: return@withContext
-                    if (show.kinds.isEmpty()) return@withContext
                     val episodes =
                         api.tvShowsApi
                             .getEpisodes(
@@ -95,6 +136,11 @@ class FillerService
                             ).content
                             .items
                             .filter { (it.parentIndexNumber ?: 1) > 0 && it.indexNumber != null }
+                    // Benflix: anime episodes also show their number across the whole show (Episode 135)
+                    AnimeEpisodeNumbers.add(AnimeEpisodeNumbers.workOut(episodes))
+                    val names = listOfNotNull(series.name, series.data.originalTitle).distinct()
+                    val show = names.firstNotNullOfOrNull { showFor(slug(it)) } ?: return@withContext
+                    if (show.kinds.isEmpty()) return@withContext
                     val numbers = siteNumbers(episodes, show.titles)
                     val found =
                         episodes

@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.data.ExtrasItem
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.animeEpisodeLabel
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.ExtrasRow
@@ -260,7 +261,9 @@ fun SeriesOverviewContent(
                                             ?.aspectRatio
                                             ?.coerceAtLeast(AspectRatios.FOUR_THREE)
                                             ?: (AspectRatios.WIDE),
-                                    cornerText = episode?.ui?.episodeCornerText,
+                                    cornerText =
+                                        animeEpisodeLabel(episode)?.removePrefix("Episode ")?.let { "Ep $it" }
+                                            ?: episode?.ui?.episodeCornerText,
                                     played = episode?.data?.userData?.played ?: false,
                                     playPercent =
                                         episode?.data?.userData?.playedPercentage

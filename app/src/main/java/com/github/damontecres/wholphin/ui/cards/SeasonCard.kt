@@ -32,6 +32,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.FillerKind
+import com.github.damontecres.wholphin.services.animeEpisodeLabel
 import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.services.finaleTagFor
 import com.github.damontecres.wholphin.ui.AspectRatios
@@ -58,7 +59,8 @@ fun SeasonCard(
     val imageUrl = rememberImageUrl(item, imageHeight, imageWidth)
     SeasonCard(
         title = item?.title,
-        subtitle = item?.subtitle,
+        // Benflix: anime episodes also show their number across the whole show (Episode 135 · S3 E5)
+        subtitle = animeEpisodeLabel(item)?.let { label -> listOfNotNull(label, item?.subtitle).joinToString(" · ") } ?: item?.subtitle,
         name = item?.name,
         imageUrl = imageUrl,
         isFavorite = item?.data?.userData?.isFavorite ?: false,
