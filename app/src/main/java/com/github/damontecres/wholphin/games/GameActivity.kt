@@ -911,7 +911,13 @@ class GameActivity : ComponentActivity() {
             }
             if ((code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BUTTON_MODE) && !down) {
                 val back = pickerBack
-                if (failed) finish() else if (back != null) back() else closeMenu()
+                if (failed) {
+                    finish()
+                } else if (back != null) {
+                    back()
+                } else {
+                    closeMenu()
+                }
                 return true
             }
             if (code == KeyEvent.KEYCODE_BUTTON_A && failed) {
@@ -1350,7 +1356,11 @@ class GameActivity : ComponentActivity() {
                         ButtonKey(console, KeyFor.CONTROLLER, Modifier.fillMaxWidth())
                         if (isTv) PhoneTip()
                         Text(
-                            if (isTv) "Hold Back for a second to open this menu. Start + Select together also opens it." else "The ☰ circle opens this menu.",
+                            if (isTv) {
+                                "Hold Back for a second to open this menu. Start + Select together also opens it."
+                            } else {
+                                "The ☰ circle opens this menu."
+                            },
                             color = Color.White.copy(alpha = 0.75f),
                             fontSize = 15.sp,
                         )
@@ -1364,7 +1374,12 @@ class GameActivity : ComponentActivity() {
                             if (!saving && hasSpot) {
                                 SlotButton("Where you last stopped", GameSaves.file(saveDir, "state"), GameSaves.file(saveDir, "png")) {
                                     onGameThread {
-                                        GameSaves.file(saveDir, "state").takeIf { it.exists() }?.let { RetroNative.loadState(it.readBytes()) }
+                                        GameSaves
+                                            .file(
+                                                saveDir,
+                                                "state",
+                                            ).takeIf { it.exists() }
+                                            ?.let { RetroNative.loadState(it.readBytes()) }
                                     }
                                     page = MenuPage.MAIN
                                     closeMenu()
@@ -1471,7 +1486,13 @@ class GameActivity : ComponentActivity() {
         val shape = RoundedCornerShape(14.dp)
         val image =
             remember(picture.path, picture.lastModified()) {
-                if (picture.exists()) android.graphics.BitmapFactory.decodeFile(picture.path)?.asImageBitmap() else null
+                if (picture.exists()) {
+                    android.graphics.BitmapFactory
+                        .decodeFile(picture.path)
+                        ?.asImageBitmap()
+                } else {
+                    null
+                }
             }
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1492,7 +1513,13 @@ class GameActivity : ComponentActivity() {
                         .background(Color.Black, RoundedCornerShape(8.dp)),
             ) {
                 if (image != null) {
-                    Image(image, null, contentScale = ContentScale.Fit, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
+                    Image(
+                        image,
+                        null,
+                        contentScale = ContentScale.Fit,
+                        filterQuality = FilterQuality.None,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 } else {
                     Text("Empty", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
                 }
