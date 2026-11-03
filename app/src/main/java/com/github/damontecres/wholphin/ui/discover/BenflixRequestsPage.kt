@@ -1248,7 +1248,7 @@ class BenflixRequestsViewModel
  * Benflix Requests tab.
  * Admins: Find new stuff (Movies, Shows, Anime with Trending, Popular, Coming soon and Top rated, plus genre
  * buttons and "Hide what's on Benflix"), and everyone's requests with Approve / Decline.
- * Everyone else: what they asked for, and what has arrived on Benflix.
+ * Everyone else: the same Movies, Shows and Anime tabs, and their own requests (no Approve / Decline).
  */
 @Composable
 fun BenflixRequestsPage(
@@ -1266,23 +1266,21 @@ fun BenflixRequestsPage(
             if (admin) {
                 listOf("Movies", "Shows", "Anime", "Requests")
             } else {
-                listOf("My requests", "Now on Benflix")
+                // Benflix: everyone gets the same browse tabs as Ben (Ben asked), plus their own requests
+                listOf("Movies", "Shows", "Anime", "My requests")
             }.map { TabDetails(StringStringProvider(it)) }
         }
     TabbedPage(
-        itemId = if (admin) "benflix-requests-admin" else "benflix-requests",
+        itemId = if (admin) "benflix-requests-admin" else "benflix-requests-family",
         tabs = tabs,
         modifier = modifier,
     ) { index, _ ->
-        if (admin) {
-            when (index) {
-                0 -> FindShelf(FindSection.MOVIES, viewModel)
-                1 -> FindShelf(FindSection.SHOWS, viewModel)
-                2 -> FindShelf(FindSection.ANIME, viewModel)
-                else -> RequestList(viewModel, mineOnly = false, arrivedOnly = null)
-            }
-        } else {
-            RequestList(viewModel, mineOnly = true, arrivedOnly = index == 1, showSearch = index == 0)
+        when (index) {
+            0 -> FindShelf(FindSection.MOVIES, viewModel)
+            1 -> FindShelf(FindSection.SHOWS, viewModel)
+            2 -> FindShelf(FindSection.ANIME, viewModel)
+            // Admin: everyone's requests with Approve / Decline. Everyone else: what they asked for and what arrived
+            else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
     }
 }
@@ -1382,7 +1380,8 @@ private fun FindShelf(
     var filters by remember(section) { mutableStateOf(FindFilters()) }
     var hideOwned by rememberSaveable { mutableStateOf(true) }
     var hideAsked by rememberSaveable { mutableStateOf(false) }
-    var familyOnly by rememberSaveable { mutableStateOf(false) }
+    // Benflix: family accounts start with Family-friendly only on (like their search), and can turn it off
+    var familyOnly by rememberSaveable { mutableStateOf(!viewModel.isAdmin) }
     var showFilters by remember { mutableStateOf(false) }
     var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
     val key = viewModel.key(section, filters)
@@ -1811,7 +1810,12 @@ private fun RequestList(
                             when (arrivedOnly) {
                                 true -> "Nothing you asked for has arrived yet."
                                 false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
-                                null -> "No requests yet."
+                                null ->
+                                    if (mineOnly) {
+                                        "You haven't asked for anything yet. Find something on the Movies, Shows or Anime tab and ask for it."
+                                    } else {
+                                        "No requests yet."
+                                    }
                             },
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
