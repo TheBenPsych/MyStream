@@ -87,9 +87,13 @@ class CantFindNoticeViewModel
                     .combine(KidsMode.active) { id, kids -> if (kids) null else id }
                     .collectLatest { seerrUserId ->
                         _notices.value = emptyList()
-                        // Ben marks these himself, so he doesn't need telling
+                        // Ben marks these himself, so he doesn't need telling. His device does the
+                        // week-old "Still looking" check instead, so people hear even if he never opens Requests.
                         val admin = serverRepository.currentUserDto?.policy?.isAdministrator == true
-                        if (seerrUserId != null && !admin && seerrService.active.first()) {
+                        if (seerrUserId != null && admin && seerrService.active.first()) {
+                            delay(20_000)
+                            cantFind.autoCheck()
+                        } else if (seerrUserId != null && seerrService.active.first()) {
                             // After Home and the "Your request is here!" check have settled
                             delay(6_000)
                             check(seerrUserId)
@@ -227,7 +231,12 @@ fun CantFindLayer(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Ben looked for this one but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself.",
+                    text =
+                        if (notice.entry.auto) {
+                            "We looked for this one for a week but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself."
+                        } else {
+                            "Ben looked for this one but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself."
+                        },
                     color = Color(0xFFCFCFD6),
                     fontSize = 16.sp,
                 )

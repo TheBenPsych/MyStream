@@ -84,7 +84,7 @@ class CantFindViewModel
         fun undo(key: String) {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val ok = cantFind.undo(key)
-                if (!ok) showToast(context, "Couldn't save that. Try again.")
+                showToast(context, if (ok) "OK, it's back to Still looking." else "Couldn't save that. Try again.")
             }
         }
     }
@@ -166,7 +166,8 @@ fun CantFindNoteLine(entry: CantFindEntry) {
     val date = remember(entry.date) { BenflixCantFind.niceDate(entry.date) }
     val text =
         listOfNotNull(
-            entry.note?.let { "“$it”" } ?: "Ben looked but couldn't find a copy",
+            entry.note?.let { "“$it”" }
+                ?: if (entry.auto) "Searched for a week with no luck" else "Ben looked but couldn't find a copy",
             date?.let { "marked $it" },
         ).joinToString(" · ")
     Text(
@@ -209,7 +210,7 @@ fun CantFindBlock(
         ) {
             Box(Modifier.padding(top = 2.dp)) {
                 Text(
-                    text = "Ben looked, but couldn't find this yet",
+                    text = if (entry.auto) "We looked for a week, but couldn't find this yet" else "Ben looked, but couldn't find this yet",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = CANT_FIND_COLOR,

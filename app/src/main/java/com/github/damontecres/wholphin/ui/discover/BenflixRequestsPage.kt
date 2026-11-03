@@ -1027,6 +1027,8 @@ class BenflixRequestsViewModel
                         val arrived = entries.filter { it.available }.mapNotNull { it.cantFindKey() }
                         val stillMissing = entries.filter { !it.available }.mapNotNull { it.cantFindKey() }.toSet()
                         cantFindList.forget(arrived.filter { it !in stillMissing })
+                        // A week of "Still looking" with nothing found turns into "Couldn't find it" by itself
+                        if (!mineOnly) cantFindList.autoCheck(results)
                     }
                 } catch (ex: CancellationException) {
                     throw ex
@@ -1776,7 +1778,10 @@ private fun RequestRow(
             Button(onClick = it) { Text("Undo", maxLines = 1, softWrap = false) }
         }
     }
-    val daysWaiting = remember(entry.request.createdAt) { daysSince(entry.request.createdAt) }
+    val daysWaiting =
+        remember(entry.request.updatedAt, entry.request.createdAt) {
+            BenflixCantFind.daysSince(entry.request.updatedAt ?: entry.request.createdAt)
+        }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
@@ -1858,9 +1863,8 @@ private fun StatusTag(
     daysWaiting: Long? = null,
     isAdminList: Boolean = false,
 ) {
-    // Benflix: approved, nothing downloading yet, and it's been a few days
-    val stillLooking =
-        entry.status == RequestStatus.APPROVED && !entry.downloading && daysWaiting != null && daysWaiting >= STILL_LOOKING_DAYS
+    // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself.
+    val stillLooking = entry.status == RequestStatus.APPROVED && !entry.downloading && daysWaiting != null
     val (text, color) =
         when {
             entry.available -> {
@@ -1883,13 +1887,9 @@ private fun StatusTag(
                 "Something went wrong" to Color(0xFFE5484D)
             }
 
-            // Ben's list nudges him after two weeks with nothing found
-            stillLooking && isAdminList && (daysWaiting ?: 0) >= NUDGE_DAYS -> {
-                "Nothing found in $daysWaiting days" to Color(0xFFF5A524)
-            }
-
             stillLooking -> {
-                "Still looking · $daysWaiting days" to Color(0xFF7AA7FF)
+                val days = daysWaiting ?: 0
+                (if (days < 1) "Still looking · started today" else "Still looking · day ${days + 1}") to Color(0xFF7AA7FF)
             }
 
             else -> {
@@ -1906,18 +1906,6 @@ private fun StatusTag(
         Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
     }
 }
-
-/** Benflix: when an approved request starts showing "Still looking", and when Ben gets nudged */
-private const val STILL_LOOKING_DAYS = 3L
-private const val NUDGE_DAYS = 14L
-
-/** Whole days since Seerr's date text */
-private fun daysSince(createdAt: String?): Long? =
-    try {
-        createdAt?.let { ChronoUnit.DAYS.between(OffsetDateTime.parse(it), OffsetDateTime.now()) }
-    } catch (ex: Exception) {
-        null
-    }
 
 /** Benflix: the "Couldn't find it" key for this request ("MOVIE-123" / "TV-456") */
 fun RequestEntry.cantFindKey(): String? {
