@@ -616,20 +616,6 @@ fun GamesPage(
     val library by viewModel.library.collectAsState()
     val starting by viewModel.starting.collectAsState()
     var askAddress by remember { mutableStateOf(false) }
-    val towerRecentTop by viewModel.towerRecent.collectAsState()
-    // The big "Continue playing" card: the last game played on any TV or phone that this device can play
-    val banner =
-        remember(library, towerRecentTop, starting) {
-            val ready = library as? LibraryState.Ready ?: return@remember null
-            val power = DevicePower.get(context)
-            val refs =
-                ready.consoles
-                    .filter { c -> LocalConsole.forSlug(c.slug)?.let { power.fit(it.power) != DevicePower.Fit.TOO_MUCH } == true }
-                    .flatMap { c -> c.games.map { it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size) } }
-                    .toMap()
-            viewModel.recentPlayed().firstNotNullOfOrNull { (id, time) -> refs[id]?.let { it to time } }
-        }
-
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier =
@@ -655,18 +641,8 @@ fun GamesPage(
         // Leaderboards first: your bests and everyone's top scores, each card can take focus so the remote reaches them
         val board by viewModel.board.collectAsState()
         LaunchedEffect(Unit) { viewModel.refreshBoard() }
-        Leaderboards(viewModel = viewModel, board = board, isTv = isTv)
-        banner?.let { (ref, time) ->
-            ContinueBanner(
-                ref = ref,
-                playedText = playedAgo(time),
-                picture = remember(ref.id, time) { viewModel.lastPicture(ref.id) },
-                token = viewModel.gamesToken,
-                isTv = isTv,
-                onClick = { viewModel.choose(ref) },
-            )
-        }
-        ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
+        Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = focusRequester)
+        ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = remember { FocusRequester() })
 
         // Benflix "Guess the movie" and the daily riddle, made from your own movies
         val movieGames =
@@ -853,9 +829,9 @@ fun GamesPage(
                             items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
                         }
                     }
-                    if (recent.size > 1) {
+                    if (recent.isNotEmpty()) {
                         Text(
-                            text = "Played lately",
+                            text = "Continue playing",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
@@ -863,7 +839,7 @@ fun GamesPage(
                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                         ) {
-                            items(recent.drop(1), key = { "recent-${it.first.id}" }) { (ref, time) ->
+                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Card(ref)
                                     Text(
@@ -1876,12 +1852,16 @@ private class GameSounds(
     }
 }
 
-/** Your best scores and everyone's highest, as a row of cards (each one focusable so the TV remote can reach it) */
+/**
+ * Leaderboards at the top of Games: "Your high scores" on one half and everyone's top scores on the other
+ * (one under the other on phones). Both halves can take focus, so the TV remote can reach them.
+ */
 @Composable
 private fun Leaderboards(
     viewModel: GamesViewModel,
     board: Map<String, List<HighScore>>?,
     isTv: Boolean,
+    firstFocus: FocusRequester,
 ) {
     val games =
         BuiltInGame.entries.map { it.name to it.title } +
@@ -1891,140 +1871,135 @@ private fun Leaderboards(
             BuiltInGame.entries.associate { it.name to viewModel.best(it) } +
                 GamesViewModel.BOARD_EXTRA_GAMES.keys.associateWith { viewModel.bestExtra(it) }
         }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("🏆", fontSize = 26.sp)
-            Column {
-                Text("Leaderboards", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White)
-                Text(
-                    if (board == null) "Loading everyone's scores…" else "Everyone's best on this server, and yours",
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = .65f),
-                )
-            }
-        }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
-            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 8.dp),
+    val yours: @Composable (Modifier) -> Unit = { mod ->
+        BoardPanel(
+            title = "Your high scores",
+            subtitle = "Your best in every game",
+            colour = Color(0xFF7C3AED),
+            modifier = mod.focusRequester(firstFocus),
         ) {
-            items(games, key = { "board-${it.first}" }) { (id, title) ->
-                BoardCard(
-                    title = title,
+            games.forEach { (id, title) ->
+                val best = mine[id] ?: 0
+                BoardLine(
+                    game = title,
                     ranked = GamesViewModel.BOARD_RANKED[id],
-                    top = board?.get(id).orEmpty().take(BOARD_ROWS),
-                    mine = mine[id] ?: 0,
-                    colour = BOARD_COLOURS[games.indexOfFirst { it.first == id } % BOARD_COLOURS.size],
-                    isTv = isTv,
+                    right = listOf(if (best > 0) "%,d".format(best) else "—"),
+                    highlight = best > 0,
                 )
             }
         }
     }
+    val everyone: @Composable (Modifier) -> Unit = { mod ->
+        BoardPanel(
+            title = "🏆 Leaderboard",
+            subtitle = if (board == null) "Loading everyone's scores…" else "Top players on this server",
+            colour = Color(0xFFCA8A04),
+            modifier = mod,
+        ) {
+            games.forEach { (id, title) ->
+                val top = board?.get(id).orEmpty().take(3)
+                BoardLine(
+                    game = title,
+                    ranked = GamesViewModel.BOARD_RANKED[id],
+                    right =
+                        if (top.isEmpty()) {
+                            listOf("No scores yet")
+                        } else {
+                            top.mapIndexed { i, e -> "${listOf("🥇", "🥈", "🥉")[i]} ${e.name} ${shortScore(e.score)}" }
+                        },
+                    highlight = top.isNotEmpty(),
+                )
+            }
+        }
+    }
+    if (isTv) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.height(IntrinsicSize.Min)) {
+            yours(Modifier.weight(1f).fillMaxHeight())
+            everyone(Modifier.weight(1f).fillMaxHeight())
+        }
+    } else {
+        yours(Modifier.fillMaxWidth())
+        everyone(Modifier.fillMaxWidth())
+    }
 }
 
-private val BOARD_COLOURS =
-    listOf(
-        Color(0xFF7C3AED),
-        Color(0xFFDC2626),
-        Color(0xFF0891B2),
-        Color(0xFFEA580C),
-        Color(0xFF16A34A),
-        Color(0xFFDB2777),
-        Color(0xFF2563EB),
-        Color(0xFFCA8A04),
-    )
-
 @Composable
-private fun BoardCard(
+private fun BoardPanel(
     title: String,
-    ranked: String?,
-    top: List<HighScore>,
-    mine: Int,
+    subtitle: String,
     colour: Color,
-    isTv: Boolean,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
     Surface(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF16161A), focusedContainerColor = Color(0xFF16161A)),
-        modifier = Modifier.width(if (isTv) 250.dp else 200.dp),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF16161A), focusedContainerColor = Color(0xFF1C1C22)),
+        modifier = modifier,
     ) {
         Column(
             Modifier
-                .background(Brush.verticalGradient(listOf(colour.copy(alpha = .9f), colour.copy(alpha = .25f), Color(0xFF16161A))))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(colour.copy(alpha = .55f), Color(0xFF16161A), Color(0xFF16161A))))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Text(
-                title,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                ranked?.let { "Ranked by $it" } ?: "Ranked by score",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = .75f),
-                maxLines = 1,
-            )
-            Box(
-                Modifier
-                    .padding(vertical = 6.dp)
-                    .background(Color.Black.copy(alpha = .3f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    if (mine > 0) "Your best  ${"%,d".format(mine)}" else "No score from you yet",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                )
-            }
-            if (top.isEmpty()) {
-                Text("No scores yet. Be the first!", fontSize = 13.sp, color = Color.White.copy(alpha = .6f))
-            }
-            top.forEachIndexed { i, entry ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        when (i) {
-                            0 -> "🥇"
-                            1 -> "🥈"
-                            2 -> "🥉"
-                            else -> "${i + 1}."
-                        },
-                        fontSize = 15.sp,
-                        color = Color.White,
-                        modifier = Modifier.width(30.dp),
-                    )
-                    Text(
-                        entry.name,
-                        fontSize = 15.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .9f),
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        "%,d".format(entry.score),
-                        fontSize = 15.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = if (i == 0) Color(0xFFFFD54F) else Color.White.copy(alpha = .9f),
-                        maxLines = 1,
-                    )
-                }
-            }
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(subtitle, fontSize = 12.sp, color = Color.White.copy(alpha = .7f), modifier = Modifier.padding(bottom = 4.dp))
+            content()
         }
     }
 }
 
-/** How many accounts show under each game on "Highest scores" */
-private const val BOARD_ROWS = 5
+/** 950, 12.3k, 1.2M: short enough that three scores fit on one line */
+private fun shortScore(score: Int): String =
+    when {
+        score >= 1_000_000 -> "%.1fM".format(score / 1_000_000f)
+        score >= 10_000 -> "${score / 1000}k"
+        score >= 1_000 -> "%.1fk".format(score / 1000f)
+        else -> score.toString()
+    }
+
+/** One game on a leaderboard: name on the left (with what it ranks), scores on the right (they wrap, never cut off) */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BoardLine(
+    game: String,
+    ranked: String?,
+    right: List<String>,
+    highlight: Boolean,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(0.42f)) {
+            Text(game, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (ranked != null) {
+                Text(ranked, fontSize = 11.sp, color = Color.White.copy(alpha = .55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+            modifier = Modifier.weight(0.58f),
+        ) {
+            right.forEachIndexed { i, text ->
+                Text(
+                    text,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color =
+                        when {
+                            !highlight -> Color.White.copy(alpha = .5f)
+                            i == 0 -> Color(0xFFFFD54F)
+                            else -> Color.White.copy(alpha = .9f)
+                        },
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
 
 /** What the Play / Resume choices for one game show */
 data class GameChoice(
@@ -2247,15 +2222,21 @@ private fun ConsoleGrid(
                         Text(
                             text =
                                 "${console.games.size} ${if (console.games.size == 1) "game" else "games"}" +
-                                    when {
-                                        fit == DevicePower.Fit.MAY_BE_SLOW -> " · may be slow"
-                                        isTv && local.remoteFriendly -> " · remote OK"
-                                        else -> ""
-                                    },
+                                    if (fit == DevicePower.Fit.MAY_BE_SLOW) " · may be slow" else "",
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = .75f),
                             maxLines = 1,
                         )
+                        // What it plays with, the same icons as the built-in games
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 4.dp),
+                        ) {
+                            if (local.remoteFriendly) Badge(PlayWith.REMOTE, "Remote")
+                            Badge(PlayWith.CONTROLLER, "Controller")
+                            Badge(PlayWith.PHONE, "Phone")
+                        }
                     }
                 }
             }

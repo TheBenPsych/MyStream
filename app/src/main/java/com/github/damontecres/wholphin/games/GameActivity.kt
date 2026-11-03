@@ -164,7 +164,7 @@ class GameActivity : ComponentActivity() {
     private val inputListener =
         object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
-                if (isPadDevice(InputDevice.getDevice(deviceId))) {
+                if (hasSticks(InputDevice.getDevice(deviceId))) {
                     gamepadSeen = true
                     lastPad = KeyFor.CONTROLLER
                     showToast("Controller connected: Player ${portFor(deviceId) + 1}")
@@ -563,6 +563,18 @@ class GameActivity : ComponentActivity() {
 
     private fun closeMenu() {
         menuOpen = false
+        pickerBack = null
+        // Start clean: no button left held down, and no on-screen keyboard (from the show search) keeping the keys
+        backHeld = false
+        backOpenedMenu = false
+        handler.removeCallbacks(backHoldOpensMenu)
+        keyMask.fill(0)
+        for (port in 0..3) push(port)
+        runCatching {
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+        }
+        window.decorView.requestFocus()
         setPaused(false)
     }
 
@@ -981,7 +993,9 @@ class GameActivity : ComponentActivity() {
         if (gamepad && !gamepadSeen) gamepadSeen = true
         if (down) lastPad = if (gamepad) KeyFor.CONTROLLER else KeyFor.REMOTE
         val button = buttonFor(code, gamepad) ?: return super.dispatchKeyEvent(event)
-        val port = portFor(event.deviceId)
+        // Remotes (anything without sticks) always play as player 1. Only real controllers get their own player,
+        // so a remote that shows up as a new device (it can after a show starts) never ends up as player 2.
+        val port = if (hasSticks(event.device)) portFor(event.deviceId) else 0
         keyMask[port] =
             if (down) keyMask[port] or RetroButton.bit(button) else keyMask[port] and RetroButton.bit(button).inv()
         push(port)
