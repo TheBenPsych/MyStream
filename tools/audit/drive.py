@@ -590,6 +590,10 @@ def main():
         if MODE == "tv":
             focus_sweep(name)
 
+    # Ember Road (the pixel adventure): walk through a short journey on both TV and phone
+    if not out_of_time():
+        ember_road()
+
     # Open a movie's details, then play it for a bit
     back_to_home()
     if MODE == "tv":
@@ -634,6 +638,100 @@ def main():
     with open(f"{OUT}/report.json", "w") as f:
         json.dump(REPORT, f, indent=1)
     print(json.dumps({k: REPORT[k] for k in ("timings", "unreachable", "problems")}, indent=1)[:20000])
+
+
+def find_scrolling(pattern, tries=8):
+    """Phone: swipe up until the text shows on screen (TV: the remote scrolls by itself)"""
+    for _ in range(tries):
+        root = dump()
+        n = find(root, pattern)
+        if n is not None:
+            a, b, c, d = bounds(n)
+            if MODE == "tv" or (b > 100 and d < 2200):
+                return n
+        if MODE == "tv":
+            return n
+        sh("input swipe 500 1600 500 700 400")
+        time.sleep(1.2)
+    return None
+
+
+def ember_road():
+    back_to_home()
+    if not press(r"^Games$", timeout=6):
+        press(r"My Benflix", timeout=6)
+        time.sleep(2)
+        if not press(r"^Games$", timeout=6):
+            log("Ember Road: no Games page found")
+            return
+    time.sleep(4)
+    tile = find_scrolling(r"^Ember Road$")
+    if tile is None:
+        log("Ember Road: tile not found")
+        REPORT["problems"].append({"type": "Ember Road tile missing"})
+        return
+    tap(tile)
+    if wait_for(r"New journey|Continue the journey", 20) is None:
+        shot("ember-title-missing")
+        return
+    shot("ember-title")
+    press(r"^New journey", timeout=6)
+    time.sleep(2)
+    if find(dump(), r"Skip, just the TV") is not None:
+        shot("ember-phones-lobby")
+        press(r"Skip, just the TV", timeout=5)
+        time.sleep(2)
+    for step in range(4):
+        shot(f"ember-setup-{step + 1}")
+        target = r"^Set out!$" if step == 3 else r"^Next$"
+        n = find_scrolling(target)
+        if n is None:
+            log(f"Ember Road: no {target} on setup step {step + 1}")
+            break
+        tap(n)
+        time.sleep(1.5)
+    time.sleep(2)
+    shot("ember-road")
+    # A few days on the road: keep going, pick the first choice, continue
+    for i in range(14):
+        if out_of_time():
+            break
+        root = dump()
+        for pattern in (r"^Keep going$", r"^Continue$", r"^Go this way$", r"^Pack up and go on$", r"^Leave$", r"^Done shopping$"):
+            n = find(root, pattern)
+            if n is not None:
+                break
+        else:
+            n = None
+        if n is None:
+            shot(f"ember-step-{i}")
+            if MODE == "tv":
+                key("DPAD_CENTER", wait=1.5)
+            else:
+                # an event: tap the first button under the words
+                below = [
+                    c for c in nodes(root)
+                    if c.get("clickable") == "true" and center(c)[1] > 1100
+                ]
+                if below:
+                    sh("input tap %d %d" % center(min(below, key=lambda c: center(c)[1])))
+            time.sleep(1.5)
+            continue
+        if i % 3 == 0:
+            shot(f"ember-step-{i}")
+        tap(n)
+        time.sleep(2)
+    shot("ember-later")
+    # The menu (Back) and the creature book
+    key("BACK", wait=1.5)
+    shot("ember-menu")
+    press(r"Save and go to the start", timeout=6)
+    time.sleep(2)
+    if press(r"^Creatures ", timeout=6):
+        time.sleep(2)
+        shot("ember-creature-book")
+        key("BACK", wait=1.5)
+    key("BACK", wait=1.5)
 
 
 def on_term(*_):
