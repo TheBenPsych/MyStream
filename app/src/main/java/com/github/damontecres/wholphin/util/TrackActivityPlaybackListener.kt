@@ -95,22 +95,44 @@ class TrackActivityPlaybackListener(
             com.github.damontecres.wholphin.services.AniListSync.instance
                 ?.watched(state.itemId, position.inWholeMilliseconds, player.duration)
         }
+        val after = afterStopped
+        afterStopped = null
         launch("reportPlaybackStopped") {
-            getState.invoke()?.let { state ->
-                Timber.v("reportPlaybackStopped for ${state.itemId} at $position")
-                if (position < Duration.ZERO) {
-                    Timber.w("Negative position when reporting playback stopped: %s", position)
+            try {
+                getState.invoke()?.let { state ->
+                    Timber.v("reportPlaybackStopped for ${state.itemId} at $position")
+                    if (position < Duration.ZERO) {
+                        Timber.w("Negative position when reporting playback stopped: %s", position)
+                    }
+                    api.playStateApi.reportPlaybackStopped(
+                        PlaybackStopInfo(
+                            itemId = state.itemId,
+                            positionTicks = position.inWholeTicks.takeIf { it >= 0 },
+                            failed = false,
+                            playSessionId = state.playSessionId,
+                            liveStreamId = state.liveStreamId,
+                        ),
+                    )
                 }
-                api.playStateApi.reportPlaybackStopped(
-                    PlaybackStopInfo(
-                        itemId = state.itemId,
-                        positionTicks = position.inWholeTicks.takeIf { it >= 0 },
-                        failed = false,
-                        playSessionId = state.playSessionId,
-                        liveStreamId = state.liveStreamId,
-                    ),
-                )
+            } finally {
+                // Benflix: runs after "stopped" is sent, so the server doesn't undo it
+                if (after != null) launch("afterStopped") { after.invoke() }
             }
+        }
+    }
+
+    @Volatile
+    private var afterStopped: (suspend () -> Unit)? = null
+
+    /**
+     * Benflix: run [block] once "stopped" has been sent to the server (straight away if it
+     * already was). Call it on the main thread.
+     */
+    fun runAfterStopped(block: suspend () -> Unit) {
+        if (released) {
+            launch("afterStopped") { block.invoke() }
+        } else {
+            afterStopped = block
         }
     }
 

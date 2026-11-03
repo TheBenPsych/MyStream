@@ -264,11 +264,11 @@ class GamesViewModel
         private val _towerRecent = MutableStateFlow<List<Pair<Int, Long>>>(emptyList())
         val towerRecent: StateFlow<List<Pair<Int, Long>>> = _towerRecent
 
-        /** Favourite games (the heart), per account */
+        /** Favourite games (the heart), per account; Kids and Guest have their own, like scores */
         private val _favourites = MutableStateFlow<Set<Int>>(emptySet())
         val favourites: StateFlow<Set<Int>> = _favourites
 
-        private fun favKey() = "fav_${serverRepository.currentUser?.id ?: "guest"}"
+        private fun favKey() = "fav_$profile"
 
         fun toggleFavourite(id: Int) {
             val now = if (id in _favourites.value) _favourites.value - id else _favourites.value + id
@@ -546,8 +546,11 @@ class GamesViewModel
             reload()
         }
 
-        /** Benflix "Continue playing": the last few games played, newest first, as "id:time" */
-        private fun recentKey() = "recent_${serverRepository.currentUser?.id ?: "guest"}"
+        /**
+         * Benflix "Continue playing": the last few games played, newest first, as "id:time".
+         * Kids and Guest have their own list, like scores
+         */
+        private fun recentKey() = "recent_$profile"
 
         private fun rememberPlayed(id: Int) {
             val now = System.currentTimeMillis()
