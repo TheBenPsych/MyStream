@@ -259,6 +259,10 @@ class GamesViewModel
         private val _board = MutableStateFlow<Map<String, List<HighScore>>?>(null)
         val board: StateFlow<Map<String, List<HighScore>>?> = _board
 
+        /** Games with a save on Tower (played on any TV or phone), as (game id, when) pairs */
+        private val _towerRecent = MutableStateFlow<List<Pair<Int, Long>>>(emptyList())
+        val towerRecent: StateFlow<List<Pair<Int, Long>>> = _towerRecent
+
         init {
             reload()
         }
@@ -299,7 +303,19 @@ class GamesViewModel
                             localGames.downloaded(),
                         )
                     }
-                if (_library.value is LibraryState.Ready) localGames.sendWaitingSaves()
+                if (_library.value is LibraryState.Ready) {
+                    localGames.sendWaitingSaves()
+                    _towerRecent.value =
+                        try {
+                            val arr = games.getJson("/api/saves/recent").optJSONArray("games")
+                            (0 until (arr?.length() ?: 0)).map { i ->
+                                arr!!.getJSONObject(i).let { it.getInt("id") to it.optLong("time") }
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Couldn't get recent saves from Tower")
+                            emptyList()
+                        }
+                }
             }
         }
 
@@ -401,12 +417,19 @@ class GamesViewModel
             val now = System.currentTimeMillis()
             val list =
                 listOf("$id:$now") +
-                    recentPlayed().filter { it.first != id }.map { "${it.first}:${it.second}" }
+                    localRecent().filter { it.first != id }.map { "${it.first}:${it.second}" }
             prefs.edit().putString(recentKey(), list.take(RECENT_GAMES).joinToString(",")).apply()
         }
 
-        /** (game id, when it was last played) pairs, newest first */
+        /** (game id, when it was last played) pairs, newest first: this device's plus saves on Tower from other devices */
         fun recentPlayed(): List<Pair<Int, Long>> =
+            (localRecent() + _towerRecent.value)
+                .groupBy({ it.first }, { it.second })
+                .map { (id, times) -> id to times.max() }
+                .sortedByDescending { it.second }
+                .take(RECENT_GAMES)
+
+        private fun localRecent(): List<Pair<Int, Long>> =
             prefs
                 .getString(recentKey(), null)
                 .orEmpty()
@@ -673,8 +696,9 @@ fun GamesPage(
                                     }
                                 }.toMap()
                         }
+                    val towerRecent by viewModel.towerRecent.collectAsState()
                     val recent =
-                        remember(state, starting) {
+                        remember(state, starting, towerRecent) {
                             viewModel.recentPlayed().mapNotNull { (id, time) -> refs[id]?.let { it to time } }
                         }
                     if (recent.isNotEmpty()) {
