@@ -243,19 +243,18 @@ fun InstallUpdatePage(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
-    // Android's install screen. Opened from this screen (not from the download in the background), because
-    // some TVs quietly ignored the background launch the first time, so the install screen never showed up.
-    val installerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            // Only comes back here if the install was cancelled or failed (a finished update restarts Benflix).
-            // The file is kept, so the button now says "Install now" instead of downloading again.
-            Timber.i("Installer closed with result %s", result.resultCode)
-        }
-
+    // Android's install screen. Opened from this screen while it's on screen (not from the download in the
+    // background), because some TVs quietly ignored the background launch, so the install screen never showed up.
+    // It opens in its own task: inside Benflix's task, an older TCL TV (Android 9) closed the install
+    // screen when the update replaced Benflix, so it never showed "App installed" / Open.
     fun openInstaller(uri: Uri) {
         fun launch(plainView: Boolean): Boolean =
             try {
-                installerLauncher.launch(viewModel.updater.installIntent(uri, plainView))
+                context.startActivity(
+                    viewModel.updater
+                        .installIntent(uri, plainView)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
                 true
             } catch (ex: ActivityNotFoundException) {
                 Timber.w(ex, "No installer for plainView=%s", plainView)

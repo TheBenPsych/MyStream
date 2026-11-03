@@ -21,14 +21,25 @@ env:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # "fixed" = this branch, "main" = the current main branch (to show the problem happens there).
+        # "a" is the normal build, "b" the same code with extra texts added, so every text gets a new
+        # number, like a real update does.
+        source: [fixed, main]
+        build: [a, b]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+      - name: Use main
+        if: matrix.source == 'main'
+        run: git fetch origin main && git checkout -f origin/main -- app
       - uses: ./.github/actions/setup
-      - name: Build this branch (with 32-bit x86 too, for the old emulators)
+      - name: Build (with 32-bit x86 too, for the old emulators)
         env:
-          BENFLIX_BUILD: 99999
+          BENFLIX_BUILD: ${{ matrix.build == 'a' && '99990' || '99991' }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -41,13 +52,26 @@ jobs:
             export ORG_GRADLE_PROJECT_WholphinExtensionsPassword="$EXTENSIONS_PASSWORD"
           fi
           sed -i 's/include("armeabi-v7a", "arm64-v8a", "x86_64")/include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")/' app/build.gradle.kts
+          if [ "${{ matrix.build }}" = b ]; then
+            # shift every text number, like a real update that adds texts
+            python3 - <<'PY'
+          p = "app/src/main/res/values/strings.xml"
+          s = open(p).read()
+          extra = "".join(f'    <string name="aaa_update_shift_{i}" translatable="false">shift {i}</string>\n' for i in range(40))
+          i = s.index("<resources")
+          i = s.index(">", i) + 1
+          open(p, "w").write(s[:i] + "\n" + extra + s[i:])
+          PY
+            # keep the extra texts in the app (unused texts are normally removed)
+            sed -i 's#tools:keep="#tools:keep="@string/aaa_update_shift_*,#' app/src/main/res/raw/keep.xml
+            grep -n aaa_update app/src/main/res/raw/keep.xml
+          fi
           ./gradlew assembleDefaultRelease --no-daemon
-          # the universal APK (all ABIs) has no ABI in its name and is the biggest one
           ls -la $(find app/build/outputs/apk -name '*.apk')
-          cp "$(find app/build/outputs/apk -name '*.apk' -printf '%s %p\n' | sort -n | tail -1 | cut -d' ' -f2)" app.apk
+          cp "$(find app/build/outputs/apk -name '*x86.apk' | head -1)" app.apk
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: apk
+          name: apk-${{ matrix.source }}-${{ matrix.build }}
           path: app.apk
 
   tv:
@@ -57,12 +81,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [28, 30]
+        api: [28]
+        source: [fixed, main]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/download-artifact@v5
         with:
-          name: apk
+          name: apk-${{ matrix.source }}-a
+          path: a
+      - uses: actions/download-artifact@v5
+        with:
+          name: apk-${{ matrix.source }}-b
+          path: b
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -106,7 +136,7 @@ jobs:
           adb shell settings put global window_animation_scale 0 || true
           adb shell settings put global transition_animation_scale 0 || true
           adb shell settings put global animator_duration_scale 0 || true
-          timeout 300 adb install -r -g app.apk
+          timeout 300 adb install -r -g a/app.apk
           PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
           echo "Package $PKG"
           crashes() {
@@ -119,19 +149,20 @@ jobs:
           # 1) fresh install: sign in, open Home and look around
           timeout 900 python3 tools/audit/drive.py tv "$PKG" results/fresh || echo "robot exited $?"
           crashes "fresh install"
-          # 2) update over itself while running, like the in-app updater
+          # 2) back on Home long enough for the saved Home to be written, then update to build b
+          adb shell am start -n "$PKG/com.github.damontecres.wholphin.MainActivity"; sleep 40
           adb logcat -c; adb logcat -b crash -c
-          adb shell am start -n "$PKG/com.github.damontecres.wholphin.MainActivity"; sleep 15
-          timeout 300 adb install -r -g app.apk
+          timeout 300 adb install -r -g b/app.apk
           sleep 5
           adb shell am start -W -n "$PKG/com.github.damontecres.wholphin.MainActivity" || true
           for i in 1 2 3 4 5 6; do sleep 5; adb exec-out screencap -p > results/after-update-$i.png || true; done
           adb shell input keyevent DPAD_CENTER
           for i in 1 2 3 4 5 6 7 8; do sleep 5; adb exec-out screencap -p > results/after-update-home-$i.png || true; done
           crashes "after update"
+          if adb logcat -d -b crash | grep -q "Process: $PKG"; then echo "BENFLIX CRASHED AFTER THE UPDATE (${{ matrix.source }})"; echo "crashed" > results/verdict.txt; else echo "No Benflix crash after the update (${{ matrix.source }})"; echo "ok" > results/verdict.txt; fi
           adb shell dumpsys meminfo "$PKG" | head -40 || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
-          name: old-tv-${{ matrix.api }}
+          name: old-tv-${{ matrix.api }}-${{ matrix.source }}
           path: results
