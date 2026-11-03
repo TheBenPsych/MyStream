@@ -130,6 +130,7 @@ fun RecommendedTvShow(
                             preferences.appPreferences.homePagePreferences.enableRewatchingNextUp,
                         ),
                     viewOptions = HomeRowViewOptions(),
+                    shelfSet = SHELVES_HOME,
                 )
             },
         ),

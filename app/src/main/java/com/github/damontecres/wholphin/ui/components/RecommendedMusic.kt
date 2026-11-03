@@ -95,6 +95,7 @@ fun RecommendedMusic(
                             heightDp = Cards.HEIGHT_EPISODE,
                             showTitles = true,
                         ),
+                    shelfSet = SHELVES_HOME,
                 )
             },
         ),

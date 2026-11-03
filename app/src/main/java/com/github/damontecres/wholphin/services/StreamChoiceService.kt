@@ -143,6 +143,24 @@ class StreamChoiceService
             val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.SUBTITLE)
             return source.mediaStreams?.letNotEmpty { streams ->
                 val candidates = streams.filter { it.type == MediaStreamType.AUDIO }
+                // Benflix: opened from the Dubbed or Subbed tab of an anime page, so play it that way
+                // (a track picked by hand for this one episode or movie still wins)
+                if (itemPlayback?.audioIndexEnabled != true && BenflixAnimeTracks.isAnime(item)) {
+                    when (BenflixDubChoice.modeFor(item)) {
+                        BenflixDubChoice.Mode.DUB -> {
+                            BenflixDubChoice.englishAudio(candidates)?.let { return@letNotEmpty it with StreamChoiceReason.UserPreferences }
+                        }
+
+                        BenflixDubChoice.Mode.SUB -> {
+                            BenflixAnimeTracks.japaneseAudio(candidates)?.let {
+                                return@letNotEmpty it with
+                                    StreamChoiceReason.UserPreferences
+                            }
+                        }
+
+                        null -> {}
+                    }
+                }
                 // Benflix: anime plays in Japanese unless this person picked something else before
                 if (itemPlayback?.audioIndexEnabled != true && stc.isEmpty() && BenflixAnimeTracks.isAnime(item)) {
                     BenflixAnimeTracks.japaneseAudio(candidates)?.let { return@letNotEmpty it with StreamChoiceReason.UserPreferences }
@@ -213,8 +231,27 @@ class StreamChoiceService
             source.mediaStreams?.letNotEmpty { streams ->
                 val candidates = streams.filter { it.type == MediaStreamType.SUBTITLE }
                 val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.SUBTITLE)
+                val noSubtitlePicked = itemPlayback == null || itemPlayback.subtitleIndex == TrackIndex.UNSPECIFIED
+                // Benflix: opened from the Dubbed tab, English voices only get the signs & songs subtitles
+                if (noSubtitlePicked &&
+                    BenflixAnimeTracks.isAnime(item) &&
+                    BenflixDubChoice.modeFor(item) == BenflixDubChoice.Mode.DUB &&
+                    BenflixDubChoice.isEnglish(audioStream?.language)
+                ) {
+                    return@letNotEmpty BenflixDubChoice.signsSubtitles(candidates) with StreamChoiceReason.UserPreferences
+                }
+                // Benflix: opened from the Subbed tab, the full English subtitles even if a track was saved for the show
+                if (noSubtitlePicked &&
+                    BenflixAnimeTracks.isAnime(item) &&
+                    BenflixDubChoice.modeFor(item) == BenflixDubChoice.Mode.SUB &&
+                    BenflixAnimeTracks.isJapanese(audioStream?.language)
+                ) {
+                    BenflixAnimeTracks.fullEnglishSubtitles(candidates)?.let {
+                        return@letNotEmpty it with StreamChoiceReason.UserPreferences
+                    }
+                }
                 // Benflix: Japanese anime gets the full English subtitles (not just Signs & Songs)
-                if ((itemPlayback == null || itemPlayback.subtitleIndex == TrackIndex.UNSPECIFIED) &&
+                if (noSubtitlePicked &&
                     stc.isEmpty() &&
                     BenflixAnimeTracks.isJapanese(audioStream?.language) &&
                     BenflixAnimeTracks.isAnime(item)

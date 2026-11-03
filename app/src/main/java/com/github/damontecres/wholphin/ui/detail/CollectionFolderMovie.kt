@@ -10,14 +10,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.CollectionFolderFilter
 import com.github.damontecres.wholphin.data.model.GetItemsFilter
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.LibraryKind
 import com.github.damontecres.wholphin.ui.components.CollectionFolderView
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
+import com.github.damontecres.wholphin.ui.components.LibraryShelfTab
+import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.RecommendedMovie
+import com.github.damontecres.wholphin.ui.components.SHELVES_DECADES
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
 import com.github.damontecres.wholphin.ui.components.ViewOptionsPoster
@@ -25,8 +28,22 @@ import com.github.damontecres.wholphin.ui.data.MovieSortOptions
 import com.github.damontecres.wholphin.ui.data.VideoSortOptions
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
+
+/** Benflix: the tabs a movies library can have */
+private enum class MovieTab(
+    val title: String,
+) {
+    HOME("Home"),
+    ALL("All"),
+    DUBBED("Dubbed"),
+    SUBBED("Subbed"),
+    DECADES("Decades"),
+    COLLECTIONS("Collections"),
+    GENRES("Genres"),
+}
 
 @Composable
 fun CollectionFolderMovie(
@@ -35,15 +52,29 @@ fun CollectionFolderMovie(
     modifier: Modifier = Modifier,
     preferencesViewModel: PreferencesViewModel = hiltViewModel(),
 ) {
-    val tabs =
-        remember {
-            listOf(
-                TabDetails(R.string.recommended),
-                TabDetails(R.string.library),
-                TabDetails(R.string.collections),
-                TabDetails(R.string.genres),
-            )
+    // Benflix: each kind of movie library gets its own tabs; wait the moment it takes to tell
+    val kind = rememberLibraryKind(destination.itemId)
+    if (kind == null) {
+        LoadingPage(modifier)
+        return
+    }
+    val tabIds =
+        remember(kind) {
+            when (kind) {
+                LibraryKind.ANIME_MOVIES -> {
+                    listOf(MovieTab.HOME, MovieTab.ALL, MovieTab.DUBBED, MovieTab.SUBBED, MovieTab.COLLECTIONS, MovieTab.GENRES)
+                }
+
+                LibraryKind.STANDUP -> {
+                    listOf(MovieTab.HOME, MovieTab.ALL, MovieTab.GENRES)
+                }
+
+                else -> {
+                    listOf(MovieTab.HOME, MovieTab.ALL, MovieTab.DECADES, MovieTab.COLLECTIONS, MovieTab.GENRES)
+                }
+            }
         }
+    val tabs = remember(tabIds) { tabIds.map { TabDetails(StringStringProvider(it.title)) } }
 
     var showHeader by rememberSaveable { mutableStateOf(true) }
 
@@ -53,24 +84,23 @@ fun CollectionFolderMovie(
         modifier = modifier,
         showTabs = showHeader,
     ) { tabIndex, tabDetails ->
-        when (tabIndex) {
-            // Recommended
-            0 -> {
+        val contentModifier =
+            Modifier
+                .fillMaxSize()
+                .focusRequester(tabDetails.contentFocusRequester)
+        when (tabIds.getOrNull(tabIndex)) {
+            MovieTab.HOME -> {
                 RecommendedMovie(
                     preferences = preferences,
                     parentId = destination.itemId,
                     onFocusPosition = { pos ->
                         showHeader = pos.row < 1
                     },
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                 )
             }
 
-            // Library
-            1 -> {
+            MovieTab.ALL -> {
                 CollectionFolderView(
                     preferences = preferences,
                     onClickItem = { _, item ->
@@ -89,10 +119,7 @@ fun CollectionFolderMovie(
                     recursive = true,
                     sortOptions = MovieSortOptions,
                     defaultViewOptions = ViewOptionsPoster,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                     positionCallback = { columns, position ->
                         showHeader = position < columns
                     },
@@ -101,8 +128,27 @@ fun CollectionFolderMovie(
                 )
             }
 
-            // Collections
-            2 -> {
+            MovieTab.DUBBED, MovieTab.SUBBED -> {
+                AnimeDubTab(
+                    parentId = destination.itemId,
+                    kind = kind,
+                    dubbed = tabIds[tabIndex] == MovieTab.DUBBED,
+                    modifier = contentModifier,
+                )
+            }
+
+            MovieTab.DECADES -> {
+                LibraryShelfTab(
+                    preferences = preferences,
+                    parentId = destination.itemId,
+                    shelfSet = SHELVES_DECADES,
+                    suggestionsType = BaseItemKind.MOVIE,
+                    onFocusPosition = { pos -> showHeader = pos.row < 1 },
+                    modifier = contentModifier,
+                )
+            }
+
+            MovieTab.COLLECTIONS -> {
                 CollectionFolderView(
                     preferences = preferences,
                     onClickItem = { _, item ->
@@ -121,10 +167,7 @@ fun CollectionFolderMovie(
                     recursive = true,
                     sortOptions = VideoSortOptions,
                     defaultViewOptions = ViewOptionsPoster,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                     positionCallback = { columns, position ->
                         showHeader = position < columns
                     },
@@ -133,20 +176,16 @@ fun CollectionFolderMovie(
                 )
             }
 
-            // Genres
-            3 -> {
+            MovieTab.GENRES -> {
                 GenreCardGrid(
                     itemId = destination.itemId,
                     includeItemTypes = listOf(BaseItemKind.MOVIE),
                     collectionType = CollectionType.MOVIES,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .focusRequester(tabDetails.contentFocusRequester),
+                    modifier = contentModifier,
                 )
             }
 
-            else -> {
+            null -> {
                 ErrorMessage("Invalid tab index $tabIndex", null)
             }
         }
