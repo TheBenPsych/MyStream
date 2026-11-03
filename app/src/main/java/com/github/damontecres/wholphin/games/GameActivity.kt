@@ -563,6 +563,18 @@ class GameActivity : ComponentActivity() {
 
     private fun closeMenu() {
         menuOpen = false
+        pickerBack = null
+        // Start clean: no button left held down, and no on-screen keyboard (from the show search) keeping the keys
+        backHeld = false
+        backOpenedMenu = false
+        handler.removeCallbacks(backHoldOpensMenu)
+        keyMask.fill(0)
+        for (port in 0..3) push(port)
+        runCatching {
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+        }
+        window.decorView.requestFocus()
         setPaused(false)
     }
 
