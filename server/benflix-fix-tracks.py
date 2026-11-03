@@ -422,6 +422,13 @@ def apply_changes(path, changes):
         raise RuntimeError((out.stderr or out.stdout).strip()[:200])
 
 
+def save_undo(undo_path, entries):
+    tmp = undo_path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(entries, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, undo_path)
+
+
 def undo(undo_file):
     with open(undo_file) as f:
         entries = json.load(f)
@@ -523,13 +530,14 @@ def main():
                     apply_changes(path, changes)
                     changed += 1
                     undo_entries.append({"file": path, "tracks": [t for t, _ in changes]})
+                    if len(undo_entries) % 25 == 0:
+                        save_undo(undo_path, undo_entries)  # so a run that gets stopped can still be undone
                 except Exception as e:  # noqa: BLE001
                     errors += 1
                     report.write(f"ERROR changing {path}: {e}\n")
 
     if undo_entries:
-        with open(undo_path, "w") as f:
-            json.dump(undo_entries, f, ensure_ascii=False, indent=1)
+        save_undo(undo_path, undo_entries)
 
     print("=" * 60)
     print(f"Checked {checked} MKV files.")
