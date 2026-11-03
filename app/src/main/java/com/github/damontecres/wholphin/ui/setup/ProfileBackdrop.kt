@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -177,28 +178,35 @@ fun PosterWall(
     val time = rememberSeconds()
     val density = LocalDensity.current
     BoxWithConstraints(modifier = modifier.clipToBounds()) {
-        val posterH = maxHeight / 3.6f
+        // Poster size follows the screen height on TVs, and the width on tall phone screens
+        val posterH = minOf(maxHeight / 3.6f, maxWidth * .42f)
         val posterW = posterH * 2f / 3f
         val gap = posterH * .06f
         val step = posterW + gap
         val perRow = max(1, posters.size / 2)
         val rowWidthPx = with(density) { (step * perRow).toPx() }
         val stepPx = with(density) { step.toPx() }
-        // enough posters to cover the (tilted, enlarged) screen plus one full loop
-        val count = ceil((with(density) { (maxWidth * 1.5f).toPx() } + rowWidthPx) / stepPx).toInt() + 1
+        // The wall is tilted, so it has to be taller and wider than the screen to reach every corner
+        val coverH = maxHeight * 1.1f + maxWidth * .15f
+        val rows = ceil(coverH / (posterH + gap)).toInt() + 1
+        val wallH = posterH * rows + gap * (rows - 1)
+        val coverWPx = with(density) { (maxWidth * 1.1f + maxHeight * .2f + posterW).toPx() }
+        // enough posters to cover the tilted screen plus one full loop
+        val count = ceil((coverWPx + rowWidthPx) / stepPx).toInt() + 1
         val shape = RoundedCornerShape(posterW * .06f)
         Column(
             verticalArrangement = Arrangement.spacedBy(gap),
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    // Taller than the screen and centred on it, so no row is squashed or cut short
+                    .requiredSize(maxWidth, wallH)
                     .graphicsLayer {
                         rotationZ = -8f
                         scaleX = 1.15f
                         scaleY = 1.15f
-                    }.offset(x = -posterW, y = -posterH * .9f),
+                    }.offset(x = -posterW),
         ) {
-            repeat(5) { r ->
+            repeat(rows) { r ->
                 val dir = if (r % 2 == 0) -1f else 1f
                 val speedPx = stepPx / (if (r % 2 == 0) 4.4f else 5.6f)
                 Row(
