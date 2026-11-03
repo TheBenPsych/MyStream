@@ -770,6 +770,8 @@ class GameActivity : ComponentActivity() {
         }
     }
 
+    private fun hasSticks(d: InputDevice?): Boolean = d != null && d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+
     private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { ports.size.coerceAtMost(3) }
 
     private fun push(port: Int) {
@@ -948,8 +950,9 @@ class GameActivity : ComponentActivity() {
             return super.dispatchKeyEvent(event)
         }
         if (quitting) return true
-        if (code == KeyEvent.KEYCODE_BACK && isTv && !isGamepad(event)) {
-            remoteBack(down, event.repeatCount)
+        // Back from anything without sticks is the TV remote (some remotes wrongly claim to have A/B/X/Y keys)
+        if (code == KeyEvent.KEYCODE_BACK && isTv && !hasSticks(event.device)) {
+            remoteBack(down, event.repeatCount, event.eventTime - event.downTime, event.flags and KeyEvent.FLAG_LONG_PRESS != 0)
             return true
         }
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_BUTTON_MODE) {
@@ -981,8 +984,16 @@ class GameActivity : ComponentActivity() {
     private fun remoteBack(
         down: Boolean,
         repeat: Int,
+        heldMs: Long = 0,
+        longPress: Boolean = false,
     ) {
         if (down) {
+            // Some remotes only say "still held" (repeats / long press) instead of letting the timer run: open the menu right then
+            if ((repeat > 0 || backHeld) && backHeld && !backOpenedMenu && (longPress || heldMs >= BACK_HOLD_MS)) {
+                handler.removeCallbacks(backHoldOpensMenu)
+                backHoldOpensMenu.run()
+                return
+            }
             if (repeat > 0 || backHeld) return
             lastPad = KeyFor.REMOTE
             // Two quick presses of Back change the show's size
@@ -995,7 +1006,7 @@ class GameActivity : ComponentActivity() {
             backOpenedMenu = false
             keyMask[0] = keyMask[0] or RetroButton.bit(RetroButton.B)
             push(0)
-            handler.postDelayed(backHoldOpensMenu, 800)
+            handler.postDelayed(backHoldOpensMenu, BACK_HOLD_MS)
         } else {
             backHeld = false
             handler.removeCallbacks(backHoldOpensMenu)
@@ -1606,6 +1617,7 @@ class GameActivity : ComponentActivity() {
         const val EXTRA_USER = "user"
         const val EXTRA_COVER = "cover"
         private const val PREFS = "game_player"
+        private const val BACK_HOLD_MS = 700L
         private val STRIP = 28.dp
     }
 }
