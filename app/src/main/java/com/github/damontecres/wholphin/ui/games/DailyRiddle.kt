@@ -196,7 +196,12 @@ class DailyRiddleViewModel
                             emptyList()
                         }
                     if (clues.size >= 2) {
-                        val others = names.map { it.second }.filter { it != name }.shuffled().take(CHOICES - 1)
+                        val others =
+                            names
+                                .map { it.second }
+                                .filter { it != name }
+                                .shuffled()
+                                .take(CHOICES - 1)
                         return@async Riddle(name, clues, (others + name).shuffled())
                     }
                 }
