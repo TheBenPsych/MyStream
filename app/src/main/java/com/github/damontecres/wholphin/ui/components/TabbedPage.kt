@@ -26,6 +26,7 @@ import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.RememberedTabService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
 import dagger.assisted.Assisted
@@ -154,7 +155,7 @@ fun TabbedPage(
     tabContent: @Composable (Int, TabDetails) -> Unit,
 ) {
     // Benflix: the room kept for the clock is a TV thing; on phones it pushed tabs (like Requests) off-screen
-    val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+    val isTv = rememberIsTv()
     val endPadding =
         remember(isShowClock, isTv) {
             if (isShowClock && isTv) {
@@ -201,7 +202,7 @@ fun <T> KeyedTabbedPage(
     tabContent: @Composable (T, TabDetails) -> Unit,
 ) {
     // Benflix: the room kept for the clock is a TV thing; on phones it pushed tabs (like Requests) off-screen
-    val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+    val isTv = rememberIsTv()
     val endPadding =
         remember(isShowClock, isTv) {
             if (isShowClock && isTv) {
