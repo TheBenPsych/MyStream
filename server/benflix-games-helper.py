@@ -490,7 +490,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, f.read(), "text/html; charset=utf-8")
             if method == "POST" and path == "/api/web/login":
                 return self.send(200, web_login(self.read_json()))
-            user_id, is_admin = check_signed_in(self.headers.get("X-Benflix-Token", ""))
+            token = self.headers.get("X-Benflix-Token", "")
+            if not token and path.startswith("/api/web/jf/") and "/Images/" in path:
+                # Pictures on the browser page (an <img> can't send the header, so the sign-in rides along)
+                token = (query.get("api_key") or [""])[0]
+            user_id, is_admin = check_signed_in(token)
             if path.startswith("/api/admin/"):
                 if not is_admin:
                     raise HelperError(403, "Only the server admin can use the Server page tools.")
@@ -508,7 +512,7 @@ class Handler(BaseHTTPRequestHandler):
                         raise HelperError(413, "That's too big.")
                     body = self.rfile.read(length) if length > 0 else b""
                 jf_path = path[len("/api/web/jf"):] + (("?" + parsed.query) if parsed.query else "")
-                status, data, ctype = jellyfin_call(method, jf_path, token=self.headers.get("X-Benflix-Token", ""), body=body)
+                status, data, ctype = jellyfin_call(method, jf_path, token=token, body=body)
                 return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
                 return self.send(200, load_games())
