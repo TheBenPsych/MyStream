@@ -132,14 +132,34 @@ def lang_from_name(name):
 
 # regional versions worth keeping in the name
 REGIONS = [
-    (r"latino|latin\s*am|lat\.?\s*am|\bes-419\b|\b419\b", "spa", "Latin America"),
-    (r"castellano|espa[nñ]a|\bspain\b|\bes-es\b|european", "spa", "Spain"),
+    (r"latino|latin\s*am|lat\.?\s*am|\bes-419\b|\b419\b|\blat\b|\blatam\b", "spa", "Latin America"),
+    (r"castellano|espa[nñ]a|\bspain\b|\bes-es\b|european|\besp\b|\bcast\b", "spa", "Spain"),
     (r"brazil|brasil|pt-br", "por", "Brazil"),
     (r"canad|qu[eé]b|fr-ca", "fre", "Canada"),
     (r"cantonese|\bzh-hk\b|hong\s*kong", "chi", "Cantonese"),
     (r"traditional|繁體|繁体|\bzh-hant\b|\bzh-tw\b", "chi", "Traditional"),
     (r"simplified|简体|\bzh-hans\b|\bzh-cn\b", "chi", "Simplified"),
 ]
+
+
+# words a hint does not need to repeat, because the new name already says them
+HINT_NOISE = re.compile(
+    r"signs?|songs?|\band\b|&|\bs\s*&\s*s\b|\bfull\b|subtitles?|\bsubs?\b|dialog(ue)?|forced|"
+    r"english|japanese|spanish|espa[nñ]ol|french|portugu[eê]s|\beng\b|\bjpn\b|\bspa\b|\besp\b|\blat\b",
+    re.I,
+)
+
+
+def clean_hint(old):
+    """'Signs & Songs [USBD]' -> 'USBD', 'Dialogue [CR (fixed)]' -> 'CR (fixed)', 'Signs & Songs' -> ''."""
+    hint = HINT_NOISE.sub(" ", old)
+    hint = re.sub(r"\s+", " ", hint).strip(" -_|/@:,.")
+    # take off one pair of brackets wrapped around everything that is left
+    while len(hint) > 1 and hint[0] + hint[-1] in ("[]", "()") and hint[1:-1].count(hint[0]) == hint[1:-1].count(hint[-1]):
+        hint = hint[1:-1].strip(" -_|/@:,.")
+    if not re.search(r"[A-Za-z0-9]", hint) or re.fullmatch(r"[\[\]() ]*", hint):
+        return ""
+    return hint
 
 
 def is_generic(name):
@@ -277,10 +297,10 @@ def plan_file(path, tracks, is_anime):
                 # a name this tool already gave ("English [MTBB]") keeps just its hint ("MTBB")
                 if old.startswith(base + " [") and old.endswith("]"):
                     old = old[len(base) + 2:-1]
-                olds.append(old)
+                olds.append("" if is_generic(old) else clean_hint(old))
             plain = 0
             for t, old in zip(ts, olds):
-                if old and not is_generic(old) and olds.count(old) == 1:
+                if old and olds.count(old) == 1:
                     want[id(t)]["name"] = f"{base} [{old}]"
                 else:
                     plain += 1
