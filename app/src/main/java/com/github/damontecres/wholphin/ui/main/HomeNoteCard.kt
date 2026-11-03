@@ -47,7 +47,27 @@ class HomeNoteViewModel
         private val serverRepository: ServerRepository,
         private val health: BenflixServerHealth,
         val navigationManager: NavigationManager,
+        private val problems: com.github.damontecres.wholphin.services.BenflixProblems,
     ) : ViewModel() {
+        /** Benflix: "Ben fixed The Office. Try it again!" after Ben marks a report fixed */
+        private val _fixed = MutableStateFlow<Pair<Long, String>?>(null)
+        val fixed: StateFlow<Pair<Long, String>?> = _fixed
+
+        fun dismissFixed() {
+            val (at, _) = _fixed.value ?: return
+            _fixed.value = null
+            viewModelScope.launch {
+                try {
+                    problems.dismissFixed(at)
+                    _fixed.value = problems.fixedForMe().firstOrNull()
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    timber.log.Timber.w(ex, "Could not close the fixed note")
+                }
+            }
+        }
+
         /** Benflix: a heads-up for the admin when the server needs attention */
         private val _headsUp = MutableStateFlow<String?>(null)
         val headsUp: StateFlow<String?> = _headsUp
@@ -56,6 +76,16 @@ class HomeNoteViewModel
         val note: StateFlow<Pair<BenflixNote, NoteKind>?> = _note
 
         init {
+            viewModelScope.launch {
+                if (KidsMode.isActive || GuestMode.isActive) return@launch
+                try {
+                    _fixed.value = problems.fixedForMe().firstOrNull()
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    timber.log.Timber.w(ex, "Could not read fixed notes")
+                }
+            }
             viewModelScope.launch {
                 if (KidsMode.isActive || GuestMode.isActive) return@launch
                 if (serverRepository.currentUserDto?.policy?.isAdministrator == true) {
@@ -105,6 +135,10 @@ fun HomeNoteCard(
             ServerHeadsUp(text = text, onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) })
         }
         note?.let { (current, kind) -> NoteCard(current, kind, viewModel::dismiss) }
+        val fixed by viewModel.fixed.collectAsState()
+        fixed?.let { (at, title) ->
+            NoteCard(BenflixNote("fixed-$at", "Ben fixed $title. Try it again!"), NoteKind.NOTE, viewModel::dismissFixed)
+        }
         KidsClock()
     }
 }

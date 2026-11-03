@@ -21,6 +21,8 @@ import javax.inject.Singleton
 data class BenflixNote(
     val id: String,
     val text: String,
+    /** Benflix: when the note goes away by itself (null = until Ben removes it) */
+    val expiresAt: Long? = null,
 )
 
 /** Which note: the everyday note on Home, or the welcome note new people see once */
@@ -53,6 +55,8 @@ class BenflixNotes
                     .getDisplayPreferences(userId)
                     .customPrefs[kind.key]
                     ?.let { decode(it) }
+                    // Benflix: a note that ran out of time doesn't show any more
+                    ?.takeUnless { note -> note.expiresAt != null && note.expiresAt < System.currentTimeMillis() }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -87,17 +91,24 @@ class BenflixNotes
         suspend fun publish(
             text: String,
             kind: NoteKind = NoteKind.NOTE,
+            expiresAt: Long? = null,
+            onlyFor: Set<UUID>? = null,
         ): Int =
             withContext(WholphinDispatchers.IO) {
                 val users = api.userApi.getUsers().content
-                val encoded = text.trim().takeIf { it.isNotEmpty() }?.let { encode(BenflixNote(System.currentTimeMillis().toString(), it)) }
+                val encoded =
+                    text.trim().takeIf { it.isNotEmpty() }?.let {
+                        encode(BenflixNote(System.currentTimeMillis().toString(), it, expiresAt))
+                    }
                 var count = 0
                 users.forEach { user ->
+                    // Benflix: a note for some people only is taken off everyone else's Home
+                    val forThem = onlyFor == null || user.id in onlyFor
                     try {
                         displayPreferencesService.updateDisplayPreferences(user.id) {
-                            if (encoded == null) remove(kind.key) else put(kind.key, encoded)
+                            if (encoded == null || !forThem) remove(kind.key) else put(kind.key, encoded)
                         }
-                        count++
+                        if (forThem) count++
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -109,13 +120,16 @@ class BenflixNotes
 
         private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        private fun encode(note: BenflixNote) = note.id + "\n" + note.text
+        // The id line can carry "~<expiry millis>"
+        private fun encode(note: BenflixNote) = note.id + (note.expiresAt?.let { "~$it" } ?: "") + "\n" + note.text
 
         private fun decode(value: String): BenflixNote? {
             val split = value.indexOf('\n')
             if (split <= 0) return null
             val text = value.substring(split + 1)
-            return if (text.isBlank()) null else BenflixNote(value.substring(0, split), text)
+            val head = value.substring(0, split)
+            val expires = head.substringAfter('~', "").toLongOrNull()
+            return if (text.isBlank()) null else BenflixNote(head.substringBefore('~'), text, expires)
         }
 
         companion object {
