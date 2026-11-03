@@ -1287,15 +1287,17 @@ private fun FavoritesStep(
     val picked by viewModel.picked.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val results by viewModel.searchResults.collectAsState()
+    // Start on the search box (TV), so the cursor doesn't jump down into the posters. Press down to reach them.
+    // On a phone nothing is focused, so the keyboard doesn't pop up by itself.
     val focus = remember { FocusRequester() }
-    LaunchedEffect(posters.isNotEmpty()) { if (posters.isNotEmpty()) focus.tryRequestFocus() }
+    LaunchedEffect(Unit) { if (isTv) focus.tryRequestFocus() }
     // 3 picks, or fewer only when the library itself has fewer than 3 things
     val needed = if (loaded) minOf(WelcomeViewModel.MIN_PICKS, posters.size) else WelcomeViewModel.MIN_PICKS
     StepTitle(
         "Pick a few things you love",
         if (picked.isEmpty()) "Pick 3 or more and your Home fills up with things like them." else "${picked.size} picked",
     )
-    WelcomeSearchBox(query = query, onQueryChange = viewModel::search, isTv = isTv)
+    WelcomeSearchBox(query = query, onQueryChange = viewModel::search, isTv = isTv, focus = focus)
     val showing = if (query.isBlank()) posters else results
     if (!loaded) {
         Text("Loading posters…", color = Color.White)
@@ -1313,7 +1315,6 @@ private fun FavoritesStep(
                 poster = poster,
                 selected = poster.id in picked,
                 onClick = { viewModel.togglePick(poster) },
-                modifier = if (query.isBlank() && poster == posters.firstOrNull()) Modifier.focusRequester(focus) else Modifier,
             )
         }
     }
@@ -1337,6 +1338,7 @@ private fun WelcomeSearchBox(
     query: String,
     onQueryChange: (String) -> Unit,
     isTv: Boolean,
+    focus: FocusRequester,
 ) {
     var active by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -1352,6 +1354,7 @@ private fun WelcomeSearchBox(
         modifier =
             Modifier
                 .fillMaxWidth(if (isTv) .5f else 1f)
+                .focusRequester(focus)
                 .onFocusChanged { if (!it.isFocused) active = false }
                 .onPreviewKeyEvent { event ->
                     val activation = event.key == Key.DirectionCenter || event.key == Key.Enter
