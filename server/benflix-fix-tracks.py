@@ -61,11 +61,24 @@ LANG_NAMES = {
     "ind": "Indonesian", "may": "Malay", "msa": "Malay", "heb": "Hebrew", "gre": "Greek",
     "ell": "Greek", "cze": "Czech", "ces": "Czech", "hun": "Hungarian", "rum": "Romanian",
     "ron": "Romanian", "ukr": "Ukrainian", "tgl": "Tagalog", "fil": "Filipino",
+    "hrv": "Croatian", "srp": "Serbian", "bul": "Bulgarian", "slo": "Slovak", "slk": "Slovak",
+    "slv": "Slovenian", "cat": "Catalan", "baq": "Basque", "eus": "Basque", "glg": "Galician",
+    "per": "Persian", "fas": "Persian", "tam": "Tamil", "tel": "Telugu", "ben": "Bengali",
+    "est": "Estonian", "lav": "Latvian", "lit": "Lithuanian", "ice": "Icelandic", "isl": "Icelandic",
+    "nob": "Norwegian", "nno": "Norwegian", "urd": "Urdu", "mal": "Malayalam", "kan": "Kannada",
 }
 SAME_LANG = {"fra": "fre", "deu": "ger", "zho": "chi", "nld": "dut", "msa": "may",
-             "ell": "gre", "ces": "cze", "ron": "rum"}
+             "ell": "gre", "ces": "cze", "ron": "rum", "slk": "slo", "eus": "baq", "fas": "per",
+             "isl": "ice", "nob": "nor", "nno": "nor"}
 TWO_LETTER = {"en": "eng", "ja": "jpn", "es": "spa", "fr": "fre", "de": "ger", "it": "ita",
-              "pt": "por", "ko": "kor", "zh": "chi", "ru": "rus", "ar": "ara", "hi": "hin"}
+              "pt": "por", "ko": "kor", "zh": "chi", "ru": "rus", "ar": "ara", "hi": "hin",
+              "id": "ind", "ms": "may", "vi": "vie", "th": "tha", "pl": "pol", "tr": "tur",
+              "nl": "dut", "hu": "hun", "hr": "hrv", "sv": "swe", "no": "nor", "nb": "nor",
+              "nn": "nor", "da": "dan", "fi": "fin", "he": "heb", "el": "gre", "cs": "cze",
+              "ro": "rum", "uk": "ukr", "sr": "srp", "bg": "bul", "sk": "slo", "sl": "slv",
+              "ca": "cat", "eu": "baq", "gl": "glg", "fa": "per", "ta": "tam", "te": "tel",
+              "bn": "ben", "et": "est", "lv": "lav", "lt": "lit", "is": "ice", "ur": "urd",
+              "ml": "mal", "kn": "kan", "tl": "tgl", "fil": "fil"}
 
 # words in a track name that tell us the language
 LANG_WORDS = [
@@ -84,7 +97,19 @@ LANG_WORDS = [
 ]
 
 COMMENTARY = re.compile(r"comment", re.I)
-SIGNS = re.compile(r"sign|song|forced|\bs\s*&\s*s\b|karaoke|\bfx\b|lyrics", re.I)
+SIGNS = re.compile(
+    r"sign|song|forced|\bs\s*&\s*s\b|karaoke|\bfx\b|lyrics"
+    # the same words in Portuguese, Spanish and French
+    r"|letreiro|can[cç][oõ]es|for[cç]ad|forzad|cartel|canciones|panneaux|chansons|forc[ée]",
+    re.I,
+)
+# words that say nothing about a track apart from its language, sound or file format
+GENERIC_WORDS = {
+    "english", "japanese", "eng", "jpn", "jap", "jp", "en", "stereo", "surround", "mono", "aac",
+    "ac", "eac", "e", "dd", "ddp", "flac", "opus", "dts", "hd", "ma", "truehd", "atmos", "ch",
+    "full", "subtitles", "subtitle", "subs", "sub", "dialog", "dialogue", "main", "default",
+    "pgs", "ass", "ssa", "srt", "kbps", "bit", "audio", "track", "original",
+}
 FULL = re.compile(r"\bfull\b|dialog|dialogue", re.I)
 SDH = re.compile(r"\bsdh\b|\bcc\b|hearing|\bhi\b", re.I)
 
@@ -117,8 +142,16 @@ REGIONS = [
 ]
 
 
+def is_generic(name):
+    words = re.findall(r"[a-z]+", (name or "").lower())
+    return all(w in GENERIC_WORDS for w in words)
+
+
 def lang_name(code, old_name=""):
-    name = LANG_NAMES.get(code, code.upper() if code else "Unknown")
+    """Nice name for a language, or None when we don't know the code (then the track keeps its name)."""
+    name = LANG_NAMES.get(code)
+    if not name:
+        return None
     for pattern, region_lang, region in REGIONS:
         if region_lang == code and re.search(pattern, old_name or "", re.I):
             return f"{name} ({region})"
@@ -155,7 +188,8 @@ def read_tracks(path):
             "type": t["type"],
             "name": p.get("track_name") or "",
             "lang_raw": p.get("language") or "und",
-            "lang": norm_lang(p.get("language_ietf") or p.get("language")),
+            # the classic 3-letter code first; the newer IETF code only when the classic one is missing
+            "lang": norm_lang(p.get("language")) or norm_lang(p.get("language_ietf")),
             "default": bool(p.get("default_track")),
             "forced": bool(p.get("forced_track")),
             "channels": p.get("audio_channels"),
@@ -165,7 +199,7 @@ def read_tracks(path):
 
 
 def channels_text(n):
-    return {1: "Mono", 2: "2.0", 3: "2.1", 6: "5.1", 7: "6.1", 8: "7.1"}.get(n, f"{n}ch" if n else "")
+    return {1: "Mono", 2: "2.0", 3: "2.1", 4: "4.0", 5: "5.0", 6: "5.1", 7: "6.1", 8: "7.1"}.get(n, f"{n}ch" if n else "")
 
 
 # ---------------------------------------------------------------------------
@@ -232,19 +266,33 @@ def plan_file(path, tracks, is_anime):
         for t, base in names_for:
             seen.setdefault(base, []).append(t)
         for base, ts in seen.items():
-            for i, t in enumerate(ts):
-                if len(ts) == 1:
-                    want[id(t)]["name"] = base
+            if len(ts) == 1:
+                want[id(ts[0])]["name"] = base
+                continue
+            # Look-alike tracks: keep the uploader's name as a hint ("English [MTBB]") when it says
+            # something useful; otherwise the first is plain "English" and the rest "English (2)"...
+            olds = []
+            for t in ts:
+                old = t["name"].strip()
+                # a name this tool already gave ("English [MTBB]") keeps just its hint ("MTBB")
+                if old.startswith(base + " [") and old.endswith("]"):
+                    old = old[len(base) + 2:-1]
+                olds.append(old)
+            plain = 0
+            for t, old in zip(ts, olds):
+                if old and not is_generic(old) and olds.count(old) == 1:
+                    want[id(t)]["name"] = f"{base} [{old}]"
                 else:
-                    old = t["name"].strip()
-                    # keep the uploader's name as a hint so look-alike tracks can be told apart
-                    want[id(t)]["name"] = f"{base} [{old}]" if old and old != base else f"{base} {i + 1}"
+                    plain += 1
+                    want[id(t)]["name"] = base if plain == 1 else f"{base} ({plain})"
 
     names = []
     for t in audio:
         if not lang(t):
             continue  # do not rename a track when we do not know its language
         base = lang_name(lang(t), t["name"])
+        if not base:
+            continue
         base += " Commentary" if COMMENTARY.search(t["name"]) else (" " + channels_text(t["channels"])).rstrip()
         names.append((t, base))
     unique(names)
@@ -254,6 +302,8 @@ def plan_file(path, tracks, is_anime):
             continue
         k = kind[id(t)]
         base = lang_name(lang(t), t["name"])
+        if not base:
+            continue
         if COMMENTARY.search(t["name"]):
             base += " - Commentary"
         elif k == "signs":
@@ -273,7 +323,9 @@ def plan_file(path, tracks, is_anime):
     normal_audio = [t for t in audio if not COMMENTARY.search(t["name"])] or audio
     pick = None
     if is_anime:
-        pick = next((t for t in normal_audio if lang(t) == ANIME_AUDIO), None)
+        japanese = [t for t in normal_audio if lang(t) == ANIME_AUDIO]
+        # with two Japanese tracks, keep the one the uploader already picked
+        pick = next((t for t in japanese if t["default"]), None) or (japanese[0] if japanese else None)
     if pick is None:
         pick = next((t for t in normal_audio if t["default"]), None) or (normal_audio[0] if normal_audio else None)
     for t in audio:
@@ -291,8 +343,15 @@ def plan_file(path, tracks, is_anime):
     elif signs:
         # English audio: only the forced/signs track, so on-screen text still gets translated
         sub_pick = signs[0]
-    for t in subs:
-        want[id(t)]["default"] = t is sub_pick
+    if pick is not None and not audio_lang:
+        # We can't tell what language the audio is, so we can't know if subtitles are needed.
+        # Leave the subtitle on/off and forced flags exactly as they are.
+        for t in subs:
+            want[id(t)]["default"] = t["default"]
+            want[id(t)]["forced"] = t["forced"]
+    else:
+        for t in subs:
+            want[id(t)]["default"] = t is sub_pick
 
     # 7. Compare with what is there now
     changes = []
