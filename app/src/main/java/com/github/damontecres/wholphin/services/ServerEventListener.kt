@@ -54,6 +54,7 @@ class ServerEventListener
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val navigationManager: NavigationManager,
+        private val benflixMessages: BenflixMessages,
     ) : DefaultLifecycleObserver {
         private val activity = (context as AppCompatActivity)
 
@@ -181,11 +182,11 @@ class ServerEventListener
                                             val text =
                                                 message.data?.arguments["Text"]
                                                     ?: message.data?.arguments["String"]
-                                            val toast =
-                                                listOfNotNull(header, text)
-                                                    .joinToString("\n")
-                                            if (toast.isNotBlank()) {
-                                                showToast(context, toast, Toast.LENGTH_LONG)
+                                            // Benflix: a real pop-up (with "Got it") instead of a tiny toast
+                                            if (!text.isNullOrBlank()) {
+                                                benflixMessages.showLive(header, text)
+                                            } else if (!header.isNullOrBlank()) {
+                                                benflixMessages.showLive(null, header)
                                             }
                                         }
 
