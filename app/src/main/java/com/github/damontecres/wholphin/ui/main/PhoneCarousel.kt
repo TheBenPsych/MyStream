@@ -35,6 +35,8 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.touch.Haptics
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
 import kotlin.math.absoluteValue
 
 /**
@@ -96,8 +98,19 @@ fun PhonePosterCarousel(
                             alpha = lerp(1f, .55f, offset)
                         },
                 ) {
+                    // Episodes (e.g. "Pick up where you left off") use the show's tall poster. Their own
+                    // picture is a wide still, which got zoomed in and cropped to fit the tall frame.
+                    val imageUrlService = LocalImageUrlService.current
+                    val posterUrl =
+                        remember(item) {
+                            imageUrlService.getItemImageUrl(
+                                item,
+                                ImageType.PRIMARY,
+                                useSeriesForPrimary = item.type == BaseItemKind.EPISODE || item.type == BaseItemKind.SEASON,
+                            )
+                        }
                     AsyncImage(
-                        model = LocalImageUrlService.current.rememberImageUrl(item),
+                        model = posterUrl,
                         contentDescription = item.title,
                         contentScale = ContentScale.Crop,
                         modifier =
@@ -121,6 +134,20 @@ fun PhonePosterCarousel(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.graphicsLayer { alpha = 1f - offset },
                     )
+                    if (item.type == BaseItemKind.EPISODE) {
+                        // Which episode, under the show's name (e.g. "S1:E4 - The Dragon")
+                        item.subtitle?.takeIf { it.isNotBlank() }?.let { episodeLine ->
+                            Text(
+                                text = episodeLine,
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = .7f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.graphicsLayer { alpha = 1f - offset },
+                            )
+                        }
+                    }
                 }
             }
         }
