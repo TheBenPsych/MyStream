@@ -53,11 +53,12 @@ class DevicePower private constructor(
         get() {
             val parts = mutableListOf<String>()
             if (chip.isNotBlank()) parts.add(chip)
-            val cpu = buildString {
-                append("$cores cores")
-                if (maxGhz > 0) append(" up to %.1f GHz".format(Locale.US, maxGhz))
-                if (cpuName.isNotBlank()) append(" ($cpuName)")
-            }
+            val cpu =
+                buildString {
+                    append("$cores cores")
+                    if (maxGhz > 0) append(" up to %.1f GHz".format(Locale.US, maxGhz))
+                    if (cpuName.isNotBlank()) append(" ($cpuName)")
+                }
             parts.add(cpu)
             if (ramGb > 0) parts.add("%.0f GB memory".format(Locale.US, ramGb.coerceAtLeast(1.0)))
             if (!is64Bit) parts.add("32-bit")
@@ -151,7 +152,13 @@ class DevicePower private constructor(
                 File("/proc/cpuinfo")
                     .readLines()
                     .filter { it.startsWith("CPU part") }
-                    .mapNotNull { it.substringAfter(':').trim().removePrefix("0x").toIntOrNull(16) }
+                    .mapNotNull {
+                        it
+                            .substringAfter(':')
+                            .trim()
+                            .removePrefix("0x")
+                            .toIntOrNull(16)
+                    }
             } catch (_: Exception) {
                 emptyList()
             }

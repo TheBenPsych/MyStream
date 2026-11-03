@@ -299,7 +299,11 @@ class GameActivity : ComponentActivity() {
         if (!loaded) return false
         val saved =
             onGameThread {
-                Saved(RetroNative.getSaveRam(), if (withSpot) RetroNative.saveState() else null, if (withSpot) RetroNative.snapshot() else null)
+                Saved(
+                    RetroNative.getSaveRam(),
+                    if (withSpot) RetroNative.saveState() else null,
+                    if (withSpot) RetroNative.snapshot() else null,
+                )
             } ?: return false
         val changed = mutableListOf<String>()
         try {
@@ -415,8 +419,10 @@ class GameActivity : ComponentActivity() {
         InputDevice.getDeviceIds().any { id ->
             val d = InputDevice.getDevice(id) ?: return@any false
             !d.isVirtual &&
-                (d.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
-                    d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK)
+                (
+                    d.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+                        d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+                )
         }
 
     private fun portFor(deviceId: Int): Int = ports.getOrPut(deviceId) { ports.size.coerceAtMost(3) }
@@ -438,26 +444,47 @@ class GameActivity : ComponentActivity() {
     ): Int? =
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> RetroButton.UP
+
             KeyEvent.KEYCODE_DPAD_DOWN -> RetroButton.DOWN
+
             KeyEvent.KEYCODE_DPAD_LEFT -> RetroButton.LEFT
+
             KeyEvent.KEYCODE_DPAD_RIGHT -> RetroButton.RIGHT
+
             // Xbox-style layout: bottom A, right B, left X, top Y. Games get the button in the same place.
             KeyEvent.KEYCODE_BUTTON_A -> RetroButton.B
+
             KeyEvent.KEYCODE_BUTTON_B -> RetroButton.A
+
             KeyEvent.KEYCODE_BUTTON_X -> RetroButton.Y
+
             KeyEvent.KEYCODE_BUTTON_Y -> RetroButton.X
+
             KeyEvent.KEYCODE_BUTTON_L1 -> RetroButton.L
+
             KeyEvent.KEYCODE_BUTTON_R1 -> RetroButton.R
+
             KeyEvent.KEYCODE_BUTTON_L2 -> RetroButton.L2
+
             KeyEvent.KEYCODE_BUTTON_R2 -> RetroButton.R2
+
             KeyEvent.KEYCODE_BUTTON_THUMBL -> RetroButton.L3
+
             KeyEvent.KEYCODE_BUTTON_THUMBR -> RetroButton.R3
+
             KeyEvent.KEYCODE_BUTTON_START -> RetroButton.START
+
             KeyEvent.KEYCODE_BUTTON_SELECT -> RetroButton.SELECT
+
             // TV remote: OK is A, Play/Pause is Start
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> if (gamepad) RetroButton.START else RetroButton.A
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                if (gamepad) RetroButton.START else RetroButton.A
+            }
+
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MENU -> RetroButton.START
+
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> RetroButton.B
+
             else -> null
         }
 
@@ -525,7 +552,15 @@ class GameActivity : ComponentActivity() {
         axisMask[port] = mask
         push(port)
         RetroNative.setStick(port, 0, (x * 32767).toInt(), (y * 32767).toInt())
-        RetroNative.setStick(port, 1, (event.getAxisValue(MotionEvent.AXIS_Z) * 32767).toInt(), (event.getAxisValue(MotionEvent.AXIS_RZ) * 32767).toInt())
+        RetroNative.setStick(
+            port,
+            1,
+            (event.getAxisValue(MotionEvent.AXIS_Z) * 32767).toInt(),
+            (
+                event.getAxisValue(MotionEvent.AXIS_RZ) *
+                    32767
+            ).toInt(),
+        )
         return true
     }
 

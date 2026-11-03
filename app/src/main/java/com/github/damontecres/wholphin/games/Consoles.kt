@@ -113,7 +113,11 @@ data class LocalConsole(
                             "scph5502.bin",
                             "scph1000.bin",
                         ),
-                    help = listOf("Buttons sit where they are on a PlayStation pad", "Put scph5501.bin in Games/bios on Tower for the best results"),
+                    help =
+                        listOf(
+                            "Buttons sit where they are on a PlayStation pad",
+                            "Put scph5501.bin in Games/bios on Tower for the best results",
+                        ),
                 ),
             )
 

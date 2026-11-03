@@ -289,7 +289,11 @@ class GamesViewModel
                         LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
-                        LibraryState.Failed("Couldn't load your games (${e.javaClass.simpleName}).", askAddress = false, localGames.downloaded())
+                        LibraryState.Failed(
+                            "Couldn't load your games (${e.javaClass.simpleName}).",
+                            askAddress = false,
+                            localGames.downloaded(),
+                        )
                     }
                 if (_library.value is LibraryState.Ready) localGames.sendWaitingSaves()
             }
@@ -858,7 +862,6 @@ private fun ServerGameCard(
         }
     }
 }
-
 
 /** "today", "yesterday", "3 days ago", "last week" or a date */
 private fun playedAgo(time: Long): String {
@@ -1815,7 +1818,11 @@ private fun GameChoiceDialog(
                 ChoiceButton("Resume", "Pick up where you left off", Modifier.focusRequester(focus)) { onPlay(true) }
                 ChoiceButton("Start over", "From the title screen. In-game saves are kept.") { onPlay(false) }
             } else {
-                ChoiceButton("Play", if (choice.downloaded) "On this device" else "Downloads it to this device first", Modifier.focusRequester(focus)) {
+                ChoiceButton(
+                    "Play",
+                    if (choice.downloaded) "On this device" else "Downloads it to this device first",
+                    Modifier.focusRequester(focus),
+                ) {
                     onPlay(false)
                 }
             }

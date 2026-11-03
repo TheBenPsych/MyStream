@@ -60,6 +60,7 @@ private fun layoutFor(
     val face = Offset(w - margin - r, cy)
     val b = u * 0.085f
     val round = Size(b * 2, b * 2)
+
     fun at(
         dx: Float,
         dy: Float,
@@ -128,7 +129,8 @@ private fun layoutFor(
     val sy = h - margin - small.height / 2
     val middle =
         buildList {
-            if (touch != TouchLayout.GENESIS) add(PadButton("SELECT", RetroButton.SELECT, Offset(w / 2 - small.width * 0.65f, sy), small, false))
+            val selectAt = Offset(w / 2 - small.width * 0.65f, sy)
+            if (touch != TouchLayout.GENESIS) add(PadButton("SELECT", RetroButton.SELECT, selectAt, small, false))
             add(
                 PadButton(
                     "START",
@@ -209,7 +211,8 @@ fun TouchPad(
                             for (c in event.changes) {
                                 if (!c.pressed) {
                                     if (c.previousPressed &&
-                                        hypot(c.position.x - layout.menuCenter.x, c.position.y - layout.menuCenter.y) < layout.menuRadius * 1.6f
+                                        hypot(c.position.x - layout.menuCenter.x, c.position.y - layout.menuCenter.y) <
+                                        layout.menuRadius * 1.6f
                                     ) {
                                         onMenu()
                                     }

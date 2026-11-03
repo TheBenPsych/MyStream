@@ -209,7 +209,11 @@ class LocalGames
             val url = "$BUILDBOT/${DevicePower.coreAbi()}/${console.core}_libretro_android.so.zip"
             try {
                 http.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                    if (!response.isSuccessful) throw GameLibraryException("Couldn't download the ${console.title} player (${response.code}).")
+                    if (!response.isSuccessful) {
+                        throw GameLibraryException(
+                            "Couldn't download the ${console.title} player (${response.code}).",
+                        )
+                    }
                     ZipInputStream(response.body.byteStream()).use { zip ->
                         while (true) {
                             val entry = zip.nextEntry ?: break
@@ -240,9 +244,13 @@ class LocalGames
             if (console.bios.isEmpty()) return
             try {
                 val list =
-                    biosList ?: client.getJson("/api/bios").optJSONArray("files")?.let { arr ->
-                        (0 until arr.length()).map { arr.getJSONObject(it).let { f -> f.optString("name") to f.optString("path") } }
-                    }.orEmpty().also { biosList = it }
+                    biosList ?: client
+                        .getJson("/api/bios")
+                        .optJSONArray("files")
+                        ?.let { arr ->
+                            (0 until arr.length()).map { arr.getJSONObject(it).let { f -> f.optString("name") to f.optString("path") } }
+                        }.orEmpty()
+                        .also { biosList = it }
                 val system = GameSaves.systemDir(context)
                 for ((name, path) in list) {
                     val lower = name.lowercase(Locale.US)
@@ -338,6 +346,7 @@ class LocalGames
         ) {
             val roms = GameSaves.romsDir(context)
             val reserve = 300L * 1024 * 1024
+
             fun cacheSize() = downloaded().filter { !it.pinned }.sumOf { it.bytes }
             val budget = minOf(4L * 1024 * 1024 * 1024, ((roms.usableSpace + cacheSize()) * 0.5).toLong())
             val oldest = downloaded().filter { !it.pinned && it.ref.id != keep }.sortedBy { it.lastPlayed }.toMutableList()

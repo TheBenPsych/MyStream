@@ -131,7 +131,8 @@ class GameLibraryClient
             }
 
         /** A JSON answer from the helper, e.g. "/api/rom/12" */
-        suspend fun getJson(path: String): JSONObject = withContext(Dispatchers.IO) { JSONObject(call(Request.Builder().url(address + path))) }
+        suspend fun getJson(path: String): JSONObject =
+            withContext(Dispatchers.IO) { JSONObject(call(Request.Builder().url(address + path))) }
 
         /**
          * Downloads a file from the helper (a game file, BIOS or save) into [target], reporting bytes as they arrive.
