@@ -1,0 +1,56 @@
+name: Record holiday scenes
+
+# Benflix: turns each holiday scene on Who's watching into a short looping video (extras/scenes/<NAME>.mp4).
+# The app downloads the video for today's holiday and plays it instead of drawing the scene live, which
+# is much lighter work for older TVs. Run it by hand from the Actions tab after a scene changes.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these scenes (names like GHOST_PEEK,TWINKLE_LIGHTS), or empty for all"
+        default: ""
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Paint every scene
+        env:
+          RECORD_SCENES: "1"
+          SCENES_OUT: ${{ github.workspace }}/scene-frames
+          SCENES_ONLY: ${{ github.event.inputs.only }}
+        run: ./gradlew testDefaultDebugUnitTest --tests '*RecordHolidayScenes*' --no-daemon -i | grep -E "Recorded|FAILED|Exception" || true
+      - name: Make the videos
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          mkdir -p extras/scenes
+          n=0
+          for d in scene-frames/*/; do
+            name=$(basename "$d")
+            [ -f "$d/f0000.png" ] || continue
+            ffmpeg -loglevel error -y -framerate 25 -i "$d/f%04d.png" -c:v libx264 -profile:v main -pix_fmt yuv420p \
+              -preset slow -crf 30 -g 50 -movflags +faststart -an "extras/scenes/$name.mp4"
+            ls -la "extras/scenes/$name.mp4"
+            n=$((n+1))
+          done
+          [ $n -gt 0 ] || { echo "No scenes were painted"; exit 1; }
+          du -sh extras/scenes
+      - name: Save the videos to the scene-videos branch (open a pull request from it)
+        run: |
+          git config user.name "scene recorder"
+          git config user.email "scenes@users.noreply.github.com"
+          git checkout -B scene-videos
+          git add extras/scenes
+          git commit -m "Holiday scene videos recorded" || { echo "Nothing changed"; exit 0; }
+          git push -f origin scene-videos

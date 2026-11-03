@@ -110,6 +110,10 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var aniListSync: com.github.damontecres.wholphin.services.AniListSync
 
+    /** Benflix: counts real watch time for the monthly and yearly stats */
+    @Inject
+    lateinit var watchTime: com.github.damontecres.wholphin.services.BenflixWatchTime
+
     @Inject
     lateinit var userPreferencesService: UserPreferencesService
 

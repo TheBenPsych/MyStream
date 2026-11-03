@@ -884,6 +884,7 @@ class PlaybackViewModel
                                 api.videosApi.getVideoStreamUrl(
                                     itemId = itemId,
                                     mediaSourceId = source.id,
+                                    liveStreamId = source.liveStreamId,
                                     static = true,
                                     tag = source.eTag,
                                     playSessionId = response.playSessionId,
@@ -1001,6 +1002,7 @@ class PlaybackViewModel
                                 api = api,
                                 player = player,
                                 getState = { playbackItemState },
+                                countWatchTime = playback.item.type == BaseItemKind.MOVIE || playback.item.type == BaseItemKind.EPISODE,
                             )
                         player.addListener(activityListener)
                         this@PlaybackViewModel.activityListener = activityListener
