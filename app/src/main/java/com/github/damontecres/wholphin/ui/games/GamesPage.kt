@@ -2338,7 +2338,7 @@ private fun StorageCard(
     }
     if (managing) {
         val focus = remember { FocusRequester() }
-        androidx.compose.ui.window.Dialog(onDismissRequest = { managing = false }) {
+        com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = { managing = false }) {
             LaunchedEffect(Unit) { focus.tryRequestFocus() }
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
