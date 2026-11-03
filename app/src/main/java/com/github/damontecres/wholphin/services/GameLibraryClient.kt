@@ -22,12 +22,16 @@ data class ServerGame(
     val name: String,
     val coverUrl: String?,
     val playable: Boolean,
+    /** Size of the game's file(s) on the server, 0 if unknown */
+    val size: Long = 0,
 )
 
 /** One console and its games, e.g. "Nintendo 64" */
 data class GameConsole(
     val name: String,
     val games: List<ServerGame>,
+    /** The console's folder name in RomM, e.g. "gba" */
+    val slug: String = "",
 )
 
 /** Which Moonlight computer to open, and which app on it */
@@ -90,6 +94,7 @@ class GameLibraryClient
                     val games = c.optJSONArray("games") ?: JSONArray()
                     GameConsole(
                         name = c.optString("name", "Games"),
+                        slug = c.optString("slug", ""),
                         games =
                             (0 until games.length()).map { j ->
                                 val g = games.getJSONObject(j)
@@ -98,6 +103,7 @@ class GameLibraryClient
                                     name = g.optString("name", "Unknown game"),
                                     coverUrl = if (g.isNull("cover")) null else base + g.optString("cover"),
                                     playable = g.optBoolean("playable", true),
+                                    size = g.optLong("size", 0L),
                                 )
                             },
                     )
@@ -123,6 +129,66 @@ class GameLibraryClient
                     appName = json.optStringOrNull("app") ?: "Benflix",
                 )
             }
+
+        /** A JSON answer from the helper, e.g. "/api/rom/12" */
+        suspend fun getJson(path: String): JSONObject =
+            withContext(Dispatchers.IO) { JSONObject(call(Request.Builder().url(address + path))) }
+
+        /**
+         * Downloads a file from the helper (a game file, BIOS or save) into [target], reporting bytes as they arrive.
+         * Returns false if the helper says there's no such file.
+         */
+        suspend fun download(
+            path: String,
+            target: java.io.File,
+            onBytes: (Long) -> Unit = {},
+        ): Boolean =
+            withContext(Dispatchers.IO) {
+                if (token.isBlank()) throw GameLibraryException("Sign in to Benflix first.")
+                val request =
+                    Request
+                        .Builder()
+                        .url(address + path)
+                        .header("X-Benflix-Token", token)
+                        .build()
+                val response =
+                    try {
+                        downloadHttp.newCall(request).execute()
+                    } catch (e: Exception) {
+                        throw GameLibraryException("Couldn't reach the games helper at $address.", askAddress = true, cause = e)
+                    }
+                response.use {
+                    if (it.code == 404) return@withContext false
+                    if (!it.isSuccessful) throw GameLibraryException("The games helper answered with an error (${it.code}).")
+                    target.parentFile?.mkdirs()
+                    val tmp = java.io.File(target.path + ".part")
+                    var done = 0L
+                    it.body.byteStream().use { input ->
+                        tmp.outputStream().use { out ->
+                            val buf = ByteArray(256 * 1024)
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                done += n
+                                onBytes(done)
+                            }
+                        }
+                    }
+                    if (!tmp.renameTo(target)) {
+                        target.delete()
+                        if (!tmp.renameTo(target)) throw GameLibraryException("Couldn't save the download on this device.")
+                    }
+                    true
+                }
+            }
+
+        private val downloadHttp by lazy {
+            http
+                .newBuilder()
+                .readTimeout(2, TimeUnit.MINUTES)
+                .build()
+        }
 
         private fun call(builder: Request.Builder): String {
             if (token.isBlank()) throw GameLibraryException("Sign in to Benflix first.")

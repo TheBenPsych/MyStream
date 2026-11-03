@@ -190,6 +190,13 @@ configure<ApplicationExtension> {
         compose = true
     }
 
+    // Benflix game player (app/src/main/cpp): the small bridge between Benflix and the downloaded emulators
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
     splits {
         abi {
             // Disable split abis when building bundles
