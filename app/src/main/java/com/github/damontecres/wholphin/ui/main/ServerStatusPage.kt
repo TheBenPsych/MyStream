@@ -284,6 +284,7 @@ fun ServerStatusPage(
     adminTitle: AdminTitleViewModel = hiltViewModel(),
     requestsViewModel: com.github.damontecres.wholphin.ui.discover.BenflixRequestsViewModel = hiltViewModel(),
     towerViewModel: ServerTowerViewModel = hiltViewModel(),
+    speedCheck: ServerSpeedCheckViewModel = hiltViewModel(),
 ) {
     val isTv = rememberIsTv()
     val data = viewModel.data
@@ -360,6 +361,7 @@ fun ServerStatusPage(
     val tower by data.tower.collectAsState()
     val towerProblem by data.towerProblem.collectAsState()
     val tracks by towerViewModel.tracks.collectAsState()
+    val speedState by speedCheck.state.collectAsState()
     val tracksProblem by towerViewModel.tracksProblem.collectAsState()
 
     val lights =
@@ -526,6 +528,7 @@ fun ServerStatusPage(
                     onChore = viewModel::runChore,
                     onRestart = { askRestart = true },
                 )
+                speedCheckItems(speedState, speedCheck)
                 trackTidyItems(tracks, tracksProblem, towerViewModel)
             }
 
