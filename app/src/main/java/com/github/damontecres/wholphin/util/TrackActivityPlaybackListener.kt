@@ -33,9 +33,9 @@ import kotlin.time.Duration.Companion.seconds
 class TrackActivityPlaybackListener(
     private val api: ApiClient,
     private val player: Player,
-    private val getState: () -> PlaybackItemState?,
     /** Benflix: count real watch time for the monthly and yearly stats (movies and episodes only) */
     countWatchTime: Boolean = false,
+    private val getState: () -> PlaybackItemState?,
 ) : Player.Listener {
     private val watchUser = if (countWatchTime) BenflixWatchTime.instance?.currentUserId() else null
 
