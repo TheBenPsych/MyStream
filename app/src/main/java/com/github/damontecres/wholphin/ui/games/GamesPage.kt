@@ -2001,7 +2001,6 @@ private fun BoardLine(
     }
 }
 
-
 /** What the Play / Resume choices for one game show */
 data class GameChoice(
     val ref: GameRef,
