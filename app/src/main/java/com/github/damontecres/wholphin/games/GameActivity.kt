@@ -659,7 +659,22 @@ class GameActivity : ComponentActivity() {
         val total = playedTodayMs()
         playedBefore = total
         playStart = SystemClock.elapsedRealtime()
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putLong(todayKey(), total).apply()
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val added = total - prefs.getLong(todayKey(), 0L)
+        prefs.edit().putLong(todayKey(), total).apply()
+        // All-time play time for the game's details page (a small file, since that page runs in another process)
+        if (added > 0) {
+            runCatching {
+                val f = File(saveDir, "playtime")
+                val before =
+                    f
+                        .takeIf { it.exists() }
+                        ?.readText()
+                        ?.trim()
+                        ?.toLongOrNull() ?: 0L
+                f.writeText((before + added).toString())
+            }
+        }
     }
 
     /** Takes the side panel's colour from the game's box art */

@@ -177,6 +177,8 @@ def load_games():
                     "cover": f"/api/cover/{g['id']}" if has_cover else None,
                     "playable": folder in CORES,
                     "size": g.get("fs_size_bytes") or 0,
+                    "year": release_year(g),
+                    "genres": genres_of(g),
                 }
             )
     return {
@@ -184,6 +186,42 @@ def load_games():
             {"name": n, "slug": slugs.get(n, ""), "games": sorted(gs, key=lambda x: x["name"].lower())}
             for n, gs in sorted(consoles.items())
         ]
+    }
+
+
+def release_year(g):
+    """The year a game came out, from RomM's metadata (0 if unknown)"""
+    m = g.get("metadatum") or {}
+    when = m.get("first_release_date") or g.get("first_release_date")
+    try:
+        if isinstance(when, (int, float)) and when > 0:
+            return time.gmtime(when / 1000 if when > 10**11 else when).tm_year
+        if isinstance(when, str) and len(when) >= 4 and when[:4].isdigit():
+            return int(when[:4])
+    except Exception:
+        pass
+    return 0
+
+
+def genres_of(g):
+    m = g.get("metadatum") or {}
+    out = m.get("genres") or g.get("genres") or []
+    return [x.get("name") if isinstance(x, dict) else str(x) for x in out if x][:4]
+
+
+def game_info(game_id):
+    """The game details page: story, year, genres, players and makers"""
+    g = romm_get(f"/api/roms/{game_id}")
+    m = g.get("metadatum") or {}
+    igdb = g.get("igdb_metadata") or {}
+    players = m.get("player_count") or igdb.get("player_count") or ""
+    companies = m.get("companies") or g.get("companies") or []
+    return {
+        "summary": (g.get("summary") or "").strip(),
+        "year": release_year(g),
+        "genres": genres_of(g),
+        "players": str(players) if players else "",
+        "companies": [c.get("name") if isinstance(c, dict) else str(c) for c in companies if c][:2],
     }
 
 
@@ -408,6 +446,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(404, {"error": "Not found"})
             if method == "GET" and path == "/api/games":
                 return self.send(200, load_games())
+            m = re.fullmatch(r"/api/info/(\d+)", path)
+            if method == "GET" and m:
+                return self.send(200, game_info(int(m.group(1))))
             m = re.fullmatch(r"/api/cover/(\d+)", path)
             if method == "GET" and m:
                 data, ctype = cover(int(m.group(1)))

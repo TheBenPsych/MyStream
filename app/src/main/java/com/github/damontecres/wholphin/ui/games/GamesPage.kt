@@ -98,6 +98,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.games.DevicePower
 import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
+import com.github.damontecres.wholphin.games.GameSaves
 import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.games.PhonePadActivity
@@ -263,6 +264,92 @@ class GamesViewModel
         private val _towerRecent = MutableStateFlow<List<Pair<Int, Long>>>(emptyList())
         val towerRecent: StateFlow<List<Pair<Int, Long>>> = _towerRecent
 
+        /** Favourite games (the heart), per account */
+        private val _favourites = MutableStateFlow<Set<Int>>(emptySet())
+        val favourites: StateFlow<Set<Int>> = _favourites
+
+        private fun favKey() = "fav_${serverRepository.currentUser?.id ?: "guest"}"
+
+        fun toggleFavourite(id: Int) {
+            val now = if (id in _favourites.value) _favourites.value - id else _favourites.value + id
+            _favourites.value = now
+            prefs.edit().putString(favKey(), now.joinToString(",")).apply()
+        }
+
+        /** The details page's story, year, players… for the game that's open */
+        private val _info = MutableStateFlow<Pair<Int, GameInfo>?>(null)
+        val info: StateFlow<Pair<Int, GameInfo>?> = _info
+        private val infoCache = mutableMapOf<Int, GameInfo>()
+
+        private fun loadInfo(id: Int) {
+            infoCache[id]?.let {
+                _info.value = id to it
+                return
+            }
+            _info.value = null
+            viewModelScope.launch {
+                val got =
+                    try {
+                        val j = games.getJson("/api/info/$id")
+
+                        fun list(name: String): List<String> {
+                            val a = j.optJSONArray(name) ?: return emptyList()
+                            return (0 until a.length()).map { a.optString(it) }
+                        }
+                        GameInfo(
+                            summary = j.optString("summary"),
+                            year = j.optInt("year"),
+                            genres = list("genres"),
+                            players = j.optString("players"),
+                            companies = list("companies"),
+                        )
+                    } catch (e: Exception) {
+                        Timber.i(e, "No details for game $id")
+                        GameInfo()
+                    }
+                infoCache[id] = got
+                if (_choice.value?.ref?.id == id) _info.value = id to got
+            }
+        }
+
+        /** The picture of where you last stopped: on this device, or on Tower if it was played somewhere else */
+        fun lastPicture(id: Int): Any? {
+            val local = GameSaves.file(localGames.saveDir(id), "png")
+            if (local.exists()) return local
+            val time = _towerRecent.value.firstOrNull { it.first == id }?.second ?: return null
+            return "$gamesAddress/api/save/$id/png?t=$time"
+        }
+
+        /** Where you last stopped plus the three slots, with pictures */
+        fun saveSpots(id: Int): List<SaveSpot> {
+            val dir = localGames.saveDir(id)
+            val spots = mutableListOf<SaveSpot>()
+            val state = GameSaves.file(dir, "state")
+            if (state.exists()) {
+                spots += SaveSpot("Where you stopped", GameSaves.file(dir, "png").takeIf { it.exists() }, state.lastModified())
+            } else {
+                lastPicture(id)?.let { pic ->
+                    spots += SaveSpot("Where you stopped", pic, _towerRecent.value.firstOrNull { it.first == id }?.second ?: 0L)
+                }
+            }
+            for (n in 1..3) {
+                val f = GameSaves.file(dir, "state$n")
+                if (f.exists()) spots += SaveSpot("Slot $n", GameSaves.file(dir, "png$n").takeIf { it.exists() }, f.lastModified())
+            }
+            return spots
+        }
+
+        /** All-time play time on this device (the game player keeps it) */
+        fun playTime(id: Int): Long =
+            runCatching {
+                java.io
+                    .File(localGames.saveDir(id), "playtime")
+                    .takeIf { it.exists() }
+                    ?.readText()
+                    ?.trim()
+                    ?.toLongOrNull()
+            }.getOrNull() ?: 0L
+
         init {
             reload()
         }
@@ -292,6 +379,13 @@ class GamesViewModel
         }
 
         fun reload() {
+            _favourites.value =
+                prefs
+                    .getString(favKey(), null)
+                    .orEmpty()
+                    .split(',')
+                    .mapNotNull { it.toIntOrNull() }
+                    .toSet()
             if (KidsMode.isActive) {
                 _library.value = LibraryState.Hidden
                 return
@@ -330,6 +424,7 @@ class GamesViewModel
         /** Shows the Play / Resume choices for a game */
         fun choose(ref: GameRef) {
             if (_starting.value != null) return
+            loadInfo(ref.id)
             val have = localGames.downloaded(ref.id)
             _choice.value =
                 GameChoice(
@@ -510,6 +605,19 @@ fun GamesPage(
     val library by viewModel.library.collectAsState()
     val starting by viewModel.starting.collectAsState()
     var askAddress by remember { mutableStateOf(false) }
+    val towerRecentTop by viewModel.towerRecent.collectAsState()
+    // The big "Continue playing" card: the last game played on any TV or phone that this device can play
+    val banner =
+        remember(library, towerRecentTop, starting) {
+            val ready = library as? LibraryState.Ready ?: return@remember null
+            val power = DevicePower.get(context)
+            val refs =
+                ready.consoles
+                    .filter { c -> LocalConsole.forSlug(c.slug)?.let { power.fit(it.power) != DevicePower.Fit.TOO_MUCH } == true }
+                    .flatMap { c -> c.games.map { it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size) } }
+                    .toMap()
+            viewModel.recentPlayed().firstNotNullOfOrNull { (id, time) -> refs[id]?.let { it to time } }
+        }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -533,6 +641,16 @@ fun GamesPage(
             text = if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
             isTv = isTv,
         )
+        banner?.let { (ref, time) ->
+            ContinueBanner(
+                ref = ref,
+                playedText = playedAgo(time),
+                picture = remember(ref.id, time) { viewModel.lastPicture(ref.id) },
+                token = viewModel.gamesToken,
+                isTv = isTv,
+                onClick = { viewModel.choose(ref) },
+            )
+        }
         ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = focusRequester)
 
         // Benflix "Guess the movie" and the daily riddle, made from your own movies
@@ -709,9 +827,11 @@ fun GamesPage(
                         remember(state, starting, towerRecent) {
                             viewModel.recentPlayed().mapNotNull { (id, time) -> refs[id]?.let { it to time } }
                         }
-                    if (recent.isNotEmpty()) {
+                    val favourites by viewModel.favourites.collectAsState()
+                    val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
+                    if (favRefs.isNotEmpty()) {
                         Text(
-                            text = "Continue playing",
+                            text = "Favourite games",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
@@ -719,7 +839,20 @@ fun GamesPage(
                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                         ) {
-                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                            items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
+                        }
+                    }
+                    if (recent.size > 1) {
+                        Text(
+                            text = "Played lately",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                        ) {
+                            items(recent.drop(1), key = { "recent-${it.first.id}" }) { (ref, time) ->
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Card(ref)
                                     Text(
@@ -761,9 +894,21 @@ fun GamesPage(
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
+                        var sort by rememberSaveable { mutableStateOf(GameSort.AZ) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            GameSort.entries.forEach { mode ->
+                                SortChip(mode.label, selected = mode == sort) { sort = mode }
+                            }
+                        }
                         val rows =
-                            remember(console, recent) {
-                                consoleRows(console, recent.map { it.first.id }, viewModel.localGames.downloaded().map { it.ref.id })
+                            remember(console, recent, favourites, sort) {
+                                consoleRows(
+                                    console,
+                                    recent.map { it.first.id },
+                                    viewModel.localGames.downloaded().map { it.ref.id },
+                                    favourites,
+                                    sort,
+                                )
                             }
                         rows.forEach { (title, games) ->
                             Text(
@@ -786,11 +931,19 @@ fun GamesPage(
     }
 
     val choice by viewModel.choice.collectAsState()
+    val info by viewModel.info.collectAsState()
+    val favourites by viewModel.favourites.collectAsState()
     choice?.let { c ->
-        GameChoiceDialog(
+        GameDetailsPage(
             choice = c,
+            info = info?.takeIf { it.first == c.ref.id }?.second,
+            saves = remember(c) { viewModel.saveSpots(c.ref.id) },
+            playTimeMs = remember(c) { viewModel.playTime(c.ref.id) },
+            favourite = c.ref.id in favourites,
+            token = viewModel.gamesToken,
             isTv = isTv,
             onPlay = { resume -> viewModel.playHere(context, c.ref, resume) },
+            onFavourite = { viewModel.toggleFavourite(c.ref.id) },
             onKeep = { keep -> viewModel.setKeep(context, c.ref, keep) },
             onRemove = { viewModel.removeDownload(context, c.ref) },
             onDismiss = { viewModel.closeChoice() },
@@ -1905,26 +2058,60 @@ private fun DeviceCard(
     }
 }
 
-/** Rows inside one console: played lately, on this device, then all games (split by letter when there are lots) */
+/** How the games inside a console are grouped after the top rows */
+enum class GameSort(
+    val label: String,
+) {
+    AZ("A to Z"),
+    GENRE("Genre"),
+    YEAR("Year"),
+}
+
+/** Rows inside one console: played lately, on this device, favourites, then all games by letter, genre or year */
 private fun consoleRows(
     console: GameConsole,
     recentIds: List<Int>,
     downloadedIds: List<Int>,
+    favouriteIds: Set<Int>,
+    sort: GameSort,
 ): List<Pair<String, List<ServerGame>>> {
     val byId = console.games.associateBy { it.id }
     val rows = mutableListOf<Pair<String, List<ServerGame>>>()
     recentIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "Played lately" to it }
     downloadedIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "On this device" to it }
+    console.games
+        .filter { it.id in favouriteIds }
+        .sortedBy { it.name.lowercase() }
+        .takeIf { it.isNotEmpty() }
+        ?.let { rows += "Favourites" to it }
     val sorted = console.games.sortedBy { it.name.lowercase() }
-    if (sorted.size <= 24) {
-        rows += "All games" to sorted
-    } else {
-        sorted
-            .groupBy {
-                val c = it.name.firstOrNull()?.uppercaseChar() ?: '#'
-                if (c in 'A'..'Z') c.toString() else "#"
-            }.toSortedMap()
-            .forEach { (letter, games) -> rows += letter to games }
+    when (sort) {
+        GameSort.AZ -> {
+            if (sorted.size <= 24) {
+                rows += "All games" to sorted
+            } else {
+                sorted
+                    .groupBy {
+                        val c = it.name.firstOrNull()?.uppercaseChar() ?: '#'
+                        if (c in 'A'..'Z') c.toString() else "#"
+                    }.toSortedMap()
+                    .forEach { (letter, games) -> rows += letter to games }
+            }
+        }
+
+        GameSort.GENRE -> {
+            val groups = sorted.groupBy { it.genres.firstOrNull() ?: "Other" }
+            groups.keys
+                .sortedWith(compareBy({ it == "Other" }, { -(groups[it]?.size ?: 0) }))
+                .forEach { rows += it to groups.getValue(it) }
+        }
+
+        GameSort.YEAR -> {
+            sorted
+                .groupBy { if (it.year > 0) it.year.toString() else "Unknown year" }
+                .toSortedMap(compareBy<String> { it == "Unknown year" }.thenByDescending { it })
+                .forEach { (year, games) -> rows += year to games }
+        }
     }
     return rows
 }
@@ -1950,6 +2137,34 @@ private val CONSOLE_PHOTOS =
         "psx" to "PSX-Console-wController.jpg",
     )
 
+@Composable
+private fun SortChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, if (selected) Color.White else Color.Transparent), shape = shape),
+                focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape),
+            ),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (selected) Color.White.copy(alpha = .2f) else Color(0xFF242424),
+                contentColor = Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+    ) {
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+    }
+}
+
 /** The console tiles at the top of "Your games" */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1971,7 +2186,11 @@ private fun ConsoleGrid(
                 shape = ClickableSurfaceDefaults.shape(shape),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
                 border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
-                colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF2A2A2A)),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = consoleColour(console.slug).copy(alpha = .35f),
+                        focusedContainerColor = consoleColour(console.slug).copy(alpha = .55f),
+                    ),
                 modifier = Modifier.width(tileWidth),
             ) {
                 Column {
@@ -1981,10 +2200,14 @@ private fun ConsoleGrid(
                             Modifier
                                 .fillMaxWidth()
                                 .height(tileWidth * 0.62f)
-                                .background(Color(0xFFF2F2F2)),
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(consoleColour(console.slug), consoleColour(console.slug).copy(alpha = .7f)),
+                                    ),
+                                ),
                     ) {
                         // The name shows until (or if) the photo loads over it
-                        Text(local.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(local.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         consolePhoto(console.slug)?.let { photo ->
                             AsyncImage(
                                 model = photo,
@@ -2132,61 +2355,6 @@ private fun StorageCard(
                         if (games.size <= 1) managing = false
                     }
                 }
-            }
-        }
-    }
-}
-
-/** Play, Resume or Start over, plus "Keep for trips" on phones */
-@Composable
-private fun GameChoiceDialog(
-    choice: GameChoice,
-    isTv: Boolean,
-    onPlay: (resume: Boolean) -> Unit,
-    onKeep: (Boolean) -> Unit,
-    onRemove: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val focus = remember { FocusRequester() }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        LaunchedEffect(Unit) { focus.tryRequestFocus() }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier =
-                Modifier
-                    .widthIn(max = 420.dp)
-                    .background(Color(0xFF1C1C1C), RoundedCornerShape(16.dp))
-                    .padding(24.dp),
-        ) {
-            Text(choice.ref.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(
-                text =
-                    choice.ref.consoleName +
-                        if (choice.ref.size > 0 && !choice.downloaded) " · ${LocalGames.mb(choice.ref.size)} download" else "",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = .75f),
-            )
-            if (choice.resume) {
-                ChoiceButton("Resume", "Pick up where you left off", Modifier.focusRequester(focus)) { onPlay(true) }
-                ChoiceButton("Start over", "From the title screen. In-game saves are kept.") { onPlay(false) }
-            } else {
-                ChoiceButton(
-                    "Play",
-                    if (choice.downloaded) "On this device" else "Downloads it to this device first",
-                    Modifier.focusRequester(focus),
-                ) {
-                    onPlay(false)
-                }
-            }
-            if (!isTv) {
-                if (choice.pinned) {
-                    ChoiceButton("Stop keeping for trips", "Lets it be cleared out when space runs low") { onKeep(false) }
-                } else {
-                    ChoiceButton("Keep for trips", "Saves it on this phone so it plays without internet") { onKeep(true) }
-                }
-            }
-            if (choice.downloaded) {
-                ChoiceButton("Remove from this device", "Frees up space. Your saves are kept.") { onRemove() }
             }
         }
     }
