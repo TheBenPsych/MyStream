@@ -30,7 +30,12 @@ jobs:
           RECORD_SCENES: "1"
           SCENES_OUT: ${{ github.workspace }}/scene-frames
           SCENES_ONLY: ${{ github.event.inputs.only }}
-        run: ./gradlew testDefaultDebugUnitTest --tests '*RecordHolidayScenes*' --no-daemon -i | grep -E "Recorded|FAILED|Exception" || true
+        # --rerun: the test result can come from Gradle's cache (the settings above aren't part of its key),
+        # which would skip the painting
+        run: |
+          ./gradlew testDefaultDebugUnitTest --rerun --tests '*RecordHolidayScenes*' --no-daemon -i > paint.log 2>&1 || true
+          grep -E "Recorded|FAILED|Exception|SKIPPED|FROM-CACHE|UP-TO-DATE" paint.log | grep -v "Configuration '" | head -80 || true
+          tail -25 paint.log
       - name: Make the videos
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
