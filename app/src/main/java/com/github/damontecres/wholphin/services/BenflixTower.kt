@@ -45,6 +45,8 @@ data class TowerStatus(
     val radarr: Boolean,
     val tracksReady: Boolean,
     val problems: List<String>,
+    /** Free space where the movies and shows live (name, used bytes, free bytes) */
+    val disks: List<Triple<String, Long, Long>> = emptyList(),
 )
 
 /** The track tidy tool's state */
@@ -156,6 +158,10 @@ class BenflixTower
                 radarr = j.optBoolean("radarr"),
                 tracksReady = j.optBoolean("tracks"),
                 problems = j.optJSONArray("problems")?.strings().orEmpty(),
+                disks =
+                    j.optJSONArray("disks")?.objects().orEmpty().map {
+                        Triple(it.optString("name"), it.optLong("used"), it.optLong("free"))
+                    },
             )
         }
 

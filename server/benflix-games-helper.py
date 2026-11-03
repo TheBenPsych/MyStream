@@ -8,6 +8,9 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
   (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
   Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
 - Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
+- The same tools in a PC browser: open http://<server>:8097 and sign in with a Jellyfin admin login.
+  The page is benflix-web.html next to this file. /api/web/login signs in through Jellyfin, and
+  /api/web/jf/... passes the browser's requests on to Jellyfin (so the browser only talks to this helper).
 
 Settings come from environment variables: ROMM_URL, ROMM_USER, ROMM_PASS, JELLYFIN_URL.
 Started by benflix-games-helper-setup.sh. Only uses the Python standard library.
@@ -147,6 +150,47 @@ def check_signed_in(token):
     with _lock:
         _tokens[token] = (time.time(), user_id, is_admin)
     return user_id, is_admin
+
+
+WEB_PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benflix-web.html")
+
+
+def jellyfin_call(method, path, token=None, body=None, device_id="benflix-web"):
+    """Sends one request to Jellyfin for the browser page. Returns (status, body bytes, content type)."""
+    auth = f'MediaBrowser Client="Benflix Web", Device="PC browser", DeviceId="{device_id}", Version="1.0"'
+    if token:
+        auth += f', Token="{token}"'
+    headers = {"Authorization": auth, "Accept": "application/json"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(JELLYFIN_URL + path, data=body, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, r.read(), r.headers.get("Content-Type", "application/json")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read() or b"", e.headers.get("Content-Type", "application/json")
+    except (urllib.error.URLError, OSError):
+        raise HelperError(502, "The helper couldn't reach Jellyfin. Check it's running.")
+
+
+def web_login(info):
+    name, password = str(info.get("username") or "").strip(), str(info.get("password") or "")
+    if not name:
+        raise HelperError(400, "Type your Jellyfin user name.")
+    device = "benflix-web-" + re.sub(r"[^\w-]", "", str(info.get("device") or ""))[:40]
+    body = json.dumps({"Username": name, "Pw": password}).encode()
+    status, data, _ = jellyfin_call("POST", "/Users/AuthenticateByName", body=body, device_id=device)
+    if status in (401, 403):
+        raise HelperError(401, "Jellyfin didn't accept that name and password.")
+    if status != 200:
+        raise HelperError(502, f"Jellyfin answered with an error ({status}). If you limit how many devices a person can use, sign out somewhere else first.")
+    auth = json.loads(data)
+    user = auth.get("User") or {}
+    is_admin = bool((user.get("Policy") or {}).get("IsAdministrator"))
+    if not is_admin:
+        jellyfin_call("POST", "/Sessions/Logout", token=auth.get("AccessToken"), device_id=device)
+        raise HelperError(403, "Only the server admin can use the Benflix tools page.")
+    return {"token": auth.get("AccessToken"), "name": user.get("Name"), "id": user.get("Id")}
 
 
 def load_games():
@@ -368,6 +412,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         if content_type.startswith("image/"):
             self.send_header("Cache-Control", "max-age=86400")
+        elif content_type.startswith("text/html"):
+            self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)
 
@@ -436,14 +482,38 @@ class Handler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
         try:
             if method == "GET" and path == "/health":
-                return self.send(200, {"ok": True, "local_play": True, "server_tools": tools is not None})
-            user_id, is_admin = check_signed_in(self.headers.get("X-Benflix-Token", ""))
+                return self.send(200, {"ok": True, "local_play": True, "server_tools": tools is not None, "web": True})
+            if method == "GET" and path in ("/", "/web", "/index.html"):
+                if not os.path.isfile(WEB_PAGE):
+                    raise HelperError(404, "The tools page isn't on the server yet. Run the Benflix setup command again.")
+                with open(WEB_PAGE, "rb") as f:
+                    return self.send(200, f.read(), "text/html; charset=utf-8")
+            if method == "POST" and path == "/api/web/login":
+                return self.send(200, web_login(self.read_json()))
+            token = self.headers.get("X-Benflix-Token", "")
+            if not token and path.startswith("/api/web/jf/") and "/Images/" in path:
+                # Pictures on the browser page (an <img> can't send the header, so the sign-in rides along)
+                token = (query.get("api_key") or [""])[0]
+            user_id, is_admin = check_signed_in(token)
             if path.startswith("/api/admin/"):
                 if not is_admin:
                     raise HelperError(403, "Only the server admin can use the Server page tools.")
                 if self.admin_route(method, path, query) is not False:
                     return
                 return self.send(404, {"error": "Not found"})
+            if path.startswith("/api/web/jf/"):
+                # The browser page's Jellyfin requests (admin only, like the Server page)
+                if not is_admin:
+                    raise HelperError(403, "Only the server admin can use the Benflix tools page.")
+                body = None
+                if method in ("POST", "PUT", "DELETE"):
+                    length = int(self.headers.get("Content-Length") or 0)
+                    if length > 1024 * 1024:
+                        raise HelperError(413, "That's too big.")
+                    body = self.rfile.read(length) if length > 0 else b""
+                jf_path = path[len("/api/web/jf"):] + (("?" + parsed.query) if parsed.query else "")
+                status, data, ctype = jellyfin_call(method, jf_path, token=token, body=body)
+                return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
                 return self.send(200, load_games())
             m = re.fullmatch(r"/api/info/(\d+)", path)

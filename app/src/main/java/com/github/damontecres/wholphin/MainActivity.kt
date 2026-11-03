@@ -321,6 +321,8 @@ class MainActivity : AppCompatActivity() {
                                     ) {
                                         com.github.damontecres.wholphin.ui.touch.Haptics.enabled =
                                             !appPreferences.benflixPreferences.hapticsOff
+                                        com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter.englishOnly =
+                                            !appPreferences.benflixPreferences.allSubtitleLanguages
                                         ProvideLocalClock {
                                             Box(modifier = Modifier.fillMaxSize()) {
                                                 MainContent(

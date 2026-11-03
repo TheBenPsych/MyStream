@@ -63,7 +63,7 @@ internal const val SNAPSHOT_SAVE_DELAY_MS = 15_000L
 // Tiles per row kept in the saved Home. Fewer = faster to read when the app opens (reading 20 per row
 // took over 3 s on an older TV); the full rows replace them a moment later anyway.
 internal const val SNAPSHOT_ROW_MAX = 10
-internal const val HOME_SNAPSHOT_FORMAT = "f1"
+internal const val HOME_SNAPSHOT_FORMAT = "f2"
 
 /** Benflix "While you were away": shows after this long without opening Benflix (two weeks) */
 internal const val WELCOME_BACK_AFTER_MS = 14L * 24 * 60 * 60 * 1000
