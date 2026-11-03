@@ -456,16 +456,27 @@ class GameActivity : ComponentActivity() {
         withSpot: Boolean,
         slot: Int = 0,
     ): Boolean {
+        val saved = grabSave(withSpot) ?: return false
+        return writeSave(saved, slot)
+    }
+
+    /** Copies the game's save out of the emulator (quick; the file writing is done by [writeSave]) */
+    private fun grabSave(withSpot: Boolean): Saved? {
+        if (!loaded) return null
+        return onGameThread {
+            Saved(
+                RetroNative.getSaveRam(),
+                if (withSpot) RetroNative.saveState() else null,
+                if (withSpot) RetroNative.snapshot() else null,
+            )
+        }
+    }
+
+    private fun writeSave(
+        saved: Saved,
+        slot: Int = 0,
+    ): Boolean {
         val end = if (slot in 1..3) slot.toString() else ""
-        if (!loaded) return false
-        val saved =
-            onGameThread {
-                Saved(
-                    RetroNative.getSaveRam(),
-                    if (withSpot) RetroNative.saveState() else null,
-                    if (withSpot) RetroNative.snapshot() else null,
-                )
-            } ?: return false
         val changed = mutableListOf<String>()
         try {
             saved.srm?.let { bytes ->
@@ -512,8 +523,11 @@ class GameActivity : ComponentActivity() {
         }
     }
 
+    /** Writes saves and sends them to Tower one after another, away from the screen's thread */
+    private val diskWork = java.util.concurrent.Executors.newSingleThreadExecutor()
+
     private fun sendToTower() {
-        Thread { GameSaves.upload(saveDir, gameId, address, token) }.start()
+        diskWork.execute { GameSaves.upload(saveDir, gameId, address, token) }
     }
 
     private fun quit() {
@@ -700,7 +714,8 @@ class GameActivity : ComponentActivity() {
 
     override fun onPause() {
         // Save on this device first (the game thread stops when the view pauses)
-        if (loaded && !quitting) saveHere(withSpot = true)
+        // Only the quick copy out of the emulator happens here; writing files and the picture is done in the background
+        if (loaded && !quitting) grabSave(withSpot = true)?.let { saved -> diskWork.execute { writeSave(saved) } }
         keepPlayTime()
         setPaused(true)
         sideShow?.pause()
