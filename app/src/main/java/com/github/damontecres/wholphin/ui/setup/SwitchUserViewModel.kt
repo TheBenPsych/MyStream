@@ -584,11 +584,11 @@ data class SwitchUserState(
     val funFact: String? = null,
 )
 
-private const val POSTER_WALL_COUNT = 40
+private const val POSTER_WALL_COUNT = 12
 
 /** Benflix speed: a new random poster wall once a day */
 private const val POSTER_WALL_KEEP_MS = 24L * 60 * 60 * 1000
-private const val POSTER_WALL_HEIGHT = 360
+private const val POSTER_WALL_HEIGHT = 260
 
 /** How long Kids waits to read the other grown-ups' parental settings before it starts anyway */
 private const val PARENTAL_LOOKUP_MS = 4_000L

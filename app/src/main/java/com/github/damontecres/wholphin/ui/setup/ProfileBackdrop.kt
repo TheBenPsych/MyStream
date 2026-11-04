@@ -15,12 +15,9 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +45,6 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -85,52 +81,6 @@ private const val VW = 1600f
 private const val VH = 900f
 private const val TAU = (2 * PI).toFloat()
 
-/**
- * Seconds since the screen opened. Ticks about 30 times a second (plenty for these slow scenes and
- * half the work of every frame on older TVs). Stands still in Lite mode, and also stops by itself
- * when the TV can't keep up, so picking a profile never feels sluggish.
- */
-@Composable
-private fun rememberSeconds(): State<Float> {
-    val seconds = remember { mutableFloatStateOf(STILL_SECONDS) }
-    val lite = LiteMode.isOn(LocalContext.current)
-    if (!lite && !sceneTooSlow) {
-        LaunchedEffect(Unit) {
-            val start = withFrameMillis { it }
-            var last = 0L
-            val gaps = ArrayList<Long>()
-            while (true) {
-                val keepGoing =
-                    withFrameMillis {
-                        if (it - last < FRAME_MS) return@withFrameMillis true
-                        if (last > 0 && it - start > WARM_UP_MS) gaps += it - last
-                        last = it
-                        seconds.floatValue = STILL_SECONDS + (it - start) / 1000f
-                        if (gaps.size == SAMPLE_TICKS) {
-                            // Too slow for smooth movement: hold the picture still from here on
-                            val typical = gaps.sorted()[gaps.size / 2]
-                            if (typical > SLOW_TICK_MS) {
-                                sceneTooSlow = true
-                                return@withFrameMillis false
-                            }
-                        }
-                        true
-                    }
-                if (!keepGoing) break
-            }
-        }
-    }
-    return seconds
-}
-
-/** Set once this device proved too slow for the moving scenes; stays until the app restarts */
-@Volatile private var sceneTooSlow = false
-
-private const val FRAME_MS = 33L
-private const val WARM_UP_MS = 1_000L
-private const val SAMPLE_TICKS = 45
-private const val SLOW_TICK_MS = 70L
-
 /** Where a still (Lite mode) scene stops, so it isn't empty */
 private const val STILL_SECONDS = 4f
 
@@ -164,10 +114,10 @@ private fun hex(v: Long) = Color(v)
 // ---------------------------------------------------------------- poster wall
 
 /**
- * Rows of posters sliding slowly in opposite directions, tilted and dimmed so the profiles stand out.
+ * A still, tilted wall of posters, dimmed so the profiles stand out.
  *
- * Each row is drawn once and then only slid along by the graphics chip (no redrawing of the posters
- * every frame), which keeps this screen light on older TVs.
+ * Benflix (Ben's pick, 2026-11-04): only 12 small posters (repeated to fill the screen) and nothing
+ * moves, so the screen is quick on every TV. The profiles show first; the wall fills in behind them.
  */
 @Composable
 fun PosterWall(
@@ -175,24 +125,18 @@ fun PosterWall(
     modifier: Modifier = Modifier,
 ) {
     if (posters.isEmpty()) return
-    val time = rememberSeconds()
-    val density = LocalDensity.current
+    val wall = remember(posters) { posters.take(POSTER_WALL_MAX) }
     BoxWithConstraints(modifier = modifier.clipToBounds()) {
         // Poster size follows the screen height on TVs, and the width on tall phone screens
-        val posterH = minOf(maxHeight / 3.6f, maxWidth * .42f)
+        val posterH = minOf(maxHeight / 4.2f, maxWidth * .34f)
         val posterW = posterH * 2f / 3f
         val gap = posterH * .06f
-        val step = posterW + gap
-        val perRow = max(1, posters.size / 2)
-        val rowWidthPx = with(density) { (step * perRow).toPx() }
-        val stepPx = with(density) { step.toPx() }
         // The wall is tilted, so it has to be taller and wider than the screen to reach every corner
         val coverH = maxHeight * 1.1f + maxWidth * .15f
         val rows = ceil(coverH / (posterH + gap)).toInt() + 1
         val wallH = posterH * rows + gap * (rows - 1)
-        val coverWPx = with(density) { (maxWidth * 1.1f + maxHeight * .2f + posterW).toPx() }
-        // enough posters to cover the tilted screen plus one full loop
-        val count = ceil((coverWPx + rowWidthPx) / stepPx).toInt() + 1
+        val coverW = maxWidth * 1.1f + maxHeight * .2f + posterW
+        val perRow = ceil(coverW / (posterW + gap)).toInt() + 1
         val shape = RoundedCornerShape(posterW * .06f)
         Column(
             verticalArrangement = Arrangement.spacedBy(gap),
@@ -207,22 +151,14 @@ fun PosterWall(
                     }.offset(x = -posterW),
         ) {
             repeat(rows) { r ->
-                val dir = if (r % 2 == 0) -1f else 1f
-                val speedPx = stepPx / (if (r % 2 == 0) 4.4f else 5.6f)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(gap),
-                    modifier =
-                        Modifier
-                            .wrapContentWidth(align = Alignment.Start, unbounded = true)
-                            .graphicsLayer {
-                                // Read the clock here, so only the slide changes each frame
-                                val shift = frac(time.value * speedPx / rowWidthPx) * rowWidthPx
-                                translationX = if (dir < 0) -shift else shift - rowWidthPx
-                            },
+                    modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true),
                 ) {
-                    repeat(count) { k ->
+                    repeat(perRow) { k ->
+                        // Each row starts at a different poster, so the same ones don't line up
                         AsyncImage(
-                            model = posters[(r * 7 + k % perRow) % posters.size],
+                            model = wall[(r * 5 + k) % wall.size],
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier =
@@ -242,8 +178,8 @@ fun PosterWall(
                 .drawWithCache {
                     val brush =
                         Brush.radialGradient(
-                            0f to Color.Black.copy(alpha = .5f),
-                            1f to Color.Black.copy(alpha = .92f),
+                            0f to Color.Black.copy(alpha = .62f),
+                            1f to Color.Black.copy(alpha = .94f),
                             center = Offset(size.width / 2, size.height / 2),
                             radius = size.maxDimension * .62f,
                         )
@@ -252,6 +188,9 @@ fun PosterWall(
         )
     }
 }
+
+/** How many different posters the wall uses */
+private const val POSTER_WALL_MAX = 12
 
 // ---------------------------------------------------------------- holiday scenes
 

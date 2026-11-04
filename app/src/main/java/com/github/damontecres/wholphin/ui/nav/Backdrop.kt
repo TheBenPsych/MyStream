@@ -4,6 +4,8 @@ package com.github.damontecres.wholphin.ui.nav
 
 import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -42,6 +44,7 @@ import coil3.request.ImageRequest
 import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.services.BackdropResult
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -91,22 +94,25 @@ fun Backdrop(
     val phonePortrait =
         !rememberIsTv() && LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val baseBackgroundColor = MaterialTheme.colorScheme.background
+    // Benflix Lite mode: the picture and glow swap straight away instead of fading (much less work for slow TVs)
+    val lite = LiteMode.isOn(LocalContext.current)
+    val glowFade: AnimationSpec<Color> = if (lite) snap() else tween(1250)
     if (backdrop.hasColors &&
         (backdropStyle == BackdropStyle.BACKDROP_DYNAMIC_COLOR || backdropStyle == BackdropStyle.UNRECOGNIZED)
     ) {
         val animPrimary by animateColorAsState(
             backdrop.primaryColor,
-            animationSpec = tween(1250),
+            animationSpec = glowFade,
             label = "dynamic_backdrop_primary",
         )
         val animSecondary by animateColorAsState(
             backdrop.secondaryColor,
-            animationSpec = tween(1250),
+            animationSpec = glowFade,
             label = "dynamic_backdrop_secondary",
         )
         val animTertiary by animateColorAsState(
             backdrop.tertiaryColor,
-            animationSpec = tween(1250),
+            animationSpec = glowFade,
             label = "dynamic_backdrop_tertiary",
         )
         Box(
@@ -170,7 +176,7 @@ fun Backdrop(
                         .Builder(LocalContext.current)
                         .data(backdrop.imageUrl)
                         .useExistingImageAsPlaceholder(useExistingImageAsPlaceholder)
-                        .transitionFactory(CrossFadeFactory(crossfadeDuration))
+                        .apply { if (!lite) transitionFactory(CrossFadeFactory(crossfadeDuration)) }
                         .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

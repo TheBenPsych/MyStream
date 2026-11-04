@@ -1142,4 +1142,6 @@
     <string name="benflix_fix_match">Wrong match? Fix it</string>
     <string name="benflix_haptics">Light buzz on taps</string>
     <string name="benflix_haptics_on">Your phone gives a little buzz when you tap a button</string>
+    <string name="benflix_banner_previous">Previous</string>
+    <string name="benflix_banner_next">Next</string>
 </resources>

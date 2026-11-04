@@ -33,6 +33,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.LocalTrailer
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.ui.main.HeroTrailer
@@ -175,7 +176,8 @@ class DetailsTrailerViewModel
             job?.cancel()
             _playing.value = false
             player?.stop()
-            if (item == null) return
+            // Benflix: slower devices in Lite mode don't play trailers by themselves (the Trailer button still works)
+            if (item == null || LiteMode.isOn(context)) return
             job =
                 viewModelScope.launch(ExceptionHandler()) {
                     delay(DELAY_MS)

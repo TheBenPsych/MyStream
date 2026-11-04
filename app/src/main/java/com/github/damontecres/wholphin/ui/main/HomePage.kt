@@ -756,6 +756,8 @@ fun HomePageContent(
                                         if (it) currentOnFocusPosition(RowColumn(-1, -1))
                                     },
                                     focusRequester = heroFocusRequester,
+                                    // Benflix: long-press Play or More info for the item's menu (My List and more)
+                                    onLongClickItem = { onLongClickItem(RowColumn(-1, -1), it) },
                                 )
                                 if (showNote && isTv) {
                                     HomeNoteCard(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp))

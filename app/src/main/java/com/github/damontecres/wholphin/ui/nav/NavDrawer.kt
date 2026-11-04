@@ -92,6 +92,41 @@ class NavDrawerViewModel
         val libraryArt: StateFlow<Map<UUID, LibraryArt>> = _libraryArt
         private var libraryArtJob: Job? = null
 
+        /** Benflix: Surprise me (in the More menu): opens a random unwatched movie or show */
+        fun surpriseMe(context: android.content.Context) {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val item =
+                    try {
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    recursive = true,
+                                    isPlayed = false,
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = 1,
+                                ),
+                            ).content.items
+                            .firstOrNull()
+                    } catch (e: Exception) {
+                        timber.log.Timber.w(e, "Surprise me failed")
+                        null
+                    }
+                if (item != null) {
+                    kotlinx.coroutines.withContext(WholphinDispatchers.Main) {
+                        navigationManager.navigateTo(
+                            com.github.damontecres.wholphin.data.model
+                                .BaseItem(item)
+                                .destination(),
+                        )
+                    }
+                } else {
+                    com.github.damontecres.wholphin.ui
+                        .showToast(context, "Nothing unwatched to pick from")
+                }
+            }
+        }
+
         fun loadLibraryArt(libraries: List<ServerNavDrawerItem>) {
             val missing = libraries.filter { it.itemId !in _libraryArt.value }
             if (missing.isEmpty() || libraryArtJob?.isActive == true) return
@@ -698,12 +733,20 @@ fun NavDrawer(
                 )
             },
         )
+    val surpriseContext = androidx.compose.ui.platform.LocalContext.current
     val moreTabs =
         listOf(myBenflixTab) +
             tabs
                 .filterIndexed { i, _ -> i in 1 until libraryOffset }
                 .map { it.copy(hint = stringResource(R.string.more_hint_now_playing), glyph = MoreGlyphs.MUSIC) } +
             listOf(
+                TopNavTab(
+                    title = stringResource(R.string.surprise_me),
+                    selected = false,
+                    onClick = { viewModel.surpriseMe(surpriseContext) },
+                    hint = "Opens a random movie or show you haven't seen",
+                    glyph = stringResource(R.string.fa_dice),
+                ),
                 TopNavTab(
                     title = stringResource(R.string.trailer_shuffle),
                     selected = false,

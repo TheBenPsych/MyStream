@@ -1,9 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -27,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,15 +42,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -60,6 +57,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
+import com.github.damontecres.wholphin.ui.components.LocalFlatButtons
 import com.github.damontecres.wholphin.ui.components.MinButtonSize
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
@@ -137,10 +135,16 @@ fun FeaturedReasonLabel(
 }
 
 /**
- * The buttons & page indicator for the rotating home page banner.
+ * The buttons for the rotating home page banner (TV).
+ *
+ * Benflix (Ben's pick, 2026-11-04): slim flat buttons at the bottom left, in the same flat look as
+ * the details pages: Play (filled red) and More info, then small arrows to flip to the previous or
+ * next slide. No dots any more. Long-press Play or More info for the item's menu (My List and more).
+ * Surprise me lives in the More menu at the top.
  *
  * The banner's reason label, title, details, and description are drawn by the page header above this.
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun HomeHero(
     featured: List<FeaturedItem>,
@@ -154,63 +158,90 @@ fun HomeHero(
     modifier: Modifier = Modifier,
     onSelectSlide: (Int) -> Unit = {},
     autoAdvanceMs: Long? = null,
-    // Phones already show the dots right under the banner picture, so they're left off here
+    // Phones swipe the banner, so the arrows (and slide count) are TV only
     showDots: Boolean = true,
+    onLongClickItem: ((BaseItem) -> Unit)? = null,
 ) {
     val current = featured.getOrNull(index) ?: return
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    val count = featured.size
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        // A little room above, so the focus ring isn't clipped at the top
         modifier =
             modifier
-                .padding(start = 8.dp, bottom = 16.dp)
-                .onFocusChanged { onFocusChanged(it.hasFocus) },
+                .padding(start = 8.dp, top = 6.dp, bottom = 16.dp)
+                .onFocusChanged { onFocusChanged(it.hasFocus) }
+                .focusRestorer(focusRequester),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            // A little room above, so a button growing when picked isn't clipped at the top
-            modifier = Modifier.padding(top = 6.dp).focusRestorer(focusRequester),
-        ) {
-            HeroPillButton(
-                title = stringResource(R.string.play),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-                containerColor = Color.White,
-                contentColor = Color.Black,
+        CompositionLocalProvider(LocalFlatButtons provides true) {
+            ExpandablePlayButton(
+                title = R.string.play,
+                resume = Duration.ZERO,
+                icon = Icons.Default.PlayArrow,
+                primary = true,
                 onClick = { onClickPlay(current.item) },
+                onLongClick = onLongClickItem?.let { { it(current.item) } },
                 modifier = Modifier.focusRequester(focusRequester),
             )
-            HeroPillButton(
-                title = stringResource(R.string.more_info),
-                icon = {
-                    Text(
-                        text = stringResource(R.string.fa_circle_info),
-                        fontFamily = FontAwesome,
-                        fontSize = 16.sp,
-                    )
-                },
-                containerColor = Color(0x99787882),
-                contentColor = Color.White,
+            ExpandableFaButton(
+                title = R.string.more_info,
+                iconStringRes = R.string.fa_circle_info,
                 onClick = { onClickInfo(current.item) },
-            )
-            ExpandableFaButton(
-                title = if (current.item.favorite) R.string.in_my_list else R.string.my_list,
-                iconStringRes = if (current.item.favorite) R.string.fa_check else R.string.fa_plus,
-                onClick = { onClickFavorite(current.item) },
-            )
-            ExpandableFaButton(
-                title = R.string.surprise_me,
-                iconStringRes = R.string.fa_dice,
-                onClick = onClickSurprise,
+                onLongClick = onLongClickItem?.let { { it(current.item) } },
             )
         }
-        if (showDots && featured.size > 1) {
-            SlideDots(count = featured.size, index = index, onSelect = onSelectSlide, autoAdvanceMs = autoAdvanceMs)
+        // Phones swipe the banner instead, so they get no arrows
+        if (showDots && count > 1) {
+            Spacer(Modifier.width(4.dp))
+            SlideArrow(
+                glyph = R.string.fa_caret_left,
+                description = R.string.benflix_banner_previous,
+                onClick = { onSelectSlide((index - 1 + count) % count) },
+            )
+            SlideArrow(
+                glyph = R.string.fa_caret_right,
+                description = R.string.benflix_banner_next,
+                onClick = { onSelectSlide((index + 1) % count) },
+            )
+            Text(
+                text = "${index + 1} / $count",
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = .6f),
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+    }
+}
+
+/** A small square flat button with an arrow, to flip the banner to another slide */
+@Composable
+private fun SlideArrow(
+    glyph: Int,
+    description: Int,
+    onClick: () -> Unit,
+) {
+    val label = stringResource(description)
+    com.github.damontecres.wholphin.ui.components.Button(
+        onClick = onClick,
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(shape = RoundedCornerShape(10.dp)),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f, pressedScale = .97f),
+        contentPadding = PaddingValues(0.dp),
+        modifier =
+            Modifier
+                .size(MinButtonSize)
+                .semantics { contentDescription = label },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text(
+                text = stringResource(glyph),
+                fontFamily = FontAwesome,
+                fontSize = 18.sp,
+            )
         }
     }
 }
@@ -218,8 +249,7 @@ fun HomeHero(
 private val DOT_RED = Color(0xFFE5484D)
 
 /**
- * Benflix: the little banner dots. Each one can be picked with the remote (move down onto them and press OK,
- * or just move left/right across them) or tapped on a phone to jump to that slide.
+ * Benflix: the little banner dots on phones. Each one can be tapped to jump to that slide.
  */
 @Composable
 fun SlideDots(
@@ -229,16 +259,6 @@ fun SlideDots(
     modifier: Modifier = Modifier,
     autoAdvanceMs: Long? = null,
 ) {
-    // Benflix: the current dot fills up red while the banner waits to move on, like a little timer
-    val fill = remember(index) { Animatable(0f) }
-    LaunchedEffect(index, autoAdvanceMs) {
-        if (autoAdvanceMs != null) {
-            fill.snapTo(0f)
-            fill.animateTo(1f, tween(durationMillis = autoAdvanceMs.toInt(), easing = LinearEasing))
-        } else {
-            fill.snapTo(0f)
-        }
-    }
     // Benflix: moving down onto the dots always lands on the slide being shown, wherever you come from,
     // and if the banner moves on while you're on the dots, the red one moves with it
     val dotRequesters = remember(count) { List(count) { FocusRequester() } }
@@ -295,7 +315,9 @@ fun SlideDots(
                             modifier =
                                 Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(if (autoAdvanceMs != null) fill.value else 1f)
+                                    // Benflix: a plain red dot for the slide on screen (it used to fill up like a timer,
+                                    // which kept the TV redrawing the whole time Home was open)
+                                    .fillMaxWidth()
                                     .background(
                                         if (autoAdvanceMs != null) DOT_RED else Color.White,
                                         RoundedCornerShape(4.dp),
@@ -305,43 +327,6 @@ fun SlideDots(
                 }
             }
         }
-    }
-}
-
-/**
- * A Netflix-style banner button that always shows its label. Turns bright white with dark text when focused.
- */
-@Composable
-fun HeroPillButton(
-    title: String,
-    icon: @Composable () -> Unit,
-    containerColor: Color,
-    contentColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Button(
-        onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-        contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
-        colors =
-            ButtonDefaults.colors(
-                containerColor = containerColor,
-                contentColor = contentColor,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
-            ),
-        // Benflix: the same height as the round My List and Surprise me buttons next to it
-        modifier = modifier.height(MinButtonSize),
-    ) {
-        icon()
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = title,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
     }
 }
 

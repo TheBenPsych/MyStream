@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil3.request.ErrorResult
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.data.RowColumnSaver
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -419,13 +420,16 @@ fun logTab(
 
 suspend fun <T> onMain(block: suspend CoroutineScope.() -> T) = withContext(WholphinDispatchers.Main, block)
 
-fun Modifier.dimAndBlur(enabled: Boolean) =
-    this.ifElse(
+/** Dims (and, except in Lite mode, blurs) whatever is behind a pop-up. Blur is hard work for slow TV graphics chips. */
+@Composable
+fun Modifier.dimAndBlur(enabled: Boolean): Modifier {
+    val context = LocalContext.current
+    val lite = remember { LiteMode.isOn(context) }
+    return this.ifElse(
         enabled,
-        Modifier
-            .alpha(.5f)
-            .blur(16.dp),
+        if (lite) Modifier.alpha(.4f) else Modifier.alpha(.5f).blur(16.dp),
     )
+}
 
 fun Response<BaseItemDtoQueryResult>.toBaseItems(
     api: ApiClient,
