@@ -76,6 +76,8 @@ class PlayerFactory
         ): PlayerCreation {
             val prefs = appPreferences.playbackPreferences
             withContext(WholphinDispatchers.Main) {
+                // Benflix: trailers let go of the TV's video decoder first, so the movie gets it
+                PreviewPlayers.freeAll()
                 if (currentPlayer?.isReleased == false) {
                     Timber.w("Player was not released before trying to create a new one!")
                     currentPlayer?.release()

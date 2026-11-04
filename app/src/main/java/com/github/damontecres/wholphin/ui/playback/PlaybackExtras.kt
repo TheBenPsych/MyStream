@@ -159,6 +159,7 @@ internal fun PlaybackViewModel.benflixStartChecks(
     noticeJob?.cancel()
     soundWatchdog.reset()
     soundWatchdog.check("start")
+    pictureWatchdog.check(item.id, "start")
     firstReadyAt = 0L
     bufferTimes.clear()
     val pending = BenflixPlayerPrefs.pendingNotice
