@@ -110,6 +110,16 @@ class WholphinApplication :
         // Benflix: an old copy left running after an update starts fresh instead of crashing
         com.github.damontecres.wholphin.util.StaleProcessGuard
             .install(this)
+        // Benflix: create the app-wide screen values here, on the main thread, before any screen
+        // draws. If one was first created on a background thread while a screen was mid-draw,
+        // Compose crashed with "Reading a state that was created after the snapshot was taken".
+        com.github.damontecres.wholphin.ui.setup.AvatarChoices
+            .init(this)
+        com.github.damontecres.wholphin.ui.theme.ProfileColours
+            .init(this)
+        com.github.damontecres.wholphin.ui.components.BenflixPopups.waiting.size
+        com.github.damontecres.wholphin.ui.downloads.OfflineScreenState.showing.value
+        com.github.damontecres.wholphin.ui.nav.TopBarInset.heightPx
     }
 
     @Inject

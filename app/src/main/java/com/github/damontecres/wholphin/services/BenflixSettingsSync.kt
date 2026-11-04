@@ -15,6 +15,7 @@ import com.github.damontecres.wholphin.preferences.PlaybackPreferences
 import com.github.damontecres.wholphin.ui.playback.BenflixPlayerPrefs
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
+import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.UUID
 import org.json.JSONObject
 import timber.log.Timber
@@ -223,7 +225,10 @@ class BenflixSettingsSync
             val userId = serverRepository.currentUser?.id ?: return
             if (userId != readyUserId || KidsMode.isActive || GuestMode.isActive) return
             // Remember their colour on this device for the Who's watching tiles
-            ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
+            // (on the main thread: the Who's watching tiles read it while they draw)
+            withContext(WholphinDispatchers.Main) {
+                ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
+            }
             val encoded = Base64.encodeToString(prefs.personalPart().toByteArray(), Base64.NO_WRAP)
             if (encoded == lastSynced) return
             try {

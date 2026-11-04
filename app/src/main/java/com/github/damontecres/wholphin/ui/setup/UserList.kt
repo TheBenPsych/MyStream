@@ -326,6 +326,7 @@ object AvatarChoices {
     private val choices = androidx.compose.runtime.mutableStateMapOf<UUID, Int>()
     private var prefs: android.content.SharedPreferences? = null
 
+    @Synchronized
     fun init(context: android.content.Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences("benflix_avatars", android.content.Context.MODE_PRIVATE)
