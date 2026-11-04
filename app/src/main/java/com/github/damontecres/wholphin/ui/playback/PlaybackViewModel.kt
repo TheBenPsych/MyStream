@@ -261,6 +261,10 @@ class PlaybackViewModel
         /** Benflix: true while this video was moved to MPV for its styled subtitles */
         internal var autoMpvActive = false
 
+        /** Benflix: which fallback step (see onPlayerError) was last used, and for which video */
+        private var fallbackStepFor: UUID? = null
+        private var fallbackStep = 0
+
         /** Benflix: brings the sound back if it drops out (after a skip, a sound switch...) */
         internal val soundWatchdog by lazy {
             SoundWatchdog(
@@ -275,6 +279,26 @@ class PlaybackViewModel
                 onConvertSound = { fullConvert -> convertSoundOnServer(fullConvert) },
                 onNotice = { text ->
                     if (state.value.notice == null) showNotice(PlayerNotice(title = text, autoHideMs = 5_000L))
+                },
+                fromServerStream = {
+                    state.value.currentPlayback?.playMethod.let {
+                        it != null && it != PlayMethod.DIRECT_PLAY
+                    }
+                },
+                describePlayback = {
+                    val playback = state.value.currentPlayback
+                    val audio =
+                        playback?.mediaSourceInfo?.mediaStreams?.firstOrNull {
+                            it.type == MediaStreamType.AUDIO && it.index == playback?.audioIndex
+                        }
+                    listOf(
+                        "play=${playback?.playMethod}",
+                        "container=${playback?.mediaSourceInfo?.container}",
+                        "fileSound=${audio?.codec} ${audio?.channels}ch",
+                        "serverSound=${playback?.transcodeInfo?.audioCodec}",
+                        "why=${playback?.transcodeInfo?.transcodeReasons?.joinToString("+")}",
+                        "night=${NightMode.isOn(context)}",
+                    ).joinToString(", ")
                 },
             )
         }
@@ -1254,6 +1278,11 @@ class PlaybackViewModel
         @Inject
         var fillerService: FillerService? = null
 
+        /** Benflix: sends "Report a problem" reports, here used for damaged files (null in tests) */
+        @JvmField
+        @Inject
+        var benflixProblems: com.github.damontecres.wholphin.services.BenflixProblems? = null
+
         /** Benflix: per-profile settings stored on the server (null in tests) */
         @JvmField
         @Inject
@@ -1845,42 +1874,84 @@ class PlaybackViewModel
             }
             viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
                 state.value.currentPlayback?.let {
-                    when (it.playMethod) {
-                        PlayMethod.TRANSCODE -> {
-                            mutableState.update {
-                                it.copy(
-                                    loading =
-                                        LoadingState.Error(
-                                            // Benflix: both ways of playing it failed
-                                            context.getString(R.string.benflix_content_issue),
-                                            error,
-                                        ),
-                                )
-                            }
+                    val itemNow = it.item.id
+                    // Benflix fallback steps when the TV can't play something:
+                    //  1. play the file as is (direct play)
+                    //  2. server repackages it: picture kept as is, sound turned into AAC. Light for
+                    //     the server and the picture stays sharp. Fixes TVs that can't play the
+                    //     file's sound (e.g. AC3 on some TCL TVs) or its container.
+                    //  3. server converts everything
+                    val step =
+                        when {
+                            it.playMethod == PlayMethod.DIRECT_PLAY -> 2
+                            fallbackStepFor == itemNow && fallbackStep == 2 -> 3
+                            it.playMethod == PlayMethod.DIRECT_STREAM -> 3
+                            else -> 0
                         }
-
-                        PlayMethod.DIRECT_STREAM, PlayMethod.DIRECT_PLAY -> {
-                            Timber.w("Playback error during ${it.playMethod}, falling back to transcoding")
-                            val currentPlayback = state.value.currentPlayback
-                            if (currentPlayback == null) {
-                                Timber.w("Playback error, currentPlayback is null")
-                            }
-                            changeStreams(
-                                item = currentItem.item,
-                                sourceId = currentPlayback?.mediaSourceInfo?.id,
-                                audioIndex = currentPlayback?.audioIndex,
-                                subtitleIndex = currentPlayback?.subtitleIndex,
-                                positionMs = player.currentPosition,
-                                enableDirectPlay = false,
-                                enableDirectStream = false,
+                    if (step == 0) {
+                        mutableState.update {
+                            it.copy(
+                                loading =
+                                    LoadingState.Error(
+                                        // Benflix: both ways of playing it failed
+                                        context.getString(R.string.benflix_content_issue),
+                                        error,
+                                    ),
                             )
-                            withContext(WholphinDispatchers.Main) {
-                                player.prepare()
-                                player.play()
-                                soundWatchdog.check("fallback")
-                            }
                         }
+                        return@launch
                     }
+                    fallbackStepFor = itemNow
+                    fallbackStep = step
+                    if (step == 2) reportPossiblyDamagedFile(it, error)
+                    Timber.w("Playback error during ${it.playMethod}, falling back to step $step")
+                    changeStreams(
+                        item = currentItem.item,
+                        sourceId = it.mediaSourceInfo.id,
+                        audioIndex = it.audioIndex,
+                        subtitleIndex = it.subtitleIndex,
+                        positionMs = player.currentPosition,
+                        enableDirectPlay = false,
+                        enableDirectStream = step == 2,
+                        allowAudioStreamCopy = false,
+                    )
+                    withContext(WholphinDispatchers.Main) {
+                        player.prepare()
+                        player.play()
+                        soundWatchdog.check("fallback")
+                    }
+                }
+            }
+        }
+
+        /**
+         * Benflix: the TV couldn't read the file itself (broken data, not just a format it can't
+         * play), so tell Ben quietly: it shows up on his Server page under problem reports as
+         * "Possibly damaged file", with the log. The viewer isn't bothered; playback carries on
+         * through the server. Once per video per app start.
+         */
+        private fun reportPossiblyDamagedFile(
+            playback: CurrentPlayback,
+            error: PlaybackException,
+        ) {
+            if (error.errorCode !in DAMAGED_FILE_ERRORS) return
+            val problems = benflixProblems ?: return
+            if (!damagedReported.add(playback.itemId)) return
+            val data = playback.item.data
+            val title =
+                if (data.seriesName != null) {
+                    "${data.seriesName} S${data.parentIndexNumber ?: 0}E${data.indexNumber ?: 0} - ${data.name.orEmpty()}"
+                } else {
+                    data.name.orEmpty()
+                }
+            Timber.w("Possibly damaged file: %s (%s)", title, error.errorCodeName)
+            viewModelScope.launchIO {
+                try {
+                    problems.report(playback.itemId, title, DAMAGED_FILE_PROBLEM)
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not report the damaged file")
                 }
             }
         }
@@ -2140,3 +2211,18 @@ internal const val FINISHED_LOOKUP_MS = 5_000L
 
 internal const val RECAP_LOOKUP_MS = 3_000L
 internal const val RECAP_AFTER_DAYS = 14L
+
+/** Benflix: player errors that mean the file's data is broken (not a format the TV can't play) */
+private val DAMAGED_FILE_ERRORS =
+    setOf(
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_DECODING_FAILED,
+    )
+
+/** How it shows on Ben's Server page problem list */
+private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatically)"
+
+/** Videos already reported since the app started, so one bad file doesn't flood the list */
+private val damagedReported: MutableSet<UUID> =
+    java.util.concurrent.ConcurrentHashMap
+        .newKeySet()

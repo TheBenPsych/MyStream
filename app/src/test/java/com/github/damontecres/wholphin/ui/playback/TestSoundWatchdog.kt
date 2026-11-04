@@ -52,4 +52,13 @@ class TestSoundWatchdog {
     fun `No counters means we can't tell`() {
         Assert.assertEquals(SoundProblem.NONE, decide(before = SoundSnapshot(10_000, null), after = SoundSnapshot(13_000, null)))
     }
+
+    @Test
+    fun `Sound thrown away after a skip counts as no sound`() {
+        // Before the fix, thrown away pieces were added in and this looked fine
+        Assert.assertEquals(
+            SoundProblem.SOUND_STUCK,
+            decide(before = SoundSnapshot(10_000, 100, 0), after = SoundSnapshot(13_000, 100, 150)),
+        )
+    }
 }

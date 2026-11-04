@@ -22,30 +22,6 @@ private val downmixSupportedAudioCodecs =
         Codec.Audio.MP3,
     )
 
-/**
- * Sound formats that media3 can read inside an MPEG-TS stream (see DefaultTsPayloadReaderFactory).
- * FLAC, Opus, TrueHD/MLP, ALAC, PCM and Vorbis are not among them.
- */
-internal val tsPlayableAudioCodecs =
-    setOf(
-        Codec.Audio.AAC,
-        Codec.Audio.AAC_LATM,
-        Codec.Audio.AC3,
-        Codec.Audio.EAC3,
-        Codec.Audio.DCA,
-        Codec.Audio.DTS,
-        Codec.Audio.MP2,
-        Codec.Audio.MP3,
-    )
-
-/** [allowed] trimmed to [tsPlayableAudioCodecs], with AAC first so it is what the server converts to */
-internal fun tsAudioCodecs(allowed: Array<String>): Array<String> =
-    allowed
-        .filter { it in tsPlayableAudioCodecs }
-        .sortedBy { if (it == Codec.Audio.AAC) 0 else 1 }
-        .ifEmpty { listOf(Codec.Audio.AAC) }
-        .toTypedArray()
-
 val supportedAudioCodecs =
     arrayOf(
         Codec.Audio.AAC,
@@ -174,10 +150,14 @@ fun createDeviceProfile(
         if (preferAc3ForSurround) {
             audioCodec(Codec.Audio.AC3)
         } else {
-            // Benflix: only sound formats the player can hear inside an HLS (TS) stream. Otherwise
-            // the server may copy e.g. FLAC, Opus or TrueHD sound into the stream as-is, and the
-            // video plays with no sound at all (often after switching audio or skipping ahead).
-            audioCodec(*tsAudioCodecs(allowedAudioCodecs))
+            // Benflix: when the server converts a video, it sends AAC sound only.
+            // - FLAC, Opus, TrueHD... can't be read inside the TS stream at all (no sound, PR #183).
+            // - AC3/DTS were sent straight to the TV's sound chip ("passthrough"). After Skip intro
+            //   the server restarts its conversion from the new spot, and on TCL Google TVs that
+            //   passthrough sound went silent until you rewound to before the jump (2026-11-04).
+            // AAC is turned into plain sound by the player itself, which copes with the restart.
+            // Direct play (no server conversion) still sends AC3/DTS to a soundbar as before.
+            audioCodec(Codec.Audio.AAC)
         }
 
         copyTimestamps = false

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.hilt.IoCoroutineScope
 import com.github.damontecres.wholphin.ui.detail.DebugViewModel.Companion.getLogCatLines
+import com.github.damontecres.wholphin.ui.playback.SoundWatchdog
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,7 +75,9 @@ class BenflixProblems
             try {
                 val log = getLogCatLines().takeLast(LOG_LINES).joinToString("\n") { it.text }
                 val header = serverReportService.buildLogHeader("Benflix problem report: $problem - $title")
-                api.clientLogApi.logFile("$header\nuser=${user.name}\nitem=$itemId\n\n$log")
+                api.clientLogApi.logFile(
+                    "$header\nuser=${user.name}\nitem=$itemId\nsoundCheck=${SoundWatchdog.lastReport}\n\n$log",
+                )
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
