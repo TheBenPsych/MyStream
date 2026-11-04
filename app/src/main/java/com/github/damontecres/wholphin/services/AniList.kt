@@ -125,8 +125,21 @@ data class AniListCardFacts(
         /** AniList genres every kind of show has; anime-only ones (Mecha, Slice of Life...) aren't here */
         private val PLAIN_GENRES =
             setOf(
-                "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Music", "Mystery",
-                "Psychological", "Romance", "Sci-Fi", "Sports", "Supernatural", "Thriller", "Ecchi",
+                "Action",
+                "Adventure",
+                "Comedy",
+                "Drama",
+                "Fantasy",
+                "Horror",
+                "Music",
+                "Mystery",
+                "Psychological",
+                "Romance",
+                "Sci-Fi",
+                "Sports",
+                "Supernatural",
+                "Thriller",
+                "Ecchi",
             )
     }
 }
