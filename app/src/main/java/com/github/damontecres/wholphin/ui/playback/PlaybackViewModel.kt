@@ -261,6 +261,10 @@ class PlaybackViewModel
         /** Benflix: true while this video was moved to MPV for its styled subtitles */
         internal var autoMpvActive = false
 
+        /** Benflix: which fallback step (see onPlayerError) was last used, and for which video */
+        private var fallbackStepFor: UUID? = null
+        private var fallbackStep = 0
+
         /** Benflix: brings the sound back if it drops out (after a skip, a sound switch...) */
         internal val soundWatchdog by lazy {
             SoundWatchdog(
@@ -1865,41 +1869,50 @@ class PlaybackViewModel
             }
             viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
                 state.value.currentPlayback?.let {
-                    when (it.playMethod) {
-                        PlayMethod.TRANSCODE -> {
-                            mutableState.update {
-                                it.copy(
-                                    loading =
-                                        LoadingState.Error(
-                                            // Benflix: both ways of playing it failed
-                                            context.getString(R.string.benflix_content_issue),
-                                            error,
-                                        ),
-                                )
-                            }
+                    val itemNow = it.item.id
+                    // Benflix fallback steps when the TV can't play something:
+                    //  1. play the file as is (direct play)
+                    //  2. server repackages it: picture kept as is, sound turned into AAC. Light for
+                    //     the server and the picture stays sharp. Fixes TVs that can't play the
+                    //     file's sound (e.g. AC3 on some TCL TVs) or its container.
+                    //  3. server converts everything
+                    val step =
+                        when {
+                            it.playMethod == PlayMethod.DIRECT_PLAY -> 2
+                            fallbackStepFor == itemNow && fallbackStep == 2 -> 3
+                            it.playMethod == PlayMethod.DIRECT_STREAM -> 3
+                            else -> 0
                         }
-
-                        PlayMethod.DIRECT_STREAM, PlayMethod.DIRECT_PLAY -> {
-                            Timber.w("Playback error during ${it.playMethod}, falling back to transcoding")
-                            val currentPlayback = state.value.currentPlayback
-                            if (currentPlayback == null) {
-                                Timber.w("Playback error, currentPlayback is null")
-                            }
-                            changeStreams(
-                                item = currentItem.item,
-                                sourceId = currentPlayback?.mediaSourceInfo?.id,
-                                audioIndex = currentPlayback?.audioIndex,
-                                subtitleIndex = currentPlayback?.subtitleIndex,
-                                positionMs = player.currentPosition,
-                                enableDirectPlay = false,
-                                enableDirectStream = false,
+                    if (step == 0) {
+                        mutableState.update {
+                            it.copy(
+                                loading =
+                                    LoadingState.Error(
+                                        // Benflix: both ways of playing it failed
+                                        context.getString(R.string.benflix_content_issue),
+                                        error,
+                                    ),
                             )
-                            withContext(WholphinDispatchers.Main) {
-                                player.prepare()
-                                player.play()
-                                soundWatchdog.check("fallback")
-                            }
                         }
+                        return@launch
+                    }
+                    fallbackStepFor = itemNow
+                    fallbackStep = step
+                    Timber.w("Playback error during ${it.playMethod}, falling back to step $step")
+                    changeStreams(
+                        item = currentItem.item,
+                        sourceId = it.mediaSourceInfo.id,
+                        audioIndex = it.audioIndex,
+                        subtitleIndex = it.subtitleIndex,
+                        positionMs = player.currentPosition,
+                        enableDirectPlay = false,
+                        enableDirectStream = step == 2,
+                        allowAudioStreamCopy = false,
+                    )
+                    withContext(WholphinDispatchers.Main) {
+                        player.prepare()
+                        player.play()
+                        soundWatchdog.check("fallback")
                     }
                 }
             }
