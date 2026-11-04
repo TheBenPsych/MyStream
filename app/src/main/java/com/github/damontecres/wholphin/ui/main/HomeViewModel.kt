@@ -148,12 +148,13 @@ class HomeViewModel
             }
             // Benflix: let go of the video decoder when a movie starts, so it doesn't play slowly
             addCloseable(
-                PreviewPlayers.register {
-                    previewJob?.cancel()
-                    _previewPlaying.value = false
-                    _previewPlayer?.release()
-                    _previewPlayer = null
-                }.let { unregister -> AutoCloseable { unregister() } },
+                PreviewPlayers
+                    .register {
+                        previewJob?.cancel()
+                        _previewPlaying.value = false
+                        _previewPlayer?.release()
+                        _previewPlayer = null
+                    }.let { unregister -> AutoCloseable { unregister() } },
             )
             datePlayedService.invalidateAll()
             serverRepository.currentUserDtoFlow
