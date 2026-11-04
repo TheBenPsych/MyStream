@@ -214,6 +214,8 @@ fun EmberButton(
         onClick = onClick,
         enabled = enabled,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        // a small grow only: wide buttons that grow a lot spill past the screen edge
+        scale = ButtonDefaults.scale(focusedScale = 1.03f),
         colors =
             ButtonDefaults.colors(
                 containerColor = tint,
