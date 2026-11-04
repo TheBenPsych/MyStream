@@ -15,6 +15,7 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -120,6 +121,8 @@ class VoiceInputManager
                 }
             }
 
+        // Only read inside SDK_INT >= O checks: Android 7 doesn't have AudioFocusRequest
+        @get:RequiresApi(Build.VERSION_CODES.O)
         private val audioFocusRequest: AudioFocusRequest? by lazy {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 AudioFocusRequest
