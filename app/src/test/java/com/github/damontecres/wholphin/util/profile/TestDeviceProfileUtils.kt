@@ -141,15 +141,12 @@ class TestDeviceProfileUtils {
     }
 
     @Test
-    fun `HLS transcodes only ask for sound the player can hear in TS`() {
+    fun `HLS transcodes only ask for AAC sound`() {
         val mediaTest = mockk<MediaCodecCapabilitiesTest>(relaxed = true)
         val profile = buildProfile(mediaTest)
         val video = profile.transcodingProfiles.first { it.type == DlnaProfileType.VIDEO }
         val codecs = video.audioCodec.split(",")
-        Assert.assertEquals(Codec.Audio.AAC, codecs.first())
-        listOf(Codec.Audio.FLAC, Codec.Audio.OPUS, Codec.Audio.TRUEHD, Codec.Audio.ALAC, Codec.Audio.VORBIS).forEach {
-            Assert.assertFalse("$it should not be in ${video.audioCodec}", it in codecs)
-        }
-        Assert.assertTrue(Codec.Audio.EAC3 in codecs)
+        // AC3/EAC3 passthrough went silent after a skip restarted the server's conversion (TCL TVs)
+        Assert.assertEquals(listOf(Codec.Audio.AAC), codecs)
     }
 }
