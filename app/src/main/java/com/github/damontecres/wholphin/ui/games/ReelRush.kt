@@ -17,6 +17,11 @@ import kotlin.random.Random
 /**
  * Reel Rush: the Benflix "B" flies through gaps between strips of film. One button flaps.
  * Golden tickets in the gaps are worth +3, and after a while some strips start sliding up and down.
+ *
+ * Every so often a "tight squeeze" section comes along: a few strips in a row with smaller gaps
+ * (drawn with a red glow so you can see it coming). The gaps in a squeeze stay close to each other
+ * in height and never slide, so it's hard but always doable. Squeezes get a little longer and
+ * tighter the further you get, then it goes back to normal for a breather.
  */
 class ReelRush : MiniGame() {
     private class Strip(
@@ -25,6 +30,10 @@ class ReelRush : MiniGame() {
         /** How far the gap slides up and down (0 = it stays still) */
         val swing: Float,
         val wobble: Float,
+        /** The size of this strip's gap */
+        val gap: Float,
+        /** Part of a tight squeeze section */
+        val tight: Boolean = false,
         var passed: Boolean = false,
         var ticket: Boolean = false,
     ) {
@@ -40,6 +49,12 @@ class ReelRush : MiniGame() {
     private var passedCount = 0
     private val trail = ArrayDeque<Offset>()
 
+    /** How many strips are left in the current normal stretch or squeeze section */
+    private var sectionLeft = 0
+    private var inSqueeze = false
+    private var squeezesDone = 0
+    private var lastGapY = 0f
+
     private val u get() = height / 100f
     private val bx get() = width * 0.25f
     private val bSize get() = 7f * u
@@ -47,6 +62,9 @@ class ReelRush : MiniGame() {
     private val flap get() = 62f * u * kotlin.math.sqrt(pace)
     private val stripW get() = 11f * u
     private val gap get() = (34f - (passedCount / 5f).coerceAtMost(8f) + if (easy) 8f else 0f) * u
+
+    /** Gaps in a squeeze: starts at 25 and shrinks to 20 over the first several squeezes (Kids get more room) */
+    private val squeezeGap get() = (25f - (squeezesDone * 0.7f).coerceAtMost(5f) + if (easy) 7f else 0f) * u
     private val speed get() = (38f + (passedCount * 0.6f).coerceAtMost(22f)) * u * pace
 
     override fun reset() {
@@ -59,6 +77,10 @@ class ReelRush : MiniGame() {
         by = height / 2f
         vy = 0f
         spawnIn = 0.6f
+        inSqueeze = false
+        squeezesDone = 0
+        sectionLeft = 10
+        lastGapY = height / 2f
     }
 
     override fun step(dt: Float) {
@@ -67,10 +89,34 @@ class ReelRush : MiniGame() {
         by += vy * dt
         spawnIn -= dt
         if (spawnIn <= 0f) {
-            val swing = if (!easy && passedCount >= 15 && Random.nextFloat() < 0.45f) (6f + Random.nextFloat() * 8f) * u else 0f
-            val margin = gap / 2f + 8f * u + swing
-            val strip = Strip(width + stripW, margin + Random.nextFloat() * (height - 2 * margin), swing, Random.nextFloat() * 6f)
-            strip.ticket = Random.nextFloat() < 0.25f
+            if (sectionLeft <= 0) {
+                if (inSqueeze) {
+                    // Back to normal for a breather
+                    inSqueeze = false
+                    squeezesDone++
+                    sectionLeft = 7 + Random.nextInt(5)
+                } else {
+                    inSqueeze = true
+                    sectionLeft = 4 + (squeezesDone / 2).coerceAtMost(4) + Random.nextInt(2)
+                    popup(width * 0.6f, 14f * u, "Tight squeeze!", Color(0xFFFF5252))
+                }
+            }
+            sectionLeft--
+            val strip =
+                if (inSqueeze) {
+                    // Tight gaps that stay near the last one, so you only need small hops
+                    val g = squeezeGap
+                    val margin = g / 2f + 8f * u
+                    val y = (lastGapY + (Random.nextFloat() * 2f - 1f) * 14f * u).coerceIn(margin, height - margin)
+                    Strip(width + stripW, y, 0f, 0f, g, tight = true)
+                } else {
+                    val g = gap
+                    val swing = if (!easy && passedCount >= 15 && Random.nextFloat() < 0.45f) (6f + Random.nextFloat() * 8f) * u else 0f
+                    val margin = g / 2f + 8f * u + swing
+                    Strip(width + stripW, margin + Random.nextFloat() * (height - 2 * margin), swing, Random.nextFloat() * 6f, g)
+                }
+            lastGapY = strip.baseY
+            strip.ticket = Random.nextFloat() < (if (strip.tight) 0.4f else 0.25f)
             strips.add(strip)
             spawnIn = (width * 0.42f) / speed
         }
@@ -102,7 +148,7 @@ class ReelRush : MiniGame() {
                 burst(bx, by, Color(0xFFFFD54F), count = 10, speed = 30f)
             }
             val overlapsX = bx + half * 0.8f > s.x && bx - half * 0.8f < s.x + stripW
-            val inGap = by - half * 0.8f > s.gapY - gap / 2f && by + half * 0.8f < s.gapY + gap / 2f
+            val inGap = by - half * 0.8f > s.gapY - s.gap / 2f && by + half * 0.8f < s.gapY + s.gap / 2f
             if (overlapsX && !inGap) {
                 crash()
                 return
@@ -129,9 +175,9 @@ class ReelRush : MiniGame() {
     }
 
     override fun setupPreview() {
-        strips.add(Strip(width * 0.45f, height * 0.42f, 0f, 0f))
-        strips.add(Strip(width * 0.72f, height * 0.6f, 0f, 0f).apply { ticket = true })
-        strips.add(Strip(width * 0.99f, height * 0.35f, 0f, 0f))
+        strips.add(Strip(width * 0.45f, height * 0.42f, 0f, 0f, gap))
+        strips.add(Strip(width * 0.72f, height * 0.6f, 0f, 0f, gap).apply { ticket = true })
+        strips.add(Strip(width * 0.99f, height * 0.35f, 0f, 0f, gap))
         by = height * 0.45f
         vy = -flap * 0.5f
         for (i in 0 until 8) trail.addLast(Offset(bx - i * 2.5f * u, by + i * i * 0.15f * u))
@@ -140,8 +186,20 @@ class ReelRush : MiniGame() {
     override fun DrawScope.draw(textMeasurer: TextMeasurer) {
         drawRect(Brush.verticalGradient(listOf(Color(0xFF0D1B2A), Color(0xFF1B263B), Color(0xFF3A1F2B))))
         strips.forEach { s ->
-            drawFilm(s.x, 0f, s.gapY - gap / 2f)
-            drawFilm(s.x, s.gapY + gap / 2f, height)
+            if (s.tight) {
+                // A red glow on squeeze strips so you can see a tight section coming
+                drawRect(Color(0x55E50914), Offset(s.x - 1.2f * u, 0f), Size(stripW + 2.4f * u, s.gapY - s.gap / 2f))
+                drawRect(
+                    Color(0x55E50914),
+                    Offset(s.x - 1.2f * u, s.gapY + s.gap / 2f),
+                    Size(
+                        stripW + 2.4f * u,
+                        height - s.gapY - s.gap / 2f,
+                    ),
+                )
+            }
+            drawFilm(s.x, 0f, s.gapY - s.gap / 2f)
+            drawFilm(s.x, s.gapY + s.gap / 2f, height)
             if (s.ticket) drawTicket(s.x + stripW / 2f, s.gapY, 2.4f * u)
         }
         // A fading red trail behind the B

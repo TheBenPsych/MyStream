@@ -14,6 +14,10 @@ import kotlin.random.Random
  * Popcorn Pop: a popcorn kernel bounces up a tower of soda cups and film reels.
  * Steer left and right; the kernel bounces by itself. Reels slide sideways, butter pats launch you higher,
  * glowing phones (someone's texting in the theater!) drop away after one bounce, and tickets are worth +5.
+ *
+ * Difficulty climbs with you: the bottom is packed with wide cups, and the higher you go the
+ * ledges get narrower and further apart, more of them slide (and faster), and more phones show up.
+ * Every new ledge is always placed where a normal bounce can still reach it, so it's never impossible.
  */
 class PopcornPop : MiniGame() {
     private enum class Kind { CUP, REEL, BUTTER, PHONE }
@@ -23,6 +27,7 @@ class PopcornPop : MiniGame() {
         var y: Float,
         val kind: Kind,
         var vx: Float,
+        val w: Float,
         var falling: Boolean = false,
     )
 
@@ -42,9 +47,12 @@ class PopcornPop : MiniGame() {
     private var climbed = 0f
     private var highestLedge = 0f
 
+    /** Middle of the last ledge added, so the next one is always within reach of it */
+    private var lastLedgeX = 0f
+
     // Sizes scale with the screen height so it plays the same on every TV and phone
     private val u get() = height / 100f
-    private val ledgeW get() = 16f * u
+    private val ledgeW get() = 20f * u
     private val ledgeH get() = 3f * u
     private val radius get() = 3.2f * u
     private val gravity get() = 140f * u * pace * pace
@@ -63,27 +71,63 @@ class PopcornPop : MiniGame() {
         py = height * 0.8f
         vy = -bounce
         // A starting cup right under the kernel, then a tower above it
-        ledges.add(Ledge(width / 2f - ledgeW / 2f, height * 0.9f, Kind.CUP, 0f))
+        ledges.add(Ledge(width / 2f - ledgeW / 2f, height * 0.9f, Kind.CUP, 0f, ledgeW))
         highestLedge = height * 0.9f
+        lastLedgeX = width / 2f
         while (highestLedge > -height) addLedge()
     }
 
+    /**
+     * How hard it is at the height where the next ledge goes: 0 at the bottom, 1 around 350 points up.
+     * It eases in slowly (the first ~50 points stay very easy) and then ramps up.
+     */
+    private fun difficulty(): Float {
+        val heightNow = (climbed + (height * 0.9f - highestLedge)) / (10f * u)
+        val t = (heightNow / 350f).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
     private fun addLedge() {
-        val gap = (9f + Random.nextFloat() * (8f + (score / 40f).coerceAtMost(10f))) * u
+        val d = difficulty() * (if (easy) 0.6f else 1f)
+        // The highest a normal bounce goes; ledges never get further apart than about 85% of that
+        val reach = bounce * bounce / (2f * gravity)
+        val minGap = (6f + 6f * d) * u
+        val maxGap = ((10f + 9f * d) * u).coerceAtMost(reach * 0.85f)
+        val gap = minGap + Random.nextFloat() * (maxGap - minGap).coerceAtLeast(0f)
         highestLedge -= gap
+
         val roll = Random.nextFloat()
+        val butterChance = 0.07f - 0.03f * d
+        val phoneChance = if (easy || d < 0.12f) 0f else 0.25f * d
+        val reelChance = if (d < 0.05f) 0f else 0.1f + 0.35f * d
         val kind =
             when {
-                roll < 0.07f -> Kind.BUTTER
-                !easy && score > 50 && roll < 0.07f + (0.04f + score / 1500f).coerceAtMost(0.15f) -> Kind.PHONE
-                roll < 0.07f + (0.1f + score / 400f).coerceAtMost(if (easy) 0.2f else 0.35f) -> Kind.REEL
+                roll < butterChance -> Kind.BUTTER
+                roll < butterChance + phoneChance -> Kind.PHONE
+                roll < butterChance + phoneChance + reelChance -> Kind.REEL
                 else -> Kind.CUP
             }
-        val vx = if (kind == Kind.REEL) (if (Random.nextBoolean()) 1 else -1) * (18f + Random.nextFloat() * 18f) * u * pace else 0f
-        val x = Random.nextFloat() * (width - ledgeW)
-        ledges.add(Ledge(x, highestLedge, kind, vx))
+        // Wide at the bottom, narrower higher up
+        val w = (20f - 9f * d) * u
+        val vx =
+            if (kind == Kind.REEL) {
+                (if (Random.nextBoolean()) 1 else -1) * (12f + 26f * d + Random.nextFloat() * (8f + 14f * d)) * u * pace
+            } else {
+                0f
+            }
+
+        // Keep the new ledge close enough sideways that you can steer to it during one bounce
+        // (counting the wrap-around at the screen edges). Time in the air to reach a ledge [gap] up:
+        val up = bounce / gravity
+        val down = kotlin.math.sqrt((2f * (reach - gap).coerceAtLeast(0f)) / gravity)
+        val maxSide = (steerSpeed * (up + down) * 0.7f + w / 2f).coerceAtMost(width / 2f)
+        val center = lastLedgeX + (Random.nextFloat() * 2f - 1f) * maxSide
+        val wrapped = ((center % width) + width) % width
+        val x = (wrapped - w / 2f).coerceIn(0f, width - w)
+        lastLedgeX = x + w / 2f
+        ledges.add(Ledge(x, highestLedge, kind, vx, w))
         // Now and then a ticket floats above a still ledge
-        if (kind != Kind.REEL && Random.nextFloat() < 0.12f) tickets.add(Ticket(x + ledgeW / 2f, highestLedge - 9f * u))
+        if (kind != Kind.REEL && Random.nextFloat() < 0.12f) tickets.add(Ticket(x + w / 2f, highestLedge - 9f * u))
     }
 
     override fun step(dt: Float) {
@@ -103,7 +147,7 @@ class PopcornPop : MiniGame() {
                 l.y += 60f * u * dt
             } else if (l.vx != 0f) {
                 l.x += l.vx * dt
-                if (l.x < 0f || l.x > width - ledgeW) l.vx = -l.vx
+                if (l.x < 0f || l.x > width - l.w) l.vx = -l.vx
             }
         }
 
@@ -111,7 +155,7 @@ class PopcornPop : MiniGame() {
         if (vy > 0f) {
             ledges
                 .firstOrNull { l ->
-                    !l.falling && oldBottom <= l.y && newBottom >= l.y && px in (l.x - radius * 0.6f)..(l.x + ledgeW + radius * 0.6f)
+                    !l.falling && oldBottom <= l.y && newBottom >= l.y && px in (l.x - radius * 0.6f)..(l.x + l.w + radius * 0.6f)
                 }?.let { l ->
                     py = l.y - radius
                     squash = 0.12f
@@ -196,7 +240,7 @@ class PopcornPop : MiniGame() {
 
     override fun setupPreview() {
         // A ticket over the ledge just above the kernel, and the kernel mid-bounce
-        ledges.firstOrNull { it.y < height * 0.6f && it.kind != Kind.REEL }?.let { tickets.add(Ticket(it.x + ledgeW / 2f, it.y - 9f * u)) }
+        ledges.firstOrNull { it.y < height * 0.6f && it.kind != Kind.REEL }?.let { tickets.add(Ticket(it.x + it.w / 2f, it.y - 9f * u)) }
         py = height * 0.65f
     }
 
@@ -222,7 +266,7 @@ class PopcornPop : MiniGame() {
     }
 
     private fun DrawScope.drawLedge(l: Ledge) {
-        val w = ledgeW
+        val w = l.w
         val h = ledgeH
         when (l.kind) {
             Kind.CUP -> {

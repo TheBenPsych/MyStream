@@ -16,6 +16,10 @@ import kotlin.random.Random
  * Usher Dash: an usher with a flashlight runs down the theater aisle.
  * Press the button to jump over popcorn spills, lost shoes and stacks of film cans; hold it to jump higher.
  * Tickets floating in the air are worth +5.
+ *
+ * Difficulty: the usher keeps speeding up until a top speed (reached after about two minutes),
+ * and obstacles come in different heights. Low spills and shoes need a quick tap, taller stacks of
+ * film cans need you to hold the button, and the tallest ones only show up once you're going fast.
  */
 class UsherDash : MiniGame() {
     private enum class Kind { SPILL, SHOE, CANS }
@@ -25,6 +29,8 @@ class UsherDash : MiniGame() {
         val kind: Kind,
         val w: Float,
         val h: Float,
+        /** For film can stacks: how many cans tall */
+        val cans: Int = 3,
     )
 
     private class Ticket(
@@ -53,7 +59,12 @@ class UsherDash : MiniGame() {
     private val bodyH get() = 15f * u
     private val gravity get() = 330f * u
     private val jump get() = 105f * u
-    private val speed get() = (55f + (distance / (u * 40f)).coerceAtMost(45f)) * u * pace
+
+    /** 0 at the start of a run, creeping up to 1 after about two minutes of running */
+    private val level get() = 1f - kotlin.math.exp(-runTime / 55f)
+
+    /** Starts gentle, then keeps getting faster until the top speed (more than twice the start) */
+    private val speed get() = (55f + (if (easy) 45f else 75f) * level) * u * pace
 
     override fun reset() {
         obstacles.clear()
@@ -88,24 +99,14 @@ class UsherDash : MiniGame() {
 
         spawnIn -= dt
         if (spawnIn <= 0f) {
-            val roll = Random.nextFloat()
-            val kind =
-                when {
-                    !easy && distance > 60f * u * 10f && roll < 0.25f -> Kind.CANS
-                    roll < 0.6f -> Kind.SPILL
-                    else -> Kind.SHOE
-                }
-            val o =
-                when (kind) {
-                    Kind.SPILL -> Obstacle(width + 10f * u, kind, (8f + Random.nextFloat() * 5f) * u, 2.5f * u)
-                    Kind.SHOE -> Obstacle(width + 10f * u, kind, 5f * u, 4.5f * u)
-                    Kind.CANS -> Obstacle(width + 10f * u, kind, 6f * u, 10f * u)
-                }
+            val o = makeObstacle(width + 10f * u)
             obstacles.add(o)
             if (Random.nextFloat() < 0.3f) tickets.add(Ticket(o.x + o.w / 2f, ground - bodyH - (12f + Random.nextFloat() * 10f) * u))
-            // Gaps get a bit shorter as you speed up, but always leave room to land and jump again
-            val minGap = 0.75f + 50f * u / speed
-            spawnIn = (minGap + Random.nextFloat() * 0.9f) / pace
+            // Taller things need a full held jump, so they get a little more room after them.
+            // The gaps shrink a bit as you speed up, but always leave time to land and jump again.
+            val tall = o.h > 9f * u
+            val minGap = 0.8f + (if (tall) 0.25f else 0f) + 40f * u / speed
+            spawnIn = (minGap + Random.nextFloat() * (0.9f - 0.4f * level)) / pace
         }
         obstacles.forEach { it.x -= move }
         obstacles.removeAll { it.x + it.w < -5f * u }
@@ -134,6 +135,33 @@ class UsherDash : MiniGame() {
             hit
         }
         score = (distance / (u * 12f)).toInt() + bonus
+    }
+
+    /**
+     * Picks the next thing in the aisle. Early on it's mostly low spills and shoes; as the usher
+     * speeds up, more film can stacks show up and they get taller (up to 5 cans, which still clears
+     * with a fully held jump).
+     */
+    private fun makeObstacle(x: Float): Obstacle {
+        val roll = Random.nextFloat()
+        val canChance = if (runTime < 8f) 0f else (0.15f + 0.35f * level) * (if (easy) 0.6f else 1f)
+        return when {
+            roll < canChance -> {
+                val maxCans = if (easy) 2 + (level * 1.5f).toInt() else 2 + (level * 3.5f).toInt()
+                val cans = 1 + Random.nextInt(maxCans.coerceIn(1, 5))
+                Obstacle(x, Kind.CANS, 6f * u, cans * 3.3f * u, cans)
+            }
+
+            roll < canChance + (1f - canChance) * 0.55f -> {
+                Obstacle(x, Kind.SPILL, (7f + Random.nextFloat() * (5f + 4f * level)) * u, 2.5f * u)
+            }
+
+            else -> {
+                // Shoes come in small and big sizes
+                val big = Random.nextFloat() < 0.4f
+                if (big) Obstacle(x, Kind.SHOE, 7f * u, 6.5f * u) else Obstacle(x, Kind.SHOE, 5f * u, 4.5f * u)
+            }
+        }
     }
 
     override fun releaseAll() {
@@ -220,9 +248,9 @@ class UsherDash : MiniGame() {
             }
 
             Kind.CANS -> {
-                // A stack of three film cans
-                val canH = o.h / 3f
-                for (i in 0 until 3) {
+                // A stack of film cans (1 to 5 high)
+                val canH = o.h / o.cans
+                for (i in 0 until o.cans) {
                     val y = ground - (i + 1) * canH
                     drawRoundRect(Color(0xFF9EA4AE), Offset(o.x, y), Size(o.w, canH * 0.92f), CornerRadius(canH * 0.3f))
                     drawRect(Color(0xFF5E636B), Offset(o.x, y + canH * 0.4f), Size(o.w, canH * 0.12f))
@@ -246,7 +274,7 @@ class UsherDash : MiniGame() {
             }
         drawPath(beam, Color(0x40FFF59D))
         // Legs: swing while running, tucked while jumping
-        val swing = if (onGround) sin(runTime * 18f) * bodyW * 0.45f else bodyW * 0.25f
+        val swing = if (onGround) sin(scroll / u * 0.33f) * bodyW * 0.45f else bodyW * 0.25f
         drawLine(Color(0xFF111111), Offset(ux, hipY), Offset(ux + swing, feet), strokeWidth = bodyW * 0.3f, cap = StrokeCap.Round)
         drawLine(Color(0xFF111111), Offset(ux, hipY), Offset(ux - swing, feet), strokeWidth = bodyW * 0.3f, cap = StrokeCap.Round)
         // Red usher jacket with gold buttons
