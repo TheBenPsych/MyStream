@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.ImageUrlService
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlaybackPrep
@@ -1320,6 +1321,9 @@ class PlaybackViewModel
 
         @Volatile internal var firstReadyAt = 0L
 
+        /** Benflix: where the current video started, so the busy check can tell it is moving */
+        @Volatile internal var startPositionMs = 0L
+
         @Volatile internal var lastSeekAt = 0L
         internal val bufferTimes by lazy { ArrayDeque<Long>() }
 
@@ -1407,14 +1411,27 @@ class PlaybackViewModel
             viewModelScope.launchIO { showToast(context, "Benflix will skip this show's credits from now on", Toast.LENGTH_SHORT) }
         }
 
-        /** Benflix: if the video hasn't started after a few seconds, say the server is busy */
+        /**
+         * Benflix: if the video hasn't started after a few seconds, say the server is busy.
+         * Only when the server is really converting the video (transcoding): when the TV plays the file as it is
+         * (Direct play), the server has almost nothing to do, so a slow start is the TV, not the server.
+         */
         internal fun watchForBusy(itemId: UUID) {
             busyJob?.cancel()
+            val waitMs = if (LiteMode.isOn(context)) BUSY_AFTER_LITE_MS else BUSY_AFTER_MS
             busyJob =
                 viewModelScope.launchIO {
-                    delay(BUSY_AFTER_MS)
-                    val ready = onMain { player.playbackState == Player.STATE_READY }
-                    if (!ready && firstReadyAt == 0L && this@PlaybackViewModel.itemId == itemId && state.value.notice == null) {
+                    delay(waitMs)
+                    val started =
+                        onMain {
+                            player.playbackState == Player.STATE_READY ||
+                                player.isPlaying ||
+                                player.currentPosition > startPositionMs + 500 ||
+                                ((player as? ExoPlayer)?.videoDecoderCounters?.renderedOutputBufferCount ?: 0) > 0
+                        }
+                    val transcoding = state.value.currentPlayback?.playMethod == PlayMethod.TRANSCODE
+                    val sameItem = this@PlaybackViewModel.itemId == itemId
+                    if (!started && transcoding && firstReadyAt == 0L && sameItem && state.value.notice == null) {
                         showNotice(
                             PlayerNotice(
                                 title = "Benflix is busy right now",
@@ -2218,6 +2235,9 @@ internal const val ALWAYS_SKIP_INTRO_KEY = "benflix.autoSkipIntro"
 /** Benflix: per-profile list of shows whose credits (outro) are always skipped */
 internal const val ALWAYS_SKIP_OUTRO_KEY = "benflix.autoSkipOutro"
 internal const val BUSY_AFTER_MS = 6_000L
+
+/** Slower TVs (Lite mode) get longer to start before the busy note */
+internal const val BUSY_AFTER_LITE_MS = 12_000L
 internal const val SEEK_GRACE_MS = 3_000L
 internal const val STUTTER_WINDOW_MS = 120_000L
 internal const val STUTTER_COUNT = 3
