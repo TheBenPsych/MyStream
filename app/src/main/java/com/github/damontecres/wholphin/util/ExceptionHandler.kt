@@ -1,11 +1,11 @@
 package com.github.damontecres.wholphin.util
 
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import com.github.damontecres.wholphin.WholphinApplication
-import com.github.damontecres.wholphin.ui.showToast
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 
@@ -31,12 +31,11 @@ class ExceptionHandler(
         Timber.e(exception, "Exception in coroutine")
 
         if (autoToast) {
-            runBlocking {
-                showToast(
-                    WholphinApplication.instance,
-                    "Error: ${exception.message}",
-                    Toast.LENGTH_LONG,
-                )
+            // Benflix: post the message to the main thread instead of waiting for it. Waiting
+            // (runBlocking) could freeze the app if this ran on the main thread itself.
+            val text = "Error: ${exception.message}"
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(WholphinApplication.instance, text, Toast.LENGTH_LONG).show()
             }
         }
     }
