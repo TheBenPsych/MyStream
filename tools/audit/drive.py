@@ -759,9 +759,6 @@ def ember_shot(name):
 
 
 def ember_road():
-    # Start from the app's own Home (the robot can end up outside the app on phones)
-    sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=60)
-    time.sleep(4)
     back_to_home()
     if not press(r"^Games$", timeout=6):
         press(r"My Benflix", timeout=6)
