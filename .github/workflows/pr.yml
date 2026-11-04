@@ -60,7 +60,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [tv, phone]
+        # tv = Android 16 TV, phone = Android 14 phone. The two old phones (Android 7 and 9) catch
+        # crashes from features that only exist on newer Android, like the Night mode crash on an
+        # Android 7 Fire TV Stick (Nov 2026). Old TV pretend devices only come in 32-bit, so old
+        # phones stand in for old TVs: the same app code runs on both.
+        mode: [tv, phone, phone-android7, phone-android9]
     steps:
       - name: Checkout the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -77,11 +81,12 @@ jobs:
           SDK=$ANDROID_HOME
           export PATH=$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH
           yes | sdkmanager --licenses >/dev/null || true
-          if [ "${{ matrix.mode }}" = tv ]; then
-            img="system-images;android-36;android-tv;x86_64"; device=tv_1080p
-          else
-            img="system-images;android-34;google_apis;x86_64"; device=pixel_6
-          fi
+          case "${{ matrix.mode }}" in
+            tv) img="system-images;android-36;android-tv;x86_64"; device=tv_1080p ;;
+            phone-android7) img="system-images;android-25;google_apis;x86_64"; device=pixel ;;
+            phone-android9) img="system-images;android-28;google_apis;x86_64"; device=pixel ;;
+            *) img="system-images;android-34;google_apis;x86_64"; device=pixel_6 ;;
+          esac
           # GitHub's download of the emulator sometimes comes back broken: try again, then skip (not an app problem)
           ok=0
           for attempt in 1 2 3; do
@@ -135,7 +140,9 @@ jobs:
           PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
           echo "Package $PKG"
           set +e
-          SMOKE=1 timeout 1200 python3 tools/audit/drive.py ${{ matrix.mode }} "$PKG" results/${{ matrix.mode }}
+          DRIVE_MODE=phone
+          [ "${{ matrix.mode }}" = tv ] && DRIVE_MODE=tv
+          SMOKE=1 timeout 1200 python3 tools/audit/drive.py $DRIVE_MODE "$PKG" results/${{ matrix.mode }}
           rc=$?
           set -e
           if [ $rc = 3 ]; then
@@ -171,6 +178,9 @@ jobs:
         run: ./gradlew lintDefaultDebug --continue --no-daemon || true
       - name: Show problems that can crash older Android
         run: python3 tools/lint_summary.py app/build/reports/lint-results-defaultDebug.xml
+      - name: Look for newer Android features used without a version check
+        if: always()
+        run: python3 tools/old_android_check.py app/src/main/java
       - name: Upload full report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
