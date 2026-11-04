@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.ImageUrlService
+import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlaybackPrep
@@ -1417,7 +1418,7 @@ class PlaybackViewModel
          */
         internal fun watchForBusy(itemId: UUID) {
             busyJob?.cancel()
-            val waitMs = if (com.github.damontecres.wholphin.services.LiteMode.isOn(context)) BUSY_AFTER_LITE_MS else BUSY_AFTER_MS
+            val waitMs = if (LiteMode.isOn(context)) BUSY_AFTER_LITE_MS else BUSY_AFTER_MS
             busyJob =
                 viewModelScope.launchIO {
                     delay(waitMs)
@@ -1429,7 +1430,8 @@ class PlaybackViewModel
                                 ((player as? ExoPlayer)?.videoDecoderCounters?.renderedOutputBufferCount ?: 0) > 0
                         }
                     val transcoding = state.value.currentPlayback?.playMethod == PlayMethod.TRANSCODE
-                    if (!started && transcoding && firstReadyAt == 0L && this@PlaybackViewModel.itemId == itemId && state.value.notice == null) {
+                    val sameItem = this@PlaybackViewModel.itemId == itemId
+                    if (!started && transcoding && firstReadyAt == 0L && sameItem && state.value.notice == null) {
                         showNotice(
                             PlayerNotice(
                                 title = "Benflix is busy right now",
