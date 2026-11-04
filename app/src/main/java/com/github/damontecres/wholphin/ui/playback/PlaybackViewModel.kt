@@ -1278,6 +1278,11 @@ class PlaybackViewModel
         @Inject
         var fillerService: FillerService? = null
 
+        /** Benflix: sends "Report a problem" reports, here used for damaged files (null in tests) */
+        @JvmField
+        @Inject
+        var benflixProblems: com.github.damontecres.wholphin.services.BenflixProblems? = null
+
         /** Benflix: per-profile settings stored on the server (null in tests) */
         @JvmField
         @Inject
@@ -1898,6 +1903,7 @@ class PlaybackViewModel
                     }
                     fallbackStepFor = itemNow
                     fallbackStep = step
+                    if (step == 2) reportPossiblyDamagedFile(it, error)
                     Timber.w("Playback error during ${it.playMethod}, falling back to step $step")
                     changeStreams(
                         item = currentItem.item,
@@ -1914,6 +1920,38 @@ class PlaybackViewModel
                         player.play()
                         soundWatchdog.check("fallback")
                     }
+                }
+            }
+        }
+
+        /**
+         * Benflix: the TV couldn't read the file itself (broken data, not just a format it can't
+         * play), so tell Ben quietly: it shows up on his Server page under problem reports as
+         * "Possibly damaged file", with the log. The viewer isn't bothered; playback carries on
+         * through the server. Once per video per app start.
+         */
+        private fun reportPossiblyDamagedFile(
+            playback: CurrentPlayback,
+            error: PlaybackException,
+        ) {
+            if (error.errorCode !in DAMAGED_FILE_ERRORS) return
+            val problems = benflixProblems ?: return
+            if (!damagedReported.add(playback.itemId)) return
+            val data = playback.item.data
+            val title =
+                if (data.seriesName != null) {
+                    "${data.seriesName} S${data.parentIndexNumber ?: 0}E${data.indexNumber ?: 0} - ${data.name.orEmpty()}"
+                } else {
+                    data.name.orEmpty()
+                }
+            Timber.w("Possibly damaged file: %s (%s)", title, error.errorCodeName)
+            viewModelScope.launchIO {
+                try {
+                    problems.report(playback.itemId, title, DAMAGED_FILE_PROBLEM)
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not report the damaged file")
                 }
             }
         }
@@ -2173,3 +2211,18 @@ internal const val FINISHED_LOOKUP_MS = 5_000L
 
 internal const val RECAP_LOOKUP_MS = 3_000L
 internal const val RECAP_AFTER_DAYS = 14L
+
+/** Benflix: player errors that mean the file's data is broken (not a format the TV can't play) */
+private val DAMAGED_FILE_ERRORS =
+    setOf(
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_DECODING_FAILED,
+    )
+
+/** How it shows on Ben's Server page problem list */
+private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatically)"
+
+/** Videos already reported since the app started, so one bad file doesn't flood the list */
+private val damagedReported: MutableSet<UUID> =
+    java.util.concurrent.ConcurrentHashMap
+        .newKeySet()
