@@ -734,6 +734,30 @@ def tv_focus_down_to(pattern, presses=30):
     return False
 
 
+def ember_fit(root, name):
+    """Log buttons or words that stick out past the left or right edge of the screen"""
+    if root is None:
+        return
+    m = re.search(r"(\d+)x(\d+)", sh("wm size"))
+    width = int(m.group(1)) if m else 1080
+    if MODE == "tv" and m and int(m.group(1)) < int(m.group(2)):
+        width = int(m.group(2))
+    for n in nodes(root):
+        t = n.get("text") or n.get("content-desc")
+        if not t or not n.get("bounds"):
+            continue
+        a, b, c, d = bounds(n)
+        if c > width + 2 or a < -2:
+            log(f"EMBER FIT {name}: '{t[:40]}' sticks out ({a}..{c} on a {width} wide screen)")
+            REPORT["problems"].append({"type": "Ember Road off screen", "where": name, "text": t[:60]})
+
+
+def ember_shot(name):
+    root = shot(name)
+    ember_fit(root, name)
+    return root
+
+
 def ember_road():
     # Start from the app's own Home (the robot can end up outside the app on phones)
     sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=60)
@@ -759,17 +783,17 @@ def ember_road():
             return
         tap(tile)
     if wait_for(r"New journey|Continue the journey", 20) is None:
-        shot("ember-title-missing")
+        ember_shot("ember-title-missing")
         return
-    shot("ember-title")
+    ember_shot("ember-title")
     press(r"^New journey", timeout=6)
     time.sleep(2)
     if find(dump(), r"Skip, just the TV") is not None:
-        shot("ember-phones-lobby")
+        ember_shot("ember-phones-lobby")
         press(r"Skip, just the TV", timeout=5)
         time.sleep(2)
     for step in range(4):
-        shot(f"ember-setup-{step + 1}")
+        ember_shot(f"ember-setup-{step + 1}")
         target = r"^Set out!$" if step == 3 else r"^Next$"
         n = find_scrolling(target)
         if n is None:
@@ -778,7 +802,7 @@ def ember_road():
         tap(n)
         time.sleep(1.5)
     time.sleep(2)
-    shot("ember-road")
+    ember_shot("ember-road")
     # A few days on the road: keep going, pick the first choice, continue
     for i in range(14):
         if out_of_time():
@@ -791,7 +815,7 @@ def ember_road():
         else:
             n = None
         if n is None:
-            shot(f"ember-step-{i}")
+            ember_shot(f"ember-step-{i}")
             if MODE == "tv":
                 key("DPAD_CENTER", wait=1.5)
             else:
@@ -805,18 +829,18 @@ def ember_road():
             time.sleep(1.5)
             continue
         if i % 3 == 0:
-            shot(f"ember-step-{i}")
+            ember_shot(f"ember-step-{i}")
         tap(n)
         time.sleep(2)
-    shot("ember-later")
+    ember_shot("ember-later")
     # The menu (Back) and the creature book
     key("BACK", wait=1.5)
-    shot("ember-menu")
+    ember_shot("ember-menu")
     press(r"Save and go to the start", timeout=6)
     time.sleep(2)
     if press(r"^Creatures ", timeout=6):
         time.sleep(2)
-        shot("ember-creature-book")
+        ember_shot("ember-creature-book")
         key("BACK", wait=1.5)
     key("BACK", wait=1.5)
 
