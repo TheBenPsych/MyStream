@@ -121,7 +121,8 @@ class NavDrawerViewModel
                         )
                     }
                 } else {
-                    com.github.damontecres.wholphin.ui.showToast(context, "Nothing unwatched to pick from")
+                    com.github.damontecres.wholphin.ui
+                        .showToast(context, "Nothing unwatched to pick from")
                 }
             }
         }
