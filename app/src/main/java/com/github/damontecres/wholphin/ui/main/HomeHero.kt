@@ -246,6 +246,8 @@ private fun SlideArrow(
     }
 }
 
+private val DOT_RED = Color(0xFFE5484D)
+
 /**
  * Benflix: the little banner dots on phones. Each one can be tapped to jump to that slide.
  */
