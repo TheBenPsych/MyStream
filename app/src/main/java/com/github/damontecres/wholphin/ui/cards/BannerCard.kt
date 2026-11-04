@@ -439,9 +439,12 @@ fun rememberGrowOnFocus(
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()
+    // Benflix: Lite mode (slower TVs) skips the widening, so resting on a poster loads no second picture
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lite = remember { com.github.damontecres.wholphin.services.LiteMode.isOn(context) }
     val state = remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(focused, enabled, isTv) {
-        if (!focused || !enabled || !isTv) {
+        if (!focused || !enabled || !isTv || lite) {
             state.value = false
             return@LaunchedEffect
         }

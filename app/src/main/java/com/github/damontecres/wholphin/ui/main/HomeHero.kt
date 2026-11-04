@@ -1,9 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -229,16 +226,6 @@ fun SlideDots(
     modifier: Modifier = Modifier,
     autoAdvanceMs: Long? = null,
 ) {
-    // Benflix: the current dot fills up red while the banner waits to move on, like a little timer
-    val fill = remember(index) { Animatable(0f) }
-    LaunchedEffect(index, autoAdvanceMs) {
-        if (autoAdvanceMs != null) {
-            fill.snapTo(0f)
-            fill.animateTo(1f, tween(durationMillis = autoAdvanceMs.toInt(), easing = LinearEasing))
-        } else {
-            fill.snapTo(0f)
-        }
-    }
     // Benflix: moving down onto the dots always lands on the slide being shown, wherever you come from,
     // and if the banner moves on while you're on the dots, the red one moves with it
     val dotRequesters = remember(count) { List(count) { FocusRequester() } }
@@ -295,7 +282,9 @@ fun SlideDots(
                             modifier =
                                 Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(if (autoAdvanceMs != null) fill.value else 1f)
+                                    // Benflix: a plain red dot for the slide on screen (it used to fill up like a timer,
+                                    // which kept the TV redrawing the whole time Home was open)
+                                    .fillMaxWidth()
                                     .background(
                                         if (autoAdvanceMs != null) DOT_RED else Color.White,
                                         RoundedCornerShape(4.dp),

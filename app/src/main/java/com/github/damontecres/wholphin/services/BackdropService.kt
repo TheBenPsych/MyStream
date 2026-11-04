@@ -104,7 +104,8 @@ class BackdropService
             } else {
                 // Benflix: while an arrow is held to fly along a row, keep the current picture up instead of
                 // blanking it on every poster. It changes once the arrow is let go.
-                if (!FastScroll.held.value) {
+                // Lite mode keeps it up too, so the picture just swaps once you stop, with no blank flash between.
+                if (!FastScroll.held.value && !LiteMode.isOn(context)) {
                     _backdropFlow.update {
                         it.copy(
                             itemId = itemId,
@@ -134,8 +135,10 @@ class BackdropService
             // Living Colour: the screen glows softly in the colours of the poster you're on. The colours come
             // from the poster's BlurHash (already sent by the server), so no picture is downloaded or scanned.
             // A short wait still stops the picture flickering while scrolling fast.
-            delay(BACKDROP_SETTLE_MS)
-            if (FastScroll.awaitReleased()) delay(BACKDROP_SETTLE_MS)
+            // Lite mode waits a bit longer, so slower TVs only load the big picture once you stop moving
+            val settle = if (LiteMode.isOn(context)) LITE_BACKDROP_SETTLE_MS else BACKDROP_SETTLE_MS
+            delay(settle)
+            if (FastScroll.awaitReleased()) delay(settle)
             if (latestItemId != itemId) return
             val colors: ExtractedColors? = glow ?: ExtractedColors.DEFAULT
             _backdropFlow.update {
@@ -344,3 +347,4 @@ private fun Color.boosted(): Color {
 
 /** How long the background waits before changing, so fast scrolling doesn't flicker */
 private const val BACKDROP_SETTLE_MS = 150L
+private const val LITE_BACKDROP_SETTLE_MS = 450L
