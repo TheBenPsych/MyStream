@@ -2,23 +2,18 @@ package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -42,7 +37,6 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.Font
@@ -62,7 +56,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
@@ -114,10 +107,11 @@ private fun hex(v: Long) = Color(v)
 // ---------------------------------------------------------------- poster wall
 
 /**
- * A still, tilted wall of posters, dimmed so the profiles stand out.
+ * A still wall of exactly 12 posters, dimmed so the profiles stand out.
  *
- * Benflix (Ben's pick, 2026-11-04): only 12 small posters (repeated to fill the screen) and nothing
- * moves, so the screen is quick on every TV. The profiles show first; the wall fills in behind them.
+ * Benflix (Ben's pick, 2026-11-04): 12 posters and no repeats. TVs (wide) get 6 across and 2 down,
+ * tall phone screens 3 across and 4 down, each poster filling its share of the screen. Nothing moves,
+ * so the screen is quick on every TV. The profiles show first; the wall fills in behind them.
  */
 @Composable
 fun PosterWall(
@@ -127,46 +121,30 @@ fun PosterWall(
     if (posters.isEmpty()) return
     val wall = remember(posters) { posters.take(POSTER_WALL_MAX) }
     BoxWithConstraints(modifier = modifier.clipToBounds()) {
-        // Poster size follows the screen height on TVs, and the width on tall phone screens
-        val posterH = minOf(maxHeight / 4.2f, maxWidth * .34f)
-        val posterW = posterH * 2f / 3f
-        val gap = posterH * .06f
-        // The wall is tilted, so it has to be taller and wider than the screen to reach every corner
-        val coverH = maxHeight * 1.1f + maxWidth * .15f
-        val rows = ceil(coverH / (posterH + gap)).toInt() + 1
-        val wallH = posterH * rows + gap * (rows - 1)
-        val coverW = maxWidth * 1.1f + maxHeight * .2f + posterW
-        val perRow = ceil(coverW / (posterW + gap)).toInt() + 1
-        val shape = RoundedCornerShape(posterW * .06f)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(gap),
-            modifier =
-                Modifier
-                    // Taller than the screen and centred on it, so no row is squashed or cut short
-                    .requiredSize(maxWidth, wallH)
-                    .graphicsLayer {
-                        rotationZ = -8f
-                        scaleX = 1.15f
-                        scaleY = 1.15f
-                    }.offset(x = -posterW),
-        ) {
+        val wide = maxWidth > maxHeight
+        val cols = if (wide) 6 else 3
+        val rows = (POSTER_WALL_MAX + cols - 1) / cols
+        val tileW = maxWidth / cols
+        val tileH = maxHeight / rows
+        Column(Modifier.fillMaxSize()) {
             repeat(rows) { r ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                    modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true),
-                ) {
-                    repeat(perRow) { k ->
-                        // Each row starts at a different poster, so the same ones don't line up
-                        AsyncImage(
-                            model = wall[(r * 5 + k) % wall.size],
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .size(posterW, posterH)
-                                    .clip(shape)
-                                    .background(Color(0xFF1C1C22)),
-                        )
+                Row(Modifier.fillMaxWidth()) {
+                    repeat(cols) { c ->
+                        val url = wall.getOrNull(r * cols + c)
+                        Box(
+                            Modifier
+                                .size(tileW, tileH)
+                                .background(Color(0xFF1C1C22)),
+                        ) {
+                            if (url != null) {
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -178,8 +156,8 @@ fun PosterWall(
                 .drawWithCache {
                     val brush =
                         Brush.radialGradient(
-                            0f to Color.Black.copy(alpha = .62f),
-                            1f to Color.Black.copy(alpha = .94f),
+                            0f to Color.Black.copy(alpha = .72f),
+                            1f to Color.Black.copy(alpha = .95f),
                             center = Offset(size.width / 2, size.height / 2),
                             radius = size.maxDimension * .62f,
                         )
