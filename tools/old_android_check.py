@@ -68,7 +68,7 @@ def load_new_classes(path: str, min_sdk: int) -> dict[str, int]:
     return out
 
 
-GUARD_ANNOTATION = re.compile(r"@(RequiresApi|TargetApi|ChecksSdkIntAtLeast)\b")
+GUARD_ANNOTATION = re.compile(r"@(?:\w+:)?(RequiresApi|TargetApi|ChecksSdkIntAtLeast)\b")
 SDK_CHECK = re.compile(r"SDK_INT\s*(>=|>)")
 SDK_EARLY_RETURN = re.compile(r"SDK_INT\s*(<|<=).*\breturn\b")
 IMPORT = re.compile(r"^\s*import\s+(android\.[\w.]+)")
