@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.data.model.SeerrPermission
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.hasPermission
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
@@ -79,6 +80,15 @@ class DiscoverMovieViewModel
 
         init {
             init()
+            // Benflix: an admin answered a request on this page (Who asked), so the buttons catch up
+            viewModelScope.launchIO {
+                RequestAnswered.events.collect { key ->
+                    if (key == RequestAnswered.key(true, item.id)) {
+                        fetchAndSetItem().await()
+                        updateCanCancel()
+                    }
+                }
+            }
         }
 
         private fun fetchAndSetItem(): Deferred<MovieDetails?> =
@@ -115,7 +125,8 @@ class DiscoverMovieViewModel
                             }
                         _state.update { it.copy(rating = rating) }
                     }
-                    if (state.value.similar.isEmpty()) {
+                    // Benflix: no Seerr "More like this" / "Recommended" rows in Kids (they aren't rating-checked)
+                    if (state.value.similar.isEmpty() && !KidsMode.isActive) {
                         viewModelScope.launchIO {
                             val result =
                                 seerrService.api.moviesApi
@@ -225,8 +236,13 @@ class DiscoverMovieViewModel
 
         fun cancelRequest(id: Int) {
             viewModelScope.launchIO {
-                state.value.movie.successValue?.mediaInfo?.requests?.firstOrNull()?.let {
-                    // TODO handle multiple requests? Or just delete self's request?
+                // Benflix: only ever the signed-in user's own request, never someone else's
+                ownCancellableRequest(
+                    userConfig.firstOrNull(),
+                    state.value.movie.successValue
+                        ?.mediaInfo
+                        ?.requests,
+                )?.let {
                     try {
                         seerrService.api.requestApi.requestRequestIdDelete(it.id.toString())
                     } catch (ex: kotlinx.coroutines.CancellationException) {
@@ -264,20 +280,27 @@ class DiscoverMovieViewModel
         }
     }
 
+/**
+ * Benflix: the signed-in user's own request for this title, which Cancel deletes, or null.
+ * Cancel never touches someone else's request: admins can cancel their own at any stage,
+ * everyone else only before it's approved.
+ */
+fun ownCancellableRequest(
+    user: SeerrUserConfig?,
+    requests: List<MediaRequest>?,
+): MediaRequest? {
+    val mine = requests.orEmpty().filter { equalsNotNull(it.requestedBy?.id, user?.id) }
+    return when {
+        user.hasPermission(SeerrPermission.MANAGE_REQUESTS) -> mine.firstOrNull()
+        user.hasPermission(SeerrPermission.REQUEST) -> mine.firstOrNull { RequestStatus.from(it.status) < RequestStatus.APPROVED }
+        else -> null
+    }
+}
+
 fun canUserCancelRequest(
     user: SeerrUserConfig?,
     requests: List<MediaRequest>?,
-) = (user.hasPermission(SeerrPermission.MANAGE_REQUESTS) && requests?.isNotEmpty() == true) ||
-    (
-        // User requested this
-        user.hasPermission(SeerrPermission.REQUEST) &&
-            requests
-                .orEmpty()
-                .any {
-                    equalsNotNull(it.requestedBy?.id, user?.id) &&
-                        RequestStatus.from(it.status) < RequestStatus.APPROVED
-                }
-    )
+) = ownCancellableRequest(user, requests) != null
 
 data class DiscoverMovieState(
     val movie: DataLoadingState<MovieDetails> = DataLoadingState.Pending,

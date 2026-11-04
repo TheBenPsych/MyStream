@@ -149,7 +149,11 @@ class BenflixLibraryCheckup
                     sortBy = listOf(ItemSortBy.SORT_NAME),
                     limit = LIST_LIMIT,
                 ),
-            ).map { it.toCheckup("quality", it.height?.let { h -> "${h}p" } ?: "Low quality") }
+            ).filter {
+                // Benflix: a wide-screen 720p movie can be only 536 tall, so a known width of 1200+ isn't low quality
+                // (an unknown width counts as 0, so it still shows)
+                (it.width ?: 0) < LOW_QUALITY_WIDTH
+            }.map { it.toCheckup("quality", it.height?.let { h -> "${h}p" } ?: "Low quality") }
 
         private suspend fun animeWithoutSubtitles(userId: UUID): List<CheckupItem> {
             val animeLibraries =
@@ -415,6 +419,7 @@ class BenflixLibraryCheckup
             private const val LIST_LIMIT = 30
             private const val SHOW_CODES = 4
             private const val LOW_QUALITY_HEIGHT = 576
+            private const val LOW_QUALITY_WIDTH = 1200
             private const val BIGGEST = 15
             private const val PAGE = 500
             private const val MAX_EPISODES = 40_000

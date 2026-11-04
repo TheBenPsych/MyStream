@@ -45,6 +45,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -68,6 +70,8 @@ class HiddenGenresViewModel
         /** Hidden ones, lower case */
         private val _hidden = MutableStateFlow<Set<String>>(emptySet())
         val hidden: StateFlow<Set<String>> = _hidden
+
+        private val saveLock = Mutex()
 
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
@@ -102,7 +106,9 @@ class HiddenGenresViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 try {
-                    store.save(userId, now)
+                    // One save at a time, each with the newest set, so quick taps can't finish out
+                    // of order and leave an older set saved
+                    saveLock.withLock { store.save(userId, _hidden.value) }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {

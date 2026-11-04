@@ -1475,32 +1475,60 @@ data class HomeTheme(
             ) = near(LocalDate.of(date.year, m, d), before)
             return when {
                 isFriday13(date) -> FRIDAY_13
+
                 onDay(10, 21, 1) -> BACK_TO_THE_FUTURE_DAY
+
                 lny != null && !date.isBefore(lny.minusDays(3)) && !date.isAfter(lny.plusDays(3)) -> LUNAR_NEW_YEAR
-                month == 10 -> HALLOWEEN
-                month == 11 && day <= 2 -> DAY_OF_THE_DEAD
-                month == 11 && day in 3..5 -> BONFIRE_NIGHT
-                month == 11 && !date.isBefore(thanksgiving.minusDays(4)) && !date.isAfter(thanksgiving.plusDays(1)) -> THANKSGIVING
-                near(easterDay, 3, 1) -> EASTER
+
+                // Before Halloween: some years (2028, 2031...) Mid-Autumn falls in early October
                 near(midAutumnDay, 2, 1) -> MID_AUTUMN
+
+                month == 10 -> HALLOWEEN
+
+                month == 11 && day <= 2 -> DAY_OF_THE_DEAD
+
+                month == 11 && day in 3..5 -> BONFIRE_NIGHT
+
+                month == 11 && !date.isBefore(thanksgiving.minusDays(4)) && !date.isAfter(thanksgiving.plusDays(1)) -> THANKSGIVING
+
+                near(easterDay, 3, 1) -> EASTER
+
                 near(nthSunday(date, 5, 2), 3) -> MOTHERS_DAY
+
                 near(nthSunday(date, 6, 3), 3) -> FATHERS_DAY
+
                 onDay(1, 19) -> POPCORN_DAY
+
                 onDay(2, 2, 1) -> GROUNDHOG_DAY
+
                 onDay(2, 27) -> POKEMON_DAY
+
                 onDay(3, 10) -> MARIO_DAY
+
                 onDay(4, 22) -> EARTH_DAY
+
                 onDay(5, 4, 3) -> STAR_WARS_DAY
+
                 onDay(8, 8) -> CAT_DAY
+
                 onDay(8, 26) -> DOG_DAY
+
                 onDay(9, 12) -> VIDEO_GAMES_DAY
+
                 onDay(9, 19) -> PIRATE_DAY
+
                 month == 7 && day <= 4 -> FOURTH_OF_JULY
+
                 month == 7 && day <= 7 -> TANABATA
+
                 month == 12 || (month == 11 && day >= 25) -> CHRISTMAS
+
                 month == 2 && day <= 14 -> VALENTINES
+
                 month == 3 && day in 14..17 -> ST_PATRICKS
+
                 month in 6..8 -> HomeTheme(R.string.theme_summer, genres = listOf("Action", "Adventure"))
+
                 else -> weekly(date)
             }
         }

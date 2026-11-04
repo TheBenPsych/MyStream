@@ -199,7 +199,7 @@ class MarkWatchedUpToViewModel
         private val serverRepository: ServerRepository,
     ) : ViewModel() {
         /** The Jellyfin user is an admin (shows "Wrong match? Fix it") */
-        val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+        val isAdmin: Boolean get() = GuestMode.isAdmin(serverRepository.currentUserDto)
 
         fun markUpTo(episode: BaseItem) {
             val seriesId = episode.data.seriesId ?: return

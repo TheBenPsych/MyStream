@@ -21,10 +21,13 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -61,9 +64,12 @@ class TrailerCinemaState {
 @Composable
 fun rememberTrailerCinemaState(): TrailerCinemaState {
     val state = remember { TrailerCinemaState() }
-    LaunchedEffect(state.playing, state.lastInput) {
+    // Benflix: a dialog (overview, More, mark watched) is its own window and takes the focus.
+    // Its button presses never reach wakeOnInput, so hold the trailer back while one is open
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(state.playing, state.lastInput, windowFocused) {
         state.cinema = false
-        if (state.playing) {
+        if (state.playing && windowFocused) {
             delay(CINEMA_DELAY_MS)
             state.cinema = true
         }
@@ -172,23 +178,35 @@ class DetailsTrailerViewModel
                         } ?: return@launch
                     val url = api.videosApi.getVideoStreamUrl(itemId = trailer.baseItem.id, static = true)
                     val p =
-                        player ?: ExoPlayer.Builder(context).build().also { newPlayer ->
-                            newPlayer.volume = 0f
-                            newPlayer.addListener(
-                                object : Player.Listener {
-                                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                                        if (isPlaying) _playing.value = true
-                                    }
-
-                                    override fun onPlaybackStateChanged(playbackState: Int) {
-                                        if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
-                                            _playing.value = false
+                        player ?: ExoPlayer
+                            .Builder(context)
+                            // Benflix: media audio attributes, but no audio focus. The trailer starts
+                            // muted, and taking focus would pause other apps' music on phones
+                            .setAudioAttributes(
+                                AudioAttributes
+                                    .Builder()
+                                    .setUsage(C.USAGE_MEDIA)
+                                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                                    .build(),
+                                false,
+                            ).build()
+                            .also { newPlayer ->
+                                newPlayer.volume = 0f
+                                newPlayer.addListener(
+                                    object : Player.Listener {
+                                        override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                            if (isPlaying) _playing.value = true
                                         }
-                                    }
-                                },
-                            )
-                            player = newPlayer
-                        }
+
+                                        override fun onPlaybackStateChanged(playbackState: Int) {
+                                            if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
+                                                _playing.value = false
+                                            }
+                                        }
+                                    },
+                                )
+                                player = newPlayer
+                            }
                     p.setMediaItem(MediaItem.fromUri(url))
                     p.prepare()
                     p.playWhenReady = true

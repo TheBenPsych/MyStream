@@ -1,10 +1,14 @@
 package com.github.damontecres.wholphin.services
 
+import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
@@ -26,13 +30,21 @@ data class BenflixMessage(
  * - Saved for later: when Ben sends a message to someone who isn't on Benflix right now, it's saved in
  *   their Jellyfin display settings (only an admin can do that) and pops up the next time they open Benflix.
  *   Once it's shown it's taken off, so it shows once.
+ * Ben's pop-ups to picked people are always saved too, in case the screen that looked open didn't really show it.
+ * When the live one does show, the saved copy (same text) is taken off, so it never shows twice.
  */
 @Singleton
 class BenflixMessages
     @Inject
     constructor(
         private val displayPreferencesService: DisplayPreferencesService,
+        private val serverRepository: ServerRepository,
     ) {
+        private val scope = CoroutineScope(SupervisorJob() + WholphinDispatchers.IO)
+
+        /** Texts shown live lately (text to when), so a saved copy of the same message doesn't show again */
+        private val shownLive = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
         private val _waiting = MutableStateFlow<List<BenflixMessage>>(emptyList())
         val waiting: StateFlow<List<BenflixMessage>> = _waiting
 
@@ -42,14 +54,44 @@ class BenflixMessages
             text: String,
         ) {
             if (text.isBlank()) return
+            val clean = text.trim()
+            val now = System.currentTimeMillis()
+            shownLive.filterValues { now - it > SHOWN_MEMORY_MS }.keys.forEach { shownLive.remove(it) }
+            shownLive[clean] = now
             _waiting.update {
-                it +
-                    BenflixMessage(
-                        id = "live-" + System.nanoTime(),
-                        header = header?.takeIf { h -> h.isNotBlank() } ?: "Message from Ben",
-                        text = text.trim(),
-                        live = true,
-                    )
+                // The same message may already be up (from the saved copy); don't show it twice
+                if (it.any { m -> m.text == clean }) {
+                    it
+                } else {
+                    it +
+                        BenflixMessage(
+                            id = "live-" + System.nanoTime(),
+                            header = header?.takeIf { h -> h.isNotBlank() } ?: "Message from Ben",
+                            text = clean,
+                            live = true,
+                        )
+                }
+            }
+            // It showed, so take the saved copy off (if Ben's app saved one)
+            val userId = serverRepository.currentUser?.id ?: return
+            scope.launch { removeSaved(userId, clean) }
+        }
+
+        private suspend fun removeSaved(
+            userId: UUID,
+            text: String,
+        ) {
+            try {
+                val saved = decode(displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY])
+                if (saved.none { it.text == text }) return
+                displayPreferencesService.updateDisplayPreferences(userId) {
+                    val left = decode(get(KEY)).filterNot { it.text == text }
+                    if (left.isEmpty()) remove(KEY) else put(KEY, encode(left))
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not take off the saved copy of a message")
             }
         }
 
@@ -77,10 +119,13 @@ class BenflixMessages
                         )
                     if (saved.isEmpty()) return@withContext
                     displayPreferencesService.updateDisplayPreferences(userId) { remove(KEY) }
+                    val now = System.currentTimeMillis()
                     _waiting.update { list ->
                         list +
                             saved
-                                .filter { s -> list.none { it.id == "saved-" + s.id } }
+                                .filter { s -> list.none { it.id == "saved-" + s.id || it.text == s.text } }
+                                // Already popped up live on this screen
+                                .filter { s -> shownLive[s.text]?.let { now - it < SHOWN_MEMORY_MS } != true }
                                 .map { BenflixMessage("saved-" + it.id, it.header, it.text, live = false) }
                     }
                 } catch (ex: CancellationException) {
@@ -112,5 +157,8 @@ class BenflixMessages
             private const val RECORD = "\u001E"
             private const val FIELD = "\u001F"
             private const val MAX_SAVED = 5
+
+            /** How long a live message is remembered, so its saved copy doesn't pop up again */
+            private const val SHOWN_MEMORY_MS = 7 * 24 * 60 * 60_000L
         }
     }

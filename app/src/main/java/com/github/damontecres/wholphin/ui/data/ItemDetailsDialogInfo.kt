@@ -68,6 +68,8 @@ fun ItemDetailsDialog(
     onDismissRequest: () -> Unit,
 ) {
     val resources = LocalResources.current
+    // Benflix: file paths are an admin thing, so Guest never sees them
+    val showPaths = showFilePath && !com.github.damontecres.wholphin.services.GuestMode.isActive
     // Extract stringResource calls outside of ScrollableDialog's non-composable lambda
     val pathLabel = stringResource(R.string.path)
     val fileSizeLabel = stringResource(R.string.file_size)
@@ -141,7 +143,7 @@ fun ItemDetailsDialog(
                         items =
                             buildList {
                                 source.container?.let { add(containerLabel to it) }
-                                if (showFilePath) {
+                                if (showPaths) {
                                     source.path?.let { add(pathLabel to it) }
                                     add("ID" to (source.id ?: unknown))
                                 }
@@ -211,7 +213,7 @@ fun ItemDetailsDialog(
                                         groupIndex * 3 + index,
                                         subtitleStreams.size,
                                     ),
-                                items = buildSubtitleStreamInfo(resources, stream, showFilePath),
+                                items = buildSubtitleStreamInfo(resources, stream, showPaths),
                                 modifier = Modifier.weight(1f),
                             )
                         }

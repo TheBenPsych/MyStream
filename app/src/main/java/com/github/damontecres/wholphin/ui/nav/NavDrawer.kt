@@ -348,7 +348,8 @@ fun NavDrawer(
     viewModel: NavDrawerViewModel =
         hiltViewModel(
             LocalView.current.findViewTreeViewModelStoreOwner()!!,
-            key = "${server.id}_${user.id}", // Keyed to the server & user to ensure its reset when switching either
+            // Keyed to the server, user & Kids level to ensure its reset when switching any of them
+            key = "${server.id}_${user.id}_${KidsMode.level}",
         ),
 ) {
     // Keep the highlighted tab right after Back, too
@@ -668,6 +669,10 @@ fun NavDrawer(
             },
             hint = stringResource(R.string.more_hint_my_benflix),
             isProfile = true,
+            // Benflix: requests that have arrived and you haven't looked at yet
+            badge =
+                com.github.damontecres.wholphin.ui.components
+                    .rememberRequestReadyCount(),
         )
     // Home, Channels, Games, Requests (not for Kids). My Benflix is the first thing under More.
     val mainTabs =

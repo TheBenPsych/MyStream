@@ -20,6 +20,8 @@ import javax.inject.Singleton
 data class HighScore(
     val name: String,
     val score: Int,
+    /** The account it belongs to (so "Ben" and "Benny" stay apart). Null on boards saved before this was kept. */
+    val id: String? = null,
 )
 
 /**
@@ -64,6 +66,7 @@ class BenflixHighScores
         ): Map<String, List<HighScore>> =
             withContext(WholphinDispatchers.IO) {
                 var myName = shortName(userName)
+                val myId = userId.toString()
                 val myScores = mine.filterValues { it > 0 }
                 try {
                     val prefs = displayPreferencesService.getDisplayPreferences(userId).customPrefs
@@ -75,12 +78,12 @@ class BenflixHighScores
                         displayPreferencesService.updateDisplayPreferences(userId) { put(KEY_MINE, encodeMine(merged)) }
                     }
                     if (mine.isNotEmpty()) onMyBests(merged)
-                    if (isAdmin) gather() else readBoard(userId, myName, merged)
+                    if (isAdmin) gather() else readBoard(userId, myName, myId, merged)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not sync high scores")
-                    sorted(myScores.mapValues { (_, score) -> listOf(HighScore(myName, score)) })
+                    sorted(myScores.mapValues { (_, score) -> listOf(HighScore(myName, score, myId)) })
                 }
             }
 
@@ -101,10 +104,10 @@ class BenflixHighScores
                                     val prefs = displayPreferencesService.getDisplayPreferences(user.id).customPrefs
                                     val scores = prefs[KEY_MINE]?.let { decodeMine(it) }.orEmpty()
                                     val code = codes[user.id] ?: shortName(user.name)
-                                    prefs[KEY_EMBER_MARKS]?.takeIf { it.isNotBlank() }?.let { mine ->
-                                        synchronized(marks) { marks += mine.split('\n').filter { it.isNotBlank() }.map { "$code>$it" } }
+                                    prefs[KEY_EMBER_MARKS]?.takeIf { it.isNotBlank() }?.let { own ->
+                                        synchronized(marks) { marks += own.split('\n').filter { it.isNotBlank() }.map { "$code>$it" } }
                                     }
-                                    code to scores
+                                    Triple(code, user.id.toString(), scores)
                                 } catch (ex: CancellationException) {
                                     throw ex
                                 } catch (ex: Exception) {
@@ -114,8 +117,10 @@ class BenflixHighScores
                             }
                         }.awaitAll()
                 val board = mutableMapOf<String, MutableList<HighScore>>()
-                all.filterNotNull().forEach { (name, scores) ->
-                    scores.forEach { (game, score) -> if (score > 0) board.getOrPut(game) { mutableListOf() }.add(HighScore(name, score)) }
+                all.filterNotNull().forEach { (name, id, scores) ->
+                    scores.forEach { (game, score) ->
+                        if (score > 0) board.getOrPut(game) { mutableListOf() }.add(HighScore(name, score, id))
+                    }
                 }
                 val result = sorted(board)
                 val encoded = encodeBoard(result)
@@ -150,6 +155,7 @@ class BenflixHighScores
         private suspend fun readBoard(
             userId: UUID,
             myName: String,
+            myId: String,
             mine: Map<String, Int>,
         ): Map<String, List<HighScore>> {
             val shared =
@@ -162,11 +168,12 @@ class BenflixHighScores
             mine.forEach { (game, score) ->
                 if (score <= 0) return@forEach
                 val list = board.getOrPut(game) { mutableListOf() }
-                val existing = list.indexOfFirst { it.name == myName }
+                // Match on the account; older boards without ids fall back to the 3 letters
+                val existing = list.indexOfFirst { it.id == myId || (it.id == null && it.name == myName) }
                 if (existing < 0) {
-                    list.add(HighScore(myName, score))
+                    list.add(HighScore(myName, score, myId))
                 } else if (list[existing].score < score) {
-                    list[existing] = HighScore(myName, score)
+                    list[existing] = HighScore(myName, score, myId)
                 }
             }
             return sorted(board)
@@ -229,24 +236,47 @@ class BenflixHighScores
                         game to score
                     }.toMap()
 
-            // game:NAM=score|NAM=score;game:...
-            fun encodeBoard(board: Map<String, List<HighScore>>) =
+            /** Marks the part of a saved board that holds each entry's account id */
+            private const val IDS_SUFFIX = "@id"
+
+            // game:NAM=score|NAM=score;game@id:accountId|accountId;game:...
+            // The ids sit in their own "game@id" part, in the same order as the scores, so older versions
+            // of Benflix (which don't know about them) still read the scores as before.
+            fun encodeBoard(board: Map<String, List<HighScore>>): String =
                 board.entries.joinToString(";") { (game, list) ->
-                    game + ":" + list.joinToString("|") { "${it.name}=${it.score}" }
+                    val scores = game + ":" + list.joinToString("|") { "${it.name}=${it.score}" }
+                    if (list.any { it.id != null }) {
+                        scores + ";" + game + IDS_SUFFIX + ":" + list.joinToString("|") { it.id.orEmpty() }
+                    } else {
+                        scores
+                    }
                 }
 
-            fun decodeBoard(value: String): Map<String, List<HighScore>> =
-                value
-                    .split(';')
-                    .mapNotNull { part ->
-                        val game = part.substringBefore(':', "").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            fun decodeBoard(value: String): Map<String, List<HighScore>> {
+                val parts =
+                    value
+                        .split(';')
+                        .mapNotNull { part ->
+                            val game = part.substringBefore(':', "").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                            game to part.substringAfter(':')
+                        }
+                val ids =
+                    parts
+                        .filter { it.first.endsWith(IDS_SUFFIX) }
+                        .associate { (game, rest) -> game.removeSuffix(IDS_SUFFIX) to rest.split('|') }
+                return parts
+                    .filter { !it.first.endsWith(IDS_SUFFIX) }
+                    .associate { (game, rest) ->
+                        val gameIds = ids[game]
+                        // Ids line up by position, so every entry is counted (even one that can't be read)
                         val list =
-                            part.substringAfter(':').split('|').mapNotNull { entry ->
-                                val name = entry.substringBefore('=', "").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                                val score = entry.substringAfter('=').toIntOrNull() ?: return@mapNotNull null
-                                HighScore(name, score)
+                            rest.split('|').mapIndexedNotNull { index, entry ->
+                                val name = entry.substringBefore('=', "").takeIf { it.isNotBlank() } ?: return@mapIndexedNotNull null
+                                val score = entry.substringAfter('=').toIntOrNull() ?: return@mapIndexedNotNull null
+                                HighScore(name, score, gameIds?.getOrNull(index)?.takeIf { it.isNotBlank() })
                             }
                         game to list
-                    }.toMap()
+                    }
+            }
         }
     }

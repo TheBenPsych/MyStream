@@ -42,6 +42,8 @@ data class SpeedCheckState(
     val checks: List<SpeedCheck>? = null,
     val problem: String? = null,
     val message: String? = null,
+    /** Benflix: the message says a Fix it didn't work */
+    val messageFailed: Boolean = false,
 )
 
 /**
@@ -63,13 +65,23 @@ class ServerSpeedCheckViewModel
 
         private val json = Json { ignoreUnknownKeys = true }
 
-        fun check() {
+        /** [keepMessage]: true after a Fix it, so its message stays; Check again clears it */
+        fun check(keepMessage: Boolean = false) {
             if (_state.value.running) return
-            _state.value = _state.value.copy(running = true, problem = null)
+            _state.value =
+                if (keepMessage) {
+                    _state.value.copy(running = true, problem = null)
+                } else {
+                    _state.value.copy(running = true, problem = null, message = null, messageFailed = false)
+                }
             viewModelScope.launch {
                 _state.value =
                     try {
-                        SpeedCheckState(checks = withContext(WholphinDispatchers.IO) { runChecks() }, message = _state.value.message)
+                        SpeedCheckState(
+                            checks = withContext(WholphinDispatchers.IO) { runChecks() },
+                            message = _state.value.message,
+                            messageFailed = _state.value.messageFailed,
+                        )
                     } catch (e: Exception) {
                         Timber.w(e, "Tower speed check-up failed")
                         SpeedCheckState(
@@ -81,17 +93,19 @@ class ServerSpeedCheckViewModel
 
         fun fix(id: String) {
             if (_state.value.running) return
-            _state.value = _state.value.copy(running = true, message = null)
+            _state.value = _state.value.copy(running = true, message = null, messageFailed = false)
             viewModelScope.launch {
+                var failed = false
                 val message =
                     try {
                         withContext(WholphinDispatchers.IO) { applyFix(id) }
                     } catch (e: Exception) {
                         Timber.w(e, "Speed check-up fix %s failed", id)
+                        failed = true
                         "Couldn't change that setting (${e.javaClass.simpleName})."
                     }
-                _state.value = _state.value.copy(running = false, message = message)
-                check()
+                _state.value = _state.value.copy(running = false, message = message, messageFailed = failed)
+                check(keepMessage = true)
             }
         }
 
@@ -346,7 +360,7 @@ internal fun LazyListScope.speedCheckItems(
         item { ServerActionRow(headline = "Couldn't check", supporting = problem, leading = { Dot(Light.BAD) }) }
     }
     state.message?.let { message ->
-        item { ServerActionRow(headline = message, leading = { Dot(Light.GOOD) }) }
+        item { ServerActionRow(headline = message, leading = { Dot(if (state.messageFailed) Light.BAD else Light.GOOD) }) }
     }
     state.checks?.forEach { check ->
         item(key = "speed-${check.id}") {

@@ -52,6 +52,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.api.seerr.RequestApi
 import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
 import com.github.damontecres.wholphin.api.seerr.model.RequestPostRequest
+import com.github.damontecres.wholphin.api.seerr.model.Season
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.RequestStatus
@@ -64,6 +65,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SearchClock
 import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.services.requestedArrived
 import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
@@ -124,6 +126,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 /** Which shelf of the admin "Find new stuff" page */
@@ -298,10 +301,8 @@ class BenflixRequestsViewModel
                 try {
                     val myId = if (isAdmin) null else seerrServerRepository.currentUserId.first()
                     requestedIds.value =
-                        seerrService.api.requestApi
-                            .requestGet(take = 100, skip = 0, requestedBy = myId)
-                            .results
-                            .orEmpty()
+                        seerrService
+                            .allRequests(requestedBy = myId)
                             .filter {
                                 it.media?.status != SeerrAvailability.AVAILABLE.status &&
                                     RequestStatus.from(it.status) != RequestStatus.DECLINED
@@ -319,6 +320,11 @@ class BenflixRequestsViewModel
 
         private val _requests = MutableStateFlow<List<RequestEntry>?>(null)
         val requests: StateFlow<List<RequestEntry>?> = _requests
+
+        private val _requestsFailed = MutableStateFlow(false)
+
+        /** Benflix: the list couldn't be loaded at all (nothing to show yet), so the page offers Try again */
+        val requestsFailed: StateFlow<Boolean> = _requestsFailed
 
         fun key(
             section: FindSection,
@@ -342,185 +348,205 @@ class BenflixRequestsViewModel
             filters: FindFilters,
         ) {
             val key = key(section, filters)
-            if (_rows.value.containsKey(key)) return
+            // Benflix: shelves that failed are tried again, not kept empty for good
+            if (_rows.value.containsKey(key) && key !in _failedRows.value) return
+            if (!loadingRows.add(key)) return
             val genre = filters.genre
-            viewModelScope.launch(WholphinDispatchers.IO) {
-                if (filters.narrowed) {
-                    // Benflix: several filters together make one list of results, a few pages long
-                    val pages =
-                        coroutineScope {
-                            (1..3).map { page -> async { narrowedPage(section, filters, page) } }.awaitAll()
-                        }
-                    val titles = listOf("Results", "More results", "Even more")
-                    _rows.update { it + (key to pages.mapIndexed { i, items -> FindRow(titles[i], items) }) }
-                    return@launch
-                }
-                val today = LocalDate.now().toString()
-                val movieGenre = genre?.movieId?.toString()
-                val tvGenre = genre?.tvId?.toString()
+            val failed = AtomicBoolean(false)
 
-                suspend fun safe(block: suspend () -> List<DiscoverItem>): List<DiscoverItem> =
-                    try {
-                        block()
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Find new stuff row failed")
-                        emptyList()
-                    }
-
-                suspend fun movies(
-                    sortBy: String,
-                    genres: String? = movieGenre,
-                    keywords: String? = null,
-                    from: String? = null,
-                    minVotes: Int? = null,
-                ) = safe {
-                    seerrService.api.searchApi
-                        .discoverMoviesGet(
-                            page = 1,
-                            genre = genres,
-                            keywords = keywords,
-                            sortBy = topRatedSort(sortBy, minVotes),
-                            primaryReleaseDateGte = from,
-                            voteCountGte = minVotes,
-                            voteAverageGte = topRatedFloor(minVotes),
-                        ).results
-                        ?.map { seerrService.createDiscoverItem(it) }
-                        .orEmpty()
-                }
-
-                suspend fun shows(
-                    sortBy: String,
-                    genres: String? = tvGenre,
-                    keywords: String? = null,
-                    from: String? = null,
-                    minVotes: Int? = null,
-                ) = safe {
-                    seerrService.api.searchApi
-                        .discoverTvGet(
-                            page = 1,
-                            genre = genres,
-                            keywords = keywords,
-                            sortBy = topRatedSort(sortBy, minVotes),
-                            firstAirDateGte = from,
-                            voteCountGte = minVotes,
-                            voteAverageGte = topRatedFloor(minVotes),
-                        ).results
-                        ?.map { seerrService.createDiscoverItem(it) }
-                        .orEmpty()
-                }
-
-                val rows =
-                    coroutineScope {
-                        when (section) {
-                            FindSection.MOVIES -> {
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending now",
-                                            if (genre == null) {
-                                                safe { seerrService.trending().filter { it.type == SeerrItemType.MOVIE } }
-                                            } else {
-                                                movies("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Popular", movies("popularity.desc")) },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            if (genre == null) {
-                                                safe { seerrService.upcomingMovies() }
-                                            } else {
-                                                movies("popularity.desc", from = today)
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Top rated", movies("vote_average.desc", minVotes = 1000)) },
-                                )
-                            }
-
-                            FindSection.SHOWS -> {
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending now",
-                                            if (genre == null) {
-                                                safe { seerrService.trending().filter { it.type == SeerrItemType.TV } }
-                                            } else {
-                                                shows("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Popular", shows("popularity.desc")) },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            if (genre == null) {
-                                                safe { seerrService.upcomingTv() }
-                                            } else {
-                                                shows("popularity.desc", from = today)
-                                            },
-                                        )
-                                    },
-                                    async { FindRow("Top rated", shows("vote_average.desc", minVotes = 500)) },
-                                )
-                            }
-
-                            FindSection.ANIME -> {
-                                val showGenres = listOfNotNull(ANIMATION_GENRE, tvGenre).joinToString(",")
-                                val movieGenres = listOfNotNull(ANIMATION_GENRE, movieGenre).joinToString(",")
-                                listOf(
-                                    async {
-                                        FindRow(
-                                            "Trending anime shows",
-                                            shows(
-                                                "popularity.desc",
-                                                genres = showGenres,
-                                                keywords = ANIME_KEYWORD,
-                                                from = LocalDate.now().minusMonths(6).toString(),
-                                            ),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Popular anime shows",
-                                            shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Anime movies",
-                                            movies("popularity.desc", genres = movieGenres, keywords = ANIME_KEYWORD),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Coming soon",
-                                            shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD, from = today),
-                                        )
-                                    },
-                                    async {
-                                        FindRow(
-                                            "Top rated anime",
-                                            shows("vote_average.desc", genres = showGenres, keywords = ANIME_KEYWORD, minVotes = 200),
-                                        )
-                                    },
-                                )
-                            }
-                        }.awaitAll()
-                    }
+            fun done(rows: List<FindRow>) {
                 _rows.update { it + (key to rows) }
+                _failedRows.update { if (failed.get()) it + key else it - key }
+                loadingRows.remove(key)
             }
+            viewModelScope
+                .launch(WholphinDispatchers.IO) {
+                    if (filters.narrowed) {
+                        // Benflix: several filters together make one list of results, a few pages long
+                        val pages =
+                            coroutineScope {
+                                (1..3).map { page -> async { narrowedPage(section, filters, page) } }.awaitAll()
+                            }
+                        if (pages.any { it == null }) failed.set(true)
+                        val titles = listOf("Results", "More results", "Even more")
+                        done(pages.mapIndexed { i, items -> FindRow(titles[i], items.orEmpty()) })
+                        return@launch
+                    }
+                    val today = LocalDate.now().toString()
+                    val movieGenre = genre?.movieId?.toString()
+                    val tvGenre = genre?.tvId?.toString()
+
+                    suspend fun safe(block: suspend () -> List<DiscoverItem>): List<DiscoverItem> =
+                        try {
+                            block()
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Find new stuff row failed")
+                            failed.set(true)
+                            emptyList()
+                        }
+
+                    suspend fun movies(
+                        sortBy: String,
+                        genres: String? = movieGenre,
+                        keywords: String? = null,
+                        from: String? = null,
+                        minVotes: Int? = null,
+                    ) = safe {
+                        seerrService.api.searchApi
+                            .discoverMoviesGet(
+                                page = 1,
+                                genre = genres,
+                                keywords = keywords,
+                                sortBy = topRatedSort(sortBy, minVotes),
+                                primaryReleaseDateGte = from,
+                                voteCountGte = minVotes,
+                                voteAverageGte = topRatedFloor(minVotes),
+                            ).results
+                            ?.map { seerrService.createDiscoverItem(it) }
+                            .orEmpty()
+                    }
+
+                    suspend fun shows(
+                        sortBy: String,
+                        genres: String? = tvGenre,
+                        keywords: String? = null,
+                        from: String? = null,
+                        minVotes: Int? = null,
+                    ) = safe {
+                        seerrService.api.searchApi
+                            .discoverTvGet(
+                                page = 1,
+                                genre = genres,
+                                keywords = keywords,
+                                sortBy = topRatedSort(sortBy, minVotes),
+                                firstAirDateGte = from,
+                                voteCountGte = minVotes,
+                                voteAverageGte = topRatedFloor(minVotes),
+                            ).results
+                            ?.map { seerrService.createDiscoverItem(it) }
+                            .orEmpty()
+                    }
+
+                    val rows =
+                        coroutineScope {
+                            when (section) {
+                                FindSection.MOVIES -> {
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending now",
+                                                if (genre == null) {
+                                                    safe { seerrService.trending().filter { it.type == SeerrItemType.MOVIE } }
+                                                } else {
+                                                    movies("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Popular", movies("popularity.desc")) },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                if (genre == null) {
+                                                    safe { seerrService.upcomingMovies() }
+                                                } else {
+                                                    movies("popularity.desc", from = today)
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Top rated", movies("vote_average.desc", minVotes = 1000)) },
+                                    )
+                                }
+
+                                FindSection.SHOWS -> {
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending now",
+                                                if (genre == null) {
+                                                    safe { seerrService.trending().filter { it.type == SeerrItemType.TV } }
+                                                } else {
+                                                    shows("popularity.desc", from = LocalDate.now().minusMonths(4).toString())
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Popular", shows("popularity.desc")) },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                if (genre == null) {
+                                                    safe { seerrService.upcomingTv() }
+                                                } else {
+                                                    shows("popularity.desc", from = today)
+                                                },
+                                            )
+                                        },
+                                        async { FindRow("Top rated", shows("vote_average.desc", minVotes = 500)) },
+                                    )
+                                }
+
+                                FindSection.ANIME -> {
+                                    val showGenres = listOfNotNull(ANIMATION_GENRE, tvGenre).joinToString(",")
+                                    val movieGenres = listOfNotNull(ANIMATION_GENRE, movieGenre).joinToString(",")
+                                    listOf(
+                                        async {
+                                            FindRow(
+                                                "Trending anime shows",
+                                                shows(
+                                                    "popularity.desc",
+                                                    genres = showGenres,
+                                                    keywords = ANIME_KEYWORD,
+                                                    from = LocalDate.now().minusMonths(6).toString(),
+                                                ),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Popular anime shows",
+                                                shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Anime movies",
+                                                movies("popularity.desc", genres = movieGenres, keywords = ANIME_KEYWORD),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Coming soon",
+                                                shows("popularity.desc", genres = showGenres, keywords = ANIME_KEYWORD, from = today),
+                                            )
+                                        },
+                                        async {
+                                            FindRow(
+                                                "Top rated anime",
+                                                shows("vote_average.desc", genres = showGenres, keywords = ANIME_KEYWORD, minVotes = 200),
+                                            )
+                                        },
+                                    )
+                                }
+                            }.awaitAll()
+                        }
+                    done(rows)
+                }.invokeOnCompletion { loadingRows.remove(key) }
         }
+
+        private val _failedRows = MutableStateFlow<Set<String>>(emptySet())
+
+        /** Benflix: shelves (by [key]) where something didn't load, so the page can offer Try again */
+        val failedRows: StateFlow<Set<String>> = _failedRows
+
+        /** Keys being loaded right now, so a section isn't fetched twice at once */
+        private val loadingRows = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
 
         /** One page of results for the Filters panel */
         private suspend fun narrowedPage(
             section: FindSection,
             filters: FindFilters,
             page: Int,
-        ): List<DiscoverItem> =
+        ): List<DiscoverItem>? =
             try {
                 val sort = filters.sort ?: FindSort.POPULAR
                 val minVotes = if (sort == FindSort.RATED) 300 else null
@@ -569,7 +595,7 @@ class BenflixRequestsViewModel
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Filtered results failed")
-                emptyList()
+                null
             }
 
         private val _special = MutableStateFlow<Map<FindSection, List<FindRow>>>(emptyMap())
@@ -1009,6 +1035,7 @@ class BenflixRequestsViewModel
         /** Everyone's requests (admin) or just your own */
         fun loadRequests(mineOnly: Boolean) {
             lastMineOnly = mineOnly
+            _requestsFailed.value = false
             viewModelScope.launch(WholphinDispatchers.IO) { fetchRequests(mineOnly) }
         }
 
@@ -1021,14 +1048,18 @@ class BenflixRequestsViewModel
                 try {
                     val myId = if (mineOnly) seerrServerRepository.currentUserId.first() else null
                     val results =
-                        seerrService.api.requestApi
-                            .requestGet(
-                                take = 60,
-                                skip = 0,
-                                requestedBy = myId,
-                            ).results
-                            .orEmpty()
-                            .filter { !mineOnly || it.requestedBy?.id == myId }
+                        if (mineOnly) {
+                            seerrService
+                                .allRequests(requestedBy = myId, max = MINE_MAX)
+                                .filter { it.requestedBy?.id == myId }
+                        } else {
+                            // Benflix: every waiting request (so they all show and Approve all covers them),
+                            // plus the newest of the rest. Each one is looked up, so not all 500 of those.
+                            val pending = seerrService.allRequests(filter = RequestApi.FilterRequestGet.PENDING)
+                            val recent = seerrService.allRequests(max = RECENT_MAX)
+                            val have = recent.mapNotNull { it.id }.toSet()
+                            recent + pending.filter { it.id !in have }
+                        }
                     val semaphore = Semaphore(4)
                     val entries =
                         coroutineScope {
@@ -1040,6 +1071,7 @@ class BenflixRequestsViewModel
                                 }.awaitAll()
                         }
                     _requests.value = entries
+                    _requestsFailed.value = false
                     if (!mineOnly) RequestsWaiting.set(entries.count { it.status == RequestStatus.PENDING })
                     // Benflix: "Couldn't find it" labels; ones that have since arrived are cleared
                     cantFindList.refresh()
@@ -1048,20 +1080,23 @@ class BenflixRequestsViewModel
                         val stillMissing = entries.filter { !it.available }.mapNotNull { it.cantFindKey() }.toSet()
                         cantFindList.forget(arrived.filter { it !in stillMissing })
                         // A week of "Still looking" with nothing found turns into "Couldn't find it" by itself
-                        if (!mineOnly) cantFindList.autoCheck(results)
+                        // (it fetches every request itself, not just the ones shown here)
+                        if (!mineOnly) cantFindList.autoCheck()
                     }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load requests")
-                    // Keep what's showing if a refresh fails
-                    if (_requests.value == null) _requests.value = emptyList()
+                    // Keep what's showing if a refresh fails; with nothing showing yet, say so (not "No requests yet")
+                    if (_requests.value == null) _requestsFailed.value = true
                 }
             }
         }
 
         private suspend fun toEntry(request: MediaRequest): RequestEntry {
             val tmdbId = request.media?.tmdbId
+            // Benflix: a show's seasons, to tell whether the seasons asked for are in
+            var tvSeasons: List<Season>? = null
             val item =
                 try {
                     when {
@@ -1074,7 +1109,9 @@ class BenflixRequestsViewModel
                         }
 
                         else -> {
-                            seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
+                            val tv = seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId)
+                            tvSeasons = tv.mediaInfo?.seasons
+                            seerrService.createDiscoverItem(tv)
                         }
                     }
                 } catch (ex: CancellationException) {
@@ -1095,9 +1132,11 @@ class BenflixRequestsViewModel
                 } else {
                     item
                 }
+            // Benflix: a show asked for by season is here once those seasons are, even if others are still missing
             val available =
                 request.media?.status == SeerrAvailability.AVAILABLE.status ||
-                    item?.availability == SeerrAvailability.AVAILABLE
+                    item?.availability == SeerrAvailability.AVAILABLE ||
+                    request.requestedArrived(tvSeasons ?: request.media?.seasons)
             // Benflix: how far the download is, for the progress steps
             var percent: Int? = null
             var downloading = false
@@ -1193,6 +1232,10 @@ class BenflixRequestsViewModel
         }
 
         companion object {
+            /** Benflix: how many requests the list shows (all the waiting ones come on top of these) */
+            private const val RECENT_MAX = 150
+            private const val MINE_MAX = 200
+
             /** TMDB's Animation genre and its "anime" keyword, which together mean anime */
             const val ANIMATION_GENRE = "16"
             const val ANIME_KEYWORD = "210024"
@@ -1351,6 +1394,7 @@ private fun FindShelf(
         onPauseOrDispose { }
     }
     val allRows by viewModel.rows.collectAsState()
+    val failedRows by viewModel.failedRows.collectAsState()
     val special by viewModel.special.collectAsState()
     val hidden by viewModel.hidden.collectAsState()
     val ratings by viewModel.ratings.collectAsState()
@@ -1493,6 +1537,14 @@ private fun FindShelf(
         if (rows == null) {
             item { LoadingPage(Modifier.height(240.dp)) }
         } else {
+            if (key in failedRows) {
+                item(key = "load-failed") {
+                    LoadFailed(
+                        text = "Some of these didn't load.",
+                        onRetry = { viewModel.loadSection(section, filters) },
+                    )
+                }
+            }
             items(rows, key = { "$key-${it.title}" }) { row ->
                 val comingSoon = row.title.startsWith("Coming soon")
                 val shown =
@@ -1513,13 +1565,20 @@ private fun FindShelf(
                         onClickItem = { _, item -> openItem(item) },
                         onLongClickItem = { _, item -> menuItem = item },
                         onCardFocus = { i -> shown.getOrNull(i)?.let(viewModel::loadScore) },
+                        // Benflix: phones have no focus, so scores load as the cards come on screen
+                        onCardShown =
+                            if (rememberIsTv()) {
+                                null
+                            } else {
+                                { i: Int -> shown.getOrNull(i)?.let(viewModel::loadScore) }
+                            },
                         enableViewMore = false,
                         cornerNoteFor = { if (comingSoon) comingSoonNote(it) else null },
                         subtitleFor = scoreLine,
                     )
                 }
             }
-            if (rows.all { visible(it.items).isEmpty() }) {
+            if (rows.all { visible(it.items).isEmpty() } && key !in failedRows) {
                 item {
                     Text(
                         text = "Nothing matches. Try fewer filters.",
@@ -1530,6 +1589,25 @@ private fun FindShelf(
                 }
             }
         }
+    }
+}
+
+/** Benflix: something didn't load, with a Try again button (instead of looking empty) */
+@Composable
+private fun LoadFailed(
+    text: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+    ) {
+        Text(
+            text = text,
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onRetry) { Text("Try again", maxLines = 1) }
     }
 }
 
@@ -1572,6 +1650,13 @@ private fun LazyListScope.searchShelves(
             onClickItem = { _, item -> onOpen(item) },
             onLongClickItem = { _, item -> if (item.type != SeerrItemType.PERSON) onMenu(item) },
             onCardFocus = { i -> list.getOrNull(i)?.let(onFocusItem) },
+            // Benflix: phones have no focus, so scores load as the cards come on screen
+            onCardShown =
+                if (rememberIsTv()) {
+                    null
+                } else {
+                    { i: Int -> list.getOrNull(i)?.let(onFocusItem) }
+                },
             enableViewMore = false,
             subtitleFor = { if (it.type == SeerrItemType.PERSON) null else scoreLine(it) },
         )
@@ -1594,6 +1679,7 @@ private fun RequestList(
         onPauseOrDispose { }
     }
     val all by viewModel.requests.collectAsState()
+    val requestsFailed by viewModel.requestsFailed.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val ratings by viewModel.ratings.collectAsState()
@@ -1705,6 +1791,15 @@ private fun RequestList(
                 }
             }
         when {
+            list == null && requestsFailed -> {
+                item {
+                    LoadFailed(
+                        text = "Couldn't load the requests. Check the connection and try again.",
+                        onRetry = { viewModel.loadRequests(mineOnly) },
+                    )
+                }
+            }
+
             list == null -> {
                 item { LoadingPage(Modifier.height(240.dp)) }
             }

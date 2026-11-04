@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -18,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.Trailer
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.TrailerButton
@@ -44,6 +47,9 @@ fun ExpandableDiscoverButtons(
 ) {
     val blocked =
         cantFind && availability != SeerrAvailability.AVAILABLE && availability != SeerrAvailability.PARTIALLY_AVAILABLE
+    // Benflix: Kids can't ask for things or cancel, so the Ask button is just a label for them
+    val kids by KidsMode.active.collectAsState()
+    val noAsking = kids && availability == SeerrAvailability.UNKNOWN && !blocked
     val firstFocus = remember { FocusRequester() }
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -72,7 +78,12 @@ fun ExpandableDiscoverButtons(
                 // TODO Blocklist
                 SeerrAvailability.BLOCKLISTED -> R.string.unavailable
             }
-        val text = if (blocked) R.string.benflix_cant_find else baseText
+        val text =
+            when {
+                blocked -> R.string.benflix_cant_find
+                noAsking -> R.string.unavailable
+                else -> baseText
+            }
         val baseIcon =
             when (availability) {
                 SeerrAvailability.UNKNOWN -> R.string.fa_download
@@ -90,14 +101,14 @@ fun ExpandableDiscoverButtons(
                 // TODO
                 SeerrAvailability.BLOCKLISTED -> R.string.fa_xmark
             }
-        val icon = if (blocked) R.string.fa_xmark else baseIcon
+        val icon = if (blocked || noAsking) R.string.fa_xmark else baseIcon
         item("first") {
             ExpandableFaButton(
                 title = text,
                 iconStringRes = icon,
                 enabled =
                     when (availability) {
-                        SeerrAvailability.UNKNOWN -> canRequest || blocked
+                        SeerrAvailability.UNKNOWN -> canRequest || blocked || noAsking
 
                         SeerrAvailability.PENDING,
                         SeerrAvailability.PROCESSING,
@@ -111,7 +122,7 @@ fun ExpandableDiscoverButtons(
                         -> blocked
                     },
                 onClick = {
-                    if (blocked) return@ExpandableFaButton
+                    if (blocked || noAsking) return@ExpandableFaButton
                     when (availability) {
                         SeerrAvailability.UNKNOWN -> {
                             requestOnClick.invoke()
@@ -143,7 +154,7 @@ fun ExpandableDiscoverButtons(
             )
         }
         // Benflix: no asking for the missing seasons once Ben couldn't find them
-        if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind) {
+        if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
             item("request_partial") {
                 ExpandableFaButton(
                     title = R.string.request,
@@ -159,7 +170,7 @@ fun ExpandableDiscoverButtons(
             }
         }
 
-        if (canCancel) {
+        if (canCancel && !kids) {
             item("cancel") {
                 ExpandablePlayButton(
                     title = R.string.cancel,

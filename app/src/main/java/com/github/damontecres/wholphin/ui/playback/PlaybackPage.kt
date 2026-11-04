@@ -410,6 +410,7 @@ fun PlaybackPageContent(
             val delta = if (forward) DOUBLE_TAP_SEEK_MS else -DOUBLE_TAP_SEEK_MS
             val duration = player.duration.coerceAtLeast(0L)
             player.seekTo((player.currentPosition + delta).coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE))
+            if (!forward) keyHandler.noteSkipBack()
             controllerViewState.hideControls()
             scope.launch {
                 // Wait for the controls to hide first, since hiding them clears the "+10" note

@@ -171,7 +171,7 @@ internal suspend fun HomeViewModel.findThemeItems(
         (fitting + byGenre.await()).distinctBy { it.id }
     }
 
-internal fun HomeViewModel.collectionIndexKey(userId: UUID) = "collections-$userId-${KidsMode.isActive}"
+internal fun HomeViewModel.collectionIndexKey(userId: UUID) = "collections-$userId-${KidsMode.level}"
 
 /**
  * The saved collection index, from memory or from the saved file (up to a day old).

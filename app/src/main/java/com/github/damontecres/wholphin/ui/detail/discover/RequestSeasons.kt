@@ -99,8 +99,9 @@ fun RequestSeasons(
     val selectedSeasons =
         remember(seasons) {
             mutableStateSetOf<Int>(
+                // Benflix: only the seasons in your own waiting request; other people's show as already asked (locked)
                 *seasons
-                    .filter { season -> season.status == RequestStatus.PENDING }
+                    .filter { season -> season.status == RequestStatus.PENDING && season.editable }
                     .mapNotNull { season -> season.season.seasonNumber }
                     .toTypedArray(),
             )

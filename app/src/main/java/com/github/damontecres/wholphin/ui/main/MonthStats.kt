@@ -23,6 +23,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixWatchTime
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -169,6 +170,9 @@ fun MonthStatsCard(
     viewModel: MonthStatsViewModel = hiltViewModel(),
 ) {
     val stats by viewModel.stats.collectAsState()
+    // Not shown on Kids
+    val kids by KidsMode.active.collectAsState()
+    if (kids) return
     val s = stats ?: return
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),

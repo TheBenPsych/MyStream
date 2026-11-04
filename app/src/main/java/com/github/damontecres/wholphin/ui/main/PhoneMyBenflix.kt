@@ -76,7 +76,7 @@ fun PhoneMyBenflixHeader(
     var showRemote by remember { mutableStateOf(false) }
     if (showRemote) PhoneRemoteDialog(onDismiss = { showRemote = false })
     var showQuickConnect by remember { mutableStateOf(false) }
-    if (showQuickConnect) {
+    if (showQuickConnect && !guest) {
         com.github.damontecres.wholphin.ui.preferences
             .BenflixQuickConnect(onDismiss = { showQuickConnect = false })
     }
@@ -141,12 +141,13 @@ fun PhoneMyBenflixHeader(
             if (!kids && !guest) {
                 RoundButton(R.string.fa_user_shield, "Parents", onClickParents)
             }
-            // Sign another TV or phone in with the code it shows
-            if (!kids) {
+            // Sign another TV or phone in with the code it shows (not for Guest: it would sign
+            // the visitor's phone in as the owner)
+            if (!kids && !guest) {
                 RoundButton(R.string.fa_link, stringResource(R.string.quick_connect)) { showQuickConnect = true }
             }
             // Keeps the buttons the same size as with four
-            repeat(4 - listOf(true, !kids, !kids && !guest, !kids).count { it }) { Spacer(Modifier.weight(1f)) }
+            repeat(4 - listOf(true, !kids, !kids && !guest, !kids && !guest).count { it }) { Spacer(Modifier.weight(1f)) }
         }
         if (menu.libraries.isNotEmpty()) {
             TileGrid(stringResource(R.string.phone_browse), menu.libraries)

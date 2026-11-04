@@ -375,8 +375,22 @@ private fun MoreRow(
                                 .background(BenflixRed, CircleShape),
                         )
                     }
+                    // Benflix: how many of your requests are here (My Benflix)
+                    tab.badge?.takeIf { it > 0 }?.let { count ->
+                        Text(
+                            text = if (count > 9) "9+" else count.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier =
+                                Modifier
+                                    .padding(start = 8.dp)
+                                    .background(Color(0xFFE5484D), RoundedCornerShape(9.dp))
+                                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                        )
+                    }
                 }
-                tab.hint?.let {
+                (if ((tab.badge ?: 0) > 0 && tab.isProfile) "Your requests are here" else tab.hint)?.let {
                     Text(
                         text = it,
                         fontSize = 12.sp,

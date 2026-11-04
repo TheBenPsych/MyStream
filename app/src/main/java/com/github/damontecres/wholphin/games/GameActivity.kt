@@ -92,6 +92,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.text.Cue
 import androidx.palette.graphics.Palette
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
 import timber.log.Timber
 import java.io.File
@@ -268,6 +269,9 @@ class GameActivity : ComponentActivity() {
                 PowerNeed.MEDIUM -> power.score >= 2.4 && power.ramGb >= 2.5
                 PowerNeed.HEAVY -> false
             }
+        // The game has its own process, so Kids is turned on here too: the side show's lists and search
+        // then only have movies & shows rated for kids, the same as the rest of Benflix
+        if (intent.getBooleanExtra(EXTRA_KIDS, false)) KidsMode.set(true, intent.getBooleanExtra(EXTRA_BIG_KIDS, false))
         sideShow =
             SideShow(
                 context = this,
@@ -293,6 +297,14 @@ class GameActivity : ComponentActivity() {
         if (console.hwRender && !gles3) {
             failed = true
             message = "This TV or phone can't draw ${console.title} games. Try a newer TV box or phone."
+        }
+        // Resume was picked but the saved spot couldn't be fetched from Tower. Starting fresh here would
+        // replace that save on Tower when you quit, so the game doesn't start.
+        if (resume && !failed && !GameSaves.file(saveDir, "state").exists()) {
+            failed = true
+            message =
+                "Couldn't get your saved spot from Tower, so the game didn't start (your save is safe). " +
+                "Check Tower can be reached and try again, or pick Start over."
         }
         glView =
             GLSurfaceView(this).apply {
@@ -506,9 +518,11 @@ class GameActivity : ComponentActivity() {
                 val h = px[1]
                 if (w > 0 && h > 0) {
                     val bmp = Bitmap.createBitmap(px, 2, w, w, h, Bitmap.Config.ARGB_8888)
-                    val tmp = File(saveDir, "save.png.tmp")
+                    val target = GameSaves.file(saveDir, "png$end")
+                    // One temp file per slot, so two saves at once can't mix up their pictures
+                    val tmp = File(target.path + ".tmp")
                     tmp.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                    tmp.renameTo(GameSaves.file(saveDir, "png$end"))
+                    tmp.renameTo(target)
                     changed.add("png$end")
                 }
             }
@@ -1832,6 +1846,10 @@ class GameActivity : ComponentActivity() {
         const val EXTRA_SERVER = "server"
         const val EXTRA_USER = "user"
         const val EXTRA_COVER = "cover"
+
+        /** Kids tile on, and whether it's Big kids (the game runs in its own process, where Kids is otherwise off) */
+        const val EXTRA_KIDS = "kids"
+        const val EXTRA_BIG_KIDS = "big_kids"
         private const val PREFS = "game_player"
         private const val BACK_HOLD_MS = 700L
         private val STRIP = 28.dp

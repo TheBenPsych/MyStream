@@ -39,12 +39,13 @@ fun Top10Row(
     onClickItem: (BaseItem) -> Unit,
     onFocusItem: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
+    onLongClickItem: (BaseItem) -> Unit = {},
 ) {
     ItemRow(
         title = title,
         items = items,
         onClickItem = { _, item -> onClickItem(item) },
-        onLongClickItem = { _, _ -> },
+        onLongClickItem = { _, item -> onLongClickItem(item) },
         modifier = modifier,
         cardContent = { index, item, cardModifier, onClick, onLongClick ->
             // Giant outlined rank numbers in the tall BENFLIX font, sitting half behind each poster.
@@ -100,12 +101,13 @@ fun PosterRow(
     onClickItem: (BaseItem) -> Unit,
     onFocusItem: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
+    onLongClickItem: (BaseItem) -> Unit = {},
 ) {
     ItemRow(
         title = title,
         items = items,
         onClickItem = { _, item -> onClickItem(item) },
-        onLongClickItem = { _, _ -> },
+        onLongClickItem = { _, item -> onLongClickItem(item) },
         modifier = modifier,
         cardContent = { _, item, cardModifier, onClick, onLongClick ->
             BannerCard(

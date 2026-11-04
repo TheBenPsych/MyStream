@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -67,6 +68,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -90,6 +92,7 @@ class RecommendedViewModel
         private val suggestionService: SuggestionService,
         val serverReportService: ServerReportService,
         private val libraryHome: LibraryHomeService,
+        private val diskCache: com.github.damontecres.wholphin.services.DiskCache,
         @Assisted private val parentId: UUID,
         @Assisted private val suggestionsType: BaseItemKind,
         @Assisted private val recommendedRows: List<RecommendedRow<*>>,
@@ -138,44 +141,69 @@ class RecommendedViewModel
                         SHELVES_WEEK -> libraryHome.weekShelves(parentId)
                         else -> emptyList()
                     }
-                if (shelfSet == SHELVES_HOME && kind != LibraryKind.OTHER) loadFeatured()
+                val featuredJob = if (shelfSet == SHELVES_HOME && kind != LibraryKind.OTHER) loadFeatured() else null
+                val loadingRows =
+                    recommendedRows.map { HomeRowLoadingState.Loading(ResStringProvider(it.title)) } +
+                        shelves.map { HomeRowLoadingState.Loading(StringStringProvider(it.title)) } +
+                        if (withSuggestions) {
+                            listOf(
+                                HomeRowLoadingState.Loading(ResStringProvider(R.string.suggestions)),
+                            )
+                        } else {
+                            emptyList()
+                        }
+                // Benflix speed: show this page as it was last time straight away, then swap in fresh
+                // rows as they arrive (like Home does)
+                val saved = readSaved()?.takeIf { it.rows.size == loadingRows.size }
                 _state.update {
                     it.copy(
-                        loading = LoadingState.Loading,
+                        loading = if (saved != null) LoadingState.Success else LoadingState.Loading,
                         rows =
-                            recommendedRows.map { HomeRowLoadingState.Loading(ResStringProvider(it.title)) } +
-                                shelves.map { HomeRowLoadingState.Loading(StringStringProvider(it.title)) } +
-                                if (withSuggestions) {
-                                    listOf(
-                                        HomeRowLoadingState.Loading(ResStringProvider(R.string.suggestions)),
-                                    )
-                                } else {
-                                    emptyList()
-                                },
+                            if (saved != null) {
+                                saved.rows.mapIndexed { i, row ->
+                                    if (row.items.isEmpty()) loadingRows[i] else row.toState()
+                                }
+                            } else {
+                                loadingRows
+                            },
+                        featured =
+                            it.featured.ifEmpty {
+                                saved?.featured?.map { f -> FeaturedItem(f.item, f.reason, f.becauseOf) }.orEmpty()
+                            },
                     )
                 }
+                // Benflix speed: rows load top to bottom, a few at a time, so the ones on screen come
+                // first instead of every row (and the server) fighting at once
+                val permits = kotlinx.coroutines.sync.Semaphore(ROWS_AT_ONCE)
                 val jobs =
                     recommendedRows.mapIndexed { index, row ->
                         val title = ResStringProvider(row.title)
                         viewModelScope.launchIO {
                             val result =
-                                try {
-                                    val items = execute(row, limit)
-                                    HomeRowLoadingState.Success(
-                                        title,
-                                        items,
-                                        viewOptions,
-                                        showViewMore = items.size >= limit,
-                                    )
-                                } catch (ex: Exception) {
-                                    Timber.e(ex, "Exception fetching %s", title)
-                                    HomeRowLoadingState.Error(title, null, ex)
+                                permits.withPermit {
+                                    try {
+                                        val items = execute(row, limit)
+                                        HomeRowLoadingState.Success(
+                                            title,
+                                            items,
+                                            viewOptions,
+                                            showViewMore = items.size >= limit,
+                                        )
+                                    } catch (ex: CancellationException) {
+                                        throw ex
+                                    } catch (ex: Exception) {
+                                        Timber.e(ex, "Exception fetching %s", title)
+                                        HomeRowLoadingState.Error(title, null, ex)
+                                    }
                                 }
                             _state.update {
                                 it.copy(
                                     rows =
                                         it.rows.toMutableList().apply {
-                                            set(index, result)
+                                            // Keep last time's row rather than swap it for an error
+                                            if (result !is HomeRowLoadingState.Error || get(index) !is HomeRowLoadingState.Success) {
+                                                set(index, result)
+                                            }
                                         },
                                 )
                             }
@@ -185,14 +213,16 @@ class RecommendedViewModel
                             val index = recommendedRows.size + shelfIndex
                             viewModelScope.launchIO {
                                 val items =
-                                    try {
-                                        shelf.load(shelf)
-                                    } catch (ex: CancellationException) {
-                                        throw ex
-                                    } catch (ex: Exception) {
-                                        // A row that can't load is left out instead of showing an error
-                                        Timber.w(ex, "Could not load the %s row", shelf.title)
-                                        emptyList()
+                                    permits.withPermit {
+                                        try {
+                                            shelf.load(shelf)
+                                        } catch (ex: CancellationException) {
+                                            throw ex
+                                        } catch (ex: Exception) {
+                                            // A row that can't load is left out instead of showing an error
+                                            Timber.w(ex, "Could not load the %s row", shelf.title)
+                                            emptyList()
+                                        }
                                     }
                                 val result =
                                     HomeRowLoadingState.Success(
@@ -222,11 +252,116 @@ class RecommendedViewModel
                 }
                 // Benflix: everything is in, even if every row came back empty
                 _state.update { it.copy(loading = LoadingState.Success) }
+                featuredJob?.join()
+                save()
+            }
+        }
+
+        private fun savedKey(): String? {
+            val userId = serverRepository.currentUser?.id ?: return null
+            return "library-$userId-$parentId-$shelfSet-${com.github.damontecres.wholphin.services.KidsMode.level}-$SAVED_FORMAT"
+        }
+
+        private fun readSaved(): SavedLibraryPage? = savedKey()?.let { diskCache.read(it, SavedLibraryPage.serializer(), SAVED_MAX_AGE_MS) }
+
+        /** Benflix speed: remember this page for next time */
+        private fun save() {
+            val key = savedKey() ?: return
+            val current = state.value
+            val page =
+                SavedLibraryPage(
+                    rows =
+                        current.rows.map { row ->
+                            if (row is HomeRowLoadingState.Success) {
+                                com.github.damontecres.wholphin.ui.main.SnapshotServerRow(
+                                    title = row.title,
+                                    items = row.items.take(SAVED_ROW_MAX).filterNotNull(),
+                                    viewOptions = row.viewOptions,
+                                    rowType = row.rowType,
+                                    showViewMore = row.showViewMore,
+                                )
+                            } else {
+                                com.github.damontecres.wholphin.ui.main
+                                    .SnapshotServerRow(title = row.title, items = emptyList())
+                            }
+                        },
+                    featured =
+                        current.featured.map {
+                            com.github.damontecres.wholphin.ui.main
+                                .SnapshotFeatured(it.item, it.reason, it.becauseOf)
+                        },
+                )
+            diskCache.write(key, SavedLibraryPage.serializer(), page)
+        }
+
+        /**
+         * Benflix: coming back (e.g. from the player), reload just the rows that depend on what was
+         * watched (Continue watching, Next up, Finish the season, Played lately). Random rows stay put.
+         */
+        fun refreshProgressRows() {
+            if (state.value.loading != LoadingState.Success) return
+            viewModelScope.launchIO {
+                val limit =
+                    userPreferencesService.flow
+                        .first()
+                        .appPreferences.homePagePreferences.maxItemsPerRow
+                recommendedRows.forEachIndexed { index, row ->
+                    if (row.title !in PROGRESS_ROW_TITLES) return@forEachIndexed
+                    launchIO {
+                        val title = ResStringProvider(row.title)
+                        val items =
+                            try {
+                                execute(row, limit)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Could not refresh %s", title)
+                                return@launchIO
+                            }
+                        setRow(index, HomeRowLoadingState.Success(title, items, viewOptions, showViewMore = items.size >= limit))
+                    }
+                }
+                shelves.forEachIndexed { shelfIndex, shelf ->
+                    if (shelf.title !in PROGRESS_SHELF_TITLES) return@forEachIndexed
+                    launchIO {
+                        val items =
+                            try {
+                                shelf.load(shelf)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Could not refresh the %s row", shelf.title)
+                                return@launchIO
+                            }
+                        setRow(
+                            recommendedRows.size + shelfIndex,
+                            HomeRowLoadingState.Success(
+                                StringStringProvider(shelf.title),
+                                items,
+                                shelf.viewOptions,
+                                showViewMore = items.size >= LibraryHomeService.ROW,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        private fun setRow(
+            index: Int,
+            row: HomeRowLoadingState,
+        ) {
+            _state.update {
+                if (index !in it.rows.indices) {
+                    it
+                } else {
+                    it.copy(rows = it.rows.toMutableList().apply { set(index, row) })
+                }
             }
         }
 
         /** Benflix: the banner at the top of the mini Home */
-        private fun loadFeatured() {
+        private fun loadFeatured(): kotlinx.coroutines.Job =
             viewModelScope.launchIO {
                 try {
                     val featured = libraryHome.featured(parentId, kind)
@@ -237,7 +372,6 @@ class RecommendedViewModel
                     Timber.w(ex, "Could not load the banner for %s", parentId)
                 }
             }
-        }
 
         /** Opens a tile, or for the music rows that start music (mixes, decades), starts it */
         fun clickItem(
@@ -510,11 +644,34 @@ data class RecommendedState(
     val featured: List<FeaturedItem> = emptyList(),
 )
 
+/** Benflix speed: a library page as it was last time, saved on the device so it shows up instantly */
+@kotlinx.serialization.Serializable
+internal data class SavedLibraryPage(
+    val rows: List<com.github.damontecres.wholphin.ui.main.SnapshotServerRow>,
+    val featured: List<com.github.damontecres.wholphin.ui.main.SnapshotFeatured> = emptyList(),
+)
+
+/** Rows of a library page that load at the same time */
+private const val ROWS_AT_ONCE = 4
+
+/** Tiles kept per saved row */
+private const val SAVED_ROW_MAX = 20
+
+/** Saved library pages older than this aren't shown */
+private const val SAVED_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
+
+/** Bump when [SavedLibraryPage] changes */
+private const val SAVED_FORMAT = 1
+
 /** Benflix: which rows a [RecommendedViewModel] shows besides its fixed ones */
 const val SHELVES_HOME = "home"
 const val SHELVES_SEASONS = "seasons"
 const val SHELVES_DECADES = "decades"
 const val SHELVES_WEEK = "week"
+
+/** Benflix: rows that change after watching something, reloaded when coming back to the page */
+private val PROGRESS_ROW_TITLES = setOf(R.string.continue_watching, R.string.next_up)
+private val PROGRESS_SHELF_TITLES = setOf("Played lately", "Finish the season")
 
 data class RecommendedRow<T>(
     val title: Int,
@@ -537,6 +694,11 @@ fun RecommendedContent(
 
     OneTimeLaunchedEffect {
         viewModel.init()
+    }
+    // Benflix: back from the player, Continue watching & co. show the new progress (like Home)
+    LifecycleStartEffect(Unit) {
+        viewModel.refreshProgressRows()
+        onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()
 

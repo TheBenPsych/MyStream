@@ -17,6 +17,8 @@ data class TowerApp(
     val ok: Boolean,
     val status: String,
     val restartable: Boolean,
+    /** Needs a look: keeps restarting, not answering, or stopped by itself with an error. False when stopped on purpose. */
+    val problem: Boolean = !ok,
 )
 
 /** One download in Sonarr or Radarr */
@@ -30,6 +32,8 @@ data class TowerDownload(
     val paused: Boolean,
     val queued: Boolean,
     val why: String?,
+    /** How many episodes this one download has: more than 1 for a season pack */
+    val episodes: Int = 1,
 )
 
 /** What the Benflix helper on Tower says, in one answer */
@@ -138,6 +142,8 @@ class BenflixTower
                             ok = it.optBoolean("ok"),
                             status = it.optString("status"),
                             restartable = it.optBoolean("restartable"),
+                            // An older helper doesn't say, so anything not running properly counts
+                            problem = it.optBoolean("problem", !it.optBoolean("ok")),
                         )
                     },
                 downloads =
@@ -152,6 +158,7 @@ class BenflixTower
                             paused = it.optBoolean("paused"),
                             queued = it.optBoolean("queued"),
                             why = it.textOrNull("why"),
+                            episodes = it.optInt("episodes", 1).coerceAtLeast(1),
                         )
                     },
                 sonarr = j.optBoolean("sonarr"),

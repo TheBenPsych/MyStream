@@ -404,9 +404,11 @@ class MainActivity : AppCompatActivity() {
     override fun onRestart() {
         super.onRestart()
         Timber.d("onRestart")
-        if (GameStreamReturn.pending) {
-            // Back from playing a game: stay where we were (the Games tab)
+        if (GameStreamReturn.pending || ResumeTimer.expectedTrip || playExternalViewModel.launched.value) {
+            // Back from playing a game (stay on the Games tab), the external player, the AniList
+            // sign-in or the updater's Android screens: stay where we were
             GameStreamReturn.pending = false
+            ResumeTimer.expectedTrip = false
             ResumeTimer.resumeAllowed = true
             return
         }
@@ -699,6 +701,8 @@ class MainActivityViewModel
             // before sign-in on every update, which took about 2 s on older TVs. Copy it on the side.
             viewModelScope.launch(WholphinDispatchers.IO) {
                 appUpgradeHandler.copySubfont(needUpgrade)
+                // Benflix: look at this device again after an update (quietly; never undoes the person's own choices)
+                if (needUpgrade) appUpgradeHandler.rerunDeviceCheck()
             }
         }
 

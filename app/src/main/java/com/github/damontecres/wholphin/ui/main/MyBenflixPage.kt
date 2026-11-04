@@ -62,6 +62,7 @@ class MyBenflixViewModel
         private val api: ApiClient,
         val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
+        private val requestReady: RequestReadyService,
     ) : ViewModel() {
         /** The profile picture, the same one the top bar shows */
         fun userImageUrl(userId: java.util.UUID): String = api.imageApi.getUserImageUrl(userId)
@@ -69,11 +70,14 @@ class MyBenflixViewModel
         private val _rows = MutableStateFlow<List<HubRow>?>(null)
 
         companion object {
-            /** Last time's rows per person, so the page shows at once when opened again */
-            private val lastRows = java.util.concurrent.ConcurrentHashMap<java.util.UUID, List<HubRow>>()
+            /** Last time's rows per person and profile, so the page shows at once when opened again */
+            private val lastRows = java.util.concurrent.ConcurrentHashMap<String, List<HubRow>>()
 
             // Continue watching lives on Home, so it isn't repeated here
-            private val ROW_TITLES = listOf("My List", "Liked", "Watch history")
+            private val ROW_TITLES = listOf("My List", REQUESTS_ROW, "Liked", "Watch history")
+
+            /** Benflix: things you asked for in Requests that are now on Benflix, newest first */
+            const val REQUESTS_ROW = "Your requests are here"
         }
 
         val rows: StateFlow<List<HubRow>?> = _rows
@@ -81,6 +85,8 @@ class MyBenflixViewModel
         fun load() {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
+                // Kids, Big kids and Guest each keep their own saved rows, so no grown-up lists flash up
+                val rowsKey = "$userId-${KidsMode.level}-${GuestMode.isActive}"
 
                 suspend fun safe(block: suspend () -> List<BaseItem>): List<BaseItem> =
                     try {
@@ -111,7 +117,7 @@ class MyBenflixViewModel
                     enableTotalRecordCount = false,
                 )
                 // Benflix: show what was there last time straight away, then each row as soon as it's ready
-                lastRows[userId]?.let { _rows.value = it }
+                lastRows[rowsKey]?.let { _rows.value = it }
                 val loaders: List<suspend () -> HubRow> =
                     listOf(
                         suspend {
@@ -122,6 +128,31 @@ class MyBenflixViewModel
                                         .getItems(request(filters = listOf(ItemFilter.IS_FAVORITE), sortBy = ItemSortBy.DATE_CREATED))
                                         .content.items
                                         .map { BaseItem(it) }
+                                },
+                            )
+                        },
+                        suspend {
+                            HubRow(
+                                REQUESTS_ROW,
+                                safe {
+                                    if (KidsMode.isActive || GuestMode.isActive) return@safe emptyList()
+                                    // Look again (at most once a minute), then the red number goes since you're here
+                                    requestReady.refresh()
+                                    requestReady.markAllSeen()
+                                    val order = requestReady.ready.value.mapNotNull { it.jellyfinId }
+                                    if (order.isEmpty()) return@safe emptyList()
+                                    val found =
+                                        api.itemsApi
+                                            .getItems(
+                                                GetItemsRequest(
+                                                    userId = userId,
+                                                    ids = order,
+                                                    fields = HomeItemFields,
+                                                    enableTotalRecordCount = false,
+                                                ),
+                                            ).content.items
+                                            .associateBy { it.id }
+                                    order.mapNotNull { id -> found[id]?.let { BaseItem(it) } }
                                 },
                             )
                         },
@@ -162,7 +193,7 @@ class MyBenflixViewModel
                             lock.withLock {
                                 slots[index] = row
                                 // Keep last time's row in its place until the new one arrives
-                                val previous = lastRows[userId].orEmpty()
+                                val previous = lastRows[rowsKey].orEmpty()
                                 val shown =
                                     slots.mapIndexed { i, r -> r ?: previous.firstOrNull { it.title == ROW_TITLES[i] } }
                                 val visible = shown.filterNotNull().filter { it.items.isNotEmpty() }
@@ -172,7 +203,7 @@ class MyBenflixViewModel
                     }
                 }
                 val done = slots.filterNotNull().filter { it.items.isNotEmpty() }
-                lastRows[userId] = done
+                lastRows[rowsKey] = done
                 _rows.value = done
             }
         }
@@ -228,7 +259,7 @@ fun MyBenflixPage(
                         guest = GuestMode.isActive,
                         onClickParents = { showParentPin = true },
                     )
-                    if (!GuestMode.isActive) MonthStatsCard()
+                    if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard()
                     when {
                         rows == null -> {
                             LoadingPage(Modifier.fillMaxWidth().height(120.dp))
@@ -294,7 +325,7 @@ fun MyBenflixPage(
         }
         val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
         // Benflix: get the Server page ready in the background for the admin
-        PreloadServerPage(isAdmin = userDto?.policy?.isAdministrator == true && !kids && !GuestMode.isActive)
+        PreloadServerPage(isAdmin = GuestMode.isAdmin(userDto) && !kids)
         if (!kids && !GuestMode.isActive) {
             // Wraps onto a second line on narrow phones
             androidx.compose.foundation.layout.FlowRow(
@@ -302,7 +333,7 @@ fun MyBenflixPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(start = 8.dp),
             ) {
-                if (userDto?.policy?.isAdministrator == true) {
+                if (GuestMode.isAdmin(userDto)) {
                     Button(onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) }) {
                         Text("Server")
                     }
@@ -316,7 +347,7 @@ fun MyBenflixPage(
             }
         }
         // Benflix: this month so far
-        if (!GuestMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
+        if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
         if (showParentPin) {
             ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
         }

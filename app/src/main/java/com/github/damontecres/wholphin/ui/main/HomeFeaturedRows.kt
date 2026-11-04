@@ -37,6 +37,52 @@ import java.util.UUID
 import kotlin.random.Random
 
 /**
+ * Benflix: on a refresh the banner isn't loaded again (so it doesn't reshuffle), but its
+ * "Pick up where you left off" slides are checked: finished ones are dropped and the rest
+ * get their new progress.
+ */
+internal suspend fun HomeViewModel.refreshFeaturedResume(userDto: ServerUserConfig) {
+    val resumeIds =
+        state.value.featured
+            .filter { it.reason == FeaturedReason.RESUME }
+            .map { it.item.id }
+    if (resumeIds.isEmpty()) return
+    val fresh =
+        try {
+            api.itemsApi
+                .getItems(
+                    GetItemsRequest(
+                        userId = userDto.id,
+                        ids = resumeIds,
+                        fields = HomeRowFields,
+                        enableUserData = true,
+                    ),
+                ).content.items
+                .associateBy { it.id }
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            Timber.w(ex, "Could not check the banner's resume slides")
+            return
+        }
+    mutableState.update { st ->
+        st.copy(
+            featured =
+                st.featured.mapNotNull { f ->
+                    if (f.reason != FeaturedReason.RESUME) return@mapNotNull f
+                    val dto = fresh[f.item.id] ?: return@mapNotNull f
+                    val userData = dto.userData ?: return@mapNotNull f
+                    if (userData.played || userData.playbackPositionTicks <= 0L) {
+                        null
+                    } else {
+                        f.copy(item = f.item.copy(data = f.item.data.copy(userData = userData)))
+                    }
+                },
+        )
+    }
+}
+
+/**
  * Load the items for the rotating banner at the top of the home page:
  * the newest movies & shows plus a few random unwatched picks
  */
@@ -173,7 +219,7 @@ internal suspend fun HomeViewModel.loadFeatured(userDto: ServerUserConfig) {
             ) {
                 featuredSourceAsync("tonight") {
                     // Benflix speed: count the fitting movies first, then fetch only the
-                    // few around tonight's spot instead of 200 of them
+                    // few around tonight's spot. Every fitting movie in the library can be picked.
                     val tonightRequest =
                         baseRequest.copy(
                             includeItemTypes = listOf(BaseItemKind.MOVIE),
@@ -181,27 +227,44 @@ internal suspend fun HomeViewModel.loadFeatured(userDto: ServerUserConfig) {
                             minCommunityRating = TONIGHT_MIN_RATING,
                             sortBy = listOf(ItemSortBy.SORT_NAME),
                         )
-                    val total =
-                        api.itemsApi
-                            .getItems(tonightRequest.copy(limit = 0, enableTotalRecordCount = true))
-                            .content.totalRecordCount
-                            .coerceAtMost(TONIGHT_POOL)
-                    if (total <= 0) {
-                        emptyList()
-                    } else {
-                        val day =
-                            java.time.LocalDate
-                                .now()
-                                .toEpochDay()
-                        val index = Math.floorMod(day * 31 + userDto.id.hashCode(), total.toLong()).toInt()
-                        // A few extra, in case tonight's one got a thumbs down
-                        api.itemsApi
-                            .getItems(tonightRequest.copy(startIndex = index, limit = TONIGHT_FETCH))
-                            .content.items
-                            .firstOrNull { it.userData?.likes != false }
-                            ?.let { listOf(FeaturedItem(BaseItem(it), FeaturedReason.TONIGHT, becauseOf = userDto.name)) }
-                            .orEmpty()
-                    }
+                    val day =
+                        java.time.LocalDate
+                            .now()
+                            .toEpochDay()
+                    val cacheKey = "$day-${userDto.id}-${KidsMode.level}"
+                    // Tonight's pick from earlier today, if it still fits (not watched or thumbs-downed since)
+                    val cached =
+                        tonightCache
+                            ?.takeIf { it.first == cacheKey }
+                            ?.second
+                            ?.let { id ->
+                                api.itemsApi
+                                    .getItems(tonightRequest.copy(ids = listOf(id), limit = 1))
+                                    .content.items
+                                    .firstOrNull { it.userData?.likes != false }
+                            }
+                    val pick =
+                        cached ?: run {
+                            val total =
+                                api.itemsApi
+                                    .getItems(tonightRequest.copy(limit = 0, enableTotalRecordCount = true))
+                                    .content.totalRecordCount
+                            if (total <= 0) {
+                                null
+                            } else {
+                                val index =
+                                    Math.floorMod(day * 31 + userDto.id.hashCode(), total.toLong()).toInt()
+                                // A few extra, in case tonight's one got a thumbs down
+                                api.itemsApi
+                                    .getItems(tonightRequest.copy(startIndex = index, limit = TONIGHT_FETCH))
+                                    .content.items
+                                    .firstOrNull { it.userData?.likes != false }
+                                    ?.also { tonightCache = cacheKey to it.id }
+                            }
+                        }
+                    pick
+                        ?.let { listOf(FeaturedItem(BaseItem(it), FeaturedReason.TONIGHT, becauseOf = userDto.name)) }
+                        .orEmpty()
                 }
             } else {
                 null
@@ -245,7 +308,7 @@ internal suspend fun HomeViewModel.onThisDay(
     baseRequest: GetItemsRequest,
 ): List<FeaturedItem> {
     val today = java.time.LocalDate.now()
-    val key = "$today/$userId/${KidsMode.isActive}"
+    val key = "$today/$userId/${KidsMode.level}"
     // Benflix: the day's list is also saved on the device, so opening the app again the
     // same day doesn't download every movie's details again
     val fileKey = "on-this-day-$key"

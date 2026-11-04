@@ -116,9 +116,8 @@ fun SwitchUserContent(
         bigKids: Boolean = false,
         guest: Boolean = false,
     ) {
-        KidsMode.set(kids, bigKids)
-        GuestMode.set(guest)
-        val result = viewModel.trySwitchUser(user)
+        // Kids / Guest are set by the view model, and only kept if the switch works
+        val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
         scope.launch {
             when (val r = result.await()) {
                 is SwitchUserResult.Error -> {
@@ -265,7 +264,8 @@ fun SwitchUserContent(
                                     onAddUser = {
                                         showAddUserDialog(null)
                                     },
-                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV
+                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV. The parent PIN,
+                                    // bedtime and limit belong to the whole TV (see BenflixParentPin), not this sign-in
                                     kidsUser =
                                         state.users
                                             .map { it.user }

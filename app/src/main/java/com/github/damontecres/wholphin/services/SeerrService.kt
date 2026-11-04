@@ -1,13 +1,16 @@
 package com.github.damontecres.wholphin.services
 
+import com.github.damontecres.wholphin.api.seerr.RequestApi
 import com.github.damontecres.wholphin.api.seerr.SeerrApiClient
 import com.github.damontecres.wholphin.api.seerr.model.CreditCast
 import com.github.damontecres.wholphin.api.seerr.model.CreditCrew
 import com.github.damontecres.wholphin.api.seerr.model.MediaInfo
+import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
 import com.github.damontecres.wholphin.api.seerr.model.MovieDetails
 import com.github.damontecres.wholphin.api.seerr.model.MovieResult
 import com.github.damontecres.wholphin.api.seerr.model.RootFolder
 import com.github.damontecres.wholphin.api.seerr.model.SearchGet200ResponseResultsInner
+import com.github.damontecres.wholphin.api.seerr.model.Season
 import com.github.damontecres.wholphin.api.seerr.model.ServiceProfile
 import com.github.damontecres.wholphin.api.seerr.model.TvDetails
 import com.github.damontecres.wholphin.api.seerr.model.TvResult
@@ -51,6 +54,32 @@ class SeerrService
         val api: SeerrApiClient get() = seerApi.api
 
         val active get() = seerrServerRepository.active
+
+        /**
+         * Benflix: requests newest first, a page at a time, up to [max] (Seerr only hands out one page per call,
+         * so a busy list used to stop at the first page)
+         */
+        suspend fun allRequests(
+            filter: RequestApi.FilterRequestGet? = null,
+            requestedBy: Int? = null,
+            max: Int = MAX_REQUESTS,
+        ): List<MediaRequest> {
+            val all = mutableListOf<MediaRequest>()
+            while (all.size < max) {
+                val page =
+                    api.requestApi
+                        .requestGet(
+                            take = REQUEST_PAGE,
+                            skip = all.size,
+                            filter = filter,
+                            requestedBy = requestedBy,
+                        ).results
+                        .orEmpty()
+                all += page
+                if (page.size < REQUEST_PAGE) break
+            }
+            return all.take(max)
+        }
 
         suspend fun search(
             query: String,
@@ -104,7 +133,10 @@ class SeerrService
          * @return the discovered items or null if no Seerr server configured
          */
         suspend fun similar(item: BaseItem): List<DiscoverItem>? =
-            if (active.first()) {
+            if (KidsMode.isActive) {
+                // Benflix: Kids never see Seerr's titles (they aren't rating-checked)
+                emptyList()
+            } else if (active.first()) {
                 item.data.providerIds
                     ?.get("Tmdb")
                     ?.toIntOrNull()
@@ -145,6 +177,13 @@ class SeerrService
          * entries last
          */
         suspend fun personCredits(personId: Int): List<DiscoverItem> =
+            if (KidsMode.isActive) {
+                emptyList()
+            } else {
+                loadPersonCredits(personId)
+            }
+
+        private suspend fun loadPersonCredits(personId: Int): List<DiscoverItem> =
             api.personApi
                 .personPersonIdCombinedCreditsGet(personId = personId)
                 .let { credits ->
@@ -526,6 +565,32 @@ class SeerrService
                 jellyfinItemId = credit.mediaInfo?.jellyfinId,
             )
     }
+
+/** Benflix: how many requests are fetched at most, and how many per call */
+const val MAX_REQUESTS = 500
+private const val REQUEST_PAGE = 100
+
+/**
+ * Benflix: whether what this request asked for is on Benflix. A movie, or a show asked for as a whole, goes by
+ * the title. A show asked for by season goes by those seasons, so it counts as here once they're all in, even
+ * while other seasons are still missing (Seerr then says "partially available").
+ *
+ * @param mediaSeasons the show's seasons from Seerr's details (the request list often leaves them out)
+ */
+fun MediaRequest.requestedArrived(mediaSeasons: List<Season>? = media?.seasons): Boolean {
+    if (media?.status == SeerrAvailability.AVAILABLE.status) return true
+    if (SeerrItemType.fromString(type) == SeerrItemType.MOVIE) return false
+    val wanted = seasons.orEmpty().mapNotNull { it.seasonNumber }
+    if (wanted.isEmpty()) return false
+    val fourK = is4k == true
+    val here =
+        mediaSeasons
+            .orEmpty()
+            .filter { (if (fourK) it.status4k else it.status) == SeerrAvailability.AVAILABLE.status }
+            .mapNotNull { it.seasonNumber }
+            .toSet()
+    return wanted.all { it in here }
+}
 
 val MediaInfo.jellyfinId: UUID?
     get() = jellyfinMediaId4k?.toUUIDOrNull() ?: jellyfinMediaId?.toUUIDOrNull()

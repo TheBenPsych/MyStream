@@ -78,6 +78,10 @@ data class ServerToolsState(
     /** Benflix: "What takes the most space" (null until asked) */
     val space: List<CheckupSection>? = null,
     val spaceBusy: Boolean = false,
+    /** Benflix: the people list couldn't be read (Refresh tries again) */
+    val peopleFailed: Boolean = false,
+    /** Benflix: the notes couldn't be read (Refresh tries again) */
+    val notesFailed: Boolean = false,
 )
 
 @HiltViewModel
@@ -108,13 +112,20 @@ class ServerToolsViewModel
             if (notesAsked) return
             val id = userId ?: return
             notesAsked = true
-            work(showBusy = false) {
-                val note = notes.read(id)
-                _state.value = _state.value.copy(note = note)
-            }
-            work(showBusy = false) {
-                val welcome = notes.read(id, NoteKind.WELCOME)
-                _state.value = _state.value.copy(welcome = welcome, notesLoaded = true)
+            _state.value = _state.value.copy(notesFailed = false)
+            viewModelScope.launch {
+                try {
+                    // Benflix: a note sent to only some people isn't in Ben's own copy, so look at theirs too
+                    val note = notes.readSent(id)
+                    val welcome = notes.read(id, NoteKind.WELCOME)
+                    _state.value = _state.value.copy(note = note, welcome = welcome, notesLoaded = true)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Server tools: could not read the notes")
+                    notesAsked = false
+                    _state.value = _state.value.copy(notesFailed = true)
+                }
             }
         }
 
@@ -122,13 +133,38 @@ class ServerToolsViewModel
         fun loadPeople() {
             if (peopleAsked) return
             peopleAsked = true
-            work(showBusy = false) {
-                val list = people.list()
-                _state.value = _state.value.copy(people = list)
+            _state.value = _state.value.copy(peopleFailed = false)
+            viewModelScope.launch {
+                try {
+                    val list = people.list()
+                    _state.value = _state.value.copy(people = list)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Server tools: could not read the people")
+                    peopleAsked = false
+                    _state.value = _state.value.copy(peopleFailed = true)
+                }
             }
             work(showBusy = false) {
                 _state.value = _state.value.copy(libraries = actions.libraries())
             }
+        }
+
+        private suspend fun readSentOrNull(id: java.util.UUID): BenflixNote? =
+            try {
+                notes.readSent(id)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Server tools: could not read the note back")
+                null
+            }
+
+        /** Benflix: Refresh (and pull to refresh) tries again whatever couldn't be read the first time */
+        fun retryFailed() {
+            if (_state.value.peopleFailed) loadPeople()
+            if (_state.value.notesFailed) loadNotes()
         }
 
         /** Benflix: how many screens they can watch on at the same time (0 = no limit) */
@@ -175,16 +211,27 @@ class ServerToolsViewModel
         /** Benflix: signs them out on every device (not this one) */
         fun signOutEverywhere(user: UserDto) =
             work {
-                val count = actions.signOutEverywhere(user, api.deviceInfo.id)
+                val (count, skipped) = actions.signOutEverywhere(user, api.deviceInfo.id)
+                val skippedText =
+                    if (skipped == 0) {
+                        ""
+                    } else {
+                        " $skipped device" + (if (skipped == 1) " was" else "s were") +
+                            " left alone because other people are signed in on " + (if (skipped == 1) "it" else "them") + " too."
+                    }
                 _state.value =
                     _state.value.copy(
                         message =
                             "Signed out" to
                                 if (count == 0) {
-                                    "${user.name} wasn't signed in anywhere else."
+                                    if (skipped == 0) {
+                                        "${user.name} wasn't signed in anywhere else."
+                                    } else {
+                                        "${user.name} wasn't signed out anywhere." + skippedText
+                                    }
                                 } else {
                                     "${user.name} was signed out on $count device" + (if (count == 1) "" else "s") +
-                                        ". They'll need their password to sign in again."
+                                        ". They'll need their password to sign in again." + skippedText
                                 },
                     )
             }
@@ -212,7 +259,7 @@ class ServerToolsViewModel
             val id = userId
             _state.value =
                 _state.value.copy(
-                    note = id?.let { notes.read(it) },
+                    note = id?.let { readSentOrNull(it) },
                     message =
                         if (text.isBlank()) {
                             "Note removed" to "It won't show on Home any more."
@@ -268,8 +315,9 @@ class ServerToolsViewModel
             user: UserDto,
             bitsPerSecond: Int,
         ) = work {
+            // Benflix: read their policy fresh so other settings changed since the list loaded aren't undone
             val policy =
-                user.policy ?: api.userApi
+                api.userApi
                     .getUserById(user.id)
                     .content.policy ?: return@work
             api.userApi.updateUserPolicy(user.id, policy.copy(remoteClientBitrateLimit = bitsPerSecond))
@@ -335,7 +383,9 @@ class ServerToolsViewModel
 
         /**
          * Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open.
-         * When Ben picked people, anyone who isn't on right now gets it saved for the next time they open Benflix.
+         * When Ben picked people, it's also saved for each of them first, so anyone whose Benflix isn't really open
+         * (in the background, or closed) sees it the next time they open it. A screen that shows it live takes the
+         * saved copy off, so it only shows once.
          */
         fun sendPopup(
             text: String,
@@ -344,11 +394,23 @@ class ServerToolsViewModel
             if (text.isBlank()) return
             work {
                 val header = "Message from Ben"
+                // Benflix: save first, so a screen that shows it live can take the saved copy off straight away
+                val savedFor = mutableSetOf<java.util.UUID>()
+                onlyFor?.forEach { id ->
+                    try {
+                        benflixMessages.saveFor(id, header, text)
+                        savedFor += id
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save the message for %s", id)
+                    }
+                }
                 val sessions =
                     api.sessionApi
                         .getSessions(activeWithinSeconds = 960)
                         .content
-                        .filter { it.supportsRemoteControl == true && it.id != null }
+                        .filter { it.supportsRemoteControl && it.id != null }
                         // Benflix: only the people Ben picked
                         .filter { onlyFor == null || it.userId in onlyFor }
                 var sent = 0
@@ -359,8 +421,13 @@ class ServerToolsViewModel
                             sessionId = session.id!!,
                             data = MessageCommand(header = header, text = text, timeoutMs = 15_000L),
                         )
-                        sent++
-                        session.userId?.let { reached += it }
+                        // Benflix: only a Benflix app that's connected right now really shows it. The server only
+                        // marks a session as remote-controllable while its app is connected, and Benflix drops
+                        // that connection when it goes to the background.
+                        if (session.deviceId?.startsWith(BENFLIX_DEVICE_PREFIX) == true) {
+                            sent++
+                            session.userId?.let { reached += it }
+                        }
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -372,22 +439,13 @@ class ServerToolsViewModel
                 if (onlyFor != null) {
                     val names =
                         (_state.value.people ?: people.list()).associate { it.id to it.name.orEmpty() }
-                    (onlyFor - reached).forEach { id ->
-                        try {
-                            benflixMessages.saveFor(id, header, text)
-                            later += names[id] ?: "Someone"
-                        } catch (ex: CancellationException) {
-                            throw ex
-                        } catch (ex: Exception) {
-                            Timber.w(ex, "Could not save the message for %s", id)
-                        }
-                    }
+                    (savedFor - reached).forEach { id -> later += names[id] ?: "Someone" }
                 }
                 val now =
                     if (sent == 0) {
                         null
                     } else {
-                        "It showed on $sent screen" + (if (sent == 1) "" else "s") + " right away."
+                        "It showed on $sent Benflix screen" + (if (sent == 1) "" else "s") + " right away."
                     }
                 val saved =
                     if (later.isEmpty()) {
@@ -643,7 +701,12 @@ fun LazyListScope.messageItems(
     item { sectionTitle("Note on everyone's Home") }
     item {
         ServerActionRow(
-            headline = if (!state.notesLoaded) "Checking…" else state.note?.text ?: "Write a note",
+            headline =
+                when {
+                    state.notesLoaded -> state.note?.text ?: "Write a note"
+                    state.notesFailed -> NOTES_FAILED
+                    else -> "Checking…"
+                },
             supporting =
                 if (state.note == null) {
                     "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
@@ -657,7 +720,12 @@ fun LazyListScope.messageItems(
     item { sectionTitle("Welcome note") }
     item {
         ServerActionRow(
-            headline = if (!state.notesLoaded) "Checking…" else state.welcome?.text ?: "Write a welcome note",
+            headline =
+                when {
+                    state.notesLoaded -> state.welcome?.text ?: "Write a welcome note"
+                    state.notesFailed -> NOTES_FAILED
+                    else -> "Checking…"
+                },
             supporting =
                 if (state.welcome == null) {
                     "Everyone sees it once, on their first Home screen. Like \"Welcome to Benflix! Ask me if you can't find something.\""
@@ -678,6 +746,11 @@ fun LazyListScope.messageItems(
         )
     }
 }
+
+/** Benflix: the device id every Benflix app has, so other Jellyfin apps aren't counted as reached */
+private const val BENFLIX_DEVICE_PREFIX = "benflix-"
+
+private const val NOTES_FAILED = "Couldn't read the notes. Press Refresh to try again."
 
 /** Benflix: how long this device took to open Benflix last time */
 fun LazyListScope.startupSpeedItem(sectionTitle: @Composable (String) -> Unit) {
@@ -710,7 +783,11 @@ fun LazyListScope.peopleItems(
         )
     }
     if (people == null) {
-        item { ServerActionRow(headline = "Checking…") }
+        item {
+            ServerActionRow(
+                headline = if (state.peopleFailed) "Couldn't read the people list. Press Refresh to try again." else "Checking…",
+            )
+        }
         return
     }
     items(people, key = { "person-${it.id}" }) { user ->

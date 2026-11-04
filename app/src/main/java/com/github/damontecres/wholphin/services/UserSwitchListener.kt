@@ -147,7 +147,12 @@ class UserSwitchListener
                                                     seerrLogin(
                                                         seerrApi.api,
                                                         seerrUser.authMethod,
-                                                        seerrUser.username,
+                                                        // Benflix: a Jellyfin sign-in uses today's Jellyfin name, so renaming the account keeps working
+                                                        if (seerrUser.authMethod == SeerrAuthMethod.JELLYFIN) {
+                                                            user.name?.takeIf { it.isNotBlank() } ?: seerrUser.username
+                                                        } else {
+                                                            seerrUser.username
+                                                        },
                                                         seerrUser.password,
                                                     )
                                                 } else {

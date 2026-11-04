@@ -18,8 +18,6 @@ class DisplayPreferencesService
         @param:ApplicationContext private val context: Context,
         private val api: ApiClient,
     ) {
-        private val mutex = Mutex()
-
         suspend fun getDisplayPreferences(
             userId: UUID,
             displayPreferencesId: String = DEFAULT_DISPLAY_PREF_ID,
@@ -37,7 +35,7 @@ class DisplayPreferencesService
             client: String = DEFAULT_CLIENT,
             block: MutableMap<String, String?>.() -> Unit,
         ) {
-            mutex.withLock {
+            WRITE_LOCK.withLock {
                 val current = getDisplayPreferences(userId, displayPreferencesId, client)
                 val customPrefs =
                     current.customPrefs.toMutableMap().apply {
@@ -53,6 +51,12 @@ class DisplayPreferencesService
         }
 
         companion object {
+            /**
+             * Held while reading, changing and writing back display preferences, so two writers
+             * (settings sync, profile pictures) don't undo each other's changes
+             */
+            val WRITE_LOCK = Mutex()
+
             const val DEFAULT_DISPLAY_PREF_ID = "default"
             val DEFAULT_CLIENT = if (BuildConfig.DEBUG) "Wholphin (Debug)" else "Wholphin"
         }

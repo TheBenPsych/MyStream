@@ -57,6 +57,7 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.games.DevicePower
+import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.PhonePadActivity
@@ -140,8 +141,8 @@ fun GamesPage(
                 },
                 { mod ->
                     MovieGameTile(
-                        title = "Daily movie riddle",
-                        subtitle = "One riddle a day, the same for the whole family. Three clues, four choices.",
+                        title = "Movie riddle",
+                        subtitle = "Guess the movie from its clues. Five choices, and it keeps going until you miss!",
                         icon = R.string.fa_clock,
                         colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
@@ -216,10 +217,18 @@ fun GamesPage(
                 )
             }
             DeviceCard(power, isTv)
+            // Refreshes after a game is downloaded or removed, not only when the library reloads
+            val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
             StorageCard(
-                games = remember(library) { viewModel.localGames.downloaded() },
+                games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
                 isTv = isTv,
-                onRemove = { viewModel.removeDownload(context, it.ref) },
+                // Kids can't delete games from the device
+                onRemove =
+                    if (KidsMode.isActive) {
+                        null
+                    } else {
+                        { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
+                    },
             )
             if (!isTv) {
                 ActionTile(
@@ -237,11 +246,17 @@ fun GamesPage(
 
                 is LibraryState.Failed -> {
                     InfoText(state.message)
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val retryTiles: @Composable () -> Unit = {
                         ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
                         if (state.askAddress) {
                             ActionTile(title = "Set server address", subtitle = "Only if it can't find it", onClick = { askAddress = true })
                         }
+                    }
+                    // Two tiles side by side are wider than a phone, so on phones they go one under the other
+                    if (isTv) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { retryTiles() }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { retryTiles() }
                     }
                     if (state.downloaded.isNotEmpty()) {
                         Text(
@@ -286,7 +301,7 @@ fun GamesPage(
                             playable
                                 .flatMap { (c, _, _) ->
                                     c.games.map {
-                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size)
+                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
                                     }
                                 }.toMap()
                         }

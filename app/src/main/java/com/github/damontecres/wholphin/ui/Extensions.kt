@@ -189,6 +189,11 @@ fun RequestOrRestoreFocus(
     }
 }
 
+/**
+ * Scrolls long text sideways while [focused]. When not focused (always on phones, where taps
+ * don't focus), the text is left alone so it can end in "…" (callers set
+ * overflow = TextOverflow.Ellipsis) instead of being cut off mid-letter.
+ */
 fun Modifier.enableMarquee(focused: Boolean) =
     if (focused) {
         basicMarquee(
@@ -197,7 +202,7 @@ fun Modifier.enableMarquee(focused: Boolean) =
             velocity = 40.dp,
         )
     } else {
-        basicMarquee(animationMode = MarqueeAnimationMode.WhileFocused)
+        this
     }
 
 @Composable

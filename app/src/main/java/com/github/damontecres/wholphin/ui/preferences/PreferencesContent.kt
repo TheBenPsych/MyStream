@@ -58,9 +58,11 @@ import com.github.damontecres.wholphin.preferences.SkipSegmentPreferences
 import com.github.damontecres.wholphin.preferences.advancedPreferences
 import com.github.damontecres.wholphin.preferences.basicPreferences
 import com.github.damontecres.wholphin.preferences.experimentalPreferences
+import com.github.damontecres.wholphin.preferences.guestPreferences
 import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.preferences.screensaverPreferences
 import com.github.damontecres.wholphin.preferences.updatePlaybackPreferences
+import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.HiddenGenres
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.Release
@@ -185,7 +187,9 @@ fun PreferencesContent(
     // Benflix: the screensaver is TV-only, so its settings are hidden on phones
     val isTv = rememberIsTv()
     val currentUserDto by viewModel.currentUserDto.collectAsState()
-    val isAdmin = currentUserDto?.policy?.isAdministrator == true
+    // Benflix: Guest gets a cut-down Settings (watching basics and Help only), and is never an admin
+    val guest by GuestMode.active.collectAsState()
+    val isAdmin = !guest && GuestMode.isAdmin(currentUserDto)
 
     // Benflix: settings search (type a word, see every matching setting from all sections)
     var settingsQuery by rememberSaveable { mutableStateOf("") }
@@ -196,10 +200,11 @@ fun PreferencesContent(
     fun isShown(pref: AppPreference<AppPreferences, *>): Boolean =
         (isTv || pref != AppPreference.ScreensaverSettings) &&
             (!isTv || pref != AppPreference.MobileDataQualityPref) &&
-            (isAdmin || pref != AppPreference.ServerPage)
+            (isAdmin || pref != AppPreference.ServerPage) &&
+            (!guest || pref in guestPreferences)
 
     val searchResults =
-        remember(effectiveQuery, preferences, isTv, isAdmin) {
+        remember(effectiveQuery, preferences, isTv, isAdmin, guest) {
             if (effectiveQuery.isBlank()) {
                 null
             } else {
@@ -270,6 +275,7 @@ fun PreferencesContent(
 
     val showUpdate =
         UpdateChecker.ACTIVE &&
+            !guest &&
             preferenceScreenOption == PreferenceScreenOption.BASIC &&
             preferences.autoCheckForUpdates &&
             updateAvailable &&
@@ -913,7 +919,7 @@ fun PreferencesContent(
         seerrVm = seerrVm,
     )
 
-    if (showQuickConnectDialog) {
+    if (showQuickConnectDialog && !guest) {
         BenflixQuickConnect(onDismiss = { showQuickConnectDialog = false })
     }
     if (showVersionDialog) {

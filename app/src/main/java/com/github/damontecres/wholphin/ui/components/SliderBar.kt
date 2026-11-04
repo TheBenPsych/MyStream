@@ -4,9 +4,12 @@ import android.view.KeyEvent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,17 +18,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.handleDPadKeyEvents
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import kotlin.math.roundToLong
 
 /**
  * A TV capable control for choosing a value
@@ -73,46 +81,121 @@ fun SliderBar(
             },
         )
 
+    // Phones: tap or drag along the bar to set the value, snapped to the same steps the keys use
+    val isTv = rememberIsTv()
+    val onTouchValue: (Long) -> Unit = { newValue ->
+        currentValue = newValue
+        onChange(newValue)
+    }
+    val touchValueAt: (Float, Int) -> Long = { x, width ->
+        val step = interval.coerceAtLeast(1)
+        val fraction = if (width > 0) (x / width).coerceIn(0f, 1f) else 0f
+        val steps = (fraction * (max - min) / step).roundToLong()
+        (min + steps * step).coerceIn(min, maxOf(min, max))
+    }
+    val setFromTouch by rememberUpdatedState(onTouchValue)
+    val valueAt by rememberUpdatedState(touchValueAt)
+    val touchModifier =
+        Modifier
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    setFromTouch(valueAt(offset.x, size.width))
+                }
+            }.pointerInput(Unit) {
+                var lastSent: Long? = null
+                detectHorizontalDragGestures(
+                    onDragStart = { lastSent = null },
+                ) { change, _ ->
+                    change.consume()
+                    val newValue = valueAt(change.position.x, size.width)
+                    if (newValue != lastSent) {
+                        lastSent = newValue
+                        setFromTouch(newValue)
+                    }
+                }
+            }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Canvas(
-            modifier =
+        val canvasModifier =
+            if (isTv) {
                 Modifier
                     .fillMaxWidth()
                     .height(animatedIndicatorHeight)
                     .padding(horizontal = 4.dp)
                     .then(handleSeekEventModifier)
-                    .focusable(interactionSource = interactionSource),
-            onDraw = {
-                val yOffset = size.height.div(2)
-                drawLine(
-                    color = if (isFocused) colors.inactiveFocused else colors.inactiveUnfocused,
-                    start = Offset(x = 0f, y = yOffset),
-                    end = Offset(x = size.width, y = yOffset),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round,
-                )
-                drawLine(
-                    color = if (isFocused) colors.activeFocused else colors.activeUnfocused,
-                    start = Offset(x = 0f, y = yOffset),
-                    end =
-                        Offset(
+                    .focusable(interactionSource = interactionSource)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .height(animatedIndicatorHeight)
+                    .then(handleSeekEventModifier)
+                    .focusable(interactionSource = interactionSource)
+            }
+        SliderTouchArea(
+            enabled = !isTv,
+            touchModifier = touchModifier,
+        ) {
+            Canvas(
+                modifier = canvasModifier,
+                onDraw = {
+                    val yOffset = size.height.div(2)
+                    drawLine(
+                        color = if (isFocused) colors.inactiveFocused else colors.inactiveUnfocused,
+                        start = Offset(x = 0f, y = yOffset),
+                        end = Offset(x = size.width, y = yOffset),
+                        strokeWidth = size.height,
+                        cap = StrokeCap.Round,
+                    )
+                    drawLine(
+                        color = if (isFocused) colors.activeFocused else colors.activeUnfocused,
+                        start = Offset(x = 0f, y = yOffset),
+                        end =
+                            Offset(
 //                        x = size.width.times(if (isSelected) seekProgress else progress),
-                            x = size.width.times(percent),
-                            y = yOffset,
-                        ),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round,
-                )
-                drawCircle(
-                    color = Color.White,
-                    radius = size.height + 2,
-                    center = Offset(x = size.width.times(percent), y = yOffset),
-                )
-            },
-        )
+                                x = size.width.times(percent),
+                                y = yOffset,
+                            ),
+                        strokeWidth = size.height,
+                        cap = StrokeCap.Round,
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = size.height + 2,
+                        center = Offset(x = size.width.times(percent), y = yOffset),
+                    )
+                },
+            )
+        }
+    }
+}
+
+/**
+ * On phones, gives the thin bar a finger-sized (32dp tall) area that takes taps and drags.
+ * On TV it just shows [content] unchanged.
+ */
+@Composable
+private fun SliderTouchArea(
+    enabled: Boolean,
+    touchModifier: Modifier,
+    content: @Composable () -> Unit,
+) {
+    if (enabled) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(32.dp)
+                    .padding(horizontal = 4.dp)
+                    .then(touchModifier),
+        ) {
+            content()
+        }
+    } else {
+        content()
     }
 }
 

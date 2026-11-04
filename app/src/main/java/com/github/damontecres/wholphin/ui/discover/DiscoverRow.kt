@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -105,6 +106,8 @@ fun DiscoverItemRow(
     subtitleFor: (DiscoverItem) -> String? = { null },
     // Benflix: the red "Adult content" strip, only on the Requests page (Ben's pick)
     showAdultBanner: Boolean = false,
+    // Benflix: called when a card comes on screen, for phones where nothing gets focus
+    onCardShown: ((Int) -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
@@ -114,6 +117,7 @@ fun DiscoverItemRow(
     val currentOnClickItem by rememberUpdatedState(onClickItem)
     val currentOnLongClickItem by rememberUpdatedState(onLongClickItem)
     val currentOnCardFocus by rememberUpdatedState(onCardFocus)
+    val currentOnCardShown by rememberUpdatedState(onCardShown)
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -138,6 +142,9 @@ fun DiscoverItemRow(
                     .focusRequester(focusRequester),
         ) {
             itemsIndexed(items) { index, item ->
+                if (onCardShown != null) {
+                    LaunchedEffect(index, item) { currentOnCardShown?.invoke(index) }
+                }
                 val cardModifier =
                     remember(index, position) {
                         if (index == position) {

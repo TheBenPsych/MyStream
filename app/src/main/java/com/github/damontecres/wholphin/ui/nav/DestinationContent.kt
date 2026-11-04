@@ -447,12 +447,29 @@ fun DestinationContent(
 
         Destination.ServerStatus -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            com.github.damontecres.wholphin.ui.main
-                .ServerStatusPage(modifier)
+            if (com.github.damontecres.wholphin.services.GuestMode.isActive) {
+                // Benflix: the Server page is never open to Guest, whoever's sign-in it borrows
+                Text(
+                    text = "The Server page isn't available for Guest.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = modifier,
+                )
+            } else {
+                com.github.damontecres.wholphin.ui.main
+                    .ServerStatusPage(modifier)
+            }
         }
 
         Destination.UpdateApp -> {
-            InstallUpdatePage(preferences, modifier)
+            if (com.github.damontecres.wholphin.services.GuestMode.isActive) {
+                Text(
+                    text = "Updates can be installed by the owner, not Guest.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = modifier,
+                )
+            } else {
+                InstallUpdatePage(preferences, modifier)
+            }
         }
 
         Destination.License -> {

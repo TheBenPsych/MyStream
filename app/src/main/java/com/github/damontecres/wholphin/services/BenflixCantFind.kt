@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
+import com.github.damontecres.wholphin.api.seerr.model.Season
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -28,7 +29,6 @@ import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
 import java.time.LocalDate
-import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -245,16 +245,15 @@ class BenflixCantFind
                 if (!isAdmin || !seerrService.active.first()) return@withContext
                 try {
                     refresh()
-                    val list =
-                        requests ?: seerrService.api.requestApi
-                            .requestGet(take = 100, skip = 0)
-                            .results
-                            .orEmpty()
+                    val list = requests ?: seerrService.allRequests()
+                    clearArrived(list)
                     val known = all.map { it.key }.toSet()
                     val old =
                         list.filter { request ->
                             RequestStatus.from(request.status) == RequestStatus.APPROVED &&
                                 request.media?.status != SeerrAvailability.AVAILABLE.status &&
+                                // Benflix: some of the show is already here (maybe the very seasons asked for)
+                                request.media?.status != SeerrAvailability.PARTIALLY_AVAILABLE.status &&
                                 (daysSince(request.updatedAt ?: request.createdAt) ?: 0) >= AUTO_DAYS
                         }
                     val byKey = old.groupBy { it.cantFindKey() }.filterKeys { it != null && it !in known }
@@ -277,7 +276,11 @@ class BenflixCantFind
                             // Something is downloading, so it was found after all
                             if ((media?.get("downloadStatus") as? JsonArray).orEmpty().isNotEmpty()) return@mapNotNull null
                             val status = (media?.get("status") as? JsonPrimitive)?.intOrNull
-                            if (status == SeerrAvailability.AVAILABLE.status) return@mapNotNull null
+                            if (status == SeerrAvailability.AVAILABLE.status ||
+                                status == SeerrAvailability.PARTIALLY_AVAILABLE.status
+                            ) {
+                                return@mapNotNull null
+                            }
                             val title = ((raw["title"] ?: raw["name"]) as? JsonPrimitive)?.contentOrNull
                             val poster = (raw["posterPath"] as? JsonPrimitive)?.contentOrNull?.let { TMDB_POSTER + it }
                             CantFindEntry(
@@ -290,18 +293,72 @@ class BenflixCantFind
                             )
                         }
                     if (toMark.isEmpty()) return@withContext
-                    val saved =
-                        change { current ->
-                            val have = current.map { it.key }.toSet()
-                            (current + toMark.filter { it.key !in have }).takeLast(MAX_ENTRIES)
-                        }
-                    if (saved) toMark.forEach { stopSearching(it.key, it.title) }
+                    // Benflix: only the label. Nothing is taken out of Radarr / Sonarr or blocked in Seerr by itself:
+                    // "nothing downloading and not on Benflix yet" is also what it looks like in the gap after
+                    // Radarr / Sonarr grabbed the file but before Jellyfin (and Seerr) saw it, and taking it out then
+                    // would delete that file. They keep searching, and the label clears itself when it turns up.
+                    // Ben can still stop the search by hand.
+                    change { current ->
+                        val have = current.map { it.key }.toSet()
+                        (current + toMark.filter { it.key !in have }).takeLast(MAX_ENTRIES)
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not check for requests that weren't found")
                 }
             }
+
+        /**
+         * Benflix: labels come off things that have since arrived. A show counts once the seasons asked for are in,
+         * even if other seasons are still missing.
+         */
+        private suspend fun clearArrived(list: List<MediaRequest>) {
+            val marked = _entries.value.keys
+            if (marked.isEmpty()) return
+            val seasonsByShow = mutableMapOf<Int, List<Season>?>()
+
+            suspend fun seasonsOf(tmdbId: Int): List<Season>? =
+                seasonsByShow.getOrPut(tmdbId) {
+                    try {
+                        seerrService.api.tvApi
+                            .tvTvIdGet(tvId = tmdbId)
+                            .mediaInfo
+                            ?.seasons
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not look up the seasons of %s", tmdbId)
+                        null
+                    }
+                }
+
+            val arrived =
+                list
+                    .filter { RequestStatus.from(it.status) != RequestStatus.DECLINED }
+                    .groupBy { it.cantFindKey() }
+                    .filterKeys { it != null && it in marked }
+                    .filter { (_, asks) ->
+                        asks.all { request ->
+                            val tmdbId = request.media?.tmdbId
+                            when {
+                                request.media?.status == SeerrAvailability.AVAILABLE.status -> {
+                                    true
+                                }
+
+                                request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status && tmdbId != null -> {
+                                    request.requestedArrived(seasonsOf(tmdbId))
+                                }
+
+                                else -> {
+                                    false
+                                }
+                            }
+                        }
+                    }.keys
+                    .filterNotNull()
+            if (arrived.isNotEmpty()) forget(arrived)
+        }
 
         /** Admin: drop several at once, like titles that have since arrived */
         suspend fun forget(keys: Collection<String>) {
@@ -391,13 +448,8 @@ class BenflixCantFind
             /** Days of "Still looking" before a request turns into "Couldn't find it" by itself */
             const val AUTO_DAYS = 7L
 
-            /** Whole days since Seerr's date text */
-            fun daysSince(date: String?): Long? =
-                try {
-                    date?.let { ChronoUnit.DAYS.between(OffsetDateTime.parse(it), OffsetDateTime.now()) }
-                } catch (ex: Exception) {
-                    null
-                }
+            /** Calendar days (here, not UTC) since Seerr's date text */
+            fun daysSince(date: String?): Long? = SearchClock.localDay(date)?.let { ChronoUnit.DAYS.between(it, LocalDate.now()) }
 
             /** "MOVIE-123" / "TV-456" for a Seerr request */
             fun MediaRequest.cantFindKey(): String? {

@@ -4,6 +4,7 @@ import android.content.Context
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
+import com.github.damontecres.wholphin.services.ProfileModes
 import com.github.damontecres.wholphin.services.hilt.IoDispatcher
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -203,6 +204,9 @@ class ServerRepository
                     if (serverAndUsers != null) {
                         val user = serverAndUsers.users.firstOrNull { it.id == userId }
                         if (user != null && !user.isProtected) {
+                            // Benflix: bring back Kids / Guest first (they're only in memory otherwise),
+                            // so a child doesn't come back on the full grown-up sign-in
+                            ProfileModes.restore(context, user.id)
                             changeUser(serverAndUsers.server, user)
                         } else {
                             null

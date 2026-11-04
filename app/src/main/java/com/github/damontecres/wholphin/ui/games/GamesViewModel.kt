@@ -170,11 +170,11 @@ class GamesViewModel
         private val _towerRecent = MutableStateFlow<List<Pair<Int, Long>>>(emptyList())
         val towerRecent: StateFlow<List<Pair<Int, Long>>> = _towerRecent
 
-        /** Favourite games (the heart), per account */
+        /** Favourite games (the heart), per account; Kids and Guest have their own, like scores */
         private val _favourites = MutableStateFlow<Set<Int>>(emptySet())
         val favourites: StateFlow<Set<Int>> = _favourites
 
-        private fun favKey() = "fav_${serverRepository.currentUser?.id ?: "guest"}"
+        private fun favKey() = "fav_$profile"
 
         fun toggleFavourite(id: Int) {
             val now = if (id in _favourites.value) _favourites.value - id else _favourites.value + id
@@ -299,40 +299,39 @@ class GamesViewModel
                     .split(',')
                     .mapNotNull { it.toIntOrNull() }
                     .toSet()
-            _library.value = LibraryState.Loading
+            // Benflix speed: show the games from last time straight away (if there are any), then
+            // swap in the fresh list when it arrives
+            val hadGames = _library.value is LibraryState.Ready
+            if (!hadGames) _library.value = LibraryState.Loading
+            // Look at Tower's BIOS files again, and clear out downloads that never finished
+            localGames.forgetBiosList()
+            viewModelScope.launch { localGames.clearLeftovers() }
             viewModelScope.launch {
-                _library.value =
-                    try {
-                        val consoles = games.loadLibrary()
-                        if (KidsMode.isActive) {
-                            // Benflix: Kids only get games rated for everyone (unrated ones are left out, like movies)
-                            val kidsConsoles =
-                                consoles
-                                    .map { c -> c.copy(games = c.games.filter { it.kids }) }
-                                    .filter { it.games.isNotEmpty() }
-                            if (kidsConsoles.isEmpty()) {
-                                LibraryState.Failed(
-                                    "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
-                                        "to update it, and games rated E show up here.",
-                                    askAddress = false,
-                                    emptyList(),
-                                )
-                            } else {
-                                LibraryState.Ready(kidsConsoles)
-                            }
-                        } else {
-                            LibraryState.Ready(consoles)
+                var showingSaved = hadGames
+                if (!hadGames) {
+                    games.savedLibrary()?.let { saved ->
+                        val savedState = stateFor(saved)
+                        if (savedState is LibraryState.Ready && _library.value is LibraryState.Loading) {
+                            _library.value = savedState
+                            showingSaved = true
                         }
+                    }
+                }
+                val fresh =
+                    try {
+                        stateFor(games.loadLibrary())
                     } catch (e: GameLibraryException) {
-                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, localGames.downloaded())
+                        LibraryState.Failed(e.message ?: "Couldn't load your games.", e.askAddress, visibleDownloads())
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
                         LibraryState.Failed(
                             "Couldn't load your games (${e.javaClass.simpleName}).",
                             askAddress = false,
-                            localGames.downloaded(),
+                            visibleDownloads(),
                         )
                     }
+                // Couldn't reach the helper but the saved list is on screen: keep showing it
+                if (fresh is LibraryState.Ready || !showingSaved) _library.value = fresh
                 (_library.value as? LibraryState.Ready)?.let { ready ->
                     // Get the emulators for this library's consoles ready in the background (Wi-Fi only)
                     viewModelScope.launch { localGames.warmCores(ready.consoles.map { it.slug }) }
@@ -352,6 +351,31 @@ class GamesViewModel
                 }
             }
         }
+
+        /** The page for [consoles]: Kids only get games rated for everyone (unrated ones are left out, like movies) */
+        private fun stateFor(consoles: List<GameConsole>): LibraryState =
+            if (KidsMode.isActive) {
+                val kidsConsoles =
+                    consoles
+                        .map { c -> c.copy(games = c.games.filter { it.kids }) }
+                        .filter { it.games.isNotEmpty() }
+                if (kidsConsoles.isEmpty()) {
+                    LibraryState.Failed(
+                        "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
+                            "to update it, and games rated E show up here.",
+                        askAddress = false,
+                        emptyList(),
+                    )
+                } else {
+                    LibraryState.Ready(kidsConsoles)
+                }
+            } else {
+                LibraryState.Ready(consoles)
+            }
+
+        /** Games downloaded on this device that this profile may see (Kids: only games rated for everyone) */
+        fun visibleDownloads(): List<DownloadedGame> =
+            localGames.downloaded().let { all -> if (KidsMode.isActive) all.filter { it.ref.kids } else all }
 
         /** Shows the Play / Resume choices for a game */
         fun choose(ref: GameRef) {
@@ -445,8 +469,11 @@ class GamesViewModel
             reload()
         }
 
-        /** Benflix "Continue playing": the last few games played, newest first, as "id:time" */
-        private fun recentKey() = "recent_${serverRepository.currentUser?.id ?: "guest"}"
+        /**
+         * Benflix "Continue playing": the last few games played, newest first, as "id:time".
+         * Kids and Guest have their own list, like scores
+         */
+        private fun recentKey() = "recent_$profile"
 
         private fun rememberPlayed(id: Int) {
             val now = System.currentTimeMillis()
@@ -475,7 +502,15 @@ class GamesViewModel
                 }
 
         private val profile: String
-            get() = if (KidsMode.isActive) "kids" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            get() =
+                when {
+                    // Guest scores are kept apart from the owner's, like the Movie riddle
+                    GuestMode.isActive -> "guest"
+
+                    KidsMode.isActive -> "kids"
+
+                    else -> serverRepository.currentUser?.id?.toString() ?: "guest"
+                }
 
         private fun key(game: BuiltInGame): String = "${profile}_${game.name}"
 
@@ -501,7 +536,10 @@ class GamesViewModel
         fun best(game: BuiltInGame): Int = prefs.getInt(key(game), 0)
 
         /** This account's best in a movie game (Higher or Lower, Movie riddle, Guess the movie) */
-        fun bestExtra(boardKey: String): Int = prefs.getInt("${serverRepository.currentUser?.id ?: "guest"}_$boardKey", 0)
+        fun bestExtra(boardKey: String): Int {
+            val owner = if (GuestMode.isActive) "guest" else serverRepository.currentUser?.id?.toString() ?: "guest"
+            return prefs.getInt("${owner}_$boardKey", 0)
+        }
 
         /** Saves the score if it's a new best, and says whether it was */
         fun submit(

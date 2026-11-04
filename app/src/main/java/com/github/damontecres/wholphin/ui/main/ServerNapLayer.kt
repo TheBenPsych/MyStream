@@ -72,9 +72,14 @@ class ServerNapViewModel
 
         private var job: Job? = null
 
+        /** Benflix: "Watch my downloads" was picked during this nap, so stay where they are when it's back */
+        @Volatile
+        private var watchingDownloads = false
+
         /** Keeps checking while the server is down; when it's back, goes to Who's watching */
         fun watch() {
             if (job?.isActive == true) return
+            watchingDownloads = false
             job =
                 viewModelScope.launch {
                     while (isActive && ServerNap.down.value) {
@@ -105,9 +110,15 @@ class ServerNapViewModel
 
         fun hideForAWhile() {
             _hiddenUntil.value = System.currentTimeMillis() + HIDE_MS
+            watchingDownloads = true
         }
 
         private fun backToProfiles() {
+            // Benflix: don't pull someone out of a downloaded video when the server wakes up
+            if (watchingDownloads) {
+                watchingDownloads = false
+                return
+            }
             val server = serverRepository.current.value?.server ?: return
             setupNavigationManager.navigateTo(SetupDestination.UserList(server))
         }

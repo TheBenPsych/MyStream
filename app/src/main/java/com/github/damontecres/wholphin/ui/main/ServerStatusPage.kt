@@ -210,7 +210,13 @@ class ServerStatusViewModel
                 }
         }
 
-        /** Warns every screen first, then restarts Jellyfin after [minutes] (0 = now) */
+        /** When a planned restart will happen (millis), or null */
+        val plannedRestart: StateFlow<Long?> = actions.plannedRestart
+
+        /**
+         * Warns every screen first, then restarts Jellyfin after [minutes] (0 = now).
+         * The wait happens app-wide, so leaving this page doesn't call the restart off.
+         */
         fun restart(minutes: Int) =
             act("Couldn't restart Jellyfin") {
                 if (minutes > 0) {
@@ -218,14 +224,26 @@ class ServerStatusViewModel
                         "Benflix is restarting in $minutes minute" + (if (minutes == 1) "" else "s") +
                             ". It'll be back a minute later.",
                     )
+                    actions.planRestart(minutes) { problem ->
+                        if (problem != null) _notice.value = "Couldn't restart Jellyfin" to problem
+                    }
                     _notice.value =
                         "Restart planned" to
-                        "Everyone was warned. Keep this page open: Jellyfin restarts in $minutes minute" +
-                        (if (minutes == 1) "" else "s") + "."
-                    delay(minutes * 60_000L)
+                        "Everyone was warned. Jellyfin restarts in $minutes minute" +
+                        (if (minutes == 1) "" else "s") +
+                        ", even if you leave this page. Just keep Benflix open on this device until then. " +
+                        "You can call it off under Tools."
+                    return@act
                 }
                 actions.restartJellyfin()
                 _notice.value = "Restarting" to "Jellyfin is restarting. It usually takes about a minute to come back."
+            }
+
+        fun cancelRestart() =
+            act("Couldn't call off the restart") {
+                if (actions.cancelPlannedRestart()) {
+                    _notice.value = "Restart called off" to "Jellyfin won't restart. Everyone was told."
+                }
             }
 
         private fun act(
@@ -353,6 +371,7 @@ fun ServerStatusPage(
     val history by data.history.collectAsState()
     val chores by viewModel.chores.collectAsState()
     val libraries by viewModel.libraries.collectAsState()
+    val plannedRestart by viewModel.plannedRestart.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val requests by requestsViewModel.requests.collectAsState()
     val seerrActive by requestsViewModel.active.collectAsState(false)
@@ -527,6 +546,8 @@ fun ServerStatusPage(
                     onScan = viewModel::scan,
                     onChore = viewModel::runChore,
                     onRestart = { askRestart = true },
+                    plannedRestart = plannedRestart,
+                    onCancelRestart = viewModel::cancelRestart,
                 )
                 speedCheckItems(speedState, speedCheck)
                 trackTidyItems(tracks, tracksProblem, towerViewModel)
@@ -568,13 +589,18 @@ fun ServerStatusPage(
         }
     }
 
+    // Benflix: Refresh also tries People and Messages again if they couldn't be read
+    val refreshAll: () -> Unit = {
+        data.refresh()
+        toolsViewModel.retryFailed()
+    }
     val headerBar: @Composable () -> Unit = {
         PageHeader(
             header = header,
             isAdmin = isAdmin,
             loading = loadingParts > 0,
             updatedAt = updatedAt,
-            onRefresh = data::refresh,
+            onRefresh = refreshAll,
             waitingOn = waitingOn,
         )
     }
@@ -631,7 +657,7 @@ fun ServerStatusPage(
                     )
                     ListItem(
                         selected = false,
-                        onClick = data::refresh,
+                        onClick = refreshAll,
                         headlineContent = { Text("Refresh", fontSize = 16.sp) },
                         leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(22.dp)) },
                         modifier = Modifier.padding(top = 12.dp),
@@ -668,7 +694,7 @@ fun ServerStatusPage(
             }
             PhonePullToRefresh(
                 refreshing = loadingParts > 0,
-                onRefresh = data::refresh,
+                onRefresh = refreshAll,
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(
@@ -726,7 +752,7 @@ fun ServerStatusPage(
                             if (minutes == 0) {
                                 { Text("Anyone watching gets stopped for about a minute") }
                             } else {
-                                { Text("A pop-up warns every screen first. Keep this page open.") }
+                                { Text("A pop-up warns every screen first. You can leave this page.") }
                             },
                         onClick = {
                             askRestart = false
@@ -1024,14 +1050,22 @@ private fun LazyListScope.uploadMeterItem(watching: List<WatchingNow>?) {
 
 /** Benflix: what everyone started watching today and earlier this week */
 private fun LazyListScope.historyItems(history: List<WatchedEntry>?) {
-    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
+    // Benflix: "today" is the TV's own day; the log's times are in UTC
+    val zone = java.time.ZoneId.systemDefault()
+    val today = java.time.LocalDate.now(zone)
     val list =
         history ?: run {
             item { SectionTitle("Watched today") }
             item { LoadingBox("Reading what everyone watched…") }
             return
         }
-    val (todays, earlier) = list.partition { it.at.toLocalDate() == today }
+    val (todays, earlier) =
+        list.partition {
+            it.at
+                .atOffset(java.time.ZoneOffset.UTC)
+                .atZoneSameInstant(zone)
+                .toLocalDate() == today
+        }
     item { SectionTitle("Watched today (${todays.size})") }
     if (todays.isEmpty()) item { ServerActionRow(headline = "Nothing yet today") }
     items(todays.take(HISTORY_SHOWN)) { e -> ServerActionRow(headline = e.text, supporting = e.time) }
@@ -1131,6 +1165,8 @@ private fun LazyListScope.toolItems(
     onScan: (BaseItemDto?) -> Unit,
     onChore: (ServerChore) -> Unit,
     onRestart: () -> Unit,
+    plannedRestart: Long?,
+    onCancelRestart: () -> Unit,
 ) {
     item { SectionTitle("Scan for new stuff") }
     item {
@@ -1174,6 +1210,27 @@ private fun LazyListScope.toolItems(
         }
     }
     item { SectionTitle("Restart") }
+    if (plannedRestart != null) {
+        item(key = "planned-restart") {
+            val at =
+                remember(plannedRestart) {
+                    java.time.Instant
+                        .ofEpochMilli(plannedRestart)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .format(
+                            java.time.format.DateTimeFormatter
+                                .ofPattern("h:mm a"),
+                        )
+                }
+            ServerActionRow(
+                headline = "Restart planned for $at",
+                supporting = "Everyone was warned. Call it off if you changed your mind.",
+                leading = { Dot(Light.WARN) },
+                onClick = onCancelRestart,
+                actions = listOf("Call it off" to onCancelRestart),
+            )
+        }
+    }
     item {
         ServerActionRow(
             headline = "Restart Jellyfin",

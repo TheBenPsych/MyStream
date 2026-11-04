@@ -192,14 +192,22 @@ internal suspend fun HomeViewModel.loadNewest(userDto: ServerUserConfig) {
  */
 internal suspend fun HomeViewModel.loadWelcomeBack(userDto: ServerUserConfig) {
     if (welcomeChecked) return
-    welcomeChecked = true
     try {
         val prefs = context.getSharedPreferences(HOME_VISITS, Context.MODE_PRIVATE)
         val key = "lastSeen-${userDto.id}-${KidsMode.isActive}"
         val lastSeen = prefs.getLong(key, 0L)
         val now = System.currentTimeMillis()
-        prefs.edit().putLong(key, now).apply()
-        if (lastSeen <= 0L || now - lastSeen < WELCOME_BACK_AFTER_MS) return
+
+        // Only counted as seen once the row is worked out, so a failed or cut-short load
+        // tries again instead of losing "While you were away"
+        fun markSeen() {
+            welcomeChecked = true
+            prefs.edit().putLong(key, now).apply()
+        }
+        if (lastSeen <= 0L || now - lastSeen < WELCOME_BACK_AFTER_MS) {
+            markSeen()
+            return
+        }
         val since =
             java.time.LocalDateTime.ofInstant(
                 java.time.Instant.ofEpochMilli(lastSeen),
@@ -221,6 +229,7 @@ internal suspend fun HomeViewModel.loadWelcomeBack(userDto: ServerUserConfig) {
                 .filter { it.dateCreated?.isAfter(since) == true }
                 .take(EXTRA_ROW_MAX)
                 .map { BaseItem(it) }
+        markSeen()
         if (items.size >= 3) {
             mutableState.update { it.copy(welcomeBack = ThemedRow("While you were away", items)) }
         }

@@ -398,7 +398,7 @@ class ClipsViewModel
             viewModelScope.launch(ExceptionHandler()) { load() }
         }
 
-        private fun cacheName(userId: UUID?) = "clips-$userId-${KidsMode.isActive}-v1"
+        private fun cacheName(userId: UUID?) = "clips-$userId-${KidsMode.level}-v1"
 
         private suspend fun load() {
             val userId = serverRepository.currentUser?.id
