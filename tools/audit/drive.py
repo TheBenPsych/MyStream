@@ -770,9 +770,15 @@ def ember_shot(name):
 def ember_road():
     back_to_home()
     if not press(r"^Games$", timeout=6):
-        press(r"My Benflix", timeout=6)
+        if not press(r"My Benflix", timeout=4) and MODE != "tv":
+            # the phone menu bar can be shrunk to icons: My Benflix is the last thing on it
+            m = re.search(r"(\d+)x(\d+)", sh("wm size"))
+            height = int(m.group(2)) if m else 2400
+            bar = [c for c in nodes(dump()) if c.get("clickable") == "true" and center(c)[1] > height - 300]
+            if bar:
+                sh("input tap %d %d" % center(max(bar, key=lambda c: center(c)[0])))
         time.sleep(2)
-        if not press(r"^Games$", timeout=6):
+        if find_scrolling(r"^Games$") is None or not press(r"^Games$", timeout=6):
             log("Ember Road: no Games page found")
             return
     time.sleep(4)
@@ -830,6 +836,10 @@ def ember_road():
         if n is None:
             ember_shot(f"ember-step-{i}")
             if MODE == "tv":
+                f = focused_node(root)
+                log("Ember Road: focused on '%s'" % ((f.get("text") or f.get("content-desc") or "?")[:60] if f is not None else "nothing"))
+                if f is None:
+                    key("DPAD_DOWN", wait=0.8)
                 key("DPAD_CENTER", wait=1.5)
             else:
                 # an event: tap the first button under the words
@@ -843,7 +853,13 @@ def ember_road():
             continue
         if i % 3 == 0:
             ember_shot(f"ember-step-{i}")
-        tap(n)
+        if MODE == "tv":
+            # use the remote like a person (a touch tap would put the TV in touch mode and lose the focus)
+            if not tv_focus_down_to(pattern, presses=12):
+                log(f"Ember Road: the remote could not reach {pattern}")
+                REPORT["problems"].append({"type": "could not reach with remote", "text": pattern})
+        else:
+            tap(n)
         time.sleep(2)
     ember_shot("ember-later")
     # The menu (Back) and the creature book
