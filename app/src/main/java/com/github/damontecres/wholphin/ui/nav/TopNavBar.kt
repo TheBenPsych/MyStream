@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -193,76 +193,88 @@ fun TopNavBar(
                     onEnter = { focusRequester.tryRequestFocus() }
                 },
     ) {
-        BenflixLogo(modifier = Modifier.padding(end = 20.dp))
-        if (kids) {
-            Text(
-                text = stringResource(R.string.kids_profile).uppercase(),
-                color = Color.Black,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                modifier =
-                    Modifier
-                        .padding(end = 8.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-            )
-        }
-        tabs.forEachIndexed { index, tab ->
-            TopNavTabButton(
-                tab = tab,
-                modifier =
-                    tabModifier(index).ifElse(
-                        index == selectedIndex || (selectedIndex < 0 && !moreSelected && !browseSelected && index == 0),
-                        Modifier.focusRequester(focusRequester),
-                    ),
-            )
-            // Browse (every library in one list) sits right after Home
-            if (index == 0 && browseTabs.isNotEmpty()) {
+        // The logo and tabs share whatever room is left once the right side (search, settings, clock and
+        // profile) has its full size, so a busy bar (red numbers, a long library name) can never squeeze
+        // the profile picture into an oval
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            // Full height, so the tab positions (and the sliding line under them) stay where they were
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+        ) {
+            BenflixLogo(modifier = Modifier.padding(end = 14.dp))
+            if (kids) {
+                Text(
+                    text = stringResource(R.string.kids_profile).uppercase(),
+                    color = Color.Black,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier =
+                        Modifier
+                            .padding(end = 8.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+            tabs.forEachIndexed { index, tab ->
+                TopNavTabButton(
+                    tab = tab,
+                    modifier =
+                        tabModifier(index).ifElse(
+                            index == selectedIndex || (selectedIndex < 0 && !moreSelected && !browseSelected && index == 0),
+                            Modifier.focusRequester(focusRequester),
+                        ),
+                )
+                // Browse (every library in one list) sits right after Home
+                if (index == 0 && browseTabs.isNotEmpty()) {
+                    TopNavTabButton(
+                        tab =
+                            TopNavTab(
+                                title = browseTitle(browseTabs),
+                                selected = browseSelected,
+                                onClick = { showBrowse = true },
+                            ),
+                        modifier =
+                            tabModifier(BROWSE_KEY)
+                                .onGloballyPositioned { browseX = it.positionInWindow().x }
+                                .ifElse(browseSelected, Modifier.focusRequester(focusRequester)),
+                    )
+                }
+            }
+            if (moreTabs.isNotEmpty()) {
+                // Benflix: "Your request is here" shows on More, since My Benflix (with the list) is in there
+                val readyCount =
+                    com.github.damontecres.wholphin.ui.components
+                        .rememberRequestReadyCount()
                 TopNavTabButton(
                     tab =
                         TopNavTab(
-                            title = browseTitle(browseTabs),
-                            selected = browseSelected,
-                            onClick = { showBrowse = true },
+                            title = stringResource(R.string.more),
+                            selected = moreSelected,
+                            onClick = { showMore = true },
+                            badge = readyCount,
                         ),
+                    tip =
+                        if (kids) {
+                            null
+                        } else {
+                            {
+                                com.github.damontecres.wholphin.ui.components.RequestReadyTip(
+                                    where = "It's in More, then My Benflix.",
+                                    above = false,
+                                )
+                            }
+                        },
                     modifier =
-                        tabModifier(BROWSE_KEY)
-                            .onGloballyPositioned { browseX = it.positionInWindow().x }
-                            .ifElse(browseSelected, Modifier.focusRequester(focusRequester)),
+                        tabModifier(MORE_KEY)
+                            .onGloballyPositioned { moreX = it.positionInWindow().x }
+                            .ifElse(moreSelected, Modifier.focusRequester(focusRequester)),
                 )
             }
         }
-        if (moreTabs.isNotEmpty()) {
-            // Benflix: "Your request is here" shows on More, since My Benflix (with the list) is in there
-            val readyCount =
-                com.github.damontecres.wholphin.ui.components
-                    .rememberRequestReadyCount()
-            TopNavTabButton(
-                tab =
-                    TopNavTab(
-                        title = stringResource(R.string.more),
-                        selected = moreSelected,
-                        onClick = { showMore = true },
-                        badge = readyCount,
-                    ),
-                tip =
-                    if (kids) {
-                        null
-                    } else {
-                        {
-                            com.github.damontecres.wholphin.ui.components.RequestReadyTip(
-                                where = "It's in More, then My Benflix.",
-                                above = false,
-                            )
-                        }
-                    },
-                modifier =
-                    tabModifier(MORE_KEY)
-                        .onGloballyPositioned { moreX = it.positionInWindow().x }
-                        .ifElse(moreSelected, Modifier.focusRequester(focusRequester)),
-            )
-        }
-        Spacer(Modifier.weight(1f))
         TopNavIconButton(
             icon = Icons.Default.Search,
             contentDescription = stringResource(R.string.search),
@@ -383,7 +395,7 @@ private fun TopNavTabButton(
         onClick = tab.onClick,
         interactionSource = interactionSource,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         colors =
             ButtonDefaults.colors(
                 containerColor = Color.Transparent,

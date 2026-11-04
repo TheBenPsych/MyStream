@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -489,10 +490,13 @@ fun UserIconCardImage(
     val chosen = AvatarChoices.get(id)?.let { BenflixAvatars.getOrNull(it) }
     Box(
         modifier =
-            modifier.background(
-                color = userColor,
-                shape = CircleShape,
-            ),
+            modifier
+                // Always a round circle, even if the space it gets is narrower than it is tall
+                .aspectRatio(1f)
+                .background(
+                    color = userColor,
+                    shape = CircleShape,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         if (chosen == null && imageUrl.isNotNullOrBlank() && !imageError) {
