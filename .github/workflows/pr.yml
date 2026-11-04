@@ -60,11 +60,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # tv = Android 16 TV, phone = Android 14 phone. The two old phones (Android 7 and 9) catch
+        # tv = Android 16 TV, phone = Android 14 phone. The old phones catch
         # crashes from features that only exist on newer Android, like the Night mode crash on an
         # Android 7 Fire TV Stick (Nov 2026). Old TV pretend devices only come in 32-bit, so old
         # phones stand in for old TVs: the same app code runs on both.
-        mode: [tv, phone, phone-android7, phone-android9]
+        # Fire TV versions: Fire OS 6 = Android 7 (Fire TV Stick 4K 2018), Fire OS 7 = Android 9
+        # (Stick 3rd gen / Lite / 4K Max), Fire OS 8 = Android 11. Android 6 is the oldest Benflix installs on.
+        mode: [tv, phone, phone-android6, phone-android7, phone-android9, phone-android11]
     steps:
       - name: Checkout the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -83,8 +85,10 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           case "${{ matrix.mode }}" in
             tv) img="system-images;android-36;android-tv;x86_64"; device=tv_1080p ;;
+            phone-android6) img="system-images;android-23;google_apis;x86_64"; device=pixel ;;
             phone-android7) img="system-images;android-25;google_apis;x86_64"; device=pixel ;;
             phone-android9) img="system-images;android-28;google_apis;x86_64"; device=pixel ;;
+            phone-android11) img="system-images;android-30;google_apis;x86_64"; device=pixel ;;
             *) img="system-images;android-34;google_apis;x86_64"; device=pixel_6 ;;
           esac
           # GitHub's download of the emulator sometimes comes back broken: try again, then skip (not an app problem)
