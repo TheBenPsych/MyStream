@@ -35,7 +35,6 @@ import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButtons
-import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
@@ -263,10 +262,12 @@ fun EpisodeDetailsContent(
                         chosenStreams = chosenStreams,
                         bringIntoViewRequester = bringIntoViewRequester,
                         overviewOnClick = overviewOnClick,
+                        // Benflix look A: the story goes under the buttons
+                        showOverview = false,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                .padding(top = 16.dp, bottom = 12.dp),
                     )
                     // Benflix look A: flat buttons (version, favourite and delete are under More)
                     androidx.compose.runtime.CompositionLocalProvider(
@@ -309,10 +310,16 @@ fun EpisodeDetailsContent(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
+                                    .padding(bottom = 12.dp)
                                     .focusRequester(focusRequesters[HEADER_ROW]),
                         )
                     }
+                    EpisodeOverview(
+                        ep = ep,
+                        bringIntoViewRequester = bringIntoViewRequester,
+                        overviewOnClick = overviewOnClick,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 16.dp),
+                    )
                 }
             }
         }

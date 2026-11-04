@@ -602,6 +602,7 @@ fun ServerStatusPage(
             updatedAt = updatedAt,
             onRefresh = refreshAll,
             waitingOn = waitingOn,
+            sectionTitle = if (isAdmin) section.title else null,
         )
     }
 
@@ -613,7 +614,7 @@ fun ServerStatusPage(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .serverLookABackground()
                     .padding(start = 32.dp, end = 32.dp, top = 20.dp),
         ) {
             Column(
@@ -632,6 +633,28 @@ fun ServerStatusPage(
                         ListItem(
                             selected = s == section,
                             onClick = { section = s },
+                            // Benflix look A: flat rows; the section you're on is filled with the profile colour
+                            scale =
+                                androidx.tv.material3.ListItemDefaults
+                                    .scale(focusedScale = 1f),
+                            shape =
+                                androidx.tv.material3.ListItemDefaults
+                                    .shape(RoundedCornerShape(10.dp)),
+                            colors =
+                                androidx.tv.material3.ListItemDefaults.colors(
+                                    selectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+                                    selectedContentColor = Color.White,
+                                    focusedSelectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+                                    focusedSelectedContentColor = Color.White,
+                                ),
+                            border =
+                                androidx.tv.material3.ListItemDefaults.border(
+                                    focusedSelectedBorder =
+                                        androidx.tv.material3.Border(
+                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                            shape = RoundedCornerShape(10.dp),
+                                        ),
+                                ),
                             headlineContent = {
                                 Text(
                                     text = s.title,
@@ -679,7 +702,7 @@ fun ServerStatusPage(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
+                    .serverLookABackground(),
         ) {
             Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { headerBar() }
             if (isAdmin) {
@@ -799,15 +822,39 @@ private fun PageHeader(
     updatedAt: Long,
     onRefresh: () -> Unit,
     waitingOn: Set<String> = emptySet(),
+    sectionTitle: String? = null,
 ) {
     val isTv = rememberIsTv()
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(start = 8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 8.dp)) {
+        // Benflix look A: "SERVER · TOWER" and how it's doing as small labels, the section as a big title
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
+                text = "Server · " + header?.serverName.orEmpty().ifBlank { "Benflix" },
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (header == null) {
+                com.github.damontecres.wholphin.ui.preferences
+                    .BenflixLookABadge(text = "Checking")
+            } else if (header.online) {
+                com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
+                    text = "All good",
+                    color = Color(0xFF86EFAC),
+                    background = Color(0x2E22C55E),
+                )
+            } else {
+                com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
+                    text = "Can't reach it",
+                    color = Color(0xFFFCA5A5),
+                    background = Color(0x2EEF4444),
+                )
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = (header?.serverName.orEmpty().ifBlank { "SERVER" }).uppercase(),
-                fontFamily = BenflixTitleFont,
-                fontSize = if (isTv) 40.sp else 36.sp,
-                letterSpacing = 1.sp,
+                text = sectionTitle ?: "Server",
+                fontSize = if (isTv) 40.sp else 34.sp,
+                lineHeight = if (isTv) 42.sp else 36.sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = false),
             )
@@ -873,6 +920,18 @@ private fun agoText(at: Long): String? {
         else -> "Updated ${minutes / (60 * 24)} days ago"
     }
 }
+
+/** Benflix look A: a soft blue band across the top of the Server page, fading into the dark */
+@Composable
+private fun Modifier.serverLookABackground(): Modifier =
+    this
+        .background(MaterialTheme.colorScheme.background)
+        .background(
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to Color(0xFF12406B).copy(alpha = .45f),
+                .4f to Color.Transparent,
+            ),
+        )
 
 /** Benflix: the traffic lights at the top of Overview. Each one opens its section. */
 @Composable

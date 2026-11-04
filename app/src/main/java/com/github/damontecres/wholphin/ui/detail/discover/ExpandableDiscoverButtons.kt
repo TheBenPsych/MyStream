@@ -51,155 +51,168 @@ fun ExpandableDiscoverButtons(
     val kids by KidsMode.active.collectAsState()
     val noAsking = kids && availability == SeerrAvailability.UNKNOWN && !blocked
     val firstFocus = remember { FocusRequester() }
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(8.dp),
-        modifier =
-            modifier
-                .focusGroup()
-                .focusRestorer(firstFocus),
+    // Benflix look A: flat buttons on the request pages too
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
     ) {
-        val baseText =
-            when (availability) {
-                // Benflix: family members "ask Ben", the admin just requests
-                SeerrAvailability.UNKNOWN -> if (isAdmin) R.string.request else R.string.benflix_ask_to_add
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(8.dp),
+            modifier =
+                modifier
+                    .focusGroup()
+                    .focusRestorer(firstFocus),
+        ) {
+            val baseText =
+                when (availability) {
+                    // Benflix: family members "ask Ben", the admin just requests
+                    SeerrAvailability.UNKNOWN -> if (isAdmin) R.string.request else R.string.benflix_ask_to_add
 
-                SeerrAvailability.PENDING,
-                SeerrAvailability.PROCESSING,
-                -> R.string.pending
+                    // Benflix look A: say where the ask is, in plain words
+                    SeerrAvailability.PENDING -> if (isAdmin) R.string.pending else R.string.benflix_asked_waiting
 
-                SeerrAvailability.PARTIALLY_AVAILABLE,
-                SeerrAvailability.AVAILABLE,
-                -> R.string.go_to
+                    SeerrAvailability.PROCESSING -> R.string.benflix_on_its_way
 
-                // TODO
-                SeerrAvailability.DELETED -> R.string.delete
+                    SeerrAvailability.PARTIALLY_AVAILABLE,
+                    SeerrAvailability.AVAILABLE,
+                    -> R.string.benflix_watch_now
 
-                // TODO Blocklist
-                SeerrAvailability.BLOCKLISTED -> R.string.unavailable
-            }
-        val text =
-            when {
-                blocked -> R.string.benflix_cant_find
-                noAsking -> R.string.unavailable
-                else -> baseText
-            }
-        val baseIcon =
-            when (availability) {
-                SeerrAvailability.UNKNOWN -> R.string.fa_download
+                    // TODO
+                    SeerrAvailability.DELETED -> R.string.delete
 
-                SeerrAvailability.PENDING,
-                SeerrAvailability.PROCESSING,
-                -> R.string.fa_clock
+                    // TODO Blocklist
+                    SeerrAvailability.BLOCKLISTED -> R.string.unavailable
+                }
+            val text =
+                when {
+                    blocked -> R.string.benflix_cant_find
+                    noAsking -> R.string.unavailable
+                    else -> baseText
+                }
+            val baseIcon =
+                when (availability) {
+                    SeerrAvailability.UNKNOWN -> R.string.fa_download
 
-                SeerrAvailability.PARTIALLY_AVAILABLE,
-                SeerrAvailability.AVAILABLE,
-                -> R.string.fa_play
+                    SeerrAvailability.PENDING,
+                    SeerrAvailability.PROCESSING,
+                    -> R.string.fa_clock
 
-                SeerrAvailability.DELETED -> R.string.fa_video
+                    SeerrAvailability.PARTIALLY_AVAILABLE,
+                    SeerrAvailability.AVAILABLE,
+                    -> R.string.fa_play
 
-                // TODO
-                SeerrAvailability.BLOCKLISTED -> R.string.fa_xmark
-            }
-        val icon = if (blocked || noAsking) R.string.fa_xmark else baseIcon
-        item("first") {
-            ExpandableFaButton(
-                title = text,
-                iconStringRes = icon,
-                enabled =
-                    when (availability) {
-                        SeerrAvailability.UNKNOWN -> canRequest || blocked || noAsking
+                    SeerrAvailability.DELETED -> R.string.fa_video
 
-                        SeerrAvailability.PENDING,
-                        SeerrAvailability.PROCESSING,
-                        SeerrAvailability.PARTIALLY_AVAILABLE,
-                        SeerrAvailability.AVAILABLE,
-                        -> true
-
-                        // Benflix: stays focusable on TV so the page still has a first button; pressing does nothing
-                        SeerrAvailability.BLOCKLISTED,
-                        SeerrAvailability.DELETED,
-                        -> blocked
-                    },
-                onClick = {
-                    if (blocked || noAsking) return@ExpandableFaButton
-                    when (availability) {
-                        SeerrAvailability.UNKNOWN -> {
-                            requestOnClick.invoke()
-                        }
-
-                        SeerrAvailability.PENDING,
-                        SeerrAvailability.PROCESSING,
-                        -> {
-                            // Benflix: "Pending" is just a label now; pressing it used to reopen the request form
-                        }
-
-                        SeerrAvailability.PARTIALLY_AVAILABLE,
-                        SeerrAvailability.AVAILABLE,
-                        -> {
-                            goToOnClick.invoke()
-                        }
-
-                        SeerrAvailability.DELETED,
-                        SeerrAvailability.BLOCKLISTED,
-                        -> {
-                            // TODO
-                        }
-                    }
-                },
-                modifier =
-                    Modifier
-                        .focusRequester(firstFocus)
-                        .onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-        // Benflix: no asking for the missing seasons once Ben couldn't find them
-        if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
-            item("request_partial") {
+                    // TODO
+                    SeerrAvailability.BLOCKLISTED -> R.string.fa_xmark
+                }
+            val icon = if (blocked || noAsking) R.string.fa_xmark else baseIcon
+            item("first") {
                 ExpandableFaButton(
-                    title = R.string.request,
-                    iconStringRes = R.string.fa_download,
+                    title = text,
+                    iconStringRes = icon,
+                    // Benflix look A: the main button is red when it does something
+                    primary =
+                        !blocked && !noAsking &&
+                            (
+                                (availability == SeerrAvailability.UNKNOWN && canRequest) ||
+                                    availability == SeerrAvailability.AVAILABLE ||
+                                    availability == SeerrAvailability.PARTIALLY_AVAILABLE
+                            ),
+                    enabled =
+                        when (availability) {
+                            SeerrAvailability.UNKNOWN -> canRequest || blocked || noAsking
+
+                            SeerrAvailability.PENDING,
+                            SeerrAvailability.PROCESSING,
+                            SeerrAvailability.PARTIALLY_AVAILABLE,
+                            SeerrAvailability.AVAILABLE,
+                            -> true
+
+                            // Benflix: stays focusable on TV so the page still has a first button; pressing does nothing
+                            SeerrAvailability.BLOCKLISTED,
+                            SeerrAvailability.DELETED,
+                            -> blocked
+                        },
                     onClick = {
-                        requestOnClick.invoke()
+                        if (blocked || noAsking) return@ExpandableFaButton
+                        when (availability) {
+                            SeerrAvailability.UNKNOWN -> {
+                                requestOnClick.invoke()
+                            }
+
+                            SeerrAvailability.PENDING,
+                            SeerrAvailability.PROCESSING,
+                            -> {
+                                // Benflix: "Pending" is just a label now; pressing it used to reopen the request form
+                            }
+
+                            SeerrAvailability.PARTIALLY_AVAILABLE,
+                            SeerrAvailability.AVAILABLE,
+                            -> {
+                                goToOnClick.invoke()
+                            }
+
+                            SeerrAvailability.DELETED,
+                            SeerrAvailability.BLOCKLISTED,
+                            -> {
+                                // TODO
+                            }
+                        }
                     },
-                    enabled = availability == SeerrAvailability.PARTIALLY_AVAILABLE,
                     modifier =
                         Modifier
+                            .focusRequester(firstFocus)
                             .onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
-
-        if (canCancel && !kids) {
-            item("cancel") {
-                ExpandablePlayButton(
-                    title = R.string.cancel,
-                    icon = Icons.Default.Delete,
-                    onClick = {
-                        firstFocus.tryRequestFocus()
-                        cancelOnClick.invoke()
-                    },
-                    resume = Duration.ZERO,
-                    enabled = canCancel,
-                    modifier =
-                        Modifier
-                            .onFocusChanged(buttonOnFocusChanged),
-                )
+            // Benflix: no asking for the missing seasons once Ben couldn't find them
+            if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
+                item("request_partial") {
+                    ExpandableFaButton(
+                        title = R.string.request,
+                        iconStringRes = R.string.fa_download,
+                        onClick = {
+                            requestOnClick.invoke()
+                        },
+                        enabled = availability == SeerrAvailability.PARTIALLY_AVAILABLE,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
             }
-        }
 
-        if (trailers != null) {
-            item("trailers") {
-                TrailerButton(
-                    trailers = trailers,
-                    trailerOnClick = trailerOnClick,
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-                )
+            if (canCancel && !kids) {
+                item("cancel") {
+                    ExpandablePlayButton(
+                        title = R.string.benflix_cancel_my_ask,
+                        icon = Icons.Default.Delete,
+                        onClick = {
+                            firstFocus.tryRequestFocus()
+                            cancelOnClick.invoke()
+                        },
+                        resume = Duration.ZERO,
+                        enabled = canCancel,
+                        modifier =
+                            Modifier
+                                .onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
             }
-        }
 
-        // More button
-        // No functionality yet
+            if (trailers != null) {
+                item("trailers") {
+                    TrailerButton(
+                        trailers = trailers,
+                        trailerOnClick = trailerOnClick,
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+
+            // More button
+            // No functionality yet
 //        item("more") {
 //            ExpandablePlayButton(
 //                R.string.more,
@@ -210,5 +223,6 @@ fun ExpandableDiscoverButtons(
 //                    .onFocusChanged(buttonOnFocusChanged),
 //            )
 //        }
+        }
     }
 }

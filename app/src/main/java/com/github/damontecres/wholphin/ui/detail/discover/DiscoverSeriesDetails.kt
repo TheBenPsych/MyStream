@@ -282,7 +282,7 @@ fun DiscoverSeriesDetailsContent(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                    .padding(top = 16.dp, bottom = 12.dp),
                         )
                         ExpandableDiscoverButtons(
                             isAdmin = isAdmin,

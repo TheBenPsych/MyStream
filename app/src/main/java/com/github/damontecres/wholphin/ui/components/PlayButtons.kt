@@ -448,6 +448,17 @@ private fun primaryBorder() =
             ),
     )
 
+/** Benflix look A: flat buttons don't grow when focused, so nothing around them moves */
+@Composable
+private fun flatScale() =
+    if (LocalFlatButtons.current) {
+        androidx.tv.material3.ClickableSurfaceDefaults
+            .scale(focusedScale = 1f, pressedScale = 0.97f)
+    } else {
+        androidx.tv.material3.ClickableSurfaceDefaults
+            .scale()
+    }
+
 /** Benflix look A: flat buttons get a little more room left and right for their name */
 private val FlatButtonPadding = PaddingValues(start = 10.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
 
@@ -467,10 +478,12 @@ fun ExpandablePlayButton(
     mirrorIcon: Boolean = false,
     enabled: Boolean = true,
     primary: Boolean = false,
+    label: String? = null,
 ) = ExpandablePlayButton(
     title = title,
     resume = resume,
     primary = primary,
+    label = label,
     icon = {
         Icon(
             imageVector = icon,
@@ -528,6 +541,7 @@ fun ExpandablePlayButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     enabled: Boolean = true,
     primary: Boolean = false,
+    label: String? = null,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
@@ -541,6 +555,7 @@ fun ExpandablePlayButton(
                 maxHeight = MinButtonSize,
             ),
         shape = flatShape(),
+        scale = flatScale(),
         colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
         border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
         contentPadding = if (flat) FlatButtonPadding else DefaultButtonPadding,
@@ -558,7 +573,7 @@ fun ExpandablePlayButton(
         AnimatedVisibility(flat || isFocused || LocalAlwaysShowButtonLabels.current) {
             Spacer(Modifier.size(8.dp))
             Text(
-                text = stringResource(title),
+                text = label ?: stringResource(title),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(end = 4.dp),
             )
@@ -578,11 +593,14 @@ fun ExpandableFaButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     iconColor: Color = Color.Unspecified,
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
     Button(
         onClick = onClick,
+        colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
+        border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
         enabled = enabled,
         modifier =
             modifier.requiredSizeIn(
@@ -591,6 +609,7 @@ fun ExpandableFaButton(
                 maxHeight = MinButtonSize,
             ),
         shape = flatShape(),
+        scale = flatScale(),
         contentPadding = if (flat) FlatButtonPadding else DefaultButtonPadding,
         interactionSource = interactionSource,
     ) {

@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,19 +55,66 @@ fun benflixSettingCard(): Modifier =
         .clip(RoundedCornerShape(10.dp))
         .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
 
-/** The big title at the top of a settings page */
+/**
+ * Benflix look A: a soft band of the profile colour across the top of the page, fading into
+ * the dark background, like the details pages.
+ */
+@Composable
+fun Modifier.benflixLookABackground(): Modifier {
+    val accent = com.github.damontecres.wholphin.ui.theme.BenflixRed
+    val base = MaterialTheme.colorScheme.background
+    return this
+        .background(base)
+        .background(
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to accent.copy(alpha = .22f),
+                .4f to Color.Transparent,
+            ),
+        )
+}
+
+/** Benflix look A: the small "SETTINGS" style label above a big page title */
+@Composable
+fun BenflixLookABadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFFE4E4E7),
+    background: Color = Color.White.copy(alpha = .12f),
+) {
+    Text(
+        text = text.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+        color = color,
+        maxLines = 1,
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(background)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}
+
+/** The big title at the top of a settings page (Benflix look A: a small SETTINGS label above it) */
 @Composable
 fun BenflixSettingsTitle(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
-        text = text,
-        fontFamily = BenflixTitleFont,
-        fontSize = if (rememberIsTv()) 44.sp else 36.sp,
-        color = MaterialTheme.colorScheme.onSurface,
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
-    )
+    ) {
+        BenflixLookABadge(stringResource(R.string.settings))
+        Text(
+            text = text,
+            fontSize = if (rememberIsTv()) 40.sp else 34.sp,
+            lineHeight = if (rememberIsTv()) 42.sp else 36.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
 
 /** A small grey heading between groups of settings */
@@ -174,7 +222,7 @@ fun BenflixSettingsFrame(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .benflixLookABackground()
                     .padding(start = 32.dp, end = 32.dp, top = 24.dp),
         ) {
             WhereYouArePanel(

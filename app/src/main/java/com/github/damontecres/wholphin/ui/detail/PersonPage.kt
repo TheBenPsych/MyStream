@@ -609,14 +609,19 @@ fun PersonHeader(
                 interactionSource = interactionSource,
                 modifier = Modifier.padding(top = 8.dp),
             )
-            ExpandableFaButton(
-                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                onClick = favoriteOnClick,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                interactionSource = buttonInteractionSource,
-                modifier = Modifier,
-            )
+// Benflix look A: flat buttons
+            androidx.compose.runtime.CompositionLocalProvider(
+                com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
+            ) {
+                ExpandableFaButton(
+                    title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                    iconStringRes = R.string.fa_heart,
+                    onClick = favoriteOnClick,
+                    iconColor = if (favorite) Color.Red else Color.Unspecified,
+                    interactionSource = buttonInteractionSource,
+                    modifier = Modifier,
+                )
+            }
         }
     }
 }

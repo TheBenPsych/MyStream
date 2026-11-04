@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -227,7 +228,7 @@ fun BenflixSettingsPage(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .benflixLookABackground()
                     .padding(start = 32.dp, end = 32.dp, top = 24.dp),
         ) {
             Column(
@@ -443,9 +444,32 @@ private fun MenuRow(
     alert: Boolean = false,
     onFocused: () -> Unit = {},
 ) {
+    // Benflix look A: flat rows; the section you're on is filled with the profile colour
+    val accent = com.github.damontecres.wholphin.ui.theme.BenflixRed
     ListItem(
         selected = selected,
         onClick = onClick,
+        scale =
+            androidx.tv.material3.ListItemDefaults
+                .scale(focusedScale = 1f),
+        shape =
+            androidx.tv.material3.ListItemDefaults
+                .shape(RoundedCornerShape(10.dp)),
+        border =
+            androidx.tv.material3.ListItemDefaults.border(
+                focusedSelectedBorder =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                        shape = RoundedCornerShape(10.dp),
+                    ),
+            ),
+        colors =
+            androidx.tv.material3.ListItemDefaults.colors(
+                selectedContainerColor = accent,
+                selectedContentColor = Color.White,
+                focusedSelectedContainerColor = accent,
+                focusedSelectedContentColor = Color.White,
+            ),
         headlineContent = {
             Text(
                 text = title,

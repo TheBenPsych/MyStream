@@ -682,6 +682,16 @@ class SeriesViewModel
             series: BaseItemDto,
         ) {
             nextUpReady = episode
+            // Benflix look A: the show page's Play button names the episode ("Resume S2 · E4")
+            val started = (episode.userData?.playbackPositionTicks ?: 0L) > 0L
+            val where =
+                listOfNotNull(
+                    episode.parentIndexNumber?.let { "S$it" },
+                    episode.indexNumber?.let { "E$it" },
+                ).joinToString(" · ")
+            _state.update {
+                it.copy(nextUpLabel = if (where.isBlank()) null else (if (started) "Resume " else "Play ") + where)
+            }
             val full =
                 try {
                     api.userLibraryApi.getItem(episode.id).content
@@ -1099,4 +1109,6 @@ data class SeriesState(
     val progress: ShowProgress? = null,
     /** Benflix: the Jellyfin user is an admin (shows "Wrong match? Fix it") */
     val isAdmin: Boolean = false,
+    /** Benflix look A: "Resume S2 · E4" on the show page's Play button */
+    val nextUpLabel: String? = null,
 )

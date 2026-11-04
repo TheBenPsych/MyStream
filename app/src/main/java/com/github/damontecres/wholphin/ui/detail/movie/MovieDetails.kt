@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -50,8 +51,8 @@ import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButtons
-import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LocalFlatButtons
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
 import com.github.damontecres.wholphin.ui.components.TabDetails
@@ -391,54 +392,65 @@ fun MovieDetailsContent(
                         chosenStreams = state.chosenStreams,
                         bringIntoViewRequester = bringIntoViewRequester,
                         overviewOnClick = overviewOnClick,
+                        // Benflix look A: the story goes under the buttons
+                        showOverview = false,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                .padding(top = 16.dp, bottom = 12.dp),
                     )
-                    ExpandablePlayButtons(
-                        downloadItem = movie,
-                        title = movie.title ?: "",
-                        resumePosition = resumePosition,
-                        watched = dto.userData?.played ?: false,
-                        favorite = dto.userData?.isFavorite ?: false,
-                        playOnClick = {
-                            position = HEADER_ROW
-                            playOnClick.invoke(it)
-                        },
-                        moreOnClick = moreOnClick,
-                        watchOnClick = watchOnClick,
-                        favoriteOnClick = favoriteOnClick,
-                        likes = dto.userData?.likes,
-                        rateOnClick = rateOnClick,
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
+                    // Benflix look A: flat buttons (version, favourite and delete are under More)
+                    CompositionLocalProvider(LocalFlatButtons provides true) {
+                        ExpandablePlayButtons(
+                            downloadItem = movie,
+                            title = movie.title ?: "",
+                            resumePosition = resumePosition,
+                            watched = dto.userData?.played ?: false,
+                            favorite = dto.userData?.isFavorite ?: false,
+                            playOnClick = {
                                 position = HEADER_ROW
-                                scope.launch(ExceptionHandler()) {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
-                            }
-                        },
-                        trailers = state.trailers,
-                        trailerOnClick = {
-                            position = TRAILER_ROW
-                            trailerOnClick.invoke(it)
-                        },
-                        canDelete = canDelete,
-                        onConfirmDelete = onConfirmDelete,
-                        chooseVersionParams =
-                            remember(state.chosenStreams, movie, onChooseVersion) {
-                                ChooseVersionParams(
-                                    chosenStreams = state.chosenStreams,
-                                    mediaSources = movie.data.mediaSources.orEmpty(),
-                                    onChooseVersion = onChooseVersion,
-                                )
+                                playOnClick.invoke(it)
                             },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                                .focusRequester(focusRequesters[HEADER_ROW]),
+                            moreOnClick = moreOnClick,
+                            watchOnClick = watchOnClick,
+                            favoriteOnClick = favoriteOnClick,
+                            likes = dto.userData?.likes,
+                            rateOnClick = rateOnClick,
+                            buttonOnFocusChanged = {
+                                if (it.isFocused) {
+                                    position = HEADER_ROW
+                                    scope.launch(ExceptionHandler()) {
+                                        bringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            },
+                            trailers = state.trailers,
+                            trailerOnClick = {
+                                position = TRAILER_ROW
+                                trailerOnClick.invoke(it)
+                            },
+                            canDelete = canDelete,
+                            onConfirmDelete = onConfirmDelete,
+                            chooseVersionParams =
+                                remember(state.chosenStreams, movie, onChooseVersion) {
+                                    ChooseVersionParams(
+                                        chosenStreams = state.chosenStreams,
+                                        mediaSources = movie.data.mediaSources.orEmpty(),
+                                        onChooseVersion = onChooseVersion,
+                                    )
+                                },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .focusRequester(focusRequesters[HEADER_ROW]),
+                        )
+                    }
+                    MovieOverview(
+                        movie = movie,
+                        bringIntoViewRequester = bringIntoViewRequester,
+                        overviewOnClick = overviewOnClick,
+                        modifier = Modifier.padding(bottom = 16.dp),
                     )
                 }
             }
