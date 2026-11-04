@@ -340,6 +340,9 @@ def focus_sweep(name, max_moves=60):
 def back_to_home():
     if MODE != "tv":
         for _ in range(3):
+            # the bottom bar shrinks to icons while scrolled down: scroll up so its words come back
+            sh("input swipe 500 600 500 2000 300")
+            time.sleep(1)
             n = find(dump(), r"^Home$")
             if n is not None:
                 tap(n)
@@ -721,8 +724,9 @@ def find_scrolling(pattern, tries=8):
     return None
 
 
-def tv_focus_down_to(pattern, presses=30):
-    """TV: press down until the focused thing holds the text, then OK"""
+def tv_focus_down_to(pattern, presses=30, right_of=None):
+    """TV: press down until the focused thing holds the text, then OK.
+    right_of: a button that sits just left of the one we want (press right from it)"""
     for _ in range(presses):
         root = dump(dismiss=False)
         f = focused_node(root)
@@ -730,6 +734,11 @@ def tv_focus_down_to(pattern, presses=30):
         if f is not None and label is not None and contains(f, label):
             key("DPAD_CENTER", wait=1.5)
             return True
+        if right_of and f is not None:
+            beside = find(root, right_of)
+            if beside is not None and contains(f, beside):
+                key("DPAD_RIGHT", wait=0.6)
+                continue
         key("DPAD_DOWN", wait=0.5)
     return False
 
@@ -792,11 +801,18 @@ def ember_road():
     for step in range(4):
         ember_shot(f"ember-setup-{step + 1}")
         target = r"^Set out!$" if step == 3 else r"^Next$"
-        n = find_scrolling(target)
-        if n is None:
-            log(f"Ember Road: no {target} on setup step {step + 1}")
-            break
-        tap(n)
+        if MODE == "tv":
+            # the button can sit below the screen edge: walk down to it with the remote like a person would
+            if not tv_focus_down_to(target, presses=40, right_of=r"^(Back|Cancel)$"):
+                log(f"Ember Road: the remote could not reach {target} on setup step {step + 1}")
+                REPORT["problems"].append({"type": "could not reach with remote", "text": target})
+                break
+        else:
+            n = find_scrolling(target)
+            if n is None:
+                log(f"Ember Road: no {target} on setup step {step + 1}")
+                break
+            tap(n)
         time.sleep(1.5)
     time.sleep(2)
     ember_shot("ember-road")
