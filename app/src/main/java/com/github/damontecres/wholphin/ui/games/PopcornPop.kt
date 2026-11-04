@@ -128,7 +128,6 @@ class PopcornPop : MiniGame() {
         ledges.add(Ledge(x, highestLedge, kind, vx, w))
         // Now and then a ticket floats above a still ledge
         if (kind != Kind.REEL && Random.nextFloat() < 0.12f) tickets.add(Ticket(x + w / 2f, highestLedge - 9f * u))
-
     }
 
     override fun step(dt: Float) {

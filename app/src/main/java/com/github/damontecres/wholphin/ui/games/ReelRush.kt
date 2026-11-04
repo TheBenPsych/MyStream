@@ -189,7 +189,14 @@ class ReelRush : MiniGame() {
             if (s.tight) {
                 // A red glow on squeeze strips so you can see a tight section coming
                 drawRect(Color(0x55E50914), Offset(s.x - 1.2f * u, 0f), Size(stripW + 2.4f * u, s.gapY - s.gap / 2f))
-                drawRect(Color(0x55E50914), Offset(s.x - 1.2f * u, s.gapY + s.gap / 2f), Size(stripW + 2.4f * u, height - s.gapY - s.gap / 2f))
+                drawRect(
+                    Color(0x55E50914),
+                    Offset(s.x - 1.2f * u, s.gapY + s.gap / 2f),
+                    Size(
+                        stripW + 2.4f * u,
+                        height - s.gapY - s.gap / 2f,
+                    ),
+                )
             }
             drawFilm(s.x, 0f, s.gapY - s.gap / 2f)
             drawFilm(s.x, s.gapY + s.gap / 2f, height)
