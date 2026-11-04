@@ -527,6 +527,12 @@ fun DiscoverSeriesDetailsHeader(
                     tmdbId = tmdbId,
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 6.dp),
                 )
+                // Benflix: anime genres from AniList (Isekai, Slice of Life...); press one to see them all
+                AnimeGenresBlock(
+                    isMovie = false,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 8.dp),
+                )
             }
         }
     }

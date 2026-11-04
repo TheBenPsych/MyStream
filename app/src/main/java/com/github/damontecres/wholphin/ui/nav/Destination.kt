@@ -191,6 +191,12 @@ sealed class Destination(
     @Serializable
     data object Requests : Destination(false)
 
+    /** Benflix (Requests): every anime with all of these AniList genres, like Isekai + Slice of Life */
+    @Serializable
+    data class AnimeGenres(
+        val picked: List<String>,
+    ) : Destination(false)
+
     /** A page for one genre: its best, hidden gems, what's new and shorter picks */
     @Serializable
     data class GenreHub(

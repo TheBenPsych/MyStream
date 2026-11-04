@@ -262,7 +262,7 @@ fun MyBenflixPage(
                     if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard()
                     when {
                         rows == null -> {
-                            LoadingPage(Modifier.fillMaxWidth().height(120.dp))
+                            LoadingPage(Modifier.fillMaxWidth().height(120.dp), focusEnabled = false)
                         }
 
                         rows?.isEmpty() == true -> {
