@@ -52,34 +52,9 @@ fun Button(
         ClickableSurfaceDefaults.shape(
             shape = CircleShape,
         ),
-    colors: ClickableSurfaceColors =
-        ClickableSurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-            contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
-            focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            pressedContainerColor = MaterialTheme.colorScheme.onSurface,
-            pressedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-        ),
+    colors: ClickableSurfaceColors = buttonDefaultColors(),
     tonalElevation: Dp = 0.dp,
-    border: ClickableSurfaceBorder =
-        ClickableSurfaceDefaults.border(
-            border = Border.None,
-            focusedBorder = Border.None,
-            pressedBorder = Border.None,
-            disabledBorder = Border.None,
-            focusedDisabledBorder =
-                Border(
-                    border =
-                        BorderStroke(
-                            width = 1.5.dp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                        ),
-                    shape = CircleShape,
-                ),
-        ),
+    border: ClickableSurfaceBorder = buttonDefaultBorder(),
     contentPadding: PaddingValues = DefaultButtonPadding,
     contentHeight: Dp = MinButtonSize,
     interactionSource: MutableInteractionSource? = null,
@@ -175,4 +150,37 @@ val DefaultButtonPadding =
         top = 4.dp,
         end = 4.dp,
         bottom = 4.dp,
+    )
+
+/** The normal (see-through grey) colours of a [Button] */
+@Composable
+fun buttonDefaultColors(): ClickableSurfaceColors =
+    ClickableSurfaceDefaults.colors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+        contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+        focusedContainerColor = MaterialTheme.colorScheme.onSurface,
+        focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        pressedContainerColor = MaterialTheme.colorScheme.onSurface,
+        pressedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+    )
+
+/** The normal border of a [Button] (none, with a faint ring when focused but disabled) */
+@Composable
+fun buttonDefaultBorder(): ClickableSurfaceBorder =
+    ClickableSurfaceDefaults.border(
+        border = Border.None,
+        focusedBorder = Border.None,
+        pressedBorder = Border.None,
+        disabledBorder = Border.None,
+        focusedDisabledBorder =
+            Border(
+                border =
+                    BorderStroke(
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                    ),
+                shape = CircleShape,
+            ),
     )

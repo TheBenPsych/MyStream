@@ -97,8 +97,13 @@ fun ExpandablePlayButtons(
     rateOnClick: ((Boolean?) -> Unit)? = null,
     downloadItem: com.github.damontecres.wholphin.data.model.BaseItem? = null,
     goToShowOnClick: (() -> Unit)? = null,
+    seasonWatched: Boolean? = null,
+    seasonWatchOnClick: (() -> Unit)? = null,
+    shuffleSeasonOnClick: (() -> Unit)? = null,
 ) {
     val resources = LocalResources.current
+    // Benflix look A: flat buttons; the rarer ones (version, favourite, delete) live in More
+    val flat = LocalFlatButtons.current
     val firstFocus = remember { FocusRequester() }
     val restartInteractionSource = remember { MutableInteractionSource() }
     val restartButtonFocused by restartInteractionSource.collectIsFocusedAsState()
@@ -120,12 +125,21 @@ fun ExpandablePlayButtons(
             androidx.tv.material3.Button(
                 onClick = { playOnClick.invoke(resumePosition) },
                 colors =
-                    androidx.tv.material3.ButtonDefaults.colors(
-                        containerColor = androidx.compose.ui.graphics.Color.White,
-                        contentColor = androidx.compose.ui.graphics.Color.Black,
-                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
-                        focusedContentColor = androidx.compose.ui.graphics.Color.Black,
-                    ),
+                    if (flat) {
+                        androidx.tv.material3.ButtonDefaults.colors(
+                            containerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+                            contentColor = androidx.compose.ui.graphics.Color.White,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+                            focusedContentColor = androidx.compose.ui.graphics.Color.White,
+                        )
+                    } else {
+                        androidx.tv.material3.ButtonDefaults.colors(
+                            containerColor = androidx.compose.ui.graphics.Color.White,
+                            contentColor = androidx.compose.ui.graphics.Color.Black,
+                            focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                            focusedContentColor = androidx.compose.ui.graphics.Color.Black,
+                        )
+                    },
                 // Phones have no remote focus: don't let the button grow wider than the page
                 scale =
                     androidx.tv.material3.ButtonDefaults
@@ -134,7 +148,7 @@ fun ExpandablePlayButtons(
                     androidx.tv.material3.ButtonDefaults
                         .shape(
                             androidx.compose.foundation.shape
-                                .RoundedCornerShape(6.dp),
+                                .RoundedCornerShape(if (flat) 12.dp else 6.dp),
                         ),
                 modifier =
                     Modifier
@@ -189,6 +203,7 @@ fun ExpandablePlayButtons(
                             resume = resumePosition,
                             icon = Icons.Default.PlayArrow,
                             onClick = playOnClick,
+                            primary = true,
                             modifier =
                                 Modifier
                                     .onFocusChanged(buttonOnFocusChanged)
@@ -222,7 +237,7 @@ fun ExpandablePlayButtons(
                     }
                 }
 
-                if (chooseVersionParams != null && chooseVersionParams.mediaSources.size > 1) {
+                if (!flat && chooseVersionParams != null && chooseVersionParams.mediaSources.size > 1) {
                     item {
                         ExpandableFaButton(
                             title = R.string.version,
@@ -256,15 +271,39 @@ fun ExpandablePlayButtons(
                     )
                 }
 
+                // Benflix: the whole season at once, on the season page
+                if (seasonWatched != null && seasonWatchOnClick != null) {
+                    item("season_watched") {
+                        ExpandableFaButton(
+                            title = if (seasonWatched) R.string.benflix_mark_season_unwatched else R.string.benflix_mark_season_watched,
+                            iconStringRes = R.string.fa_check,
+                            onClick = seasonWatchOnClick,
+                            modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                        )
+                    }
+                }
+                if (shuffleSeasonOnClick != null) {
+                    item("shuffle_season") {
+                        ExpandableFaButton(
+                            title = R.string.benflix_shuffle_season,
+                            iconStringRes = R.string.fa_shuffle,
+                            onClick = shuffleSeasonOnClick,
+                            modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                        )
+                    }
+                }
+
                 // Favorite button
-                item("favorite") {
-                    ExpandableFaButton(
-                        title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                        iconStringRes = R.string.fa_heart,
-                        onClick = favoriteOnClick,
-                        iconColor = if (favorite) Color.Red else Color.Unspecified,
-                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-                    )
+                if (!flat) {
+                    item("favorite") {
+                        ExpandableFaButton(
+                            title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                            iconStringRes = R.string.fa_heart,
+                            onClick = favoriteOnClick,
+                            iconColor = if (favorite) Color.Red else Color.Unspecified,
+                            modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                        )
+                    }
                 }
 
                 if (rateOnClick != null) {
@@ -285,7 +324,7 @@ fun ExpandablePlayButtons(
                         )
                     }
                 }
-                if (canDelete) {
+                if (canDelete && !flat) {
                     item("delete") {
                         DeleteButton(
                             title = title,
@@ -367,6 +406,52 @@ val MinButtonSize = 40.dp
 val LocalAlwaysShowButtonLabels = staticCompositionLocalOf { false }
 
 /**
+ * Benflix look A: flat buttons. Each button is a rounded rectangle that always shows its name
+ * (no round icon that grows when focused). Pages that use the new look set this to true.
+ */
+val LocalFlatButtons = staticCompositionLocalOf { false }
+
+/** Benflix look A: the rounded rectangle shape of a flat button */
+private val FlatButtonShape =
+    androidx.compose.foundation.shape
+        .RoundedCornerShape(10.dp)
+
+@Composable
+private fun flatShape() =
+    if (LocalFlatButtons.current) {
+        androidx.tv.material3.ClickableSurfaceDefaults
+            .shape(shape = FlatButtonShape)
+    } else {
+        androidx.tv.material3.ClickableSurfaceDefaults
+            .shape(shape = androidx.compose.foundation.shape.CircleShape)
+    }
+
+/** Benflix look A: the main button (Play) is filled with the profile colour, with a white ring when focused */
+@Composable
+private fun primaryColors() =
+    androidx.tv.material3.ClickableSurfaceDefaults.colors(
+        containerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+        contentColor = Color.White,
+        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+        focusedContentColor = Color.White,
+        pressedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
+        pressedContentColor = Color.White,
+    )
+
+@Composable
+private fun primaryBorder() =
+    androidx.tv.material3.ClickableSurfaceDefaults.border(
+        focusedBorder =
+            androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                shape = FlatButtonShape,
+            ),
+    )
+
+/** Benflix look A: flat buttons get a little more room left and right for their name */
+private val FlatButtonPadding = PaddingValues(start = 10.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
+
+/**
  * An icon button typically used in a row for playing media
  *
  * Only shows the icon until focused when it expands to show the title
@@ -381,9 +466,11 @@ fun ExpandablePlayButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     mirrorIcon: Boolean = false,
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) = ExpandablePlayButton(
     title = title,
     resume = resume,
+    primary = primary,
     icon = {
         Icon(
             imageVector = icon,
@@ -410,9 +497,11 @@ fun ExpandablePlayButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     mirrorIcon: Boolean = false,
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) = ExpandablePlayButton(
     title = title,
     resume = resume,
+    primary = primary,
     icon = {
         Icon(
             painter = icon,
@@ -438,8 +527,10 @@ fun ExpandablePlayButton(
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
+    val flat = LocalFlatButtons.current
     Button(
         onClick = { onClick.invoke(resume) },
         enabled = enabled,
@@ -449,7 +540,10 @@ fun ExpandablePlayButton(
                 minHeight = MinButtonSize,
                 maxHeight = MinButtonSize,
             ),
-        contentPadding = DefaultButtonPadding,
+        shape = flatShape(),
+        colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
+        border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
+        contentPadding = if (flat) FlatButtonPadding else DefaultButtonPadding,
         interactionSource = interactionSource,
     ) {
         Box(
@@ -461,7 +555,7 @@ fun ExpandablePlayButton(
         ) {
             icon.invoke(this)
         }
-        AnimatedVisibility(isFocused || LocalAlwaysShowButtonLabels.current) {
+        AnimatedVisibility(flat || isFocused || LocalAlwaysShowButtonLabels.current) {
             Spacer(Modifier.size(8.dp))
             Text(
                 text = stringResource(title),
@@ -486,6 +580,7 @@ fun ExpandableFaButton(
     enabled: Boolean = true,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
+    val flat = LocalFlatButtons.current
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -495,7 +590,8 @@ fun ExpandableFaButton(
                 minHeight = MinButtonSize,
                 maxHeight = MinButtonSize,
             ),
-        contentPadding = DefaultButtonPadding,
+        shape = flatShape(),
+        contentPadding = if (flat) FlatButtonPadding else DefaultButtonPadding,
         interactionSource = interactionSource,
     ) {
         Box(
@@ -513,7 +609,7 @@ fun ExpandableFaButton(
                 modifier = Modifier.align(Alignment.Center),
             )
         }
-        AnimatedVisibility(isFocused || LocalAlwaysShowButtonLabels.current) {
+        AnimatedVisibility(flat || isFocused || LocalAlwaysShowButtonLabels.current) {
             Text(
                 text = stringResource(title),
                 style = MaterialTheme.typography.titleSmall,

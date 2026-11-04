@@ -270,6 +270,18 @@ fun SeriesOverview(
                         viewModel.setFavorite(it.id, !favorite, position.episodeRowIndex)
                     }
                 },
+                seasonWatchOnClick = { season, played ->
+                    viewModel.markSeasonWatched(season.id, season.data.indexNumber, played)
+                },
+                shuffleSeasonOnClick = { season ->
+                    rowFocused = EPISODE_ROW
+                    viewModel.navigateTo(
+                        Destination.PlaybackList(
+                            itemId = season.id,
+                            shuffle = true,
+                        ),
+                    )
+                },
                 goToShowOnClick = {
                     viewModel.navigateTo(
                         Destination.MediaItem(destination.itemId, BaseItemKind.SERIES, null),

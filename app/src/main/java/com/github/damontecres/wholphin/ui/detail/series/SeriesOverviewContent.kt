@@ -102,6 +102,8 @@ fun SeriesOverviewContent(
     overviewOnClick: () -> Unit,
     personOnClick: (Person) -> Unit,
     goToShowOnClick: (() -> Unit)? = null,
+    seasonWatchOnClick: ((BaseItem, Boolean) -> Unit)? = null,
+    shuffleSeasonOnClick: ((BaseItem) -> Unit)? = null,
     canDelete: (BaseItem) -> Boolean,
     onConfirmDelete: (BaseItem) -> Unit,
     onClickExtra: (Int, ExtrasItem) -> Unit,
@@ -196,29 +198,46 @@ fun SeriesOverviewContent(
                             .padding(bottom = 4.dp)
                             .fillMaxWidth(),
                 )
-                TitleOrLogo(
-                    item = series,
-                    showLogo = preferences.appPreferences.interfacePreferences.showLogos,
+                // Benflix look A: the season's own poster next to the title, so you can see
+                // where you are in long shows (One Piece arcs and the like)
+                val season = seasons.getOrNull(position.seasonTabIndex)
+                val seasonEpisodes = (episodes as? EpisodeList.Success)?.episodes
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.padding(start = HeaderUtils.startPadding),
-                )
-                FocusedEpisodeHeader(
-                    preferences = preferences,
-                    ep = focusedEpisode,
-                    chosenStreams = chosenStreams,
-                    overviewOnClick = overviewOnClick,
-                    overviewOnFocus = {
-                        if (it.isFocused) {
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                        }
-                    },
-                    modifier =
-                        Modifier.fillMaxWidth(
-                            com.github.damontecres.wholphin.ui.touch
-                                .detailsTextFraction(),
-                        ),
-                )
+                ) {
+                    SeasonPoster(
+                        season = season,
+                        height = if (isTv) 150.dp else 108.dp,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TitleOrLogo(
+                            item = series,
+                            showLogo = preferences.appPreferences.interfacePreferences.showLogos,
+                        )
+                        SeasonLine(season = season, episodes = seasonEpisodes)
+                        FocusedEpisodeHeader(
+                            preferences = preferences,
+                            ep = focusedEpisode,
+                            chosenStreams = chosenStreams,
+                            overviewOnClick = overviewOnClick,
+                            overviewOnFocus = {
+                                if (it.isFocused) {
+                                    scope.launch {
+                                        bringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            },
+                            startPadding = 0.dp,
+                            modifier =
+                                Modifier.fillMaxWidth(
+                                    com.github.damontecres.wholphin.ui.touch
+                                        .detailsTextFraction(),
+                                ),
+                        )
+                    }
+                }
 
 //                key(position.seasonTabIndex) {
                 when (val eps = episodes) {
@@ -340,33 +359,53 @@ fun SeriesOverviewContent(
                 }
 
                 focusedEpisode?.let { ep ->
-                    FocusedEpisodeFooter(
-                        preferences = preferences,
-                        ep = ep,
-                        chosenStreams = chosenStreams,
-                        playOnClick = playOnClick,
-                        moreOnClick = moreOnClick,
-                        goToShowOnClick = goToShowOnClick,
-                        watchOnClick = {
-                            watchOnClick.invoke()
-                            episodeRowFocusRequester.tryRequestFocus()
-                        },
-                        favoriteOnClick = favoriteOnClick,
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
-                                scope.launch {
-                                    bringIntoViewRequester.bringIntoView()
+                    val allWatched =
+                        seasonEpisodes?.isNotEmpty() == true &&
+                            seasonEpisodes.all { it?.data?.userData?.played == true }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
+                    ) {
+                        FocusedEpisodeFooter(
+                            seasonWatched = if (season != null && seasonWatchOnClick != null) allWatched else null,
+                            seasonWatchOnClick =
+                                if (season != null && seasonWatchOnClick != null) {
+                                    { seasonWatchOnClick.invoke(season, !allWatched) }
+                                } else {
+                                    null
+                                },
+                            shuffleSeasonOnClick =
+                                if (season != null && shuffleSeasonOnClick != null) {
+                                    { shuffleSeasonOnClick.invoke(season) }
+                                } else {
+                                    null
+                                },
+                            preferences = preferences,
+                            ep = ep,
+                            chosenStreams = chosenStreams,
+                            playOnClick = playOnClick,
+                            moreOnClick = moreOnClick,
+                            goToShowOnClick = goToShowOnClick,
+                            watchOnClick = {
+                                watchOnClick.invoke()
+                                episodeRowFocusRequester.tryRequestFocus()
+                            },
+                            favoriteOnClick = favoriteOnClick,
+                            buttonOnFocusChanged = {
+                                if (it.isFocused) {
+                                    scope.launch {
+                                        bringIntoViewRequester.bringIntoView()
+                                    }
                                 }
-                            }
-                        },
-                        canDelete = canDelete.invoke(ep),
-                        onConfirmDelete = { onConfirmDelete.invoke(ep) },
-                        onChooseVersion = { onChooseVersion.invoke(ep, it) },
-                        modifier =
-                            Modifier
-                                .padding(top = 4.dp)
-                                .fillMaxWidth(),
-                    )
+                            },
+                            canDelete = canDelete.invoke(ep),
+                            onConfirmDelete = { onConfirmDelete.invoke(ep) },
+                            onChooseVersion = { onChooseVersion.invoke(ep, it) },
+                            modifier =
+                                Modifier
+                                    .padding(top = 4.dp)
+                                    .fillMaxWidth(),
+                        )
+                    }
                 }
             }
 
