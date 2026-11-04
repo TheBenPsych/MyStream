@@ -70,7 +70,8 @@ class PlaylistCreator
                 GetEpisodesRequest(
                     seriesId = seriesId,
                     seasonId = seasonId,
-                    fields = DetailItemFields,
+                    // Benflix: path + genres so the next episodes are known to be anime (Japanese audio)
+                    fields = DetailItemFields + listOf(ItemFields.PATH, ItemFields.GENRES),
                     startItemId = episodeId,
                     sortBy = if (shuffled) ItemSortBy.RANDOM else null,
                     limit = Playlist.MAX_SIZE,

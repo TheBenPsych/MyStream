@@ -140,33 +140,43 @@ class StreamChoiceService
             stc: List<SeriesTrackChoice>?,
             prefs: UserPreferences,
         ): StreamChoiceResult? {
-            val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.SUBTITLE)
+            val stc = stc ?: getSeriesTrackChoices(item, SeriesTrackChoiceType.AUDIO)
             return source.mediaStreams?.letNotEmpty { streams ->
                 val candidates = streams.filter { it.type == MediaStreamType.AUDIO }
-                // Benflix: opened from the Dubbed or Subbed tab of an anime page, so play it that way
-                // (a track picked by hand for this one episode or movie still wins)
-                if (itemPlayback?.audioIndexEnabled != true && BenflixAnimeTracks.isAnime(item)) {
-                    when (BenflixDubChoice.modeFor(item)) {
-                        BenflixDubChoice.Mode.DUB -> {
-                            BenflixDubChoice.englishAudio(candidates)?.let { return@letNotEmpty it with StreamChoiceReason.UserPreferences }
-                        }
-
-                        BenflixDubChoice.Mode.SUB -> {
-                            BenflixAnimeTracks.japaneseAudio(candidates)?.let {
-                                return@letNotEmpty it with
-                                    StreamChoiceReason.UserPreferences
-                            }
-                        }
-
-                        null -> {}
-                    }
-                }
-                // Benflix: anime plays in Japanese unless this person picked something else before
-                if (itemPlayback?.audioIndexEnabled != true && stc.isEmpty() && BenflixAnimeTracks.isAnime(item)) {
-                    BenflixAnimeTracks.japaneseAudio(candidates)?.let { return@letNotEmpty it with StreamChoiceReason.UserPreferences }
-                }
-                chooseAudioStream(candidates, itemPlayback, stc, prefs)
+                chooseAudioStream(item, candidates, itemPlayback, stc, prefs)
             }
+        }
+
+        /**
+         * Returns the audio stream that should play, with the Benflix anime rules applied first
+         */
+        fun chooseAudioStream(
+            item: BaseItemDto,
+            candidates: List<MediaStream>,
+            itemPlayback: ItemPlayback?,
+            stc: List<SeriesTrackChoice>,
+            prefs: UserPreferences,
+        ): StreamChoiceResult {
+            // Benflix: opened from the Dubbed or Subbed tab of an anime page, so play it that way
+            // (a track picked by hand for this one episode or movie still wins)
+            if (itemPlayback?.audioIndexEnabled != true && BenflixAnimeTracks.isAnime(item)) {
+                when (BenflixDubChoice.modeFor(item)) {
+                    BenflixDubChoice.Mode.DUB -> {
+                        BenflixDubChoice.englishAudio(candidates)?.let { return it with StreamChoiceReason.UserPreferences }
+                    }
+
+                    BenflixDubChoice.Mode.SUB -> {
+                        BenflixAnimeTracks.japaneseAudio(candidates)?.let { return it with StreamChoiceReason.UserPreferences }
+                    }
+
+                    null -> {}
+                }
+            }
+            // Benflix: anime plays in Japanese unless this person picked something else before
+            if (itemPlayback?.audioIndexEnabled != true && stc.isEmpty() && BenflixAnimeTracks.isAnime(item)) {
+                BenflixAnimeTracks.japaneseAudio(candidates)?.let { return it with StreamChoiceReason.UserPreferences }
+            }
+            return chooseAudioStream(candidates, itemPlayback, stc, prefs)
         }
 
         /**
@@ -750,6 +760,8 @@ object BenflixAnimeTracks {
     /** Anime = it lives in a folder or library with "anime" in its name, or has the Anime genre */
     fun isAnime(item: BaseItemDto): Boolean =
         item.path?.contains("anime", ignoreCase = true) == true ||
+            // Episodes in the "play next" list come without their own path, but their files have one
+            item.mediaSources.orEmpty().any { it.path?.contains("anime", ignoreCase = true) == true } ||
             item.genres.orEmpty().any { it.equals("anime", ignoreCase = true) }
 
     fun isJapanese(language: String?): Boolean = language?.lowercase() in JAPANESE

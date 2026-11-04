@@ -94,6 +94,7 @@ class ItemPlaybackRepository
             if (source != null) {
                 val audioResult =
                     streamChoiceService.chooseAudioStream(
+                        item = item.data,
                         candidates =
                             source.mediaStreams
                                 ?.filter { it.type == MediaStreamType.AUDIO }
