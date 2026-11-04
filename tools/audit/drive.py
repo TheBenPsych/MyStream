@@ -340,6 +340,9 @@ def focus_sweep(name, max_moves=60):
 def back_to_home():
     if MODE != "tv":
         for _ in range(3):
+            # the bottom bar shrinks to icons while scrolled down: scroll up so its words come back
+            sh("input swipe 500 600 500 2000 300")
+            time.sleep(1)
             n = find(dump(), r"^Home$")
             if n is not None:
                 tap(n)
@@ -618,6 +621,10 @@ def main():
             shot(f"home-scroll-{i}")
         sh("input swipe 500 500 500 2000 300")
 
+    # Ember Road (the pixel adventure): walk through a short journey on both TV and phone
+    if not out_of_time():
+        ember_road()
+
     # Visit every tab in the top bar / bottom bar
     tabs = (
         [r"^Home$", r"Browse", r"^Channels$", r"^Games$", r"My Benflix", r"^More$", r"Search"]
@@ -699,6 +706,172 @@ def main():
     with open(f"{OUT}/report.json", "w") as f:
         json.dump(REPORT, f, indent=1)
     print(json.dumps({k: REPORT[k] for k in ("timings", "unreachable", "problems")}, indent=1)[:20000])
+
+
+def find_scrolling(pattern, tries=8):
+    """Phone: swipe up until the text shows on screen (TV: the remote scrolls by itself)"""
+    for _ in range(tries):
+        root = dump()
+        n = find(root, pattern)
+        if n is not None:
+            a, b, c, d = bounds(n)
+            if MODE == "tv" or (b > 100 and d < 2200):
+                return n
+        if MODE == "tv":
+            return n
+        sh("input swipe 500 1600 500 700 400")
+        time.sleep(1.2)
+    return None
+
+
+def tv_focus_down_to(pattern, presses=30, right_of=None):
+    """TV: press down until the focused thing holds the text, then OK.
+    right_of: a button that sits just left of the one we want (press right from it)"""
+    for _ in range(presses):
+        root = dump(dismiss=False)
+        f = focused_node(root)
+        label = find(root, pattern)
+        if f is not None and label is not None and contains(f, label):
+            key("DPAD_CENTER", wait=1.5)
+            return True
+        if right_of and f is not None:
+            beside = find(root, right_of)
+            if beside is not None and contains(f, beside):
+                key("DPAD_RIGHT", wait=0.6)
+                continue
+        key("DPAD_DOWN", wait=0.5)
+    return False
+
+
+def ember_fit(root, name):
+    """Log buttons or words that stick out past the left or right edge of the screen"""
+    if root is None:
+        return
+    m = re.search(r"(\d+)x(\d+)", sh("wm size"))
+    width = int(m.group(1)) if m else 1080
+    if MODE == "tv" and m and int(m.group(1)) < int(m.group(2)):
+        width = int(m.group(2))
+    for n in nodes(root):
+        t = n.get("text") or n.get("content-desc")
+        if not t or not n.get("bounds"):
+            continue
+        a, b, c, d = bounds(n)
+        if c > width + 2 or a < -2:
+            log(f"EMBER FIT {name}: '{t[:40]}' sticks out ({a}..{c} on a {width} wide screen)")
+            REPORT["problems"].append({"type": "Ember Road off screen", "where": name, "text": t[:60]})
+
+
+def ember_shot(name):
+    root = shot(name)
+    ember_fit(root, name)
+    return root
+
+
+def ember_road():
+    back_to_home()
+    if not press(r"^Games$", timeout=6):
+        if not press(r"My Benflix", timeout=4) and MODE != "tv":
+            # the phone menu bar can be shrunk to icons: My Benflix is the last thing on it
+            m = re.search(r"(\d+)x(\d+)", sh("wm size"))
+            height = int(m.group(2)) if m else 2400
+            bar = [c for c in nodes(dump()) if c.get("clickable") == "true" and center(c)[1] > height - 300]
+            if bar:
+                sh("input tap %d %d" % center(max(bar, key=lambda c: center(c)[0])))
+        time.sleep(2)
+        if find_scrolling(r"^Games$") is None or not press(r"^Games$", timeout=6):
+            log("Ember Road: no Games page found")
+            return
+    time.sleep(4)
+    if MODE == "tv":
+        if not tv_focus_down_to(r"^Ember Road$"):
+            log("Ember Road: the remote could not reach the tile")
+            REPORT["problems"].append({"type": "could not reach with remote", "text": "Ember Road"})
+            return
+    else:
+        tile = find_scrolling(r"^Ember Road$")
+        if tile is None:
+            log("Ember Road: tile not found")
+            REPORT["problems"].append({"type": "Ember Road tile missing"})
+            return
+        tap(tile)
+    if wait_for(r"New journey|Continue the journey", 20) is None:
+        ember_shot("ember-title-missing")
+        return
+    ember_shot("ember-title")
+    press(r"^New journey", timeout=6)
+    time.sleep(2)
+    if find(dump(), r"Skip, just the TV") is not None:
+        ember_shot("ember-phones-lobby")
+        press(r"Skip, just the TV", timeout=5)
+        time.sleep(2)
+    for step in range(4):
+        ember_shot(f"ember-setup-{step + 1}")
+        target = r"^Set out!$" if step == 3 else r"^Next$"
+        if MODE == "tv":
+            # the button can sit below the screen edge: walk down to it with the remote like a person would
+            if not tv_focus_down_to(target, presses=40, right_of=r"^(Back|Cancel)$"):
+                log(f"Ember Road: the remote could not reach {target} on setup step {step + 1}")
+                REPORT["problems"].append({"type": "could not reach with remote", "text": target})
+                break
+        else:
+            n = find_scrolling(target)
+            if n is None:
+                log(f"Ember Road: no {target} on setup step {step + 1}")
+                break
+            tap(n)
+        time.sleep(1.5)
+    time.sleep(2)
+    ember_shot("ember-road")
+    # A few days on the road: keep going, pick the first choice, continue
+    for i in range(14):
+        if out_of_time():
+            break
+        root = dump()
+        for pattern in (r"^Keep going$", r"^Continue$", r"^Go this way$", r"^Pack up and go on$", r"^Leave$", r"^Done shopping$"):
+            n = find(root, pattern)
+            if n is not None:
+                break
+        else:
+            n = None
+        if n is None:
+            ember_shot(f"ember-step-{i}")
+            if MODE == "tv":
+                f = focused_node(root)
+                log("Ember Road: focused on '%s'" % ((f.get("text") or f.get("content-desc") or "?")[:60] if f is not None else "nothing"))
+                if f is None:
+                    key("DPAD_DOWN", wait=0.8)
+                key("DPAD_CENTER", wait=1.5)
+            else:
+                # an event: tap the first button under the words
+                below = [
+                    c for c in nodes(root)
+                    if c.get("clickable") == "true" and center(c)[1] > 1100
+                ]
+                if below:
+                    sh("input tap %d %d" % center(min(below, key=lambda c: center(c)[1])))
+            time.sleep(1.5)
+            continue
+        if i % 3 == 0:
+            ember_shot(f"ember-step-{i}")
+        if MODE == "tv":
+            # use the remote like a person (a touch tap would put the TV in touch mode and lose the focus)
+            if not tv_focus_down_to(pattern, presses=12):
+                log(f"Ember Road: the remote could not reach {pattern}")
+                REPORT["problems"].append({"type": "could not reach with remote", "text": pattern})
+        else:
+            tap(n)
+        time.sleep(2)
+    ember_shot("ember-later")
+    # The menu (Back) and the creature book
+    key("BACK", wait=1.5)
+    ember_shot("ember-menu")
+    press(r"Save and go to the start", timeout=6)
+    time.sleep(2)
+    if press(r"^Creatures ", timeout=6):
+        time.sleep(2)
+        ember_shot("ember-creature-book")
+        key("BACK", wait=1.5)
+    key("BACK", wait=1.5)
 
 
 def on_term(*_):
