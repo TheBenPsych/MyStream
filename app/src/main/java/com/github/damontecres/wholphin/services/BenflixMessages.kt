@@ -45,6 +45,30 @@ class BenflixMessages
         /** Texts shown live lately (text to when), so a saved copy of the same message doesn't show again */
         private val shownLive = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
+        /** Texts this device sent (text to when), so the sender's own screen doesn't grab a message meant for their TV */
+        private val sentHere = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+        private val _liveBlocked = MutableStateFlow(false)
+
+        /**
+         * True when this device can't hold a live connection to the server (usually the reverse proxy in front of
+         * Jellyfin isn't letting "websocket" connections through). Live pop-ups and the phone remote can't arrive
+         * then, so messages are saved instead and picked up by the regular check.
+         */
+        val liveBlocked: StateFlow<Boolean> = _liveBlocked
+
+        fun setLiveBlocked(blocked: Boolean) {
+            _liveBlocked.value = blocked
+        }
+
+        /** Remember that this device is sending [text], so it doesn't pop up here too */
+        fun rememberSent(text: String) {
+            sentHere[text.trim()] = System.currentTimeMillis()
+        }
+
+        private fun sentByMe(text: String) =
+            sentHere[text]?.let { System.currentTimeMillis() - it < SHOWN_MEMORY_MS } == true
+
         private val _waiting = MutableStateFlow<List<BenflixMessage>>(emptyList())
         val waiting: StateFlow<List<BenflixMessage>> = _waiting
 
@@ -55,6 +79,8 @@ class BenflixMessages
         ) {
             if (text.isBlank()) return
             val clean = text.trim()
+            // The sender's own screen: it was meant for someone else (or for their TV)
+            if (sentByMe(clean)) return
             val now = System.currentTimeMillis()
             shownLive.filterValues { now - it > SHOWN_MEMORY_MS }.keys.forEach { shownLive.remove(it) }
             shownLive[clean] = now
@@ -109,7 +135,11 @@ class BenflixMessages
             }
         }
 
-        /** Looks for messages saved for [userId], shows them and takes them off so they show once */
+        /**
+         * Looks for messages saved for [userId], shows them and takes them off so they show once.
+         * Messages this device sent itself are left for the person's other screens (like their TV).
+         * One sent in the last few minutes counts as live: it shows even during playback and closes by itself.
+         */
         suspend fun checkSaved(userId: UUID) =
             withContext(WholphinDispatchers.IO) {
                 try {
@@ -117,16 +147,25 @@ class BenflixMessages
                         decode(
                             displayPreferencesService.getDisplayPreferences(userId).customPrefs[KEY],
                         )
-                    if (saved.isEmpty()) return@withContext
-                    displayPreferencesService.updateDisplayPreferences(userId) { remove(KEY) }
+                    val mine = saved.filter { sentByMe(it.text) }
+                    val toShow = saved - mine.toSet()
+                    if (toShow.isEmpty()) return@withContext
+                    displayPreferencesService.updateDisplayPreferences(userId) {
+                        // Read again, so a message saved a moment ago isn't lost
+                        val left = decode(get(KEY)).filter { s -> toShow.none { it.id == s.id && it.text == s.text } }
+                        if (left.isEmpty()) remove(KEY) else put(KEY, encode(left))
+                    }
                     val now = System.currentTimeMillis()
                     _waiting.update { list ->
                         list +
-                            saved
+                            toShow
                                 .filter { s -> list.none { it.id == "saved-" + s.id || it.text == s.text } }
                                 // Already popped up live on this screen
                                 .filter { s -> shownLive[s.text]?.let { now - it < SHOWN_MEMORY_MS } != true }
-                                .map { BenflixMessage("saved-" + it.id, it.header, it.text, live = false) }
+                                .map {
+                                    val fresh = it.id.toLongOrNull()?.let { sent -> now - sent in 0..FRESH_MS } == true
+                                    BenflixMessage("saved-" + it.id, it.header, it.text, live = fresh)
+                                }
                     }
                 } catch (ex: CancellationException) {
                     throw ex
@@ -160,5 +199,8 @@ class BenflixMessages
 
             /** How long a live message is remembered, so its saved copy doesn't pop up again */
             private const val SHOWN_MEMORY_MS = 7 * 24 * 60 * 60_000L
+
+            /** A saved message this new still counts as "right now", so it shows even while watching */
+            private const val FRESH_MS = 10 * 60_000L
         }
     }

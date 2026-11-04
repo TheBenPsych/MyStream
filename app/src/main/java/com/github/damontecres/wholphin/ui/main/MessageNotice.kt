@@ -21,6 +21,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
@@ -89,6 +91,17 @@ class MessageNoticeViewModel
                 }
         }
 
+        /**
+         * Benflix: a regular look for saved messages while the app is open. Live pop-ups need a live connection
+         * to the server, and some server setups block it, so this makes sure a message still arrives within a
+         * couple of minutes (also on a TV that's just sitting on Home or playing something).
+         */
+        suspend fun poll() {
+            val userId = serverRepository.currentUser?.id ?: return
+            lastCheck = System.currentTimeMillis()
+            messages.checkSaved(userId)
+        }
+
         fun done(message: BenflixMessage) = messages.done(message)
     }
 
@@ -101,6 +114,15 @@ fun MessageLayer(
     val waiting by viewModel.waiting.collectAsState()
     // Benflix: look for saved messages again when the app comes back to the front
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForeground() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(POLL_MS)
+                viewModel.poll()
+            }
+        }
+    }
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
     val message = waiting.firstOrNull { it.live || !playing }
     if (!popupTurn("ben-message", BenflixPopups.MESSAGE, message != null)) return
@@ -163,3 +185,6 @@ private const val LIVE_SHOW_MS = 60_000L
 
 /** Benflix: at most one saved-message check this often when the app comes back to the front */
 private const val FOREGROUND_GAP_MS = 60_000L
+
+/** Benflix: how often an open Benflix looks for saved messages */
+private const val POLL_MS = 75_000L
