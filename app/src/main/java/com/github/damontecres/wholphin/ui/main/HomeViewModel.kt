@@ -105,6 +105,7 @@ class HomeViewModel
         internal val birthdayService: BirthdayService,
         internal val diskCache: DiskCache,
         internal val detailsPrefetch: DetailsPrefetch,
+        private val aniListLibraries: com.github.damontecres.wholphin.services.AniListLibraries,
     ) : ViewModel() {
         internal val mutableState = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = mutableState
@@ -264,6 +265,8 @@ class HomeViewModel
                     libraries
                         .filter { it.name.contains("anime", ignoreCase = true) }
                         .map { it.itemId }
+                // AniList score and fan genres for every anime, for cards and info lines
+                aniListLibraries.warm(animeLibraryIds, userDto.id)
 
                 if (state.value.kids != KidsMode.isActive) {
                     // Switched to or from Kids: start from a clean page so no grown-up rows linger

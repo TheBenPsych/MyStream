@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
 import android.content.Context
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +22,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -396,7 +394,7 @@ private fun animeExtras(series: BaseItem): AnimeExtrasViewModel {
     return viewModel
 }
 
-/** The AniList score, next episode countdown and dub line, under an anime show's or movie's title */
+/** The next episode countdown and dub line, under an anime show's or movie's title */
 @Composable
 fun AnimeFacts(
     series: BaseItem,
@@ -408,35 +406,16 @@ fun AnimeFacts(
     val info = state.info
     val countdown = countdownText(info)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
-        if (info?.score != null || countdown != null) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                info?.score?.let { score ->
-                    Text(
-                        text = "AniList ${"%.1f".format(Locale.US, score / 10.0)}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        modifier =
-                            Modifier
-                                .background(SCORE_COLOR, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 1.dp),
-                    )
-                }
-                countdown?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = COUNTDOWN_COLOR,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+        // The AniList score sits next to the stars on the line above (QuickDetails)
+        countdown?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = COUNTDOWN_COLOR,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         state.dubLine?.let {
             Text(
@@ -666,7 +645,6 @@ private fun MovieOrderCard(
 }
 
 private val COUNTDOWN_COLOR = Color(0xFFFFB74D)
-private val SCORE_COLOR = Color(0xFF02A9FF)
 private val CHARACTER_WIDTH = 150.dp
 private val MOVIE_WIDTH = 220.dp
 private val FACE = 64.dp
