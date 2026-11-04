@@ -5,6 +5,7 @@ package com.github.damontecres.wholphin.ui.games.ember
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -140,6 +142,7 @@ fun EmberRoadPage(
 private fun EmberPage(
     title: String,
     isTv: Boolean,
+    scroll: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Column(
@@ -147,8 +150,7 @@ private fun EmberPage(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier =
             Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .let { if (scroll) it.fillMaxSize().verticalScroll(rememberScrollState()) else it.fillMaxWidth() }
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 28.dp else 16.dp),
     ) {
         Text(title, fontFamily = BenflixTitleFont, fontSize = if (isTv) 34.sp else 28.sp, color = EmberGold, textAlign = TextAlign.Center)
@@ -553,6 +555,7 @@ private fun GalleryScreen(
                 val found = e.id in vm.meta.endings
                 Column(
                     Modifier
+                        .walkable(isTv)
                         .width(if (isTv) 250.dp else 165.dp)
                         .background(EmberPanel, RoundedCornerShape(8.dp))
                         .padding(8.dp),
@@ -600,6 +603,7 @@ private fun BookScreen(
                 val met = c.id in found
                 Column(
                     Modifier
+                        .walkable(isTv)
                         .width(if (isTv) 200.dp else 160.dp)
                         .background(EmberPanel, RoundedCornerShape(8.dp))
                         .padding(8.dp),
@@ -619,6 +623,36 @@ private fun BookScreen(
     }
 }
 
+private val howToLines =
+    listOf(
+        "The goal" to
+            "Carry the dragon egg from Hearthvale to Ember Peak. Keep it warm (camp by a fire), keep your family fed, and get there before it hatches. Or don't. There are 12 endings.",
+        "On the road" to
+            "Pick Keep going to travel a day. Things happen: pick what to do. Choices with a % are a dice roll. Make camp to rest, heal and warm the egg.",
+        "Pace and food" to
+            "A hard pace is faster but tiring. Eating little saves food but people get sick. Watch the food number!",
+        "Stops" to
+            "At towns and odd places, Look at things, Talk to people, Take, Use items and Cast spells. You can also type what you want to do, like \"look under the bridge\" or \"use rope on well\". Some secrets only work by typing.",
+        "Magic" to
+            "Spells are marked ✦. Magic is powerful but risky: the more you cast, the wilder it gets and the more it backfires. Camping calms it down.",
+        "Roads" to "At each fork, pick a road: safe but long, short but dangerous, or strange. Every journey is different.",
+        "Your party" to "Nobody dies on Ember Road, but people can get fed up and go home. Keep spirits up!",
+        "Phones" to
+            "On a TV, phones can join from Games on Benflix: they vote on choices (most votes win, ties go to the TV), type commands and play the mini-games.",
+        "Trail markers" to "At the end, leave a marker where your journey ended. The family will find it on their own journeys.",
+    )
+
+/** TV: a card the remote can land on (so the page scrolls down to it), with a gold edge while it's picked */
+@Composable
+private fun Modifier.walkable(isTv: Boolean): Modifier {
+    if (!isTv) return this
+    var focused by remember { mutableStateOf(false) }
+    return this
+        .onFocusChanged { focused = it.isFocused }
+        .focusable()
+        .border(2.dp, if (focused) EmberGold else Color.Transparent, RoundedCornerShape(8.dp))
+}
+
 @Composable
 private fun HowToScreen(
     vm: EmberViewModel,
@@ -626,30 +660,36 @@ private fun HowToScreen(
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { first.tryRequestFocus() }
-    EmberPage("How to play", isTv) {
-        val lines =
-            listOf(
-                "The goal" to
-                    "Carry the dragon egg from Hearthvale to Ember Peak. Keep it warm (camp by a fire), keep your family fed, and get there before it hatches. Or don't. There are 12 endings.",
-                "On the road" to
-                    "Pick Keep going to travel a day. Things happen: pick what to do. Choices with a % are a dice roll. Make camp to rest, heal and warm the egg.",
-                "Pace and food" to "A hard pace is faster but tiring. Eating little saves food but people get sick. Watch the food number!",
-                "Stops" to
-                    "At towns and odd places, Look at things, Talk to people, Take, Use items and Cast spells. You can also type what you want to do, like \"look under the bridge\" or \"use rope on well\". Some secrets only work by typing.",
-                "Magic" to
-                    "Spells are marked ✦. Magic is powerful but risky: the more you cast, the wilder it gets and the more it backfires. Camping calms it down.",
-                "Roads" to "At each fork, pick a road: safe but long, short but dangerous, or strange. Every journey is different.",
-                "Your party" to "Nobody dies on Ember Road, but people can get fed up and go home. Keep spirits up!",
-                "Phones" to
-                    "On a TV, phones can join from Games on Benflix: they vote on choices (most votes win, ties go to the TV), type commands and play the mini-games.",
-                "Trail markers" to "At the end, leave a marker where your journey ended. The family will find it on their own journeys.",
-            )
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.widthIn(max = 900.dp)) {
-            lines.forEach { (h, b) ->
-                Text(h, color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(b, color = EmberText, fontSize = 16.sp)
+    // TV: the remote can't scroll plain words, so the page is laid out in two columns and shrinks to fit the screen
+    val page: @Composable () -> Unit = {
+        EmberPage("How to play", isTv, scroll = !isTv) {
+            @Composable
+            fun Part(
+                part: List<Pair<String, String>>,
+                modifier: Modifier,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
+                    part.forEach { (h, b) ->
+                        Text(h, color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(b, color = EmberText, fontSize = 16.sp)
+                    }
+                }
             }
+            if (isTv) {
+                Row(horizontalArrangement = Arrangement.spacedBy(36.dp), modifier = Modifier.fillMaxWidth()) {
+                    Part(howToLines.take(5), Modifier.weight(1f))
+                    Part(howToLines.drop(5), Modifier.weight(1f))
+                }
+            } else {
+                Part(howToLines, Modifier.widthIn(max = 900.dp))
+            }
+            EmberButton("Back", onClick = { vm.goTo(EmberScreen.TITLE) }, focusRequester = first)
         }
-        EmberButton("Back", onClick = { vm.goTo(EmberScreen.TITLE) }, focusRequester = first)
+    }
+    if (isTv) {
+        com.github.damontecres.wholphin.ui.games
+            .FitScreen(isTv = true) { page() }
+    } else {
+        page()
     }
 }
