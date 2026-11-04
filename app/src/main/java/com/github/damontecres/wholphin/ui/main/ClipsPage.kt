@@ -62,6 +62,7 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.HomeItemFields
@@ -677,7 +678,22 @@ class ClipsViewModel
             }
         }
 
+        /** Benflix: let go of the video decoders when a movie starts, so it doesn't play slowly */
+        private fun freePlayers() {
+            boosts.forEach { it?.release() }
+            boosts.clear()
+            player?.release()
+            player = null
+            playingId = null
+            nextPlayer?.release()
+            nextPlayer = null
+            nextId = null
+        }
+
+        private val unregisterFree = PreviewPlayers.register { freePlayers() }
+
         override fun onCleared() {
+            unregisterFree()
             boosts.forEach { it?.release() }
             boosts.clear()
             player?.release()

@@ -33,6 +33,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.LocalTrailer
+import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.services.TrailerService
 import com.github.damontecres.wholphin.ui.main.HeroTrailer
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -161,6 +162,15 @@ class DetailsTrailerViewModel
             private set
         private var job: Job? = null
 
+        // Benflix: let go of the video decoder when a movie starts, so it doesn't play slowly
+        private val unregister =
+            PreviewPlayers.register {
+                job?.cancel()
+                _playing.value = false
+                player?.release()
+                player = null
+            }
+
         fun preview(item: BaseItem?) {
             job?.cancel()
             _playing.value = false
@@ -214,6 +224,7 @@ class DetailsTrailerViewModel
         }
 
         override fun onCleared() {
+            unregister()
             job?.cancel()
             player?.release()
             player = null

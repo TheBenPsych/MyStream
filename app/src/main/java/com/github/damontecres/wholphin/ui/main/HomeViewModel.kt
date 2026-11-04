@@ -29,6 +29,7 @@ import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.SpeedStats
@@ -145,6 +146,16 @@ class HomeViewModel
                 _previewPlayer?.release()
                 _previewPlayer = null
             }
+            // Benflix: let go of the video decoder when a movie starts, so it doesn't play slowly
+            addCloseable(
+                PreviewPlayers
+                    .register {
+                        previewJob?.cancel()
+                        _previewPlaying.value = false
+                        _previewPlayer?.release()
+                        _previewPlayer = null
+                    }.let { unregister -> AutoCloseable { unregister() } },
+            )
             datePlayedService.invalidateAll()
             serverRepository.currentUserDtoFlow
                 .combinePair(homeSettingsService.currentSettings)

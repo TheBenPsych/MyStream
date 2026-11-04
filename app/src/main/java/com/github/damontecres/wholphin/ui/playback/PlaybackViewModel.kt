@@ -265,6 +265,19 @@ class PlaybackViewModel
         private var fallbackStepFor: UUID? = null
         private var fallbackStep = 0
 
+        /** Benflix: restarts a video once if it starts with a low, jerky frame rate */
+        internal val pictureWatchdog by lazy {
+            PictureWatchdog(
+                context = context,
+                scope = viewModelScope,
+                player = { if (this::player.isInitialized) player as? ExoPlayer else null },
+                onNotice = { text ->
+                    if (state.value.notice == null) showNotice(PlayerNotice(title = text, autoHideMs = 4_000L))
+                },
+                afterRestart = { soundWatchdog.check("picture restart") },
+            )
+        }
+
         /** Benflix: brings the sound back if it drops out (after a skip, a sound switch...) */
         internal val soundWatchdog by lazy {
             SoundWatchdog(
@@ -1919,6 +1932,7 @@ class PlaybackViewModel
                         player.prepare()
                         player.play()
                         soundWatchdog.check("fallback")
+                        pictureWatchdog.check(itemNow, "fallback")
                     }
                 }
             }
@@ -2009,6 +2023,7 @@ class PlaybackViewModel
             initializationDurationMs: Long,
         ) {
             Timber.v("onVideoDecoderInitialized: decoder=$decoderName")
+            pictureWatchdog.decoderName = decoderName
             updateDecoder(decoderName, MediaType.VIDEO)
         }
 
