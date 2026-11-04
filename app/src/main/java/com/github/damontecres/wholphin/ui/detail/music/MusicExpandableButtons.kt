@@ -34,70 +34,76 @@ fun MusicExpandableButtons(
     showShuffle: Boolean = true,
 ) {
     val firstFocus = remember { FocusRequester() }
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(8.dp),
-        modifier =
-            modifier
-                .focusGroup()
-                .focusRestorer(firstFocus),
+// Benflix look A: flat buttons
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
     ) {
-        item("play") {
-            ExpandablePlayButton(
-                title = R.string.play,
-                resume = Duration.ZERO,
-                icon = Icons.Default.PlayArrow,
-                onClick = { actions.onClickPlay.invoke(false) },
-                modifier =
-                    Modifier
-                        .focusRequester(firstFocus)
-                        .onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-        if (showShuffle) {
-            item("shuffle") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(8.dp),
+            modifier =
+                modifier
+                    .focusGroup()
+                    .focusRestorer(firstFocus),
+        ) {
+            item("play") {
+                ExpandablePlayButton(
+                    title = R.string.play,
+                    resume = Duration.ZERO,
+                    icon = Icons.Default.PlayArrow,
+                    primary = true,
+                    onClick = { actions.onClickPlay.invoke(false) },
+                    modifier =
+                        Modifier
+                            .focusRequester(firstFocus)
+                            .onFocusChanged(buttonOnFocusChanged),
+                )
+            }
+            if (showShuffle) {
+                item("shuffle") {
+                    ExpandableFaButton(
+                        title = R.string.shuffle,
+                        iconStringRes = R.string.fa_shuffle,
+                        onClick = { actions.onClickPlay.invoke(true) },
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+            item("instant_mix") {
                 ExpandableFaButton(
-                    title = R.string.shuffle,
-                    iconStringRes = R.string.fa_shuffle,
-                    onClick = { actions.onClickPlay.invoke(true) },
+                    title = R.string.instant_mix,
+                    iconStringRes = R.string.fa_compass,
+                    onClick = actions.onClickInstantMix,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
-        item("instant_mix") {
-            ExpandableFaButton(
-                title = R.string.instant_mix,
-                iconStringRes = R.string.fa_compass,
-                onClick = actions.onClickInstantMix,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-        item("favorite") {
-            ExpandableFaButton(
-                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                onClick = actions.onClickFavorite,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-        if (canDelete) {
-            item("delete") {
-                DeleteButton(
-                    title = title,
-                    onConfirmDelete = actions.onConfirmDelete,
+            item("favorite") {
+                ExpandableFaButton(
+                    title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                    iconStringRes = R.string.fa_heart,
+                    onClick = actions.onClickFavorite,
+                    iconColor = if (favorite) Color.Red else Color.Unspecified,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
-        }
-        item("more") {
-            ExpandablePlayButton(
-                title = R.string.more,
-                resume = Duration.ZERO,
-                icon = Icons.Default.MoreVert,
-                onClick = { actions.onClickMore.invoke() },
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
+            if (canDelete) {
+                item("delete") {
+                    DeleteButton(
+                        title = title,
+                        onConfirmDelete = actions.onConfirmDelete,
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
+            }
+            item("more") {
+                ExpandablePlayButton(
+                    title = R.string.more,
+                    resume = Duration.ZERO,
+                    icon = Icons.Default.MoreVert,
+                    onClick = { actions.onClickMore.invoke() },
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                )
+            }
         }
     }
 }
