@@ -2,6 +2,8 @@ name: PR
 
 on:
   pull_request:
+    # labeled: adding the old-android label re-runs the checks with the Android 6 and 7 robots too
+    types: [opened, synchronize, reopened, labeled]
 
 defaults:
   run:
@@ -66,7 +68,9 @@ jobs:
         # phones stand in for old TVs: the same app code runs on both.
         # Fire TV versions: Fire OS 6 = Android 7 (Fire TV Stick 4K 2018), Fire OS 7 = Android 9
         # (Stick 3rd gen / Lite / 4K Max), Fire OS 8 = Android 11. Android 6 is the oldest Benflix installs on.
-        mode: [tv, phone, phone-android6, phone-android7, phone-android9, phone-android11]
+        # Android 6 and 7 robots are slow (often hit the 40 minute limit), so they only run when the PR
+        # has the old-android label. android-check (lint) still checks old-Android crashes on every PR.
+        mode: ${{ fromJSON(contains(github.event.pull_request.labels.*.name, 'old-android') && '["tv","phone","phone-android6","phone-android7","phone-android9","phone-android11"]' || '["tv","phone","phone-android9","phone-android11"]') }}
     steps:
       - name: Checkout the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
