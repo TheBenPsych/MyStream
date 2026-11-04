@@ -117,7 +117,11 @@ class DiscoverSeriesViewModel
                 try {
                     // Benflix: profiles without Requests (Seerr) linked get a plain message, not a "baseUrl" error
                     if (seerrService.api.baseUrl.isBlank()) {
-                        _state.update { it.copy(tvSeries = DataLoadingState.Error("Requests aren't set up for this profile yet, so this page can't open.")) }
+                        _state.update {
+                            it.copy(
+                                tvSeries = DataLoadingState.Error("Requests aren't set up for this profile yet, so this page can't open."),
+                            )
+                        }
                         return@launchIO
                     }
                     val tv = seerrService.api.tvApi.tvTvIdGet(tvId = item.id)
