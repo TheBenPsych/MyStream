@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
@@ -272,6 +274,17 @@ fun BannerCard(
                         Modifier
                             .align(Alignment.BottomStart)
                             .padding(start = 6.dp, bottom = 8.dp),
+                )
+            }
+            // Benflix: an anime's fan genres (Isekai, Shounen...) from AniList
+            if (!grown && seasonLeft == null && finale == null) {
+                CardAnimeTags(
+                    item = item,
+                    focused = focused,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 6.dp, end = 6.dp, bottom = 8.dp),
                 )
             }
             // Benflix: FILLER / MIXED on anime episodes
@@ -547,6 +560,37 @@ private fun GrownPreview(
                     color = Color.White.copy(alpha = .85f),
                     maxLines = 1,
                 )
+            }
+            // Benflix: anime show their AniList score and fan genres too
+            val aniList by com.github.damontecres.wholphin.services.AniListFacts.cards
+                .collectAsState()
+            aniList[item.id]?.let { facts ->
+                val line =
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        facts.scoreText?.let { score ->
+                            withStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = com.github.damontecres.wholphin.ui.components.AniListBlue,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                ),
+                            ) { append("AniList ") }
+                            append(score)
+                        }
+                        val tags = facts.cardTags(3)
+                        if (tags.isNotEmpty()) {
+                            if (facts.scoreText != null) append("  ·  ")
+                            append(tags.joinToString(" · "))
+                        }
+                    }
+                if (line.isNotEmpty()) {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = .85f),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

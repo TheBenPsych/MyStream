@@ -235,6 +235,15 @@ fun ItemCardImageOverlay(
                     .align(Alignment.TopStart)
                     .padding(6.dp),
         )
+        // Benflix: an anime's fan genres (Isekai, Shounen...) from AniList
+        CardAnimeTags(
+            item = badgeItem,
+            focused = focused,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 6.dp, end = 6.dp, bottom = 8.dp),
+        )
         if (watched && (watchedPercent == null || watchedPercent <= 0.0 || watchedPercent >= 100.0)) {
             CardWatchedTick(
                 Modifier

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -17,8 +18,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -51,6 +55,10 @@ fun QuickDetails(
             if (DisplayToggle.COMMUNITY_RATING in enabled) {
                 QuickDetailsText(details.communityRating, Modifier, textStyle, inlineContentMap)
             }
+            // Benflix: anime also show AniList's fan score, right after the stars
+            if (DisplayToggle.COMMUNITY_RATING in enabled) {
+                AniListScoreText(details.itemId, textStyle = textStyle)
+            }
             if (DisplayToggle.CRITIC_RATING in enabled) {
                 QuickDetailsText(details.criticRating, Modifier, textStyle, inlineContentMap)
             }
@@ -62,6 +70,35 @@ fun QuickDetails(
         }
     }
 }
+
+/** "  •  AniList 7.4" for an anime matched on AniList; nothing for anything else */
+@Composable
+fun AniListScoreText(
+    itemId: java.util.UUID?,
+    modifier: Modifier = Modifier,
+    textStyle: TextStyle = MaterialTheme.typography.titleSmall,
+    leadingDot: Boolean = true,
+) {
+    if (itemId == null) return
+    val facts by com.github.damontecres.wholphin.services.AniListFacts.cards
+        .collectAsState()
+    val score = facts[itemId]?.scoreText ?: return
+    Text(
+        text =
+            buildAnnotatedString {
+                if (leadingDot) dot()
+                withStyle(SpanStyle(color = AniListBlue, fontWeight = FontWeight.Bold)) { append("AniList ") }
+                append(score)
+            },
+        color = MaterialTheme.colorScheme.onSurface,
+        style = textStyle,
+        maxLines = 1,
+        modifier = modifier,
+    )
+}
+
+/** AniList's own blue */
+val AniListBlue = Color(0xFF02A9FF)
 
 @NonRestartableComposable
 @Composable

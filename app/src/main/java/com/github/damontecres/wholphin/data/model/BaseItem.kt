@@ -141,6 +141,7 @@ data class BaseItem(
                 },
             quickDetails =
                 QuickDetailsData(
+                    itemId = id.takeIf { type == BaseItemKind.SERIES || type == BaseItemKind.MOVIE },
                     basic =
                         buildAnnotatedString {
                             val details =
@@ -372,6 +373,8 @@ data class QuickDetailsData(
     val officialRating: AnnotatedString? = null,
     val criticRating: AnnotatedString? = null,
     val communityRating: AnnotatedString? = null,
+    /** Benflix: the show or movie, so anime can show their AniList score next to the stars */
+    val itemId: java.util.UUID? = null,
 )
 
 /**

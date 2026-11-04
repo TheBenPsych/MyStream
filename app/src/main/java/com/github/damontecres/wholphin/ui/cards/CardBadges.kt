@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -11,12 +13,14 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.NewSeasonBack
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -68,6 +72,36 @@ fun CardWordBadge(
     if (reason != null && (!isTv || focused)) {
         CardBadge(text = reason, modifier = modifier)
     }
+}
+
+/**
+ * Benflix: an anime's fan genres from AniList, like "Isekai · Shounen", along the bottom of its card,
+ * so it's easier to pick. On TV only on the tile you're on, like the rating badge; on phones always.
+ */
+@Composable
+fun CardAnimeTags(
+    item: BaseItem?,
+    focused: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (item == null || (item.type != BaseItemKind.SERIES && item.type != BaseItemKind.MOVIE)) return
+    val isTv = rememberIsTv()
+    if (isTv && !focused) return
+    val facts by AniListFacts.cards.collectAsState()
+    val tags = facts[item.id]?.cardTags(if (isTv) 3 else 2).orEmpty()
+    if (tags.isEmpty()) return
+    Text(
+        text = tags.joinToString(" · "),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier =
+            modifier
+                .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(3.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
 }
 
 /** A small white tick (no circle) for something you've finished */

@@ -103,18 +103,59 @@ data class AniListIndexEntry(
     val id: Int,
     val tags: List<String> = emptyList(),
     val score: Int? = null,
+    /** When a show that wasn't found was last looked for, so it's tried again the next day */
+    val checkedAt: Long = 0,
 )
+
+/** The bits of AniList a card or info line shows: the fan score (0 to 100) and fan genres */
+data class AniListCardFacts(
+    val score: Int?,
+    val tags: List<String>,
+) {
+    /** "7.4", like the star rating */
+    val scoreText: String? get() = score?.let { String.format(java.util.Locale.US, "%.1f", it / 10.0) }
+
+    /** Up to [count] anime-only genres, like Isekai or Shounen, before plain ones like Comedy */
+    fun cardTags(count: Int = 2): List<String> {
+        val (plain, special) = tags.partition { it in PLAIN_GENRES }
+        return (special + plain).take(count)
+    }
+
+    companion object {
+        /** AniList genres every kind of show has; anime-only ones (Mecha, Slice of Life...) aren't here */
+        private val PLAIN_GENRES =
+            setOf(
+                "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Music", "Mystery",
+                "Psychological", "Romance", "Sci-Fi", "Sports", "Supernatural", "Thriller", "Ecchi",
+            )
+    }
+}
 
 /** Benflix: AniList facts already looked up, so pages can show them without waiting */
 object AniListFacts {
     private val _info = MutableStateFlow<Map<UUID, AniListInfo>>(emptyMap())
     val info: StateFlow<Map<UUID, AniListInfo>> = _info
 
+    /** Score and fan genres for every anime matched so far (from its page or its library), by Jellyfin id */
+    private val _cards = MutableStateFlow<Map<UUID, AniListCardFacts>>(emptyMap())
+    val cards: StateFlow<Map<UUID, AniListCardFacts>> = _cards
+
     internal fun add(
         id: UUID,
         info: AniListInfo,
     ) {
         _info.update { it + (id to info) }
+        _cards.update { it + (id to AniListCardFacts(info.score, info.tags)) }
+    }
+
+    internal fun addIndex(entries: Map<UUID, AniListIndexEntry>) {
+        val found =
+            entries
+                .filter { (_, e) -> e.id > 0 }
+                .mapValues { (_, e) -> AniListCardFacts(e.score, e.tags) }
+        if (found.isEmpty()) return
+        // A show's own page (fuller facts) wins over its library's index
+        _cards.update { now -> now + found.filterKeys { it !in _info.value } }
     }
 }
 
@@ -192,7 +233,8 @@ class AniListService
                     }
 
                     else -> {
-                        val id = matches[dto.id]?.id ?: searchOne(dto) ?: return null
+                        // The library index may have missed it (a odd name); search by every name it has
+                        val id = matches[dto.id]?.id?.takeIf { it > 0 } ?: searchOne(dto) ?: return null
                         if (id <= 0) return null
                         vars { put("id", id) }
                     }
@@ -228,7 +270,7 @@ class AniListService
 
         private fun namesOf(dto: BaseItemDto) =
             listOfNotNull(dto.name, dto.originalTitle)
-                .map { it.trim() }
+                .map { searchable(it) }
                 .filter { it.isNotBlank() }
                 .distinct()
                 .take(2)
@@ -259,6 +301,16 @@ class AniListService
                     kindOk(m) && year != null && yearOk(m) &&
                         names(m).any { t -> wanted.any { w -> w.length >= 4 && (t.startsWith(w) || w.startsWith(t)) } }
                 }
+                // Same name, but Jellyfin's year is a bit off (a show that started late in the year): the closest one
+                ?: results
+                    .filter { m -> kindOk(m) && names(m).any { it in wanted } }
+                    .minByOrNull { m ->
+                        val y = m.obj("startDate")?.int("year")
+                        if (year == null || y == null) 99 else kotlin.math.abs(y - year)
+                    }?.takeIf { m ->
+                        val y = m.obj("startDate")?.int("year")
+                        year == null || y == null || kotlin.math.abs(y - year) <= 3
+                    }
         }
 
         /**
@@ -278,47 +330,58 @@ class AniListService
                             ?.mapNotNull { (k, v) -> runCatching { UUID.fromString(k) }.getOrNull()?.let { it to v } }
                             ?.toMap()
                             .orEmpty()
+                val now = System.currentTimeMillis()
                 val out = saved.toMutableMap()
-                val todo = items.filter { it.id !in out }
+                // New titles, plus ones not found before (tried again once a day: names and AniList change)
+                val todo =
+                    items.filter { item ->
+                        val had = out[item.id]
+                        had == null || (had.id <= 0 && now - had.checkedAt > DAY_MS)
+                    }
+                var changed = false
                 try {
-                    todo.chunked(BATCH).forEach { batch ->
-                        val names = batch.map { namesOf(it).firstOrNull().orEmpty() }
-                        val data =
-                            query(searchQuery(batch.size), vars { names.forEachIndexed { i, n -> put("q$i", n) } })
-                                ?: return@forEach
-                        batch.forEachIndexed { i, dto ->
-                            val m =
-                                pick(
-                                    dto,
-                                    listOf(
-                                        data
-                                            .obj("s$i")
-                                            ?.obj("Page")
-                                            ?.arr("media")
-                                            .orEmpty(),
-                                    ),
-                                )
-                            out[dto.id] =
-                                if (m == null) {
-                                    AniListIndexEntry(0)
-                                } else {
-                                    AniListIndexEntry(
-                                        id = m.int("id") ?: 0,
-                                        tags = tagsOf(m),
-                                        score = m.int("averageScore") ?: m.int("meanScore"),
-                                    )
+                    // 1. Shows Jellyfin already knows the AniList or MyAnimeList number of: asked for by number
+                    val byAniList = todo.mapNotNull { dto -> providerId(dto, "AniList")?.let { dto to it } }
+                    val byMal =
+                        todo
+                            .filter { dto -> byAniList.none { it.first.id == dto.id } }
+                            .mapNotNull { dto -> (providerId(dto, "MyAnimeList") ?: providerId(dto, "Mal"))?.let { dto to it } }
+                    for ((list, key) in listOf(byAniList to "id", byMal to "idMal")) {
+                        list.chunked(ID_BATCH).forEach { batch ->
+                            val media =
+                                query(idsQuery(key), vars { put("ids", JsonArray(batch.map { JsonPrimitive(it.second) })) })
+                                    ?.obj("Page")
+                                    ?.arr("media")
+                                    .orEmpty()
+                                    .mapNotNull { it as? JsonObject }
+                            batch.forEach { (dto, number) ->
+                                media.firstOrNull { it.int(key) == number }?.let {
+                                    out[dto.id] = entryOf(it)
+                                    changed = true
                                 }
+                            }
                         }
                     }
+                    // 2. The rest by name, 10 per request; then the ones still missing by their other name
+                    val byName = todo.filter { (out[it.id]?.id ?: 0) <= 0 }
+                    val missing = searchBatches(byName, out) { namesOf(it).firstOrNull() }
+                    val (twoNames, oneName) = missing.partition { namesOf(it).size > 1 }
+                    val stillMissing = searchBatches(twoNames, out) { dto -> namesOf(dto).getOrNull(1) }
+                    (oneName + stillMissing).forEach { dto ->
+                        out[dto.id] = AniListIndexEntry(0, checkedAt = now)
+                    }
+                    changed = changed || todo.isNotEmpty()
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     // Keep what was found; the rest is tried next time
                     Timber.w(ex, "AniList index of %s stopped early", parentId)
+                    changed = true
                 }
                 indexes[parentId] = out
                 matches.putAll(out)
-                if (todo.isNotEmpty()) {
+                AniListFacts.addIndex(out)
+                if (changed) {
                     diskCache.write(
                         cacheName,
                         MapSerializer(String.serializer(), AniListIndexEntry.serializer()),
@@ -328,6 +391,40 @@ class AniListService
                 }
                 out
             }
+
+        /**
+         * Searches AniList for [items] by the name [nameOf] gives, 10 per request, saving matches in [out].
+         * Returns the ones with that name that weren't found (titles without that name are left out).
+         * A title AniList gave no answer for is left alone so it's tried next time.
+         */
+        private suspend fun searchBatches(
+            items: List<BaseItemDto>,
+            out: MutableMap<UUID, AniListIndexEntry>,
+            nameOf: (BaseItemDto) -> String?,
+        ): List<BaseItemDto> {
+            val notFound = mutableListOf<BaseItemDto>()
+            items
+                .mapNotNull { dto -> nameOf(dto)?.let { dto to it } }
+                .chunked(BATCH)
+                .forEach { batch ->
+                    val data =
+                        query(searchQuery(batch.size), vars { batch.forEachIndexed { i, (_, n) -> put("q$i", n) } })
+                            ?: return@forEach
+                    batch.forEachIndexed { i, (dto, _) ->
+                        val results = data.obj("s$i")?.obj("Page")?.arr("media") ?: return@forEachIndexed
+                        val m = pick(dto, listOf(results))
+                        if (m == null) notFound += dto else out[dto.id] = entryOf(m)
+                    }
+                }
+            return notFound
+        }
+
+        private fun entryOf(m: JsonObject) =
+            AniListIndexEntry(
+                id = m.int("id") ?: 0,
+                tags = tagsOf(m),
+                score = m.int("averageScore") ?: m.int("meanScore"),
+            )
 
         /** The index already built for a library this app run, if any */
         fun savedIndex(parentId: UUID): Map<UUID, AniListIndexEntry>? = indexes[parentId]
@@ -556,6 +653,7 @@ class AniListService
             private const val MIN_GAP_MS = 1_000L
             private const val MAX_TRIES = 3
             private const val BATCH = 10
+            private const val ID_BATCH = 50
 
             /** AniList genres that say nothing on an anime page */
             private val HIDDEN_TAGS =
@@ -611,6 +709,22 @@ class AniListService
                     }
                 return "query ($params) {\n$parts\n}"
             }
+
+            /** Up to 50 shows by their AniList ("id") or MyAnimeList ("idMal") numbers */
+            private fun idsQuery(key: String): String =
+                "query (${'$'}ids: [Int]) { Page(perPage: $ID_BATCH) { media(${key}_in: ${'$'}ids, type: ANIME) " +
+                    "{ id idMal format averageScore meanScore genres $TITLE startDate { year } " +
+                    "tags { name rank isMediaSpoiler isGeneralSpoiler isAdult } } } }"
+
+            /** A name AniList's search understands: curly quotes made plain, extra spaces gone */
+            internal fun searchable(name: String): String =
+                name
+                    .replace('\u2019', '\'')
+                    .replace('\u2018', '\'')
+                    .replace('\u201C', '"')
+                    .replace('\u201D', '"')
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
 
             private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
 
