@@ -1130,6 +1130,10 @@
     <string name="benflix_update_tip_tv">New update ready! Find it in Settings, under Help.</string>
     <string name="benflix_update_tip_phone">New update ready! Tap My Benflix, then Settings, then Help.</string>
     <string name="benflix_mark_watched_up_to_here">Mark watched up to here</string>
+    <string name="benflix_mark_season_watched">Mark season watched</string>
+    <string name="benflix_mark_season_unwatched">Mark season unwatched</string>
+    <string name="benflix_shuffle_season">Shuffle season</string>
+    <string name="benflix_episodes_watched">%1$d of %2$d watched</string>
     <string name="benflix_rewatch">Rewatch from the start</string>
     <string name="benflix_fix_match">Wrong match? Fix it</string>
     <string name="benflix_haptics">Light buzz on taps</string>

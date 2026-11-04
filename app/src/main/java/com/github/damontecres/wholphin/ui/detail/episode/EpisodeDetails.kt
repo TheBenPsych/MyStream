@@ -268,46 +268,51 @@ fun EpisodeDetailsContent(
                                 .fillMaxWidth()
                                 .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
-                    ExpandablePlayButtons(
-                        downloadItem = ep,
-                        title = ep.title ?: "",
-                        resumePosition = resumePosition,
-                        watched = dto.userData?.played ?: false,
-                        favorite = dto.userData?.isFavorite ?: false,
-                        playOnClick = {
-                            position = HEADER_ROW
-                            playOnClick.invoke(it)
-                        },
-                        moreOnClick = moreOnClick,
-                        goToShowOnClick = goToShowOnClick,
-                        watchOnClick = watchOnClick,
-                        favoriteOnClick = favoriteOnClick,
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
+                    // Benflix look A: flat buttons (version, favourite and delete are under More)
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
+                    ) {
+                        ExpandablePlayButtons(
+                            downloadItem = ep,
+                            title = ep.title ?: "",
+                            resumePosition = resumePosition,
+                            watched = dto.userData?.played ?: false,
+                            favorite = dto.userData?.isFavorite ?: false,
+                            playOnClick = {
                                 position = HEADER_ROW
-                                scope.launch(ExceptionHandler()) {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
-                            }
-                        },
-                        trailers = null,
-                        trailerOnClick = {},
-                        canDelete = canDelete,
-                        onConfirmDelete = onConfirmDelete,
-                        chooseVersionParams =
-                            remember(chosenStreams, ep, onChooseVersion) {
-                                ChooseVersionParams(
-                                    chosenStreams = chosenStreams,
-                                    mediaSources = ep.data.mediaSources.orEmpty(),
-                                    onChooseVersion = onChooseVersion,
-                                )
+                                playOnClick.invoke(it)
                             },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                                .focusRequester(focusRequesters[HEADER_ROW]),
-                    )
+                            moreOnClick = moreOnClick,
+                            goToShowOnClick = goToShowOnClick,
+                            watchOnClick = watchOnClick,
+                            favoriteOnClick = favoriteOnClick,
+                            buttonOnFocusChanged = {
+                                if (it.isFocused) {
+                                    position = HEADER_ROW
+                                    scope.launch(ExceptionHandler()) {
+                                        bringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            },
+                            trailers = null,
+                            trailerOnClick = {},
+                            canDelete = canDelete,
+                            onConfirmDelete = onConfirmDelete,
+                            chooseVersionParams =
+                                remember(chosenStreams, ep, onChooseVersion) {
+                                    ChooseVersionParams(
+                                        chosenStreams = chosenStreams,
+                                        mediaSources = ep.data.mediaSources.orEmpty(),
+                                        onChooseVersion = onChooseVersion,
+                                    )
+                                },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                                    .focusRequester(focusRequesters[HEADER_ROW]),
+                        )
+                    }
                 }
             }
         }

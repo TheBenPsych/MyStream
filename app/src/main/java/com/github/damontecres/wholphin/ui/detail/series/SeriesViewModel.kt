@@ -633,6 +633,26 @@ class SeriesViewModel
             updateSeries()
         }
 
+        /** Benflix: the season page's "Mark season watched", then shows the ticks on every episode */
+        fun markSeasonWatched(
+            seasonId: UUID,
+            seasonNum: Int?,
+            played: Boolean,
+        ) = viewModelScope.launch(WholphinDispatchers.IO + ExceptionHandler()) {
+            favoriteWatchManager.setWatched(seasonId, played)
+            val episodes =
+                try {
+                    loadEpisodesInternal(seasonId, seasonNum, null, null)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not reload season %s", seasonId)
+                    null
+                }
+            if (episodes != null) _state.update { it.copy(episodes = episodes) }
+            updateSeries()
+        }
+
         fun setWatchedSeries(played: Boolean) =
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                 favoriteWatchManager.setWatched(seriesId, played)

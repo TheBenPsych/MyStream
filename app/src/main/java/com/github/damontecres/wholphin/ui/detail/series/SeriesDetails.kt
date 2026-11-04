@@ -1,10 +1,8 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
 import android.content.res.Resources
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +16,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -66,21 +67,23 @@ import com.github.damontecres.wholphin.ui.cards.ExtrasRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.PersonRow
 import com.github.damontecres.wholphin.ui.cards.SeasonCard
+import com.github.damontecres.wholphin.ui.components.ConfirmDeleteDialog
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
-import com.github.damontecres.wholphin.ui.components.DeleteButton
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
-import com.github.damontecres.wholphin.ui.components.DislikeButton
+import com.github.damontecres.wholphin.ui.components.DialogPopup
+import com.github.damontecres.wholphin.ui.components.DislikedColor
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.GenreText
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
-import com.github.damontecres.wholphin.ui.components.LikeButton
+import com.github.damontecres.wholphin.ui.components.LikedColor
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LocalFlatButtons
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.PersonContextActions
@@ -479,189 +482,167 @@ fun SeriesDetailsContent(
                                     .bringIntoViewRequester(bringIntoViewRequester)
                                     .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier =
-                                Modifier
-                                    .padding(start = HeaderUtils.startPadding)
-                                    .focusRequester(focusRequesters[HEADER_ROW])
-                                    .focusRestorer(playFocusRequester)
-                                    .focusGroup()
-                                    .padding(bottom = 16.dp),
-                        ) {
-                            ExpandablePlayButton(
-                                title = R.string.play,
-                                resume = Duration.ZERO,
-                                icon = Icons.Default.PlayArrow,
-                                onClick = {
-                                    position = HEADER_ROW
-                                    playOnClick.invoke(false)
-                                },
+                        // Benflix look A: flat buttons. Play, Shuffle, Mark watched and Trailer stay
+                        // on the page; the rest (like, favourite, delete, fix match...) are under More
+                        val bringButtonsIntoView: (androidx.compose.ui.focus.FocusState) -> Unit = {
+                            if (it.isFocused) {
+                                scope.launch(ExceptionHandler()) {
+                                    bringIntoViewRequester.bringIntoView()
+                                }
+                            }
+                        }
+                        var showMore by remember { mutableStateOf(false) }
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        CompositionLocalProvider(LocalFlatButtons provides true) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier =
                                     Modifier
-                                        .focusRequester(playFocusRequester)
-                                        .onFocusChanged {
-                                            if (it.isFocused) {
-                                                scope.launch(ExceptionHandler()) {
-                                                    bringIntoViewRequester.bringIntoView()
-                                                }
-                                            }
-                                        },
-                            )
-                            ExpandableFaButton(
-                                title = R.string.benflix_random_episodes,
-                                iconStringRes = R.string.fa_shuffle,
-                                onClick = {
-                                    position = HEADER_ROW
-                                    playOnClick.invoke(true)
-                                },
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            // Benflix: watched it all? Start again from episode 1
-                            if (played && progress?.firstEpisodeId != null) {
-                                ExpandableFaButton(
-                                    title = R.string.benflix_rewatch,
-                                    iconStringRes = R.string.fa_rotate_left,
+                                        .padding(start = HeaderUtils.startPadding)
+                                        .focusRequester(focusRequesters[HEADER_ROW])
+                                        .focusRestorer(playFocusRequester)
+                                        .focusGroup()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(bottom = 16.dp, end = 16.dp),
+                            ) {
+                                ExpandablePlayButton(
+                                    title = R.string.play,
+                                    resume = Duration.ZERO,
+                                    icon = Icons.Default.PlayArrow,
+                                    primary = true,
                                     onClick = {
                                         position = HEADER_ROW
-                                        rewatchOnClick.invoke()
-                                    },
-                                    modifier =
-                                        Modifier.onFocusChanged {
-                                            if (it.isFocused) {
-                                                scope.launch(ExceptionHandler()) {
-                                                    bringIntoViewRequester.bringIntoView()
-                                                }
-                                            }
-                                        },
-                                )
-                            }
-                            ExpandableFaButton(
-                                title = if (played) R.string.mark_unwatched else R.string.mark_watched,
-                                iconStringRes = if (played) R.string.fa_eye else R.string.fa_eye_slash,
-                                onClick = watchOnClick,
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            ExpandableFaButton(
-                                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                                iconStringRes = R.string.fa_heart,
-                                onClick = favoriteOnClick,
-                                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            LikeButton(
-                                likes = likes,
-                                rateOnClick = rateOnClick,
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            DislikeButton(
-                                likes = likes,
-                                rateOnClick = rateOnClick,
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            TrailerButton(
-                                trailers = trailers,
-                                trailerOnClick = trailerOnClick,
-                                modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch(ExceptionHandler()) {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                            )
-                            if (canDelete) {
-                                DeleteButton(
-                                    title = series.title ?: "",
-                                    onConfirmDelete = {
-                                        position = HEADER_ROW
-                                        actions.onDeleteItem.invoke(series)
+                                        playOnClick.invoke(false)
                                     },
                                     modifier =
                                         Modifier
-                                            .onFocusChanged {
-                                                if (it.isFocused) {
-                                                    scope.launch(ExceptionHandler()) {
-                                                        bringIntoViewRequester.bringIntoView()
-                                                    }
-                                                }
-                                            },
+                                            .focusRequester(playFocusRequester)
+                                            .onFocusChanged(bringButtonsIntoView),
                                 )
-                            }
-                            // Benflix (admins): the show got matched to the wrong one on the internet
-                            if (isAdmin) {
+                                // Benflix: watched it all? Start again from episode 1
+                                if (played && progress?.firstEpisodeId != null) {
+                                    ExpandableFaButton(
+                                        title = R.string.benflix_rewatch,
+                                        iconStringRes = R.string.fa_rotate_left,
+                                        onClick = {
+                                            position = HEADER_ROW
+                                            rewatchOnClick.invoke()
+                                        },
+                                        modifier = Modifier.onFocusChanged(bringButtonsIntoView),
+                                    )
+                                }
                                 ExpandableFaButton(
-                                    title = R.string.benflix_fix_match,
-                                    iconStringRes = R.string.fa_magnifying_glass,
+                                    title = R.string.benflix_random_episodes,
+                                    iconStringRes = R.string.fa_shuffle,
                                     onClick = {
                                         position = HEADER_ROW
-                                        fixMatchOnClick.invoke()
+                                        playOnClick.invoke(true)
                                     },
-                                    modifier =
-                                        Modifier.onFocusChanged {
-                                            if (it.isFocused) {
-                                                scope.launch(ExceptionHandler()) {
-                                                    bringIntoViewRequester.bringIntoView()
-                                                }
-                                            }
-                                        },
+                                    modifier = Modifier.onFocusChanged(bringButtonsIntoView),
                                 )
-                            }
-                            AnimatedVisibility(
-                                visible = discoverSeries != null,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                            ) {
                                 ExpandableFaButton(
-                                    title = R.string.discover,
-                                    iconStringRes = R.string.fa_magnifying_glass_plus,
-                                    onClick = onClickDiscoverSeries,
-                                    modifier =
-                                        Modifier.onFocusChanged {
-                                            if (it.isFocused) {
-                                                scope.launch(ExceptionHandler()) {
-                                                    bringIntoViewRequester.bringIntoView()
-                                                }
-                                            }
-                                        },
+                                    title = if (played) R.string.mark_unwatched else R.string.mark_watched,
+                                    iconStringRes = if (played) R.string.fa_eye else R.string.fa_eye_slash,
+                                    onClick = watchOnClick,
+                                    modifier = Modifier.onFocusChanged(bringButtonsIntoView),
+                                )
+                                if (trailers.isNotEmpty()) {
+                                    TrailerButton(
+                                        trailers = trailers,
+                                        trailerOnClick = trailerOnClick,
+                                        modifier = Modifier.onFocusChanged(bringButtonsIntoView),
+                                    )
+                                }
+                                ExpandablePlayButton(
+                                    title = R.string.more,
+                                    resume = Duration.ZERO,
+                                    icon = Icons.Default.MoreVert,
+                                    onClick = {
+                                        position = HEADER_ROW
+                                        showMore = true
+                                    },
+                                    modifier = Modifier.onFocusChanged(bringButtonsIntoView),
                                 )
                             }
+                        }
+                        if (showMore) {
+                            val moreItems =
+                                buildList {
+                                    add(
+                                        DialogItem(
+                                            text = if (likes == true) R.string.liked else R.string.like,
+                                            iconStringRes = R.string.fa_thumbs_up,
+                                            iconColor = if (likes == true) LikedColor else Color.Unspecified,
+                                            dismissOnClick = true,
+                                        ) { rateOnClick.invoke(if (likes == true) null else true) },
+                                    )
+                                    add(
+                                        DialogItem(
+                                            text = if (likes == false) R.string.disliked else R.string.dislike,
+                                            iconStringRes = R.string.fa_thumbs_down,
+                                            iconColor = if (likes == false) DislikedColor else Color.Unspecified,
+                                            dismissOnClick = true,
+                                        ) { rateOnClick.invoke(if (likes == false) null else false) },
+                                    )
+                                    add(
+                                        DialogItem(
+                                            text = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                                            iconStringRes = R.string.fa_heart,
+                                            iconColor = if (favorite) Color.Red else Color.Unspecified,
+                                            dismissOnClick = true,
+                                            onClick = favoriteOnClick,
+                                        ),
+                                    )
+                                    if (discoverSeries != null) {
+                                        add(
+                                            DialogItem(
+                                                text = R.string.discover,
+                                                iconStringRes = R.string.fa_magnifying_glass_plus,
+                                                dismissOnClick = true,
+                                                onClick = onClickDiscoverSeries,
+                                            ),
+                                        )
+                                    }
+                                    // Benflix (admins): the show got matched to the wrong one on the internet
+                                    if (isAdmin) {
+                                        add(
+                                            DialogItem(
+                                                text = R.string.benflix_fix_match,
+                                                iconStringRes = R.string.fa_magnifying_glass,
+                                                dismissOnClick = true,
+                                                onClick = fixMatchOnClick,
+                                            ),
+                                        )
+                                    }
+                                    if (canDelete) {
+                                        add(
+                                            DialogItem(
+                                                text = context.getString(R.string.delete),
+                                                icon = Icons.Default.Delete,
+                                                iconColor = Color.Red.copy(alpha = .8f),
+                                                dismissOnClick = true,
+                                            ) { showDeleteConfirm = true },
+                                        )
+                                    }
+                                }
+                            DialogPopup(
+                                showDialog = true,
+                                title = series.title ?: stringResource(R.string.more),
+                                dialogItems = moreItems,
+                                onDismissRequest = { showMore = false },
+                                dismissOnClick = true,
+                                waitToLoad = false,
+                            )
+                        }
+                        if (showDeleteConfirm) {
+                            ConfirmDeleteDialog(
+                                itemTitle = series.title ?: "",
+                                onCancel = { showDeleteConfirm = false },
+                                onConfirm = {
+                                    showDeleteConfirm = false
+                                    actions.onDeleteItem.invoke(series)
+                                },
+                            )
                         }
                     }
                 }

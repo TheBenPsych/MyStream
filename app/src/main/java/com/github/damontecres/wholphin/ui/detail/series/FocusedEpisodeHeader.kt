@@ -35,6 +35,7 @@ fun FocusedEpisodeHeader(
     overviewOnClick: () -> Unit,
     overviewOnFocus: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
+    startPadding: androidx.compose.ui.unit.Dp = HeaderUtils.startPadding,
 ) {
     val context = LocalContext.current
     val dto = ep?.data
@@ -42,14 +43,14 @@ fun FocusedEpisodeHeader(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        EpisodeName(dto, modifier = Modifier.padding(start = HeaderUtils.startPadding))
+        EpisodeName(dto, modifier = Modifier.padding(start = startPadding))
 
         // Benflix: "Episode 135" big, with "S3 E5" small next to it, on long anime shows
         animeEpisodeLabel(ep)?.let { label ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom,
-                modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                modifier = Modifier.padding(start = startPadding),
             ) {
                 Text(
                     text = label,
@@ -72,7 +73,7 @@ fun FocusedEpisodeHeader(
             CardBadge(
                 text = tag.label,
                 background = tag.color,
-                modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                modifier = Modifier.padding(start = startPadding),
             )
         }
 
@@ -80,7 +81,7 @@ fun FocusedEpisodeHeader(
             QuickDetails(
                 it,
                 ep.timeRemainingOrRuntime,
-                Modifier.padding(start = HeaderUtils.startPadding),
+                Modifier.padding(start = startPadding),
             )
         }
 
@@ -88,7 +89,7 @@ fun FocusedEpisodeHeader(
             VideoStreamDetails(
                 chosenStreams = chosenStreams,
                 numberOfVersions = dto.mediaSourceCount ?: 0,
-                modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                modifier = Modifier.padding(start = startPadding),
             )
         }
         OverviewText(
