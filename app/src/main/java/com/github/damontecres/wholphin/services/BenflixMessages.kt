@@ -66,8 +66,7 @@ class BenflixMessages
             sentHere[text.trim()] = System.currentTimeMillis()
         }
 
-        private fun sentByMe(text: String) =
-            sentHere[text]?.let { System.currentTimeMillis() - it < SHOWN_MEMORY_MS } == true
+        private fun sentByMe(text: String) = sentHere[text]?.let { System.currentTimeMillis() - it < SHOWN_MEMORY_MS } == true
 
         private val _waiting = MutableStateFlow<List<BenflixMessage>>(emptyList())
         val waiting: StateFlow<List<BenflixMessage>> = _waiting
