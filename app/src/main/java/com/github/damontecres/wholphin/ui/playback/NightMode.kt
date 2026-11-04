@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.playback
 import android.content.Context
 import android.media.audiofx.DynamicsProcessing
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,10 +49,46 @@ object NightMode {
 
     fun isOn(context: Context): Boolean = enabled(context).value ?: false
 
-    /** Builds the audio effect for a player's sound, or null if this TV can't do it */
-    fun createEffect(audioSessionId: Int): DynamicsProcessing? {
+    /**
+     * Builds the audio effect for a player's sound, or null if this TV can't do it.
+     *
+     * The effect class only exists on Android 9+. Older devices (e.g. Fire TV Stick 4K on
+     * Android 7) crash if the app even mentions that class in code they run, so everything
+     * that touches it lives in [NightModeProcessor], which is only loaded on Android 9+.
+     * Everyone else only ever sees the plain [NightModeHandle] type.
+     */
+    fun createEffect(audioSessionId: Int): NightModeHandle? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || audioSessionId == C.AUDIO_SESSION_ID_UNSET) return null
         return try {
+            NightModeProcessor.create(audioSessionId)
+        } catch (ex: Throwable) {
+            Timber.w(ex, "Night mode not available")
+            null
+        }
+    }
+}
+
+/** A Night mode effect that can be switched on/off and released, without naming Android 9+ classes */
+interface NightModeHandle {
+    fun setEnabled(on: Boolean)
+
+    fun release()
+}
+
+@RequiresApi(Build.VERSION_CODES.P)
+private class NightModeProcessor(
+    private val effect: DynamicsProcessing,
+) : NightModeHandle {
+    override fun setEnabled(on: Boolean) {
+        effect.enabled = on
+    }
+
+    override fun release() = effect.release()
+
+    companion object {
+        private const val MAX_CHANNELS = 8
+
+        fun create(audioSessionId: Int): NightModeHandle {
             val band =
                 DynamicsProcessing.MbcBand(
                     true,
@@ -83,14 +120,9 @@ object NightMode {
                     ).setMbcAllChannelsTo(mbc)
                     .setLimiterAllChannelsTo(limiter)
                     .build()
-            DynamicsProcessing(0, audioSessionId, config)
-        } catch (ex: Exception) {
-            Timber.w(ex, "Night mode not available")
-            null
+            return NightModeProcessor(DynamicsProcessing(0, audioSessionId, config))
         }
     }
-
-    private const val MAX_CHANNELS = 8
 }
 
 /** Hooks Night mode up to the movie/show player while the player screen is open */
@@ -105,7 +137,7 @@ fun NightModeEffect(player: Player) {
     }
     LaunchedEffect(effect, on) {
         try {
-            effect?.enabled = on == true
+            effect?.setEnabled(on == true)
         } catch (ex: Exception) {
             Timber.w(ex, "Could not switch night mode")
         }
