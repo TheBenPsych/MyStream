@@ -27,7 +27,10 @@ enum class SoundProblem {
 /** One look at the player, taken a few seconds apart */
 data class SoundSnapshot(
     val positionMs: Long,
+    /** Sound pieces that really went out to the speakers */
     val audioBuffers: Int?,
+    /** Sound pieces the player threw away (for example because their time stamp was before the picture) */
+    val skippedBuffers: Int? = null,
 )
 
 /**
@@ -79,6 +82,14 @@ class SoundWatchdog(
     private val videoHasSound: () -> Boolean,
     private val onConvertSound: (fullConvert: Boolean) -> Unit,
     private val onNotice: (String) -> Unit,
+    /**
+     * True when the server is converting or repackaging the video (not playing the file as is).
+     * Then restarting the sound on the TV doesn't help, because the sound the server sent after a
+     * jump is what's broken, so it goes straight to asking the server for a fresh stream from here.
+     */
+    private val fromServerStream: () -> Boolean = { false },
+    /** Extra facts for the log (how it plays, which sound, Night mode) */
+    private val describePlayback: () -> String = { "" },
 ) {
     private var job: Job? = null
     private var fixesTried = 0
@@ -142,11 +153,17 @@ class SoundWatchdog(
                 before = before,
                 after = after,
             )
-        if (problem == SoundProblem.NONE) return
-        Timber.w("Sound check after %s: %s (fix %s), before=%s, after=%s", reason, problem, fixesTried, before, after)
+        lastReport = "after $reason: $problem (fixes tried $fixesTried), before=$before, after=$after, ${describe(exo)}"
+        if (problem == SoundProblem.NONE) {
+            Timber.i("Sound check ok: %s", lastReport)
+            // Sound is fine again, so a later drop-out (the next skip) gets every fix again
+            fixesTried = 0
+            return
+        }
+        Timber.w("Sound check: %s", lastReport)
 
         when {
-            problem == SoundProblem.SOUND_STUCK && fixesTried == 0 -> {
+            problem == SoundProblem.SOUND_STUCK && fixesTried == 0 && !fromServerStream() -> {
                 fixesTried++
                 onNotice("No sound? Bringing it back...")
                 restartSound(exo)
@@ -181,17 +198,36 @@ class SoundWatchdog(
         }
     }
 
-    private fun snapshot(exo: ExoPlayer) =
-        SoundSnapshot(
+    private fun snapshot(exo: ExoPlayer): SoundSnapshot {
+        val counters = exo.audioDecoderCounters?.also { it.ensureUpdated() }
+        return SoundSnapshot(
             positionMs = exo.currentPosition,
-            audioBuffers =
-                exo.audioDecoderCounters?.let {
-                    it.ensureUpdated()
-                    it.renderedOutputBufferCount + it.skippedOutputBufferCount
-                },
+            // Only pieces that really went out count. Thrown away pieces used to count too, which
+            // hid the "sound after a skip has the wrong time stamps and is all thrown away" case.
+            audioBuffers = counters?.renderedOutputBufferCount,
+            skippedBuffers = counters?.let { it.skippedOutputBufferCount + it.droppedBufferCount },
         )
+    }
+
+    private fun describe(exo: ExoPlayer): String {
+        val format = exo.audioFormat
+        val sound =
+            format?.let { "sound=${it.sampleMimeType} ${it.channelCount}ch ${it.sampleRate}Hz" } ?: "sound=none"
+        val extra =
+            try {
+                describePlayback()
+            } catch (ex: Exception) {
+                ""
+            }
+        return "$sound, $extra"
+    }
 
     companion object {
+        /** Last thing the sound check saw, added to "Report a problem" so Ben's log shows it */
+        @Volatile
+        var lastReport: String = "no sound check yet"
+            private set
+
         private const val POLL_MS = 500L
         private const val MAX_WAIT_MS = 30_000L
         private const val SETTLE_MS = 2_500L

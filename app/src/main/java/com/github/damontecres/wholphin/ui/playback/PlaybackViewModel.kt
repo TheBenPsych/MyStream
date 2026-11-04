@@ -276,6 +276,26 @@ class PlaybackViewModel
                 onNotice = { text ->
                     if (state.value.notice == null) showNotice(PlayerNotice(title = text, autoHideMs = 5_000L))
                 },
+                fromServerStream = {
+                    state.value.currentPlayback?.playMethod.let {
+                        it != null && it != PlayMethod.DIRECT_PLAY
+                    }
+                },
+                describePlayback = {
+                    val playback = state.value.currentPlayback
+                    val audio =
+                        playback?.mediaSourceInfo?.mediaStreams?.firstOrNull {
+                            it.type == MediaStreamType.AUDIO && it.index == playback?.audioIndex
+                        }
+                    listOf(
+                        "play=${playback?.playMethod}",
+                        "container=${playback?.mediaSourceInfo?.container}",
+                        "fileSound=${audio?.codec} ${audio?.channels}ch",
+                        "serverSound=${playback?.transcodeInfo?.audioCodec}",
+                        "why=${playback?.transcodeInfo?.transcodeReasons?.joinToString("+")}",
+                        "night=${NightMode.isOn(context)}",
+                    ).joinToString(", ")
+                },
             )
         }
 
