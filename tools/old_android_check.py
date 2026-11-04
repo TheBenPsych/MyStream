@@ -60,7 +60,7 @@ def load_new_classes(path: str, min_sdk: int) -> dict[str, int]:
         if el.tag != "class":
             continue
         name = el.get("name", "")
-        since = int(el.get("since", "1"))
+        since = int(el.get("since", "1").split(".")[0])  # can be "36.1"
         el.clear()
         if not name.startswith("android/") or "$" in name or since <= min_sdk:
             continue
