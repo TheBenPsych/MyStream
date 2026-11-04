@@ -1534,7 +1534,7 @@ private fun FindShelf(
             }
         }
         if (rows == null) {
-            item { LoadingPage(Modifier.height(240.dp)) }
+            item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
         } else {
             if (key in failedRows) {
                 item(key = "load-failed") {
@@ -1620,7 +1620,7 @@ private fun LazyListScope.searchShelves(
     onFocusItem: (DiscoverItem) -> Unit,
 ) {
     if (results == null) {
-        item { LoadingPage(Modifier.height(200.dp)) }
+        item { LoadingPage(Modifier.height(200.dp), focusEnabled = false) }
         return
     }
     val shown = visible(results)
@@ -1800,7 +1800,7 @@ private fun RequestList(
             }
 
             list == null -> {
-                item { LoadingPage(Modifier.height(240.dp)) }
+                item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
             }
 
             list.isEmpty() && extras.isEmpty() -> {

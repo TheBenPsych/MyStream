@@ -274,7 +274,7 @@ internal fun tags(details: JsonObject): List<String> =
         .orEmpty()
 
 private val GROWN_UP_WORDS =
-    listOf("hentai", "erotic", "sex", "nudity", "porn", "softcore", "ecchi", "rape", "incest", "gore", "torture")
+    listOf("hentai", "erotic", "sex", "nudity", "porn", "softcore", "rape", "incest", "gore", "torture")
 
 /**
  * Benflix: words in TMDB tags that mean the title is basically porn, hentai, softcore or erotica.
@@ -378,7 +378,9 @@ fun SeerrExtrasBlock(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier,
     ) {
-        if (grownUp) Pill("⚠ Adult content", background = Color(0xFFB3261E))
+        // Benflix: "Adult content" matches the red strip on cards (porn, hentai, erotica); other grown-up
+        // tags (ecchi, nudity, gore...) say "Mature content" so the page and the cards agree
+        if (grownUp) Pill(if (e.adult) "⚠ Adult content" else "⚠ Mature content", background = Color(0xFFB3261E))
         if (isTv) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),

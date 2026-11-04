@@ -107,6 +107,48 @@ data class AniListIndexEntry(
     val checkedAt: Long = 0,
 )
 
+/** One anime in an AniList genre list (Requests > anime genre page) */
+data class AniListBrowseItem(
+    val id: Int,
+    val titles: List<String>,
+    val format: String?,
+    val year: Int?,
+    /** AniList's average fan score, 0 to 100 */
+    val score: Int?,
+    val cover: String?,
+) {
+    /** The name to show: English if AniList has one, else the Japanese name in letters */
+    val title: String get() = titles.firstOrNull() ?: ""
+    val isMovie: Boolean get() = format == "MOVIE"
+}
+
+/** A page of an AniList genre list, and whether there are more */
+data class AniListBrowsePage(
+    val items: List<AniListBrowseItem>,
+    val hasMore: Boolean,
+)
+
+/** Benflix: the order an AniList genre list is in */
+enum class AniListSort(
+    val label: String,
+    val key: String,
+) {
+    POPULAR("Most popular", "POPULARITY_DESC"),
+    TOP("Highest rated", "SCORE_DESC"),
+    TRENDING("Trending now", "TRENDING_DESC"),
+    NEWEST("Newest", "START_DATE_DESC"),
+}
+
+/** Benflix: shows, movies or both in an AniList genre list */
+enum class AniListKind(
+    val label: String,
+    val formats: List<String>?,
+) {
+    ALL("Shows and movies", null),
+    SHOWS("Shows", listOf("TV", "TV_SHORT", "ONA")),
+    MOVIES("Movies", listOf("MOVIE")),
+}
+
 /** The bits of AniList a card or info line shows: the fan score (0 to 100) and fan genres */
 data class AniListCardFacts(
     val score: Int?,
@@ -295,10 +337,21 @@ class AniListService
         private fun pick(
             dto: BaseItemDto,
             resultsPerName: List<List<JsonElement>>,
+        ): JsonObject? =
+            pickFrom(
+                movie = dto.type == BaseItemKind.MOVIE,
+                year = dto.productionYear ?: dto.premiereDate?.year,
+                names = namesOf(dto),
+                resultsPerName = resultsPerName,
+            )
+
+        private fun pickFrom(
+            movie: Boolean,
+            year: Int?,
+            names: List<String>,
+            resultsPerName: List<List<JsonElement>>,
         ): JsonObject? {
-            val movie = dto.type == BaseItemKind.MOVIE
-            val year = dto.productionYear ?: dto.premiereDate?.year
-            val wanted = namesOf(dto).map { clean(it) }.toSet()
+            val wanted = names.map { clean(it) }.toSet()
             val results = resultsPerName.flatten().mapNotNull { it as? JsonObject }
 
             fun kindOk(m: JsonObject) = if (movie) m.str("format") == "MOVIE" else m.str("format") != "MOVIE"
@@ -438,6 +491,111 @@ class AniListService
                 tags = tagsOf(m),
                 score = m.int("averageScore") ?: m.int("meanScore"),
             )
+
+        /**
+         * Benflix (Requests): AniList's fan genres and score for a movie or show you could ask for, found by its
+         * names and year. [key] is "TV-1234". Saved for a week; one not found is looked for again the next day.
+         */
+        suspend fun forRequest(
+            key: String,
+            names: List<String>,
+            year: Int?,
+            movie: Boolean,
+        ): AniListIndexEntry? {
+            val cacheName = "anilist-request-$key"
+            diskCache.read(cacheName, AniListIndexEntry.serializer(), WEEK_MS)?.let { saved ->
+                if (saved.id > 0) return saved
+                if (System.currentTimeMillis() - saved.checkedAt < DAY_MS) return null
+            }
+            val wanted =
+                names
+                    .map { searchable(it) }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .take(2)
+            if (wanted.isEmpty()) return null
+            val found =
+                try {
+                    val data =
+                        query(searchQuery(wanted.size), vars { wanted.forEachIndexed { i, n -> put("q$i", n) } })
+                            ?: return null
+                    val m =
+                        pickFrom(
+                            movie = movie,
+                            year = year,
+                            names = wanted,
+                            resultsPerName =
+                                wanted.indices.map {
+                                    data
+                                        .obj("s$it")
+                                        ?.obj("Page")
+                                        ?.arr("media")
+                                        .orEmpty()
+                                },
+                        )
+                    m?.let { entryOf(it) } ?: AniListIndexEntry(0, checkedAt = System.currentTimeMillis())
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not find %s on AniList", key)
+                    return null
+                }
+            diskCache.write(cacheName, AniListIndexEntry.serializer(), found)
+            return found.takeIf { it.id > 0 }
+        }
+
+        /**
+         * Benflix (Requests): every anime with ALL of [picked] (genres like Slice of Life, or themes like Isekai),
+         * a page at a time. Adult titles are never included. Later seasons of a show are left out, so each show
+         * shows once (its first season).
+         */
+        suspend fun browse(
+            picked: List<String>,
+            sort: AniListSort,
+            kind: AniListKind,
+            page: Int,
+        ): AniListBrowsePage {
+            val (genres, tags) = picked.partition { it in ANILIST_GENRES }
+            val data =
+                query(
+                    BROWSE_QUERY,
+                    vars {
+                        put("page", page)
+                        put("sort", JsonArray(listOf(JsonPrimitive(sort.key))))
+                        if (genres.isNotEmpty()) put("genres", JsonArray(genres.map { JsonPrimitive(it) }))
+                        if (tags.isNotEmpty()) put("tags", JsonArray(tags.map { JsonPrimitive(it) }))
+                        kind.formats?.let { f -> put("formats", JsonArray(f.map { JsonPrimitive(it) })) }
+                    },
+                )?.obj("Page") ?: return AniListBrowsePage(emptyList(), false)
+            val items =
+                data
+                    .arr("media")
+                    .orEmpty()
+                    .mapNotNull { it as? JsonObject }
+                    .filter { m -> m.bool("isAdult") != true && !isLaterSeason(m) }
+                    .mapNotNull { m ->
+                        AniListBrowseItem(
+                            id = m.int("id") ?: return@mapNotNull null,
+                            titles = titlesOf(m),
+                            format = m.str("format"),
+                            year = m.obj("startDate")?.int("year"),
+                            score = m.int("averageScore") ?: m.int("meanScore"),
+                            cover = m.obj("coverImage")?.let { it.str("large") ?: it.str("medium") },
+                        )
+                    }
+            return AniListBrowsePage(items, data.obj("pageInfo")?.bool("hasNextPage") == true)
+        }
+
+        /** A show's second (third...) season: it has an earlier season it follows on from */
+        private fun isLaterSeason(m: JsonObject): Boolean {
+            if (m.str("format") !in SEASON_FORMATS) return false
+            return m
+                .obj("relations")
+                ?.arr("edges")
+                .orEmpty()
+                .mapNotNull { it as? JsonObject }
+                .any { e -> e.str("relationType") == "PREQUEL" && e.obj("node")?.str("format") in SEASON_FORMATS }
+        }
 
         /** The index already built for a library this app run, if any */
         fun savedIndex(parentId: UUID): Map<UUID, AniListIndexEntry>? = indexes[parentId]
@@ -740,6 +898,45 @@ class AniListService
                     .trim()
 
             private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
+
+            /** AniList's own genres (the fixed list); every other name, like Isekai, is one of its tags */
+            val ANILIST_GENRES =
+                setOf(
+                    "Action",
+                    "Adventure",
+                    "Comedy",
+                    "Drama",
+                    "Ecchi",
+                    "Fantasy",
+                    "Horror",
+                    "Mahou Shoujo",
+                    "Mecha",
+                    "Music",
+                    "Mystery",
+                    "Psychological",
+                    "Romance",
+                    "Sci-Fi",
+                    "Slice of Life",
+                    "Sports",
+                    "Supernatural",
+                    "Thriller",
+                )
+
+            private val BROWSE_QUERY =
+                """
+                query (${'$'}page: Int, ${'$'}sort: [MediaSort], ${'$'}genres: [String], ${'$'}tags: [String], ${'$'}formats: [MediaFormat]) {
+                  Page(page: ${'$'}page, perPage: 30) {
+                    pageInfo { hasNextPage }
+                    media(type: ANIME, isAdult: false, sort: ${'$'}sort, genre_in: ${'$'}genres, genre_not_in: ["Hentai"],
+                      tag_in: ${'$'}tags, minimumTagRank: $MIN_TAG_RANK, format_in: ${'$'}formats) {
+                      id format isAdult averageScore meanScore $TITLE
+                      startDate { year }
+                      coverImage { large medium }
+                      relations { edges { relationType node { id format } } }
+                    }
+                  }
+                }
+                """.trimIndent()
 
             private val SEQUEL_QUERY =
                 """

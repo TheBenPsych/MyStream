@@ -387,6 +387,12 @@ fun DestinationContent(
                 .BenflixRequestsPage(modifier)
         }
 
+        is Destination.AnimeGenres -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.detail.discover
+                .AnimeGenrePage(destination.picked, modifier)
+        }
+
         Destination.MyBenflix -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main
