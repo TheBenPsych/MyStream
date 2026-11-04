@@ -618,6 +618,10 @@ def main():
             shot(f"home-scroll-{i}")
         sh("input swipe 500 500 500 2000 300")
 
+    # Ember Road (the pixel adventure): walk through a short journey on both TV and phone
+    if not out_of_time():
+        ember_road()
+
     # Visit every tab in the top bar / bottom bar
     tabs = (
         [r"^Home$", r"Browse", r"^Channels$", r"^Games$", r"My Benflix", r"^More$", r"Search"]
@@ -654,10 +658,6 @@ def main():
         REPORT["timings"][f"open {name} (s)"] = round(time.time() - start, 1)
         if MODE == "tv":
             focus_sweep(name)
-
-    # Ember Road (the pixel adventure): walk through a short journey on both TV and phone
-    if not out_of_time():
-        ember_road()
 
     # Open a movie's details, then play it for a bit
     back_to_home()
@@ -721,7 +721,23 @@ def find_scrolling(pattern, tries=8):
     return None
 
 
+def tv_focus_down_to(pattern, presses=30):
+    """TV: press down until the focused thing holds the text, then OK"""
+    for _ in range(presses):
+        root = dump(dismiss=False)
+        f = focused_node(root)
+        label = find(root, pattern)
+        if f is not None and label is not None and contains(f, label):
+            key("DPAD_CENTER", wait=1.5)
+            return True
+        key("DPAD_DOWN", wait=0.5)
+    return False
+
+
 def ember_road():
+    # Start from the app's own Home (the robot can end up outside the app on phones)
+    sh(f"am start -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=60)
+    time.sleep(4)
     back_to_home()
     if not press(r"^Games$", timeout=6):
         press(r"My Benflix", timeout=6)
@@ -730,12 +746,18 @@ def ember_road():
             log("Ember Road: no Games page found")
             return
     time.sleep(4)
-    tile = find_scrolling(r"^Ember Road$")
-    if tile is None:
-        log("Ember Road: tile not found")
-        REPORT["problems"].append({"type": "Ember Road tile missing"})
-        return
-    tap(tile)
+    if MODE == "tv":
+        if not tv_focus_down_to(r"^Ember Road$"):
+            log("Ember Road: the remote could not reach the tile")
+            REPORT["problems"].append({"type": "could not reach with remote", "text": "Ember Road"})
+            return
+    else:
+        tile = find_scrolling(r"^Ember Road$")
+        if tile is None:
+            log("Ember Road: tile not found")
+            REPORT["problems"].append({"type": "Ember Road tile missing"})
+            return
+        tap(tile)
     if wait_for(r"New journey|Continue the journey", 20) is None:
         shot("ember-title-missing")
         return
