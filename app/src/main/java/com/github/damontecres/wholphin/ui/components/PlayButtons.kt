@@ -479,11 +479,13 @@ fun ExpandablePlayButton(
     enabled: Boolean = true,
     primary: Boolean = false,
     label: String? = null,
+    onLongClick: (() -> Unit)? = null,
 ) = ExpandablePlayButton(
     title = title,
     resume = resume,
     primary = primary,
     label = label,
+    onLongClick = onLongClick,
     icon = {
         Icon(
             imageVector = icon,
@@ -542,11 +544,13 @@ fun ExpandablePlayButton(
     enabled: Boolean = true,
     primary: Boolean = false,
     label: String? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
     Button(
         onClick = { onClick.invoke(resume) },
+        onLongClick = onLongClick,
         enabled = enabled,
         modifier =
             modifier.requiredSizeIn(
@@ -594,11 +598,13 @@ fun ExpandableFaButton(
     iconColor: Color = Color.Unspecified,
     enabled: Boolean = true,
     primary: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
     Button(
         onClick = onClick,
+        onLongClick = onLongClick,
         colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
         border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
         enabled = enabled,
