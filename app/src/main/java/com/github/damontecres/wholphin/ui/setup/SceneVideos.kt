@@ -26,6 +26,7 @@ import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPresentationState
 import com.github.damontecres.wholphin.services.LogoEffect
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -53,7 +54,12 @@ object SceneVideos {
     }
 
     /** Scenes that failed to download this time the app is open (not found yet, no internet) */
-    private val failed = mutableSetOf<LogoEffect>()
+    private val failed: MutableSet<LogoEffect> =
+        java.util.concurrent.ConcurrentHashMap
+            .newKeySet()
+
+    /** One download at a time, so two screens asking at once don't both write the same file */
+    private val downloadLock = kotlinx.coroutines.sync.Mutex()
 
     private fun file(
         context: Context,
@@ -74,36 +80,46 @@ object SceneVideos {
         withContext(Dispatchers.IO) {
             cached(context, effect)?.let { return@withContext it }
             if (effect == LogoEffect.NONE || effect in failed) return@withContext null
-            val target = file(context, effect)
-            try {
-                target.parentFile?.mkdirs()
-                val tmp = File(target.path + ".part")
-                http.newCall(Request.Builder().url("$BASE/${effect.name}.mp4").build()).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        failed += effect
-                        return@withContext null
-                    }
-                    tmp.outputStream().use { response.body.byteStream().copyTo(it) }
-                }
-                if (tmp.length() <= MIN_BYTES || !tmp.renameTo(target)) {
-                    tmp.delete()
-                    failed += effect
-                    return@withContext null
-                }
-                // Only the holidays coming round need to stay: keep the newest few
-                target.parentFile
-                    ?.listFiles()
-                    ?.filter { it.extension == "mp4" }
-                    ?.sortedByDescending { it.lastModified() }
-                    ?.drop(KEEP)
-                    ?.forEach { it.delete() }
-                target
-            } catch (e: Exception) {
-                Timber.i("Holiday scene video not downloaded: %s", e.javaClass.simpleName)
-                failed += effect
-                null
-            }
+            downloadLock.withLock { download(context, effect) }
         }
+
+    private fun download(
+        context: Context,
+        effect: LogoEffect,
+    ): File? {
+        // Another screen may have just fetched it while this one waited its turn
+        cached(context, effect)?.let { return it }
+        if (effect in failed) return null
+        val target = file(context, effect)
+        return try {
+            target.parentFile?.mkdirs()
+            val tmp = File(target.path + ".part")
+            http.newCall(Request.Builder().url("$BASE/${effect.name}.mp4").build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    failed += effect
+                    return null
+                }
+                tmp.outputStream().use { response.body.byteStream().copyTo(it) }
+            }
+            if (tmp.length() <= MIN_BYTES || !tmp.renameTo(target)) {
+                tmp.delete()
+                failed += effect
+                return null
+            }
+            // Only the holidays coming round need to stay: keep the newest few
+            target.parentFile
+                ?.listFiles()
+                ?.filter { it.extension == "mp4" }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(KEEP)
+                ?.forEach { it.delete() }
+            target
+        } catch (e: Exception) {
+            Timber.i("Holiday scene video not downloaded: %s", e.javaClass.simpleName)
+            failed += effect
+            null
+        }
+    }
 
     private const val KEEP = 4
 }

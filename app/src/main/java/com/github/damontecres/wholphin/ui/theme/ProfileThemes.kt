@@ -73,6 +73,7 @@ object ProfileColours {
     private val colours = mutableStateMapOf<UUID, BenflixAccent>()
     private var prefs: android.content.SharedPreferences? = null
 
+    @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences("benflix_profile_colours", Context.MODE_PRIVATE)

@@ -188,7 +188,8 @@ private const val ANIMATION_GENRE = "16"
 private val APPROVE_PATH = Regex("^(.*)/jellyseerr/request/(\\d+)/(approve|decline)$")
 
 private class SeerrCookieJar : CookieJar {
-    private val cookies = mutableMapOf<String, List<Cookie>>()
+    // OkHttp saves and reads cookies from several threads at once
+    private val cookies = java.util.concurrent.ConcurrentHashMap<String, List<Cookie>>()
 
     override fun saveFromResponse(
         url: HttpUrl,
