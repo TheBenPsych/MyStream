@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
+import org.jellyfin.sdk.api.sockets.SocketApiState
 import org.jellyfin.sdk.api.sockets.subscribe
 import org.jellyfin.sdk.model.api.GeneralCommandMessage
 import org.jellyfin.sdk.model.api.GeneralCommandType
@@ -114,6 +115,26 @@ class ServerEventListener
                     try {
                         // Launch multiple listeners, but stop all if one fails
                         coroutineScope {
+                            // Benflix: notice when the server's address won't take a live connection (a reverse
+                            // proxy without websocket support answers 404 instead of switching protocols)
+                            launch {
+                                api.webSocket.state.collect { state ->
+                                    when (state) {
+                                        is SocketApiState.Connected -> {
+                                            benflixMessages.setLiveBlocked(false)
+                                        }
+
+                                        is SocketApiState.Disconnected -> {
+                                            if (state.error != null) {
+                                                Timber.w(state.error, "Live connection to the server failed")
+                                                benflixMessages.setLiveBlocked(true)
+                                            }
+                                        }
+
+                                        else -> {}
+                                    }
+                                }
+                            }
                             // Benflix: check in with the server every few minutes while open, so a TV that's just
                             // sitting on a page stays findable by the phone remote (and is re-announced after
                             // the server restarts).

@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -50,6 +51,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.sessionApi
@@ -82,6 +84,8 @@ data class ServerToolsState(
     val peopleFailed: Boolean = false,
     /** Benflix: the notes couldn't be read (Refresh tries again) */
     val notesFailed: Boolean = false,
+    /** Benflix: this device can't hold a live connection to the server, so live pop-ups can't get through */
+    val liveBlocked: Boolean = false,
 )
 
 @HiltViewModel
@@ -106,6 +110,12 @@ class ServerToolsViewModel
 
         private var notesAsked = false
         private var peopleAsked = false
+
+        init {
+            viewModelScope.launch {
+                benflixMessages.liveBlocked.collect { blocked -> _state.update { it.copy(liveBlocked = blocked) } }
+            }
+        }
 
         /** Benflix: the notes only load when the Messages section is first opened */
         fun loadNotes() {
@@ -394,9 +404,21 @@ class ServerToolsViewModel
             if (text.isBlank()) return
             work {
                 val header = "Message from Ben"
+                val blocked = benflixMessages.liveBlocked.value
+                // Benflix: so this screen (the sender's) doesn't pop it up or pick up the saved copy itself
+                benflixMessages.rememberSent(text)
+                val names =
+                    if (onlyFor != null || blocked) {
+                        (_state.value.people ?: people.list()).associate { it.id to it.name.orEmpty() }
+                    } else {
+                        emptyMap()
+                    }
+                // Benflix: when live pop-ups can't get through, save it for everyone too, so the regular check
+                // on each screen still picks it up within a couple of minutes
+                val saveFor = onlyFor ?: if (blocked) names.keys.toSet() else null
                 // Benflix: save first, so a screen that shows it live can take the saved copy off straight away
                 val savedFor = mutableSetOf<java.util.UUID>()
-                onlyFor?.forEach { id ->
+                saveFor?.forEach { id ->
                     try {
                         benflixMessages.saveFor(id, header, text)
                         savedFor += id
@@ -406,11 +428,14 @@ class ServerToolsViewModel
                         Timber.w(ex, "Could not save the message for %s", id)
                     }
                 }
+                val myDevice = api.deviceInfo.id
                 val sessions =
                     api.sessionApi
                         .getSessions(activeWithinSeconds = 960)
                         .content
                         .filter { it.supportsRemoteControl && it.id != null }
+                        // Benflix: not this phone/TV itself (Ben sending to his own profile means his other screens)
+                        .filter { it.deviceId != myDevice }
                         // Benflix: only the people Ben picked
                         .filter { onlyFor == null || it.userId in onlyFor }
                 var sent = 0
@@ -434,33 +459,46 @@ class ServerToolsViewModel
                         Timber.w(ex, "Could not send the pop-up to %s", session.deviceName)
                     }
                 }
-                // Benflix: picked people who aren't on Benflix right now see it next time they open it
-                val later = mutableListOf<String>()
-                if (onlyFor != null) {
-                    val names =
-                        (_state.value.people ?: people.list()).associate { it.id to it.name.orEmpty() }
-                    (savedFor - reached).forEach { id -> later += names[id] ?: "Someone" }
-                }
-                val now =
-                    if (sent == 0) {
-                        null
-                    } else {
-                        "It showed on $sent Benflix screen" + (if (sent == 1) "" else "s") + " right away."
-                    }
-                val saved =
-                    if (later.isEmpty()) {
-                        null
-                    } else {
-                        listNames(later) + (if (later.size == 1) " isn't" else " aren't") +
-                            " on Benflix right now, so it will pop up the next time they open it."
-                    }
                 _state.value =
                     _state.value.copy(
                         message =
-                            if (now == null && saved == null) {
-                                "Nobody to send to" to "No Benflix screens are open right now."
-                            } else {
-                                (if (now != null) "Pop-up sent" else "Message saved") to listOfNotNull(now, saved).joinToString(" ")
+                            when {
+                                // Benflix: the server's address won't take live connections, so we can't tell who
+                                // saw it live. Every Benflix screen checks for saved messages every minute or so.
+                                blocked && savedFor.isNotEmpty() -> {
+                                    "Message saved" to
+                                        "Open Benflix screens will show it within about 2 minutes, even during a show. " +
+                                        "It can't pop up instantly right now: $LIVE_BLOCKED_HELP"
+                                }
+
+                                blocked -> {
+                                    "That didn't work" to "The message couldn't be saved. Try again in a moment."
+                                }
+
+                                else -> {
+                                    val now =
+                                        if (sent == 0) {
+                                            null
+                                        } else {
+                                            "It showed on $sent Benflix screen" + (if (sent == 1) "" else "s") + " right away."
+                                        }
+                                    // Benflix: picked people who aren't on Benflix right now see it next time they open it
+                                    val later = (savedFor - reached).map { id -> names[id] ?: "Someone" }
+                                    val saved =
+                                        if (later.isEmpty()) {
+                                            null
+                                        } else {
+                                            listNames(later) + (if (later.size == 1) " isn't" else " aren't") +
+                                                " on Benflix right now, so it will pop up within a couple of minutes " +
+                                                "if Benflix is open, or the next time they open it."
+                                        }
+                                    if (now == null && saved == null) {
+                                        "Nobody to send to" to "No Benflix screens are open right now."
+                                    } else {
+                                        (if (now != null) "Pop-up sent" else "Message saved") to
+                                            listOfNotNull(now, saved).joinToString(" ")
+                                    }
+                                }
                             },
                     )
             }
@@ -736,6 +774,16 @@ fun LazyListScope.messageItems(
         )
     }
     item { sectionTitle("Pop-up") }
+    if (state.liveBlocked) {
+        item {
+            Text(
+                text = "Pop-ups can't arrive instantly right now. They still arrive within about 2 minutes. $LIVE_BLOCKED_HELP",
+                color = Color(0xFFE5B567),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+        }
+    }
     item {
         ServerActionRow(
             headline = "Send a pop-up message",
@@ -746,6 +794,11 @@ fun LazyListScope.messageItems(
         )
     }
 }
+
+/** Benflix: what to fix on the server when live connections are blocked */
+private const val LIVE_BLOCKED_HELP =
+    "Your server's web address isn't letting live connections through. In Nginx Proxy Manager, edit the " +
+        "Jellyfin proxy host and turn on \"Websockets Support\"."
 
 /** Benflix: the device id every Benflix app has, so other Jellyfin apps aren't counted as reached */
 private const val BENFLIX_DEVICE_PREFIX = "benflix-"
