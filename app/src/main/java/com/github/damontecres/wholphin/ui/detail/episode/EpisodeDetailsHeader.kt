@@ -39,6 +39,7 @@ fun EpisodeDetailsHeader(
     bringIntoViewRequester: BringIntoViewRequester,
     overviewOnClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showOverview: Boolean = true,
 ) {
     val dto = ep.data
     val context = LocalContext.current
@@ -75,31 +76,54 @@ fun EpisodeDetailsHeader(
                 )
             }
 
-            // Description
-            dto.overview?.let { overview ->
-                val interactionSource = remember { MutableInteractionSource() }
-                val focused = interactionSource.collectIsFocusedAsState().value
-                LaunchedEffect(focused) {
-                    if (focused) bringIntoViewRequester.bringIntoView()
-                }
-                OverviewText(
-                    overview = overview,
-                    maxLines = 3,
-                    onClick = overviewOnClick,
-                    textBoxHeight = Dp.Unspecified,
-                    interactionSource = interactionSource,
+            if (showOverview) {
+                EpisodeOverview(ep, bringIntoViewRequester, overviewOnClick)
+            }
+        }
+    }
+}
+
+/** The episode's story and who directed it. Benflix look A puts this under the buttons. */
+@Composable
+fun EpisodeOverview(
+    ep: BaseItem,
+    bringIntoViewRequester: BringIntoViewRequester,
+    overviewOnClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dto = ep.data
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier =
+            modifier.fillMaxWidth(
+                com.github.damontecres.wholphin.ui.touch
+                    .detailsTextFraction(),
+            ),
+    ) {
+        // Description
+        dto.overview?.let { overview ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val focused = interactionSource.collectIsFocusedAsState().value
+            LaunchedEffect(focused) {
+                if (focused) bringIntoViewRequester.bringIntoView()
+            }
+            OverviewText(
+                overview = overview,
+                maxLines = 3,
+                onClick = overviewOnClick,
+                textBoxHeight = Dp.Unspecified,
+                interactionSource = interactionSource,
+            )
+        }
+        ep.data.people
+            ?.filter { it.type == PersonKind.DIRECTOR && it.name.isNotNullOrBlank() }
+            ?.joinToString(", ") { it.name!! }
+            ?.let {
+                Text(
+                    text = stringResource(R.string.directed_by, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
-            ep.data.people
-                ?.filter { it.type == PersonKind.DIRECTOR && it.name.isNotNullOrBlank() }
-                ?.joinToString(", ") { it.name!! }
-                ?.let {
-                    Text(
-                        text = stringResource(R.string.directed_by, it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-        }
     }
 }

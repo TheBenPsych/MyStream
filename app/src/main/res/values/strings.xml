@@ -1133,6 +1133,10 @@
     <string name="benflix_mark_season_watched">Mark season watched</string>
     <string name="benflix_mark_season_unwatched">Mark season unwatched</string>
     <string name="benflix_shuffle_season">Shuffle season</string>
+    <string name="benflix_asked_waiting">Asked · waiting for Ben</string>
+    <string name="benflix_on_its_way">On its way</string>
+    <string name="benflix_watch_now">Watch now</string>
+    <string name="benflix_cancel_my_ask">Cancel my ask</string>
     <string name="benflix_episodes_watched">%1$d of %2$d watched</string>
     <string name="benflix_rewatch">Rewatch from the start</string>
     <string name="benflix_fix_match">Wrong match? Fix it</string>

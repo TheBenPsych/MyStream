@@ -593,11 +593,14 @@ fun ExpandableFaButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     iconColor: Color = Color.Unspecified,
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
     Button(
         onClick = onClick,
+        colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
+        border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
         enabled = enabled,
         modifier =
             modifier.requiredSizeIn(

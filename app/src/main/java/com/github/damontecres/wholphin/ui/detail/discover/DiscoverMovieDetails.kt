@@ -54,7 +54,6 @@ import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.SeasonCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
-import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
@@ -245,7 +244,7 @@ fun DiscoverMovieDetailsContent(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                .padding(top = 16.dp, bottom = 12.dp),
                     )
                     ExpandableDiscoverButtons(
                         isAdmin = isAdmin,

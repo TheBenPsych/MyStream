@@ -44,10 +44,10 @@ fun MovieDetailsHeader(
     bringIntoViewRequester: BringIntoViewRequester,
     overviewOnClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showOverview: Boolean = true,
 ) {
     val dto = movie.data
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier,
@@ -105,41 +105,65 @@ fun MovieDetailsHeader(
                 )
             }
 
-            // Description
-            dto.overview?.let { overview ->
-                OverviewText(
-                    overview = overview,
-                    maxLines = 3,
-                    onClick = overviewOnClick,
-                    textBoxHeight = Dp.Unspecified,
-                    modifier =
-                        Modifier.onFocusChanged {
-                            if (it.isFocused) {
-                                scope.launch(ExceptionHandler()) {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
+            if (showOverview) {
+                MovieOverview(movie, bringIntoViewRequester, overviewOnClick)
+            }
+        }
+    }
+}
+
+/** The movie's story and who directed it. Benflix look A puts this under the buttons. */
+@Composable
+fun MovieOverview(
+    movie: BaseItem,
+    bringIntoViewRequester: BringIntoViewRequester,
+    overviewOnClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dto = movie.data
+    val scope = rememberCoroutineScope()
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier =
+            modifier.fillMaxWidth(
+                com.github.damontecres.wholphin.ui.touch
+                    .detailsTextFraction(),
+            ),
+    ) {
+        // Description
+        dto.overview?.let { overview ->
+            OverviewText(
+                overview = overview,
+                maxLines = 3,
+                onClick = overviewOnClick,
+                textBoxHeight = Dp.Unspecified,
+                modifier =
+                    Modifier.onFocusChanged {
+                        if (it.isFocused) {
+                            scope.launch(ExceptionHandler()) {
+                                bringIntoViewRequester.bringIntoView()
                             }
-                        },
-                )
+                        }
+                    },
+            )
+        }
+
+        val directorName =
+            remember(movie.data.people) {
+                movie.data.people
+                    ?.filter { it.type == PersonKind.DIRECTOR && it.name.isNotNullOrBlank() }
+                    ?.joinToString(", ") { it.name!! }
+                    ?.takeIf { it.isNotNullOrBlank() }
             }
 
-            val directorName =
-                remember(movie.data.people) {
-                    movie.data.people
-                        ?.filter { it.type == PersonKind.DIRECTOR && it.name.isNotNullOrBlank() }
-                        ?.joinToString(", ") { it.name!! }
-                        ?.takeIf { it.isNotNullOrBlank() }
-                }
-
-            directorName
-                ?.let {
-                    Text(
-                        text = stringResource(R.string.directed_by, it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = HeaderUtils.startPadding),
-                    )
-                }
-        }
+        directorName
+            ?.let {
+                Text(
+                    text = stringResource(R.string.directed_by, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                )
+            }
     }
 }

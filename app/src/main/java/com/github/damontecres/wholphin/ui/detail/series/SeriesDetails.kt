@@ -227,6 +227,7 @@ fun SeriesDetails(
                 progress = state.progress,
                 rewatchOnClick = viewModel::rewatch,
                 isAdmin = state.isAdmin,
+                playLabel = state.nextUpLabel,
                 fixMatchOnClick = { showFixMatch = true },
                 onPlayEpisode = { viewModel.navigateTo(Destination.Playback(it)) },
                 trailers = state.trailers,
@@ -413,6 +414,7 @@ fun SeriesDetailsContent(
     rewatchOnClick: () -> Unit = {},
     isAdmin: Boolean = false,
     fixMatchOnClick: () -> Unit = {},
+    playLabel: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -476,11 +478,13 @@ fun SeriesDetailsContent(
                             bringIntoViewRequester = bringIntoViewRequester,
                             subDub = subDub,
                             progressText = remember(progress) { progress?.words() },
+                            // Benflix look A: the story goes under the buttons
+                            showOverview = false,
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .bringIntoViewRequester(bringIntoViewRequester)
-                                    .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                    .padding(top = 16.dp, bottom = 12.dp),
                         )
                         // Benflix look A: flat buttons. Play, Shuffle, Mark watched and Trailer stay
                         // on the page; the rest (like, favourite, delete, fix match...) are under More
@@ -507,6 +511,7 @@ fun SeriesDetailsContent(
                             ) {
                                 ExpandablePlayButton(
                                     title = R.string.play,
+                                    label = playLabel,
                                     resume = Duration.ZERO,
                                     icon = Icons.Default.PlayArrow,
                                     primary = true,
@@ -564,6 +569,20 @@ fun SeriesDetailsContent(
                                     modifier = Modifier.onFocusChanged(bringButtonsIntoView),
                                 )
                             }
+                        }
+                        series.data.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                            OverviewText(
+                                overview = overview,
+                                maxLines = 3,
+                                onClick = overviewOnClick,
+                                textBoxHeight = Dp.Unspecified,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth(
+                                            com.github.damontecres.wholphin.ui.touch
+                                                .detailsTextFraction(),
+                                        ).onFocusChanged(bringButtonsIntoView),
+                            )
                         }
                         if (showMore) {
                             val moreItems =
@@ -905,6 +924,7 @@ fun SeriesDetailsHeader(
     modifier: Modifier = Modifier,
     subDub: String? = null,
     progressText: String? = null,
+    showOverview: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val dto = series.data
@@ -963,7 +983,7 @@ fun SeriesDetailsHeader(
             dto.genres?.letNotEmpty {
                 GenreText(it, Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp))
             }
-            dto.overview?.let { overview ->
+            dto.overview?.takeIf { showOverview }?.let { overview ->
                 OverviewText(
                     overview = overview,
                     maxLines = 3,
