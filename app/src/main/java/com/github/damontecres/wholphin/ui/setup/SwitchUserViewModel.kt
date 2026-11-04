@@ -247,6 +247,10 @@ class SwitchUserViewModel
                     throw ex
                 }
             ProfileModes.save(context, current.user.id)
+            // Benflix: every sign-in (picking a profile, typing a password, or Quick Connect) starts on a
+            // fresh Home. Before, typing a password kept the last person's open page, so a brand-new
+            // profile could land on someone else's Requests page (which errors) and skip the welcome setup.
+            navigationManager.reloadHome()
             return current
         }
 
@@ -306,7 +310,6 @@ class SwitchUserViewModel
                         changeUserWithModes(kids, bigKids, guest) {
                             serverRepository.changeUser(server, user)
                         }
-                    navigationManager.reloadHome()
                     setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
                     SwitchUserResult.Success
                 } catch (ex: InvalidStatusException) {

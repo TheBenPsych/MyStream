@@ -108,6 +108,7 @@ import com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices
 import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -1308,7 +1309,14 @@ private fun FavoritesStep(
         columns = GridCells.Adaptive(if (isTv) 120.dp else 96.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth().height(if (isTv) 400.dp else 460.dp),
+        // Benflix (TV): the poster wall scrolls inside itself, and the page around it only ever asks to
+        // show the whole wall. Before, each press made both scroll, so the page jumped up and down.
+        // 360dp keeps the wall short enough to always fit on screen as one block.
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .scrollAsOneBlock()
+                .height(if (isTv) 360.dp else 460.dp),
     ) {
         items(showing, key = { it.id }) { poster ->
             PosterTile(
