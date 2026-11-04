@@ -46,12 +46,18 @@ data class PhoneView(
     /** Result of this phone's last typed command */
     val reply: String? = null,
     val status: String = "",
+    /** A plain-words line saying what the buttons do right now (a vote, or straight away) */
+    val hint: String = "",
+    /** What's in the bag and who's in the party, for the phone's "Bag & journal" */
+    val bag: String = "",
 )
 
 @Serializable
 data class PhoneAction(
     val id: String,
     val label: String,
+    /** A short line under the button saying what it does */
+    val hint: String = "",
 )
 
 /** A phone that joined the TV's game */

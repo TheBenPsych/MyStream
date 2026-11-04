@@ -34,6 +34,7 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
@@ -78,7 +79,20 @@ data class DraftMember(
     val folk: String,
     val traits: List<String>,
     val face: Int,
+    /** This person's skill (healer, merchant, ranger, bard, mage, smith) */
+    val role: String = "healer",
 )
+
+/** The skills, in the order the setup button cycles through them */
+val EmberSkills =
+    linkedMapOf(
+        "healer" to ("Healer" to "Brings extra herbs. Fevers are rarer."),
+        "ranger" to ("Ranger" to "Brings a bow. Finds the way faster and hunts well."),
+        "bard" to ("Bard" to "Brings a lute. Great at talking the party out of trouble."),
+        "merchant" to ("Merchant" to "Brings more gold. Better prices at markets."),
+        "mage" to ("Mage" to "Knows two more spells. Magic backfires less."),
+        "smith" to ("Smith" to "Brings a hammer. Fixes the cart and opens locked things."),
+    )
 
 /** One button on screen (also sent to the phones) */
 data class Act(
@@ -158,7 +172,6 @@ class EmberViewModel
 
         // ---- setup
         val draft = mutableStateListOf<DraftMember>()
-        var draftRole by mutableStateOf("healer")
         var draftPet by mutableStateOf<String?>("owl")
         var draftLength by mutableStateOf("medium")
         var draftDifficulty by mutableStateOf("normal")
@@ -465,21 +478,20 @@ class EmberViewModel
             draft.clear()
             val r = Random(System.currentTimeMillis())
             val folks = listOf("human", "elf", "dwarf", "human")
+            val startSkills = listOf("healer", "ranger", "bard", "merchant")
+            val startTraits = s.traits.shuffled(r).map { it.id }
             repeat(4) { i ->
                 val folk = folks[i]
                 draft.add(
                     DraftMember(
                         randomName(s, folk, r),
                         folk,
-                        s.traits
-                            .shuffled(r)
-                            .take(2)
-                            .map { it.id },
+                        listOfNotNull(startTraits.getOrNull(i)),
                         r.nextInt(12),
+                        role = startSkills[i],
                     ),
                 )
             }
-            draftRole = if (kids) "bard" else "healer"
             draftPet =
                 s.names.pets
                     .firstOrNull()
@@ -537,19 +549,34 @@ class EmberViewModel
             draft[i] = draft[i].copy(folk = next, face = Random.nextInt(12))
         }
 
+        /** A new random look, skill and trait. The name stays, so a typed name isn't lost. */
         fun rerollMember(i: Int) {
             val s = story ?: return
             if (i !in draft.indices) return
+            val skills = EmberSkills.keys.filterNot { roleLocked(it) }
             draft[i] =
                 draft[i].copy(
-                    name = randomName(s, draft[i].folk),
-                    traits =
-                        s.traits
-                            .shuffled()
-                            .take(2)
-                            .map { it.id },
+                    traits = listOf(s.traits.random().id),
                     face = Random.nextInt(12),
+                    role = skills.random(),
                 )
+        }
+
+        /** Next skill for this person (locked ones are skipped) */
+        fun cycleSkill(i: Int) {
+            if (i !in draft.indices) return
+            val skills = EmberSkills.keys.filterNot { roleLocked(it) }
+            val now = skills.indexOf(draft[i].role)
+            draft[i] = draft[i].copy(role = skills[(now + 1) % skills.size])
+        }
+
+        /** Next trait for this person */
+        fun cycleTrait(i: Int) {
+            val s = story ?: return
+            if (i !in draft.indices) return
+            val all = s.traits.map { it.id }
+            val now = all.indexOf(draft[i].traits.firstOrNull())
+            draft[i] = draft[i].copy(traits = listOf(all[(now + 1) % all.size]))
         }
 
         fun addMember() {
@@ -559,11 +586,9 @@ class EmberViewModel
                 DraftMember(
                     randomName(s, "human"),
                     "human",
-                    s.traits
-                        .shuffled()
-                        .take(2)
-                        .map { it.id },
+                    listOf(s.traits.random().id),
                     Random.nextInt(12),
+                    role = EmberSkills.keys.filterNot { roleLocked(it) }.random(),
                 ),
             )
         }
@@ -600,12 +625,13 @@ class EmberViewModel
                         traits = d.traits,
                         leader = i == 0,
                         face = d.face,
+                        role = if (roleLocked(d.role)) "healer" else d.role,
                     )
                 }
             val setup =
                 RunSetup(
                     members = members,
-                    role = if (roleLocked(draftRole)) "healer" else draftRole,
+                    role = members.first().role ?: "healer",
                     pet = draftPet,
                     length = draftLength,
                     difficulty = if (difficultyLocked(draftDifficulty)) "normal" else draftDifficulty,
@@ -909,6 +935,7 @@ class EmberViewModel
                                         sortBy = listOf(ItemSortBy.RANDOM),
                                         limit = 1,
                                         imageTypes = listOf(ImageType.PRIMARY),
+                                        fields = listOf(ItemFields.OVERVIEW),
                                     ),
                                 ).content.items
                                 .firstOrNull()
@@ -927,6 +954,19 @@ class EmberViewModel
                                 ),
                             added = dto.userData?.isFavorite == true,
                         )
+                    // Tonight's story is about tonight's movie, so the words and the poster match
+                    val gist =
+                        dto.overview
+                            .orEmpty()
+                            .replace("\n", " ")
+                            .trim()
+                            .let { o ->
+                                val end = Regex("[.!?](\\s|$)").find(o)?.range?.first
+                                if (end != null) o.substring(0, end + 1) else o
+                            }.take(220)
+                    val title = dto.name.orEmpty() + (dto.productionYear?.let { " ($it)" } ?: "")
+                    engine?.setCampTale(title, gist)
+                    changed()
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -958,11 +998,31 @@ class EmberViewModel
             return when (e.state.phase) {
                 Phase.TRAVEL -> {
                     listOfNotNull(
-                        Act("go", "Keep going"),
-                        Act("camp", "Make camp"),
-                        Act("pace", "Pace: ${e.state.pace}"),
-                        Act("rations", "Food: ${e.state.rations}"),
-                        if (e.state.herbs > 0 && e.active.any { it.sick || it.health < 3 }) Act("herbs", "Use herbs") else null,
+                        Act("go", "Keep going", "Travel one day down the road"),
+                        Act("camp", "Make camp", "Rest a day: heals, warms the egg, calms magic"),
+                        Act(
+                            "pace",
+                            "Pace: ${e.state.pace}",
+                            when (e.state.pace) {
+                                "easy" -> "Slow but restful. Press to change"
+                                "hard" -> "Fast but tiring, more fevers. Press to change"
+                                else -> "Normal speed. Press to change"
+                            },
+                        ),
+                        Act(
+                            "rations",
+                            "Food: ${e.state.rations}",
+                            when (e.state.rations) {
+                                "little" -> "Saves food, but more fevers. Press to change"
+                                "lots" -> "Uses more food, keeps spirits up. Press to change"
+                                else -> "2 food each a day. Press to change"
+                            },
+                        ),
+                        if (e.state.herbs > 0 && e.active.any { it.sick || it.health < 3 }) {
+                            Act("herbs", "Use herbs", "Heals whoever is sick or hurt")
+                        } else {
+                            null
+                        },
                     )
                 }
 
@@ -1001,7 +1061,7 @@ class EmberViewModel
                 }
 
                 Phase.CAMP -> {
-                    listOf(Act("leavecamp", "Pack up and go on"))
+                    listOf(Act("leavecamp", "Pack up and go on", "Back on the road"))
                 }
 
                 Phase.MINIGAME -> {
@@ -1120,13 +1180,101 @@ class EmberViewModel
             return PhoneView(
                 title = title,
                 text = text.take(1500),
-                actions = actions().map { PhoneAction(it.id, it.label) },
+                actions = actions().map { PhoneAction(it.id, it.label, it.hint) },
                 vote = e.state.phase == Phase.EVENT,
+                hint = phoneHint(e, j),
+                bag = bagText(e),
                 mine = votes[j.id],
                 typing = e.state.phase == Phase.STOP,
                 reply = phoneReplies[j.id],
-                status = "Day ${e.state.day} · Food ${e.state.food} · Gold ${e.state.gold}",
+                status =
+                    "Day ${e.state.day} · Food ${e.state.food} · Gold ${e.state.gold} · Spirit ${e.state.spirit}/10" +
+                        if (e.eggHere && !e.hatched) " · Egg warmth ${e.state.warmth}/10" else "",
             )
+        }
+
+        /** Plain words for a phone: is this a vote, or does pressing do it straight away? */
+        private fun phoneHint(
+            e: EmberEngine,
+            j: Joined,
+        ): String =
+            when (e.state.phase) {
+                Phase.EVENT -> {
+                    when {
+                        votes[j.id] != null && tvVote == null -> {
+                            "Your vote is in. Waiting for the TV to vote too (or press Decide now on the TV)."
+                        }
+
+                        votes[j.id] != null -> {
+                            "Your vote is in. Waiting for the other phones. You can still change it."
+                        }
+
+                        else -> {
+                            "This is a vote. Every phone and the TV picks one. Most votes win, and a tie goes to the TV."
+                        }
+                    }
+                }
+
+                Phase.TRAVEL -> {
+                    "Not a vote: these buttons work straight away for the whole party, from any phone or the TV. Agree first!"
+                }
+
+                Phase.STOP -> {
+                    "Not a vote: Look and Talk happen straight away. You can also type what to do, like \"look under the bridge\"."
+                }
+
+                Phase.MARKET -> {
+                    "Anyone can buy. The gold is shared by the whole party."
+                }
+
+                Phase.FORK -> {
+                    "Not a vote: the first road anyone picks is the one you take. Agree first!"
+                }
+
+                Phase.CAMP -> {
+                    "Resting for the night. Anyone can press Pack up to set off again."
+                }
+
+                Phase.RESULT -> {
+                    "Anyone can press Continue."
+                }
+
+                Phase.MINIGAME -> {
+                    "Everyone can play: press the buttons on your phone at the right time."
+                }
+
+                Phase.OVER -> {
+                    "The journey is over. Pick a trail marker on the TV."
+                }
+            }
+
+        /** The bag, spells and party in words (for phones) */
+        private fun bagText(e: EmberEngine): String {
+            val s = e.story
+            val items =
+                e.state.items
+                    .groupingBy { it }
+                    .eachCount()
+                    .map { (id, n) -> (s.item(id)?.name ?: id) + if (n > 1) " ×$n" else "" }
+            val party =
+                e.state.members.map { m ->
+                    m.name + ": " +
+                        listOfNotNull(
+                            m.role?.let { EmberSkills[it]?.first },
+                            m.traits.firstOrNull()?.let { s.trait(it)?.name },
+                        ).joinToString(", ") + if (m.gone) " (went home)" else ""
+                }
+            return listOf(
+                "Party\n" + party.joinToString("\n"),
+                "Items\n" + items.joinToString().ifEmpty { "Nothing but crumbs" },
+                "Herbs: ${e.state.herbs}",
+                "Spells\n" + e.state.spells.joinToString { s.spell(it)?.name ?: it },
+                "Journal\n" +
+                    e.state.journal
+                        .takeLast(6)
+                        .reversed()
+                        .joinToString("\n"),
+            ).joinToString("\n\n")
         }
 
         /** This phone's name when it joins a TV's game */

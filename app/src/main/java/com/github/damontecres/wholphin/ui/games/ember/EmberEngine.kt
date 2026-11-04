@@ -46,6 +46,8 @@ data class Member(
     val leader: Boolean = false,
     /** Which pixel portrait (EmberArt) */
     val face: Int = 0,
+    /** This person's skill: healer, merchant, ranger, bard, mage, smith (old saves: null, the party's skill is in RunSetup.role) */
+    val role: String? = null,
 )
 
 @Serializable
@@ -172,7 +174,18 @@ class EmberEngine(
     // Handy reads
 
     val kids get() = state.setup.kids
-    val role get() = state.setup.role
+
+    /** The skills the party has right now. Each person brings their own; if they go home, their skill goes with them. */
+    val roles: Set<String>
+        get() =
+            if (state.members.all { it.role == null }) {
+                setOf(state.setup.role)
+            } else {
+                active.mapNotNull { it.role }.toSet()
+            }
+
+    fun hasRole(r: String?) = r != null && r in roles
+
     val active get() = state.members.filter { !it.gone }
     val leader get() = state.members.first { it.leader }
     val land get() = story.land(state.route.last())
@@ -256,13 +269,15 @@ class EmberEngine(
         s.items.add("lantern")
         s.items.add("rope")
         s.spells.addAll(listOf("light", "warm", "calm"))
-        when (role) {
-            "merchant" -> s.gold += 40
-            "healer" -> s.herbs += 3
-            "mage" -> s.spells.addAll(listOf("float", "speak"))
-            "smith" -> s.items.add("hammer")
-            "ranger" -> s.items.add("bow")
-            "bard" -> s.items.add("lute")
+        for (role in roles) {
+            when (role) {
+                "merchant" -> s.gold += 40
+                "healer" -> s.herbs += 3
+                "mage" -> s.spells.addAll(listOf("float", "speak"))
+                "smith" -> s.items.add("hammer")
+                "ranger" -> s.items.add("bow")
+                "bard" -> s.items.add("lute")
+            }
         }
         when (s.setup.difficulty) {
             "easy" -> {
@@ -364,11 +379,11 @@ class EmberEngine(
                     }
 
                     "role" -> {
-                        role in strings(value)
+                        strings(value).any { hasRole(it) }
                     }
 
                     "notrole" -> {
-                        role !in strings(value)
+                        strings(value).none { hasRole(it) }
                     }
 
                     "folk" -> {
@@ -750,8 +765,9 @@ class EmberEngine(
             }
         val used = state.members.map { it.name }.toSet()
         val name = names.filter { it !in used }.ifEmpty { names }.let { it[rand(it.size)] }
-        val traits = shuffled(story.traits.map { it.id }).take(2)
-        return Member(name = name, folk = folk, traits = traits, face = rand(8))
+        val traits = shuffled(story.traits.map { it.id }).take(1)
+        val skills = listOf("healer", "merchant", "ranger", "bard", "mage", "smith")
+        return Member(name = name, folk = folk, traits = traits, face = rand(8), role = skills[rand(skills.size)])
     }
 
     private fun checkGone(
@@ -784,7 +800,7 @@ class EmberEngine(
     private fun milesPerDay(): Int {
         var m =
             when (state.pace) {
-                "slow" -> 8
+                "slow", "easy" -> 8
                 "hard" -> 16
                 else -> 12
             }
@@ -794,7 +810,7 @@ class EmberEngine(
         }
         if (state.cart <= 3) m -= 3
         if (state.food == 0) m -= 2
-        if ("ranger" == role) m += 1
+        if (hasRole("ranger")) m += 1
         return max(3, m)
     }
 
@@ -829,8 +845,9 @@ class EmberEngine(
         if (percent(35)) state.weather = pick(seasonWeather())
         // Tired, hungry or cold people get sick
         var sickChance =
-            2 + (if (state.rations == "little") 3 else 0) + (if (state.pace == "hard") 3 else 0) +
-                (if (state.weather in listOf("rain", "snow", "storm")) 2 else 0) - (if (role == "healer") 2 else 0)
+            2 + (if (state.rations == "little") 3 else 0) + (if (state.pace == "hard") 3 else 0) -
+                (if (state.pace == "easy") 1 else 0) +
+                (if (state.weather in listOf("rain", "snow", "storm")) 2 else 0) - (if (hasRole("healer")) 2 else 0)
         if (kids) sickChance /= 2
         for (m in active) {
             if (!m.sick && percent(sickChance)) {
@@ -846,6 +863,8 @@ class EmberEngine(
             state.spirit -= 1
         }
         if (state.rations == "lots" && percent(30)) state.spirit += 1
+        // An easy pace is slower, but it's restful
+        if (state.pace == "easy" && percent(20)) state.spirit += 1
         // The egg
         if (eggHere && !hatched) {
             val cool = (if (land.cold || season == "winter") 1 else 0) + (if (state.weather in listOf("snow", "storm")) 1 else 0)
@@ -1029,7 +1048,7 @@ class EmberEngine(
             val parts = k.split(':', limit = 2)
             p +=
                 when (parts[0]) {
-                    "role" -> if (role == parts.getOrNull(1)) v else 0
+                    "role" -> if (hasRole(parts.getOrNull(1))) v else 0
                     "folk" -> if (active.any { it.folk == parts.getOrNull(1) }) v else 0
                     "item" -> if (parts.getOrNull(1) in state.items) v else 0
                     "trait" -> if (active.any { parts.getOrNull(1) in it.traits }) v else 0
@@ -1050,7 +1069,7 @@ class EmberEngine(
 
     fun backfireChance(): Int {
         var p = 12 + state.wild * 7
-        if (role == "mage") p -= 12
+        if (hasRole("mage")) p -= 12
         if (kids) p -= 8
         return p.coerceIn(3, 80)
     }
@@ -1142,6 +1161,24 @@ class EmberEngine(
         state.shown = Shown(lines.joinToString("\n"), out)
         addJournal("Made camp in ${land.name}.")
         return state.shown!!
+    }
+
+    /**
+     * The campfire story is about the movie Benflix picked for tonight, so the two always match.
+     * [gist] is the first sentence of the movie's summary (may be empty).
+     */
+    fun setCampTale(
+        title: String,
+        gist: String,
+    ) {
+        val shown = state.shown ?: return
+        if (state.phase != Phase.CAMP) return
+        val teller = active.getOrNull(rand(active.size.coerceAtLeast(1)))?.name ?: leader.name
+        val tale = "You make camp. $teller tells the story of $title." + if (gist.isNotBlank()) " $gist" else ""
+        val lines = shown.text.split("\n").toMutableList()
+        val i = lines.indexOfLast { it.startsWith("You make camp.") }
+        if (i >= 0) lines[i] = tale else lines += tale
+        state.shown = shown.copy(text = lines.joinToString("\n"))
     }
 
     val campGenre get() = story.campfire.firstOrNull { state.shown?.text?.contains(fill(it.text)) == true }?.genre ?: "Fantasy"
@@ -1561,7 +1598,7 @@ class EmberEngine(
 
     fun price(item: ItemDef): Int {
         var p = item.price
-        if (role == "merchant") p = (p * 0.75).roundToInt()
+        if (hasRole("merchant")) p = (p * 0.75).roundToInt()
         if ((state.rep["goblin"] ?: 0) >= 2) p -= 1
         return max(1, p)
     }
@@ -1596,7 +1633,7 @@ class EmberEngine(
 
     fun sellValue(id: String): Int {
         val item = story.item(id) ?: return 0
-        return max(1, if (role == "merchant") (item.value * 1.25).roundToInt() else item.value)
+        return max(1, if (hasRole("merchant")) (item.value * 1.25).roundToInt() else item.value)
     }
 
     fun sell(id: String): Shown {
