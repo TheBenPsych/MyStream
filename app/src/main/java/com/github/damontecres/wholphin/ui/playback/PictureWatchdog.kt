@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
@@ -88,6 +89,7 @@ internal const val RENDERED_SHARE = 0.7f
  */
 @OptIn(UnstableApi::class)
 class PictureWatchdog(
+    private val context: Context,
     private val scope: CoroutineScope,
     private val player: () -> ExoPlayer?,
     private val onNotice: (String) -> Unit,
@@ -149,7 +151,7 @@ class PictureWatchdog(
 
         val format = exo.videoFormat
         val decoder = decoderName
-        val slowDecoder = format != null && decoder != null && isSlowDecoderWhileChipCan(decoder, format)
+        val slowDecoder = format != null && decoder != null && isSlowDecoderWhileChipCan(context, decoder, format)
         val fps = format?.frameRate?.takeIf { it != Format.NO_VALUE.toFloat() }
         val problem = decidePictureProblem(slowDecoder, before, after, fps)
         val alreadyRestarted = itemId != null && restartedFor == itemId
@@ -217,6 +219,7 @@ class PictureWatchdog(
          * MediaCodec list, so they are never flagged: those are picked on purpose.
          */
         fun isSlowDecoderWhileChipCan(
+            context: Context,
             decoderName: String,
             format: Format,
         ): Boolean {
@@ -232,7 +235,7 @@ class PictureWatchdog(
             return infos.any {
                 it.hardwareAccelerated &&
                     try {
-                        it.isFormatSupported(format)
+                        it.isFormatSupported(context, format)
                     } catch (ex: Exception) {
                         false
                     }

@@ -268,6 +268,7 @@ class PlaybackViewModel
         /** Benflix: restarts a video once if it starts with a low, jerky frame rate */
         internal val pictureWatchdog by lazy {
             PictureWatchdog(
+                context = context,
                 scope = viewModelScope,
                 player = { if (this::player.isInitialized) player as? ExoPlayer else null },
                 onNotice = { text ->
