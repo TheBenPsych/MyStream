@@ -35,6 +35,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -73,7 +74,8 @@ fun EmberPlay(
     isTv: Boolean,
 ) {
     val e = vm.engine ?: return
-    // Reading the version makes everything below redraw when the game changes
+    // Reading the version makes everything below redraw when the game changes.
+    // The game's state isn't Compose state, so the pieces below are marked NonSkippable: they must redraw with it.
     vm.version
     var menu by remember { mutableStateOf(false) }
     var bag by remember { mutableStateOf(false) }
@@ -274,6 +276,7 @@ private fun sceneFor(e: EmberEngine): Pair<String, SceneOpts> {
 }
 
 @Composable
+@NonSkippableComposable
 private fun Scene(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -302,6 +305,7 @@ private fun Scene(
 }
 
 @Composable
+@NonSkippableComposable
 private fun StatusBar(e: EmberEngine) {
     val st = e.state
     FlowRow(
@@ -330,6 +334,7 @@ private fun StatusBar(e: EmberEngine) {
 }
 
 @Composable
+@NonSkippableComposable
 private fun PartyPanel(
     e: EmberEngine,
     modifier: Modifier,
@@ -356,6 +361,7 @@ private fun PartyPanel(
 }
 
 @Composable
+@NonSkippableComposable
 private fun MemberLine(m: Member) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PixelPortrait(m, size = 32.dp, faded = m.gone)
@@ -388,6 +394,7 @@ private fun MemberLine(m: Member) {
 }
 
 @Composable
+@NonSkippableComposable
 private fun PartyRow(e: EmberEngine) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         e.state.members.forEach { MemberLine(it) }
@@ -401,6 +408,7 @@ private fun PartyRow(e: EmberEngine) {
 
 /** The words and buttons for whatever's happening now */
 @Composable
+@NonSkippableComposable
 private fun PhaseContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -432,7 +440,7 @@ private fun PhaseContent(
             if (vm.joined.isNotEmpty()) {
                 Text("Everyone votes! Most votes win, and a tie goes to the TV.", color = EmberDim, fontSize = 14.sp)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = 900.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = if (isTv) 620.dp else 900.dp)) {
                 vm.actions().forEachIndexed { i, a ->
                     val votes = vm.votesFor(a.id)
                     EmberButton(
@@ -486,6 +494,7 @@ private fun PhaseContent(
 }
 
 @Composable
+@NonSkippableComposable
 private fun ActionRow(
     vm: EmberViewModel,
     first: FocusRequester,
@@ -517,6 +526,7 @@ private fun ActionRow(
 // Stops: the text adventure part
 
 @Composable
+@NonSkippableComposable
 private fun StopContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -623,6 +633,7 @@ private fun StopContent(
 
 /** Type a command: "look under the bridge", "use rope on well", "say the secret word" */
 @Composable
+@NonSkippableComposable
 fun TypeBox(
     isTv: Boolean,
     autoFocus: Boolean,
@@ -690,6 +701,7 @@ fun TypeBox(
 }
 
 @Composable
+@NonSkippableComposable
 private fun MarketContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -729,6 +741,7 @@ private fun MarketContent(
 }
 
 @Composable
+@NonSkippableComposable
 private fun ForkContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -781,6 +794,7 @@ private fun ForkContent(
 }
 
 @Composable
+@NonSkippableComposable
 private fun CampContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -823,6 +837,7 @@ private fun CampContent(
 // The end: a postcard of the journey
 
 @Composable
+@NonSkippableComposable
 private fun RecapContent(
     vm: EmberViewModel,
     e: EmberEngine,
@@ -894,6 +909,7 @@ private fun RecapContent(
 // Menu and bag
 
 @Composable
+@NonSkippableComposable
 private fun MenuPanel(
     vm: EmberViewModel,
     isTv: Boolean,
@@ -949,6 +965,7 @@ private fun MenuPanel(
 }
 
 @Composable
+@NonSkippableComposable
 private fun BagPanel(
     vm: EmberViewModel,
     e: EmberEngine,
