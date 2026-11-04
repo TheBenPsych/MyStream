@@ -51,7 +51,6 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
-import com.github.damontecres.wholphin.ui.components.GenreText
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.OverviewText
@@ -60,12 +59,9 @@ import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
-import com.github.damontecres.wholphin.ui.formatDuration
-import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
-import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -74,7 +70,7 @@ import com.github.damontecres.wholphin.util.successValue
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import kotlin.time.Duration.Companion.minutes
+import kotlin.math.roundToInt
 
 @Composable
 fun DiscoverSeriesDetails(
@@ -471,36 +467,33 @@ fun DiscoverSeriesDetailsHeader(
                 ),
         ) {
             val resources = LocalResources.current
+            // Benflix (Ben's pick "A · Fact cards"): one short line, then the scores and facts boxes
             val details =
-                remember(series, rating, resources) {
+                remember(series, resources) {
                     buildList {
-                        series.firstAirDate?.let(::add)
-                        series.episodeRunTime
-                            ?.average()
-                            ?.takeIf { !it.isNaN() && it > 0 }
-                            ?.minutes
-                            ?.roundMinutes
-                            ?.let { add(resources.formatDuration(it)) }
-                        // TODO
-                    }.let {
-                        listToDotString(
-                            it,
-                            rating?.audienceRating,
-                            rating?.criticRating?.toFloat(),
-                        )
-                    }
+                        series.firstAirDate
+                            ?.take(4)
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let(::add)
+                        series.seasons
+                            ?.count { (it.seasonNumber ?: 0) > 0 }
+                            ?.takeIf { it > 0 }
+                            ?.let { add(if (it == 1) "1 season" else "$it seasons") }
+                        series.genres
+                            ?.mapNotNull { it.name }
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { add(it.joinToString(", ")) }
+                    }.let { listToDotString(it, null, null) }
                 }
 
-            QuickDetailsText(details, Modifier.padding(start = HeaderUtils.startPadding))
-            series.genres?.mapNotNull { it.name }?.letNotEmpty {
-                GenreText(it, Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp))
-            }
-            // Benflix: age rating, scores, country and tags (grown-up tags in red)
+            QuickDetailsText(details, Modifier.padding(start = HeaderUtils.startPadding, bottom = 6.dp))
             series.id?.let { tmdbId ->
                 SeerrExtrasBlock(
                     isMovie = false,
                     tmdbId = tmdbId,
-                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
+                    fallbackCritic = rating?.criticRating,
+                    fallbackAudience = rating?.audienceRating?.let { (it * 10).roundToInt() },
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 6.dp),
                 )
                 // Benflix (admins): who already asked for this, with Approve / Decline
                 val onBenflix = series.mediaInfo?.status == com.github.damontecres.wholphin.data.model.SeerrAvailability.AVAILABLE.status
@@ -525,6 +518,14 @@ fun DiscoverSeriesDetailsHeader(
                     maxLines = 3,
                     onClick = overviewOnClick,
                     textBoxHeight = Dp.Unspecified,
+                )
+            }
+            // Benflix: 4 tags, and "+N more" for the rest
+            series.id?.let { tmdbId ->
+                SeerrTagsBlock(
+                    isMovie = false,
+                    tmdbId = tmdbId,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 6.dp),
                 )
             }
         }

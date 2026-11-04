@@ -5,22 +5,38 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -55,6 +71,12 @@ data class SeerrExtras(
     val tags: List<String> = emptyList(),
     // Benflix: porn, hentai, softcore or erotica (see isAdultContent)
     val adult: Boolean = false,
+    // Benflix: the language it was made in ("Japanese"), and whether that needs subtitles here
+    val language: String? = null,
+    val needsSubtitles: Boolean = false,
+    // Benflix: "Director" (movies) or "Created by" (shows), and their names
+    val makerLabel: String? = null,
+    val maker: String? = null,
 )
 
 @HiltViewModel
@@ -88,6 +110,10 @@ class SeerrExtrasViewModel
                             countries = details?.let(::countries).orEmpty(),
                             tags = details?.let(::tags).orEmpty(),
                             adult = adult,
+                            language = details?.let(::originalLanguage),
+                            needsSubtitles = details?.let(::needsSubtitles) == true,
+                            makerLabel = if (isMovie) "Director" else "Created by",
+                            maker = details?.let { if (isMovie) directors(it) else creators(it) },
                         )
                     _extras.value = extras
                     // Scores come from a second, slower lookup
@@ -194,6 +220,52 @@ internal fun countries(details: JsonObject): List<String> {
         .orEmpty()
 }
 
+private fun originalLanguageCode(details: JsonObject): String? =
+    (details["originalLanguage"].str() ?: details["original_language"].str())
+        ?.lowercase()
+        ?.takeIf { it.isNotBlank() && it != "xx" }
+
+/** Benflix: the language a title was made in, in words ("Japanese"). TMDB writes Cantonese as "cn". */
+internal fun originalLanguage(details: JsonObject): String? {
+    val code = originalLanguageCode(details) ?: return null
+    if (code == "cn") return "Cantonese"
+    val spoken =
+        (details["spokenLanguages"] as? JsonArray ?: details["spoken_languages"] as? JsonArray)
+            ?.mapNotNull { it as? JsonObject }
+            ?.firstOrNull { (it["iso_639_1"].str() ?: it["iso6391"].str()) == code }
+            ?.let { it["englishName"].str() ?: it["english_name"].str() }
+    val name = Locale(code).getDisplayLanguage(Locale.getDefault())
+    return when {
+        name.isNotBlank() && !name.equals(code, ignoreCase = true) -> name.replaceFirstChar { it.titlecase() }
+        !spoken.isNullOrBlank() -> spoken
+        else -> code.uppercase()
+    }
+}
+
+/** Benflix: made in a different language from the one this device uses */
+internal fun needsSubtitles(details: JsonObject): Boolean {
+    val code = originalLanguageCode(details) ?: return false
+    return code != Locale.getDefault().language.lowercase()
+}
+
+private fun directors(details: JsonObject): String? =
+    ((details["credits"] as? JsonObject)?.get("crew") as? JsonArray)
+        ?.mapNotNull { it as? JsonObject }
+        ?.filter { it["job"].str() == "Director" }
+        ?.mapNotNull { it["name"].str()?.takeIf(String::isNotBlank) }
+        ?.distinct()
+        ?.take(2)
+        ?.joinToString(", ")
+        ?.takeIf { it.isNotBlank() }
+
+private fun creators(details: JsonObject): String? =
+    (details["createdBy"] as? JsonArray ?: details["created_by"] as? JsonArray)
+        ?.mapNotNull { (it as? JsonObject)?.get("name").str()?.takeIf(String::isNotBlank) }
+        ?.distinct()
+        ?.take(2)
+        ?.joinToString(", ")
+        ?.takeIf { it.isNotBlank() }
+
 internal fun tags(details: JsonObject): List<String> =
     (details["keywords"] as? JsonArray)
         ?.mapNotNull { (it as? JsonObject)?.get("name").str() }
@@ -266,44 +338,176 @@ fun isGrownUpTag(tag: String): Boolean {
     return GROWN_UP_WORDS.any { lower.contains(it) }
 }
 
+/**
+ * Benflix: the facts boxes on a request details page (Ben's pick "A · Fact cards"): one box with the scores,
+ * one with Spoken in, Made in, Age rating and Director / Created by. Side by side on TV, stacked on phones.
+ * [fallbackCritic] and [fallbackAudience] fill in when the slower score lookup has nothing.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SeerrExtrasBlock(
     isMovie: Boolean,
     tmdbId: Int,
     modifier: Modifier = Modifier,
+    fallbackCritic: Int? = null,
+    fallbackAudience: Int? = null,
     viewModel: SeerrExtrasViewModel = hiltViewModel(key = "seerr-extras-$isMovie-$tmdbId"),
 ) {
     LaunchedEffect(isMovie, tmdbId) { viewModel.load(isMovie, tmdbId) }
     val extras by viewModel.extras.collectAsState()
     val e = extras ?: return
+    val isTv = rememberIsTv()
+    val scores =
+        buildList {
+            e.imdb?.let { add(Score("%.1f".format(it), "IMDb", IMDB_GOLD)) }
+            (e.rtCritics ?: fallbackCritic)?.let {
+                add(Score("$it%", "Critics", if (it >= 60) FRESH_RED else ROTTEN_GREEN))
+            }
+            (e.rtAudience ?: fallbackAudience)?.let { add(Score("$it%", "Audience", Color.White)) }
+        }
+    val facts =
+        buildList {
+            e.language?.let { add(Fact("Spoken in", it, if (e.needsSubtitles) "Needs subtitles" else null)) }
+            if (e.countries.isNotEmpty()) add(Fact("Made in", e.countries.joinToString(", "), null))
+            e.ageRating?.let { add(Fact("Age rating", it, null)) }
+            if (e.makerLabel != null && e.maker != null) add(Fact(e.makerLabel, e.maker, null))
+        }
+    val grownUp = e.adult || e.tags.any(::isGrownUpTag)
+    if (scores.isEmpty() && facts.isEmpty() && !grownUp) return
     Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier,
     ) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            e.ageRating?.let { Pill(it, border = true) }
-            e.imdb?.let { Pill("IMDb ${"%.1f".format(it)}", background = Color(0xFFF5C518), textColor = Color.Black) }
-            e.rtCritics?.let { Pill("🍅 Critics $it%", background = if (it >= 60) Color(0xFFFA320A) else Color(0xFF3B7A2A)) }
-            e.rtAudience?.let { Pill("🍿 Audience $it%") }
-            if (e.countries.isNotEmpty()) Pill("From " + e.countries.joinToString(", "))
-        }
-        if (e.tags.isNotEmpty()) {
-            val grownUp = e.tags.filter(::isGrownUpTag)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+        if (grownUp) Pill("⚠ Adult content", background = Color(0xFFB3261E))
+        if (isTv) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             ) {
-                if (grownUp.isNotEmpty()) Pill("⚠ Adult content", background = Color(0xFFB3261E))
-                e.tags.forEach { tag ->
-                    if (isGrownUpTag(tag)) {
-                        Pill(tag, background = Color(0xFFB3261E), small = true)
-                    } else {
-                        Pill(tag, small = true)
-                    }
+                if (scores.isNotEmpty()) ScoresCard(scores, big = true, modifier = Modifier.fillMaxHeight())
+                if (facts.isNotEmpty()) FactsCard(facts, big = true, modifier = Modifier.weight(1f).fillMaxHeight())
+            }
+        } else {
+            if (scores.isNotEmpty()) ScoresCard(scores, big = false, modifier = Modifier.fillMaxWidth())
+            if (facts.isNotEmpty()) FactsCard(facts, big = false, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * Benflix: the title's tags under the description, grown-up ones first and in red. Shows 4, and a
+ * "+N more" button opens the rest.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SeerrTagsBlock(
+    isMovie: Boolean,
+    tmdbId: Int,
+    modifier: Modifier = Modifier,
+    onFocused: () -> Unit = {},
+    viewModel: SeerrExtrasViewModel = hiltViewModel(key = "seerr-extras-$isMovie-$tmdbId"),
+) {
+    LaunchedEffect(isMovie, tmdbId) { viewModel.load(isMovie, tmdbId) }
+    val extras by viewModel.extras.collectAsState()
+    val tags = extras?.tags.orEmpty()
+    if (tags.isEmpty()) return
+    var expanded by rememberSaveable(isMovie, tmdbId) { mutableStateOf(false) }
+    val sorted = remember(tags) { tags.filter(::isGrownUpTag) + tags.filterNot(::isGrownUpTag) }
+    val shown = if (expanded) sorted else sorted.take(COLLAPSED_TAGS)
+    val hiddenCount = sorted.size - shown.size
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier = modifier,
+    ) {
+        FactLabel("About", Modifier.padding(end = 4.dp))
+        shown.forEach { tag ->
+            TagPill(
+                text = tag.replaceFirstChar { it.titlecase() },
+                grownUp = isGrownUpTag(tag),
+            )
+        }
+        if (sorted.size > COLLAPSED_TAGS) {
+            Surface(
+                onClick = { expanded = !expanded },
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        contentColor = LABEL_GREY,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black,
+                    ),
+                modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
+            ) {
+                Text(
+                    text = if (expanded) "Show less" else "+$hiddenCount more",
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                )
+            }
+        }
+    }
+}
+
+private const val COLLAPSED_TAGS = 4
+private val IMDB_GOLD = Color(0xFFF5C518)
+private val FRESH_RED = Color(0xFFFF7A59)
+private val ROTTEN_GREEN = Color(0xFF7BC86C)
+private val LABEL_GREY = Color(0xFFAEB3BD)
+private val CARD_BACKGROUND = Color.White.copy(alpha = .07f)
+
+private data class Score(
+    val value: String,
+    val label: String,
+    val color: Color,
+)
+
+private data class Fact(
+    val label: String,
+    val value: String,
+    val note: String?,
+)
+
+@Composable
+private fun FactLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text.uppercase(),
+        color = LABEL_GREY,
+        fontSize = 12.sp,
+        letterSpacing = 1.5.sp,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun ScoresCard(
+    scores: List<Score>,
+    big: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        FactLabel("Scores")
+        Row(horizontalArrangement = Arrangement.spacedBy(if (big) 24.dp else 0.dp, Alignment.Start)) {
+            scores.forEach { score ->
+                Column(modifier = if (big) Modifier else Modifier.weight(1f)) {
+                    Text(
+                        text = score.value,
+                        color = score.color,
+                        fontSize = if (big) 28.sp else 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = 13.sp)
                 }
             }
         }
@@ -311,21 +515,70 @@ fun SeerrExtrasBlock(
 }
 
 @Composable
+private fun FactsCard(
+    facts: List<Fact>,
+    big: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier =
+            modifier
+                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        facts.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                pair.forEach { fact ->
+                    Column(modifier = Modifier.weight(1f)) {
+                        FactLabel(fact.label)
+                        Text(
+                            text = fact.value,
+                            color = Color.White,
+                            fontSize = if (big) 18.sp else 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = 12.sp) }
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagPill(
+    text: String,
+    grownUp: Boolean,
+) {
+    Text(
+        text = text,
+        color = Color.White,
+        fontSize = 14.sp,
+        modifier =
+            Modifier
+                .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 5.dp),
+    )
+}
+
+@Composable
 private fun Pill(
     text: String,
     background: Color = Color(0x33FFFFFF),
     textColor: Color = Color.White,
-    border: Boolean = false,
-    small: Boolean = false,
 ) {
     Text(
         text = text,
         color = textColor,
-        fontSize = if (small) 12.sp else 14.sp,
-        fontWeight = if (small) FontWeight.Normal else FontWeight.Bold,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
         modifier =
             Modifier
-                .background(if (border) Color(0x55FFFFFF) else background, RoundedCornerShape(6.dp))
+                .background(background, RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }

@@ -10,34 +10,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.api.seerr.model.MovieDetails
 import com.github.damontecres.wholphin.data.model.DiscoverRating
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.jellyfinId
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.components.GenreText
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.QuickDetailsText
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
-import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.ImageType
-import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.minutes
 
 @Composable
@@ -57,7 +49,6 @@ fun DiscoverMovieDetailsHeader(
                 imageUrlService.getItemImageUrl(it, ImageType.LOGO)
             }
         }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -82,51 +73,34 @@ fun DiscoverMovieDetailsHeader(
                 ),
         ) {
             val resources = LocalResources.current
+            // Benflix (Ben's pick "A · Fact cards"): one short line, then the scores and facts boxes
             val details =
-                remember(movie, rating, resources) {
+                remember(movie, resources) {
                     buildList {
-                        movie.releaseDate?.let(::add)
+                        movie.releaseDate
+                            ?.take(4)
+                            ?.takeIf { it.isNotNullOrBlank() }
+                            ?.let(::add)
                         movie.runtime
                             ?.toDouble()
                             ?.minutes
                             ?.roundMinutes
                             ?.let { add(resources.formatDuration(it)) }
-                        val release =
-                            movie.releases
-                                ?.results
-                                ?.firstOrNull { it.iso31661 == Locale.getDefault().country }
-                                ?: movie.releases
-                                    ?.results
-                                    ?.firstOrNull { it.iso31661 == Locale.US.country }
-                                ?: movie.releases
-                                    ?.results
-                                    ?.firstOrNull()
-
-                        release
-                            ?.releaseDates
-                            ?.firstOrNull()
-                            ?.certification
-                            ?.takeIf { it.isNotNullOrBlank() }
-                            ?.let(::add)
-                    }.let {
-                        listToDotString(
-                            it,
-                            rating?.audienceRating,
-                            rating?.criticRating?.toFloat(),
-                        )
-                    }
+                        movie.genres
+                            ?.mapNotNull { it.name }
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { add(it.joinToString(", ")) }
+                    }.let { listToDotString(it, null, null) }
                 }
 
-            QuickDetailsText(details, Modifier.padding(start = HeaderUtils.startPadding))
-            movie.genres?.mapNotNull { it.name }?.letNotEmpty {
-                GenreText(it, Modifier.padding(start = HeaderUtils.startPadding))
-            }
-            // Benflix: age rating, scores, country and tags (grown-up tags in red)
+            QuickDetailsText(details, Modifier.padding(start = HeaderUtils.startPadding, bottom = 6.dp))
             movie.id?.let { tmdbId ->
                 SeerrExtrasBlock(
                     isMovie = true,
                     tmdbId = tmdbId,
-                    modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 2.dp, bottom = 4.dp),
+                    fallbackCritic = rating?.criticRating,
+                    fallbackAudience = rating?.audienceRating?.let { (it * 10).roundToInt() },
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 6.dp),
                 )
                 // Benflix (admins): who already asked for this, with Approve / Decline
                 val onBenflix = movie.mediaInfo?.status == com.github.damontecres.wholphin.data.model.SeerrAvailability.AVAILABLE.status
@@ -143,16 +117,6 @@ fun DiscoverMovieDetailsHeader(
                     tmdbId = tmdbId,
                     available = onBenflix,
                     modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
-                )
-            }
-
-            val tagline = remember { movie.tagline?.takeIf { it.isNotNullOrBlank() } }
-            tagline?.let {
-                Text(
-                    text = tagline,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontStyle = FontStyle.Italic,
-                    modifier = Modifier.padding(start = HeaderUtils.startPadding),
                 )
             }
 
@@ -174,24 +138,19 @@ fun DiscoverMovieDetailsHeader(
                 )
             }
 
-            val directorName =
-                remember(movie.credits?.crew) {
-                    movie.credits
-                        ?.crew
-                        ?.filter { it.job == "Director" && it.name.isNotNullOrBlank() }
-                        ?.joinToString(", ") { it.name!! }
-                        ?.takeIf { it.isNotNullOrBlank() }
-                }
-
-            directorName
-                ?.let {
-                    Text(
-                        text = stringResource(R.string.directed_by, it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = HeaderUtils.startPadding),
-                    )
-                }
+            // Benflix: 4 tags, and "+N more" for the rest
+            movie.id?.let { tmdbId ->
+                SeerrTagsBlock(
+                    isMovie = true,
+                    tmdbId = tmdbId,
+                    onFocused = {
+                        scope.launch(ExceptionHandler()) {
+                            bringIntoViewRequester.bringIntoView()
+                        }
+                    },
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, top = 6.dp),
+                )
+            }
         }
     }
 }
