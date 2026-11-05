@@ -188,6 +188,7 @@ fun SwitchUserContent(
                     ) {
                         // Everything around the tiles, so the tiles (and the names under them) always fit
                         val greetingSize = if (shortScreen) 34 else 52
+
                         fun tileFor(headerDp: Float) = (maxHeight.value - (32 + headerDp + 24 + 24 + 10 + 30 * fontScale + 24 + 56)) / 1.1f
                         val everydayHeaderDp = (if (shortScreen) 44f else 44f + 8 + 28) * fontScale
                         val everydayTile = tileFor(everydayHeaderDp).coerceIn(MIN_TILE_DP, Cards.serverUserCircle.value)
