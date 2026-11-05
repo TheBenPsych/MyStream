@@ -587,6 +587,14 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.MalTracking -> {
+                                        com.github.damontecres.wholphin.ui.main.MalSetting(
+                                            title = stringResource(pref.title),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
                                     AppPreference.ParentalMore -> {
                                         var showParental by remember { mutableStateOf(false) }
                                         ClickPreference(

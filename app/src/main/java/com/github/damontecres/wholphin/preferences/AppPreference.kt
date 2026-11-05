@@ -1054,6 +1054,11 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_anilist_tracking,
             )
 
+        val MalTracking =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_mal_tracking,
+            )
+
         /** Benflix: Big kids tile, Guest tile and what Kids watched this week */
         val ParentalMore =
             AppClickablePreference<AppPreferences>(
@@ -1363,6 +1368,7 @@ val basicPreferences =
                     AppPreference.BirthdayPreference,
                     AppPreference.HiddenGenresPref,
                     AppPreference.AniListTracking,
+                    AppPreference.MalTracking,
                     AppPreference.UserInterfaceLanguage,
                     AppPreference.ResumeTimer,
                     AppPreference.SignInAuto,

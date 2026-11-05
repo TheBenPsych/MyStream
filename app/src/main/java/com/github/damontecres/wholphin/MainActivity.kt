@@ -110,6 +110,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var aniListSync: com.github.damontecres.wholphin.services.AniListSync
 
+    @Inject
+    lateinit var malSync: com.github.damontecres.wholphin.services.MalSync
+
     /** Benflix: counts real watch time for the monthly and yearly stats */
     @Inject
     lateinit var watchTime: com.github.damontecres.wholphin.services.BenflixWatchTime
@@ -263,6 +266,7 @@ class MainActivity : AppCompatActivity() {
         val checkResume = savedInstanceState?.getBoolean(KEY_IN_APP, false) == true
         if (savedInstanceState == null) ResumeTimer.clear(this)
         if (aniListSync.isSignInReturn(intent)) aniListSync.finishSignIn(intent)
+        if (malSync.isSignInReturn(intent)) malSync.finishSignIn(intent)
         viewModel.appStart(intent, resume = if (checkResume) null else false)
         setContent {
             PhoneFit {
@@ -512,6 +516,11 @@ class MainActivity : AppCompatActivity() {
         // Benflix: back from signing in to AniList; stay on the page that was open
         if (aniListSync.isSignInReturn(intent)) {
             aniListSync.finishSignIn(intent)
+            return
+        }
+        // Benflix: back from signing in to MyAnimeList
+        if (malSync.isSignInReturn(intent)) {
+            malSync.finishSignIn(intent)
             return
         }
         setIntent(intent)
