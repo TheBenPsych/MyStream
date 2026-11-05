@@ -30,6 +30,7 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
     val context = LocalContext.current
     var tvs by remember { mutableStateOf<List<FoundEmberTv>>(emptyList()) }
     var view by remember { mutableStateOf<PhoneView?>(null) }
+    var bagOpen by remember { mutableStateOf(false) }
     val client =
         remember {
             EmberLinkClient(
@@ -83,19 +84,12 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
             )
         }
         if (v.typing) TypeBox(isTv = false, autoFocus = false) { client.type(it) }
-        if (v.vote &&
-            v.actions.isNotEmpty()
-        ) {
+        if (v.hint.isNotBlank()) {
             Text(
-                if (v.mine ==
-                    null
-                ) {
-                    "Vote!"
-                } else {
-                    "Vote counted. You can change it."
-                },
-                color = EmberDim,
+                v.hint,
+                color = if (v.vote) EmberGold else EmberDim,
                 fontSize = 14.sp,
+                fontWeight = if (v.vote) FontWeight.Bold else FontWeight.Normal,
             )
         }
         v.actions.forEach { a ->
@@ -103,8 +97,29 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
                 (if (v.mine == a.id) "● " else "") + a.label,
                 onClick = { client.press(a.id) },
                 big = a.id.startsWith("mg:"),
+                sub = a.hint.ifBlank { null },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        // The TV has a Bag & journal button, so the phone has one too (it only shows things, it changes nothing)
+        if (v.bag.isNotBlank()) {
+            EmberButton(
+                if (bagOpen) "Hide bag & journal" else "Bag & journal",
+                onClick = { bagOpen = !bagOpen },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (bagOpen) {
+                Text(
+                    v.bag,
+                    color = EmberText,
+                    fontSize = 14.sp,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(EmberPanel, RoundedCornerShape(6.dp))
+                            .padding(10.dp),
+                )
+            }
         }
         EmberButton("Leave the TV's game", onClick = {
             client.leave()

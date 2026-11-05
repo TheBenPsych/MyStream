@@ -148,7 +148,11 @@ fun EmberPlay(
 
     Box(Modifier.fillMaxSize()) {
         if (isTv) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Extra room at the bottom: many TVs crop the edge of the picture (overscan), which cut off the last buttons
+            Column(
+                Modifier.fillMaxSize().padding(start = 32.dp, end = 32.dp, top = 16.dp, bottom = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Row(Modifier.height(tvPictureHeight(0.44f)), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Scene(vm, e, Modifier.fillMaxHeight())
                     PartyPanel(e, Modifier.weight(1f).fillMaxHeight())
@@ -346,7 +350,9 @@ private fun PartyPanel(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text("The party", color = EmberGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        e.state.members.forEach { m -> MemberLine(m) }
+        Text("★ leads · ties in votes go to the TV", color = EmberDim, fontSize = 11.sp)
+        val names = e.story.traits.associate { it.id to it.name }
+        e.state.members.forEach { m -> MemberLine(m, names) }
         e.pet?.let { p ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PixelPortrait(null, petId = p.id, size = 32.dp, faded = e.state.petGone)
@@ -362,7 +368,10 @@ private fun PartyPanel(
 
 @Composable
 @NonSkippableComposable
-private fun MemberLine(m: Member) {
+private fun MemberLine(
+    m: Member,
+    traitNames: Map<String, String> = emptyMap(),
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PixelPortrait(m, size = 32.dp, faded = m.gone)
         Column {
@@ -373,6 +382,12 @@ private fun MemberLine(m: Member) {
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
+            val about =
+                listOfNotNull(
+                    m.role?.let { EmberSkills[it]?.first },
+                    m.traits.firstOrNull()?.let { t -> traitNames[t] },
+                ).joinToString(" · ")
+            if (about.isNotEmpty()) Text(about, color = EmberDim, fontSize = 12.sp, maxLines = 1)
             Text(
                 when {
                     m.gone -> "went home"
@@ -397,7 +412,8 @@ private fun MemberLine(m: Member) {
 @NonSkippableComposable
 private fun PartyRow(e: EmberEngine) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        e.state.members.forEach { MemberLine(it) }
+        val names = e.story.traits.associate { it.id to it.name }
+        e.state.members.forEach { MemberLine(it, names) }
         e.pet?.let { p ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PixelPortrait(null, petId = p.id, size = 32.dp, faded = e.state.petGone)
@@ -421,6 +437,14 @@ private fun PhaseContent(
         Phase.TRAVEL -> {
             val text = vm.log?.text?.takeIf { it.isNotBlank() } ?: e.land.blurb
             TypeText(text)
+            if (st.day <= 2 && e.legIndex == 0) {
+                Text(
+                    "New here? Keep going travels one day. Make camp rests everyone and warms the egg. " +
+                        "Watch Food and the egg's warmth at the top. Bag & journal shows your things and spells.",
+                    color = EmberGold.copy(alpha = 0.85f),
+                    fontSize = 14.sp,
+                )
+            }
             vm.log?.let { ChangeChips(it.changes) }
             val here = vm.family.filter { it.land == st.route.last() }
             if (here.isNotEmpty()) {
@@ -437,8 +461,20 @@ private fun PhaseContent(
             val ev = e.currentEvent ?: return
             Text(ev.title, color = EmberGold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             TypeText(e.eventText(ev))
+            if (e.choices(ev).any { (_, c) -> c.roll != null }) {
+                Text(
+                    "A % is the chance it works. It's a dice roll, and your skills and traits can raise it.",
+                    color = EmberDim,
+                    fontSize = 13.sp,
+                )
+            }
             if (vm.joined.isNotEmpty()) {
-                Text("Everyone votes! Most votes win, and a tie goes to the TV.", color = EmberDim, fontSize = 14.sp)
+                Text(
+                    "This is a vote: each phone and the TV picks one. When everyone has voted, the most votes win " +
+                        "(a tie goes to the TV). Pick on the TV too, or press Decide now to stop waiting.",
+                    color = EmberGold,
+                    fontSize = 14.sp,
+                )
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = if (isTv) 620.dp else 900.dp)) {
                 vm.actions().forEachIndexed { i, a ->
@@ -505,6 +541,7 @@ private fun ActionRow(
         vm.actions().forEachIndexed { i, a ->
             EmberButton(
                 a.label,
+                sub = a.hint.ifBlank { null },
                 onClick = { vm.doAction(a.id) },
                 focusRequester =
                     if (i ==
@@ -554,6 +591,7 @@ private fun StopContent(
     val things = e.visibleThings(s)
     when {
         verb == null -> {
+            Text("Pick what to do, then what to do it to. Leave when you're ready to go on.", color = EmberDim, fontSize = 13.sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Verb.entries.forEachIndexed { i, v ->
                     EmberButton(v.label, onClick = {
@@ -803,33 +841,54 @@ private fun CampContent(
     onBag: () -> Unit,
 ) {
     val shown = e.state.shown
-    TypeText(shown?.text.orEmpty())
-    shown?.let { ChangeChips(it.changes) }
-    vm.campMovie?.let { m ->
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier =
-                Modifier
-                    .background(Color(0xFF2A1C18), RoundedCornerShape(8.dp))
-                    .padding(10.dp),
-        ) {
-            AsyncImage(
-                model = m.poster,
-                contentDescription = m.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.width(if (isTv) 70.dp else 60.dp).aspectRatio(2f / 3f),
+    // The story and its buttons come first; on a TV the movie sits beside them, so nothing is pushed off the screen
+    val story: @Composable () -> Unit = {
+        TypeText(shown?.text.orEmpty())
+        shown?.let { ChangeChips(it.changes) }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            EmberButton(
+                "Pack up and go on",
+                sub = "Back on the road",
+                onClick = vm::leaveCamp,
+                big = true,
+                focusRequester = first,
+                tint = Color(0xFF5A2A1E),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f, fill = false)) {
-                Text("Tonight's campfire movie pick", color = EmberDim, fontSize = 13.sp)
-                Text(m.name + (m.year?.let { " ($it)" } ?: ""), color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                EmberButton(if (m.added) "On My List ✓" else "Add to My List", onClick = vm::addCampMovie, enabled = !m.added)
+            EmberButton("Bag & journal", onClick = onBag)
+        }
+    }
+    val movie: @Composable () -> Unit = {
+        vm.campMovie?.let { m ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier =
+                    Modifier
+                        .background(Color(0xFF2A1C18), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+            ) {
+                AsyncImage(
+                    model = m.poster,
+                    contentDescription = m.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.width(if (isTv) 70.dp else 60.dp).aspectRatio(2f / 3f),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f, fill = false)) {
+                    Text("Tonight's campfire story is a real movie:", color = EmberDim, fontSize = 13.sp)
+                    Text(m.name + (m.year?.let { " ($it)" } ?: ""), color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    EmberButton(if (m.added) "On My List ✓" else "Add to My List", onClick = vm::addCampMovie, enabled = !m.added)
+                }
             }
         }
     }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EmberButton("Pack up and go on", onClick = vm::leaveCamp, big = true, focusRequester = first, tint = Color(0xFF5A2A1E))
-        EmberButton("Bag & journal", onClick = onBag)
+    if (isTv) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) { story() }
+            Box(Modifier.widthIn(max = 380.dp)) { movie() }
+        }
+    } else {
+        story()
+        movie()
     }
 }
 

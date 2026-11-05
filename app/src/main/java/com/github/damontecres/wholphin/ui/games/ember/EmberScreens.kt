@@ -274,8 +274,9 @@ private fun LobbyScreen(vm: EmberViewModel) {
     EmberPage("Playing on the couch?", isTv = true) {
         Text(
             "Everyone can join from their phone: open Benflix on the phone, go to Games, pick Ember Road and then " +
-                "\"Join the TV's game\". Phones vote on choices, type commands and play the mini-games. " +
-                "Phones can join later too.",
+                "\"Join the TV's game\". When something happens on the road, every phone and the TV votes (a tie goes to the TV). " +
+                "Other buttons, like Keep going or Make camp, work straight away for whoever presses first. " +
+                "Phones can also type commands and play the mini-games, and they can join later too.",
             color = EmberText,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
@@ -307,16 +308,6 @@ private fun LobbyScreen(vm: EmberViewModel) {
 // -----------------------------------------------------------------------------------------------
 // Setting up a journey
 
-private val roleInfo =
-    linkedMapOf(
-        "healer" to ("Healer" to "Starts with extra herbs. Fevers are rarer."),
-        "merchant" to ("Merchant" to "Starts with more gold. Better prices at markets."),
-        "ranger" to ("Ranger" to "Starts with a bow. Good at hunting and tracking."),
-        "bard" to ("Bard" to "Starts with a lute. Great at talking your way out."),
-        "mage" to ("Mage" to "Knows two more spells. Magic backfires less."),
-        "smith" to ("Smith" to "Starts with a hammer. Fixes the cart and opens things."),
-    )
-
 private val folkName = mapOf("human" to "Human", "elf" to "Elf", "dwarf" to "Dwarf", "fox" to "Fox folk")
 
 @Composable
@@ -329,14 +320,16 @@ private fun SetupScreen(
     val first = remember(step) { FocusRequester() }
     LaunchedEffect(step) { first.tryRequestFocus() }
     BackHandler(enabled = step > 0) { step-- }
-    val titles = listOf("Who's coming?", "Your party's skill", "A pet for the road", "The journey")
+    val titles = listOf("Who's coming?", "Skills and traits", "A pet for the road", "The journey")
     EmberPage(titles[step], isTv) {
         Text("Step ${step + 1} of 4", color = EmberDim, fontSize = 14.sp)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth()) {
             when (step) {
                 0 -> {
                     Text(
-                        "Your family is the party. Change any name, pick their folk, or roll someone new. The first person leads.",
+                        "Your family is the party (up to 4 people). Select a name to type a new one. Press the folk button " +
+                            "(Human, Elf, Dwarf, Fox folk) to change it. Roll gives a new look, skill and trait but keeps the name. " +
+                            "The first person leads the party.",
                         color = EmberText,
                         fontSize = 16.sp,
                     )
@@ -354,7 +347,11 @@ private fun SetupScreen(
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 NameField(d.name, isTv) { vm.renameMember(i, it) }
                                 Text(
-                                    (if (i == 0) "Leader · " else "") + d.traits.mapNotNull { t -> s.trait(t)?.name }.joinToString(", "),
+                                    (if (i == 0) "★ Leader · " else "") +
+                                        listOfNotNull(
+                                            EmberSkills[d.role]?.first,
+                                            d.traits.firstOrNull()?.let { t -> s.trait(t)?.name },
+                                        ).joinToString(" · "),
                                     color = EmberDim,
                                     fontSize = 13.sp,
                                 )
@@ -389,30 +386,56 @@ private fun SetupScreen(
                 }
 
                 1 -> {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        roleInfo.entries.forEachIndexed { i, (id, info) ->
-                            val locked = vm.roleLocked(id)
+                    Text(
+                        "Everyone brings one skill and one trait. Press a button to change it. Skills help the whole party " +
+                            "(two of the same don't add up, so mix them). If someone goes home, their skill goes with them. " +
+                            "Traits change what happens on the road, and some open up special choices. " +
+                            (if (vm.roleLocked("mage") || vm.roleLocked("smith")) "Finish journeys to unlock Mage and Smith." else ""),
+                        color = EmberText,
+                        fontSize = 16.sp,
+                    )
+                    vm.draft.forEachIndexed { i, d ->
+                        val skill = EmberSkills[d.role]
+                        val trait = d.traits.firstOrNull()?.let { s.trait(it) }
+                        val buttons: @Composable (Modifier) -> Unit = { mod ->
                             EmberButton(
-                                (if (vm.draftRole == id) "● " else "") + info.first,
-                                sub =
-                                    if (locked) {
-                                        (
-                                            if (id ==
-                                                "mage"
-                                            ) {
-                                                "Finish 1 journey to unlock"
-                                            } else {
-                                                "Finish 2 journeys to unlock"
-                                            }
-                                        )
-                                    } else {
-                                        info.second
-                                    },
-                                enabled = !locked,
-                                onClick = { vm.draftRole = id },
+                                "Skill: " + (skill?.first ?: d.role),
+                                sub = skill?.second,
+                                onClick = { vm.cycleSkill(i) },
                                 focusRequester = if (i == 0) first else null,
-                                modifier = Modifier.width(if (isTv) 270.dp else 300.dp),
+                                modifier = mod,
                             )
+                            EmberButton(
+                                "Trait: " + (trait?.name ?: "none"),
+                                sub = trait?.desc,
+                                onClick = { vm.cycleTrait(i) },
+                                modifier = mod,
+                            )
+                        }
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(EmberPanel, RoundedCornerShape(8.dp))
+                                    .padding(10.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PixelPortrait(Member(d.name, d.folk, d.traits, face = d.face), size = 40.dp)
+                                Text(
+                                    d.name.ifBlank { "Someone" } + if (i == 0) " ★" else "",
+                                    color = EmberGold,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            if (isTv) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    buttons(Modifier.weight(1f))
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { buttons(Modifier.fillMaxWidth()) }
+                            }
                         }
                     }
                 }
@@ -636,9 +659,19 @@ private val howToLines =
         "Magic" to
             "Spells are marked ✦. Magic is powerful but risky: the more you cast, the wilder it gets and the more it backfires. Camping calms it down.",
         "Roads" to "At each fork, pick a road: safe but long, short but dangerous, or strange. Every journey is different.",
-        "Your party" to "Nobody dies on Ember Road, but people can get fed up and go home. Keep spirits up!",
+        "Your party" to
+            "Each person has a skill (Healer, Ranger, Bard, Merchant, Mage, Smith) and a trait (like Brave or Lucky). " +
+            "Skills help everyone; traits change what can happen. Nobody dies on Ember Road, but people can get fed up and " +
+            "go home, and their skill goes with them. Keep spirits up!",
+        "The numbers" to
+            "Food: eaten every day, 2 each (plus the pet). Gold: buys things at markets. Spirit: the party's mood out of 10; " +
+            "at 0 people start going home. Egg warmth: keep it above 0 by camping. Hatches: about how many days until the egg " +
+            "hatches. Cart: breaks on rough roads, a Smith or a market fixes it. Herbs: cure fevers. Magic: calm is safe, wild backfires.",
         "Phones" to
-            "On a TV, phones can join from Games on Benflix: they vote on choices (most votes win, ties go to the TV), type commands and play the mini-games.",
+            "Phones can join a TV's game from Ember Road on the phone. " +
+            "When something happens on the road, it's a vote: every phone and the TV " +
+            "picks, most votes win and a tie goes to the TV. All the other buttons (Keep going, Make camp, Leave, roads) are not a vote: " +
+            "whoever presses first decides, so talk it over. Phones can also type commands and play the mini-games.",
         "Trail markers" to "At the end, leave a marker where your journey ended. The family will find it on their own journeys.",
     )
 
