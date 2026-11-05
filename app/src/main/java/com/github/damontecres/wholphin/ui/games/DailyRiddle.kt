@@ -121,6 +121,7 @@ class DailyRiddleViewModel
         @param:ApplicationContext context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val puzzlePool: com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool,
     ) : ViewModel() {
         /** Where the Games page reads each account's bests for the "Highest scores" board */
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
@@ -359,6 +360,10 @@ class DailyRiddleViewModel
                                 enableUserData = false,
                             ),
                         ).content.items
+                }.let { items ->
+                    // The anime switch on the game's page
+                    val keep = puzzlePool.animeKeeper()
+                    items.filter { keep(it.id) }
                 }.mapNotNull { item -> item.name?.takeIf { it.isNotBlank() }?.let { item.id to it } }
                 .filterNot { (_, name) -> BUNDLE_WORDS.containsMatchIn(name) }
                 .distinctBy { it.second }

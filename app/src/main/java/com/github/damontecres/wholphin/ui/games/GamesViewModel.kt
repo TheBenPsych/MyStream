@@ -561,7 +561,12 @@ class GamesViewModel
                     DailyRiddleViewModel.BOARD_KEY to "Movie riddle",
                     "GUESS_THE_MOVIE" to "Guess the movie",
                     com.github.damontecres.wholphin.ui.games.ember.EmberViewModel.BOARD_KEY to "Ember Road",
-                )
+                ) +
+                    MovieGame.entries
+                        .filter {
+                            it.boardKey != null && it.group == MovieGameGroup.PUZZLE &&
+                                it.ordinal < MovieGame.GUESS.ordinal
+                        }.associate { it.boardKey!! to it.title }
 
             /** What each board ranks, shown under its name */
             val BOARD_RANKED =
@@ -569,6 +574,10 @@ class GamesViewModel
                     HigherLowerViewModel.BOARD_KEY to "best streak",
                     DailyRiddleViewModel.BOARD_KEY to "most points in a run",
                     com.github.damontecres.wholphin.ui.games.ember.EmberViewModel.BOARD_KEY to "most points in a journey",
-                )
+                ) +
+                    MovieGame.entries.filter { it.boardKey != null && it.group == MovieGameGroup.PUZZLE }.associate {
+                        it.boardKey!! to
+                            it.ranked
+                    }
         }
     }

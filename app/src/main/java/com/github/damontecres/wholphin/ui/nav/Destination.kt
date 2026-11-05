@@ -234,6 +234,28 @@ sealed class Destination(
     @Serializable
     data object EmberRoad : Destination(true)
 
+    /** Benflix: a game's own page (preview, how to play, scores). id is "movie:NAME" or "arcade:NAME" */
+    @Serializable
+    data class GameInfo(
+        val id: String,
+    ) : Destination(true)
+
+    /** Benflix: one of the movie puzzle games (MovieGame name) */
+    @Serializable
+    data class MovieGamePlay(
+        val name: String,
+    ) : Destination(true)
+
+    /** Benflix: hosting a party game on this TV (PartyKind name) */
+    @Serializable
+    data class PartyHost(
+        val kind: String,
+    ) : Destination(true)
+
+    /** Benflix: this phone joining a party game on a TV */
+    @Serializable
+    data object PartyJoin : Destination(true)
+
     /** Benflix: simple help page (remote buttons and tips) */
     @Serializable
     data object HowTo : Destination(false)

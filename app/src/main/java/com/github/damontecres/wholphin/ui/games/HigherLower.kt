@@ -124,6 +124,7 @@ class HigherLowerViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val imageUrlService: ImageUrlService,
+        private val puzzlePool: com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
         private val _state = MutableStateFlow<HigherLowerState>(HigherLowerState.Loading)
@@ -201,7 +202,7 @@ class HigherLowerViewModel
                 .getItems(
                     GetItemsRequest(
                         userId = serverRepository.currentUser?.id,
-                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                        includeItemTypes = puzzlePool.animeTypes(),
                         recursive = true,
                         imageTypes = listOf(ImageType.PRIMARY),
                         sortBy = listOf(ItemSortBy.RANDOM),
@@ -209,7 +210,10 @@ class HigherLowerViewModel
                     ),
                 ).content
                 .items
-                .mapNotNull { dto ->
+                .let { items ->
+                    val keep = puzzlePool.animeKeeper()
+                    items.filter { keep(it.id) }
+                }.mapNotNull { dto ->
                     val score =
                         dto.communityRating?.let { Math.round(it * 10) }?.takeIf { it > 0 } ?: return@mapNotNull null
                     ScoredMovie(

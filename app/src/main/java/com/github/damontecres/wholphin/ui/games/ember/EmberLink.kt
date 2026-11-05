@@ -50,6 +50,14 @@ data class PhoneView(
     val hint: String = "",
     /** What's in the bag and who's in the party, for the phone's "Bag & journal" */
     val bag: String = "",
+    /** Party games: "text", "number" or "draw" when the phone should show that kind of input */
+    val input: String = "",
+    /** Party games: a picture to show on the phone (a poster) */
+    val image: String = "",
+    /** Party games: a secret only this phone sees (the movie to draw) */
+    val secret: String = "",
+    /** Party games: changes whenever a new question starts, so the phone clears its input */
+    val round: Int = 0,
 )
 
 @Serializable
@@ -73,6 +81,12 @@ class EmberLinkHost(
     private val onLeave: (Joined) -> Unit,
     private val onDo: (Joined, String) -> Unit,
     private val onType: (Joined, String) -> Unit,
+    /** Benflix party games use the same link with their own name, so phones only find party TVs */
+    private val serviceType: String = EmberLinkProtocol.SERVICE_TYPE,
+    private val label: String = "Ember Road",
+    /** Party "Draw the movie": a phone sends the lines it draws */
+    private val onDraw: (Joined, String) -> Unit = { _, _ -> },
+    private val maxArg: Int = 200,
 ) {
     private val nsd = context.getSystemService(Context.NSD_SERVICE) as NsdManager
     private var socket: DatagramSocket? = null
@@ -120,8 +134,8 @@ class EmberLinkHost(
             running = true
             val info =
                 NsdServiceInfo().apply {
-                    serviceName = "Ember Road on ${Build.MODEL}".take(60)
-                    serviceType = EmberLinkProtocol.SERVICE_TYPE
+                    serviceName = "$label on ${Build.MODEL}".take(60)
+                    serviceType = this@EmberLinkHost.serviceType
                     port = s.localPort
                 }
             nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, registration)
@@ -175,7 +189,7 @@ class EmberLinkHost(
     }
 
     private fun loop(s: DatagramSocket) {
-        val buf = ByteArray(2048)
+        val buf = ByteArray(8192)
         var lastPush = 0L
         while (running) {
             try {
@@ -209,7 +223,7 @@ class EmberLinkHost(
         val parts = text.split(' ', limit = 4)
         if (parts.size < 3 || parts[0] != EmberLinkProtocol.MAGIC) return
         val id = parts[1].take(40)
-        val arg = parts.getOrNull(3).orEmpty().take(200)
+        val arg = parts.getOrNull(3).orEmpty().take(maxArg)
         val now = System.currentTimeMillis()
         var isNew = false
         val phone =
@@ -240,6 +254,10 @@ class EmberLinkHost(
                 onType(phone.joined, arg)
             }
 
+            "DRAW" -> {
+                onDraw(phone.joined, arg)
+            }
+
             "BYE" -> {
                 synchronized(phones) { phones.remove(id) }
                 onLeave(phone.joined)
@@ -261,6 +279,8 @@ class EmberLinkClient(
     private val phoneName: String,
     private val onFound: (List<FoundEmberTv>) -> Unit,
     private val onView: (PhoneView?) -> Unit,
+    private val serviceType: String = EmberLinkProtocol.SERVICE_TYPE,
+    private val label: String = "Ember Road",
 ) {
     private val nsd = context.getSystemService(Context.NSD_SERVICE) as NsdManager
     private val id = UUID.randomUUID().toString().take(8)
@@ -294,7 +314,7 @@ class EmberLinkClient(
 
             override fun onServiceLost(info: NsdServiceInfo) {
                 synchronized(found) {
-                    found.removeAll { it.name == info.serviceName.removePrefix("Ember Road on ") }
+                    found.removeAll { it.name == info.serviceName.removePrefix("$label on ") }
                     onFound(found.toList())
                 }
             }
@@ -314,7 +334,7 @@ class EmberLinkClient(
                 isDaemon = true
                 start()
             }
-            nsd.discoverServices(EmberLinkProtocol.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discovery)
+            nsd.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discovery)
             discovering = true
         } catch (e: Exception) {
             Timber.w(e, "Ember Road phone link failed")
@@ -351,7 +371,7 @@ class EmberLinkClient(
 
                     override fun onServiceResolved(info: NsdServiceInfo) {
                         val host = info.host ?: return
-                        val t = FoundEmberTv(info.serviceName.removePrefix("Ember Road on "), host, info.port)
+                        val t = FoundEmberTv(info.serviceName.removePrefix("$label on "), host, info.port)
                         synchronized(found) {
                             found.removeAll { it.name == t.name }
                             found.add(t)
@@ -381,7 +401,10 @@ class EmberLinkClient(
 
     fun press(action: String) = send("DO $action")
 
-    fun type(words: String) = send("TYPE ${words.replace('\n', ' ').take(200)}")
+    fun type(words: String) = send("TYPE ${words.replace('\n', ' ').take(400)}")
+
+    /** Party "Draw the movie": a line drawn on the phone ("x,y x,y …" out of 1000), or "clear" */
+    fun draw(line: String) = send("DRAW $line")
 
     private fun send(text: String) {
         val t = tv ?: return
