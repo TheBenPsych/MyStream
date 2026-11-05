@@ -123,7 +123,10 @@ fun AnnotatedString.Builder.appendAnimeScores(
     val mal =
         facts.malId
             ?.let { malScores[it] }
-            ?.let { com.github.damontecres.wholphin.services.MalFacts.text(it) }
+            ?.let {
+                com.github.damontecres.wholphin.services.MalFacts
+                    .text(it)
+            }
     aniList?.let {
         withStyle(SpanStyle(color = AniListBlue, fontWeight = FontWeight.Bold)) { append("AniList ") }
         append(it)
