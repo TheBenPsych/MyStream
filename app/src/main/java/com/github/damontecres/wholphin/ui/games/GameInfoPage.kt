@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** What a game's own page shows, for a movie game or an arcade game */
-data class GameInfo(
+data class GamePageInfo(
     val id: String,
     val title: String,
     val about: String,
@@ -87,11 +87,11 @@ data class GameInfo(
     val arcade: BuiltInGame?,
 ) {
     companion object {
-        fun of(id: String): GameInfo? {
+        fun of(id: String): GamePageInfo? {
             val name = id.substringAfter(':')
             return if (id.startsWith("arcade:")) {
                 val g = BuiltInGame.entries.firstOrNull { it.name == name } ?: return null
-                GameInfo(
+                GamePageInfo(
                     id = id,
                     title = g.title,
                     about = g.tagline,
@@ -105,7 +105,7 @@ data class GameInfo(
                 )
             } else {
                 val g = MovieGame.entries.firstOrNull { it.name == name } ?: return null
-                GameInfo(
+                GamePageInfo(
                     id = id,
                     title = g.title,
                     about = g.about,
@@ -141,7 +141,7 @@ class GameInfoViewModel
         private val _pictures = MutableStateFlow<List<String>>(emptyList())
         val pictures: StateFlow<List<String>> = _pictures
 
-        fun load(info: GameInfo) {
+        fun load(info: GamePageInfo) {
             if (info.movie == null) return
             viewModelScope.launch {
                 try {
@@ -171,10 +171,10 @@ class GameInfoViewModel
             }
         }
 
-        fun best(info: GameInfo): Int = info.boardKey?.let { prefs.getInt("${pool.profileKey()}_$it", 0) } ?: 0
+        fun best(info: GamePageInfo): Int = info.boardKey?.let { prefs.getInt("${pool.profileKey()}_$it", 0) } ?: 0
 
         /** The top 3 from the last board this device saw */
-        fun top(info: GameInfo): List<HighScore> {
+        fun top(info: GamePageInfo): List<HighScore> {
             val key = info.boardKey ?: return emptyList()
             val user = serverRepository.currentUser ?: return emptyList()
             val board = prefs.getString("board_cache_${user.id}", null)?.let { BenflixHighScores.decodeBoard(it) } ?: return emptyList()
@@ -183,7 +183,7 @@ class GameInfoViewModel
 
         fun nextAnime() = pool.setAnime(pool.anime.value.next())
 
-        fun play(info: GameInfo) {
+        fun play(info: GamePageInfo) {
             info.arcade?.let { g ->
                 prefs.edit().putString("last_${pool.profileKey()}", g.name).apply()
                 navigationManager.navigateTo(Destination.PlayGame(g.name))
@@ -210,7 +210,7 @@ fun GameInfoPage(
     modifier: Modifier = Modifier,
     viewModel: GameInfoViewModel = hiltViewModel(),
 ) {
-    val info = remember(id) { GameInfo.of(id) } ?: return
+    val info = remember(id) { GamePageInfo.of(id) } ?: return
     LaunchedEffect(info) { viewModel.load(info) }
     val isTv = rememberIsTv()
     val anime by viewModel.anime.collectAsState()
@@ -341,7 +341,7 @@ fun GameInfoPage(
 /** The moving preview: pictures from Tower drifting slowly and changing every few seconds (or the arcade game's own picture) */
 @Composable
 private fun Preview(
-    info: GameInfo,
+    info: GamePageInfo,
     pictures: List<String>,
 ) {
     val drift = rememberInfiniteTransition(label = "drift")
