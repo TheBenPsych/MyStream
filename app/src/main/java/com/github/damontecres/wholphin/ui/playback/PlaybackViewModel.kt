@@ -312,6 +312,7 @@ class PlaybackViewModel
                         "serverSound=${playback?.transcodeInfo?.audioCodec}",
                         "why=${playback?.transcodeInfo?.transcodeReasons?.joinToString("+")}",
                         "night=${NightMode.isOn(context)}",
+                        "passthrough=${SurroundPassthrough.isOn(context)}",
                     ).joinToString(", ")
                 },
             )
