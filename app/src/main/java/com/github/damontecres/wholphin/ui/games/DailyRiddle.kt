@@ -38,6 +38,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.services.LibraryKind
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -56,6 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
@@ -211,10 +213,12 @@ class DailyRiddleViewModel
                             emptyList()
                         }
                     if (clues.size >= 2) {
+                        // Wrong choices never come from the same collection as the answer, so
+                        // clues like the cast can't fit two of the choices
                         val others =
                             names
                                 .map { it.second }
-                                .filter { it != name }
+                                .filter { it != name && !sameSeries(it, name) }
                                 .shuffled()
                                 .take(CHOICES - 1)
                         return@async Riddle(name, clues, (others + name).shuffled())
@@ -327,25 +331,70 @@ class DailyRiddleViewModel
             super.onCleared()
         }
 
-        /** Every movie's id and name */
-        private suspend fun movieNames(): List<Pair<java.util.UUID, String>> =
-            api.itemsApi
-                .getItems(
-                    GetItemsRequest(
-                        userId = serverRepository.currentUser?.id,
-                        includeItemTypes = puzzlePool.animeTypes(),
-                        recursive = true,
-                        sortBy = listOf(ItemSortBy.SORT_NAME),
-                        enableImages = false,
-                        enableUserData = false,
-                    ),
-                ).content.items
-                .let { items ->
+        /**
+         * Every real movie's id and name, from the movie libraries only: Stand up specials
+         * (and any other non-movie library) are left out, and so are "collection" or
+         * "trilogy" bundles, since a riddle should be about one movie.
+         */
+        private suspend fun movieNames(): List<Pair<java.util.UUID, String>> {
+            val userId = serverRepository.currentUser?.id
+            val libraries =
+                api.userViewsApi
+                    .getUserViews(userId = userId)
+                    .content.items
+                    .filter {
+                        val kind = LibraryKind.from(it.name, it.collectionType)
+                        kind == LibraryKind.MOVIES || kind == LibraryKind.ANIME_MOVIES
+                    }.map { it.id }
+            return libraries
+                .flatMap { libraryId ->
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                parentId = libraryId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                sortBy = listOf(ItemSortBy.SORT_NAME),
+                                enableImages = false,
+                                enableUserData = false,
+                            ),
+                        ).content.items
+                }.let { items ->
+                    // The anime switch on the game's page
                     val keep = puzzlePool.animeKeeper()
                     items.filter { keep(it.id) }
-                }
-                .mapNotNull { item -> item.name?.takeIf { it.isNotBlank() }?.let { item.id to it } }
+                }.mapNotNull { item -> item.name?.takeIf { it.isNotBlank() }?.let { item.id to it } }
+                .filterNot { (_, name) -> BUNDLE_WORDS.containsMatchIn(name) }
                 .distinctBy { it.second }
+        }
+
+        /**
+         * The start of a title that names its series, like "Harry Potter" in "Harry Potter and
+         * the Goblet of Fire" or "Toy Story" in "Toy Story 3". Two movies with the same key are
+         * from the same collection (or one key starts the other, like "Saw" and "Saw II"), so
+         * they never show up as choices in the same riddle.
+         */
+        private fun sameSeries(
+            a: String,
+            b: String,
+        ): Boolean {
+            val x = seriesKey(a)
+            val y = seriesKey(b)
+            if (x.isEmpty() || y.isEmpty()) return false
+            return x == y || x.startsWith("$y ") || y.startsWith("$x ")
+        }
+
+        private fun seriesKey(name: String): String {
+            val words =
+                name
+                    .lowercase()
+                    .substringBefore(":")
+                    .replace(Regex("[^a-z0-9 ]"), " ")
+                    .split(" ")
+                    .filter { it.isNotBlank() && it !in SMALL_WORDS }
+            return words.take(2).joinToString(" ")
+        }
 
         private suspend fun details(id: java.util.UUID): BaseItemDto =
             api.itemsApi
@@ -362,7 +411,14 @@ class DailyRiddleViewModel
         private fun clues(movie: BaseItemDto): List<String> {
             val name = movie.name.orEmpty()
 
-            fun hide(text: String) = if (name.length > 2) text.replace(name, "▇▇▇▇", ignoreCase = true) else text
+            // Hide the title, and its series name too ("Harry Potter"), so a clue doesn't give it away
+            val series = name.substringBefore(":").trim()
+
+            fun hide(text: String): String {
+                var out = if (name.length > 2) text.replace(name, "▇▇▇▇", ignoreCase = true) else text
+                if (series.length > 3 && series != name) out = out.replace(series, "▇▇▇▇", ignoreCase = true)
+                return out
+            }
             val genres = movie.genres.orEmpty().take(2)
             val first =
                 buildString {
@@ -392,6 +448,12 @@ class DailyRiddleViewModel
         }
 
         companion object {
+            /** Titles that are a bundle of movies rather than one movie */
+            private val BUNDLE_WORDS =
+                Regex("\\b(collection|trilogy|quadrilogy|box ?set|double feature)\\b", RegexOption.IGNORE_CASE)
+
+            /** Words skipped when working out a title's series */
+            private val SMALL_WORDS = setOf("the", "a", "an", "and", "of")
             private const val CHOICES = 5
             private const val SECONDS = 20
             private const val KIDS_SECONDS = 30

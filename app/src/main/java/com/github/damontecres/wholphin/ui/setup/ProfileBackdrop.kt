@@ -1355,7 +1355,7 @@ private fun DrawScope.lunarNewYear(
     }
 }
 
-// ---- Bonfire Night: dark hills, a big crackling bonfire, rising embers and rockets bursting overhead
+// ---- Bonfire Night: dark hills, a big crackling bonfire on the left, rising embers and rockets bursting overhead
 
 private fun DrawScope.bonfireNight(
     t: Float,
@@ -1366,7 +1366,8 @@ private fun DrawScope.bonfireNight(
     fireworks(t, listOf(hex(0xFFFFB74D), Color.White, hex(0xFF82B1FF), hex(0xFFFF5252), hex(0xFF69F0AE)))
     drawPath(s.hill(700f, 80f, 52), hex(0xFF0B0D16))
     drawPath(s.hill(790f, 50f, 53), hex(0xFF07080F))
-    val cx = 800f
+    // Off to the left, so the flames stay clear of the profiles, Switch server and the fun fact in the middle
+    val cx = 270f
     val base = 820f
     glow(Offset(cx, base - 120f), 520f, hex(0xFFFF6A1A), .4f + .08f * sin(t * 6))
     // Logs

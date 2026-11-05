@@ -39,7 +39,7 @@ class RecordHolidayScenes {
                 ?.takeIf { it.isNotEmpty() }
         LogoEffect.entries
             .filter { it != LogoEffect.NONE && (only == null || it.name in only) }
-            .forEach { record(it, File(out, it.name)) }
+            .forEach { record(it, File(out, SceneVideos.videoName(it))) }
     }
 
     private fun record(

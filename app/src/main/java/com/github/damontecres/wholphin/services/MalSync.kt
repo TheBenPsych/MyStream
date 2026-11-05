@@ -198,7 +198,8 @@ class MalSync
             return found
         }
 
-        private suspend fun tokensFor(userId: UUID): Tokens? = if (tokensUser == userId) tokens else load(userId)
+        /** The saved sign-in; when there's none yet, asks Jellyfin again (the phone may have signed in since) */
+        private suspend fun tokensFor(userId: UUID): Tokens? = tokens?.takeIf { tokensUser == userId } ?: load(userId)
 
         private suspend fun saveTokens(
             userId: UUID,

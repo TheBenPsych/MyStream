@@ -1059,6 +1059,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_mal_tracking,
             )
 
+        /** Benflix (admins): the free OMDb key for IMDb and Rotten Tomatoes scores on the Requests pages */
+        val OmdbKey =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_omdb_key,
+            )
+
         /** Benflix: Big kids tile, Guest tile and what Kids watched this week */
         val ParentalMore =
             AppClickablePreference<AppPreferences>(
@@ -1590,6 +1596,7 @@ val advancedPreferences =
                     buildList<AppPreference<AppPreferences, out Any?>> {
                         // Benflix: requests (Seerr) moved here from the main Settings page
                         if (BuildConfig.DISCOVER_ENABLED) add(AppPreference.SeerrIntegration)
+                        if (BuildConfig.DISCOVER_ENABLED) add(AppPreference.OmdbKey)
                         // Benflix: Quick Connect now sits on the main Settings page
                         add(AppPreference.SendAppLogs)
                         add(AppPreference.SendCrashReports)
