@@ -213,8 +213,7 @@ class HigherLowerViewModel
                 .let { items ->
                     val keep = puzzlePool.animeKeeper()
                     items.filter { keep(it.id) }
-                }
-                .mapNotNull { dto ->
+                }.mapNotNull { dto ->
                     val score =
                         dto.communityRating?.let { Math.round(it * 10) }?.takeIf { it > 0 } ?: return@mapNotNull null
                     ScoredMovie(

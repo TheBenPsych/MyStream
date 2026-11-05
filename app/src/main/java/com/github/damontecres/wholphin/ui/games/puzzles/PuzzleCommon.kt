@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -122,7 +122,14 @@ fun AnswerLine(
         text = text ?: " ",
         fontSize = 20.sp,
         fontWeight = FontWeight.SemiBold,
-        color = if (good == true) PuzzleGreen else if (good == false) BenflixRed else Color.White.copy(alpha = .8f),
+        color =
+            if (good == true) {
+                PuzzleGreen
+            } else if (good == false) {
+                BenflixRed
+            } else {
+                Color.White.copy(alpha = .8f)
+            },
         textAlign = TextAlign.Center,
         maxLines = 2,
     )

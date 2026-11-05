@@ -22,11 +22,26 @@ fun MovieGamePlayPage(
     modifier: Modifier = Modifier,
 ) {
     when (MovieGame.entries.firstOrNull { it.name == name }) {
-        MovieGame.SCENES -> SceneBySceneScreen(modifier)
-        MovieGame.POSTER -> PosterPuzzleScreen(modifier)
-        MovieGame.GRID -> MovieGridScreen(modifier)
-        MovieGame.TIMELINE -> TimelineScreen(modifier)
-        MovieGame.ACTOR -> WhosThatActorScreen(modifier)
+        MovieGame.SCENES -> {
+            SceneBySceneScreen(modifier)
+        }
+
+        MovieGame.POSTER -> {
+            PosterPuzzleScreen(modifier)
+        }
+
+        MovieGame.GRID -> {
+            MovieGridScreen(modifier)
+        }
+
+        MovieGame.TIMELINE -> {
+            TimelineScreen(modifier)
+        }
+
+        MovieGame.ACTOR -> {
+            WhosThatActorScreen(modifier)
+        }
+
         else -> {}
     }
 }
@@ -38,7 +53,9 @@ class PartyJoinViewModel
         private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
-        val phoneName: String get() = serverRepository.currentUser?.name?.take(20) ?: android.os.Build.MODEL.take(20)
+        val phoneName: String get() =
+            serverRepository.currentUser?.name?.take(20) ?: android.os.Build.MODEL
+                .take(20)
     }
 
 /** A phone joining a party game on a TV */

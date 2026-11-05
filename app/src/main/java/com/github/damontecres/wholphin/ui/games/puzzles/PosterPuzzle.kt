@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -233,7 +233,13 @@ fun PosterPuzzleScreen(
                                     repeat(4) { c ->
                                         val i = r * 4 + c
                                         val color by animateColorAsState(
-                                            if (i in s.covered) Color(if ((r + c) % 2 == 0) 0xFF2B2B33 else 0xFF23232A) else Color.Transparent,
+                                            if (i in
+                                                s.covered
+                                            ) {
+                                                Color(if ((r + c) % 2 == 0) 0xFF2B2B33 else 0xFF23232A)
+                                            } else {
+                                                Color.Transparent
+                                            },
                                             tween(250),
                                             label = "tile",
                                         )
@@ -268,4 +274,3 @@ fun PosterPuzzleScreen(
         }
     }
 }
-

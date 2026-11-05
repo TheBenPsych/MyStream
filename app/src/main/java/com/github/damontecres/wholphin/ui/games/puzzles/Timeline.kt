@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +93,10 @@ class TimelineViewModel
                 try {
                     val titles = pool.titles().filter { it.year != null && it.poster != null }
                     if (titles.size < 8) {
-                        _state.value = TimelineState.NotEnough("Not enough movies with release years to play. Try the anime switch on the game's page.")
+                        _state.value =
+                            TimelineState.NotEnough(
+                                "Not enough movies with release years to play. Try the anime switch on the game's page.",
+                            )
                         return@launch
                     }
                     deck = ArrayDeque(titles.shuffled())

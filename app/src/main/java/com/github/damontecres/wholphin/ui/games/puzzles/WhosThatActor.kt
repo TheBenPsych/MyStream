@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -241,7 +241,11 @@ fun WhosThatActorScreen(
                     title = if (s.newBest) "New best: ${s.points} points!" else "Run over",
                     body =
                         "${s.why} It was ${s.actor.person.name}" +
-                            (s.actor.titles.firstOrNull()?.let { ", from ${it.label}" } ?: "") +
+                            (
+                                s.actor.titles
+                                    .firstOrNull()
+                                    ?.let { ", from ${it.label}" } ?: ""
+                            ) +
                             ".\nYou got ${s.rounds} right for ${s.points} points.\nYour best: ${s.best}",
                     answer = s.actor.titles.firstOrNull(),
                     actions = viewModel.actions,
@@ -289,7 +293,14 @@ fun WhosThatActorScreen(
                                 s.crossed.isNotEmpty() -> "Not them. ${3 - s.crossed.size} guesses left."
                                 else -> "Who is this? Guess now for ${s.worth} points"
                             },
-                        good = if (s.won != null) true else if (s.crossed.isNotEmpty()) false else null,
+                        good =
+                            if (s.won != null) {
+                                true
+                            } else if (s.crossed.isNotEmpty()) {
+                                false
+                            } else {
+                                null
+                            },
                     )
                     ChoiceGrid(
                         choices = s.choices,
@@ -305,4 +316,3 @@ fun WhosThatActorScreen(
         }
     }
 }
-

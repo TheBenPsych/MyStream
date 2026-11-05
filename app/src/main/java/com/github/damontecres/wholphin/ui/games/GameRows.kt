@@ -58,7 +58,9 @@ fun GameRows(
     isTv: Boolean,
 ) {
     val kids = KidsMode.isActive
+
     fun open(id: String) = viewModel.navigationManager.navigateTo(Destination.GameInfo(id))
+
     fun badge(best: Int) = if (best > 0) "Best $best" else "New"
 
     val puzzles =
@@ -72,7 +74,14 @@ fun GameRows(
     val party =
         listOfNotNull(
             if (!isTv) {
-                RowGame("join", "Join a party", "A TV is hosting a party game? Join it with this phone.", listOf(Color(0xFF444450), Color(0xFF1C1C22)), R.string.fa_mobile_screen, "Phone") {
+                RowGame(
+                    "join",
+                    "Join a party",
+                    "A TV is hosting a party game? Join it with this phone.",
+                    listOf(Color(0xFF444450), Color(0xFF1C1C22)),
+                    R.string.fa_mobile_screen,
+                    "Phone",
+                ) {
                     viewModel.navigationManager.navigateTo(Destination.PartyJoin)
                 }
             } else {
@@ -86,7 +95,14 @@ fun GameRows(
         BuiltInGame.entries.map { g ->
             RowGame(g.name, g.title, g.tagline, g.colors, null, badge(viewModel.best(g))) { open("arcade:${g.name}") }
         } +
-            RowGame("surprise", "Surprise me", "Starts a random arcade game.", listOf(Color(0xFF3A3A44), Color(0xFF16161B)), R.string.fa_dice, "Random") {
+            RowGame(
+                "surprise",
+                "Surprise me",
+                "Starts a random arcade game.",
+                listOf(Color(0xFF3A3A44), Color(0xFF16161B)),
+                R.string.fa_dice,
+                "Random",
+            ) {
                 viewModel.surprise(viewModel.featured())
             }
 
@@ -117,7 +133,10 @@ private fun GameRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
             ) {
-                items(games, key = { it.key }) { g -> RowTile(g, isTv, Modifier.size(width = width, height = if (isTv) width * 0.58f else 132.dp)) }
+                items(
+                    games,
+                    key = { it.key },
+                ) { g -> RowTile(g, isTv, Modifier.size(width = width, height = if (isTv) width * 0.58f else 132.dp)) }
             }
         }
     }
@@ -172,7 +191,12 @@ private fun RowTile(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
-                    modifier = Modifier.background(Color.Black.copy(alpha = .5f), RoundedCornerShape(6.dp)).padding(horizontal = 7.dp, vertical = 2.dp),
+                    modifier =
+                        Modifier
+                            .background(
+                                Color.Black.copy(alpha = .5f),
+                                RoundedCornerShape(6.dp),
+                            ).padding(horizontal = 7.dp, vertical = 2.dp),
                 )
             }
         }

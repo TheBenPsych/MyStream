@@ -224,8 +224,7 @@ class GuessTheMovieViewModel
                 .let { items ->
                     val keep = puzzlePool.animeKeeper()
                     items.filter { keep(it.id) }
-                }
-                .filter { !it.name.isNullOrBlank() }
+                }.filter { !it.name.isNullOrBlank() }
                 .distinctBy { it.name }
 
         private fun buildRounds(movies: List<BaseItemDto>): List<GuessRound> {

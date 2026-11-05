@@ -160,7 +160,13 @@ private fun Live(
         fontWeight = FontWeight.SemiBold,
         color = PuzzleGold,
     )
-    Text(ui.prompt, fontSize = if (isTv) 26.sp else 20.sp, lineHeight = if (isTv) 34.sp else 27.sp, color = Color.White, textAlign = TextAlign.Center)
+    Text(
+        ui.prompt,
+        fontSize = if (isTv) 26.sp else 20.sp,
+        lineHeight = if (isTv) 34.sp else 27.sp,
+        color = Color.White,
+        textAlign = TextAlign.Center,
+    )
     when (ui.phase) {
         PartyPhase.VOTE -> {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -184,8 +190,15 @@ private fun Live(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .width(if (isTv) w else if (ui.wide) 320.dp else 150.dp)
-                            .aspectRatio(if (ui.wide) 16f / 9f else 2f / 3f)
+                            .width(
+                                if (isTv) {
+                                    w
+                                } else if (ui.wide) {
+                                    320.dp
+                                } else {
+                                    150.dp
+                                },
+                            ).aspectRatio(if (ui.wide) 16f / 9f else 2f / 3f)
                             .background(PuzzlePanel, RoundedCornerShape(10.dp)),
                 )
             }
@@ -198,7 +211,10 @@ private fun Live(
 @Composable
 private fun ChoicesShown(choices: List<String>) {
     if (choices.isEmpty()) return
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         choices.forEachIndexed { i, c ->
             Text(
                 "${'A' + i}  $c",
@@ -212,7 +228,14 @@ private fun ChoicesShown(choices: List<String>) {
 
 @Composable
 private fun Reveal(ui: PartyUi) {
-    Text(ui.reveal, fontSize = 24.sp, lineHeight = 33.sp, fontWeight = FontWeight.SemiBold, color = PuzzleGreen, textAlign = TextAlign.Center)
+    Text(
+        ui.reveal,
+        fontSize = 24.sp,
+        lineHeight = 33.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = PuzzleGreen,
+        textAlign = TextAlign.Center,
+    )
     Scoreboard(ui.players)
 }
 
@@ -294,10 +317,11 @@ fun DrawingBoard(
             if (pts.size == 1) {
                 drawCircle(Color.Black, radius = 5.dp.toPx(), center = pts[0])
             } else if (pts.size > 1) {
-                val path = Path().apply {
-                    moveTo(pts[0].x, pts[0].y)
-                    pts.drop(1).forEach { lineTo(it.x, it.y) }
-                }
+                val path =
+                    Path().apply {
+                        moveTo(pts[0].x, pts[0].y)
+                        pts.drop(1).forEach { lineTo(it.x, it.y) }
+                    }
                 drawPath(path, Color.Black, style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
@@ -401,12 +425,19 @@ private fun SendBox(
     }
     BasicTextField(
         value = text,
-        onValueChange = { text = if (number) it.filter { c -> c.isDigit() || c == '.' || c == ',' }.take(8) else it.replace("\n", " ").take(300) },
+        onValueChange = {
+            text =
+                if (number) it.filter { c -> c.isDigit() || c == '.' || c == ',' }.take(8) else it.replace("\n", " ").take(300)
+        },
         singleLine = number,
         minLines = if (number) 1 else 3,
         textStyle = TextStyle(color = Color.White, fontSize = 20.sp),
         cursorBrush = SolidColor(PuzzleGold),
-        keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Text, imeAction = ImeAction.Send),
+        keyboardOptions =
+            KeyboardOptions(
+                keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Text,
+                imeAction = ImeAction.Send,
+            ),
         keyboardActions = KeyboardActions(onSend = { send() }),
         decorationBox = { inner ->
             Box {
@@ -421,7 +452,9 @@ private fun SendBox(
                 .border(1.dp, Color(0xFF44444C), RoundedCornerShape(10.dp))
                 .padding(14.dp),
     )
-    Button(onClick = send, modifier = Modifier.fillMaxWidth()) { Text("Send", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+    Button(onClick = send, modifier = Modifier.fillMaxWidth()) {
+        Text("Send", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 /** The phone's drawing pad: each finger stroke is sent to the TV as it's drawn */

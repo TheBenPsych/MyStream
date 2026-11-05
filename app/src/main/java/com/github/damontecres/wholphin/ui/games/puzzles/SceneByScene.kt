@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,7 +95,8 @@ class SceneBySceneViewModel
                     titles = pool.titles()
                     val playable = titles.filter { it.stills.size >= 2 }
                     if (playable.size < 8) {
-                        _state.value = SceneState.NotEnough("Not enough movies with pictures to play. Try the anime switch on the game's page.")
+                        _state.value =
+                            SceneState.NotEnough("Not enough movies with pictures to play. Try the anime switch on the game's page.")
                         return@launch
                     }
                     deck = ArrayDeque(playable.shuffled())
@@ -227,7 +228,14 @@ fun SceneBySceneScreen(
                                 s.crossed.isNotEmpty() -> "Not that one. Here's an easier scene."
                                 else -> "Which movie or show is this? Worth ${listOf(400, 300, 200, 100)[s.shown]}"
                             },
-                        good = if (s.won != null) true else if (s.crossed.isNotEmpty()) false else null,
+                        good =
+                            if (s.won != null) {
+                                true
+                            } else if (s.crossed.isNotEmpty()) {
+                                false
+                            } else {
+                                null
+                            },
                     )
                     ChoiceGrid(
                         choices = s.choices,

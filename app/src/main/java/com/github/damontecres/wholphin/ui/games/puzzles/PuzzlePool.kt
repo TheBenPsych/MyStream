@@ -102,7 +102,8 @@ class PuzzlePool
         private val _anime = MutableStateFlow(readAnime())
         val anime: StateFlow<AnimeMode> = _anime
 
-        private fun readAnime(): AnimeMode = runCatching { AnimeMode.valueOf(prefs.getString(ANIME_KEY, null) ?: "") }.getOrDefault(AnimeMode.MIXED)
+        private fun readAnime(): AnimeMode =
+            runCatching { AnimeMode.valueOf(prefs.getString(ANIME_KEY, null) ?: "") }.getOrDefault(AnimeMode.MIXED)
 
         fun setAnime(mode: AnimeMode) {
             prefs.edit().putString(ANIME_KEY, mode.name).apply()

@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -112,10 +112,12 @@ class MovieGridViewModel
                     titles = pool.titles()
                     val board = makeBoard(titles)
                     if (board == null) {
-                        _state.value = GridState.NotEnough("Couldn't make a grid from your library. Try the anime switch on the game's page.")
+                        _state.value =
+                            GridState.NotEnough("Couldn't make a grid from your library. Try the anime switch on the game's page.")
                         return@launch
                     }
-                    _state.value = GridState.Playing(board.first, board.second, emptyMap(), lives = 3, points = 0, best = pool.best(BOARD_KEY))
+                    _state.value =
+                        GridState.Playing(board.first, board.second, emptyMap(), lives = 3, points = 0, best = pool.best(BOARD_KEY))
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -130,7 +132,10 @@ class MovieGridViewModel
             if (square in p.filled) return
             val r = p.rows[square / 3]
             val c = p.cols[square % 3]
-            val used = p.filled.values.map { it.id }.toSet()
+            val used =
+                p.filled.values
+                    .map { it.id }
+                    .toSet()
             val fits = titles.filter { r.test(it) && c.test(it) && it.id !in used }
             val wrong = titles.filter { !(r.test(it) && c.test(it)) && it.id !in used }
             // Usually one right answer among the six, sometimes two
@@ -160,7 +165,14 @@ class MovieGridViewModel
                     finish(points + 200 + p.lives * 50, filled.size, t)
                 } else {
                     _state.value =
-                        p.copy(filled = filled, points = points, open = null, choices = emptyList(), message = "Right! ${t.label}", good = true)
+                        p.copy(
+                            filled = filled,
+                            points = points,
+                            open = null,
+                            choices = emptyList(),
+                            message = "Right! ${t.label}",
+                            good = true,
+                        )
                 }
             } else {
                 val lives = p.lives - 1
@@ -242,7 +254,13 @@ class MovieGridViewModel
                 repeat(400) {
                     val shuffled = rules.shuffled()
                     // Rows and columns use different kinds of rules, so no square is impossible by design
-                    val rowKinds = shuffled.map { it.kind }.distinct().shuffled().take(2).toSet()
+                    val rowKinds =
+                        shuffled
+                            .map { it.kind }
+                            .distinct()
+                            .shuffled()
+                            .take(2)
+                            .toSet()
                     val rows = shuffled.filter { it.kind in rowKinds }.take(3)
                     val cols = shuffled.filter { it.kind !in rowKinds }.distinctBy { it.label }.take(3)
                     if (rows.size < 3 || cols.size < 3) return@repeat
@@ -274,7 +292,14 @@ fun MovieGridScreen(
 
             is GridState.Over -> {
                 PuzzleOver(
-                    title = if (s.newBest) "New best: ${s.points} points!" else if (s.filled == 9) "Grid complete!" else "Out of lives",
+                    title =
+                        if (s.newBest) {
+                            "New best: ${s.points} points!"
+                        } else if (s.filled == 9) {
+                            "Grid complete!"
+                        } else {
+                            "Out of lives"
+                        },
                     body = "You filled ${s.filled} of 9 squares for ${s.points} points.\nYour best: ${s.best}",
                     answer = s.last,
                     actions = viewModel.actions,
@@ -365,7 +390,10 @@ private fun GridBoard(
                     Surface(
                         onClick = { onOpen(i) },
                         shape = ClickableSurfaceDefaults.shape(shape),
-                        border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White), shape = shape)),
+                        border =
+                            ClickableSurfaceDefaults.border(
+                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White), shape = shape),
+                            ),
                         colors =
                             ClickableSurfaceDefaults.colors(
                                 containerColor = if (i == s.open) Color(0xFF4A3B12) else PuzzlePanel,
@@ -377,7 +405,12 @@ private fun GridBoard(
                                 .then(if (i == firstEmpty) Modifier.focusRequester(focus) else Modifier),
                     ) {
                         if (t != null) {
-                            AsyncImage(model = t.poster, contentDescription = t.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            AsyncImage(
+                                model = t.poster,
+                                contentDescription = t.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         } else {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                 Text("?", fontSize = 26.sp, color = Color.White.copy(alpha = .4f))
@@ -399,7 +432,14 @@ private fun RuleLabel(
         contentAlignment = Alignment.Center,
         modifier = modifier.background(Color(0xFF26262B), RoundedCornerShape(8.dp)).padding(4.dp),
     ) {
-        Text(text, fontSize = 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, textAlign = TextAlign.Center, maxLines = 3)
+        Text(
+            text,
+            fontSize = 13.sp,
+            lineHeight = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+        )
     }
 }
-

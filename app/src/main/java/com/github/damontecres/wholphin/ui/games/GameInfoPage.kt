@@ -148,9 +148,21 @@ class GameInfoViewModel
                     val titles = pool.titles().shuffled()
                     _pictures.value =
                         when (info.movie) {
-                            MovieGame.ACTOR -> titles.flatMap { t -> t.actors.mapNotNull { it.photo } }.distinct().take(6)
-                            MovieGame.POSTER, MovieGame.TIMELINE, MovieGame.HIGHER_LOWER, MovieGame.CLOSEST -> titles.mapNotNull { it.poster }.take(6)
-                            else -> titles.mapNotNull { it.stills.lastOrNull() }.take(6)
+                            MovieGame.ACTOR -> {
+                                titles.flatMap { t -> t.actors.mapNotNull { it.photo } }.distinct().take(6)
+                            }
+
+                            MovieGame.POSTER, MovieGame.TIMELINE, MovieGame.HIGHER_LOWER, MovieGame.CLOSEST -> {
+                                titles
+                                    .mapNotNull { it.poster }
+                                    .take(
+                                        6,
+                                    )
+                            }
+
+                            else -> {
+                                titles.mapNotNull { it.stills.lastOrNull() }.take(6)
+                            }
                         }
                 } catch (ex: CancellationException) {
                     throw ex
@@ -280,7 +292,13 @@ fun GameInfoPage(
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                             modifier = Modifier.fillMaxWidth(0.46f).padding(start = 64.dp, top = 40.dp),
                         ) {
-                            Text(info.title.uppercase(), fontFamily = BenflixTitleFont, fontSize = 56.sp, lineHeight = 56.sp, color = Color.White)
+                            Text(
+                                info.title.uppercase(),
+                                fontFamily = BenflixTitleFont,
+                                fontSize = 56.sp,
+                                lineHeight = 56.sp,
+                                color = Color.White,
+                            )
                             Pills(info.pills)
                             Text(info.about, fontSize = 20.sp, lineHeight = 28.sp, color = Color.White.copy(alpha = .92f))
                             buttons()
@@ -327,7 +345,12 @@ private fun Preview(
     pictures: List<String>,
 ) {
     val drift = rememberInfiniteTransition(label = "drift")
-    val scale by drift.animateFloat(1f, 1.12f, infiniteRepeatable(tween(12_000, easing = LinearEasing), RepeatMode.Reverse), label = "scale")
+    val scale by drift.animateFloat(
+        1f,
+        1.12f,
+        infiniteRepeatable(tween(12_000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "scale",
+    )
     val arcade = info.arcade
     Box(
         Modifier
@@ -368,7 +391,12 @@ private fun Pills(pills: List<String>) {
                 it,
                 fontSize = 15.sp,
                 color = Color.White,
-                modifier = Modifier.background(Color.White.copy(alpha = .14f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier =
+                    Modifier
+                        .background(
+                            Color.White.copy(alpha = .14f),
+                            RoundedCornerShape(50),
+                        ).padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
     }
@@ -397,7 +425,12 @@ private fun InfoLine(
     text: String,
     dim: Boolean = false,
 ) {
-    Text(text, fontSize = if (dim) 14.sp else 17.sp, lineHeight = if (dim) 19.sp else 24.sp, color = Color.White.copy(alpha = if (dim) .6f else .92f))
+    Text(
+        text,
+        fontSize = if (dim) 14.sp else 17.sp,
+        lineHeight = if (dim) 19.sp else 24.sp,
+        color = Color.White.copy(alpha = if (dim) .6f else .92f),
+    )
 }
 
 @Composable
@@ -410,4 +443,3 @@ private fun InfoPair(
         Text(right, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
-

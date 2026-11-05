@@ -45,7 +45,11 @@ enum class PartyKind(
         "Draw the movie",
         "One phone gets a secret movie and draws it. The drawing shows on the TV and everyone else guesses.",
         3,
-        listOf("Your phone shows a secret title: draw it.", "Others pick the answer on their phones.", "Fast guesses score more, and so does the artist."),
+        listOf(
+            "Your phone shows a secret title: draw it.",
+            "Others pick the answer on their phones.",
+            "Fast guesses score more, and so does the artist.",
+        ),
     ),
     CLOSEST(
         "Closest wins",
@@ -132,10 +136,18 @@ class PartyViewModel
                 EmberLinkHost(
                     context = context.applicationContext,
                     onJoin = { j ->
-                        _ui.update { u -> if (u.players.any { it.id == j.id }) u else u.copy(players = u.players + PartyPlayer(j.id, j.name)) }
+                        _ui.update { u ->
+                            if (u.players.any { it.id == j.id }) u else u.copy(players = u.players + PartyPlayer(j.id, j.name))
+                        }
                         push()
                     },
-                    onLeave = { j -> if (_ui.value.phase == PartyPhase.LOBBY) _ui.update { u -> u.copy(players = u.players.filter { it.id != j.id }) } },
+                    onLeave = { j ->
+                        if (_ui.value.phase ==
+                            PartyPhase.LOBBY
+                        ) {
+                            _ui.update { u -> u.copy(players = u.players.filter { it.id != j.id }) }
+                        }
+                    },
                     onDo = { j, a -> viewModelScope.launch { onDo(j, a) } },
                     onType = { j, t -> viewModelScope.launch { onType(j, t) } },
                     serviceType = SERVICE_TYPE,
@@ -209,7 +221,15 @@ class PartyViewModel
 
                     1 -> {
                         val actor = t.actors.firstOrNull() ?: return@repeat
-                        val wrong = others.flatMap { it.actors }.map { it.name }.filter { n -> t.actors.none { it.name == n } }.distinct().shuffled().take(3)
+                        val wrong =
+                            others
+                                .flatMap { it.actors }
+                                .map { it.name }
+                                .filter { n ->
+                                    t.actors.none { it.name == n }
+                                }.distinct()
+                                .shuffled()
+                                .take(3)
                         if (wrong.size < 3) return@repeat
                         val choices = (wrong + actor.name).shuffled()
                         return Question("Who is in ${t.label}?", t.poster, false, choices, choices.indexOf(actor.name), t)
@@ -260,14 +280,15 @@ class PartyViewModel
                 waitForAnswers(QUESTION_MS)
                 // Right answers: 500, plus up to 500 more for speed
                 val gained =
-                    answers.mapNotNull { (id, a) ->
-                        if (a == "c${q.answer}") {
-                            val took = (answerTimes[id] ?: startedAt) - startedAt
-                            id to (500 + (500 * (1f - took.toFloat() / QUESTION_MS)).toInt().coerceIn(0, 500))
-                        } else {
-                            null
-                        }
-                    }.toMap()
+                    answers
+                        .mapNotNull { (id, a) ->
+                            if (a == "c${q.answer}") {
+                                val took = (answerTimes[id] ?: startedAt) - startedAt
+                                id to (500 + (500 * (1f - took.toFloat() / QUESTION_MS)).toInt().coerceIn(0, 500))
+                            } else {
+                                null
+                            }
+                        }.toMap()
                 award(gained)
                 showReveal("It's ${q.choices[q.answer]}!", gained)
             }
@@ -282,7 +303,13 @@ class PartyViewModel
                 val options =
                     listOfNotNull(
                         t.year?.let { Triple("What year did ${t.name} come out?", it.toDouble(), "$it") },
-                        t.runtimeMin?.takeIf { !t.isSeries }?.let { Triple("How long is ${t.name}, in minutes?", it.toDouble(), "$it minutes") },
+                        t.runtimeMin?.takeIf { !t.isSeries }?.let {
+                            Triple(
+                                "How long is ${t.name}, in minutes?",
+                                it.toDouble(),
+                                "$it minutes",
+                            )
+                        },
                         t.rating.takeIf { it > 0 }?.let {
                             Triple("What's the IMDb score of ${t.name}? (like 7.4)", it / 10.0, "${it / 10}.${it % 10}")
                         },
@@ -316,7 +343,10 @@ class PartyViewModel
                 val gained = mutableMapOf<String, Int>()
                 guesses.firstOrNull()?.let { (_, best) ->
                     val bestDiff = abs(best - value)
-                    guesses.filter { abs(it.second - value) == bestDiff }.forEach { (id, g) -> gained[id] = 1000 + if (g == value) 500 else 0 }
+                    guesses.filter { abs(it.second - value) == bestDiff }.forEach { (id, g) ->
+                        gained[id] =
+                            1000 + if (g == value) 500 else 0
+                    }
                     guesses.firstOrNull { abs(it.second - value) > bestDiff }?.let { (_, g2) ->
                         guesses.filter { abs(it.second - value) == abs(g2 - value) }.forEach { (id, _) -> gained[id] = 500 }
                     }
@@ -386,19 +416,33 @@ class PartyViewModel
                         val n = votes.values.count { it == i }
                         if (n > 0) "${name(p.by!!)} fooled $n" else null
                     }
-                showReveal("The real plot was number ${realIndex + 1}." + if (fooled.isNotEmpty()) "\n" + fooled.joinToString(" · ") else "", gained)
+                showReveal(
+                    "The real plot was number ${realIndex + 1}." + if (fooled.isNotEmpty()) "\n" + fooled.joinToString(" · ") else "",
+                    gained,
+                )
             }
         }
 
         // ---------- Draw the movie ----------
 
         private suspend fun runDraw() {
-            drawOrder = _ui.value.players.map { it.id }.shuffled().take(6)
+            drawOrder =
+                _ui.value.players
+                    .map { it.id }
+                    .shuffled()
+                    .take(6)
             val easy = titles.filter { it.rating >= 70 && !it.isSeries }.ifEmpty { titles }.shuffled()
             drawOrder.forEachIndexed { r, drawer ->
                 if (_ui.value.players.none { it.id == drawer }) return@forEachIndexed
                 val t = easy.getOrNull(r) ?: return
-                val choices = (titles.filter { it.name != t.name }.shuffled().take(5).map { it.name } + t.name).shuffled()
+                val choices =
+                    (
+                        titles
+                            .filter { it.name != t.name }
+                            .shuffled()
+                            .take(5)
+                            .map { it.name } + t.name
+                    ).shuffled()
                 answers.clear()
                 answerTimes.clear()
                 answerIndex = choices.indexOf(t.name)
@@ -463,7 +507,10 @@ class PartyViewModel
             _ui.update { u -> u.copy(players = u.players.map { p -> p.copy(score = p.score + (gained[p.id] ?: 0)) }) }
         }
 
-        private fun name(id: String): String = _ui.value.players.firstOrNull { it.id == id }?.name ?: "Someone"
+        private fun name(id: String): String =
+            _ui.value.players
+                .firstOrNull { it.id == id }
+                ?.name ?: "Someone"
 
         private fun markAnswered(id: String) {
             answerTimes.putIfAbsent(id, System.currentTimeMillis())
@@ -503,9 +550,11 @@ class PartyViewModel
             val u = _ui.value
             if (text.isBlank() || j.id in u.answered) return
             when (u.phase) {
-                PartyPhase.QUESTION -> if (u.kind == PartyKind.CLOSEST) {
-                    answers[j.id] = text.trim()
-                    markAnswered(j.id)
+                PartyPhase.QUESTION -> {
+                    if (u.kind == PartyKind.CLOSEST) {
+                        answers[j.id] = text.trim()
+                        markAnswered(j.id)
+                    }
                 }
 
                 PartyPhase.WRITE -> {
@@ -536,7 +585,9 @@ class PartyViewModel
                 PartyPhase.LOBBY -> {
                     PhoneView(
                         title = "You're in!",
-                        text = "Waiting for the TV to start ${u.kind.title}. ${u.players.size} joined: " + u.players.joinToString(", ") { it.name },
+                        text =
+                            "Waiting for the TV to start ${u.kind.title}. ${u.players.size} joined: " +
+                                u.players.joinToString(", ") { it.name },
                         status = status,
                     )
                 }
@@ -579,7 +630,9 @@ class PartyViewModel
                             if (done) {
                                 emptyList()
                             } else {
-                                u.plots.withIndex().filter { it.value.by != j.id }.map { (i, p) -> PhoneAction("p$i", "${i + 1}. ${p.text}") }
+                                u.plots.withIndex().filter { it.value.by != j.id }.map { (i, p) ->
+                                    PhoneAction("p$i", "${i + 1}. ${p.text}")
+                                }
                             },
                         status = status,
                         round = u.round * 100 + 1,
