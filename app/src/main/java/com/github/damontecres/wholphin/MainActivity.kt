@@ -365,6 +365,9 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.BenflixWrappedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix: YouTube trailers play in a pop-up inside the app
+                                                com.github.damontecres.wholphin.ui.components
+                                                    .YouTubeTrailerLayer()
                                                 // Benflix: friendly screen while the server is down
                                                 com.github.damontecres.wholphin.ui.main
                                                     .ServerNapLayer()
