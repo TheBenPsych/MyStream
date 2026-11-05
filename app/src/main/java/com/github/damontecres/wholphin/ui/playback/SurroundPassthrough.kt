@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.core.content.edit
@@ -13,8 +16,9 @@ import androidx.media3.common.util.UnstableApi
  *
  * Passthrough only matters for a soundbar or receiver that does surround. On TCL TVs (Realtek chip)
  * the TV's own passthrough goes silent after a pause, a skip or turning subtitles on, while the
- * picture keeps playing (Ben, 2026-11-04/05). So on TCL it is off unless turned on, everywhere
- * else it is on unless turned off. When it is turned on on a TCL, the player gives the sound a
+ * picture keeps playing (Ben, 2026-11-04/05). So on TCL it is automatically on only when a
+ * soundbar or receiver is connected (HDMI ARC/eARC or optical), everywhere else it is on. The
+ * player menu switch overrides the automatic choice. When it is turned on on a TCL, the player gives the sound a
  * fresh start (a jump to the same spot) after each pause and subtitle switch (see needsKick).
  * Remembered on this device.
  */
@@ -31,8 +35,36 @@ object SurroundPassthrough {
 
     fun isOn(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return if (prefs.contains(KEY)) prefs.getBoolean(KEY, true) else !badPassthroughDevice()
+        return when {
+            prefs.contains(KEY) -> prefs.getBoolean(KEY, true)
+            !badPassthroughDevice() -> true
+            // Auto on TCL: surround only goes out when a soundbar/receiver is plugged in
+            else -> hasSoundSystem(context)
+        }
     }
+
+    /**
+     * A soundbar or receiver is connected to the TV: HDMI ARC/eARC or an optical (digital) cable.
+     * With only the TV's own speakers, passthrough gives nothing extra.
+     */
+    @SuppressLint("InlinedApi")
+    fun hasSoundSystem(context: Context): Boolean =
+        try {
+            val audio = context.getSystemService(AudioManager::class.java)
+            audio
+                ?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                .orEmpty()
+                .any { it.type in soundSystemTypes }
+        } catch (ex: Exception) {
+            false
+        }
+
+    private val soundSystemTypes =
+        setOf(
+            AudioDeviceInfo.TYPE_HDMI_ARC,
+            AudioDeviceInfo.TYPE_HDMI_EARC,
+            AudioDeviceInfo.TYPE_LINE_DIGITAL,
+        )
 
     /** Dolby/DTS formats that go to the sound chip as-is when passthrough is on */
     private val passthroughFormats =
