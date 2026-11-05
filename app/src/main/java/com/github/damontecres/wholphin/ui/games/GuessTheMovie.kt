@@ -118,6 +118,7 @@ class GuessTheMovieViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val imageUrlService: ImageUrlService,
+        private val puzzlePool: com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
 
@@ -212,7 +213,7 @@ class GuessTheMovieViewModel
                 .getItems(
                     GetItemsRequest(
                         userId = serverRepository.currentUser?.id,
-                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                        includeItemTypes = puzzlePool.animeTypes(),
                         recursive = true,
                         imageTypes = listOf(ImageType.BACKDROP),
                         sortBy = listOf(ItemSortBy.RANDOM),
@@ -220,6 +221,10 @@ class GuessTheMovieViewModel
                         limit = POOL_SIZE,
                     ),
                 ).content.items
+                .let { items ->
+                    val keep = puzzlePool.animeKeeper()
+                    items.filter { keep(it.id) }
+                }
                 .filter { !it.name.isNullOrBlank() }
                 .distinctBy { it.name }
 

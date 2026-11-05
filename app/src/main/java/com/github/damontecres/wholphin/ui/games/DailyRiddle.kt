@@ -119,6 +119,7 @@ class DailyRiddleViewModel
         @param:ApplicationContext context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val puzzlePool: com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool,
     ) : ViewModel() {
         /** Where the Games page reads each account's bests for the "Highest scores" board */
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
@@ -332,13 +333,17 @@ class DailyRiddleViewModel
                 .getItems(
                     GetItemsRequest(
                         userId = serverRepository.currentUser?.id,
-                        includeItemTypes = listOf(BaseItemKind.MOVIE),
+                        includeItemTypes = puzzlePool.animeTypes(),
                         recursive = true,
                         sortBy = listOf(ItemSortBy.SORT_NAME),
                         enableImages = false,
                         enableUserData = false,
                     ),
                 ).content.items
+                .let { items ->
+                    val keep = puzzlePool.animeKeeper()
+                    items.filter { keep(it.id) }
+                }
                 .mapNotNull { item -> item.name?.takeIf { it.isNotBlank() }?.let { item.id to it } }
                 .distinctBy { it.second }
 

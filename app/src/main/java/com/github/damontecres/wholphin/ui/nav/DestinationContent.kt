@@ -434,6 +434,31 @@ fun DestinationContent(
                 .HigherLowerPage(modifier)
         }
 
+        is Destination.GameInfo -> {
+            com.github.damontecres.wholphin.ui.games
+                .GameInfoPage(destination.id, modifier)
+        }
+
+        is Destination.MovieGamePlay -> {
+            com.github.damontecres.wholphin.ui.games
+                .MovieGamePlayPage(destination.name, modifier)
+        }
+
+        is Destination.PartyHost -> {
+            com.github.damontecres.wholphin.ui.games.party.PartyHostScreen(
+                kind =
+                    com.github.damontecres.wholphin.ui.games.party.PartyKind.entries
+                        .firstOrNull { it.name == destination.kind }
+                        ?: com.github.damontecres.wholphin.ui.games.party.PartyKind.QUIZ,
+                modifier = modifier,
+            )
+        }
+
+        Destination.PartyJoin -> {
+            com.github.damontecres.wholphin.ui.games
+                .PartyJoinPage(modifier)
+        }
+
         Destination.EmberRoad -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.games.ember

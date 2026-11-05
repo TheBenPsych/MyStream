@@ -7,10 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,13 +22,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,7 +53,6 @@ import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.games.DevicePower
 import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
@@ -110,69 +107,10 @@ fun GamesPage(
         val board by viewModel.board.collectAsState()
         LaunchedEffect(Unit) { viewModel.refreshBoard() }
         Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = focusRequester)
-        ArcadeWall(viewModel = viewModel, isTv = isTv, focusRequester = remember { FocusRequester() })
-
-        // Benflix "Ember Road": the pixel adventure, for everyone (it has a Kids version built in)
-        MovieGameTile(
-            title = "Ember Road",
-            subtitle =
-                "A pixel adventure: carry a dragon egg across a wild magical land with your family. " +
-                    "Every journey is different. Phones can join in.",
-            icon = R.string.fa_dragon,
-            colors = listOf(Color(0xFFB8281E), Color(0xFF2B1B4D)),
-            onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) },
-            isTv = isTv,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // Benflix "Guess the movie" and the daily riddle, made from your own movies
-        val movieGames =
-            listOf<@Composable (Modifier) -> Unit>(
-                { mod ->
-                    MovieGameTile(
-                        title = "Guess the movie",
-                        subtitle = "A blurry picture gets sharper. Guess it fast for more points!",
-                        icon = R.string.fa_eye,
-                        colors = listOf(Color(0xFF0E7490), Color(0xFF1E3A8A)),
-                        onClick = { viewModel.navigationManager.navigateTo(Destination.GuessTheMovie) },
-                        isTv = isTv,
-                        modifier = mod,
-                    )
-                },
-                { mod ->
-                    MovieGameTile(
-                        title = "Movie riddle",
-                        subtitle = "Guess the movie from its clues. Five choices, and it keeps going until you miss!",
-                        icon = R.string.fa_clock,
-                        colors = listOf(Color(0xFFC2410C), Color(0xFF6D28D9)),
-                        onClick = { viewModel.navigationManager.navigateTo(Destination.DailyRiddle) },
-                        isTv = isTv,
-                        modifier = mod,
-                    )
-                },
-                { mod ->
-                    MovieGameTile(
-                        title = "Higher or Lower",
-                        subtitle = "Two posters. Is the second one rated higher or lower on IMDb? Keep your streak going!",
-                        icon = R.string.fa_arrow_up_long,
-                        colors = listOf(Color(0xFF15803D), Color(0xFF7F1D1D)),
-                        onClick = { viewModel.navigationManager.navigateTo(Destination.HigherLower) },
-                        isTv = isTv,
-                        modifier = mod,
-                    )
-                },
-            )
-        // Benflix: the movie games show posters from the whole library, so they're not on the Kids profile
-        if (!KidsMode.isActive && isTv) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.height(IntrinsicSize.Min),
-            ) {
-                movieGames.forEach { it(Modifier.weight(1f).fillMaxHeight()) }
-            }
-        } else if (!KidsMode.isActive) {
-            movieGames.forEach { it(Modifier.fillMaxWidth()) }
-        }
+        // Ember Road as a slim banner, then one row each for Movie puzzles, Party and Arcade.
+        // Every tile opens the game's own page first (preview, how to play, scores).
+        EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) })
+        GameRows(viewModel = viewModel, isTv = isTv)
 
         // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
         if (library != LibraryState.Hidden) {
