@@ -31,7 +31,7 @@ enum class PartyKind(
 ) {
     QUIZ(
         "Quiz night",
-        "10 quick rounds about the movies and shows on Tower. Everyone answers on their own phone.",
+        "10 quick rounds about the movies and shows on Tower. Everyone answers on their own Android phone.",
         1,
         listOf("A question shows on the TV.", "Answer on your phone.", "Fast right answers score more."),
     ),

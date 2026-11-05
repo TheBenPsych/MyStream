@@ -232,7 +232,7 @@ fun EmberBanner(
             if (isTv) {
                 Text("Ember Road", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text(
-                    "Pixel adventure: carry a dragon egg across a wild land. Phones can join in.",
+                    "Pixel adventure: carry a dragon egg across a wild land. Android phones can join in.",
                     fontSize = 15.sp,
                     color = Color.White.copy(alpha = .9f),
                     maxLines = 1,
@@ -241,7 +241,7 @@ fun EmberBanner(
             } else {
                 Column {
                     Text("Ember Road", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    Text("Pixel adventure. Phones can join in.", fontSize = 13.sp, color = Color.White.copy(alpha = .9f))
+                    Text("Pixel adventure. Android phones can join in.", fontSize = 13.sp, color = Color.White.copy(alpha = .9f))
                 }
             }
         }

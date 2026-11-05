@@ -451,7 +451,7 @@ internal fun ConsoleGrid(
                         ) {
                             if (local.remoteFriendly) Badge(PlayWith.REMOTE, "Remote")
                             Badge(PlayWith.CONTROLLER, "Controller")
-                            Badge(PlayWith.PHONE, "Phone")
+                            Badge(PlayWith.PHONE, "Android phone")
                         }
                     }
                 }
