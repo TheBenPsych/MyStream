@@ -147,6 +147,12 @@ fun PlaybackDialog(
         PlaybackDialogType.SETTINGS -> {
             val context = LocalContext.current
             val nightOn = NightMode.isOn(context)
+            val passthroughLabel =
+                if (SurroundPassthrough.isOn(context)) {
+                    R.string.surround_passthrough_on
+                } else {
+                    R.string.surround_passthrough_off
+                }
             val options =
                 buildList {
                     add(
@@ -159,10 +165,7 @@ fun PlaybackDialog(
                     add(
                         BottomDialogItem(
                             data = PlaybackDialogType.SURROUND_PASSTHROUGH,
-                            headline =
-                                stringResource(
-                                    if (SurroundPassthrough.isOn(context)) R.string.surround_passthrough_on else R.string.surround_passthrough_off,
-                                ),
+                            headline = stringResource(passthroughLabel),
                             supporting = stringResource(R.string.surround_passthrough_summary),
                         ),
                     )
