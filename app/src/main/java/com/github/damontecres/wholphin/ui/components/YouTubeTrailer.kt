@@ -229,6 +229,26 @@ private fun YouTubeTrailerPopup(
         webView?.evaluateJavascript(code, null)
     }
 
+    // YouTube's "Skip ad" button lives inside YouTube's own player, which Benflix can't press
+    // directly. So the Down button taps the screen where YouTube puts it (bottom right corner).
+    fun tapSkipAd() {
+        val view = webView ?: return
+        val w = view.width.toFloat()
+        val h = view.height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val x = w * SKIP_AD_X
+        val y = h * SKIP_AD_Y
+        val now = android.os.SystemClock.uptimeMillis()
+        val down = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, x, y, 0)
+        val up = android.view.MotionEvent.obtain(now, now + 60, android.view.MotionEvent.ACTION_UP, x, y, 0)
+        down.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+        up.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+        view.dispatchTouchEvent(down)
+        view.dispatchTouchEvent(up)
+        down.recycle()
+        up.recycle()
+    }
+
     // Closes by itself at the end, like a trailer on the details page
     LaunchedEffect(bridge.ended) {
         if (bridge.ended) {
@@ -294,8 +314,14 @@ private fun YouTubeTrailerPopup(
                             true
                         }
 
-                        // Up/down do nothing, but are swallowed so focus doesn't wander off
-                        Key.DirectionUp, Key.DirectionDown -> {
+                        // Down = skip the ad (once YouTube allows it)
+                        Key.DirectionDown -> {
+                            tapSkipAd()
+                            true
+                        }
+
+                        // Up does nothing, but is swallowed so focus doesn't wander off
+                        Key.DirectionUp -> {
                             true
                         }
 
@@ -400,7 +426,7 @@ private fun YouTubeTrailerPopup(
                     Text(
                         text =
                             (if (bridge.playing) "OK  Pause" else "OK  Play") +
-                                "     ◀ ▶  10 seconds     Back  Close",
+                                "     ◀ ▶  10 seconds     ▼  Skip ad     Back  Close",
                         color = Color(0xFFB8B8C0),
                         fontSize = 14.sp,
                     )
@@ -457,6 +483,10 @@ private fun FailedMessage(
         Box(modifier = Modifier.weight(1f).size(1.dp))
     }
 }
+
+// Where YouTube's embedded player shows "Skip" on an ad, as a share of the player's width and height
+private const val SKIP_AD_X = .92f
+private const val SKIP_AD_Y = .80f
 
 private fun clock(seconds: Float): String {
     val s = seconds.toInt().coerceAtLeast(0)
