@@ -172,7 +172,8 @@ class AniListSync
         }
 
         private suspend fun currentToken(userId: UUID): String? {
-            if (tokenUser == userId) return token
+            // No sign-in yet: ask Jellyfin again (the phone may have signed in since)
+            if (tokenUser == userId && token != null) return token
             return try {
                 displayPreferencesService
                     .getDisplayPreferences(userId)
