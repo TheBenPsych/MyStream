@@ -51,6 +51,7 @@ class AniListSync
         private val serverRepository: ServerRepository,
         private val displayPreferencesService: DisplayPreferencesService,
         private val aniList: AniListService,
+        private val mal: MalSync,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + WholphinDispatchers.IO)
         private val queueLock = Mutex()
@@ -203,7 +204,7 @@ class AniListSync
             if (KidsMode.active.value || GuestMode.isActive) return
             val userId = serverRepository.currentUser?.id ?: return
             scope.launch {
-                if (currentToken(userId) == null) return@launch
+                if (currentToken(userId) == null && !mal.isSignedIn(userId)) return@launch
                 queueLock.withLock {
                     val queue = prefs.getStringSet(QUEUE, emptySet()).orEmpty()
                     prefs.edit { putStringSet(QUEUE, queue + "$userId|$itemId") }
@@ -236,6 +237,13 @@ class AniListSync
                                     signOutLocal(userId)
                                     showToast(context, "AniList signed you out. Sign in again on My Benflix to keep ticking off episodes.")
                                     true
+                                } catch (ex: MalSignedOutException) {
+                                    mal.signedOut(userId)
+                                    showToast(
+                                        context,
+                                        "MyAnimeList signed you out. Sign in again on My Benflix to keep ticking off episodes.",
+                                    )
+                                    true
                                 } catch (ex: CancellationException) {
                                     throw ex
                                 } catch (ex: Exception) {
@@ -249,12 +257,17 @@ class AniListSync
             }
         }
 
-        /** Works out which AniList entry and episode this is, and moves the list forward (never back) */
+        /**
+         * Works out which AniList entry and episode this is, and moves the person's AniList and/or
+         * MyAnimeList list forward (never back)
+         */
         private suspend fun tick(
             userId: UUID,
             itemId: UUID,
         ) {
-            val token = currentToken(userId) ?: return
+            val token = currentToken(userId)
+            val withMal = mal.isSignedIn(userId)
+            if (token == null && !withMal) return
             val episode = api.userLibraryApi.getItem(itemId, userId).content
             if (episode.type != BaseItemKind.EPISODE || (episode.parentIndexNumber ?: 1) == 0) return
             val seriesId = episode.seriesId ?: return
@@ -272,8 +285,14 @@ class AniListSync
             repeat(MAX_SEASONS) {
                 val (sequel, count) = aniList.sequelOf(mediaId)
                 if (count == null || number <= count || sequel == null) {
-                    if (save(token, mediaId, number, count)) {
-                        showToast(context, "Ticked off on AniList: ${series.name} episode $number")
+                    val sites = mutableListOf<String>()
+                    if (token != null && save(token, mediaId, number, count)) sites += "AniList"
+                    if (withMal) {
+                        val malId = aniList.malIdOf(mediaId)
+                        if (malId != null && mal.save(userId, malId, number)) sites += "MyAnimeList"
+                    }
+                    if (sites.isNotEmpty()) {
+                        showToast(context, "Ticked off on ${sites.joinToString(" and ")}: ${series.name} episode $number")
                     }
                     return
                 }

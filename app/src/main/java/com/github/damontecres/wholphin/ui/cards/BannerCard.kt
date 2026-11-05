@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.components.appendAnimeScores
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -568,24 +569,18 @@ private fun GrownPreview(
                     maxLines = 1,
                 )
             }
-            // Benflix: anime show their AniList score and fan genres too
+            // Benflix: anime show their AniList and MyAnimeList scores and fan genres too
             val aniList by com.github.damontecres.wholphin.services.AniListFacts.cards
+                .collectAsState()
+            val mal by com.github.damontecres.wholphin.services.MalFacts.scores
                 .collectAsState()
             aniList[item.id]?.let { facts ->
                 val line =
                     androidx.compose.ui.text.buildAnnotatedString {
-                        facts.scoreText?.let { score ->
-                            withStyle(
-                                androidx.compose.ui.text.SpanStyle(
-                                    color = com.github.damontecres.wholphin.ui.components.AniListBlue,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                ),
-                            ) { append("AniList ") }
-                            append(score)
-                        }
+                        val any = appendAnimeScores(facts, mal, separator = { append("  ·  ") })
                         val tags = facts.cardTags(3)
                         if (tags.isNotEmpty()) {
-                            if (facts.scoreText != null) append("  ·  ")
+                            if (any) append("  ·  ")
                             append(tags.joinToString(" · "))
                         }
                     }

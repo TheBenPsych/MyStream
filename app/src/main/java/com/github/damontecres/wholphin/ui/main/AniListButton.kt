@@ -29,6 +29,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.AniListSync
+import com.github.damontecres.wholphin.services.MalSync
 import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -95,6 +96,98 @@ fun AniListButton(viewModel: AniListButtonViewModel = hiltViewModel()) {
     }
 }
 
+@HiltViewModel
+class MalButtonViewModel
+    @Inject
+    constructor(
+        val sync: MalSync,
+    ) : ViewModel() {
+        fun refresh() {
+            viewModelScope.launchIO { sync.refresh() }
+        }
+
+        fun signOut() {
+            viewModelScope.launchIO { sync.signOut() }
+        }
+
+        /** Opens MyAnimeList's sign-in page; TVs without a web browser are told to use their phone */
+        fun signIn(context: Context) {
+            val intent = sync.signInIntent()
+            try {
+                if (intent.resolveActivity(context.packageManager) != null) {
+                    ResumeTimer.expectedTrip = true
+                    context.startActivity(intent)
+                    return
+                }
+            } catch (ex: Exception) {
+                ResumeTimer.expectedTrip = false
+                Timber.w(ex, "Could not open the MyAnimeList sign-in page")
+            }
+            Toast
+                .makeText(
+                    context,
+                    "Sign in on your phone instead: Benflix > My Benflix > MyAnimeList. This TV picks it up by itself.",
+                    Toast.LENGTH_LONG,
+                ).show()
+        }
+    }
+
+/**
+ * Benflix: the MyAnimeList button on My Benflix. Signed in, finished anime episodes are ticked off
+ * on the person's MyAnimeList list by themselves (with or without AniList).
+ */
+@Composable
+fun MalButton(viewModel: MalButtonViewModel = hiltViewModel()) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { viewModel.refresh() }
+    val name by viewModel.sync.name.collectAsState()
+    var showSignOut by remember { mutableStateOf(false) }
+    Button(
+        onClick = {
+            if (name == null) viewModel.signIn(context) else showSignOut = true
+        },
+    ) {
+        Text(if (name == null) "MyAnimeList" else "MyAnimeList: $name")
+    }
+    if (showSignOut) {
+        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut, site = "MyAnimeList")
+    }
+}
+
+/** Benflix: the MyAnimeList row in Settings > Profile, with what it does */
+@Composable
+fun MalSetting(
+    title: String,
+    modifier: Modifier = Modifier,
+    interactionSource: androidx.compose.foundation.interaction.MutableInteractionSource =
+        remember {
+            androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+        },
+    viewModel: MalButtonViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { viewModel.refresh() }
+    val name by viewModel.sync.name.collectAsState()
+    var showSignOut by remember { mutableStateOf(false) }
+    com.github.damontecres.wholphin.ui.preferences.ClickPreference(
+        title = title,
+        onClick = { if (name == null) viewModel.signIn(context) else showSignOut = true },
+        modifier = modifier,
+        summary =
+            if (name == null) {
+                stringResource(R.string.benflix_mal_tracking_off)
+            } else {
+                stringResource(R.string.benflix_mal_tracking_on, name.orEmpty())
+            },
+        onLongClick = null,
+        interactionSource = interactionSource,
+    )
+    if (showSignOut) {
+        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut, site = "MyAnimeList")
+    }
+}
+
 /** Benflix: the AniList row in Settings > Profile, with what it does */
 @Composable
 fun AniListSetting(
@@ -134,6 +227,7 @@ private fun AniListSignOutDialog(
     name: String,
     onDismiss: () -> Unit,
     onSignOut: () -> Unit,
+    site: String = "AniList",
 ) {
     run {
         Dialog(onDismissRequest = onDismiss) {
@@ -146,13 +240,13 @@ private fun AniListSignOutDialog(
                         .padding(24.dp),
             ) {
                 Text(
-                    text = "Signed in to AniList as $name",
+                    text = "Signed in to $site as $name",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text =
-                        "Anime episodes you finish on Benflix are ticked off on your AniList list. " +
+                        "Anime episodes you finish on Benflix are ticked off on your $site list. " +
                             "Signing out stops this on all your TVs and phones.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),

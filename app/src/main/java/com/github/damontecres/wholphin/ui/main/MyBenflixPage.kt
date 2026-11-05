@@ -342,8 +342,9 @@ fun MyBenflixPage(
                 Button(onClick = { showParentPin = true }) {
                     Text("Parental controls")
                 }
-                // Benflix: tick off finished anime episodes on AniList
+                // Benflix: tick off finished anime episodes on AniList and/or MyAnimeList
                 AniListButton()
+                MalButton()
             }
         }
         // Benflix: this month so far

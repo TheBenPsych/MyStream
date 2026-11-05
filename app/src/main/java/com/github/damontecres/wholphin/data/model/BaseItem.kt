@@ -141,7 +141,13 @@ data class BaseItem(
                 },
             quickDetails =
                 QuickDetailsData(
-                    itemId = id.takeIf { type == BaseItemKind.SERIES || type == BaseItemKind.MOVIE },
+                    // An episode shows its show's AniList score (the Home banner and Continue watching are often episodes)
+                    itemId =
+                        when (type) {
+                            BaseItemKind.SERIES, BaseItemKind.MOVIE -> id
+                            BaseItemKind.EPISODE -> data.seriesId
+                            else -> null
+                        },
                     basic =
                         buildAnnotatedString {
                             val details =

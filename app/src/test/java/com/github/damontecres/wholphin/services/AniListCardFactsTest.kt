@@ -31,4 +31,10 @@ class AniListCardFactsTest {
             AniListService.searchable("  A Gatherer’s  Adventure in Isekai "),
         )
     }
+
+    @Test
+    fun malScoreReadsLikeTheStars() {
+        assertEquals("7.1", MalFacts.text(7.08))
+        assertEquals("8.0", MalFacts.text(8.0))
+    }
 }
