@@ -147,7 +147,7 @@ enum class MovieGame(
     ),
     QUIZ(
         "Quiz night",
-        "10 quick rounds. Everyone answers on their phone.",
+        "10 quick rounds. Everyone answers on their Android phone.",
         PartyKind.QUIZ.about,
         PartyKind.QUIZ.steps,
         "1 to 8 players",
@@ -177,7 +177,7 @@ enum class MovieGame(
     ),
     DRAW(
         "Draw the movie",
-        "Draw a secret movie on your phone. Others guess.",
+        "Draw a secret movie on your Android phone. Others guess.",
         PartyKind.DRAW.about,
         PartyKind.DRAW.steps,
         "3 to 8 players",

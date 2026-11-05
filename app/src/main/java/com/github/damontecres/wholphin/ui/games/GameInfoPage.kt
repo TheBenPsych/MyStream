@@ -96,7 +96,12 @@ data class GamePageInfo(
                     title = g.title,
                     about = g.tagline,
                     steps = g.howTo.split(" · ").map { it.trim() },
-                    pills = listOfNotNull("1 player", if (g.remoteOk) "Remote or phone" else "Controller or phone", "About 2 min"),
+                    pills =
+                        listOfNotNull(
+                            "1 player",
+                            if (g.remoteOk) "Remote or Android phone" else "Controller or Android phone",
+                            "About 2 min",
+                        ),
                     boardKey = g.name,
                     ranked = "best score",
                     colors = g.colors,
@@ -113,7 +118,7 @@ data class GamePageInfo(
                     pills =
                         listOf(
                             g.players,
-                            if (g.group == MovieGameGroup.PARTY) "Phones join" else "Remote or phone",
+                            if (g.group == MovieGameGroup.PARTY) "Android phones join" else "Remote or Android phone",
                             g.minutes,
                         ),
                     boardKey = g.boardKey,
@@ -245,7 +250,8 @@ fun GameInfoPage(
             },
             (if (info.boardKey != null) "Leaderboard" else "Players") to {
                 if (info.boardKey == null) {
-                    InfoLine("Everyone joins with their own phone: Benflix › Games › Join party.")
+                    InfoLine("Everyone joins with their own Android phone: Benflix › Games › Join party.")
+                    InfoLine("iPhones can't join, because Benflix is only on Android.", dim = true)
                     InfoLine("Scores are kept for the game, then start fresh.")
                 } else {
                     val medals = listOf("🥇", "🥈", "🥉")

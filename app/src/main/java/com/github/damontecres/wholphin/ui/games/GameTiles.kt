@@ -306,7 +306,7 @@ internal fun WorksWith(
     fun Chips() {
         Badge(PlayWith.REMOTE, "Remote")
         Badge(PlayWith.CONTROLLER, "Controller")
-        Badge(PlayWith.PHONE, "Phone")
+        Badge(PlayWith.PHONE, "Android phone")
     }
     if (isTv) {
         Row(
