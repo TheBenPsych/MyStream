@@ -188,13 +188,16 @@ fun SwitchUserContent(
                     ) {
                         // Everything around the tiles, so the tiles (and the names under them) always fit
                         val greetingSize = if (shortScreen) 34 else 52
-                        val headerDp =
-                            (if (holiday != null) greetingSize * 1.35f + 8 else 0f) + (if (shortScreen) 44f else 44f + 8 + 28) * fontScale
-                        val aroundTilesDp = 32 + headerDp + 24 + 24 + 10 + 30 * fontScale + 24 + 56
-                        val tileSize =
-                            ((maxHeight.value - aroundTilesDp) / 1.1f)
-                                .coerceIn(MIN_TILE_DP, Cards.serverUserCircle.value)
-                                .dp
+
+                        fun tileFor(headerDp: Float) = (maxHeight.value - (32 + headerDp + 24 + 24 + 10 + 30 * fontScale + 24 + 56)) / 1.1f
+                        val everydayHeaderDp = (if (shortScreen) 44f else 44f + 8 + 28) * fontScale
+                        val everydayTile = tileFor(everydayHeaderDp).coerceIn(MIN_TILE_DP, Cards.serverUserCircle.value)
+                        // Holidays keep the profiles exactly the size they are on other days. The greeting only gets
+                        // its own line when there's room to spare (phones, big screens); otherwise it takes the place of
+                        // "Who's watching?", so nothing below gets squeezed or cut off
+                        val greetingOwnLine =
+                            holiday != null && tileFor(everydayHeaderDp + greetingSize * 1.35f + 8) >= everydayTile - 0.5f
+                        val tileSize = everydayTile.dp
                         androidx.compose.runtime.CompositionLocalProvider(LocalProfileTileSize provides tileSize) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -222,11 +225,11 @@ fun SwitchUserContent(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     // The holiday greeting, big and in the holiday's own lettering
-                                    holiday?.let {
+                                    holiday?.takeIf { greetingOwnLine }?.let {
                                         Text(
                                             text = it.text,
                                             fontFamily = holidayFont(it.effect),
-                                            fontSize = (if (shortScreen) 34 else 52).sp,
+                                            fontSize = greetingSize.sp,
                                             color = Color(it.color),
                                             textAlign = TextAlign.Center,
                                             style =
@@ -235,11 +238,27 @@ fun SwitchUserContent(
                                                 ),
                                         )
                                     }
-                                    Text(
-                                        text = stringResource(R.string.select_user),
-                                        style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
+                                    if (holiday != null && !greetingOwnLine) {
+                                        // Not enough room for both lines: the greeting takes the headline's place and size
+                                        Text(
+                                            text = holiday.text,
+                                            style =
+                                                MaterialTheme.typography.displaySmall.copy(
+                                                    fontFamily = holidayFont(holiday.effect),
+                                                    shadow = Shadow(Color(holiday.color).copy(alpha = .7f), blurRadius = 28f),
+                                                ),
+                                            color = Color(holiday.color),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        )
+                                    } else {
+                                        Text(
+                                            text = stringResource(R.string.select_user),
+                                            style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                     // The server's name is left off on small screens to make room for the names
                                     if (!shortScreen) {
                                         Text(

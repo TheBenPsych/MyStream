@@ -61,10 +61,19 @@ object SceneVideos {
     /** One download at a time, so two screens asking at once don't both write the same file */
     private val downloadLock = kotlinx.coroutines.sync.Mutex()
 
+    /**
+     * Scenes that were redrawn after their first video went out. The new video gets a new name, so devices
+     * that saved the old one download the new one instead of playing the old picture forever.
+     */
+    private val VERSIONS = mapOf(LogoEffect.EMBERS to 2)
+
+    /** The scene video's name, without ".mp4" (also used by the scene recorder) */
+    fun videoName(effect: LogoEffect): String = VERSIONS[effect]?.let { "${effect.name}-v$it" } ?: effect.name
+
     private fun file(
         context: Context,
         effect: LogoEffect,
-    ) = File(context.filesDir, "scenes/${effect.name}.mp4")
+    ) = File(context.filesDir, "scenes/${videoName(effect)}.mp4")
 
     /** The scene's video if it's on this device */
     fun cached(
@@ -94,7 +103,7 @@ object SceneVideos {
         return try {
             target.parentFile?.mkdirs()
             val tmp = File(target.path + ".part")
-            http.newCall(Request.Builder().url("$BASE/${effect.name}.mp4").build()).execute().use { response ->
+            http.newCall(Request.Builder().url("$BASE/${videoName(effect)}.mp4").build()).execute().use { response ->
                 if (!response.isSuccessful) {
                     failed += effect
                     return null
