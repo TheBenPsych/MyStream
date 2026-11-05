@@ -2965,52 +2965,187 @@
  ],
  "campfire": [
   {
-   "text": "{a} tells the story of the boy who befriended a dragon everyone else was afraid of.",
-   "genre": "Fantasy"
+   "text": "{a} tells the tale of a nervous little river fish whose son was scooped up by a fisherman. The father swam the whole Silver Lake to find him, with a cheerful blue fish who forgot everything every few minutes. \"Keep on paddling,\" {a} sings. {b} pretends not to cry."
   },
   {
-   "text": "{b} tells a funny tale about a wizard who couldn't stop turning things into cheese.",
-   "genre": "Comedy"
+   "text": "{a} tells the tale of a farm boy who lived with his aunt and uncle, until a little brass helper brought a secret message from a princess. An old hermit taught him to feel the hidden Spark that runs through all things, and he blew up the Dark Lord's flying fortress with one lucky arrow."
   },
   {
-   "text": "Around the fire, {a} tells the legend of a ring that should never have been made.",
-   "genre": "Fantasy"
+   "text": "{a} tells the tale of a lion cub prince whose wicked uncle chased him away. He grew up eating beetles with a warthog and a chatty meerkat, singing that worries are for other folk, then came home to claim the Pride Rock. {b} insists on doing the warthog voice."
   },
   {
-   "text": "{leader} tells the tale of a girl who fell down a rabbit hole into a world of nonsense.",
-   "genre": "Family"
+   "text": "{a} tells the tale of a toy knight who was the favourite of a boy, until a shiny new toy star-ranger arrived who truly believed he could fly. They got lost at the Inn of Pizza and had to find their way home before the boy moved house."
   },
   {
-   "text": "{b} tells a story about a castle of toys that came alive at night.",
-   "genre": "Animation"
+   "text": "{a} tells the tale of a poor girl who swept cinders for her cruel stepsisters. A fairy with a terrible sense of timing turned a pumpkin into a coach, and the girl lost a glass slipper at midnight. The prince tried the slipper on every foot in the kingdom. {b} asks how nobody else had the same size feet."
   },
   {
-   "text": "{a} tells a spooky story about a house in the woods. {b} pretends not to be scared.",
-   "genre": "Horror"
+   "text": "{a} tells the tale of a mighty ship called the Unsinkable that hit a mountain of ice. Two young lovers from different worlds clung to a floating door. \"There was room for both of them on that door,\" {b} grumbles. Everyone argues about it for an hour."
   },
   {
-   "text": "{a} sings a song about pirates who sailed off the edge of the map.",
-   "genre": "Adventure"
+   "text": "{a} tells the tale of a boy wizard who lived in a cupboard under the stairs, until an owl brought a letter to a school of magic. He got a scar, a broom, two best friends, and a lot of homework."
   },
   {
-   "text": "{b} tells the story of a princess who rescued herself, and then the prince, and then the dragon.",
-   "genre": "Animation"
+   "text": "{a} tells the tale of nine travellers who walked across the whole world to throw a cursed ring into a burning mountain. The smallest of them, a hobbling halfling with hairy feet, carried it the whole way. {a} looks at the egg in the cart and goes very quiet."
   },
   {
-   "text": "{leader} tells a story of knights and quests and a very silly holy grail.",
-   "genre": "Comedy"
+   "text": "{a} tells the tale of an island where a rich old lord brought giant lizards back to life from amber, and built a park for them. \"What could go wrong?\" says {b}. Everything went wrong."
   },
   {
-   "text": "{a} tells of a magic school hidden from ordinary folk, where owls deliver the post.",
-   "genre": "Fantasy"
+   "text": "{a} tells the tale of a lonely old balloon-maker who tied a thousand balloons to his cottage and floated away to a waterfall in the jungle, with a little scout boy stuck on his porch and a talking dog who loved squirrels."
   },
   {
-   "text": "{pet} curls up by the fire while {b} tells a story about a lost animal finding its way home.",
-   "genre": "Family"
+   "text": "{a} tells the tale of a queen with ice magic who hid in a frozen castle because she was afraid of hurting her sister. Her sister climbed the mountain with a reindeer and a snowman who loved warm hugs. {b} sings the ice queen's big song much too loudly."
   },
   {
-   "text": "{a} tells the tale of a hero who journeyed to the bottom of the sea.",
-   "genre": "Adventure"
+   "text": "{a} tells the tale of a great white sea serpent that kept eating swimmers off a beach town, and the mayor who would NOT close the beach. \"We're going to need a much bigger cart,\" {a} says in a scary voice, and the fire pops. {pet} hides."
+  },
+  {
+   "text": "{a} tells the tale of a ghost-catching crew of four wizards who trapped spirits in boxes, until a giant marshmallow man stomped through the city. {b} says, \"Who would you call?\" and nobody knows."
+  },
+  {
+   "text": "{a} tells the tale of a boy who built a time-carriage out of a clockmaker's cart, rode back thirty years by accident, and almost stopped his own parents from meeting at the harvest dance. He had to get home before the lightning struck the clock tower."
+  },
+  {
+   "text": "{a} tells the tale of an ogre who just wanted his swamp back. He rescued a princess from a dragon, with a donkey who never stopped talking, and it turned out the princess was an ogre too, at night. {b} says this is clearly the best story ever told."
+  },
+  {
+   "text": "{a} tells the tale of a wooden puppet whose nose grew every time he told a lie. \"Like {b}'s nose when they say they didn't eat the last honey cake,\" {a} adds. {b} touches their nose to check."
+  },
+  {
+   "text": "{a} tells the tale of a girl swept away by a whirlwind to a land of colour. She followed a yellow stone road with a scarecrow, a tin knight and a scaredy lion, all the way to a wizard who turned out to be just a man behind a curtain."
+  },
+  {
+   "text": "{a} tells the tale of a dreamy chef rat who could cook better than any man in the city. He hid under a clumsy cook's hat and steered him by the hair. {b} decides never to eat stew in a city again."
+  },
+  {
+   "text": "{a} tells the tale of a little green alien wizard, very old and very short, who lifted a whole ship out of a swamp with his mind. \"Small I am, but mighty also,\" {a} croaks in a funny voice. Everyone does the voice for the rest of the night."
+  },
+  {
+   "text": "{a} tells the tale of a mermaid princess who traded her voice to a sea witch for a pair of legs, all for a prince who had only seen her once. {b} says that was a very bad trade."
+  },
+  {
+   "text": "{a} tells the tale of a beauty who was locked in an enchanted castle by a grumpy beast, where the candlesticks and teapots could talk. She taught him manners, and he gave her the biggest library in the world."
+  },
+  {
+   "text": "{a} tells the tale of a boy who made friends with a lost little star-creature with a glowing finger. They hid it in a closet among the toys, and it rode off to the moon on his flying cart. \"Home,\" {a} whispers, pointing to the sky."
+  },
+  {
+   "text": "{a} tells the tale of a bold archaeologist with a battered hat and a whip, who ran from a rolling boulder, hated snakes, and found a golden chest so magical it scared off every bad guy in the room. {b} says \"snakes, why did it have to be snakes\" and looks at the dark."
+  },
+  {
+   "text": "{a} tells the tale of a city of tiny insect folk, where a clumsy ant inventor hired a circus troupe of bugs to fight off greedy grasshoppers. {pet} snaps at a passing beetle. Everyone cheers."
+  },
+  {
+   "text": "{a} tells the tale of a man stuck living the same day over and over: the same song at dawn, the same puddle, the same groundhog. He only escaped by becoming kind. {b} asks what day it is. Nobody is sure."
+  },
+  {
+   "text": "{a} tells the tale of a ship of pirates cursed to turn into skeletons in the moonlight, and a strange swaying captain who always lost his ship. {a} plays the captain, wobbling round the fire and losing a boot."
+  },
+  {
+   "text": "{a} tells the tale of a monster company that scared children to make lamplight, until a tiny girl wandered into the monster world and they learned that laughter made more light than screams."
+  },
+  {
+   "text": "{a} tells the tale of a brave girl who disguised herself as a boy to take her father's place in the emperor's army. A small talking dragon who was really more of a lizard helped her save the whole kingdom."
+  },
+  {
+   "text": "{a} tells the tale of an orphan boy who could see that the world was made of glowing runes. He learned to dodge arrows by leaning backwards very, very slowly. {b} tries it and falls into a bush."
+  },
+  {
+   "text": "{a} tells the tale of a feisty girl from an island who sailed across the ocean with a big boastful demigod to return a stolen green stone to the heart of the island. The chicken on her boat was the bravest of all."
+  },
+  {
+   "text": "{a} tells the tale of a family of heroes in disguise: a strong father, a stretchy mother, a fast boy and a girl who could turn invisible. \"No capes!\" {a} shouts, and everyone laughs because {b} is wearing a blanket like one."
+  },
+  {
+   "text": "{a} tells the tale of a robot left alone to clean a whole empty kingdom of rubbish, who fell in love with a sleek flying robot, and saved a plant that brought the people home."
+  },
+  {
+   "text": "{a} tells the tale of a toy brick builder who was told he was the Special One, even though he was very ordinary. \"Everything is brilliant!\" {b} sings, and won't stop."
+  },
+  {
+   "text": "{a} tells the tale of a lost boy who never grew up, a fairy with a temper, and a pirate captain with a hook who was very afraid of a ticking crocodile. {pet} looks up at \"crocodile\" and looks around."
+  },
+  {
+   "text": "{a} tells the tale of a girl who found a talking stuffed bear and his friends in a hundred-acre wood: a bouncy tiger, a gloomy donkey and a very small pig. The bear only wanted honey. {a} looks at the honey cakes. Hmm."
+  },
+  {
+   "text": "{a} tells the tale of a royal guardsman sent to a hidden valley of panthers and bandits, where a clumsy noodle-cook's son became the greatest warrior of all just by being himself and eating lots of dumplings."
+  },
+  {
+   "text": "{a} tells the tale of a hero squad of misfits who saved the stars: a rude raccoon, a tree who could only say one thing, a green warrior and a dancer with no sense of humour. \"I am tree,\" {b} says. Nobody knows why."
+  },
+  {
+   "text": "{a} tells the tale of a gang of thieves who robbed the richest casino in the desert city with eleven clever tricks. It was so clever that {a} gets the order of the tricks wrong and has to start again twice."
+  },
+  {
+   "text": "{a} tells the tale of a boy who shrank his sister and himself to the size of ants by accident, and had to cross the whole back garden, which was like a jungle. {b} checks the grass for tiny people."
+  },
+  {
+   "text": "{a} tells the tale of a girl who fell down a rabbit hole into a land where cats grinned and vanished, queens shouted about heads, and everyone was late for tea. {b} says it sounds like a normal day at the Hearthvale market."
+  },
+  {
+   "text": "{a} tells the tale of a gentle giant from a faraway land who caught dreams in jars and blew good ones into children's windows at night. {pet} snores, as if to prove it works."
+  },
+  {
+   "text": "{a} tells the tale of a young wizard's apprentice who enchanted a broom to fetch water, then couldn't stop it. Buckets everywhere. A flood. \"This is why Mages need training,\" says {b}, eyeing the Magic number."
+  },
+  {
+   "text": "{a} tells the tale of an old knight who fought windmills, sure they were giants, with a faithful squire on a donkey. {b} looks at a far-off windmill and slowly reaches for a stick."
+  },
+  {
+   "text": "{a} tells the tale of a race car who thought he was the fastest thing alive, until he got stuck in a sleepy dusty town and learned that friends matter more than trophies. \"Zoom,\" {b} says, very seriously."
+  },
+  {
+   "text": "{a} tells the tale of five feelings living inside a girl's head: Joy, Sadness, Anger, Fear and Disgust, all arguing over who got to steer. {b} says theirs are arguing right now about dinner."
+  },
+  {
+   "text": "{a} tells the tale of a scruffy street boy with a magic lamp and a genie who could do anything except make people fall in love. The monkey stole everything. The flying carpet was the real hero."
+  },
+  {
+   "text": "{a} tells the tale of a forest boy raised by wolves, taught by a sleepy bear and a strict panther, hunted by a tiger with a grudge. The bear's song about needing only the bare necessities gets sung four times."
+  },
+  {
+   "text": "{a} tells the tale of an old toymaker's son who was swallowed by a giant whale and had to light a fire in its belly to make it sneeze them out. {b} decides they're never camping near the sea."
+  },
+  {
+   "text": "{a} tells the tale of a group of kids on bicycles who found a strange girl with a shaved head who could move things with her mind, and a monster from the Upside-Down. {a} turns the lantern off for effect. {b} shrieks."
+  },
+  {
+   "text": "{a} tells the tale of a man who was the world's most famous detective. He could tell where you'd been by the mud on your boots. \"Elementary,\" {a} says, and points out the mud on everyone's boots."
+  },
+  {
+   "text": "{a} tells the tale of a clever spider who wrote words in her web to save a little pig from the farmer's pot. \"What a terrific pig,\" {b} sniffs. Even {pet} looks moved."
+  },
+  {
+   "text": "{a} tells the tale of a teenage spider-bitten boy who could stick to walls and swing between towers on ropes of silk, while still trying to finish his schoolwork. {b} checks for spiders anyway."
+  },
+  {
+   "text": "{a} tells the tale of a wise old mouse who travelled into a giant's house to rescue his friend from a cat, riding a toy boat down the drain. Nobody is sure if this is a real story or {a} made it up just now."
+  },
+  {
+   "text": "{a} tells the tale of a clumsy dragon trainer from a village of Vikings who made friends with the fastest, most dangerous dragon of all, by sharing a fish. Everyone looks at the egg. The egg wiggles."
+  },
+  {
+   "text": "{a} tells the tale of a skeleton king of the spooky town who got bored of fright-night and tried to steal winter feast-day instead. He wrapped the presents in spider webs and bat wings. {b} says that's the best idea they've ever heard."
+  },
+  {
+   "text": "{a} tells the tale of a boy who went into a magic wardrobe and came out in a snowy land where it was always winter but never feast-day, ruled by an icy witch, until a great golden lion came back. {b} checks the back of the cart for wardrobes."
+  },
+  {
+   "text": "{a} tells the tale of a lost robot boy who wanted to be a real boy, and waited two thousand years under the sea to see his mother again. Everyone is very quiet afterwards. {pet} curls up next to {a}."
+  },
+  {
+   "text": "{a} tells the tale of a magic nanny who arrived on the east wind with an umbrella and a bottomless bag, and made tidying the nursery into a game. \"A spoonful of honey helps the herbs go down,\" {a} says, handing out herbs."
+  },
+  {
+   "text": "{a} tells the tale of the ghost of a pirate who haunted a lighthouse, and a girl who helped him find his lost treasure so he could finally rest. The fire flickers at just the right moment. Spooky."
+  },
+  {
+   "text": "{a} tells the tale of a grumpy green hermit on a mountain who hated the winter festival so much he stole it from the whole village, until his heart grew three sizes. {b} says, \"That's me, every morning before breakfast.\""
+  },
+  {
+   "text": "{a} tells the tale of a fearless little girl who lived alone with a horse and a monkey in a colourful house, and was the strongest girl in the world. She lifted the horse onto the porch. {b} tries to lift {pet}. It goes badly."
   }
  ],
  "markerLines": [
@@ -9324,6 +9459,1450 @@
      "text": "You climb through the dark, too excited to sleep.",
      "fx": {
       "miles": 10
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_goose",
+   "title": "The Goose of Doom",
+   "scene": "road",
+   "text": "A single white goose stands in the middle of the road. It hisses. It does not move. It has clearly done this before.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Walk around it, very politely",
+     "text": "The goose follows you for a mile, honking about your manners. Then it gets bored.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Stare it down",
+     "roll": {
+      "chance": 40,
+      "win": {
+       "text": "You stare. The goose stares. The goose blinks first and waddles off in shame.",
+       "fx": {
+        "spirit": 2,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "The goose chases {a} up a tree. Everyone else has a lovely lunch underneath.",
+       "fx": {
+        "spirit": -1,
+        "days": 1
+       }
+      },
+      "bonus": {
+       "trait:brave": 25,
+       "folk:dwarf": 15
+      }
+     }
+    },
+    {
+     "label": "Offer it a honey cake",
+     "if": {
+      "has": "honey_cake"
+     },
+     "text": "The goose eats the honey cake, then the wrapper, then honks a thank-you. It walks ahead of the cart like a tiny guard for the rest of the day.",
+     "fx": {
+      "item": "-honey_cake",
+      "spirit": 2,
+      "miles": 3
+     }
+    },
+    {
+     "label": "Ask {pet} to deal with it",
+     "if": {
+      "pet": true
+     },
+     "text": "{pet} and the goose have a long, quiet look at each other. Some agreement is reached. Nobody knows what it was.",
+     "fx": {
+      "spirit": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_bard_contest",
+   "title": "The Worst Bard in the Land",
+   "scene": "village",
+   "text": "A bard in a hat with far too many feathers blocks the bridge. \"No one passes until someone beats my song!\" He sings. It's awful. Birds fall silent out of respect.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Sing back at him",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "{a} belts out a song so good the bard bursts into tears and gives you his hat. It has eleven feathers.",
+       "fx": {
+        "gold": 10,
+        "spirit": 2,
+        "score": 15
+       }
+      },
+      "lose": {
+       "text": "{a} sings. The bard sings louder. A cow in a nearby field joins in. Nobody wins, but everybody is tired.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:singer": 35,
+       "role:bard": 30,
+       "item:lute": 15
+      }
+     }
+    },
+    {
+     "label": "Play the lute at him",
+     "if": {
+      "has": "lute"
+     },
+     "text": "Your lute playing is so lovely the bard sits down, takes off his hat, and simply listens. Then he lets you pass and pays you for the show.",
+     "fx": {
+      "gold": 15,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Clap politely and ask to pass",
+     "text": "He bows six times. You pass. Your ears ring all afternoon."
+    },
+    {
+     "label": "Hand him a coin to stop (2 gold)",
+     "if": {
+      "gold>=": 2
+     },
+     "text": "\"An honest critic,\" he sighs, and pockets it.",
+     "fx": {
+      "gold": -2,
+      "spirit": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_stuck_dwarf",
+   "title": "A Dwarf in a Barrel",
+   "scene": "river",
+   "text": "A barrel floats past on the river. It says \"HELP\" in a deep voice. A dwarf's beard is sticking out of the bung hole.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Fish the barrel out",
+     "roll": {
+      "chance": 55,
+      "win": {
+       "text": "You haul it in. Out pops a dwarf called Brannoc, who swore he'd never ride a barrel again. He gives you a hammer and his warmest thanks.",
+       "fx": {
+        "item": "hammer",
+        "rep.dwarf": 2,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "The barrel bobs past your fingers and on down the river. \"I'M FINE!\" shouts the barrel, faintly.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "item:rope": 25,
+       "item:fishing_net": 30,
+       "folk:dwarf": 15,
+       "trait:strong": 15
+      }
+     }
+    },
+    {
+     "label": "Shout advice from the bank",
+     "text": "\"Paddle with your beard!\" you shout. The barrel spins round and round. It does seem to be helping.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Cast Float to lift it out",
+     "text": "The barrel rises gently out of the water and sets down on the bank. The dwarf inside is very dizzy and very grateful.",
+     "fx": {
+      "rep.dwarf": 2,
+      "gold": 8
+     },
+     "spell": "float",
+     "if": {
+      "knows": "float"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_wrong_way",
+   "title": "The Signpost Argument",
+   "scene": "road",
+   "text": "Two signposts point in opposite directions. Both say \"Ember Peak\". One of them says it quietly, as if it's embarrassed.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Follow the loud sign",
+     "text": "It was right! The quiet sign was just shy.",
+     "fx": {
+      "miles": 4
+     }
+    },
+    {
+     "label": "Follow the quiet sign",
+     "text": "You walk all morning into a field of very surprised sheep. Back you go.",
+     "fx": {
+      "days": 1,
+      "spirit": -1
+     }
+    },
+    {
+     "label": "Ask the signposts which one is lying",
+     "roll": {
+      "chance": 35,
+      "win": {
+       "text": "The loud sign cracks under the pressure and admits the quiet one is right. You take the quick road.",
+       "fx": {
+        "miles": 6,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "The signposts refuse to talk to you. You pick at random. It's fine. Probably.",
+       "fx": {
+        "miles": 1
+       }
+      },
+      "bonus": {
+       "role:bard": 30,
+       "trait:grumpy": 15
+      }
+     }
+    },
+    {
+     "label": "Read the map",
+     "if": {
+      "has": "map"
+     },
+     "text": "The map is clear: the loud sign is right, and also the quiet sign is a duck in disguise.",
+     "fx": {
+      "miles": 5
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_soup",
+   "title": "Stone Soup",
+   "scene": "village",
+   "text": "A hungry village says they have no food to share. You have a pot and a pretty ordinary rock.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Make stone soup",
+     "roll": {
+      "chance": 50,
+      "win": {
+       "text": "\"A stone soup just needs a carrot,\" you say. Then a potato. Then some onions. Soon the whole village is eating together, and so are you.",
+       "fx": {
+        "food": 15,
+        "spirit": 2,
+        "rep.guard": 1
+       }
+      },
+      "lose": {
+       "text": "The villagers watch you boil a rock for an hour. Then they leave. The rock is not tasty.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:cook": 35,
+       "role:bard": 20,
+       "role:merchant": 10
+      }
+     }
+    },
+    {
+     "label": "Share your own food (10 food)",
+     "if": {
+      "food>=": 10
+     },
+     "text": "The village has a feast. The old miller cries and gives you a bundle of herbs.",
+     "fx": {
+      "food": -10,
+      "herbs": 2,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Trade gold for a meal (5 gold)",
+     "if": {
+      "gold>=": 5
+     },
+     "text": "A warm meal at the inn. The pie has a face drawn on it.",
+     "fx": {
+      "gold": -5,
+      "food": 8,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Keep going",
+     "text": "The village waves you off sadly. Somebody's stomach rumbles. It's yours."
+    }
+   ]
+  },
+  {
+   "id": "fun_cart_wheel",
+   "title": "The Wheel Has Opinions",
+   "scene": "road",
+   "text": "The cart's front wheel has started to squeak. Not a normal squeak. It sounds like it's saying \"nooo\" every turn.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Fix it properly (half a day)",
+     "text": "You take the wheel off, grease it, and put it back. It now says \"yesss\" instead. Better.",
+     "fx": {
+      "cart": 2,
+      "miles": -2
+     }
+    },
+    {
+     "label": "Hit it with the hammer",
+     "if": {
+      "has": "hammer"
+     },
+     "text": "One good bonk. The wheel goes quiet and runs smoother than ever.",
+     "fx": {
+      "cart": 2
+     }
+    },
+    {
+     "label": "Ignore it",
+     "text": "The wheel says \"nooo\" four thousand times that day. Everyone is very grumpy by dinner.",
+     "fx": {
+      "spirit": -2,
+      "cart": -1
+     }
+    },
+    {
+     "label": "Name it and encourage it",
+     "text": "{b} names the wheel Gerald and cheers it on. Gerald runs a little faster, out of pride.",
+     "fx": {
+      "spirit": 1,
+      "miles": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_hiccups",
+   "title": "The Hiccup Curse",
+   "scene": "meadow",
+   "text": "{a} drank from a fairy spring and now hiccups bubbles. Every bubble pops with a tiny \"sorry\".",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Scare the hiccups away",
+     "roll": {
+      "chance": 50,
+      "win": {
+       "text": "{b} jumps out from behind the cart shouting \"BOO!\" {a} screams, and the hiccups are gone.",
+       "fx": {
+        "spirit": 2
+       }
+      },
+      "lose": {
+       "text": "The scare works on {pet} instead, who runs off into a hedge. {a} is still hiccuping.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:brave": -10,
+       "trait:grumpy": 20
+      }
+     }
+    },
+    {
+     "label": "Cure it with herbs",
+     "if": {
+      "herbs>=": 1
+     },
+     "text": "A bitter herb tea, and the bubbles stop. {a} is a bit sad. They were quite pretty.",
+     "fx": {
+      "herbs": -1,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Cast Calm on the hiccups",
+     "text": "The hiccups calm down. So does {a}. So much that {a} falls asleep standing up.",
+     "fx": {
+      "spirit": 1
+     },
+     "spell": "calm",
+     "if": {
+      "knows": "calm"
+     }
+    },
+    {
+     "label": "Sell the bubbles at the next market",
+     "text": "The sorry-bubbles go for a coin each. Children love them. {a} hiccups all the way to profit.",
+     "fx": {
+      "gold": 12,
+      "spirit": -1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_royal_frog",
+   "title": "The Frog Who Says He's a Prince",
+   "scene": "swamp",
+   "text": "A frog in a tiny crown says he's a prince under a spell. \"Just one kiss, and I'll make you rich!\" He winks. Frogs shouldn't wink.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "{a} kisses the frog",
+     "roll": {
+      "chance": 25,
+      "win": {
+       "text": "POOF! He IS a prince. He keeps his promise: a pouch of royal gold, and he hops off happily as a human.",
+       "fx": {
+        "gold": 40,
+        "score": 20
+       }
+      },
+      "lose": {
+       "text": "Nothing happens, except {a} now tastes like pond. The frog laughs so hard he falls off his lily pad.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:lucky": 25,
+       "trait:royal": 20
+      }
+     }
+    },
+    {
+     "label": "Ask to see some royal papers",
+     "text": "\"Ah. Well. I left them in my other lily pad.\" The frog swims away very fast.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Cast Beast Speech to ask the truth",
+     "text": "The frog admits he's just a frog who found a crown. But he tells you a secret shortcut through the swamp.",
+     "fx": {
+      "miles": 6,
+      "secrets": 1
+     },
+     "spell": "speak",
+     "if": {
+      "knows": "speak"
+     }
+    },
+    {
+     "label": "Give the frog a fly from the cart",
+     "text": "Delighted, the frog gives you the crown. It's a ring. It's a nice ring.",
+     "fx": {
+      "gold": 8
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_tax",
+   "title": "The Tax on Hats",
+   "scene": "gate",
+   "text": "A guard at a toll gate holds up a sign: TAX ON HATS. ONE GOLD PER HAT. You all look at each other's heads.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Take off all your hats",
+     "text": "Everyone pulls their hats off and stuffs them in the cart. The guard looks disappointed and lets you through for free.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Pay for every hat (4 gold)",
+     "if": {
+      "gold>=": 4
+     },
+     "text": "The guard counts the hats twice, very slowly, and waves you through.",
+     "fx": {
+      "gold": -4
+     }
+    },
+    {
+     "label": "Argue that a hood isn't a hat",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "Your argument is so long and boring that the guard gives up and lets you pass with a free hat.",
+       "fx": {
+        "spirit": 2,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "The guard decides a hood is TWO hats.",
+       "fx": {
+        "gold": -6
+       }
+      },
+      "bonus": {
+       "role:bard": 25,
+       "role:merchant": 20,
+       "trait:grumpy": 15
+      }
+     }
+    },
+    {
+     "label": "Show the royal pass",
+     "if": {
+      "has": "royal_pass"
+     },
+     "text": "The guard salutes your royal pass and also salutes your hats.",
+     "fx": {
+      "spirit": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_snoring",
+   "title": "The Snoring Hill",
+   "scene": "hills",
+   "text": "The hill ahead is snoring. Loudly. The whole road shakes with every breath.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Tiptoe past",
+     "roll": {
+      "chance": 55,
+      "win": {
+       "text": "You tiptoe all the way. The hill rolls over in its sleep and mumbles something about cheese.",
+       "fx": {
+        "spirit": 1
+       }
+      },
+      "lose": {
+       "text": "The cart creaks. The hill opens one enormous eye, and you run for a mile.",
+       "fx": {
+        "cart": -1,
+        "miles": 3,
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "folk:elf": 20,
+       "role:ranger": 15,
+       "trait:clumsy": -25
+      }
+     }
+    },
+    {
+     "label": "Sing it a lullaby",
+     "if": {
+      "trait": "singer"
+     },
+     "text": "The hill sighs and snores more softly. A small path opens in the grass, just for you.",
+     "fx": {
+      "miles": 4,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Go the long way round",
+     "text": "It takes all day, but you don't wake a hill. That's a win.",
+     "fx": {
+      "days": 1
+     }
+    },
+    {
+     "label": "Poke the hill to see what happens",
+     "text": "The hill wakes up, very cross. It sneezes you all into the next valley. Faster, at least.",
+     "fx": {
+      "miles": 8,
+      "hurt": 1,
+      "spirit": -1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_lost_sheep",
+   "title": "Seventeen Sheep",
+   "scene": "fields",
+   "text": "A crying shepherd girl has lost her sheep. All seventeen of them. They are all, somehow, inside your cart.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Give them back",
+     "text": "The shepherd girl hugs every sheep, then you. She gives you cheese, wool and a lot of thanks.",
+     "fx": {
+      "food": 10,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Count them, to be sure",
+     "roll": {
+      "chance": 50,
+      "win": {
+       "text": "Seventeen! All there. The girl is so impressed she gives you a lucky wool charm.",
+       "fx": {
+        "spirit": 2,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "You count sixteen. Then eighteen. Then you fall asleep. Counting sheep is dangerous.",
+       "fx": {
+        "days": 1
+       }
+      },
+      "bonus": {
+       "trait:nightowl": 20,
+       "role:merchant": 20
+      }
+     }
+    },
+    {
+     "label": "Ask how they got in there",
+     "text": "\"They do that,\" she sighs. \"They love carts.\" It seems you have a reputation now.",
+     "fx": {
+      "spirit": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_mirror",
+   "title": "The Honest Mirror",
+   "scene": "forest",
+   "text": "A mirror hangs on a tree. It talks. \"Ooh,\" it says to {a}. \"Is that really what you're wearing?\"",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Argue with the mirror",
+     "roll": {
+      "chance": 40,
+      "win": {
+       "text": "{a} out-argues the mirror so hard it cracks a little and says sorry. It tells you a secret about the road as an apology.",
+       "fx": {
+        "secrets": 1,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "The mirror wins. It always wins. It's a mirror. {a} sulks all afternoon.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "role:bard": 30,
+       "trait:grumpy": 15
+      }
+     }
+    },
+    {
+     "label": "Ask it about the road",
+     "text": "\"Ember Peak? You'll never... oh, alright. Short way is left. And brush your hair.\"",
+     "fx": {
+      "miles": 4
+     }
+    },
+    {
+     "label": "Turn it to face the wall",
+     "text": "The mirror complains to the tree. The tree doesn't care.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Take the mirror along",
+     "text": "It insults everyone for a day, then gets thrown in a pond. The pond is very upset now.",
+     "fx": {
+      "gold": 5,
+      "spirit": -1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_chicken",
+   "title": "A Chicken Joins the Party",
+   "scene": "road",
+   "text": "A chicken climbs into the cart and sits down beside the dragon egg. It clucks proudly, as if it laid it.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Let the chicken stay",
+     "text": "The chicken sits on the egg all day. The egg is very warm. The chicken is very proud.",
+     "fx": {
+      "warmth": 2,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Explain to the chicken that it's a dragon egg",
+     "text": "The chicken looks at the egg. Then at you. Then lays its own egg next to it, as if to say: \"See? Mine's better.\"",
+     "fx": {
+      "food": 3,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Gently put it down by the road",
+     "text": "The chicken follows you for three miles, offended."
+    }
+   ]
+  },
+  {
+   "id": "fun_bandit_tea",
+   "title": "The Polite Bandits",
+   "scene": "bandits",
+   "text": "Three bandits jump out. \"Your gold or... um.\" They have forgotten the rest. One of them looks at a little note.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Wait while they check the note",
+     "text": "\"Your gold or your... lunch!\" they decide. It's a fair deal. You share sandwiches and they wave you off.",
+     "fx": {
+      "food": -4,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Invite them for tea",
+     "roll": {
+      "chance": 55,
+      "win": {
+       "text": "The bandits love tea. They talk about their mums. They give you a stolen map as a present.",
+       "fx": {
+        "item": "map",
+        "spirit": 2
+       }
+      },
+      "lose": {
+       "text": "They drink all your tea and steal the teapot. Rude.",
+       "fx": {
+        "food": -5
+       }
+      },
+      "bonus": {
+       "trait:cook": 25,
+       "role:bard": 20,
+       "trait:royal": 10
+      }
+     }
+    },
+    {
+     "label": "Run!",
+     "text": "You run. They run too, in the same direction, because they think you saw something scary. Everyone is out of breath.",
+     "fx": {
+      "miles": 5,
+      "spirit": -1
+     }
+    },
+    {
+     "label": "Cast Light to dazzle them",
+     "text": "A great flash! The bandits shriek, drop a purse of gold and run home to their mums.",
+     "fx": {
+      "gold": 15
+     },
+     "spell": "light",
+     "if": {
+      "knows": "light"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_gnome_race",
+   "title": "The Gnome Race",
+   "scene": "meadow",
+   "text": "A crowd of garden gnomes are holding a race. The winner gets a golden acorn. They ask if your cart wants to enter.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Race the cart!",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "The cart thunders across the line! The gnomes cheer, then complain it isn't a gnome. You get the golden acorn anyway.",
+       "fx": {
+        "gold": 20,
+        "score": 15,
+        "spirit": 2
+       }
+      },
+      "lose": {
+       "text": "The cart gets stuck in a molehill. A very slow gnome on a snail wins.",
+       "fx": {
+        "cart": -1,
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "pet": 15,
+       "role:ranger": 15,
+       "trait:lucky": 20
+      }
+     }
+    },
+    {
+     "label": "Bet on the snail (3 gold)",
+     "if": {
+      "gold>=": 3
+     },
+     "text": "The snail wins by a whisker. You win nine gold. The snail wins a hat.",
+     "fx": {
+      "gold": 6,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Be the judges",
+     "text": "You judge the race fairly. The gnomes give you a basket of veggies for your trouble.",
+     "fx": {
+      "food": 8,
+      "rep.wood": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_smelly",
+   "title": "Something Smells",
+   "scene": "swamp",
+   "text": "Something smells terrible. Everyone looks at everyone else. {pet} looks very innocent.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Blame {b}",
+     "text": "{b} is outraged, then sniffs and agrees it's the swamp. Everyone laughs.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Follow the smell",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "It's a stinky cheese seller in a hut. The cheese is amazing. Smelly, but amazing.",
+       "fx": {
+        "food": 10,
+        "spirit": 1
+       }
+      },
+      "lose": {
+       "text": "It's a bog troll's bath day. You back away very slowly.",
+       "fx": {
+        "spirit": -1,
+        "miles": -2
+       }
+      },
+      "bonus": {
+       "trait:picky": -20,
+       "trait:cook": 20
+      }
+     }
+    },
+    {
+     "label": "Cast Bloom to make it smell nice",
+     "text": "Flowers burst out of the mud. The swamp smells like roses for a mile. A frog sneezes.",
+     "fx": {
+      "spirit": 2
+     },
+     "spell": "bloom",
+     "if": {
+      "knows": "bloom"
+     }
+    },
+    {
+     "label": "Hold your noses and hurry",
+     "text": "You hold your breath for three miles. A new record.",
+     "fx": {
+      "miles": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_magic_shop",
+   "title": "The Shop That Moves",
+   "scene": "village",
+   "text": "A little shop on chicken legs trots up beside the road. \"Open for business!\" says a sign. The shopkeeper is a cat.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Buy a surprise bag (8 gold)",
+     "if": {
+      "gold>=": 8
+     },
+     "roll": {
+      "chance": 55,
+      "win": {
+       "text": "Inside: a warm stone and a honey cake! The cat purrs at your good luck.",
+       "fx": {
+        "item": [
+         "warm_stone",
+         "honey_cake"
+        ]
+       }
+      },
+      "lose": {
+       "text": "Inside: one sock. It's a nice sock. It's one sock.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:lucky": 30
+      }
+     },
+     "fx": {
+      "gold": -8
+     }
+    },
+    {
+     "label": "Trade 10 food for herbs",
+     "if": {
+      "food>=": 10
+     },
+     "text": "The cat sniffs your food and gives you a bundle of fine herbs.",
+     "fx": {
+      "food": -10,
+      "herbs": 3
+     }
+    },
+    {
+     "label": "Haggle with the cat",
+     "roll": {
+      "chance": 35,
+      "win": {
+       "text": "The cat is impressed. It gives you a lantern for almost nothing.",
+       "fx": {
+        "item": "lantern",
+        "gold": -2
+       }
+      },
+      "lose": {
+       "text": "The cat yawns, licks its paw and trots off with the whole shop."
+      },
+      "bonus": {
+       "role:merchant": 35,
+       "trait:greedy": 15
+      }
+     }
+    },
+    {
+     "label": "Pet the cat",
+     "text": "The cat allows it. Just this once. Everyone feels better.",
+     "fx": {
+      "spirit": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_tiny_dragon",
+   "title": "A Tiny Dragon Wants a Fight",
+   "scene": "hills",
+   "text": "A dragon the size of a kitten lands on the cart. It puffs up and blows a tiny flame. \"I am VERY dangerous,\" it squeaks.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Act very scared",
+     "text": "\"AAAH!\" everyone shouts. The tiny dragon is thrilled and flies off to tell its friends.",
+     "fx": {
+      "spirit": 2,
+      "dragon": 1
+     }
+    },
+    {
+     "label": "Offer it a snack",
+     "text": "It eats a whole sausage and falls asleep in the cart. It's very warm. The egg likes it.",
+     "fx": {
+      "food": -3,
+      "warmth": 2,
+      "dragon": 1
+     }
+    },
+    {
+     "label": "Let it guard the egg tonight",
+     "text": "It guards the egg all night with tiny growls. In the morning it's gone, leaving one shiny scale.",
+     "fx": {
+      "warmth": 3,
+      "dragon": 2,
+      "score": 10
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_rain_party",
+   "title": "Indoor Picnic",
+   "scene": "rain",
+   "text": "It's pouring. The only shelter is a tiny hut, and inside are six very wet gnomes having a picnic.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Squeeze in and join them",
+     "text": "It's cosy, loud and full of jam sandwiches. Best rainy day ever.",
+     "fx": {
+      "spirit": 3,
+      "food": 4,
+      "days": 1
+     }
+    },
+    {
+     "label": "Push on through the rain",
+     "roll": {
+      "chance": 50,
+      "win": {
+       "text": "Soggy but proud, you make good miles. Your socks will never be dry again.",
+       "fx": {
+        "miles": 6
+       }
+      },
+      "lose": {
+       "text": "You get stuck in the mud and someone catches a fever.",
+       "fx": {
+        "sick": 1,
+        "miles": 2
+       }
+      },
+      "bonus": {
+       "trait:strong": 20,
+       "folk:dwarf": 15
+      }
+     }
+    },
+    {
+     "label": "Cast Warm to dry everyone",
+     "text": "A warm glow fills the hut. The gnomes cheer. Their beards fluff up like dandelions.",
+     "fx": {
+      "spirit": 2,
+      "rep.wood": 1
+     },
+     "spell": "warm",
+     "if": {
+      "knows": "warm"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_echo",
+   "title": "The Rude Echo",
+   "scene": "mountain",
+   "text": "You shout \"Hello!\" into the canyon. The echo shouts back, \"Go away!\"",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Shout something nice",
+     "text": "\"You're a lovely echo!\" A long pause. \"...Thanks,\" says the echo, quietly. It shows you a shortcut.",
+     "fx": {
+      "miles": 5,
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Shout something rude back",
+     "roll": {
+      "chance": 40,
+      "win": {
+       "text": "You win the shouting match. The echo goes quiet in shame.",
+       "fx": {
+        "spirit": 1,
+        "score": 5
+       }
+      },
+      "lose": {
+       "text": "The echo is MUCH better at being rude. You lose. Badly.",
+       "fx": {
+        "spirit": -2
+       }
+      },
+      "bonus": {
+       "trait:grumpy": 30
+      }
+     }
+    },
+    {
+     "label": "Sing to it",
+     "if": {
+      "trait": "singer"
+     },
+     "text": "The echo sings along. In harmony. It's beautiful, and a little bit spooky.",
+     "fx": {
+      "spirit": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_pie_contest",
+   "title": "The Great Pie Contest",
+   "scene": "village",
+   "text": "The village is holding a pie contest. First prize: a full sack of food. Second prize: a pie. Third prize: also a pie.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "{a} bakes a pie",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "Golden, crispy, perfect! First prize! The judges weep into their napkins.",
+       "fx": {
+        "item": "food_sack",
+        "spirit": 2,
+        "score": 15
+       }
+      },
+      "lose": {
+       "text": "{a}'s pie explodes. Third prize, for \"bravery\". Still, a pie is a pie.",
+       "fx": {
+        "food": 5
+       }
+      },
+      "bonus": {
+       "trait:cook": 40,
+       "role:healer": 10,
+       "trait:picky": -15
+      }
+     }
+    },
+    {
+     "label": "Be a judge",
+     "text": "You eat forty slices of pie. It's the best day of your life, until about four o'clock.",
+     "fx": {
+      "food": 5,
+      "sick": 1,
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Sell pies to the crowd",
+     "if": {
+      "role": "merchant"
+     },
+     "text": "You buy pies cheap and sell them hot. Clever!",
+     "fx": {
+      "gold": 10
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_ghost_cow",
+   "title": "The Ghost Cow",
+   "scene": "night",
+   "text": "A glowing see-through cow floats across the road at midnight, mooing sadly.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Ask what's wrong",
+     "text": "It mooos that it misses its field. You point the way. It moos thank you and floats home happily.",
+     "fx": {
+      "spirit": 2,
+      "score": 5
+     }
+    },
+    {
+     "label": "Try to milk it",
+     "text": "Your bucket fills with glowing, see-through milk. It tastes of moonlight. Spooky, but good.",
+     "fx": {
+      "food": 4,
+      "wild": 1
+     }
+    },
+    {
+     "label": "Hide under blankets",
+     "text": "The ghost cow sits on the cart for an hour, mooing. Nobody sleeps.",
+     "fx": {
+      "spirit": -1
+     }
+    },
+    {
+     "label": "Cast Light to guide it",
+     "text": "A soft path of light leads the cow up into the stars. Beautiful.",
+     "fx": {
+      "spirit": 3
+     },
+     "spell": "light",
+     "if": {
+      "knows": "light"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_treasure_map",
+   "title": "X Marks the Spot",
+   "scene": "road",
+   "text": "A map nailed to a tree shows a big red X just a few steps away.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Dig!",
+     "roll": {
+      "chance": 40,
+      "win": {
+       "text": "Gold! Real gold! In a box marked \"NOT A TRAP\".",
+       "fx": {
+        "gold": 25,
+        "score": 10
+       }
+      },
+      "lose": {
+       "text": "A box marked \"NOT A TRAP\". It was a trap. Custard everywhere.",
+       "fx": {
+        "spirit": -1
+       }
+      },
+      "bonus": {
+       "trait:lucky": 30,
+       "item:hammer": 10
+      }
+     }
+    },
+    {
+     "label": "Leave it, it's obviously a trap",
+     "text": "As you walk on, you hear a loud SPLAT behind you. Someone else dug.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Take the map instead",
+     "if": {
+      "lacks": "map"
+     },
+     "text": "It's a real map! Of somewhere else. Still, it's a nice map.",
+     "fx": {
+      "item": "map"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_knight",
+   "title": "The Very Old Knight",
+   "scene": "road",
+   "text": "An ancient knight on an ancient horse challenges you to a duel. He's so slow you could make a cup of tea before his first swing.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Make a cup of tea",
+     "text": "You make tea. He's still swinging. You give him the tea. He's touched, and gives up the duel.",
+     "fx": {
+      "spirit": 2
+     }
+    },
+    {
+     "label": "Accept the duel",
+     "roll": {
+      "chance": 60,
+      "win": {
+       "text": "{a} wins with a gentle poke. The knight gives you his shield. It's mostly rust, but it's a gift.",
+       "fx": {
+        "spirit": 1,
+        "score": 10,
+        "gold": 5
+       }
+      },
+      "lose": {
+       "text": "The knight trips, you trip over him, the horse sits on you both. A draw.",
+       "fx": {
+        "hurt": 1
+       }
+      },
+      "bonus": {
+       "trait:strong": 15,
+       "trait:brave": 15
+      }
+     }
+    },
+    {
+     "label": "Ask to hear his stories",
+     "text": "Three hours of stories. One of them is useful: a secret path.",
+     "fx": {
+      "days": 1,
+      "miles": 10,
+      "secrets": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_wishing_well",
+   "title": "The Wishing Well",
+   "scene": "village",
+   "text": "A wishing well. A sign says: ONE WISH, ONE GOLD. The well burps.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Wish for food (1 gold)",
+     "if": {
+      "gold>=": 1
+     },
+     "text": "A bucket rises with a warm loaf in it. The well burps again.",
+     "fx": {
+      "gold": -1,
+      "food": 8
+     }
+    },
+    {
+     "label": "Wish for a quicker road (1 gold)",
+     "if": {
+      "gold>=": 1
+     },
+     "text": "A gust of wind pushes the cart along for miles!",
+     "fx": {
+      "gold": -1,
+      "miles": 6
+     }
+    },
+    {
+     "label": "Wish for the egg to be safe (1 gold)",
+     "if": {
+      "gold>=": 1,
+      "egg": true
+     },
+     "text": "The well glows. The egg glows back. Something listened.",
+     "fx": {
+      "gold": -1,
+      "warmth": 2,
+      "dragon": 1
+     }
+    },
+    {
+     "label": "Climb down and get the coins",
+     "roll": {
+      "chance": 30,
+      "win": {
+       "text": "Sixty coins of other people's wishes. You feel a bit guilty.",
+       "fx": {
+        "gold": 30,
+        "spirit": -1
+       }
+      },
+      "lose": {
+       "text": "Stuck. For a whole day. The well laughs at you, echoing.",
+       "fx": {
+        "days": 1,
+        "spirit": -2
+       }
+      },
+      "bonus": {
+       "trait:greedy": 20,
+       "item:rope": 30
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "fun_dancing",
+   "title": "The Dancing Mushrooms",
+   "scene": "mushroom",
+   "text": "A ring of mushrooms is dancing in the moonlight. They invite you to join. Mushrooms dance very, very slowly.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Join the dance",
+     "text": "You dance all night. You're not sure if one night or seven passed. Your legs are very tired and very happy.",
+     "fx": {
+      "spirit": 3,
+      "days": 1
+     }
+    },
+    {
+     "label": "Clap along",
+     "text": "The mushrooms love an audience. They give you some of their best friends to eat. Oh. Hm.",
+     "fx": {
+      "food": 5
+     }
+    },
+    {
+     "label": "Politely decline",
+     "text": "The mushrooms bow. They respect a busy traveller."
+    }
+   ]
+  },
+  {
+   "id": "fun_pickpocket",
+   "title": "The Monkey Thief",
+   "scene": "village",
+   "text": "A monkey in a waistcoat steals {a}'s purse and climbs a roof, laughing.",
+   "weight": 2,
+   "choices": [
+    {
+     "label": "Chase it",
+     "roll": {
+      "chance": 45,
+      "win": {
+       "text": "{a} scrambles across three roofs and grabs the purse back. The monkey claps.",
+       "fx": {
+        "spirit": 2
+       }
+      },
+      "lose": {
+       "text": "The monkey is faster. It waves goodbye. With your gold.",
+       "fx": {
+        "gold": -8
+       }
+      },
+      "bonus": {
+       "role:ranger": 25,
+       "folk:elf": 15,
+       "trait:clumsy": -20
+      }
+     }
+    },
+    {
+     "label": "Offer it a shinier thing",
+     "if": {
+      "has": "silver_bell"
+     },
+     "text": "You hold up a silver bell. The monkey swaps it for the purse instantly.",
+     "fx": {
+      "item": "-silver_bell"
+     }
+    },
+    {
+     "label": "Ask {pet} to help",
+     "if": {
+      "pet": true
+     },
+     "text": "{pet} sits under the roof and stares until the monkey gets nervous and drops the purse.",
+     "fx": {
+      "spirit": 1
+     }
+    },
+    {
+     "label": "Let it keep a coin",
+     "text": "The monkey is so pleased it brings back the purse and adds a button.",
+     "fx": {
+      "gold": -1,
+      "spirit": 1
      }
     }
    ]

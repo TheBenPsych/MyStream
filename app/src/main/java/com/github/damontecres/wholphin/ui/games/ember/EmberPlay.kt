@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -48,17 +47,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.games.ShowPicker
 import com.github.damontecres.wholphin.games.SideShow
 import com.github.damontecres.wholphin.games.SideShowItem
@@ -148,22 +144,23 @@ fun EmberPlay(
 
     Box(Modifier.fillMaxSize()) {
         if (isTv) {
+            // Top half: the picture and the party side by side. Bottom half: an old-game box with the words and the choices.
             // Extra room at the bottom: many TVs crop the edge of the picture (overscan), which cut off the last buttons
             Column(
                 Modifier.fillMaxSize().padding(start = 32.dp, end = 32.dp, top = 16.dp, bottom = 36.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(Modifier.height(tvPictureHeight(0.44f)), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(Modifier.height(tvPictureHeight(0.46f)), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Scene(vm, e, Modifier.fillMaxHeight())
-                    PartyPanel(e, Modifier.weight(1f).fillMaxHeight())
+                    PartyPanel(vm, e, isTv = true, modifier = Modifier.weight(1f).fillMaxHeight())
                 }
-                StatusBar(e)
-                Column(
+                Box(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .border(3.dp, EmberText, RoundedCornerShape(4.dp))
+                        .background(EmberBox, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
                     PhaseContent(vm, e, isTv, first, onBag = { bag = true })
                 }
@@ -180,9 +177,17 @@ fun EmberPlay(
                     Scene(vm, e, Modifier.fillMaxWidth())
                     EmberButton("☰", onClick = { menu = true }, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
                 }
-                StatusBar(e)
-                PartyRow(e)
-                PhaseContent(vm, e, isTv, first, onBag = { bag = true })
+                PartyPanel(vm, e, isTv = false, modifier = Modifier.fillMaxWidth())
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .border(2.dp, EmberText, RoundedCornerShape(4.dp))
+                        .background(EmberBox, RoundedCornerShape(4.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    PhaseContent(vm, e, isTv, first, onBag = { bag = true })
+                }
             }
         }
         if (showOn) {
@@ -308,60 +313,110 @@ private fun Scene(
     }
 }
 
+/** One number in the party panel: a small label over a big value, red when it's getting low */
 @Composable
-@NonSkippableComposable
-private fun StatusBar(e: EmberEngine) {
-    val st = e.state
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(EmberPanel, RoundedCornerShape(6.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-    ) {
-        Stat("Day", "${st.day} · ${e.season}")
-        Stat("Food", "${st.food}", warn = st.food < e.active.size * 6)
-        Stat("Gold", "${st.gold}")
-        Stat("Spirit", "${st.spirit}/10", warn = st.spirit <= 2)
-        when {
-            e.hatched -> Stat("Dragon", "Ember")
-            !e.eggHere -> Stat("Egg", "gone!", warn = true)
-            else -> Stat("Egg", "warmth ${st.warmth}/10 · hatches ~${st.hatchIn}d", warn = st.warmth <= 3)
-        }
-        Stat("Cart", "${st.cart}/10", warn = st.cart <= 3)
-        Stat("Herbs", "${st.herbs}")
-        Stat("Magic", if (st.wild == 0) "calm" else "wild ${st.wild}", warn = st.wild >= 5)
-        if (st.phase == Phase.TRAVEL) Stat("Road", "${st.miles}/${st.legMiles} mi · leg ${e.legIndex + 1}/${st.legs}")
-    }
-}
-
-@Composable
-@NonSkippableComposable
-private fun PartyPanel(
-    e: EmberEngine,
-    modifier: Modifier,
+private fun StatTile(
+    label: String,
+    value: String,
+    isTv: Boolean,
+    modifier: Modifier = Modifier,
+    sub: String? = null,
+    warn: Boolean = false,
 ) {
     Column(
         modifier
-            .background(EmberPanel, RoundedCornerShape(8.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(EmberPanelDark, RoundedCornerShape(6.dp))
+            .padding(horizontal = if (isTv) 8.dp else 5.dp, vertical = if (isTv) 4.dp else 3.dp),
     ) {
-        Text("The party", color = EmberGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text("★ leads · ties in votes go to the TV", color = EmberDim, fontSize = 11.sp)
-        val names = e.story.traits.associate { it.id to it.name }
-        e.state.members.forEach { m -> MemberLine(m, names) }
-        e.pet?.let { p ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PixelPortrait(null, petId = p.id, size = 32.dp, faded = e.state.petGone)
-                Text(
-                    p.name + if (e.state.petGone) " (lost)" else "",
-                    color = if (e.state.petGone) EmberDim else EmberText,
-                    fontSize = 14.sp,
-                )
+        Text(label.uppercase(), color = EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1, letterSpacing = 0.5.sp)
+        Text(
+            value,
+            color = if (warn) EmberBad else EmberText,
+            fontSize = if (isTv) 21.sp else 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        if (sub != null) Text(sub, color = if (warn) EmberBad else EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1)
+    }
+}
+
+/** Everyone in the party, then Day, Food and the rest as big labelled numbers */
+@Composable
+@NonSkippableComposable
+private fun PartyPanel(
+    vm: EmberViewModel,
+    e: EmberEngine,
+    isTv: Boolean,
+    modifier: Modifier,
+) {
+    val st = e.state
+    val perDay = (e.active.size * 2).coerceAtLeast(1)
+    val names = e.story.traits.associate { it.id to it.name }
+    val stats =
+        buildList<@Composable (Modifier) -> Unit> {
+            add { m -> StatTile("Day", "${st.day}", isTv, m, sub = e.season) }
+            add { m -> StatTile("Food", "${st.food}", isTv, m, sub = "~${st.food / perDay} days", warn = st.food < perDay * 3) }
+            add { m -> StatTile("Gold", "${st.gold}", isTv, m) }
+            add { m -> StatTile("Spirit", "${st.spirit}/10", isTv, m, warn = st.spirit <= 2) }
+            add { m -> StatTile("Herbs", "${st.herbs}", isTv, m) }
+            add { m ->
+                when {
+                    e.hatched -> StatTile("Dragon", "Ember", isTv, m, sub = "hatched!")
+                    !e.eggHere -> StatTile("Egg", "gone!", isTv, m, warn = true)
+                    else -> StatTile("Egg warmth", "${st.warmth}/10", isTv, m, sub = "hatches ~${st.hatchIn}d", warn = st.warmth <= 3)
+                }
             }
+            add { m -> StatTile("Cart", "${st.cart}/10", isTv, m, warn = st.cart <= 3) }
+            add { m -> StatTile("Magic", if (st.wild == 0) "calm" else "wild ${st.wild}", isTv, m, warn = st.wild >= 5) }
+            add { m -> StatTile("Road", "${st.miles}/${st.legMiles}", isTv, m, sub = "mi · leg ${e.legIndex + 1} of ${st.legs}") }
+            if (vm.joined.isNotEmpty()) add { m -> StatTile("Phones", "${vm.joined.size}", isTv, m, sub = "voting") }
+        }
+    val people =
+        buildList<@Composable () -> Unit> {
+            st.members.forEach { m -> add { MemberLine(m, isTv, names) } }
+            e.pet?.let { p ->
+                add {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PixelPortrait(null, petId = p.id, size = if (isTv) 28.dp else 22.dp, faded = st.petGone)
+                        Text(
+                            p.name + if (st.petGone) " (lost)" else "",
+                            color = if (st.petGone) EmberDim else EmberText,
+                            fontSize = if (isTv) 15.sp else 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+        }
+    val cols = if (isTv) 5 else 4
+    val body: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(if (isTv) 8.dp else 6.dp)) {
+            people.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { Box(Modifier.weight(1f)) { it() } }
+                    if (pair.size == 1) Box(Modifier.weight(1f))
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(EmberDim.copy(alpha = 0.35f)))
+            stats.chunked(cols).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { it(Modifier.weight(1f)) }
+                    repeat(cols - row.size) { Box(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+    Box(
+        modifier
+            .background(EmberPanel, RoundedCornerShape(8.dp))
+            .padding(horizontal = if (isTv) 14.dp else 8.dp, vertical = if (isTv) 10.dp else 8.dp),
+    ) {
+        // TV: shrinks a little if a big party doesn't fit (the remote can't scroll this)
+        if (isTv) {
+            com.github.damontecres.wholphin.ui.games
+                .FitScreen(isTv = true) { body() }
+        } else {
+            body()
         }
     }
 }
@@ -370,56 +425,116 @@ private fun PartyPanel(
 @NonSkippableComposable
 private fun MemberLine(
     m: Member,
+    isTv: Boolean,
     traitNames: Map<String, String> = emptyMap(),
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PixelPortrait(m, size = 32.dp, faded = m.gone)
+        PixelPortrait(m, size = if (isTv) 30.dp else 22.dp, faded = m.gone)
         Column {
-            Text(
-                m.name + if (m.leader) " ★" else "",
-                color = if (m.gone) EmberDim else EmberText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    m.name + if (m.leader) " ★" else "",
+                    color = if (m.gone) EmberDim else EmberText,
+                    fontSize = if (isTv) 15.sp else 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Text(
+                    when {
+                        m.gone -> "went home"
+                        m.sick -> "♥".repeat(m.health.coerceAtLeast(0)) + " fever"
+                        else -> "♥".repeat(m.health.coerceAtLeast(0))
+                    },
+                    color =
+                        if (m.gone) {
+                            EmberDim
+                        } else if (m.sick) {
+                            EmberBad
+                        } else {
+                            Color(0xFFE05A6A)
+                        },
+                    fontSize = if (isTv) 13.sp else 11.sp,
+                    maxLines = 1,
+                )
+            }
             val about =
                 listOfNotNull(
                     m.role?.let { EmberSkills[it]?.first },
                     m.traits.firstOrNull()?.let { t -> traitNames[t] },
                 ).joinToString(" · ")
-            if (about.isNotEmpty()) Text(about, color = EmberDim, fontSize = 12.sp, maxLines = 1)
-            Text(
-                when {
-                    m.gone -> "went home"
-                    m.sick -> "♥".repeat(m.health.coerceAtLeast(0)) + " fever"
-                    else -> "♥".repeat(m.health.coerceAtLeast(0))
-                },
-                color =
-                    if (m.gone) {
-                        EmberDim
-                    } else if (m.sick) {
-                        EmberBad
-                    } else {
-                        Color(0xFFE05A6A)
-                    },
-                fontSize = 12.sp,
-            )
+            if (about.isNotEmpty()) Text(about, color = EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1)
         }
     }
 }
 
+/** TV: the words on the left and the choices on the right, so neither pushes the other off the screen. Phone: words, then choices. */
+@Composable
+private fun Split(
+    isTv: Boolean,
+    words: @Composable () -> Unit,
+    choices: @Composable () -> Unit,
+) {
+    if (isTv) {
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            Box(Modifier.weight(1.15f).fillMaxHeight()) {
+                com.github.damontecres.wholphin.ui.games.FitScreen(isTv = true) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { words() }
+                }
+            }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) { choices() }
+        }
+    } else {
+        words()
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) { choices() }
+    }
+}
+
+/** The choices as slim rows. With phones joined, every one is a vote (except settings, shopping and Continue). */
 @Composable
 @NonSkippableComposable
-private fun PartyRow(e: EmberEngine) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        val names = e.story.traits.associate { it.id to it.name }
-        e.state.members.forEach { MemberLine(it, names) }
-        e.pet?.let { p ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PixelPortrait(null, petId = p.id, size = 32.dp, faded = e.state.petGone)
-            }
-        }
+private fun Choices(
+    vm: EmberViewModel,
+    isTv: Boolean,
+    first: FocusRequester,
+    acts: List<Act> = vm.actions(),
+    extra: List<Act> = emptyList(),
+    onExtra: (Act) -> Unit = {},
+) {
+    acts.forEachIndexed { i, a ->
+        val votes = vm.votesFor(a.id)
+        ChoiceRow(
+            a.label,
+            onClick = { vm.press(a.id) },
+            isTv = isTv,
+            sub = if (votes.isNotEmpty()) "Votes: " + votes.joinToString() else a.hint.ifBlank { null },
+            picked = vm.tvVote == a.id,
+            focusRequester = if (i == 0) first else null,
+        )
     }
+    if (vm.joined.isNotEmpty() && vm.tvVote != null) {
+        ChoiceRow("Decide now (don't wait for everyone)", onClick = vm::decideNow, isTv = isTv)
+    }
+    extra.forEach { a -> ChoiceRow(a.label, onClick = { onExtra(a) }, isTv = isTv) }
+}
+
+/** A short line under the words when phones are voting */
+@Composable
+private fun VoteLine(vm: EmberViewModel) {
+    if (vm.joined.isNotEmpty()) {
+        Text(
+            "Everyone votes: each phone and the TV picks one. Most votes win, a tie goes to the TV.",
+            color = EmberGold,
+            fontSize = 14.sp,
+        )
+    }
+    vm.voteNote?.let { Text(it, color = EmberDim, fontSize = 13.sp) }
 }
 
 /** The words and buttons for whatever's happening now */
@@ -433,80 +548,55 @@ private fun PhaseContent(
     onBag: () -> Unit,
 ) {
     val st = e.state
+    val bagAct = listOf(Act("bag", "Bag & journal"))
     when (st.phase) {
         Phase.TRAVEL -> {
-            val text = vm.log?.text?.takeIf { it.isNotBlank() } ?: e.land.blurb
-            TypeText(text)
-            if (st.day <= 2 && e.legIndex == 0) {
-                Text(
-                    "New here? Keep going travels one day. Make camp rests everyone and warms the egg. " +
-                        "Watch Food and the egg's warmth at the top. Bag & journal shows your things and spells.",
-                    color = EmberGold.copy(alpha = 0.85f),
-                    fontSize = 14.sp,
-                )
-            }
-            vm.log?.let { ChangeChips(it.changes) }
-            val here = vm.family.filter { it.land == st.route.last() }
-            if (here.isNotEmpty()) {
-                Text(
-                    "Trail markers on this road: " + here.joinToString { it.code }.take(80),
-                    color = EmberGold,
-                    fontSize = 14.sp,
-                )
-            }
-            ActionRow(vm, first, extra = listOf(Act("bag", "Bag & journal")), onExtra = { onBag() })
+            Split(isTv, words = {
+                val text = vm.log?.text?.takeIf { it.isNotBlank() } ?: e.land.blurb
+                Text(e.land.name, color = EmberGold, fontSize = if (isTv) 21.sp else 18.sp, fontWeight = FontWeight.Bold)
+                TypeText(text, size = if (isTv) 19 else 17)
+                if (st.day <= 2 && e.legIndex == 0) {
+                    Text(
+                        "New here? Keep going travels one day. Make camp rests everyone and warms the egg. " +
+                            "Watch Food and Egg warmth up top. Bag & journal shows your things and spells.",
+                        color = EmberGold.copy(alpha = 0.85f),
+                        fontSize = 14.sp,
+                    )
+                }
+                vm.log?.let { ChangeChips(it.changes) }
+                val here = vm.family.filter { it.land == st.route.last() }
+                if (here.isNotEmpty()) {
+                    Text("Trail markers on this road: " + here.joinToString { it.code }.take(80), color = EmberGold, fontSize = 14.sp)
+                }
+                VoteLine(vm)
+            }, choices = {
+                Choices(vm, isTv, first, extra = bagAct, onExtra = { onBag() })
+            })
         }
 
         Phase.EVENT -> {
             val ev = e.currentEvent ?: return
-            Text(ev.title, color = EmberGold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            TypeText(e.eventText(ev))
-            if (e.choices(ev).any { (_, c) -> c.roll != null }) {
-                Text(
-                    "A % is the chance it works. It's a dice roll, and your skills and traits can raise it.",
-                    color = EmberDim,
-                    fontSize = 13.sp,
-                )
-            }
-            if (vm.joined.isNotEmpty()) {
-                Text(
-                    "This is a vote: each phone and the TV picks one. When everyone has voted, the most votes win " +
-                        "(a tie goes to the TV). Pick on the TV too, or press Decide now to stop waiting.",
-                    color = EmberGold,
-                    fontSize = 14.sp,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = if (isTv) 620.dp else 900.dp)) {
-                vm.actions().forEachIndexed { i, a ->
-                    val votes = vm.votesFor(a.id)
-                    EmberButton(
-                        a.label,
-                        sub = if (votes.isNotEmpty()) "Votes: " + votes.joinToString() else null,
-                        onClick = { vm.doAction(a.id) },
-                        focusRequester = if (i == 0) first else null,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            Split(isTv, words = {
+                Text(ev.title, color = EmberGold, fontSize = if (isTv) 22.sp else 19.sp, fontWeight = FontWeight.Bold)
+                TypeText(e.eventText(ev), size = if (isTv) 19 else 17)
+                if (e.choices(ev).any { (_, c) -> c.roll != null }) {
+                    Text("A % is the chance it works. Skills and traits can raise it.", color = EmberDim, fontSize = 13.sp)
                 }
-                if (vm.joined.isNotEmpty() && vm.tvVote != null) {
-                    EmberButton("Decide now (don't wait for everyone)", onClick = vm::decideNow, tint = Color(0xFF5A2A1E))
-                }
-            }
+                VoteLine(vm)
+            }, choices = {
+                Choices(vm, isTv, first)
+            })
         }
 
         Phase.RESULT -> {
             val shown = st.shown
-            TypeText(shown?.text.orEmpty())
-            shown?.let { ChangeChips(it.changes) }
-            vm.voteNote?.let { Text(it, color = EmberDim, fontSize = 13.sp) }
-            ActionRow(vm, first)
-        }
-
-        Phase.STOP -> {
-            StopContent(vm, e, isTv, first, onBag)
-        }
-
-        Phase.MARKET -> {
-            MarketContent(vm, e, first)
+            Split(isTv, words = {
+                TypeText(shown?.text.orEmpty(), size = if (isTv) 19 else 17)
+                shown?.let { ChangeChips(it.changes) }
+                vm.voteNote?.let { Text(it, color = EmberDim, fontSize = 13.sp) }
+            }, choices = {
+                Choices(vm, isTv, first)
+            })
         }
 
         Phase.FORK -> {
@@ -514,48 +604,47 @@ private fun PhaseContent(
         }
 
         Phase.CAMP -> {
-            CampContent(vm, e, isTv, first, onBag)
+            val shown = st.shown
+            Split(isTv, words = {
+                TypeText(shown?.text.orEmpty(), size = if (isTv) 19 else 17)
+                shown?.let { ChangeChips(it.changes) }
+                VoteLine(vm)
+            }, choices = {
+                Choices(vm, isTv, first, extra = bagAct, onExtra = { onBag() })
+            })
         }
 
-        Phase.MINIGAME -> {
-            key(st.minigame, st.day) {
-                EmberMiniGame(st.minigame ?: "fish", isTv, vm.minigameInput) { vm.minigameDone(it) }
+        else -> {
+            val inner: @Composable () -> Unit = {
+                when (st.phase) {
+                    Phase.STOP -> {
+                        StopContent(vm, e, isTv, first, onBag)
+                    }
+
+                    Phase.MARKET -> {
+                        MarketContent(vm, e, first)
+                    }
+
+                    Phase.MINIGAME -> {
+                        key(st.minigame, st.day) {
+                            EmberMiniGame(st.minigame ?: "fish", isTv, vm.minigameInput) { vm.minigameDone(it) }
+                        }
+                    }
+
+                    else -> {
+                        RecapContent(vm, e, isTv, first)
+                    }
+                }
+            }
+            if (isTv) {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) { inner() }
+            } else {
+                inner()
             }
         }
-
-        Phase.OVER -> {
-            RecapContent(vm, e, isTv, first)
-        }
-    }
-}
-
-@Composable
-@NonSkippableComposable
-private fun ActionRow(
-    vm: EmberViewModel,
-    first: FocusRequester,
-    extra: List<Act> = emptyList(),
-    onExtra: (Act) -> Unit = {},
-) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        vm.actions().forEachIndexed { i, a ->
-            EmberButton(
-                a.label,
-                sub = a.hint.ifBlank { null },
-                onClick = { vm.doAction(a.id) },
-                focusRequester =
-                    if (i ==
-                        0
-                    ) {
-                        first
-                    } else {
-                        null
-                    },
-                big = i == 0,
-                tint = if (i == 0) Color(0xFF5A2A1E) else EmberPanel,
-            )
-        }
-        extra.forEach { a -> EmberButton(a.label, onClick = { onExtra(a) }) }
     }
 }
 
@@ -601,8 +690,8 @@ private fun StopContent(
                 }
                 if (isTv) EmberButton(if (typing) "Hide typing" else "Type", onClick = { typing = !typing })
                 EmberButton("Bag", onClick = onBag)
-                if (s.market) EmberButton("Market", onClick = vm::openMarket, tint = Color(0xFF3A4A2A))
-                EmberButton(if (s.final) "Finish the journey" else "Leave", onClick = vm::leaveStop, tint = Color(0xFF5A2A1E))
+                if (s.market) EmberButton("Market", onClick = { vm.press("market") }, tint = Color(0xFF3A4A2A))
+                EmberButton(if (s.final) "Finish the journey" else "Leave", onClick = { vm.press("leave") }, tint = Color(0xFF5A2A1E))
             }
         }
 
@@ -787,109 +876,36 @@ private fun ForkContent(
     first: FocusRequester,
 ) {
     val st = e.state
-    Text("The road splits. Which way?", color = EmberGold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-    Text(
-        st.route.joinToString("  →  ") { e.story.land(it).name } + "  →  ?" + if (e.legIndex < st.legs - 2) "  →  Ember Peak" else "",
-        color = EmberDim,
-        fontSize = 14.sp,
-    )
-    val cards: @Composable (Modifier) -> Unit = { mod ->
-        st.forkOptions.forEachIndexed { i, id ->
+    val acts =
+        st.forkOptions.map { id ->
             val land = e.story.land(id)
             val marks = vm.family.filter { it.land == id }
-            Column(
-                mod
-                    .background(EmberPanel, RoundedCornerShape(8.dp))
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                PixelScene(land.scene, SceneOpts(season = e.season, crt = vm.crt), Modifier.fillMaxWidth(), animate = false)
-                Text(land.name, color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(e.forkLabel(id), color = if (land.tag == "danger") EmberBad else EmberDim, fontSize = 13.sp)
-                Text(land.blurb, color = EmberText, fontSize = 14.sp, maxLines = 4)
-                if (marks.isNotEmpty()) Text("Markers: " + marks.joinToString { it.code }, color = EmberGold, fontSize = 13.sp)
-                EmberButton(
-                    "Go this way",
-                    onClick = { vm.pickFork(id) },
-                    focusRequester =
-                        if (i ==
-                            0
-                        ) {
-                            first
-                        } else {
-                            null
-                        },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-    if (isTv) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) { cards(Modifier.weight(1f)) }
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { cards(Modifier.fillMaxWidth()) }
-    }
-}
-
-@Composable
-@NonSkippableComposable
-private fun CampContent(
-    vm: EmberViewModel,
-    e: EmberEngine,
-    isTv: Boolean,
-    first: FocusRequester,
-    onBag: () -> Unit,
-) {
-    val shown = e.state.shown
-    // The story and its buttons come first; on a TV the movie sits beside them, so nothing is pushed off the screen
-    val story: @Composable () -> Unit = {
-        TypeText(shown?.text.orEmpty())
-        shown?.let { ChangeChips(it.changes) }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            EmberButton(
-                "Pack up and go on",
-                sub = "Back on the road",
-                onClick = vm::leaveCamp,
-                big = true,
-                focusRequester = first,
-                tint = Color(0xFF5A2A1E),
+            Act(
+                "fork:$id",
+                land.name,
+                e.forkLabel(id) + if (marks.isNotEmpty()) " · markers: " + marks.joinToString { it.code } else "",
             )
-            EmberButton("Bag & journal", onClick = onBag)
         }
-    }
-    val movie: @Composable () -> Unit = {
-        vm.campMovie?.let { m ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier =
-                    Modifier
-                        .background(Color(0xFF2A1C18), RoundedCornerShape(8.dp))
-                        .padding(10.dp),
-            ) {
-                AsyncImage(
-                    model = m.poster,
-                    contentDescription = m.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(if (isTv) 70.dp else 60.dp).aspectRatio(2f / 3f),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f, fill = false)) {
-                    Text("Tonight's campfire story is a real movie:", color = EmberDim, fontSize = 13.sp)
-                    Text(m.name + (m.year?.let { " ($it)" } ?: ""), color = EmberGold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    EmberButton(if (m.added) "On My List ✓" else "Add to My List", onClick = vm::addCampMovie, enabled = !m.added)
-                }
-            }
+    Split(isTv, words = {
+        Text("The road splits. Which way?", color = EmberGold, fontSize = if (isTv) 22.sp else 19.sp, fontWeight = FontWeight.Bold)
+        Text(
+            st.route.joinToString("  →  ") { e.story.land(it).name } + "  →  ?" + if (e.legIndex < st.legs - 2) "  →  Ember Peak" else "",
+            color = EmberDim,
+            fontSize = 14.sp,
+        )
+        st.forkOptions.forEach { id ->
+            val land = e.story.land(id)
+            Text(
+                land.name + ": " + land.blurb,
+                color = if (land.tag == "danger") EmberBad else EmberText,
+                fontSize = if (isTv) 15.sp else 14.sp,
+                maxLines = 3,
+            )
         }
-    }
-    if (isTv) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) { story() }
-            Box(Modifier.widthIn(max = 380.dp)) { movie() }
-        }
-    } else {
-        story()
-        movie()
-    }
+        VoteLine(vm)
+    }, choices = {
+        Choices(vm, isTv, first, acts = acts)
+    })
 }
 
 // -----------------------------------------------------------------------------------------------

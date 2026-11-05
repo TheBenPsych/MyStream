@@ -1156,32 +1156,22 @@ class EmberEngine(
         if (state.wild == 0) out += "Magic is calm"
         clampAll()
         state.phase = Phase.CAMP
-        val story = pick(this.story.campfire)
-        lines += "You make camp. " + fill(story.text)
+        // A campfire tale nobody has heard yet this journey (they echo famous movies, but the names are all Ember Road's)
+        val tales =
+            this.story.campfire.indices
+                .filter { "_tale$it" !in state.flags }
+                .ifEmpty {
+                    this.story.campfire.indices
+                        .toList()
+                }
+        val n = tales[rand(tales.size)]
+        state.flags.add("_tale$n")
+        val tale = this.story.campfire[n]
+        lines += "You make camp. " + fill(tale.text)
         state.shown = Shown(lines.joinToString("\n"), out)
         addJournal("Made camp in ${land.name}.")
         return state.shown!!
     }
-
-    /**
-     * The campfire story is about the movie Benflix picked for tonight, so the two always match.
-     * [gist] is the first sentence of the movie's summary (may be empty).
-     */
-    fun setCampTale(
-        title: String,
-        gist: String,
-    ) {
-        val shown = state.shown ?: return
-        if (state.phase != Phase.CAMP) return
-        val teller = active.getOrNull(rand(active.size.coerceAtLeast(1)))?.name ?: leader.name
-        val tale = "You make camp. $teller tells the story of $title." + if (gist.isNotBlank()) " $gist" else ""
-        val lines = shown.text.split("\n").toMutableList()
-        val i = lines.indexOfLast { it.startsWith("You make camp.") }
-        if (i >= 0) lines[i] = tale else lines += tale
-        state.shown = shown.copy(text = lines.joinToString("\n"))
-    }
-
-    val campGenre get() = story.campfire.firstOrNull { state.shown?.text?.contains(fill(it.text)) == true }?.genre ?: "Fantasy"
 
     fun leaveCamp() {
         state.shown = null

@@ -12,9 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixHighScores
 import com.github.damontecres.wholphin.services.DisplayPreferencesService
-import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.GuestMode
-import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -30,15 +28,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.api.client.ApiClient
-import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userApi
-import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.api.ItemFields
-import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
-import java.util.UUID
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -62,15 +53,6 @@ data class Mark(
     val line: String,
     val ending: String = "",
     val code: String = "",
-)
-
-/** A movie picked at the campfire */
-data class CampMovie(
-    val id: UUID,
-    val name: String,
-    val year: Int?,
-    val poster: String?,
-    val added: Boolean = false,
 )
 
 /** The party being set up before a journey */
@@ -109,8 +91,6 @@ class EmberViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val displayPreferencesService: DisplayPreferencesService,
-        private val imageUrlService: ImageUrlService,
-        private val favoriteWatchManager: FavoriteWatchManager,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val prefs = context.getSharedPreferences("benflix_ember", Context.MODE_PRIVATE)
@@ -137,9 +117,6 @@ class EmberViewModel
 
         /** What just happened (travel, things done in a stop) */
         var log by mutableStateOf<Shown?>(null)
-            private set
-
-        var campMovie by mutableStateOf<CampMovie?>(null)
             private set
 
         var music by mutableStateOf(prefs.getBoolean("music", true))
@@ -341,9 +318,11 @@ class EmberViewModel
         private fun changed() {
             version++
             val e = engine
-            if (e != null && e.state.phase != Phase.EVENT) {
-                votes.clear()
-                tvVote = null
+            if (e != null) {
+                // drop votes for buttons that aren't on screen any more
+                val ids = actions().map { it.id }.toSet()
+                votes.entries.removeAll { it.value !in ids }
+                if (tvVote != null && tvVote !in ids) tvVote = null
             }
             if (e != null) {
                 saveRun()
@@ -643,7 +622,6 @@ class EmberViewModel
             log = Shown(s.land("hearthvale").blurb)
             newBest = false
             markLeft = false
-            campMovie = null
             screen = EmberScreen.PLAY
             changed()
         }
@@ -677,15 +655,12 @@ class EmberViewModel
             val e = engine ?: return
             e.camp()
             log = null
-            campMovie = null
             changed()
-            loadCampMovie(e.campGenre)
         }
 
         fun leaveCamp() {
             engine?.leaveCamp()
             log = null
-            campMovie = null
             changed()
         }
 
@@ -723,6 +698,22 @@ class EmberViewModel
             maybeCount()
         }
 
+        /** Settings, shopping, Continue and mini-game taps happen straight away. Everything else is a vote once phones join. */
+        fun isVote(id: String): Boolean =
+            !(id == "cont" || id == "pace" || id == "rations" || id == "close" || id.startsWith("buy:") || id.startsWith("mg:"))
+
+        /** The TV pressing a button: with phones joined, it's the TV's vote */
+        fun press(id: String) {
+            if (joined.isEmpty() || !isVote(id)) {
+                doAction(id)
+                return
+            }
+            tvVote = id
+            version++
+            host?.push()
+            maybeCount()
+        }
+
         /** "Decide now": count the votes so far */
         fun decideNow() {
             val tv = tvVote ?: votes.values.firstOrNull() ?: return
@@ -744,12 +735,23 @@ class EmberViewModel
             val grumblers =
                 joined.filter { votes[it.id] != null && votes[it.id] != winner }.map { it.name } +
                     (if (tv != winner) listOf("The TV") else emptyList())
-            val idx = winner.removePrefix("c").toIntOrNull() ?: return
             voteNote = if (all.size > 1) "Votes: " + tally.entries.joinToString { "${it.value} for ${labelOf(it.key)}" } else null
-            resolveChoice(idx, grumblers)
+            val idx = winner.removePrefix("c").toIntOrNull()
+            if (engine?.state?.phase == Phase.EVENT && winner.startsWith("c") && idx != null) {
+                resolveChoice(idx, grumblers)
+                return
+            }
+            votes.clear()
+            tvVote = null
+            if (grumblers.isNotEmpty()) {
+                val g = grumblers.joinToString(" and ")
+                voteNote = (voteNote?.let { "$it. " } ?: "") + "$g grumble${if (grumblers.size == 1) "s" else ""}, but goes along."
+            }
+            doAction(winner)
         }
 
         private fun labelOf(action: String): String {
+            actions().firstOrNull { it.id == action }?.let { return it.label }
             val e = engine ?: return action
             val ev = e.currentEvent ?: return action
             val i = action.removePrefix("c").toIntOrNull() ?: return action
@@ -916,81 +918,6 @@ class EmberViewModel
         }
 
         // -------------------------------------------------------------------------------------
-        // Campfire movie pick
-
-        private fun loadCampMovie(genre: String) {
-            val user = serverRepository.currentUser ?: return
-            viewModelScope.launch {
-                try {
-                    val dto =
-                        withContext(WholphinDispatchers.IO) {
-                            api.itemsApi
-                                .getItems(
-                                    GetItemsRequest(
-                                        userId = user.id,
-                                        includeItemTypes = listOf(BaseItemKind.MOVIE),
-                                        recursive = true,
-                                        genres = listOf(genre),
-                                        isPlayed = false,
-                                        sortBy = listOf(ItemSortBy.RANDOM),
-                                        limit = 1,
-                                        imageTypes = listOf(ImageType.PRIMARY),
-                                        fields = listOf(ItemFields.OVERVIEW),
-                                    ),
-                                ).content.items
-                                .firstOrNull()
-                        } ?: return@launch
-                    campMovie =
-                        CampMovie(
-                            id = dto.id,
-                            name = dto.name.orEmpty(),
-                            year = dto.productionYear,
-                            poster =
-                                imageUrlService.getItemImageUrl(
-                                    itemId = dto.id,
-                                    imageType = ImageType.PRIMARY,
-                                    maxWidth = 300,
-                                    tag = dto.imageTags?.get(ImageType.PRIMARY),
-                                ),
-                            added = dto.userData?.isFavorite == true,
-                        )
-                    // Tonight's story is about tonight's movie, so the words and the poster match
-                    val gist =
-                        dto.overview
-                            .orEmpty()
-                            .replace("\n", " ")
-                            .trim()
-                            .let { o ->
-                                val end = Regex("[.!?](\\s|$)").find(o)?.range?.first
-                                if (end != null) o.substring(0, end + 1) else o
-                            }.take(220)
-                    val title = dto.name.orEmpty() + (dto.productionYear?.let { " ($it)" } ?: "")
-                    engine?.setCampTale(title, gist)
-                    changed()
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.i(ex, "No campfire movie")
-                }
-            }
-        }
-
-        fun addCampMovie() {
-            val m = campMovie ?: return
-            if (guest || m.added) return
-            viewModelScope.launch {
-                try {
-                    withContext(WholphinDispatchers.IO) { favoriteWatchManager.setFavorite(m.id, true) }
-                    campMovie = m.copy(added = true)
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Couldn't add the campfire movie to My List")
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------------------------
         // The buttons for each part of the game (the TV shows them, and so do the phones)
 
         fun actions(): List<Act> {
@@ -1104,7 +1031,7 @@ class EmberViewModel
             val e = engine ?: return
             if (screen != EmberScreen.PLAY) return
             if (actions().none { it.id == action }) return
-            if (e.state.phase == Phase.EVENT && action.startsWith("c")) {
+            if (isVote(action)) {
                 votes[j.id] = action
                 version++
                 host?.push()
@@ -1180,8 +1107,12 @@ class EmberViewModel
             return PhoneView(
                 title = title,
                 text = text.take(1500),
-                actions = actions().map { PhoneAction(it.id, it.label, it.hint) },
-                vote = e.state.phase == Phase.EVENT,
+                actions =
+                    actions().map { a ->
+                        val n = votesFor(a.id).size
+                        PhoneAction(a.id, a.label + if (n > 0) "  ($n vote${if (n == 1) "" else "s"})" else "", a.hint)
+                    },
+                vote = actions().any { isVote(it.id) },
                 hint = phoneHint(e, j),
                 bag = bagText(e),
                 mine = votes[j.id],
@@ -1198,53 +1129,38 @@ class EmberViewModel
             e: EmberEngine,
             j: Joined,
         ): String =
-            when (e.state.phase) {
-                Phase.EVENT -> {
-                    when {
-                        votes[j.id] != null && tvVote == null -> {
-                            "Your vote is in. Waiting for the TV to vote too (or press Decide now on the TV)."
-                        }
-
-                        votes[j.id] != null -> {
-                            "Your vote is in. Waiting for the other phones. You can still change it."
-                        }
-
-                        else -> {
-                            "This is a vote. Every phone and the TV picks one. Most votes win, and a tie goes to the TV."
-                        }
-                    }
+            when {
+                e.state.phase == Phase.MINIGAME -> {
+                    "Play along! Tap at the right moment."
                 }
 
-                Phase.TRAVEL -> {
-                    "Not a vote: these buttons work straight away for the whole party, from any phone or the TV. Agree first!"
-                }
-
-                Phase.STOP -> {
-                    "Not a vote: Look and Talk happen straight away. You can also type what to do, like \"look under the bridge\"."
-                }
-
-                Phase.MARKET -> {
-                    "Anyone can buy. The gold is shared by the whole party."
-                }
-
-                Phase.FORK -> {
-                    "Not a vote: the first road anyone picks is the one you take. Agree first!"
-                }
-
-                Phase.CAMP -> {
-                    "Resting for the night. Anyone can press Pack up to set off again."
-                }
-
-                Phase.RESULT -> {
+                e.state.phase == Phase.RESULT -> {
                     "Anyone can press Continue."
                 }
 
-                Phase.MINIGAME -> {
-                    "Everyone can play: press the buttons on your phone at the right time."
+                e.state.phase == Phase.MARKET -> {
+                    "Anyone can buy straight away. The gold is shared, so agree first! Done shopping is for anyone too."
                 }
 
-                Phase.OVER -> {
-                    "The journey is over. Pick a trail marker on the TV."
+                votes[j.id] != null && tvVote == null -> {
+                    "Your vote is in. Waiting for the TV to vote too (or press Decide now on the TV)."
+                }
+
+                votes[j.id] != null -> {
+                    "Your vote is in. Waiting for the others. You can still change it."
+                }
+
+                e.state.phase == Phase.TRAVEL -> {
+                    "Every step is a vote: every phone and the TV picks one. Most votes win, a tie goes to the TV. " +
+                        "Pace and Food change straight away."
+                }
+
+                e.state.phase == Phase.STOP -> {
+                    "Every step is a vote. Most votes win, a tie goes to the TV. You can also type what to do, like \"look under the bridge\"."
+                }
+
+                else -> {
+                    "This is a vote. Every phone and the TV picks one. Most votes win, and a tie goes to the TV."
                 }
             }
 
