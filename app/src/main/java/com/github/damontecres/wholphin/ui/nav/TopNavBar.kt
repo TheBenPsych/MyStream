@@ -212,7 +212,7 @@ fun TopNavBar(
         ) {
             val roomPx = constraints.maxWidth
             Row(
-                horizontalArrangement = Arrangement.spacedBy(if (squeeze == 0) 4.dp else if (squeeze == 1) 2.dp else 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(listOf(4.dp, 2.dp, 0.dp)[squeeze]),
                 verticalAlignment = Alignment.CenterVertically,
                 // Full height, so the tab positions (and the sliding line under them) stay where they were
                 modifier =
@@ -223,7 +223,7 @@ fun TopNavBar(
             ) {
                 BenflixLogo(
                     height = if (squeeze >= 2) 22.dp else 26.dp,
-                    modifier = Modifier.padding(end = if (squeeze == 0) 14.dp else if (squeeze == 1) 8.dp else 6.dp),
+                    modifier = Modifier.padding(end = listOf(14.dp, 8.dp, 6.dp)[squeeze]),
                 )
                 if (kids) {
                     Text(
@@ -420,7 +420,7 @@ private fun TopNavTabButton(
         onClick = tab.onClick,
         interactionSource = interactionSource,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-        contentPadding = PaddingValues(horizontal = if (squeeze == 0) 12.dp else if (squeeze == 1) 8.dp else 7.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = listOf(12.dp, 8.dp, 7.dp)[squeeze.coerceIn(0, 2)], vertical = 6.dp),
         colors =
             ButtonDefaults.colors(
                 containerColor = Color.Transparent,
