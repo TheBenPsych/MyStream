@@ -67,14 +67,19 @@ class EmberRoadTest {
     }
 
     @Test
-    fun campfireStoryMatchesTheMovie() {
+    fun campfireTalesDontRepeat() {
         val members = listOf(Member("Ben", "human", listOf("brave"), leader = true, role = "healer"))
         val e = EmberEngine.newRun(story, RunSetup(members, "healer", null, seed = 3))
-        e.camp()
-        e.setCampTale("Big Movie (2020)", "A hero saves the day.")
-        val text = e.state.shown!!.text
-        assertTrue(text, text.contains("Ben tells the story of Big Movie (2020). A hero saves the day."))
-        assertEquals(1, text.split("\n").count { it.startsWith("You make camp.") })
+        val heard = mutableSetOf<String>()
+        repeat(10) {
+            e.camp()
+            val text = e.state.shown!!.text
+            assertEquals(1, text.split("\n").count { it.startsWith("You make camp.") })
+            val tale = text.split("\n").first { it.startsWith("You make camp.") }
+            assertTrue(tale, heard.add(tale))
+            assertTrue(tale, !tale.contains("{"))
+            e.leaveCamp()
+        }
     }
 
     @Test
