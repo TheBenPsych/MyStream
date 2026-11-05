@@ -750,7 +750,6 @@ class AniListService
             return out
         }
 
-        /** AniList's next season of a show (its TV sequel) and how many episodes an entry has */
         /** The MyAnimeList number of an AniList entry, or null if MyAnimeList doesn't have it */
         internal suspend fun malIdOf(id: Int): Int? =
             query("query (\$id: Int) { Media(id: \$id, type: ANIME) { idMal } }", vars { put("id", id) })
@@ -758,6 +757,7 @@ class AniListService
                 ?.int("idMal")
                 ?.takeIf { it > 0 }
 
+        /** AniList's next season of a show (its TV sequel) and how many episodes an entry has */
         internal suspend fun sequelOf(id: Int): Pair<Int?, Int?> {
             val cacheName = "anilist-sequel-$id"
             diskCache.read(cacheName, ListSerializer(Int.serializer()), WEEK_MS)?.let { saved ->
