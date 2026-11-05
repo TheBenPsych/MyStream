@@ -262,6 +262,26 @@ class PlaybackViewModel
         /** Benflix: true while this video was moved to MPV for its styled subtitles */
         internal var autoMpvActive = false
 
+        /** Benflix: the video was paused since the last passthrough kick */
+        private var pausedSinceKick = false
+
+        /**
+         * Benflix: on TCL TVs with "Surround to soundbar" on, the TV's own Dolby passthrough goes
+         * silent after a pause or a subtitle switch, and comes back after a jump. So after those,
+         * jump to where we already are: a tiny pause, but the surround sound keeps going.
+         */
+        internal fun kickPassthroughSound(reason: String) {
+            val exo = player as? ExoPlayer ?: return
+            val context = this.context
+            if (!SurroundPassthrough.needsKick(context, exo.audioFormat?.sampleMimeType)) return
+            viewModelScope.launch(WholphinDispatchers.Main) {
+                delay(KICK_DELAY_MS)
+                if (exo.isReleased || exo.playbackState != Player.STATE_READY) return@launch
+                Timber.i("Passthrough kick after %s", reason)
+                exo.seekTo(exo.currentPosition)
+            }
+        }
+
         /** Benflix: which fallback step (see onPlayerError) was last used, and for which video */
         private var fallbackStepFor: UUID? = null
         private var fallbackStep = 0
@@ -1157,7 +1177,10 @@ class PlaybackViewModel
                         positionMs = onMain { player.currentPosition },
                         enableDirectPlay = true,
                     )
-                    onMain { soundWatchdog.check("subtitle switch") }
+                    onMain {
+                        soundWatchdog.check("subtitle switch")
+                        kickPassthroughSound("subtitle switch")
+                    }
                 } else {
                     Timber.w("Trying to change subtitle, but currentPlayback is null")
                 }
@@ -2144,6 +2167,15 @@ class PlaybackViewModel
             screensaverService.keepScreenOn(isPlaying)
         }
 
+        override fun onPlayWhenReadyChanged(
+            playWhenReady: Boolean,
+            reason: Int,
+        ) {
+            // Benflix: TCL passthrough goes silent after a pause, so give it a fresh start on play
+            if (playWhenReady && pausedSinceKick) kickPassthroughSound("resume")
+            pausedSinceKick = !playWhenReady
+        }
+
         override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
             val player = this@PlaybackViewModel.player
             if (availableCommands.contains(Player.COMMAND_PREPARE) && player is MpvPlayer) {
@@ -2254,6 +2286,9 @@ private val DAMAGED_FILE_ERRORS =
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_DECODING_FAILED,
     )
+
+/** Wait a moment after play/subtitles before the passthrough kick */
+private const val KICK_DELAY_MS = 400L
 
 /** How it shows on Ben's Server page problem list */
 private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatically)"
