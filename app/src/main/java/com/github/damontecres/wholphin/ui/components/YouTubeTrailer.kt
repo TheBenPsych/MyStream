@@ -113,10 +113,13 @@ object YouTubeTrailer {
         val host = uri.host?.lowercase().orEmpty()
         val candidate =
             when {
-                trimmed.startsWith("plugin://plugin.video.youtube", true) ->
+                trimmed.startsWith("plugin://plugin.video.youtube", true) -> {
                     uri.getQueryParameter("videoid") ?: uri.getQueryParameter("video_id")
+                }
 
-                host == "youtu.be" -> uri.pathSegments.firstOrNull()
+                host == "youtu.be" -> {
+                    uri.pathSegments.firstOrNull()
+                }
 
                 host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com") -> {
                     val segments = uri.pathSegments
@@ -127,7 +130,9 @@ object YouTubeTrailer {
                     }
                 }
 
-                else -> null
+                else -> {
+                    null
+                }
             }
         return candidate?.takeIf { ID.matches(it) }
     }
@@ -290,9 +295,13 @@ private fun YouTubeTrailerPopup(
                         }
 
                         // Up/down do nothing, but are swallowed so focus doesn't wander off
-                        Key.DirectionUp, Key.DirectionDown -> true
+                        Key.DirectionUp, Key.DirectionDown -> {
+                            true
+                        }
 
-                        else -> false
+                        else -> {
+                            false
+                        }
                     }
                 }.focusable(),
     ) {
