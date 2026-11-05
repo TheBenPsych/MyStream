@@ -87,7 +87,10 @@ class OmdbScores
                 if (cleaned.isNotEmpty()) {
                     // The Matrix: a quick test that the key is right
                     when (val test = ask(cleaned, "tt0133093")) {
-                        is Answer.Problem -> return@withContext test.message
+                        is Answer.Problem -> {
+                            return@withContext test.message
+                        }
+
                         else -> {}
                     }
                 }
