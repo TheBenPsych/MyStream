@@ -251,9 +251,9 @@ data class Spell(
 
 @Serializable
 data class CampStory(
+    /** "{a} tells the tale of ...": a little story that echoes a famous movie, told the Ember Road way */
     val text: String,
-    /** Jellyfin genre for the "watch this" pick */
-    val genre: String = "Fantasy",
+    val genre: String = "",
 )
 
 @Serializable

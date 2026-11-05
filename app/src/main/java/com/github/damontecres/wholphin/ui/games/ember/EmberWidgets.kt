@@ -2,6 +2,7 @@
 
 package com.github.damontecres.wholphin.ui.games.ember
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -45,8 +48,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -65,6 +71,12 @@ val EmberText = Color(0xFFF3EAD8)
 val EmberDim = Color(0xFFB8A99A)
 val EmberGood = Color(0xFF7BD88F)
 val EmberBad = Color(0xFFFF7A6B)
+
+/** The old-game text box at the bottom of the journey screen */
+val EmberBox = Color(0xFF0D0A10)
+
+/** The little boxes behind each number in the party panel */
+val EmberPanelDark = Color(0xFF17111A)
 
 /** Draws pixel art into a small picture that's blown up with sharp pixels */
 private class BitmapSink(
@@ -238,6 +250,77 @@ fun EmberButton(
                         androidx.tv.material3.LocalContentColor.current
                             .copy(alpha = 0.75f),
                 )
+            }
+        }
+    }
+}
+
+/**
+ * One choice in the text box: a slim row, a ▶ arrow on the one the remote is on (it doesn't grow, so it never
+ * spills off the screen), and who voted for it underneath.
+ */
+@Composable
+fun ChoiceRow(
+    text: String,
+    onClick: () -> Unit,
+    isTv: Boolean,
+    modifier: Modifier = Modifier,
+    sub: String? = null,
+    picked: Boolean = false,
+    focusRequester: FocusRequester? = null,
+) {
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color(0xFF1D1629),
+                contentColor = EmberText,
+                focusedContainerColor = Color(0xFF3A2F1A),
+                focusedContentColor = EmberGold,
+                pressedContainerColor = Color(0xFF3A2F1A),
+                pressedContentColor = EmberGold,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, if (picked) EmberGold.copy(alpha = 0.6f) else Color(0xFF3B2D55))),
+                focusedBorder = Border(BorderStroke(2.dp, EmberGold)),
+            ),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .onFocusChanged { focused = it.isFocused }
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 6.dp, end = 12.dp, top = if (isTv) 8.dp else 9.dp, bottom = if (isTv) 8.dp else 9.dp),
+        ) {
+            Text(
+                if (focused) {
+                    "▶"
+                } else if (picked) {
+                    "●"
+                } else {
+                    ""
+                },
+                fontSize = if (isTv) 14.sp else 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(22.dp),
+            )
+            Column {
+                Text(text, fontSize = if (isTv) 19.sp else 16.sp, fontWeight = FontWeight.SemiBold)
+                if (sub != null) {
+                    Text(
+                        sub,
+                        fontSize = if (isTv) 13.sp else 12.sp,
+                        color =
+                            androidx.tv.material3.LocalContentColor.current
+                                .copy(alpha = 0.75f),
+                    )
+                }
             }
         }
     }
