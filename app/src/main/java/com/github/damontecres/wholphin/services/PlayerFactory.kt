@@ -18,6 +18,8 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -317,6 +319,31 @@ class WholphinRenderersFactory(
     private val preferDolbyVisionOverHdr10Plus: Boolean = false,
     private val convertDolbyVisionProfile7: Boolean = false,
 ) : DefaultRenderersFactory(context) {
+    /**
+     * Benflix: with surround passthrough off (see SurroundPassthrough), the sound output is told
+     * it can only play plain sound, so Dolby/DTS is turned into plain sound by the TV's decoder
+     * or Benflix's own (ffmpeg) instead of being handed to the TV's sound chip as-is.
+     */
+    override fun buildAudioSink(
+        context: Context,
+        enableFloatOutput: Boolean,
+        enableAudioOutputPlaybackParams: Boolean,
+    ): AudioSink? {
+        if (com.github.damontecres.wholphin.ui.playback.SurroundPassthrough
+                .isOn(context)
+        ) {
+            return super.buildAudioSink(context, enableFloatOutput, enableAudioOutputPlaybackParams)
+        }
+        Timber.i("Surround passthrough off: Dolby/DTS sound is decoded on this device")
+        // The builder without a context uses the default capabilities: plain sound only
+        @Suppress("DEPRECATION")
+        return DefaultAudioSink
+            .Builder()
+            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
+            .build()
+    }
+
     @OptIn(ExperimentalApi::class)
     override fun buildVideoRenderers(
         context: Context,
