@@ -35,6 +35,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.services.AniListService
+import com.github.damontecres.wholphin.services.MalFacts
+import com.github.damontecres.wholphin.services.MalScores
+import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -57,6 +61,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 /**
  * Benflix: extra facts for a movie or show you could ask for: age rating, where it's from, IMDb and Rotten
@@ -77,6 +82,14 @@ data class SeerrExtras(
     // Benflix: "Director" (movies) or "Created by" (shows), and their names
     val makerLabel: String? = null,
     val maker: String? = null,
+    // Benflix: anime get AniList + MyAnimeList scores instead of IMDb + Rotten Tomatoes
+    val anime: Boolean = false,
+    /** AniList fan score, 0 to 100 */
+    val aniList: Int? = null,
+    /** MyAnimeList score, 0 to 10 */
+    val mal: Double? = null,
+    /** TMDB's user score, 0 to 100 (used when Rotten Tomatoes has no audience score) */
+    val tmdbUsers: Int? = null,
 )
 
 @HiltViewModel
@@ -84,6 +97,9 @@ class SeerrExtrasViewModel
     @Inject
     constructor(
         private val seerrService: SeerrService,
+        private val omdbScores: OmdbScores,
+        private val aniList: AniListService,
+        private val malScores: MalScores,
     ) : ViewModel() {
         private val _extras = MutableStateFlow<SeerrExtras?>(null)
         val extras: StateFlow<SeerrExtras?> = _extras
@@ -114,8 +130,18 @@ class SeerrExtrasViewModel
                             needsSubtitles = details?.let(::needsSubtitles) == true,
                             makerLabel = if (isMovie) "Director" else "Created by",
                             maker = details?.let { if (isMovie) directors(it) else creators(it) },
+                            anime = details?.let(::isAnime) == true,
+                            tmdbUsers = details?.let(::tmdbUserScore),
                         )
                     _extras.value = extras
+                    // Benflix: anime scores from AniList and MyAnimeList
+                    if (extras.anime && details != null) {
+                        val anime = animeScores(key, isMovie, details)
+                        if (anime != null) {
+                            extras = extras.copy(aniList = anime.first, mal = anime.second)
+                            _extras.value = extras
+                        }
+                    }
                     // Scores come from a second, slower lookup
                     val ratings =
                         try {
@@ -156,6 +182,20 @@ class SeerrExtrasViewModel
                             )
                         _extras.value = extras
                     }
+                    // Benflix: IMDb and Rotten Tomatoes from OMDb fill in whatever Seerr didn't have
+                    // (Seerr never has IMDb for shows, and often misses older shows on Rotten Tomatoes)
+                    if (!extras.anime && (extras.imdb == null || extras.rtCritics == null)) {
+                        val imdbId = details?.let(::imdbIdOf)
+                        val omdb = imdbId?.let { omdbScores.scoresFor(it) }
+                        if (omdb != null) {
+                            extras =
+                                extras.copy(
+                                    imdb = extras.imdb ?: omdb.imdb,
+                                    rtCritics = extras.rtCritics ?: omdb.rtCritics,
+                                )
+                            _extras.value = extras
+                        }
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -163,7 +203,59 @@ class SeerrExtrasViewModel
                 }
             }
         }
+
+        /** AniList score (0-100) and MyAnimeList score (0-10) for an anime on the Requests pages */
+        private suspend fun animeScores(
+            key: String,
+            isMovie: Boolean,
+            details: JsonObject,
+        ): Pair<Int?, Double?>? =
+            try {
+                val names =
+                    listOfNotNull(
+                        details["title"].str() ?: details["name"].str(),
+                        details["originalTitle"].str() ?: details["originalName"].str(),
+                    )
+                val year =
+                    (details["releaseDate"].str() ?: details["firstAirDate"].str())
+                        ?.take(4)
+                        ?.toIntOrNull()
+                val tag = "${if (isMovie) "MOVIE" else "TV"}-${key.substringAfter('-')}"
+                val found = aniList.forRequest(tag, names, year, isMovie)
+                if (found == null) {
+                    null
+                } else {
+                    // Matches saved before MyAnimeList numbers were kept have none yet: ask AniList
+                    val malId = found.malId?.takeIf { it > 0 } ?: if (found.malId == null) aniList.malIdOf(found.id) else null
+                    val mal =
+                        malId?.let {
+                            malScores.fetch(listOf(it))
+                            MalFacts.scores.value[it]
+                        }
+                    found.score to mal
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "No anime scores for %s", key)
+                null
+            }
     }
+
+/** IMDb id ("tt0214341") from Seerr's movie or show details */
+internal fun imdbIdOf(details: JsonObject): String? =
+    (details["imdbId"].str() ?: (details["externalIds"] as? JsonObject)?.get("imdbId").str())
+        ?.takeIf { it.startsWith("tt") }
+
+/** TMDB's user score as a percent, when enough people voted for it to mean something */
+internal fun tmdbUserScore(details: JsonObject): Int? {
+    val average = (details["voteAverage"] as? kotlinx.serialization.json.JsonPrimitive)?.doubleOrNull ?: return null
+    val count = (details["voteCount"] as? kotlinx.serialization.json.JsonPrimitive)?.intOrNull ?: 0
+    if (average <= 0 || count < MIN_TMDB_VOTES) return null
+    return (average * 10).roundToInt()
+}
+
+private const val MIN_TMDB_VOTES = 20
 
 /** Benflix: shared readers for Seerr's movie and show JSON (used here and by the Requests page) */
 internal fun JsonElement?.str(): String? = (this as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
@@ -359,11 +451,22 @@ fun SeerrExtrasBlock(
     val isTv = rememberIsTv()
     val scores =
         buildList {
-            e.imdb?.let { add(Score("%.1f".format(it), "IMDb", IMDB_GOLD)) }
-            (e.rtCritics ?: fallbackCritic)?.let {
-                add(Score("$it%", "Critics", if (it >= 60) FRESH_RED else ROTTEN_GREEN))
+            // Benflix: movies and shows = IMDb, Rotten Tomatoes critics, then the audience;
+            // anime = AniList, MyAnimeList, then the audience
+            if (e.anime) {
+                e.aniList?.let { add(Score(String.format(Locale.US, "%.1f", it / 10.0), "AniList", ANILIST_BLUE)) }
+                e.mal?.let { add(Score(String.format(Locale.US, "%.1f", it), "MyAnimeList", MAL_BLUE)) }
+            } else {
+                e.imdb?.let { add(Score(String.format(Locale.US, "%.1f", it), "IMDb", IMDB_GOLD)) }
+                (e.rtCritics ?: fallbackCritic)?.let {
+                    add(Score("$it%", "Critics", if (it >= 60) FRESH_RED else ROTTEN_GREEN))
+                }
             }
-            (e.rtAudience ?: fallbackAudience)?.let { add(Score("$it%", "Audience", Color.White)) }
+            val audience = e.rtAudience ?: fallbackAudience
+            when {
+                audience != null -> add(Score("$audience%", "Audience", Color.White))
+                e.tmdbUsers != null -> add(Score("${e.tmdbUsers}%", "Users", Color.White))
+            }
         }
     val facts =
         buildList {
@@ -455,6 +558,8 @@ fun SeerrTagsBlock(
 
 private const val COLLAPSED_TAGS = 4
 private val IMDB_GOLD = Color(0xFFF5C518)
+private val ANILIST_BLUE = Color(0xFF3DB4F2)
+private val MAL_BLUE = Color(0xFF6A8CD8)
 private val FRESH_RED = Color(0xFFFF7A59)
 private val ROTTEN_GREEN = Color(0xFF7BC86C)
 private val LABEL_GREY = Color(0xFFAEB3BD)

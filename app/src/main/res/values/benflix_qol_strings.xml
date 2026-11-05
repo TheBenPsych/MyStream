@@ -151,6 +151,9 @@
     <string name="benflix_anilist_tracking">AniList anime tracking</string>
     <string name="benflix_anilist_tracking_off">Off. Sign in with your own AniList account and every anime episode you finish on Benflix gets ticked off on your AniList list. Everyone signs in with their own account, and your TVs pick it up from your phone.</string>
     <string name="benflix_anilist_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your AniList list. Select to sign out.</string>
+    <string name="benflix_omdb_key">Scores on the Requests pages (OMDb key)</string>
+    <string name="benflix_omdb_key_off">Not set. Add a free OMDb key so every Requests page shows IMDb and Rotten Tomatoes scores. Get one at omdbapi.com/apikey.aspx (pick FREE), then open the link in the email to turn it on.</string>
+    <string name="benflix_omdb_key_on">On. Requests pages fill in IMDb and Rotten Tomatoes scores for everyone. Select to change the key.</string>
     <string name="benflix_mal_tracking">MyAnimeList anime tracking</string>
     <string name="benflix_mal_tracking_off">Off. Sign in with your own MyAnimeList account and every anime episode you finish on Benflix gets ticked off on your MyAnimeList list. Works with or without AniList, and your TVs pick it up from your phone.</string>
     <string name="benflix_mal_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your MyAnimeList list. Select to sign out.</string>
