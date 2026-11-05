@@ -37,7 +37,9 @@ object SurroundPassthrough {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return when {
             prefs.contains(KEY) -> prefs.getBoolean(KEY, true)
+
             !badPassthroughDevice() -> true
+
             // Auto on TCL: surround only goes out when a soundbar/receiver is plugged in
             else -> hasSoundSystem(context)
         }
