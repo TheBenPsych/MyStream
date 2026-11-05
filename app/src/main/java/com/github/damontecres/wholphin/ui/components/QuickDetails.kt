@@ -46,6 +46,10 @@ fun QuickDetails(
 ) {
     val enabled = LocalInterfaceCustomization.current.enabledDisplayToggles
     val inlineContentMap = rememberQuickDetailsContentMap(textStyle)
+    // Benflix: anime show their AniList and MyAnimeList scores instead of the star rating
+    val aniList by com.github.damontecres.wholphin.services.AniListFacts.cards
+        .collectAsState()
+    val isMatchedAnime = details?.itemId?.let { it in aniList } == true
     Row(modifier = modifier) {
         if (details != null) {
             QuickDetailsText(details.basic, Modifier, textStyle, inlineContentMap)
@@ -53,11 +57,11 @@ fun QuickDetails(
                 QuickDetailsText(details.officialRating, Modifier, textStyle, inlineContentMap)
             }
             if (DisplayToggle.COMMUNITY_RATING in enabled) {
-                QuickDetailsText(details.communityRating, Modifier, textStyle, inlineContentMap)
-            }
-            // Benflix: anime also show AniList's fan score, right after the stars
-            if (DisplayToggle.COMMUNITY_RATING in enabled) {
-                AniListScoreText(details.itemId, textStyle = textStyle)
+                if (isMatchedAnime) {
+                    AniListScoreText(details.itemId, textStyle = textStyle)
+                } else {
+                    QuickDetailsText(details.communityRating, Modifier, textStyle, inlineContentMap)
+                }
             }
             if (DisplayToggle.CRITIC_RATING in enabled) {
                 QuickDetailsText(details.criticRating, Modifier, textStyle, inlineContentMap)
@@ -71,7 +75,7 @@ fun QuickDetails(
     }
 }
 
-/** "  •  AniList 7.4" for an anime matched on AniList; nothing for anything else */
+/** "  •  AniList 6.9  •  MAL 7.1" for an anime matched on AniList; nothing for anything else */
 @Composable
 fun AniListScoreText(
     itemId: java.util.UUID?,
@@ -82,14 +86,17 @@ fun AniListScoreText(
     if (itemId == null) return
     val facts by com.github.damontecres.wholphin.services.AniListFacts.cards
         .collectAsState()
-    val score = facts[itemId]?.scoreText ?: return
+    val found = facts[itemId] ?: return
+    val mal by com.github.damontecres.wholphin.services.MalFacts.scores
+        .collectAsState()
+    val text =
+        buildAnnotatedString {
+            if (leadingDot) dot()
+            appendAnimeScores(found, mal, separator = { dot() })
+        }
+    if (text.isBlank()) return
     Text(
-        text =
-            buildAnnotatedString {
-                if (leadingDot) dot()
-                withStyle(SpanStyle(color = AniListBlue, fontWeight = FontWeight.Bold)) { append("AniList ") }
-                append(score)
-            },
+        text = text,
         color = MaterialTheme.colorScheme.onSurface,
         style = textStyle,
         maxLines = 1,
@@ -99,6 +106,35 @@ fun AniListScoreText(
 
 /** AniList's own blue */
 val AniListBlue = Color(0xFF02A9FF)
+
+/** MyAnimeList's own blue */
+val MalBlue = Color(0xFF6A8CD8)
+
+/**
+ * Adds "AniList 6.9" and "MAL 7.1" (each only when known), with [separator] between them.
+ * Returns whether anything was added.
+ */
+fun AnnotatedString.Builder.appendAnimeScores(
+    facts: com.github.damontecres.wholphin.services.AniListCardFacts,
+    malScores: Map<Int, Double>,
+    separator: AnnotatedString.Builder.() -> Unit,
+): Boolean {
+    val aniList = facts.scoreText
+    val mal =
+        facts.malId
+            ?.let { malScores[it] }
+            ?.let { com.github.damontecres.wholphin.services.MalFacts.text(it) }
+    aniList?.let {
+        withStyle(SpanStyle(color = AniListBlue, fontWeight = FontWeight.Bold)) { append("AniList ") }
+        append(it)
+    }
+    mal?.let {
+        if (aniList != null) separator()
+        withStyle(SpanStyle(color = MalBlue, fontWeight = FontWeight.Bold)) { append("MAL ") }
+        append(it)
+    }
+    return aniList != null || mal != null
+}
 
 @NonRestartableComposable
 @Composable

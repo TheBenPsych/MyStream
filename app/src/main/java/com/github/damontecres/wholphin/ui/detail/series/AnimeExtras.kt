@@ -103,6 +103,7 @@ class AnimeExtrasViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val aniList: AniListService,
+        private val malScores: com.github.damontecres.wholphin.services.MalScores,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow(AnimeExtrasState())
@@ -131,6 +132,7 @@ class AnimeExtrasViewModel
                     if (show) viewModelScope.launchIO { loadDubLine(series) }
                     val info = aniList.infoFor(series.data) ?: return@launchIO
                     _state.update { it.copy(info = info) }
+                    info.idMal?.let { mal -> viewModelScope.launchIO { malScores.fetch(listOf(mal)) } }
                     if (show) loadMovies(series, info)
                 } catch (ex: CancellationException) {
                     throw ex

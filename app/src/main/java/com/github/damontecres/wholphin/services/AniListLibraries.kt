@@ -20,8 +20,8 @@ import javax.inject.Singleton
 
 /**
  * Benflix: matches every show and movie in the anime libraries to AniList in the background,
- * so the AniList score and fan genres (Isekai, Shounen...) show on cards and info lines
- * everywhere, not only after a show's own page has been opened.
+ * so the AniList and MyAnimeList scores and fan genres (Isekai, Shounen...) show on cards and
+ * info lines everywhere, not only after a show's own page has been opened.
  *
  * Runs when Home loads, at most once every few hours per library. The matches are saved on the
  * device for a week, so after the first run only new titles are looked up.
@@ -32,6 +32,7 @@ class AniListLibraries
     constructor(
         private val api: ApiClient,
         private val aniList: AniListService,
+        private val malScores: MalScores,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + WholphinDispatchers.IO)
         private val lastRun = ConcurrentHashMap<UUID, Long>()
@@ -49,15 +50,25 @@ class AniListLibraries
             if (due.isEmpty()) return
             job =
                 scope.launch {
+                    val malIds = mutableListOf<Int>()
                     due.forEach { id ->
                         try {
-                            aniList.index(id, titlesIn(id, userId))
+                            val index = aniList.index(id, titlesIn(id, userId))
+                            malIds += index.values.mapNotNull { it.malId?.takeIf { m -> m > 0 } }
                             lastRun[id] = System.currentTimeMillis()
                         } catch (ex: CancellationException) {
                             throw ex
                         } catch (ex: Exception) {
                             Timber.w(ex, "Could not match anime library %s to AniList", id)
                         }
+                    }
+                    // Then their MyAnimeList scores (slower: one show at a time)
+                    try {
+                        malScores.fetch(malIds)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not get MyAnimeList scores")
                     }
                 }
         }

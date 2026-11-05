@@ -105,6 +105,8 @@ data class AniListIndexEntry(
     val score: Int? = null,
     /** When a show that wasn't found was last looked for, so it's tried again the next day */
     val checkedAt: Long = 0,
+    /** Its MyAnimeList number (0 = MyAnimeList doesn't have it, null = not asked yet) */
+    val malId: Int? = null,
 )
 
 /** One anime in an AniList genre list (Requests > anime genre page) */
@@ -153,6 +155,8 @@ enum class AniListKind(
 data class AniListCardFacts(
     val score: Int?,
     val tags: List<String>,
+    /** Its MyAnimeList number, for the MAL score (see [MalFacts]) */
+    val malId: Int? = null,
 ) {
     /** "7.4", like the star rating */
     val scoreText: String? get() = score?.let { String.format(java.util.Locale.US, "%.1f", it / 10.0) }
@@ -200,14 +204,14 @@ object AniListFacts {
         info: AniListInfo,
     ) {
         _info.update { it + (id to info) }
-        _cards.update { it + (id to AniListCardFacts(info.score, info.tags)) }
+        _cards.update { it + (id to AniListCardFacts(info.score, info.tags, info.idMal)) }
     }
 
     internal fun addIndex(entries: Map<UUID, AniListIndexEntry>) {
         val found =
             entries
                 .filter { (_, e) -> e.id > 0 }
-                .mapValues { (_, e) -> AniListCardFacts(e.score, e.tags) }
+                .mapValues { (_, e) -> AniListCardFacts(e.score, e.tags, e.malId?.takeIf { it > 0 }) }
         if (found.isEmpty()) return
         // A show's own page (fuller facts) wins over its library's index
         _cards.update { now -> now + found.filterKeys { it !in _info.value } }
@@ -437,6 +441,21 @@ class AniListService
                         out[dto.id] = AniListIndexEntry(0, checkedAt = now)
                     }
                     changed = changed || todo.isNotEmpty()
+                    // 3. Matches saved before MyAnimeList numbers were kept: ask for them, 50 at a time
+                    val noMal = out.filter { (_, e) -> e.id > 0 && e.malId == null }
+                    noMal.entries.chunked(ID_BATCH).forEach { batch ->
+                        val media =
+                            query(idsQuery("id"), vars { put("ids", JsonArray(batch.map { JsonPrimitive(it.value.id) })) })
+                                ?.obj("Page")
+                                ?.arr("media")
+                                ?.mapNotNull { it as? JsonObject }
+                                ?: return@forEach
+                        batch.forEach { (jellyfinId, e) ->
+                            val m = media.firstOrNull { it.int("id") == e.id }
+                            out[jellyfinId] = if (m != null) entryOf(m) else e.copy(malId = 0)
+                        }
+                        changed = true
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -490,6 +509,7 @@ class AniListService
                 id = m.int("id") ?: 0,
                 tags = tagsOf(m),
                 score = m.int("averageScore") ?: m.int("meanScore"),
+                malId = m.int("idMal") ?: 0,
             )
 
         /**
@@ -875,7 +895,7 @@ class AniListService
                 val parts =
                     (0 until count).joinToString("\n") {
                         "s$it: Page(perPage: 5) { media(search: ${'$'}q$it, type: ANIME, isAdult: false, sort: SEARCH_MATCH) " +
-                            "{ id format averageScore meanScore genres $TITLE startDate { year } " +
+                            "{ id idMal format averageScore meanScore genres $TITLE startDate { year } " +
                             "tags { name rank isMediaSpoiler isGeneralSpoiler isAdult } } }"
                     }
                 return "query ($params) {\n$parts\n}"
