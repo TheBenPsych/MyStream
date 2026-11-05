@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +43,8 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
@@ -65,13 +71,19 @@ import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
 
-/** A movie in the game, with its critics score (Rotten Tomatoes, out of 100) */
+/**
+ * A movie in the game, with its IMDb rating (out of 10). Jellyfin's "community rating" comes
+ * from IMDb via the OMDb plugin. It's kept in tenths (7.4 = 74) so comparing is exact.
+ */
 data class ScoredMovie(
     val name: String,
     val year: Int?,
     val score: Int,
     val poster: String?,
-)
+) {
+    /** The rating as IMDb shows it, like "7.4" */
+    val rating: String get() = "${score / 10}.${score % 10}"
+}
 
 sealed interface HigherLowerState {
     data object Loading : HigherLowerState
@@ -100,8 +112,8 @@ sealed interface HigherLowerState {
 }
 
 /**
- * Benflix "Higher or Lower": two posters from your library. You see the first one's critics
- * score; guess whether the second scored higher or lower. It keeps going until the first wrong
+ * Benflix "Higher or Lower": two posters from your library. You see the first one's
+ * IMDb rating; guess whether the second scored higher or lower. It keeps going until the first wrong
  * guess, and the "Highest scores" board ranks the best streak (right answers in a row).
  */
 @HiltViewModel
@@ -133,7 +145,7 @@ class HigherLowerViewModel
                     pool = movies
                     if (movies.size < MIN_MOVIES) {
                         _state.value =
-                            HigherLowerState.NotEnough("You need at least $MIN_MOVIES movies with critics scores to play.")
+                            HigherLowerState.NotEnough("You need at least $MIN_MOVIES movies with IMDb ratings to play.")
                         return@launch
                     }
                     deck = ArrayDeque(movies.shuffled())
@@ -198,7 +210,8 @@ class HigherLowerViewModel
                 ).content
                 .items
                 .mapNotNull { dto ->
-                    val score = dto.criticRating?.toInt()?.takeIf { it > 0 } ?: return@mapNotNull null
+                    val score =
+                        dto.communityRating?.let { Math.round(it * 10) }?.takeIf { it > 0 } ?: return@mapNotNull null
                     ScoredMovie(
                         name = dto.name ?: return@mapNotNull null,
                         year = dto.productionYear,
@@ -269,7 +282,7 @@ private fun HigherLowerContent(
                     title = if (s.newBest) "New best streak!" else "Streak over: ${s.streak} in a row",
                     body =
                         (if (s.newBest) "${s.streak} right in a row.\n" else "") +
-                            "${b.name} has ${b.score}%, ${a.name} has ${a.score}%.\n" +
+                            "${b.name} is rated ${b.rating}, ${a.name} is rated ${a.rating} on IMDb.\n" +
                             "Your best streak: ${s.best}",
                     button = "Play again with new movies",
                     onClick = viewModel::start,
@@ -303,7 +316,7 @@ private fun HigherLowerRound(
             color = Color(0xFFFFC94D),
         )
         Text(
-            text = "Did critics score the second movie higher or lower?",
+            text = "Is the second movie rated higher or lower on IMDb?",
             fontSize = if (isTv) 20.sp else 16.sp,
             color = Color.White.copy(alpha = .8f),
             textAlign = TextAlign.Center,
@@ -321,19 +334,25 @@ private fun HigherLowerRound(
                 highlight = null,
                 modifier = if (isTv) Modifier.width(tvPosterWidth) else Modifier.weight(1f),
             )
+            // The new movie to guess fades in slowly each round
+            val fade = remember(state.guess.name) { Animatable(0f) }
+            LaunchedEffect(state.guess.name) { fade.animateTo(1f, tween(GUESS_FADE_MS)) }
             PosterSide(
                 state.guess,
                 showScore = state.right != null,
                 highlight = state.right,
-                modifier = if (isTv) Modifier.width(tvPosterWidth) else Modifier.weight(1f),
+                fadeMs = GUESS_FADE_MS,
+                modifier =
+                    (if (isTv) Modifier.width(tvPosterWidth) else Modifier.weight(1f))
+                        .graphicsLayer { alpha = fade.value },
             )
         }
         // The answer shows right above the buttons (the space is kept so nothing jumps)
         Text(
             text =
                 when (state.right) {
-                    true -> "Right! ${state.guess.name} has ${state.guess.score}%"
-                    false -> "Nope, ${state.guess.name} has ${state.guess.score}%"
+                    true -> "Right! ${state.guess.name} is rated ${state.guess.rating}"
+                    false -> "Nope, ${state.guess.name} is rated ${state.guess.rating}"
                     null -> " "
                 },
             fontSize = 22.sp,
@@ -370,13 +389,18 @@ private fun HigherLowerRound(
     }
 }
 
+/** How long the new movie to guess takes to fade in (Ben asked for slower) */
+private const val GUESS_FADE_MS = 1_200
+
 @Composable
 private fun PosterSide(
     movie: ScoredMovie,
     showScore: Boolean,
     highlight: Boolean?,
     modifier: Modifier = Modifier,
+    fadeMs: Int = 0,
 ) {
+    val context = LocalContext.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -391,13 +415,20 @@ private fun PosterSide(
                     .background(Color(0xFF1C1C1F)),
         ) {
             AsyncImage(
-                model = movie.poster,
+                model =
+                    remember(movie.poster, fadeMs) {
+                        ImageRequest
+                            .Builder(context)
+                            .data(movie.poster)
+                            .crossfade(fadeMs)
+                            .build()
+                    },
                 contentDescription = movie.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
             Text(
-                text = if (showScore) "🍅 ${movie.score}%" else "🍅 ?",
+                text = if (showScore) "IMDb ${movie.rating}" else "IMDb ?",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
