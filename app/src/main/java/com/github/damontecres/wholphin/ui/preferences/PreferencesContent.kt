@@ -201,6 +201,7 @@ fun PreferencesContent(
         (isTv || pref != AppPreference.ScreensaverSettings) &&
             (!isTv || pref != AppPreference.MobileDataQualityPref) &&
             (isAdmin || pref != AppPreference.ServerPage) &&
+            (isAdmin || pref != AppPreference.OmdbKey) &&
             (!guest || pref in guestPreferences)
 
     val searchResults =
@@ -581,6 +582,14 @@ fun PreferencesContent(
 
                                     AppPreference.AniListTracking -> {
                                         com.github.damontecres.wholphin.ui.main.AniListSetting(
+                                            title = stringResource(pref.title),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.OmdbKey -> {
+                                        OmdbKeySetting(
                                             title = stringResource(pref.title),
                                             modifier = focusModifier,
                                             interactionSource = interactionSource,
