@@ -153,7 +153,7 @@ fun GamesPage(
                 { mod ->
                     MovieGameTile(
                         title = "Higher or Lower",
-                        subtitle = "Two posters. Did critics score the second one higher or lower? Keep your streak going!",
+                        subtitle = "Two posters. Is the second one rated higher or lower on IMDb? Keep your streak going!",
                         icon = R.string.fa_arrow_up_long,
                         colors = listOf(Color(0xFF15803D), Color(0xFF7F1D1D)),
                         onClick = { viewModel.navigationManager.navigateTo(Destination.HigherLower) },
