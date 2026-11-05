@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import android.view.Gravity
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -65,6 +66,9 @@ enum class PlaybackDialogType {
     SUBTITLE_DELAY,
     BITRATE,
     NIGHT_MODE,
+
+    /** Benflix: surround sound passthrough on/off (see SurroundPassthrough) */
+    SURROUND_PASSTHROUGH,
 
     /** Benflix: seasons and episodes over the video (shown by PlaybackPage, not here) */
     EPISODES,
@@ -154,6 +158,16 @@ fun PlaybackDialog(
                     )
                     add(
                         BottomDialogItem(
+                            data = PlaybackDialogType.SURROUND_PASSTHROUGH,
+                            headline =
+                                stringResource(
+                                    if (SurroundPassthrough.isOn(context)) R.string.surround_passthrough_on else R.string.surround_passthrough_off,
+                                ),
+                            supporting = stringResource(R.string.surround_passthrough_summary),
+                        ),
+                    )
+                    add(
+                        BottomDialogItem(
                             data = PlaybackDialogType.PLAYBACK_SPEED,
                             headline = stringResource(R.string.playback_speed),
                             supporting = settings.playbackSpeed.toString(),
@@ -204,6 +218,10 @@ fun PlaybackDialog(
                         onPlaybackActionClick.invoke(PlaybackAction.ShowDebug)
                     } else if (choice.data == PlaybackDialogType.NIGHT_MODE) {
                         NightMode.toggle(context)
+                        onDismissRequest.invoke()
+                    } else if (choice.data == PlaybackDialogType.SURROUND_PASSTHROUGH) {
+                        SurroundPassthrough.toggle(context)
+                        Toast.makeText(context, R.string.surround_passthrough_next_video, Toast.LENGTH_SHORT).show()
                         onDismissRequest.invoke()
                     } else {
                         onClickPlaybackDialogType(choice.data)
@@ -275,6 +293,8 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.NIGHT_MODE -> {}
+
+        PlaybackDialogType.SURROUND_PASSTHROUGH -> {}
 
         PlaybackDialogType.EPISODES -> {}
 
