@@ -29,3 +29,8 @@
 
 # Benflix: Google's cast library finds this class by the name written in the manifest
 -keep class com.github.damontecres.wholphin.services.BenflixCastOptions { *; }
+
+# Benflix: the YouTube trailer pop-up talks to the web page through these
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

@@ -1,13 +1,13 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
-import android.content.Intent
 import androidx.core.net.toUri
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.LocalTrailer
 import com.github.damontecres.wholphin.data.model.RemoteTrailer
 import com.github.damontecres.wholphin.data.model.Trailer
+import com.github.damontecres.wholphin.ui.components.YouTubeTrailer
 import com.github.damontecres.wholphin.ui.nav.Destination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.jellyfin.sdk.api.client.ApiClient
@@ -97,8 +97,13 @@ class TrailerService
                     }
 
                     is RemoteTrailer -> {
-                        val intent = Intent(Intent.ACTION_VIEW, trailer.url.toUri())
-                        context.startActivity(intent)
+                        // Benflix: YouTube trailers play in a pop-up inside the app
+                        val videoId = YouTubeTrailer.videoId(trailer.url)
+                        if (videoId != null) {
+                            YouTubeTrailer.show(videoId, trailer.name, trailer.url)
+                        } else {
+                            YouTubeTrailer.openOutside(context, trailer.url)
+                        }
                     }
                 }
             }
