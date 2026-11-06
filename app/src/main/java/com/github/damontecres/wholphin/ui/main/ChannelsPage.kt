@@ -60,11 +60,11 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BENFLIX_GROUP
 import com.github.damontecres.wholphin.services.ChannelPrefs
-import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
 import com.github.damontecres.wholphin.services.DiskCache
+import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group

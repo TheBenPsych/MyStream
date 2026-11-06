@@ -96,10 +96,15 @@ private class TileStyle(
 
 private val TileStyles =
     mapOf(
-        FAVOURITES_GROUP to TileStyle(Color(0xFF5E4A14), Color(0xFFC49A2E), "M12 2l3 7 7 .6-5.3 4.6 1.6 7.1L12 17.5 5.7 21.3l1.6-7.1L2 9.6 9 9z"),
+        FAVOURITES_GROUP to
+            TileStyle(Color(0xFF5E4A14), Color(0xFFC49A2E), "M12 2l3 7 7 .6-5.3 4.6 1.6 7.1L12 17.5 5.7 21.3l1.6-7.1L2 9.6 9 9z"),
         "News" to TileStyle(Color(0xFF1C2E5E), Color(0xFF4A6EC9), "M4 5h13v14H5a1 1 0 0 1-1-1zM17 9h3v9a1 1 0 0 1-2 0M7 8h7M7 12h7M7 16h4"),
         "Sports" to
-            TileStyle(Color(0xFF1A3A2A), Color(0xFF3FBF7A), "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"),
+            TileStyle(
+                Color(0xFF1A3A2A),
+                Color(0xFF3FBF7A),
+                "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+            ),
         "Reality" to TileStyle(Color(0xFF5E2A14), Color(0xFFD9733A), "M4 7h16v11H4zM8 3l4 4 4-4"),
         "Classic TV" to TileStyle(Color(0xFF2A2A2A), Color(0xFF8A8A8A), "M3 7h18v12H3zM8 3l4 4 4-4M17 11v4"),
         "Comedy" to
@@ -112,7 +117,8 @@ private val TileStyles =
             ),
         "Drama & Crime" to TileStyle(Color(0xFF4A1A1A), Color(0xFFB9403A), "M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM14.5 14.5L20 20"),
         "Food & Home" to TileStyle(Color(0xFF4A3A14), Color(0xFFC9A03A), "M6 3v8a2 2 0 0 0 4 0V3M8 11v10M16 3c-2 0-3 3-3 6s1 4 3 4v8"),
-        "Documentaries & Nature" to TileStyle(Color(0xFF14442A), Color(0xFF3FB86A), "M12 21c-5-3-8-7-8-12 4 0 7 2 8 5 1-3 4-5 8-5 0 5-3 9-8 12z"),
+        "Documentaries & Nature" to
+            TileStyle(Color(0xFF14442A), Color(0xFF3FB86A), "M12 21c-5-3-8-7-8-12 4 0 7 2 8 5 1-3 4-5 8-5 0 5-3 9-8 12z"),
         "Music" to
             TileStyle(
                 Color(0xFF2A1C5E),
@@ -210,7 +216,13 @@ internal fun ChannelHub(
             columns = GridCells.Fixed(if (isTv) 6 else 3),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalArrangement = Arrangement.spacedBy(gap),
-            contentPadding = PaddingValues(start = if (isTv) 8.dp else 12.dp, end = if (isTv) 32.dp else 12.dp, top = 12.dp, bottom = 24.dp),
+            contentPadding =
+                PaddingValues(
+                    start = if (isTv) 8.dp else 12.dp,
+                    end = if (isTv) 32.dp else 12.dp,
+                    top = 12.dp,
+                    bottom = 24.dp,
+                ),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "search") {
@@ -299,7 +311,10 @@ internal fun ChannelHub(
         }
     }
     if (showTypes) {
-        HideTypesDialog(groups = ChannelTileOrder.filter { it in byGroup } + byGroup.keys.filter { it !in ChannelTileOrder }, hidden = hidden) {
+        HideTypesDialog(
+            groups = ChannelTileOrder.filter { it in byGroup } + byGroup.keys.filter { it !in ChannelTileOrder },
+            hidden = hidden,
+        ) {
             showTypes = false
         }
     }

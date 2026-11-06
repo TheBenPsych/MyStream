@@ -158,7 +158,11 @@ private fun SideGuideContent(
             }
         }
         if (shown.isEmpty()) {
-            Text(if (query.isBlank()) "No channels here." else "No channel called \"${query.trim()}\"", fontSize = 13.sp, color = Color(0xFF8B8B94))
+            Text(
+                if (query.isBlank()) "No channels here." else "No channel called \"${query.trim()}\"",
+                fontSize = 13.sp,
+                color = Color(0xFF8B8B94),
+            )
         }
         Box(Modifier.weight(1f)) {
             LazyColumn(
