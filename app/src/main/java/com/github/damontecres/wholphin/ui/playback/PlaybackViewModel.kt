@@ -886,8 +886,19 @@ class PlaybackViewModel
                 }
                 val source = response.mediaSources.firstOrNull()
                 source?.let { source ->
+                    // Benflix free Live TV: play the channel's own stream on the TV. The server's converter
+                    // trips over the free channels' ad breaks (it loops the channel's intro, then errors),
+                    // while the TV's player handles them fine and the server has nothing to do
+                    val liveDirect =
+                        item.type == BaseItemKind.TV_CHANNEL &&
+                            source.isRemote &&
+                            source.path?.startsWith("http") == true &&
+                            currentPlayer.value?.backend == PlayerBackend.EXO_PLAYER
                     val mediaUrl =
-                        if (source.supportsDirectPlay) {
+                        if (liveDirect) {
+                            Timber.i("Live TV: playing the channel's stream directly")
+                            source.path
+                        } else if (source.supportsDirectPlay) {
                             if (source.isRemote && source.path.isNotNullOrBlank()) {
                                 Timber.i("Playback is remote for source: %s", source.id)
                                 source.path
@@ -920,6 +931,8 @@ class PlaybackViewModel
                     val transcodeType =
                         when {
 //                        playerBackend == PlayerBackend.MPV -> PlayMethod.DIRECT_PLAY
+                            liveDirect -> PlayMethod.DIRECT_PLAY
+
                             source.supportsDirectPlay -> PlayMethod.DIRECT_PLAY
 
                             source.supportsDirectStream -> PlayMethod.DIRECT_STREAM
