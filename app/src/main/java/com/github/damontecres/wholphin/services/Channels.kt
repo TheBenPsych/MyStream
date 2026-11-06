@@ -213,14 +213,37 @@ object ChannelSession {
         diskCache: DiskCache? = null,
         onProgress: (List<ChannelSchedule>) -> Unit = {},
     ): List<ChannelSchedule> {
-        val own = loadOwn(api, userId, kids, diskCache, onProgress)
         // Kids don't get live channels: they have no age ratings
         if (kids) {
+            val own = loadOwn(api, userId, true, diskCache, onProgress)
             schedules = own
             return own
         }
-        val live = LiveChannels.load(api, userId) { partial -> onProgress(own + partial) }
-        val all = own + live
+        // Benflix's own channels and the live ones load side by side, each showing as soon as it's ready
+        var ownNow = emptyList<ChannelSchedule>()
+        var liveNow = emptyList<ChannelSchedule>()
+        val lock = Any()
+
+        fun show() = synchronized(lock) { onProgress(ownNow + liveNow) }
+        val all =
+            coroutineScope {
+                val live =
+                    async {
+                        LiveChannels.load(api, userId) { partial ->
+                            synchronized(lock) { liveNow = partial }
+                            show()
+                        }
+                    }
+                val own =
+                    loadOwn(api, userId, false, diskCache) { partial ->
+                        synchronized(lock) { ownNow = partial }
+                        show()
+                    }
+                // A saved line-up comes back without any progress calls, so show it now
+                synchronized(lock) { ownNow = own }
+                show()
+                own + live.await()
+            }
         schedules = all
         return all
     }
