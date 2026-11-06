@@ -251,7 +251,7 @@ internal fun ChannelHub(
             if (recent.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "recent") {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        SectionTitle("Recently watched")
+                        HubTitle("Recently watched")
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             items(recent, key = { it.key }) { schedule ->
                                 RecentCard(schedule, width = if (isTv) 200.dp else 150.dp, onClick = { onWatch(schedule) })
@@ -260,7 +260,7 @@ internal fun ChannelHub(
                     }
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }, key = "types") { SectionTitle("Channel types") }
+            item(span = { GridItemSpan(maxLineSpan) }, key = "types") { HubTitle("Channel types") }
             items(tiles, key = { "t-$it" }) { group ->
                 val members =
                     if (group == FAVOURITES_GROUP) {
@@ -321,7 +321,7 @@ internal fun ChannelHub(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+private fun HubTitle(text: String) {
     Text(
         text = text.uppercase(),
         fontSize = 12.sp,
@@ -334,6 +334,7 @@ private fun SectionTitle(text: String) {
 
 private val Muted = Color(0xFF8B8B94)
 
+@Composable
 private fun tileColors(container: Color) =
     ClickableSurfaceDefaults.colors(
         containerColor = container,
