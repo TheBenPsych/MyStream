@@ -27,6 +27,11 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+try:  # Free Live TV channels for Jellyfin, checked nightly (benflix_livetv.py next to this file)
+    import benflix_livetv as livetv
+except ImportError:
+    livetv = None
+
 try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next to this file
     import benflix_server_tools as tools
 except ImportError:
@@ -508,6 +513,8 @@ class Handler(BaseHTTPRequestHandler):
         """The Server page tools. Returns False when the path isn't one of them."""
         if tools is None:
             raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
+        if method == "POST" and path == "/api/admin/livetv/refresh" and livetv is not None:
+            return self.send(200, {"started": livetv.refresh(), **livetv.status()})
         if method == "GET" and path == "/api/admin/tower":
             return self.send(200, tools.tower(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         m = re.fullmatch(r"/api/admin/apps/([\w.-]+)/restart", path)
@@ -542,7 +549,23 @@ class Handler(BaseHTTPRequestHandler):
                 # Tower's tools (restarting apps, fixing files) only work from home, never through the internet
                 raise HelperError(403, "Tower's tools only work at home.")
             if method == "GET" and path == "/health":
-                return self.send(200, {"ok": True, "local_play": True, "server_tools": tools is not None, "web": True})
+                return self.send(
+                    200,
+                    {"ok": True, "local_play": True, "server_tools": tools is not None, "web": True, "live_tv": livetv is not None},
+                )
+            if livetv is not None and method == "GET" and path.startswith("/livetv/"):
+                # Jellyfin reads the channel list and guide from here (at home only, no sign-in needed)
+                if via_internet:
+                    raise HelperError(403, "Live TV lists only work at home.")
+                if path == "/livetv/status":
+                    return self.send(200, livetv.status())
+                found = livetv.file_for(path)
+                if not found:
+                    raise HelperError(404, "Not found")
+                if not os.path.isfile(found[0]):
+                    raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
+                with open(found[0], "rb") as f:
+                    return self.send(200, f.read(), found[1])
             if method == "GET" and path in ("/", "/web", "/index.html"):
                 if not os.path.isfile(WEB_PAGE):
                     raise HelperError(404, "The tools page isn't on the server yet. Run the Benflix setup command again.")
@@ -653,5 +676,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if livetv is not None:
+        livetv.start()
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

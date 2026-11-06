@@ -44,18 +44,20 @@ enum class BenflixChannel(
     val kids: Boolean = false,
     val years: IntRange? = null,
     val library: String? = null,
+    /** One of the 10 channels everyone sees (the rest only show for Kids, or not at all) */
+    val main: Boolean = false,
 ) {
     // Movies
-    MOVIE_NIGHT("Movie Night", MOVIE),
-    ACTION("Action", MOVIE, listOf("Action", "Adventure")),
-    COMEDY("Comedy Movies", MOVIE, listOf("Comedy")),
+    MOVIE_NIGHT("Movie Night", MOVIE, main = true),
+    ACTION("Action", MOVIE, listOf("Action", "Adventure"), main = true),
+    COMEDY("Comedy Movies", MOVIE, listOf("Comedy"), main = true),
     DRAMA_MOVIES("Drama Movies", MOVIE, listOf("Drama")),
     THRILLER("Thrillers", MOVIE, listOf("Thriller")),
-    HORROR("Horror", MOVIE, listOf("Horror")),
-    SCIFI("Sci-Fi & Fantasy", MOVIE, listOf("Science Fiction", "Fantasy")),
+    HORROR("Horror", MOVIE, listOf("Horror"), main = true),
+    SCIFI("Sci-Fi & Fantasy", MOVIE, listOf("Science Fiction", "Fantasy"), main = true),
     ROMANCE("Romance", MOVIE, listOf("Romance")),
     CRIME_MOVIES("Crime Movies", MOVIE, listOf("Crime", "Mystery")),
-    FAMILY("Family Movies", MOVIE, listOf("Family"), kids = true),
+    FAMILY("Family Movies", MOVIE, listOf("Family"), kids = true, main = true),
     ANIMATED_MOVIES("Animated Movies", MOVIE, listOf("Animation"), kids = true),
     WESTERNS("Westerns", MOVIE, listOf("Western")),
     WAR("War & History", MOVIE, listOf("War", "History")),
@@ -67,9 +69,9 @@ enum class BenflixChannel(
     CLASSICS("Classic Movies", MOVIE, years = 1920..1979),
 
     // Shows
-    SITCOMS("Sitcoms", EPISODE, listOf("Comedy")),
+    SITCOMS("Sitcoms", EPISODE, listOf("Comedy"), main = true),
     DRAMA("Drama Series", EPISODE, listOf("Drama")),
-    CRIME("Crime & Mystery", EPISODE, listOf("Crime", "Mystery")),
+    CRIME("Crime & Mystery", EPISODE, listOf("Crime", "Mystery"), main = true),
     ACTION_SERIES("Action Series", EPISODE, listOf("Action & Adventure", "Action", "Adventure")),
     SCIFI_SERIES("Sci-Fi Series", EPISODE, listOf("Sci-Fi & Fantasy", "Science Fiction", "Fantasy")),
     REALITY("Reality TV", EPISODE, listOf("Reality")),
@@ -79,9 +81,9 @@ enum class BenflixChannel(
     KIDS_TV("Kids TV", EPISODE, listOf("Kids", "Children"), kids = true),
 
     // Your own special libraries
-    ANIME("Anime", EPISODE, library = "anime"),
+    ANIME("Anime", EPISODE, library = "anime", main = true),
     ANIME_MOVIES("Anime Movies", MOVIE, library = "anime"),
-    STAND_UP("Stand-Up", listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE), library = "stand"),
+    STAND_UP("Stand-Up", listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE), library = "stand", main = true),
 }
 
 @Serializable
@@ -103,18 +105,64 @@ private data class SavedLineup(
     val channels: List<SavedChannel>,
 )
 
-/** One thing on a channel, with when it starts and ends (epoch millis) */
+/**
+ * One thing on a channel, with when it starts and ends (epoch millis).
+ * [noGuide]: a live channel with no TV guide, shown as one long "Live" block.
+ */
 data class ChannelProgram(
     val item: BaseItem,
     val startMs: Long,
     val endMs: Long,
+    val noGuide: Boolean = false,
 )
 
+/** A free live TV channel from the server's Live TV (see server/benflix_livetv.py) */
+data class LiveChannel(
+    val id: UUID,
+    val name: String,
+    val item: BaseItem,
+)
+
+/**
+ * The live channel types. The server numbers live channels in blocks of 100 by type
+ * (keep in step with CATEGORIES in server/benflix_livetv.py).
+ */
+val LiveTvGroups =
+    listOf(
+        100 to "News",
+        200 to "Movies",
+        300 to "Comedy",
+        400 to "Drama & Crime",
+        500 to "Reality",
+        600 to "Kids & Family",
+        700 to "Sports",
+        800 to "Sci-Fi & Anime",
+        900 to "Classic TV",
+        1000 to "Music",
+        1100 to "Documentaries & Nature",
+        1200 to "Food & Home",
+        1300 to "Other",
+    )
+
+/** The group heading a channel goes under on the Channels page */
+fun ChannelSchedule.group(): String =
+    if (live == null) {
+        BENFLIX_GROUP
+    } else {
+        LiveTvGroups.lastOrNull { number >= it.first }?.second ?: "Live TV"
+    }
+
+const val BENFLIX_GROUP = "Benflix channels"
+
+/** A channel in the guide: one of Benflix's own ([channel]) or a free live one ([live]) */
 data class ChannelSchedule(
     val number: Int,
-    val channel: BenflixChannel,
+    val channel: BenflixChannel?,
     val programs: List<ChannelProgram>,
+    val live: LiveChannel? = null,
 ) {
+    val title: String get() = live?.name ?: channel?.title.orEmpty()
+
     fun programAt(timeMs: Long): ChannelProgram? = programs.firstOrNull { timeMs >= it.startMs && timeMs < it.endMs }
 
     fun between(
@@ -129,6 +177,7 @@ data class ChannelSchedule(
  */
 object ChannelSession {
     private var schedules: List<ChannelSchedule> = emptyList()
+    private var ownSchedules: List<ChannelSchedule> = emptyList()
     private var builtFor: String? = null
 
     /** The channel being watched, and the program on it, while watching from the guide */
@@ -164,6 +213,25 @@ object ChannelSession {
         diskCache: DiskCache? = null,
         onProgress: (List<ChannelSchedule>) -> Unit = {},
     ): List<ChannelSchedule> {
+        val own = loadOwn(api, userId, kids, diskCache, onProgress)
+        // Kids don't get live channels: they have no age ratings
+        if (kids) {
+            schedules = own
+            return own
+        }
+        val live = LiveChannels.load(api, userId) { partial -> onProgress(own + partial) }
+        val all = own + live
+        schedules = all
+        return all
+    }
+
+    private suspend fun loadOwn(
+        api: ApiClient,
+        userId: UUID?,
+        kids: Boolean,
+        diskCache: DiskCache?,
+        onProgress: (List<ChannelSchedule>) -> Unit,
+    ): List<ChannelSchedule> {
         val today = LocalDate.now()
         // Kids and Big kids get different line-ups, and hiding a genre changes today's guide
         val level =
@@ -180,7 +248,7 @@ object ChannelSession {
                 .joinToString("|")
                 .hashCode()
         val key = "$userId-$level-$genres-$today"
-        if (key == builtFor && schedules.isNotEmpty()) return schedules
+        if (key == builtFor && ownSchedules.isNotEmpty()) return ownSchedules
         val fileName = "channels-$key-v$CACHE_VERSION"
         diskCache?.read(fileName, SavedLineup.serializer(), CACHE_MAX_AGE_MS)?.let { saved ->
             val restored =
@@ -189,7 +257,7 @@ object ChannelSession {
                     ChannelSchedule(c.number, channel, c.programs.map { ChannelProgram(it.item, it.startMs, it.endMs) })
                 }
             if (restored.isNotEmpty()) {
-                schedules = restored
+                ownSchedules = restored
                 builtFor = key
                 return restored
             }
@@ -199,7 +267,7 @@ object ChannelSession {
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        val wanted = BenflixChannel.entries.filter { !kids || it.kids }
+        val wanted = BenflixChannel.entries.filter { if (kids) it.kids else it.main }
         val libraries =
             if (wanted.any { it.library != null }) {
                 try {
@@ -256,7 +324,7 @@ object ChannelSession {
                 }.awaitAll()
         }
         val built = numbered(done.toList())
-        schedules = built
+        ownSchedules = built
         builtFor = key
         if (built.isNotEmpty()) {
             diskCache?.write(
@@ -264,7 +332,7 @@ object ChannelSession {
                 SavedLineup.serializer(),
                 SavedLineup(
                     built.map { sch ->
-                        SavedChannel(sch.number, sch.channel.name, sch.programs.map { SavedProgram(it.item, it.startMs, it.endMs) })
+                        SavedChannel(sch.number, sch.channel?.name.orEmpty(), sch.programs.map { SavedProgram(it.item, it.startMs, it.endMs) })
                     },
                 ),
             )
@@ -359,10 +427,21 @@ object ChannelSession {
         replacePlayer: Boolean = false,
     ) {
         val now = System.currentTimeMillis()
+        val live = schedule.live
+        if (live != null) {
+            // A live channel: just turn it on
+            currentNumber = schedule.number
+            currentItemId = live.id
+            val on = schedule.programAt(now)?.takeIf { !it.noGuide }?.item?.title
+            _banner.value = listOfNotNull("${schedule.number}  ${live.name}", on).joinToString("  ·  ")
+            if (replacePlayer) navigationManager.goBack()
+            navigationManager.navigateTo(Destination.Playback(live.id, 0L))
+            return
+        }
         val program = schedule.programAt(now) ?: return
         currentNumber = schedule.number
         currentItemId = program.item.id
-        _banner.value = "${schedule.number}  ${schedule.channel.title}  ·  ${program.item.title.orEmpty()}"
+        _banner.value = "${schedule.number}  ${schedule.title}  ·  ${program.item.title.orEmpty()}"
         if (replacePlayer) navigationManager.goBack()
         navigationManager.navigateTo(Destination.Playback(program.item.id, (now - program.startMs).coerceAtLeast(0L)))
     }
@@ -402,7 +481,7 @@ private const val CHANNEL_POOL = 120
 private const val CHANNELS_PARALLEL = 6
 private const val SHOWS_PER_CHANNEL = 12
 private const val EPISODES_PER_SHOW = 15
-private const val CACHE_VERSION = 1
+private const val CACHE_VERSION = 2
 private const val CACHE_MAX_AGE_MS = 26L * 3_600_000L
 private const val SCHEDULE_HOURS = 30L
 

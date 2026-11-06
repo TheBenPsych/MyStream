@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +63,8 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
+import com.github.damontecres.wholphin.services.BENFLIX_GROUP
+import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -124,14 +129,32 @@ class ChannelsViewModel
 
 /** What a program is called in the guide: the show's name for an episode */
 private fun ChannelProgram.name(): String =
-    if (item.type == BaseItemKind.EPISODE) item.data.seriesName ?: item.title.orEmpty() else item.title.orEmpty()
+    if (noGuide) {
+        "Live"
+    } else if (item.type == BaseItemKind.EPISODE) {
+        item.data.seriesName ?: item.title.orEmpty()
+    } else {
+        item.title.orEmpty()
+    }
+
+/** A row of the guide: a group heading, or a channel */
+private sealed interface GuideEntry {
+    data class Heading(
+        val name: String,
+    ) : GuideEntry
+
+    data class Channel(
+        val schedule: ChannelSchedule,
+    ) : GuideEntry
+}
 
 private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
 private fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /**
- * Channels: a TV guide of Benflix channels made from your own library. Something is always on.
+ * Channels: a TV guide of Benflix channels made from your own library (no ads, always something on),
+ * then the server's free live TV channels grouped by type, with chips up top to jump to a group.
  * Pick what's on now to jump in where the channel is; in the player, Up/Down changes channel.
  */
 @Composable
@@ -189,12 +212,57 @@ private fun GuideGrid(
         delay(80)
         firstFocus.tryRequestFocus()
     }
+    val hasLive = list.any { it.live != null }
+    // Headings between the groups (only needed once there are live channels)
+    val entries =
+        remember(list) {
+            buildList<GuideEntry> {
+                var last: String? = null
+                list.forEach { schedule ->
+                    val group = schedule.group()
+                    if (hasLive && group != last) add(GuideEntry.Heading(group))
+                    last = group
+                    add(GuideEntry.Channel(schedule))
+                }
+            }
+        }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(top = 12.dp, start = 8.dp),
     ) {
         // What the focused program is. Read only inside, so moving around the guide redraws just this part
         GuideHeader(focused = { if (isTv) focused else selected ?: focused }, now = now)
+        if (hasLive) {
+            // Jump straight to a group, so nobody has to scroll past hundreds of channels
+            val groups = remember(entries) { entries.withIndex().filter { it.value is GuideEntry.Heading } }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(groups, key = { (it.value as GuideEntry.Heading).name }) { (index, entry) ->
+                    val name = (entry as GuideEntry.Heading).name
+                    Surface(
+                        onClick = { scope.launch { listState.scrollToItem(index) } },
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                        colors =
+                            ClickableSurfaceDefaults.colors(
+                                containerColor = Color(0xFF17171B),
+                                contentColor = Color(0xFFB8B8C0),
+                                focusedContainerColor = Color.White,
+                                focusedContentColor = Color.Black,
+                            ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                    ) {
+                        Text(
+                            text = if (name == BENFLIX_GROUP) "Benflix · No ads" else name,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        )
+                    }
+                }
+            }
+        }
         // Time ruler
         Row {
             Box(Modifier.width(CHANNEL_COL))
@@ -211,10 +279,24 @@ private fun GuideGrid(
             }
         }
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(list, key = { it.number }) { schedule ->
+            items(
+                entries,
+                key = {
+                    when (it) {
+                        is GuideEntry.Heading -> "h-${it.name}"
+                        is GuideEntry.Channel -> it.schedule.live?.id?.toString() ?: "b-${it.schedule.number}"
+                    }
+                },
+            ) { entry ->
+                if (entry is GuideEntry.Heading) {
+                    GroupHeading(entry.name)
+                    return@items
+                }
+                val schedule = (entry as GuideEntry.Channel).schedule
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.height(ROW_HEIGHT),
@@ -237,32 +319,66 @@ private fun GuideGrid(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.width(26.dp),
                         )
-                        val (from, to) = BadgeColors[schedule.channel.ordinal % BadgeColors.size]
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier =
-                                Modifier
-                                    .size(26.dp)
-                                    .background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(5.dp)),
-                        ) {
-                            Text(
-                                text =
-                                    schedule.channel.title
-                                        .take(1)
-                                        .uppercase(),
-                                fontFamily = BenflixTitleFont,
-                                fontSize = 17.sp,
-                                color = Color.White,
-                            )
+                        val live = schedule.live
+                        if (live != null) {
+                            // The station's logo
+                            val imageUrlService = LocalImageUrlService.current
+                            val logo =
+                                remember(live.id) {
+                                    imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 80)
+                                }
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(26.dp)
+                                        .background(Color.White, RoundedCornerShape(5.dp))
+                                        .clip(RoundedCornerShape(5.dp))
+                                        .padding(2.dp),
+                            ) {
+                                AsyncImage(
+                                    model = logo,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        } else {
+                            val (from, to) = BadgeColors[(schedule.channel?.ordinal ?: 0) % BadgeColors.size]
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier =
+                                    Modifier
+                                        .size(26.dp)
+                                        .background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(5.dp)),
+                            ) {
+                                Text(
+                                    text = schedule.title.take(1).uppercase(),
+                                    fontFamily = BenflixTitleFont,
+                                    fontSize = 17.sp,
+                                    color = Color.White,
+                                )
+                            }
                         }
-                        Text(
-                            text = schedule.channel.title,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 14.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Column {
+                            Text(
+                                text = schedule.title,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 14.sp,
+                                maxLines = if (live == null) 1 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (live == null) {
+                                Text(
+                                    text = "NO ADS",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = .8.sp,
+                                    color = NoAdsGreen,
+                                    lineHeight = 10.sp,
+                                )
+                            }
+                        }
                     }
                     Box(modifier = Modifier.width(4.dp))
                     Box(modifier = Modifier.width(widthFor(windowEnd - windowStart)).fillMaxHeight()) {
@@ -279,7 +395,8 @@ private fun GuideGrid(
                                 onClick = {
                                     if (!isTv && !isSelected) {
                                         selected = schedule to program
-                                    } else if (live) {
+                                    } else if (live || schedule.live != null) {
+                                        // A live channel always plays what's on now
                                         viewModel.watch(schedule)
                                     } else {
                                         viewModel.navigationManager.navigateTo(program.item.destination())
@@ -334,11 +451,13 @@ private fun GuideGrid(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
-                                    Text(
-                                        text = clock(program.startMs),
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                    )
+                                    if (!program.noGuide) {
+                                        Text(
+                                            text = clock(program.startMs),
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -385,9 +504,14 @@ private fun GuideHeader(
             val live = now >= program.startMs && now < program.endMs
             Text(
                 text =
-                    "${schedule.number}  ·  ${schedule.channel.title.uppercase()}  ·  " +
-                        (if (live) "ON NOW  ·  " else "") +
-                        "${clock(program.startMs)} – ${clock(program.endMs)}",
+                    if (program.noGuide) {
+                        "${schedule.number}  ·  ${schedule.title.uppercase()}  ·  LIVE"
+                    } else {
+                        "${schedule.number}  ·  ${schedule.title.uppercase()}  ·  " +
+                            (if (live) "ON NOW  ·  " else "") +
+                            "${clock(program.startMs)} – ${clock(program.endMs)}" +
+                            (if (schedule.live == null) "  ·  NO ADS" else "")
+                    },
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.2.sp,
@@ -426,7 +550,7 @@ private fun GuideHeader(
                     modifier = Modifier.widthIn(max = 620.dp),
                 )
             }
-            if (live) {
+            if (live && !program.noGuide) {
                 val progress = ((now - program.startMs).toFloat() / (program.endMs - program.startMs)).coerceIn(0f, 1f)
                 Box(
                     modifier =
@@ -455,7 +579,7 @@ private fun GuideHeader(
                     .clip(RoundedCornerShape(8.dp)),
         ) {
             if (pair != null) {
-                val (_, program) = pair
+                val (schedule, program) = pair
                 // The guide loads its shows without picture info (to stay fast), so ask the server
                 // for pictures by the show's id alone, trying the next kind if one is missing
                 val urls =
@@ -472,7 +596,14 @@ private fun GuideHeader(
                             fillWidth = 480,
                             fillHeight = 270,
                         )
-                        if (program.item.type == BaseItemKind.EPISODE) {
+                        val liveId = schedule.live?.id
+                        if (liveId != null) {
+                            // A live show's own picture, else the station's logo
+                            listOfNotNull(
+                                if (program.noGuide) null else url(id, ImageType.PRIMARY),
+                                url(liveId, ImageType.PRIMARY),
+                            )
+                        } else if (program.item.type == BaseItemKind.EPISODE) {
                             listOfNotNull(
                                 url(id, ImageType.PRIMARY),
                                 seriesId?.let { url(it, ImageType.BACKDROP) },
@@ -488,10 +619,11 @@ private fun GuideHeader(
                         }
                     }
                 var attempt by remember(program.item.id) { mutableIntStateOf(0) }
+                val isLogo = schedule.live != null && attempt == urls.lastIndex
                 AsyncImage(
                     model = urls.getOrNull(attempt),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    contentScale = if (isLogo) ContentScale.Fit else ContentScale.Crop,
                     onError = { if (attempt < urls.lastIndex) attempt++ },
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -563,3 +695,34 @@ private val BadgeColors =
         Color(0xFF4A1A2A) to Color(0xFFD9506E),
     )
 private val ROW_HEIGHT = 56.dp
+private val NoAdsGreen = Color(0xFF3FBF7A)
+
+/** "No ads · Benflix channels" or "Live · free with ads · News" between the groups */
+@Composable
+private fun GroupHeading(name: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+    ) {
+        val own = name == BENFLIX_GROUP
+        Text(
+            text = if (own) "NO ADS" else "LIVE · FREE WITH ADS",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = .6.sp,
+            color = if (own) Color(0xFF04150B) else Color.White,
+            modifier =
+                Modifier
+                    .background(if (own) NoAdsGreen else Color(0xFF3A3A42), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+        )
+        Text(
+            text = if (own) "BENFLIX CHANNELS · FROM YOUR SERVER" else name.uppercase(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp,
+            color = Color(0xFF8B8B94),
+        )
+    }
+}

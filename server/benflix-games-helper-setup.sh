@@ -14,18 +14,19 @@ SAVES=$GAMES/saves
 APP=/mnt/user/appdata/benflix-games
 MEDIA=/mnt/user/Homelab/Media
 TRACKS=/mnt/user/appdata/benflix-tracks
+LIVETV=/mnt/user/appdata/benflix-livetv
 OLD=/mnt/user/appdata/wolf/benflix
 RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS"
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -108,7 +109,7 @@ docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
   --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" \
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" \
   python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix >/dev/null 2>&1 || echo "Track tool missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5
 for _ in 1 2 3 4 5 6; do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
@@ -126,6 +127,17 @@ have() {
 }
 have "scph5501.bin" "PlayStation 1 (scph5501.bin or scph1001.bin; most games still work without it)"
 have "gba_bios.bin" "Game Boy Advance (optional)"
+
+say "Free Live TV"
+if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"live_tv": true'; then
+  echo "  ok  Making the channel list now (it checks every channel, so it takes about 15 minutes)."
+  echo "      Then add these two links in Jellyfin > Dashboard > Live TV:"
+  echo "      Tuner (M3U):   http://$HOST_IP:8097/livetv/channels.m3u"
+  echo "      Guide (XMLTV): http://$HOST_IP:8097/livetv/guide.xml"
+  echo "      Progress: http://$HOST_IP:8097/livetv/status"
+else
+  echo "  PROBLEM  Live TV didn't load in the helper. Send this output to Claude."
+fi
 
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."
