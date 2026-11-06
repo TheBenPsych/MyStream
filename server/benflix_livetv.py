@@ -23,6 +23,7 @@ Only uses the Python standard library.
 """
 
 import gzip
+import hashlib
 import io
 import json
 import os
@@ -182,7 +183,7 @@ def _key(name):
 
 def build():
     started = time.time()
-    report = {"started": int(started), "sources": {}}
+    report = {"started": int(started), "sources": {}, "lists": _lists_key()}
     channels = []
     guides = {}
     for key, label, url, guide in SOURCES:
@@ -317,8 +318,13 @@ def status():
     return out
 
 
+def _lists_key():
+    """Changes whenever the lists in SOURCES or the channel types change, so an update remakes the list"""
+    return hashlib.sha1(json.dumps([SOURCES, CATEGORIES, PER_BLOCK]).encode()).hexdigest()[:12]
+
+
 def start():
-    """Keeps the channel list fresh: now if it's old or missing, then every 24 hours."""
+    """Keeps the channel list fresh: now if it's old, missing or made from other lists, then every 24 hours."""
 
     def loop():
         while True:
@@ -326,6 +332,8 @@ def start():
                 age = time.time() - os.path.getmtime(M3U_FILE)
             except OSError:
                 age = EVERY
+            if status().get("lists") != _lists_key():
+                age = EVERY  # Benflix was updated with different lists: make it again now
             if age >= EVERY - 600:
                 refresh()
                 time.sleep(EVERY)
