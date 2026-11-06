@@ -2,7 +2,8 @@
 Benflix Live TV: free, legal live channels for Jellyfin's Live TV, checked every night.
 
 Where the channels come from (all free and public, no logins):
-- Pluto TV, Samsung TV Plus, Plex and Roku free channels (the US lists kept up to date at https://i.mjh.nz).
+- Pluto TV, Samsung TV Plus, Plex and Roku free channels (US lists rebuilt daily at
+  github.com/BuddyChewChew/app-m3u-generator, guides from github.com/matthuisman/i.mjh.nz).
   These come with a TV guide.
 - iptv-org's public list of English channels (https://github.com/iptv-org/iptv). No guide for these.
 
@@ -41,11 +42,14 @@ EVERY = 24 * 3600
 UA = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 
 # key, name, channel list, guide (None = use the one the list names, if any)
+G = "https://raw.githubusercontent.com"
+PLAYLISTS = G + "/BuddyChewChew/app-m3u-generator/main/playlists"  # rebuilt daily from the i.mjh.nz channel data
+GUIDES = G + "/matthuisman/i.mjh.nz/master"
 SOURCES = [
-    ("pluto", "Pluto TV", "https://i.mjh.nz/PlutoTV/us.m3u8", "https://i.mjh.nz/PlutoTV/us.xml.gz"),
-    ("samsung", "Samsung TV Plus", "https://i.mjh.nz/SamsungTVPlus/us.m3u8", "https://i.mjh.nz/SamsungTVPlus/us.xml.gz"),
-    ("plex", "Plex", "https://i.mjh.nz/Plex/us.m3u8", "https://i.mjh.nz/Plex/us.xml.gz"),
-    ("roku", "Roku", "https://i.mjh.nz/Roku/all.m3u8", "https://i.mjh.nz/Roku/all.xml.gz"),
+    ("pluto", "Pluto TV", PLAYLISTS + "/plutotv_us.m3u", GUIDES + "/PlutoTV/us.xml.gz"),
+    ("samsung", "Samsung TV Plus", PLAYLISTS + "/samsungtvplus_us.m3u", GUIDES + "/SamsungTVPlus/us.xml.gz"),
+    ("plex", "Plex", PLAYLISTS + "/plex_us.m3u", GUIDES + "/Plex/us.xml.gz"),
+    ("roku", "Roku", PLAYLISTS + "/roku_all.m3u", GUIDES + "/Roku/all.xml.gz"),
     ("iptv", "iptv-org", "https://iptv-org.github.io/iptv/languages/eng.m3u", None),
 ]
 
