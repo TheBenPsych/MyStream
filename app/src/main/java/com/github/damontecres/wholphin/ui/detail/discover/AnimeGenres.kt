@@ -8,21 +8,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,11 +56,14 @@ import com.github.damontecres.wholphin.services.AniListCardFacts
 import com.github.damontecres.wholphin.services.AniListKind
 import com.github.damontecres.wholphin.services.AniListService
 import com.github.damontecres.wholphin.services.AniListSort
+import com.github.damontecres.wholphin.services.AniListTagChoice
+import com.github.damontecres.wholphin.services.MalBrowse
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.discover.ActiveFilterChip
 import com.github.damontecres.wholphin.ui.discover.RequestsChip
+import com.github.damontecres.wholphin.ui.discover.RequestsSearchBox
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -101,10 +103,12 @@ internal fun isAnime(details: JsonObject): Boolean {
     return animation && japanese
 }
 
-/** Popular AniList themes to add on the genre page, besides the genres themselves */
-private val THEMES =
+/** Popular AniList tags, shown first when adding to a deep search and as quick picks on the Requests Anime tab */
+internal val POPULAR_ANIME_TAGS =
     listOf(
         "Isekai",
+        "Harem",
+        "Reverse Harem",
         "Shounen",
         "Seinen",
         "Shoujo",
@@ -131,7 +135,8 @@ private val THEMES =
         "Tragedy",
         "Coming of Age",
         "Found Family",
-        "Harem",
+        "Time Travel",
+        "Love Triangle",
         "Post-Apocalyptic",
         "Cyberpunk",
         "Mythology",
@@ -146,8 +151,8 @@ private val THEMES =
         "Overpowered Main Characters",
     )
 
-/** Genres offered on the genre page (Ecchi left out of the quick list on purpose) */
-private val GENRE_CHOICES = AniListService.ANILIST_GENRES.filter { it != "Ecchi" }.sorted()
+/** AniList's genres (Ecchi is in: Ben said it isn't adult; real adult anime is never shown) */
+private val GENRE_CHOICES = AniListService.ANILIST_GENRES.sorted()
 
 // ---------------------------------------------------------------------------------------------
 // Details page: the anime genre chips
@@ -292,10 +297,39 @@ class AnimeGenrePageViewModel
     constructor(
         private val seerrService: SeerrService,
         private val aniList: AniListService,
+        private val malBrowse: MalBrowse,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _picked = MutableStateFlow<List<String>>(emptyList())
         val picked: StateFlow<List<String>> = _picked
+
+        /** Genres and tags the anime must NOT have ("Isekai, but no Harem") */
+        private val _leftOut = MutableStateFlow<List<String>>(emptyList())
+        val leftOut: StateFlow<List<String>> = _leftOut
+
+        /** How many anime match in all, when the source says */
+        private val _total = MutableStateFlow<Int?>(null)
+        val total: StateFlow<Int?> = _total
+
+        /** True when AniList didn't answer and the list comes from MyAnimeList instead */
+        private val _fromMal = MutableStateFlow(false)
+        val fromMal: StateFlow<Boolean> = _fromMal
+
+        /** Every AniList tag, by group, for the picker (empty until loaded, or if AniList can't be reached) */
+        private val _catalog = MutableStateFlow<List<AniListTagChoice>>(emptyList())
+        val catalog: StateFlow<List<AniListTagChoice>> = _catalog
+        private var catalogAsked = false
+
+        fun loadCatalog() {
+            if (catalogAsked) return
+            catalogAsked = true
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val found = aniList.tagCatalog()
+                _catalog.value = found
+                if (found.isEmpty()) catalogAsked = false
+            }
+        }
+
         private val _sort = MutableStateFlow(AniListSort.POPULAR)
         val sort: StateFlow<AniListSort> = _sort
         private val _kind = MutableStateFlow(AniListKind.ALL)
@@ -320,6 +354,31 @@ class AnimeGenrePageViewModel
             if (started) return
             started = true
             _picked.value = initial.distinct()
+            loadCatalog()
+            reload()
+        }
+
+        /** Sets everything picked at once (from the picker), then starts over from the top */
+        fun setAll(
+            must: List<String>,
+            without: List<String>,
+        ) {
+            val m = must.distinct()
+            val w = without.distinct().filter { it !in m }
+            if (m == _picked.value && w == _leftOut.value) return
+            _picked.value = m
+            _leftOut.value = w
+            reload()
+        }
+
+        fun removeLeftOut(name: String) {
+            _leftOut.value = _leftOut.value - name
+            reload()
+        }
+
+        fun clearAll() {
+            _picked.value = emptyList()
+            _leftOut.value = emptyList()
             reload()
         }
 
@@ -352,10 +411,12 @@ class AnimeGenrePageViewModel
             hasMore = true
             _items.value = null
             _failed.value = false
+            _total.value = null
+            _fromMal.value = false
             loadMore()
         }
 
-        /** The next 30, when you get near the bottom */
+        /** The next page (50 from AniList, 25 from MyAnimeList), when you get near the bottom; it goes on to the very last one */
         fun loadMore() {
             if (!hasMore || job?.isActive == true) return
             if (_picked.value.isEmpty()) {
@@ -366,11 +427,35 @@ class AnimeGenrePageViewModel
             job =
                 viewModelScope.launch(WholphinDispatchers.IO) {
                     try {
-                        val next = aniList.browse(_picked.value, _sort.value, _kind.value, page + 1)
+                        val picked = _picked.value
+                        val without = _leftOut.value
+                        val next =
+                            if (_fromMal.value) {
+                                malBrowse.browse(picked, without, _sort.value, _kind.value, page + 1)
+                                    ?: throw IllegalStateException("MyAnimeList didn't answer")
+                            } else {
+                                try {
+                                    aniList.browse(picked, _sort.value, _kind.value, page + 1, without)
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    // AniList is down or busy: start again from MyAnimeList, if it knows all the names
+                                    if (page > 0) throw ex
+                                    Timber.w(ex, "AniList deep search failed, trying MyAnimeList")
+                                    malBrowse.browse(picked, without, _sort.value, _kind.value, 1)?.also { _fromMal.value = true }
+                                        ?: throw ex
+                                }
+                            }
                         page++
                         hasMore = next.hasMore
+                        if (page == 1) _total.value = next.total
                         val now = _items.value.orEmpty()
                         _items.value = (now + next.items).distinctBy { it.id }
+                        // Later seasons are folded away, so a page can come back nearly empty: fetch on
+                        if (hasMore && next.items.size < 8) {
+                            job = null
+                            loadMore()
+                        }
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -447,7 +532,10 @@ class AnimeGenrePageViewModel
         }
     }
 
-/** Benflix: every anime with all of the picked genres, with more genres, sort and shows/movies to narrow it */
+/**
+ * Benflix: the anime deep search. Every anime with all of the picked genres and tags (and none of the
+ * left-out ones), page after page to the very last one, with sort and shows/movies to narrow it.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnimeGenrePage(
@@ -457,6 +545,10 @@ fun AnimeGenrePage(
 ) {
     LaunchedEffect(initial) { viewModel.start(initial) }
     val picked by viewModel.picked.collectAsState()
+    val leftOut by viewModel.leftOut.collectAsState()
+    val total by viewModel.total.collectAsState()
+    val fromMal by viewModel.fromMal.collectAsState()
+    val catalog by viewModel.catalog.collectAsState()
     val sort by viewModel.sort.collectAsState()
     val kind by viewModel.kind.collectAsState()
     val items by viewModel.items.collectAsState()
@@ -464,7 +556,8 @@ fun AnimeGenrePage(
     val opening by viewModel.opening.collectAsState()
     val isTv = rememberIsTv()
     val context = LocalContext.current
-    var showAdd by remember { mutableStateOf(false) }
+    // Opened from "Deep search" with nothing picked yet: start on the picker
+    var showAdd by rememberSaveable { mutableStateOf(initial.isEmpty()) }
     var showSort by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
 
@@ -477,11 +570,14 @@ fun AnimeGenrePage(
     }
 
     if (showAdd) {
+        LaunchedEffect(Unit) { viewModel.loadCatalog() }
         AddGenreDialog(
             picked = picked,
-            onPick = {
+            leftOut = leftOut,
+            catalog = catalog,
+            onApply = { must, without ->
                 showAdd = false
-                viewModel.add(it)
+                viewModel.setAll(must, without)
             },
             onDismiss = { showAdd = false },
         )
@@ -524,7 +620,7 @@ fun AnimeGenrePage(
         item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = if (picked.isEmpty()) "Anime genres" else picked.joinToString(" + "),
+                    text = if (picked.isEmpty()) "Anime deep search" else picked.joinToString(" + "),
                     color = Color.White,
                     fontSize = if (isTv) 30.sp else 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -532,10 +628,25 @@ fun AnimeGenrePage(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Anime with every genre picked. ${sort.label} · ${kind.label}",
+                    text =
+                        listOfNotNull(
+                            if (picked.isEmpty()) "Pick genres and tags to see every anime that has them." else "Anime with all of these",
+                            total?.takeIf { picked.isNotEmpty() }?.let {
+                                String.format(java.util.Locale.US, "%,d found", it)
+                            },
+                            sort.label,
+                            kind.label,
+                        ).joinToString(" · "),
                     color = LABEL_GREY,
                     fontSize = 14.sp,
                 )
+                if (fromMal) {
+                    Text(
+                        text = "AniList didn't answer, so this list is from MyAnimeList.",
+                        color = LABEL_GREY,
+                        fontSize = 13.sp,
+                    )
+                }
             }
         }
         item(key = "chips", span = { GridItemSpan(maxLineSpan) }) {
@@ -545,8 +656,10 @@ fun AnimeGenrePage(
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 picked.forEach { genre -> ActiveFilterChip(genre) { viewModel.remove(genre) } }
-                RequestsChip("+ Add a genre", false, { showAdd = true })
+                leftOut.forEach { name -> ActiveFilterChip("Not $name") { viewModel.removeLeftOut(name) } }
+                RequestsChip("+ Genres and tags", picked.isEmpty(), { showAdd = true })
                 RequestsChip("Sort: ${sort.label}", false, { showSort = true })
+                if (picked.size + leftOut.size > 1) RequestsChip("Clear all", false, { viewModel.clearAll() })
             }
         }
         val list = items
@@ -564,7 +677,7 @@ fun AnimeGenrePage(
                             text =
                                 when {
                                     failed -> "AniList didn't answer. Try again in a minute."
-                                    picked.isEmpty() -> "Add a genre to see anime."
+                                    picked.isEmpty() -> "Press \"+ Genres and tags\" to pick what you're looking for."
                                     else -> "No anime has all of these. Take one away to see more."
                                 },
                             color = Color.White,
@@ -667,36 +780,125 @@ private fun AnimePoster(
     }
 }
 
-/** Pick another genre or theme to add */
+/**
+ * Pick genres and tags for the deep search: all of AniList's genres, its popular tags first, then every
+ * other tag in its group (a few hundred). "Must have" picks narrow the list; "Leave out" picks remove anime
+ * with that genre or tag. A search box finds a tag by name.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddGenreDialog(
     picked: List<String>,
-    onPick: (String) -> Unit,
+    leftOut: List<String>,
+    catalog: List<AniListTagChoice>,
+    onApply: (List<String>, List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var must by remember { mutableStateOf(picked) }
+    var without by remember { mutableStateOf(leftOut) }
+    var leaving by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val maxHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.88f).dp
+    val sections =
+        remember(catalog, query) {
+            val known = catalog.map { it.name }.toSet()
+            val popular = POPULAR_ANIME_TAGS.filter { catalog.isEmpty() || it in known }
+            val q = query.trim()
+            if (q.isNotEmpty()) {
+                val all = (GENRE_CHOICES + popular + catalog.map { it.name }).distinct()
+                listOf("Matches for \"$q\"" to all.filter { it.contains(q, ignoreCase = true) }.sorted())
+            } else {
+                listOf("Genres" to GENRE_CHOICES, "Popular tags" to popular) +
+                    catalog
+                        .filter { it.name !in popular }
+                        .groupBy { it.category }
+                        .toSortedMap()
+                        .map { (category, tags) -> category.replace("-", " · ") to tags.map { it.name }.sorted() }
+            }
+        }
+
+    fun toggle(name: String) {
+        when {
+            name in must -> must = must - name
+            name in without -> without = without - name
+            leaving -> without = without + name
+            else -> must = must + name
+        }
+    }
     BasicDialog(onDismissRequest = onDismiss) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(24.dp),
             modifier =
                 Modifier
-                    .widthIn(max = 760.dp)
+                    .widthIn(max = 820.dp)
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    .heightIn(max = maxHeight),
         ) {
-            Text("Add a genre", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("Only anime with every picked genre stay on the page.", fontSize = 14.sp, color = LABEL_GREY)
-            listOf("Genres" to GENRE_CHOICES, "Themes" to THEMES).forEach { (title, choices) ->
-                Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = LABEL_GREY)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    choices.filter { it !in picked }.forEach { choice ->
-                        RequestsChip(choice, false, { onPick(choice) })
+            item(key = "head") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Genres and tags", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text =
+                            if (leaving) {
+                                "Leave out: anime with these are taken off the list."
+                            } else {
+                                "Must have: only anime with every one of these stay on the list."
+                            },
+                        fontSize = 14.sp,
+                        color = LABEL_GREY,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onApply(must, without) }) {
+                            Text(if (must.isEmpty()) "Done" else "Show anime (${must.size + without.size})")
+                        }
+                        RequestsChip("Must have", !leaving, { leaving = false })
+                        RequestsChip("Leave out", leaving, { leaving = true })
+                        if (must.isNotEmpty() || without.isNotEmpty()) {
+                            RequestsChip("Clear", false, {
+                                must = emptyList()
+                                without = emptyList()
+                            })
+                        }
+                        Button(onClick = onDismiss) { Text("Cancel") }
+                    }
+                    RequestsSearchBox(
+                        query = query,
+                        onQuery = { query = it },
+                        placeholder = "Find a tag, like Isekai or Time Travel",
+                        modifier = Modifier.padding(start = 0.dp),
+                    )
+                    if (catalog.isEmpty()) {
+                        Text(
+                            text = "Loading every AniList tag… the popular ones are here already.",
+                            fontSize = 13.sp,
+                            color = LABEL_GREY,
+                        )
                     }
                 }
             }
-            Row(Modifier.height(4.dp)) {}
-            Button(onClick = onDismiss) { Text("Cancel") }
+            sections.forEach { (title, choices) ->
+                if (choices.isEmpty()) return@forEach
+                item(key = "s-$title") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = LABEL_GREY)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            choices.forEach { choice ->
+                                val label =
+                                    when (choice) {
+                                        in must -> "✓ $choice"
+                                        in without -> "Not $choice"
+                                        else -> choice
+                                    }
+                                RequestsChip(label, choice in must || choice in without, { toggle(choice) })
+                            }
+                        }
+                    }
+                }
+            }
+            if (sections.all { it.second.isEmpty() }) {
+                item(key = "none") { Text("No tag has that name.", fontSize = 15.sp, color = Color.White) }
+            }
         }
     }
 }

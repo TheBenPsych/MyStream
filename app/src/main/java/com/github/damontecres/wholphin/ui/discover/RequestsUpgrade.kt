@@ -305,6 +305,7 @@ fun RequestsSearchBox(
     query: String,
     onQuery: (String) -> Unit,
     modifier: Modifier = Modifier,
+    placeholder: String = "Search any movie or show to ask for",
 ) {
     val isTv = rememberIsTv()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -322,7 +323,7 @@ fun RequestsSearchBox(
         },
         singleLine = true,
         readOnly = isTv && !typing,
-        placeholder = { androidx.compose.material3.Text("Search any movie or show to ask for") },
+        placeholder = { androidx.compose.material3.Text(placeholder) },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
         colors =
