@@ -206,6 +206,9 @@ class MalBrowse
             val ALIASES =
                 mapOf(
                     "video games" to "video game",
+                    "female harem" to "harem",
+                    "male harem" to "reverse harem",
+                    "mixed gender harem" to "harem",
                     "thriller" to "suspense",
                     "food" to "gourmet",
                     "idol" to "idols (female)",

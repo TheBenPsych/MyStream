@@ -109,6 +109,7 @@ internal val POPULAR_ANIME_TAGS =
         "Isekai",
         "Harem",
         "Reverse Harem",
+        "Mixed Gender Harem",
         "Shounen",
         "Seinen",
         "Shoujo",
@@ -287,6 +288,21 @@ private const val COLLAPSED = 6
 private val LABEL_GREY = Color(0xFFAEB3BD)
 private val ANIME_PURPLE = Color(0xFF7C5CFF)
 
+/** AniList's whole tag list, so quick picks only offer tags AniList really has (saved on the device for a week) */
+@HiltViewModel
+class AnimeTagCatalogViewModel
+    @Inject
+    constructor(
+        aniList: AniListService,
+    ) : ViewModel() {
+        private val _catalog = MutableStateFlow<List<AniListTagChoice>>(emptyList())
+        val catalog: StateFlow<List<AniListTagChoice>> = _catalog
+
+        init {
+            viewModelScope.launch(WholphinDispatchers.IO) { _catalog.value = aniList.tagCatalog() }
+        }
+    }
+
 // ---------------------------------------------------------------------------------------------
 // The genre page: every anime with all the picked genres
 // ---------------------------------------------------------------------------------------------
@@ -314,6 +330,10 @@ class AnimeGenrePageViewModel
         /** True when AniList didn't answer and the list comes from MyAnimeList instead */
         private val _fromMal = MutableStateFlow(false)
         val fromMal: StateFlow<Boolean> = _fromMal
+
+        /** Picked names AniList has no tag for (shown instead of an empty list) */
+        private val _unknown = MutableStateFlow<List<String>>(emptyList())
+        val unknown: StateFlow<List<String>> = _unknown
 
         /** Every AniList tag, by group, for the picker (empty until loaded, or if AniList can't be reached) */
         private val _catalog = MutableStateFlow<List<AniListTagChoice>>(emptyList())
@@ -413,6 +433,7 @@ class AnimeGenrePageViewModel
             _failed.value = false
             _total.value = null
             _fromMal.value = false
+            _unknown.value = emptyList()
             loadMore()
         }
 
@@ -427,6 +448,20 @@ class AnimeGenrePageViewModel
             job =
                 viewModelScope.launch(WholphinDispatchers.IO) {
                     try {
+                        // Use AniList's real names ("Harem" is "Female Harem" there); the tag list is saved on the device
+                        if (_catalog.value.isEmpty()) _catalog.value = aniList.tagCatalog()
+                        val catalog = _catalog.value
+                        if (page == 0) {
+                            val resolved = _picked.value.map { it to AniListService.resolveName(it, catalog) }
+                            _unknown.value = resolved.filter { it.second == null }.map { it.first }
+                            _picked.value = resolved.map { it.second ?: it.first }.distinct()
+                            _leftOut.value = _leftOut.value.mapNotNull { AniListService.resolveName(it, catalog) }.distinct()
+                            if (_unknown.value.isNotEmpty()) {
+                                hasMore = false
+                                _items.value = emptyList()
+                                return@launch
+                            }
+                        }
                         val picked = _picked.value
                         val without = _leftOut.value
                         val next =
@@ -549,6 +584,7 @@ fun AnimeGenrePage(
     val total by viewModel.total.collectAsState()
     val fromMal by viewModel.fromMal.collectAsState()
     val catalog by viewModel.catalog.collectAsState()
+    val unknown by viewModel.unknown.collectAsState()
     val sort by viewModel.sort.collectAsState()
     val kind by viewModel.kind.collectAsState()
     val items by viewModel.items.collectAsState()
@@ -676,9 +712,23 @@ fun AnimeGenrePage(
                         Text(
                             text =
                                 when {
-                                    failed -> "AniList didn't answer. Try again in a minute."
-                                    picked.isEmpty() -> "Press \"+ Genres and tags\" to pick what you're looking for."
-                                    else -> "No anime has all of these. Take one away to see more."
+                                    failed -> {
+                                        "AniList didn't answer. Try again in a minute."
+                                    }
+
+                                    unknown.isNotEmpty() -> {
+                                        "AniList has no tag called ${unknown.joinToString(
+                                            ", ",
+                                        )}. Take it away and pick one from \"+ Genres and tags\"."
+                                    }
+
+                                    picked.isEmpty() -> {
+                                        "Press \"+ Genres and tags\" to pick what you're looking for."
+                                    }
+
+                                    else -> {
+                                        "No anime has all of these. Take one away to see more."
+                                    }
                                 },
                             color = Color.White,
                             fontSize = 16.sp,
@@ -801,8 +851,7 @@ private fun AddGenreDialog(
     val maxHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.88f).dp
     val sections =
         remember(catalog, query) {
-            val known = catalog.map { it.name }.toSet()
-            val popular = POPULAR_ANIME_TAGS.filter { catalog.isEmpty() || it in known }
+            val popular = POPULAR_ANIME_TAGS.mapNotNull { AniListService.resolveName(it, catalog) }.distinct()
             val q = query.trim()
             if (q.isNotEmpty()) {
                 val all = (GENRE_CHOICES + popular + catalog.map { it.name }).distinct()
