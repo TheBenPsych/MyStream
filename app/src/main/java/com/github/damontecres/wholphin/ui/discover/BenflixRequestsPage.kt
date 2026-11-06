@@ -78,6 +78,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.movieAgeRating
 import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.detail.discover.tags
 import com.github.damontecres.wholphin.ui.detail.discover.tvAgeRating
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
@@ -1505,18 +1506,41 @@ private fun FindShelf(
                 item { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
             }
         }
-        item {
-            val genres =
-                remember(section) {
-                    FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
+        if (section == FindSection.ANIME) {
+            // Benflix: anime genres and tags from AniList (Isekai, Harem...). Each opens the deep search, which
+            // lists every anime that has it, page after page; "Deep search" starts on the full picker.
+            item(key = "anime-deep") {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    item {
+                        RequestsChip("Deep search: every genre and tag", true, {
+                            viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList()))
+                        })
+                    }
+                    items(ANIME_QUICK_PICKS, key = { "aq-$it" }) { name ->
+                        RequestsChip(name, false, {
+                            viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name)))
+                        })
+                    }
                 }
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                item { RequestsChip("All", filters.genre == null, { filters = filters.copy(genre = null) }) }
-                items(genres, key = { it.label }) { g ->
-                    RequestsChip(g.label, filters.genre == g, { filters = filters.copy(genre = if (filters.genre == g) null else g) })
+            }
+        }
+        if (section != FindSection.ANIME) {
+            item {
+                val genres =
+                    remember(section) {
+                        FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
+                    }
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    item { RequestsChip("All", filters.genre == null, { filters = filters.copy(genre = null) }) }
+                    items(genres, key = { it.label }) { g ->
+                        RequestsChip(g.label, filters.genre == g, { filters = filters.copy(genre = if (filters.genre == g) null else g) })
+                    }
                 }
             }
         }
@@ -1590,6 +1614,36 @@ private fun FindShelf(
         }
     }
 }
+
+/** Benflix: quick picks on the Requests Anime tab; each opens the anime deep search with it picked */
+private val ANIME_QUICK_PICKS =
+    listOf(
+        "Isekai",
+        "Fantasy",
+        "Harem",
+        "Reverse Harem",
+        "Action",
+        "Romance",
+        "Comedy",
+        "Slice of Life",
+        "Shounen",
+        "Seinen",
+        "Shoujo",
+        "Reincarnation",
+        "Overpowered Main Characters",
+        "Magic",
+        "Super Power",
+        "Martial Arts",
+        "School",
+        "Mecha",
+        "Sci-Fi",
+        "Psychological",
+        "Horror",
+        "Mystery",
+        "Sports",
+        "Iyashikei",
+        "Ecchi",
+    )
 
 /** Benflix: something didn't load, with a Try again button (instead of looking empty) */
 @Composable

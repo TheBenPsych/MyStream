@@ -128,6 +128,16 @@ data class AniListBrowseItem(
 data class AniListBrowsePage(
     val items: List<AniListBrowseItem>,
     val hasMore: Boolean,
+    /** How many anime match in all (before later seasons are folded into their first), if known */
+    val total: Int? = null,
+)
+
+/** Benflix: one of AniList's tags (Isekai, Harem, Time Travel...), and the group it's in (like "Theme-Fantasy") */
+@Serializable
+data class AniListTagChoice(
+    val name: String,
+    val category: String,
+    val description: String? = null,
 )
 
 /** Benflix: the order an AniList genre list is in */
@@ -574,19 +584,25 @@ class AniListService
             sort: AniListSort,
             kind: AniListKind,
             page: Int,
+            leftOut: List<String> = emptyList(),
         ): AniListBrowsePage {
             val (genres, tags) = picked.partition { it in ANILIST_GENRES }
+            val (noGenres, noTags) = leftOut.partition { it in ANILIST_GENRES }
+
+            fun list(names: List<String>) = JsonArray(names.map { JsonPrimitive(it) })
             val data =
                 query(
                     BROWSE_QUERY,
                     vars {
                         put("page", page)
                         put("sort", JsonArray(listOf(JsonPrimitive(sort.key))))
-                        if (genres.isNotEmpty()) put("genres", JsonArray(genres.map { JsonPrimitive(it) }))
-                        if (tags.isNotEmpty()) put("tags", JsonArray(tags.map { JsonPrimitive(it) }))
-                        kind.formats?.let { f -> put("formats", JsonArray(f.map { JsonPrimitive(it) })) }
+                        if (genres.isNotEmpty()) put("genres", list(genres))
+                        if (tags.isNotEmpty()) put("tags", list(tags))
+                        put("noGenres", list((noGenres + "Hentai").distinct()))
+                        if (noTags.isNotEmpty()) put("noTags", list(noTags))
+                        kind.formats?.let { f -> put("formats", list(f)) }
                     },
-                )?.obj("Page") ?: return AniListBrowsePage(emptyList(), false)
+                )?.obj("Page") ?: throw IllegalStateException("AniList had no answer")
             val items =
                 data
                     .arr("media")
@@ -603,7 +619,45 @@ class AniListService
                             cover = m.obj("coverImage")?.let { it.str("large") ?: it.str("medium") },
                         )
                     }
-            return AniListBrowsePage(items, data.obj("pageInfo")?.bool("hasNextPage") == true)
+            val info = data.obj("pageInfo")
+            return AniListBrowsePage(items, info?.bool("hasNextPage") == true, info?.int("total"))
+        }
+
+        /**
+         * Every tag AniList has (a few hundred: Isekai, Harem, Time Travel, Found Family...), grown-up ones
+         * left out. Saved on the device for a week; empty if AniList can't be reached and nothing is saved.
+         */
+        suspend fun tagCatalog(): List<AniListTagChoice> {
+            val cacheName = "anilist-tag-catalog"
+            val serializer = ListSerializer(AniListTagChoice.serializer())
+            diskCache.read(cacheName, serializer, WEEK_MS)?.let { return it }
+            val found =
+                try {
+                    query(TAGS_QUERY, vars { })
+                        ?.arr("MediaTagCollection")
+                        .orEmpty()
+                        .mapNotNull { it as? JsonObject }
+                        .filter { it.bool("isAdult") != true }
+                        .mapNotNull { t ->
+                            AniListTagChoice(
+                                name = t.str("name") ?: return@mapNotNull null,
+                                category = t.str("category") ?: "Other",
+                                description = t.str("description"),
+                            )
+                        }.filter { it.name !in HIDDEN_TAGS && it.name !in ANILIST_GENRES }
+                        .distinctBy { it.name }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "AniList tag list failed")
+                    emptyList()
+                }
+            if (found.isNotEmpty()) {
+                diskCache.write(cacheName, serializer, found)
+                return found
+            }
+            // Couldn't ask AniList: an older saved list is better than nothing
+            return diskCache.read(cacheName, serializer, Long.MAX_VALUE).orEmpty()
         }
 
         /** A show's second (third...) season: it has an earlier season it follows on from */
@@ -857,6 +911,9 @@ class AniListService
             private val HIDDEN_TAGS =
                 setOf("Anime Influenced", "Primarily Adult Cast", "Primarily Teen Cast", "Male Protagonist", "Female Protagonist")
             private const val MIN_TAG_RANK = 60
+
+            /** Deep search: a tag counts when AniList fans rate it at least this much for the show (out of 100) */
+            private const val BROWSE_TAG_RANK = 50
             private const val MAX_WEEK_PAGES = 6
             private const val DAY_MS = 24L * 60 * 60 * 1000
             private const val WEEK_MS = 7 * DAY_MS
@@ -951,17 +1008,25 @@ class AniListService
 
             private val BROWSE_QUERY =
                 """
-                query (${'$'}page: Int, ${'$'}sort: [MediaSort], ${'$'}genres: [String], ${'$'}tags: [String], ${'$'}formats: [MediaFormat]) {
-                  Page(page: ${'$'}page, perPage: 30) {
-                    pageInfo { hasNextPage }
-                    media(type: ANIME, isAdult: false, sort: ${'$'}sort, genre_in: ${'$'}genres, genre_not_in: ["Hentai"],
-                      tag_in: ${'$'}tags, minimumTagRank: $MIN_TAG_RANK, format_in: ${'$'}formats) {
+                query (${'$'}page: Int, ${'$'}sort: [MediaSort], ${'$'}genres: [String], ${'$'}tags: [String],
+                  ${'$'}noGenres: [String], ${'$'}noTags: [String], ${'$'}formats: [MediaFormat]) {
+                  Page(page: ${'$'}page, perPage: 50) {
+                    pageInfo { hasNextPage total }
+                    media(type: ANIME, isAdult: false, sort: ${'$'}sort, genre_in: ${'$'}genres, genre_not_in: ${'$'}noGenres,
+                      tag_in: ${'$'}tags, tag_not_in: ${'$'}noTags, minimumTagRank: $BROWSE_TAG_RANK, format_in: ${'$'}formats) {
                       id format isAdult averageScore meanScore $TITLE
                       startDate { year }
                       coverImage { large medium }
                       relations { edges { relationType node { id format } } }
                     }
                   }
+                }
+                """.trimIndent()
+
+            private val TAGS_QUERY =
+                """
+                query {
+                  MediaTagCollection { name category description isAdult }
                 }
                 """.trimIndent()
 
