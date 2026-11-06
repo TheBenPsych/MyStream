@@ -128,11 +128,12 @@ class BenflixSettingsSync
 
         @Volatile private var lastExtras: String? = null
 
-        /** Benflix settings kept outside the main settings: Always skip filler and the anime Dubbed/Subbed picks */
+        /** Benflix settings kept outside the main settings: Always skip filler, the anime Dubbed/Subbed picks and the Channels picks */
         private fun extrasNow(): String =
             JSONObject()
                 .put(EXTRA_SKIP_FILLER, BenflixPlayerPrefs.alwaysSkipFiller(context))
                 .put(EXTRA_DUB, JSONObject(BenflixDubChoice.all()))
+                .put(EXTRA_CHANNELS, ChannelPrefs.toJson())
                 .toString()
 
         private fun restoreExtras(saved: String) {
@@ -141,6 +142,7 @@ class BenflixSettingsSync
                 if (json.has(EXTRA_SKIP_FILLER)) {
                     BenflixPlayerPrefs.setAlwaysSkipFiller(context, json.getBoolean(EXTRA_SKIP_FILLER))
                 }
+                json.optJSONObject(EXTRA_CHANNELS)?.let { ChannelPrefs.restore(it) }
                 json.optJSONObject(EXTRA_DUB)?.let { dub ->
                     BenflixDubChoice.replaceAll(dub.keys().asSequence().associateWith { dub.getString(it) })
                 }
@@ -207,7 +209,7 @@ class BenflixSettingsSync
         suspend fun watchForChanges() {
             coroutineScope {
                 launch {
-                    listOf(BenflixPlayerPrefs.FILE, BenflixDubChoice.PREFS).forEach {
+                    listOf(BenflixPlayerPrefs.FILE, BenflixDubChoice.PREFS, ChannelPrefs.PREFS).forEach {
                         context.getSharedPreferences(it, Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(extrasListener)
                     }
                     extrasChanged
@@ -252,6 +254,7 @@ class BenflixSettingsSync
             private const val EXTRAS_KEY = "benflix.extras.v1"
             private const val EXTRA_SKIP_FILLER = "skipFiller"
             private const val EXTRA_DUB = "dub"
+            private const val EXTRA_CHANNELS = "channels"
         }
     }
 
