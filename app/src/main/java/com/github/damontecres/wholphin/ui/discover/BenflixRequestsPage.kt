@@ -58,6 +58,7 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
+import com.github.damontecres.wholphin.services.AniListService
 import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.CantFindEntry
@@ -72,6 +73,7 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabbedPage
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
+import com.github.damontecres.wholphin.ui.detail.discover.AnimeTagCatalogViewModel
 import com.github.damontecres.wholphin.ui.detail.discover.isAdultContent
 import com.github.damontecres.wholphin.ui.detail.discover.isGrownUpTag
 import com.github.damontecres.wholphin.ui.detail.discover.movieAgeRating
@@ -1510,6 +1512,14 @@ private fun FindShelf(
             // Benflix: anime genres and tags from AniList (Isekai, Harem...). Each opens the deep search, which
             // lists every anime that has it, page after page; "Deep search" starts on the full picker.
             item(key = "anime-deep") {
+                val tagCatalog: AnimeTagCatalogViewModel = hiltViewModel()
+                val catalog by tagCatalog.catalog.collectAsState()
+                // Each chip keeps its everyday name ("Harem") but opens AniList's real tag ("Female Harem");
+                // ones AniList doesn't have are hidden
+                val picks =
+                    remember(catalog) {
+                        ANIME_QUICK_PICKS.mapNotNull { label -> AniListService.resolveName(label, catalog)?.let { label to it } }
+                    }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -1519,8 +1529,8 @@ private fun FindShelf(
                             viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList()))
                         })
                     }
-                    items(ANIME_QUICK_PICKS, key = { "aq-$it" }) { name ->
-                        RequestsChip(name, false, {
+                    items(picks, key = { "aq-${it.first}" }) { (label, name) ->
+                        RequestsChip(label, false, {
                             viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name)))
                         })
                     }
@@ -1622,6 +1632,7 @@ private val ANIME_QUICK_PICKS =
         "Fantasy",
         "Harem",
         "Reverse Harem",
+        "Mixed Gender Harem",
         "Action",
         "Romance",
         "Comedy",

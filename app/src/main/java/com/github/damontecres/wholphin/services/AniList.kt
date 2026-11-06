@@ -912,6 +912,26 @@ class AniListService
                 setOf("Anime Influenced", "Primarily Adult Cast", "Primarily Teen Cast", "Male Protagonist", "Female Protagonist")
             private const val MIN_TAG_RANK = 60
 
+            /** Everyday names for AniList tags (lowercase), newest AniList name first */
+            private val TAG_ALIASES =
+                mapOf(
+                    "harem" to listOf("Female Harem", "Harem"),
+                    "reverse harem" to listOf("Male Harem", "Reverse Harem"),
+                    "mixed harem" to listOf("Mixed Gender Harem"),
+                    "work" to listOf("Workplace"),
+                    "workplace" to listOf("Work"),
+                    "idol" to listOf("Idol", "Female Idol"),
+                    "video game" to listOf("Video Games"),
+                    "overpowered" to listOf("Overpowered Main Characters"),
+                    "op main character" to listOf("Overpowered Main Characters"),
+                    "time travel" to listOf("Time Manipulation"),
+                    "cgdct" to listOf("Cute Girls Doing Cute Things"),
+                    "shonen" to listOf("Shounen"),
+                    "shojo" to listOf("Shoujo"),
+                    "zombies" to listOf("Zombie"),
+                    "vampires" to listOf("Vampire"),
+                )
+
             /** Deep search: a tag counts when AniList fans rate it at least this much for the show (out of 100) */
             private const val BROWSE_TAG_RANK = 50
             private const val MAX_WEEK_PAGES = 6
@@ -982,6 +1002,24 @@ class AniListService
                     .trim()
 
             private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
+
+            /**
+             * The name AniList really uses for [name] (any capitals; old names like "Harem", which AniList split
+             * into "Female Harem" / "Male Harem", are moved to the new one). Null when AniList's tag list is
+             * loaded and has no such tag. With no tag list (AniList unreachable), the best guess is returned.
+             */
+            fun resolveName(
+                name: String,
+                catalog: List<AniListTagChoice>,
+            ): String? {
+                ANILIST_GENRES.firstOrNull { it.equals(name, true) }?.let { return it }
+                val aliases = TAG_ALIASES[name.lowercase()].orEmpty()
+                if (catalog.isEmpty()) return aliases.firstOrNull() ?: name
+                val names = catalog.map { it.name }
+                names.firstOrNull { it.equals(name, true) }?.let { return it }
+                for (alias in aliases) names.firstOrNull { it.equals(alias, true) }?.let { return it }
+                return null
+            }
 
             /** AniList's own genres (the fixed list); every other name, like Isekai, is one of its tags */
             val ANILIST_GENRES =
