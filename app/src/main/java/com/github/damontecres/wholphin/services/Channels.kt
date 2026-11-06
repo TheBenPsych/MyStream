@@ -332,7 +332,11 @@ object ChannelSession {
                 SavedLineup.serializer(),
                 SavedLineup(
                     built.map { sch ->
-                        SavedChannel(sch.number, sch.channel?.name.orEmpty(), sch.programs.map { SavedProgram(it.item, it.startMs, it.endMs) })
+                        SavedChannel(
+                            sch.number,
+                            sch.channel?.name.orEmpty(),
+                            sch.programs.map { SavedProgram(it.item, it.startMs, it.endMs) },
+                        )
                     },
                 ),
             )
@@ -432,7 +436,12 @@ object ChannelSession {
             // A live channel: just turn it on
             currentNumber = schedule.number
             currentItemId = live.id
-            val on = schedule.programAt(now)?.takeIf { !it.noGuide }?.item?.title
+            val on =
+                schedule
+                    .programAt(now)
+                    ?.takeIf { !it.noGuide }
+                    ?.item
+                    ?.title
             _banner.value = listOfNotNull("${schedule.number}  ${live.name}", on).joinToString("  ·  ")
             if (replacePlayer) navigationManager.goBack()
             navigationManager.navigateTo(Destination.Playback(live.id, 0L))
