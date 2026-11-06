@@ -63,6 +63,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.discover.ActiveFilterChip
 import com.github.damontecres.wholphin.ui.discover.RequestsChip
+import com.github.damontecres.wholphin.ui.discover.RequestsSearchBox
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
