@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,12 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +33,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -61,10 +59,12 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BENFLIX_GROUP
+import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
 import com.github.damontecres.wholphin.services.DiskCache
+import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
@@ -128,7 +128,7 @@ class ChannelsViewModel
     }
 
 /** What a program is called in the guide: the show's name for an episode */
-private fun ChannelProgram.name(): String =
+internal fun ChannelProgram.name(): String =
     if (noGuide) {
         "Live"
     } else if (item.type == BaseItemKind.EPISODE) {
@@ -174,11 +174,42 @@ fun ChannelsPage(
         Text("No channels yet. Add some movies or shows first.", fontSize = 18.sp, modifier = modifier.padding(32.dp))
         return
     }
+    // Kids (and servers without Live TV) only have Benflix's own channels: just the guide
+    val hasLive = remember(list) { list.any { it.live != null } }
+    var open by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
+    val favourites by ChannelPrefs.favourites.collectAsState()
+    val shown =
+        remember(list, open, favourites) {
+            when (val group = open) {
+                null -> list
+                FAVOURITES_GROUP -> list.filter { it.key in favourites }
+                else -> list.filter { it.group() == group }
+            }
+        }
+    if (hasLive && open == null) {
+        ChannelHub(
+            list = list,
+            lastOpened = lastOpened,
+            onOpen = {
+                open = it
+                lastOpened = it
+            },
+            onWatch = viewModel::watch,
+            modifier = modifier,
+        )
+        return
+    }
+    BackHandler(enabled = hasLive) { open = null }
+    if (shown.isEmpty()) {
+        Text("No channels here yet.", fontSize = 18.sp, modifier = modifier.padding(32.dp))
+        return
+    }
     BoxWithConstraints(modifier = modifier) {
         // Three hours on a TV, an hour and a half on a phone
         val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
         val dpm = ((maxWidth - CHANNEL_COL - 24.dp).value / (halfHours * 30f)).coerceAtLeast(1f)
-        GuideGrid(list, halfHours, dpm, viewModel)
+        GuideGrid(shown, halfHours, dpm, viewModel, title = open, onBack = { open = null })
     }
 }
 
@@ -188,6 +219,8 @@ private fun GuideGrid(
     halfHours: Long,
     dpm: Float,
     viewModel: ChannelsViewModel,
+    title: String?,
+    onBack: () -> Unit,
 ) {
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
@@ -212,55 +245,49 @@ private fun GuideGrid(
         delay(80)
         firstFocus.tryRequestFocus()
     }
-    val hasLive = list.any { it.live != null }
-    // Headings between the groups (only needed once there are live channels)
+    // Headings between the types (only when more than one shows, like in Favourites)
+    val severalTypes = remember(list) { list.map { it.group() }.distinct().size > 1 }
+    val favourites by ChannelPrefs.favourites.collectAsState()
     val entries =
         remember(list) {
             buildList<GuideEntry> {
                 var last: String? = null
                 list.forEach { schedule ->
                     val group = schedule.group()
-                    if (hasLive && group != last) add(GuideEntry.Heading(group))
+                    if (severalTypes && group != last) add(GuideEntry.Heading(group))
                     last = group
                     add(GuideEntry.Channel(schedule))
                 }
             }
         }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(top = 12.dp, start = 8.dp),
     ) {
         // What the focused program is. Read only inside, so moving around the guide redraws just this part
         GuideHeader(focused = { if (isTv) focused else selected ?: focused }, now = now)
-        if (hasLive) {
-            // Jump straight to a group, so nobody has to scroll past hundreds of channels
-            val groups = remember(entries) { entries.withIndex().filter { it.value is GuideEntry.Heading } }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(groups, key = { (it.value as GuideEntry.Heading).name }) { (index, entry) ->
-                    val name = (entry as GuideEntry.Heading).name
-                    Surface(
-                        onClick = { scope.launch { listState.scrollToItem(index) } },
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-                        colors =
-                            ClickableSurfaceDefaults.colors(
-                                containerColor = Color(0xFF17171B),
-                                contentColor = Color(0xFFB8B8C0),
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
-                            ),
-                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                    ) {
-                        Text(
-                            text = if (name == BENFLIX_GROUP) "Benflix · No ads" else name,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                        )
-                    }
-                }
+        if (title != null) {
+            // Back to all the channel types (the Back button does the same)
+            Surface(
+                onClick = onBack,
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = Color(0xFF17171B),
+                        contentColor = Color(0xFFB8B8C0),
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black,
+                    ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            ) {
+                Text(
+                    text = "‹  All channel types  ·  ${groupLabel(title)}  ·  ${list.size} channels",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                )
             }
         }
         // Time ruler
@@ -308,82 +335,58 @@ private fun GuideGrid(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.height(ROW_HEIGHT),
                 ) {
-                    // Channel number, a coloured badge and the name
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier =
-                            Modifier
-                                .width(CHANNEL_COL)
-                                .fillMaxHeight()
-                                .background(Color(0xFF17171B), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp),
+                    // Channel number, logo or badge, and the name. Press it to star the channel
+                    val starred = schedule.key in favourites
+                    Surface(
+                        onClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors =
+                            ClickableSurfaceDefaults.colors(
+                                containerColor = Color(0xFF17171B),
+                                contentColor = Color.White,
+                                focusedContainerColor = Color(0xFF3A3A42),
+                                focusedContentColor = Color.White,
+                            ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                        modifier = Modifier.width(CHANNEL_COL).fillMaxHeight(),
                     ) {
-                        Text(
-                            text = "${schedule.number}",
-                            fontFamily = BenflixTitleFont,
-                            fontSize = 24.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(26.dp),
-                        )
-                        val live = schedule.live
-                        if (live != null) {
-                            // The station's logo
-                            val imageUrlService = LocalImageUrlService.current
-                            val logo =
-                                remember(live.id) {
-                                    imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 80)
-                                }
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(26.dp)
-                                        .background(Color.White, RoundedCornerShape(5.dp))
-                                        .clip(RoundedCornerShape(5.dp))
-                                        .padding(2.dp),
-                            ) {
-                                AsyncImage(
-                                    model = logo,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        } else {
-                            val (from, to) = BadgeColors[(schedule.channel?.ordinal ?: 0) % BadgeColors.size]
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier =
-                                    Modifier
-                                        .size(26.dp)
-                                        .background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(5.dp)),
-                            ) {
-                                Text(
-                                    text = schedule.title.take(1).uppercase(),
-                                    fontFamily = BenflixTitleFont,
-                                    fontSize = 17.sp,
-                                    color = Color.White,
-                                )
-                            }
-                        }
-                        Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                        ) {
                             Text(
-                                text = schedule.title,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 14.sp,
-                                maxLines = if (live == null) 1 else 2,
-                                overflow = TextOverflow.Ellipsis,
+                                text = if (starred) "★" else "☆",
+                                fontSize = 13.sp,
+                                color = if (starred) StarGold else Color(0xFF55555C),
                             )
-                            if (live == null) {
+                            Text(
+                                text = "${schedule.number}",
+                                fontFamily = BenflixTitleFont,
+                                fontSize = 20.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                            val live = schedule.live
+                            ChannelLogo(schedule, size = 24.dp)
+                            Column {
                                 Text(
-                                    text = "NO ADS",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = .8.sp,
-                                    color = NoAdsGreen,
-                                    lineHeight = 10.sp,
+                                    text = schedule.title,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    lineHeight = 14.sp,
+                                    maxLines = if (live == null) 1 else 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
+                                if (live == null) {
+                                    Text(
+                                        text = "NO ADS",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = .8.sp,
+                                        color = NoAdsGreen,
+                                        lineHeight = 10.sp,
+                                    )
+                                }
                             }
                         }
                     }
@@ -399,6 +402,8 @@ private fun GuideGrid(
                                 !isTv &&
                                     selected?.let { (s, p) -> s.number == schedule.number && p.startMs == program.startMs } == true
                             Surface(
+                                // Hold OK (or press and hold on a phone) to star the channel
+                                onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
                                 onClick = {
                                     if (!isTv && !isSelected) {
                                         selected = schedule to program
@@ -683,7 +688,7 @@ fun ChannelBanner(modifier: Modifier = Modifier) {
 private const val HALF_HOUR = 30L * 60_000L
 private const val GUIDE_HOURS = 3L
 private const val BANNER_MS = 4_000L
-private val CHANNEL_COL = 160.dp
+private val CHANNEL_COL = 176.dp
 private val HEADER_HEIGHT = 170.dp
 
 /** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */
@@ -691,7 +696,7 @@ private val PHONE_HEADER_HEIGHT = 110.dp
 private val BenflixRed = Color(0xFFE5484D)
 
 /** Each channel's badge colours */
-private val BadgeColors =
+internal val BadgeColors =
     listOf(
         Color(0xFF7A2A1C) to Color(0xFFD98B3A),
         Color(0xFF1C3A6B) to Color(0xFF4AA3C9),

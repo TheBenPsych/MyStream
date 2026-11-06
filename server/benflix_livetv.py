@@ -71,7 +71,29 @@ CATEGORIES = [
     ("Food & Home", 1200, r"food|cook|kitchen|chef|home|garden|diy|design|house|craft|shop"),
     ("Other", 1300, r""),
 ]
-PER_BLOCK = 99
+# The best 40 of each type (Ben, 2026-11-06): ones with a guide first, then the big free TV services
+PER_BLOCK = 40
+
+# News: only these US national channels (Ben's pick, 2026-11-06), matched on the channel's name.
+# No city stations, other countries or iptv-org copies.
+NEWS_KEEP = [
+    r"abc news live$", r"cbs news 24/7", r"nbc news now", r"today all day", r"cnn headlines", r"livenow from fox",
+    r"scripps news", r"reuters", r"the hill$", r"bloomberg tv\+?$", r"bloomberg originals$", r"yahoo finance",
+    r"business insider", r"fox weather", r"accuweather", r"weathernation$",
+]
+# Opinion and talk news, left out unless switched on
+NEWS_OPINION = [
+    r"newsmax2?$", r"real america'?s voice", r"oan plus$", r"blaze", r"the first$", r"daily wire", r"salem news",
+    r"tyt network",
+]
+KEEP_OPINION_NEWS = False
+
+
+def news_wanted(ch):
+    """Only the main US news channels, once each"""
+    name = tidy_name(ch["name"]).lower()
+    keep = NEWS_KEEP + (NEWS_OPINION if KEEP_OPINION_NEWS else [])
+    return any(re.search(p, name) for p in keep)
 
 NOT_ENGLISH = re.compile(
     r"espa[nñ]ol|spanish|latino|latina|en vivo|novela|cine |telemundo|univision|\bmexic|portugu|brasil|"
@@ -215,10 +237,23 @@ def build():
     report["checked"] = len(unique)
     report["dead"] = len(unique) - len(working)
 
+    # The guides, read once: used to put channels with show info first, then written out for Jellyfin
+    guide_data = load_guides(guides)
+    with_guide = {src: ids for src, (_, ids) in guide_data.items()}
+    ranked = sorted(
+        enumerate(working),
+        key=lambda ic: (0 if ic[1]["id"] in with_guide.get(ic[1]["source"], ()) else 1, 1 if ic[1]["source"] == "iptv" else 0, ic[0]),
+    )
+
     # Number them in blocks by type
     per_cat = {}
-    for c in working:
+    news_seen = set()
+    for _, c in ranked:
         name, base = category(c)
+        if name == "News":
+            if not news_wanted(c) or _key(c["name"]) in news_seen:
+                continue
+            news_seen.add(_key(c["name"]))
         block = per_cat.setdefault(name, [])
         if len(block) < PER_BLOCK:
             c["number"] = base + len(block) + 1
@@ -242,7 +277,7 @@ def build():
             )
     os.replace(tmp, M3U_FILE)
 
-    report["guide"] = write_guide(final, guides)
+    report["guide"] = write_guide(final, guide_data)
     report["finished"] = int(time.time())
     report["minutes"] = round((time.time() - started) / 60, 1)
     with open(STATUS_FILE, "w") as f:
@@ -251,7 +286,25 @@ def build():
     return report
 
 
-def write_guide(final, guides):
+def load_guides(guides):
+    """{source: (guide bytes, ids of channels that have shows)} for each list that has a guide"""
+    out = {}
+    for source, url in guides.items():
+        if not url:
+            continue
+        try:
+            _, _, data = _get(url, timeout=120)
+            if data[:2] == b"\x1f\x8b":
+                data = gzip.decompress(data)
+            ids = set(re.findall(rb'<programme[^>]*?channel="([^"]+)"', data))
+            out[source] = (data, {i.decode("utf-8", "replace") for i in ids})
+        except Exception as e:
+            out[source] = (None, set())
+            print(f"Live TV: couldn't read the {source} guide ({e})", flush=True)
+    return out
+
+
+def write_guide(final, guide_data):
     """One guide.xml with only the kept channels, ids matching channels.m3u."""
     wanted_ids = {}
     for c in final:
@@ -262,13 +315,12 @@ def write_guide(final, guides):
     with open(tmp, "wb") as out:
         out.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<tv generator-info-name="Benflix">\n')
         for source, ids in wanted_ids.items():
-            url = guides.get(source)
-            if not url:
+            data, _ = guide_data.get(source, (None, None))
+            if not data:
+                if source in guide_data:
+                    counts[source] = "Couldn't read the guide"
                 continue
             try:
-                _, _, data = _get(url, timeout=120)
-                if data[:2] == b"\x1f\x8b":
-                    data = gzip.decompress(data)
                 n = 0
                 for _, el in ET.iterparse(io.BytesIO(data), events=("end",)):
                     if el.tag == "channel" and el.get("id") in ids:
@@ -320,7 +372,7 @@ def status():
 
 def _lists_key():
     """Changes whenever the lists in SOURCES or the channel types change, so an update remakes the list"""
-    return hashlib.sha1(json.dumps([SOURCES, CATEGORIES, PER_BLOCK]).encode()).hexdigest()[:12]
+    return hashlib.sha1(json.dumps([SOURCES, CATEGORIES, PER_BLOCK, NEWS_KEEP, NEWS_OPINION, KEEP_OPINION_NEWS]).encode()).hexdigest()[:12]
 
 
 def start():

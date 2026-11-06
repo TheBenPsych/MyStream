@@ -154,6 +154,32 @@ fun ChannelSchedule.group(): String =
 
 const val BENFLIX_GROUP = "Benflix channels"
 
+/** The starred channels' tile on the Channels page */
+const val FAVOURITES_GROUP = "Favourites"
+
+/**
+ * The order of the type tiles on the Channels page: the things live TV does best first
+ * (Ben, 2026-11-06), Benflix's own channels near the end
+ */
+val ChannelTileOrder =
+    listOf(
+        FAVOURITES_GROUP,
+        "News",
+        "Sports",
+        "Reality",
+        "Classic TV",
+        "Comedy",
+        "Kids & Family",
+        "Drama & Crime",
+        "Food & Home",
+        "Documentaries & Nature",
+        "Music",
+        "Sci-Fi & Anime",
+        "Movies",
+        BENFLIX_GROUP,
+        "Other",
+    )
+
 /** A channel in the guide: one of Benflix's own ([channel]) or a free live one ([live]) */
 data class ChannelSchedule(
     val number: Int,
@@ -162,6 +188,9 @@ data class ChannelSchedule(
     val live: LiveChannel? = null,
 ) {
     val title: String get() = live?.name ?: channel?.title.orEmpty()
+
+    /** What favourites and Recently watched save the channel as (live numbers can change, names don't) */
+    val key: String get() = live?.let { "live:" + it.name.lowercase() } ?: "own:${channel?.name}"
 
     fun programAt(timeMs: Long): ChannelProgram? = programs.firstOrNull { timeMs >= it.startMs && timeMs < it.endMs }
 
@@ -200,6 +229,12 @@ object ChannelSession {
     }
 
     val lastNumber: Int? get() = currentNumber
+
+    /** Today's line-up, for the guide in the player */
+    val lineup: List<ChannelSchedule> get() = schedules
+
+    /** True while [playingItemId] is a channel picked from the guide (so the side guide can open) */
+    fun isWatching(playingItemId: UUID?): Boolean = currentNumber != null && playingItemId != null && playingItemId == currentItemId
 
     /**
      * Today's line-up. [onProgress] gets the channels as they come in (in channel order, so new ones
@@ -455,6 +490,7 @@ object ChannelSession {
     ) {
         val now = System.currentTimeMillis()
         val live = schedule.live
+        ChannelPrefs.addRecent(schedule.key)
         if (live != null) {
             // A live channel: just turn it on
             currentNumber = schedule.number

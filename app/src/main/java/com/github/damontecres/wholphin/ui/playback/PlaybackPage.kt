@@ -61,8 +61,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -431,10 +435,23 @@ fun PlaybackPageContent(
         }
     }
 
+    // Watching a channel: the guide that slides in at the side (Left on a TV, the Guide button on a phone)
+    var showSideGuide by remember { mutableStateOf(false) }
+    val watchingChannel =
+        com.github.damontecres.wholphin.services.ChannelSession
+            .isWatching((destination as? Destination.Playback)?.itemId)
     Box(
         modifier
             .background(Color.Black)
             .onPreviewKeyEvent {
+                // The side guide handles its own buttons
+                if (showSideGuide) return@onPreviewKeyEvent false
+                if (watchingChannel && !controllerViewState.controlsVisible &&
+                    it.key == Key.DirectionLeft
+                ) {
+                    if (it.type == KeyEventType.KeyUp) showSideGuide = true
+                    return@onPreviewKeyEvent true
+                }
                 // Watching a channel: Up/Down flips to the next or previous channel
                 if (com.github.damontecres.wholphin.services.ChannelSession.handlePlayerKey(
                         it,
@@ -784,6 +801,40 @@ fun PlaybackPageContent(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(40.dp),
+        )
+
+        if (watchingChannel && !isTv && controllerViewState.controlsVisible && !showSideGuide) {
+            androidx.tv.material3.Surface(
+                onClick = { showSideGuide = true },
+                shape =
+                    androidx.tv.material3.ClickableSurfaceDefaults
+                        .shape(RoundedCornerShape(50)),
+                colors =
+                    androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Black.copy(alpha = .7f),
+                        contentColor = Color.White,
+                    ),
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp),
+            ) {
+                Text(
+                    text = "Guide",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+        com.github.damontecres.wholphin.ui.main.ChannelSideGuide(
+            visible = showSideGuide,
+            playingItemId = (destination as? Destination.Playback)?.itemId,
+            navigationManager = viewModel.navigationManager,
+            onClose = {
+                showSideGuide = false
+                focusRequester.tryRequestFocus()
+            },
         )
 
         PauseAmbient(
