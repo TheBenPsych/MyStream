@@ -645,7 +645,7 @@ private fun GuideHeader(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp,
-                        color = Color.White,
+                        color = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)

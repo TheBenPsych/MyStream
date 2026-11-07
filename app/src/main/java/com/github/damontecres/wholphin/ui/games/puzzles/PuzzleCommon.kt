@@ -51,7 +51,7 @@ import javax.inject.Singleton
 
 val PuzzleGreen = Color(0xFF46D37A)
 val PuzzleGold = Color(0xFFFFC94D)
-val PuzzleBg = Color(0xFF0B0B0D)
+val PuzzleBg = Color(0xFF0B0C10)
 val PuzzlePanel = Color(0xFF1C1C1F)
 
 /** "Watch it after": open the answer's page, or add it to My List (Ben's pick) */

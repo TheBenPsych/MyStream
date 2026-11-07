@@ -254,7 +254,12 @@ private fun RowScope.IconTile(tab: TopNavTab) {
                         .size(18.dp)
                         .background(BenflixRed, CircleShape),
             ) {
-                Text(text = it.groupValues[1], fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    text = it.groupValues[1],
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
+                )
             }
         }
     }
