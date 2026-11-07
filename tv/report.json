@@ -1,0 +1,43 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen start-0: Looking for your server\u2026 | Checking your home Wi-Fi",
+  "screen start-1: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen start-2: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen start-3: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen start-4: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen start-5: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-1: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-4: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-7: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-10: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-13: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-16: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-19: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-22: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-25: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-28: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-31: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-34: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-37: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-40: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-43: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-46: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen login-49: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "screen after-login: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "welcome setup: didn't open (this account already did it)",
+  "screen home: What's your server address? | Like 10.0.0.58:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Next",
+  "never got signed in; stopping here"
+ ],
+ "timings": {
+  "cold start (ms, first frame)": 1028,
+  "home doors visible (s)": null
+ },
+ "unreachable": {},
+ "problems": [
+  {
+   "type": "robot could not sign in"
+  }
+ ],
+ "welcome": "not shown"
+}

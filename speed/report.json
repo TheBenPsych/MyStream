@@ -1,0 +1,23 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Select Server | Server placeholder | Add Server | Add Server",
+  "screen typed-server: Enter Server IP or URL | https://demo.jellyfin.org/stable | Submit",
+  "screen login-4: Select User | Stable Demo | demo | demo | Add User | Add User | \uf0ec | Switch servers",
+  "screen typed-user: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "signed in",
+  "screen wholphin-first: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | King Lear | 1953  \u2022  1h 22m  \u2022  43m left |   \u2022  8.0\ufffd |   \u2022  Ends at 5:08 PM | In this abridged television production, Lear vows revenge against his conniving daughters after they try to take",
+  "screen login-1: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | Pioneer One | Earthfall | S1 E1  \u2022  Jun 16, 2010  \u2022  32m  \u2022  13m left |   \u2022  4.5\ufffd |   \u2022  Ends at 4:39 PM | An object from space spreads radiation over North America. Fearing terrorism, U.S. ",
+  "signed in",
+  "screen wholphin-start0: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | Pioneer One | Earthfall | S1 E1  \u2022  Jun 16, 2010  \u2022  32m  \u2022  13m left |   \u2022  4.5\ufffd |   \u2022  Ends at 4:39 PM | An object from space spreads radiation over North America. Fearing terrorism, U.S. ",
+  "screen login-1: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | Pioneer One | Earthfall | S1 E1  \u2022  Jun 16, 2010  \u2022  32m  \u2022  13m left |   \u2022  4.5\ufffd |   \u2022  Ends at 4:39 PM | An object from space spreads radiation over North America. Fearing terrorism, U.S. ",
+  "signed in",
+  "screen wholphin-start1: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | Pioneer One | Earthfall | S1 E1  \u2022  Jun 16, 2010  \u2022  32m  \u2022  13m left |   \u2022  4.5\ufffd |   \u2022  Ends at 4:40 PM | An object from space spreads radiation over North America. Fearing terrorism, U.S. ",
+  "signed in",
+  "screen wholphin-start2: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | King Lear | 1953  \u2022  1h 22m  \u2022  43m left |   \u2022  8.0\ufffd |   \u2022  Ends at 5:10 PM | In this abridged television production, Lear vows revenge against his conniving daughters after they try to take",
+  "screen wholphin-after-scroll: Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | demo | demo | Stable Demo | Pioneer One | 2010 - 2011  \u2022  35m |   \u2022  NR |   \u2022  6.2\ufffd |   \u2022  Ends at 5:03 PM | Pioneer One is a 2010 American web series produced by Josh Bernhard and Bracey Smith. It has be"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}
