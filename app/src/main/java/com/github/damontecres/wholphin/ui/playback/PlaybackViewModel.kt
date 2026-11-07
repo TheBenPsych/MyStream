@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixKidsLog
 import com.github.damontecres.wholphin.services.BenflixMobileData
 import com.github.damontecres.wholphin.services.BenflixScreenTime
+import com.github.damontecres.wholphin.services.BenflixSkipsService
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.DisplayPreferencesService
@@ -61,6 +62,7 @@ import com.github.damontecres.wholphin.services.RefreshRateService
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SmartResume
 import com.github.damontecres.wholphin.services.StreamChoiceService
+import com.github.damontecres.wholphin.services.TowerSkips
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.formatBitrate
@@ -88,6 +90,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -186,6 +189,11 @@ class PlaybackViewModel
         @JvmField
         @Inject
         var aniSkip: AniSkipService? = null
+
+        /** Benflix: skip times worked out on Tower, and fixes from the player (null in tests) */
+        @JvmField
+        @Inject
+        var benflixSkips: BenflixSkipsService? = null
 
         /** Benflix: marks the episode you move on from as watched (null in tests) */
         @JvmField
@@ -1290,6 +1298,12 @@ class PlaybackViewModel
         internal val autoSkippedSegments = mutableSetOf<UUID>()
         internal val outroShownSegments = mutableSetOf<UUID>()
 
+        /** Benflix: skip times Tower isn't sure about. They get a Skip button, but are never skipped by themselves. */
+        @Volatile internal var unsureSegments: Set<UUID> = emptySet()
+
+        /** Benflix: set after a fix, so the times are fetched again straight away */
+        @Volatile internal var refreshSegmentsNow = false
+
         /** Benflix: the recap card was closed (or timed out), so start the episode */
         fun startAfterRecap() {
             if (state.value.recap == null) return
@@ -1572,6 +1586,8 @@ class PlaybackViewModel
             segmentJob =
                 viewModelScope.launchIO {
                     val prefs = preferences.appPreferences.playbackPreferences
+                    // Benflix: for anime, AniSkip's hand-checked times replace the server's guesses
+                    val aniSkipSegments = aniSkip?.segmentsFor(api, itemId).orEmpty()
                     val serverSegments =
                         try {
                             api.mediaSegmentsApi
@@ -1583,12 +1599,48 @@ class PlaybackViewModel
                             Timber.w(ex, "Couldn't get media segments")
                             emptyList()
                         }
-                    // Benflix: for anime, AniSkip's hand-checked times replace the server's guesses
-                    val aniSkipSegments = aniSkip?.segmentsFor(api, itemId).orEmpty()
-                    val segments = AniSkipMatch.merge(serverSegments, aniSkipSegments)
-                    if (segments.isNotEmpty()) {
+                    var segments = AniSkipMatch.merge(serverSegments, aniSkipSegments)
+                    // Benflix: Tower's times (it compares the whole season, and knows people's fixes) replace
+                    // these as soon as Tower answers. Until then the server's own times only get the Skip
+                    // button, and if Tower can't be reached they work as before.
+                    val skipsService = benflixSkips
+                    val towerAnswer = skipsService?.let { service -> async { service.skipsFor(itemId) } }
+                    var tower: TowerSkips? = null
+                    var towerPending = towerAnswer != null
+                    unsureSegments = if (towerPending) serverSegments.map { it.id }.toSet() else emptySet()
+                    refreshSegmentsNow = false
+                    // While Tower is still checking the season, ask again after 20 seconds, 1 minute and 2 minutes
+                    val askAgainAt = mutableListOf(20_000L, 60_000L, 120_000L)
+                    var waited = 0L
+                    if (segments.isNotEmpty() || towerAnswer != null) {
                         while (isActive) {
                             delay(500L)
+                            waited += 500L
+                            if (towerPending && towerAnswer?.isCompleted == true) {
+                                towerPending = false
+                                val answer = towerAnswer.await()
+                                tower = answer
+                                if (answer != null) {
+                                    segments = BenflixSkipsService.merge(answer, aniSkipSegments)
+                                    unsureSegments = answer.unsure
+                                } else {
+                                    unsureSegments = emptySet()
+                                }
+                            }
+                            val askNow =
+                                refreshSegmentsNow ||
+                                    (tower?.ready == false && askAgainAt.firstOrNull()?.let { waited >= it } == true)
+                            if (askNow && skipsService != null) {
+                                refreshSegmentsNow = false
+                                askAgainAt.removeAll { it <= waited }
+                                val fresh = skipsService.skipsFor(itemId)
+                                if (fresh != null) {
+                                    tower = fresh
+                                    towerPending = false
+                                    segments = BenflixSkipsService.merge(fresh, aniSkipSegments)
+                                    unsureSegments = fresh.unsure
+                                }
+                            }
                             val currentTicks =
                                 onMain { player.currentPosition.milliseconds.inWholeTicks }
                             val currentSegment =
@@ -1664,9 +1716,16 @@ class PlaybackViewModel
                                                 SkipSegmentBehavior.IGNORE
                                             }
                                         }
+                                    // Benflix: times Tower isn't sure about only get the Skip button
+                                    val sureBehavior =
+                                        if (behavior == SkipSegmentBehavior.AUTO_SKIP && currentSegment.id in unsureSegments) {
+                                            SkipSegmentBehavior.ASK_TO_SKIP
+                                        } else {
+                                            behavior
+                                        }
                                     withContext(WholphinDispatchers.Main) {
                                         val newSegment =
-                                            when (behavior) {
+                                            when (sureBehavior) {
                                                 SkipSegmentBehavior.AUTO_SKIP -> {
                                                     if (autoSkippedSegments.add(currentSegment.id)) {
                                                         onMain { player.seekTo(currentSegment.endTicks.ticks.inWholeMilliseconds + 1) }
