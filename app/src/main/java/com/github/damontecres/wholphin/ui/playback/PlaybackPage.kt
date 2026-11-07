@@ -801,11 +801,21 @@ fun PlaybackPageContent(
                     .padding(if (isTv) 40.dp else 16.dp),
         )
 
+        // Tracks whether the picture has started, so the channel banner can say "Tuning in…" until then
+        var channelPlaying by remember { mutableStateOf(player.isPlaying) }
+        androidx.compose.runtime.DisposableEffect(player) {
+            val listener =
+                object : androidx.media3.common.Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        if (isPlaying) channelPlaying = true
+                    }
+                }
+            player.addListener(listener)
+            onDispose { player.removeListener(listener) }
+        }
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
-            modifier =
-                Modifier
-                    .align(Alignment.TopStart)
-                    .padding(40.dp),
+            playing = channelPlaying,
+            modifier = Modifier.align(Alignment.BottomStart),
         )
 
         if (watchingChannel && !isTv && controllerViewState.controlsVisible && !showSideGuide) {

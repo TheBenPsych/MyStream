@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -28,20 +29,22 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.ui.door.DoorViewModel
 import com.github.damontecres.wholphin.ui.main.BenflixGenre
 import com.github.damontecres.wholphin.ui.main.GenreTile
 import com.github.damontecres.wholphin.ui.main.MoodRow
 import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
  * Benflix recent searches, kept per account (Kids has its own list, Guest keeps none).
- * Only the last few are kept.
+ * Only the last 6 are kept (approved).
  */
 object RecentSearches {
     private const val PREFS = "benflix_search"
-    private const val MAX = 3
+    private const val MAX = 6
 
     private fun key(account: String?): String? =
         when {
@@ -78,7 +81,8 @@ object RecentSearches {
 }
 
 /**
- * What Search shows before you type: recent searches, moods and genres to browse
+ * What Search shows before you type (approved se-start): recent searches, Popular, Browse tiles
+ * (Genres, Networks, Channel types, Consoles), then moods and genres further down.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -87,6 +91,8 @@ fun SearchStart(
     onClickRecent: (String) -> Unit,
     modifier: Modifier = Modifier,
     account: String? = null,
+    popular: List<com.github.damontecres.wholphin.data.model.BaseItem> = emptyList(),
+    onClickItem: (com.github.damontecres.wholphin.data.model.BaseItem) -> Unit = {},
 ) {
     val context = LocalContext.current
     val recent = remember(account) { RecentSearches.get(context, account) }
@@ -116,6 +122,53 @@ fun SearchStart(
                                 Text(text = text, fontSize = 15.sp)
                             }
                         }
+                    }
+                }
+            }
+        }
+        if (popular.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("POPULAR")
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                    ) {
+                        items(popular.size) { index ->
+                            val item = popular[index]
+                            com.github.damontecres.wholphin.ui.door.DoorPoster(
+                                item = item,
+                                width = 104.dp,
+                                showName = !rememberIsTv(),
+                                onClick = { onClickItem(item) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (!KidsMode.isActive) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("BROWSE")
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) {
+                        val tile = Modifier.width(170.dp)
+                        com.github.damontecres.wholphin.ui.door.BrowseTile("Genres", {
+                            navigationManager.navigateTo(Destination.DoorBrowse(BenflixDoor.MOVIES.name, DoorViewModel.BROWSE_GENRES))
+                        }, tile)
+                        com.github.damontecres.wholphin.ui.door.BrowseTile("Networks", {
+                            navigationManager.navigateTo(Destination.DoorBrowse(BenflixDoor.SHOWS.name, DoorViewModel.BROWSE_STUDIOS))
+                        }, tile)
+                        com.github.damontecres.wholphin.ui.door.BrowseTile("Channel types", {
+                            navigationManager.navigateTo(Destination.Channels)
+                        }, tile)
+                        com.github.damontecres.wholphin.ui.door.BrowseTile("Consoles", {
+                            navigationManager.navigateTo(Destination.Games)
+                        }, tile)
                     }
                 }
             }

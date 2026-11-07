@@ -442,6 +442,28 @@ private fun primaryColors() =
     )
 
 @Composable
+private fun whiteColors() =
+    androidx.tv.material3.ClickableSurfaceDefaults.colors(
+        containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+        contentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+        pressedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Soft,
+        pressedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+    )
+
+@Composable
+private fun whiteBorder() =
+    androidx.tv.material3.ClickableSurfaceDefaults.border(
+        focusedBorder =
+            androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                inset = (-4).dp,
+                shape = FlatButtonShape,
+            ),
+    )
+
+@Composable
 private fun primaryBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
@@ -602,14 +624,26 @@ fun ExpandableFaButton(
     enabled: Boolean = true,
     primary: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    // Benflix redesign: a solid white button (Requests "Ask for it"), with the white outline just outside it
+    white: Boolean = false,
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
     Button(
         onClick = onClick,
         onLongClick = onLongClick,
-        colors = if (flat && primary) primaryColors() else buttonDefaultColors(),
-        border = if (flat && primary) primaryBorder() else buttonDefaultBorder(),
+        colors =
+            when {
+                white -> whiteColors()
+                flat && primary -> primaryColors()
+                else -> buttonDefaultColors()
+            },
+        border =
+            when {
+                white -> whiteBorder()
+                flat && primary -> primaryBorder()
+                else -> buttonDefaultBorder()
+            },
         enabled = enabled,
         modifier =
             modifier.requiredSizeIn(

@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -607,6 +609,9 @@ fun NavDrawer(
         }
         return
     }
+    val underBar = destination.underTopBar()
+    // The bar's own height: 18 above, 6 below, and the row itself
+    val barHeight = 24.dp + TopNavBarHeight * (if (easy) 1.2f else 1f)
     Column(
         modifier =
             modifier.onPreviewKeyEvent { event ->
@@ -623,31 +628,66 @@ fun NavDrawer(
                 }
             },
     ) {
-        BenflixTopBar(
-            door = destination.door(),
-            user = user,
-            userImageUrl = userImageUrl,
-            showClock = preferences.appPreferences.interfacePreferences.showClock,
-            badge = badge,
-            searchSelected = destination is Destination.Search,
-            onClickSearch = onClickSearch,
-            onClickProfile = onClickProfile,
-            profileFocusRequester = focusRequester,
-            big = easy,
-            modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
-        )
-        DestinationContent(
-            destination = destination,
-            preferences = preferences,
-            onClearBackdrop = onClearBackdrop,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(
-                        start = if (destination.fullBleed()) 0.dp else 40.dp,
-                        end = if (destination.fullBleed()) 0.dp else 16.dp,
-                    ),
-        )
+        if (underBar) {
+            // Door pages: the picture goes up behind the bar, so the bar sits on top of the page
+            Box(Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalTopBarOverlap provides barHeight) {
+                    DestinationContent(
+                        destination = destination,
+                        preferences = preferences,
+                        onClearBackdrop = onClearBackdrop,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    start = if (destination.fullBleed()) 0.dp else 40.dp,
+                                    end = if (destination.fullBleed()) 0.dp else 16.dp,
+                                ),
+                    )
+                }
+                BenflixTopBar(
+                    door = destination.door(),
+                    user = user,
+                    userImageUrl = userImageUrl,
+                    showClock = preferences.appPreferences.interfacePreferences.showClock,
+                    badge = badge,
+                    searchSelected = destination is Destination.Search,
+                    onClickSearch = onClickSearch,
+                    onClickProfile = onClickProfile,
+                    profileFocusRequester = focusRequester,
+                    big = easy,
+                    overPicture = underBar,
+                    modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
+                )
+            }
+        } else {
+            BenflixTopBar(
+                door = destination.door(),
+                user = user,
+                userImageUrl = userImageUrl,
+                showClock = preferences.appPreferences.interfacePreferences.showClock,
+                badge = badge,
+                searchSelected = destination is Destination.Search,
+                onClickSearch = onClickSearch,
+                onClickProfile = onClickProfile,
+                profileFocusRequester = focusRequester,
+                big = easy,
+                overPicture = underBar,
+                modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
+            )
+            DestinationContent(
+                destination = destination,
+                preferences = preferences,
+                onClearBackdrop = onClearBackdrop,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(
+                            start = if (destination.fullBleed()) 0.dp else 40.dp,
+                            end = if (destination.fullBleed()) 0.dp else 16.dp,
+                        ),
+            )
+        }
     }
 }
 

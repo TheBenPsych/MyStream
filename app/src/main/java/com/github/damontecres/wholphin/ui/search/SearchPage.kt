@@ -106,6 +106,7 @@ fun SearchPage(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val state by viewModel.state.collectAsState()
+    val popular by viewModel.popular.collectAsState()
     val programDialogState by viewModel.programDialogState.collectAsState()
 
     // Start with current preferences, but collect updates when view options change
@@ -413,6 +414,8 @@ fun SearchPage(
                         SearchStart(
                             navigationManager = viewModel.navigationManager,
                             account = viewModel.recentAccount,
+                            popular = popular,
+                            onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
                             onClickRecent = {
                                 query = it
                                 triggerImmediateSearch(it)
@@ -429,6 +432,7 @@ fun SearchPage(
                             SearchCombinedResults(
                                 result = state.combinedResults,
                                 askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
+                                didYouMean = state.didYouMean,
                                 focusRequester = focusRequesters[COMBINED_ROW],
                                 onClickItem = onClickItem,
                                 onLongClickItem = { index, item ->
@@ -619,6 +623,7 @@ fun SearchCombinedResults(
     modifier: Modifier = Modifier,
     /** Benflix redesign: the library results show as door columns, with these titles in Ask for it */
     askFor: List<DiscoverItem>? = null,
+    didYouMean: String? = null,
 ) {
     if (askFor != null && result is SearchResult.Success && (result.items.isNotEmpty() || askFor.isNotEmpty())) {
         val items = remember(result) { result.items.filterNotNull() }
@@ -628,6 +633,7 @@ fun SearchCombinedResults(
             focusRequester = focusRequester,
             onClickItem = { onClickItem(items.indexOf(it), it) },
             onClickAsk = { onClickDiscover(0, it) },
+            didYouMean = didYouMean,
             modifier = modifier,
         )
         return

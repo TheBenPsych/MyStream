@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.services.KidsMode
@@ -33,6 +34,15 @@ data class TopNavTab(
 
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
+
+/**
+ * On door pages (TV) the picture goes up behind the top bar; this is how tall the bar is there, so the
+ * page can start its words and rows below it. 0 everywhere else.
+ */
+val LocalTopBarOverlap = staticCompositionLocalOf { 0.dp }
+
+/** Door pages draw their picture up behind the top bar (TV) */
+fun Destination.underTopBar(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor
 
 /** The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids get a small "kids" word after it. */
 @Composable

@@ -622,6 +622,24 @@ fun PreferencesContent(
                                         }
                                     }
 
+                                    AppPreference.RunSetupAgain -> {
+                                        val context = LocalContext.current
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                viewModel.currentUser.value?.id?.let {
+                                                    com.github.damontecres.wholphin.ui.main.WelcomeViewModel
+                                                        .restart(context, it)
+                                                }
+                                                viewModel.navigationManager.navigateTo(Destination.Welcome)
+                                            },
+                                            modifier = focusModifier,
+                                            summary = "Picture, subtitles, word size, favourites and genres",
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
                                     AppPreference.HiddenGenresPref -> {
                                         val hiddenCount = HiddenGenres.hidden.size
                                         ClickPreference(

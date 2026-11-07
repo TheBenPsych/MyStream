@@ -187,10 +187,11 @@ fun ActiveFilterChip(
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
         colors =
             ButtonDefaults.colors(
-                containerColor = RED.copy(alpha = .25f),
-                contentColor = Color.White,
-                focusedContainerColor = RED,
-                focusedContentColor = Color.White,
+                // Redesign: greys and white, no red
+                containerColor = Color.White,
+                contentColor = Color.Black,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
             ),
         modifier = Modifier.height(36.dp),
     ) {

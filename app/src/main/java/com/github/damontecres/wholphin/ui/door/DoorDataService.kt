@@ -355,6 +355,27 @@ class DoorDataService
             }.shuffledIf(sortBy == ItemSortBy.RANDOM)
                 .take(limit)
 
+        /** Unwatched titles in one genre, in a random order ("More of this" genres from setup) */
+        suspend fun inGenre(
+            userId: UUID,
+            type: BaseItemKind,
+            genre: String,
+        ): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(type),
+                    recursive = true,
+                    genres = listOf(genre),
+                    isPlayed = false,
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.RANDOM),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                ),
+            )
+
         /** Every title in these libraries for the All movies / All shows grid (no stories, to stay light) */
         suspend fun everything(
             userId: UUID,

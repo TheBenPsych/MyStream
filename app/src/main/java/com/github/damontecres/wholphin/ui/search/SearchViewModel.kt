@@ -83,6 +83,7 @@ class SearchViewModel
         private val liveTvService: LiveTvService,
         private val keyValueService: KeyValueService,
         private val navDrawerService: NavDrawerService,
+        private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
     ) : ViewModel(),
         ContextMenuProvider {
         /** Benflix: recent searches are kept per account */
@@ -95,6 +96,11 @@ class SearchViewModel
                 started = SharingStarted.Eagerly,
                 initialValue = false,
             )
+
+        private val _popular = MutableStateFlow<List<BaseItem>>(emptyList())
+
+        /** Before you type: the Top 10 movies and shows, mixed (approved Popular row) */
+        val popular: StateFlow<List<BaseItem>> = _popular
 
         private val _state = MutableStateFlow(SearchState())
         val state: StateFlow<SearchState> = _state
@@ -113,6 +119,23 @@ class SearchViewModel
 
         init {
             init()
+            if (!KidsMode.isActive) {
+                viewModelScope.launch(WholphinDispatchers.IO) {
+                    try {
+                        val userId = serverRepository.currentUser?.id ?: return@launch
+                        val movies = doorData.top10(userId, BaseItemKind.MOVIE, emptySet(), anime = false)
+                        val shows = doorData.top10(userId, BaseItemKind.SERIES, emptySet(), anime = false)
+                        _popular.value =
+                            (0 until maxOf(movies.size, shows.size))
+                                .flatMap { listOfNotNull(movies.getOrNull(it), shows.getOrNull(it)) }
+                                .take(POPULAR_COUNT)
+                    } catch (ex: kotlinx.coroutines.CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Search popular")
+                    }
+                }
+            }
         }
 
         private fun init() {
@@ -341,7 +364,14 @@ class SearchViewModel
                                 compareBy<BaseItem> { SearchRelevance.score(it, query) },
                             )
                         Timber.v("searchCombined complete %s results", sorted.size)
-                        _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
+                        // Nothing has what was typed in its name: the results are close matches for a typo
+                        val plain = query.trim().lowercase()
+                        val didYouMean =
+                            sorted
+                                .takeIf { list -> plain.length >= 3 && list.none { it.title?.lowercase()?.contains(plain) == true } }
+                                ?.firstOrNull { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.SERIES }
+                                ?.title
+                        _state.update { it.copy(combinedResults = SearchResult.Success(sorted), didYouMean = didYouMean) }
                     } catch (ex: Exception) {
                         Timber.e(ex, "Exception in combined search")
                         _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
@@ -670,6 +700,8 @@ data class SearchState(
     val includedSearchableTypes: List<BaseItemKind> = emptyList(),
     val excludedSearchableTypes: List<BaseItemKind> = emptyList(),
     val discoverEnabled: Boolean = true,
+    /** Benflix: the closest name, when nothing matched what was typed exactly */
+    val didYouMean: String? = null,
 )
 
 private val allSearchableTypes =
@@ -693,3 +725,6 @@ private val allSearchableTypes =
 
 private const val SEARCH_LIMIT = 50
 private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.BOX_SET)
+
+/** How many titles the Popular row shows before you type */
+private const val POPULAR_COUNT = 12

@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -108,7 +109,7 @@ fun DoorPage(
     val onBrowse: (DoorBrowseTile) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
 
     if (state.loaded && state.rows.isEmpty()) {
-        EmptyDoor(door, state.browse, onBrowse, modifier)
+        EmptyDoor(door, state.browse, onBrowse, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
     if (wide) {
@@ -178,9 +179,11 @@ private fun WideDoor(
         rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val topHeight = (maxHeight * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
+        // On TV the top bar sits over this page; the picture goes up behind it (Ben)
+        val overlap = LocalTopBarOverlap.current
+        val topHeight = ((maxHeight - overlap) * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
         Column(Modifier.fillMaxSize()) {
-            PreviewArea(item = preview, easy = easy, height = topHeight)
+            PreviewArea(item = preview, easy = easy, height = topHeight + overlap, overlap = overlap)
             LazyColumn(
                 state = columnState,
                 contentPadding = PaddingValues(bottom = 48.dp),
@@ -331,6 +334,7 @@ private fun PreviewArea(
     item: BaseItem?,
     easy: Boolean,
     height: Dp,
+    overlap: Dp = 0.dp,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -383,6 +387,15 @@ private fun PreviewArea(
                         ),
                     ),
             )
+            if (overlap > 0.dp) {
+                // A light shade at the very top so the bar's words stay easy to read
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(overlap * 1.6f)
+                        .background(Brush.verticalGradient(0f to BenflixColors.Tray.copy(alpha = .55f), 1f to Color.Transparent)),
+                )
+            }
         }
         if (item != null) {
             PreviewWords(
@@ -391,7 +404,7 @@ private fun PreviewArea(
                 modifier =
                     Modifier
                         .align(Alignment.CenterStart)
-                        .padding(start = SIDE, end = SIDE)
+                        .padding(start = SIDE, end = SIDE, top = overlap)
                         .widthIn(max = 560.dp),
             )
         }
