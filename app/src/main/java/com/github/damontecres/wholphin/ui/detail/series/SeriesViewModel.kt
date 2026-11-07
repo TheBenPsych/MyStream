@@ -149,7 +149,12 @@ class SeriesViewModel
                         _state.update { it.copy(canDeleteSeries = canDelete) }
                     }
                 }
-                backdropService.submit(series, strongGlow = true)
+                // Benflix redesign: the show page draws its own full-screen picture
+                if (seriesPageType == SeriesPageType.DETAILS) {
+                    backdropService.clearBackdrop()
+                } else {
+                    backdropService.submit(series, strongGlow = true)
+                }
                 // Benflix: FILLER / MIXED tags on anime episode cards
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
                 // Benflix: finale tags, time left and the first episode

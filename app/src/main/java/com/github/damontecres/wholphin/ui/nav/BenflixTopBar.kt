@@ -74,6 +74,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -90,7 +91,10 @@ fun Destination.door(): BenflixDoor? =
     }
 
 /** Door pages draw right up to the screen's edges (their picture fills the right side) */
-fun Destination.fullBleed(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor
+fun Destination.fullBleed(): Boolean =
+    this is Destination.MoviesDoor ||
+        this is Destination.ShowsDoor ||
+        (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES))
 
 /**
  * The redesigned TV top bar (approved h4-classic): the logo on the left (just decoration), and inside

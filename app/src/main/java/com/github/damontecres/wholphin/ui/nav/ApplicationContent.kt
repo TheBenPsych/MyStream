@@ -59,11 +59,11 @@ fun ApplicationContent(
     Box(
         modifier = modifier,
     ) {
-        // Benflix Living Colour: behind the artwork the screen glows softly in the colours of the poster
-        // you're on, so "image only" shows the glow too. Only "none" turns the background off.
+        // Benflix redesign: no coloured glow anywhere (the calm dark tray); pictures only.
+        // Only "none" turns the pictures off.
         val backdropStyle =
             preferences.appPreferences.interfacePreferences.backdropStyle.let {
-                if (it == BackdropStyle.BACKDROP_NONE) it else BackdropStyle.BACKDROP_DYNAMIC_COLOR
+                if (it == BackdropStyle.BACKDROP_NONE) it else BackdropStyle.BACKDROP_IMAGE_ONLY
             }
         // Benflix on phones: Home already shows its banner as a card, so the screen behind stays plain black.
         // A big picture behind it doubled the banner and made the logo and labels hard to read.
