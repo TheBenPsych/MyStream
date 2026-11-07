@@ -403,11 +403,3 @@ private fun MoreRow(
         }
     }
 }
-
-/** FontAwesome icons for the extras in More */
-object MoreGlyphs {
-    const val SHUFFLE = ""
-    const val LIST = ""
-    const val SMILE = ""
-    const val MUSIC = ""
-}

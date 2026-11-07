@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -33,7 +31,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -45,7 +42,6 @@ import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
-import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -100,103 +96,6 @@ fun playTimeText(ms: Long): String {
         min < 1 -> "Less than a minute"
         min < 60 -> "$min min"
         else -> "${min / 60} h ${min % 60} min"
-    }
-}
-
-/** The big "Continue playing" card at the top of the Games page */
-@Composable
-fun ContinueBanner(
-    ref: GameRef,
-    playedText: String,
-    picture: Any?,
-    token: String,
-    isTv: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val shape = RoundedCornerShape(18.dp)
-    val tint = consoleColour(ref.slug)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF161616), focusedContainerColor = Color(0xFF161616)),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(if (isTv) 220.dp else 150.dp),
-    ) {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.horizontalGradient(listOf(tint.copy(alpha = 0.85f), Color(0xFF161616)))),
-        ) {
-            // Where you left off (the save's picture), or the box art
-            val image = picture ?: ref.coverUrl
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(if (picture != null) 4f / 3f else 3f / 4f)
-                    .background(Color.Black),
-            ) {
-                if (image != null) {
-                    AsyncImage(
-                        model =
-                            remember(image) {
-                                ImageRequest
-                                    .Builder(context)
-                                    .data(image)
-                                    .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
-                                    .build()
-                            },
-                        contentDescription = ref.name,
-                        contentScale = ContentScale.Crop,
-                        filterQuality = if (picture != null) FilterQuality.None else FilterQuality.Low,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(if (isTv) 8.dp else 4.dp),
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .align(Alignment.CenterVertically)
-                        .padding(horizontal = if (isTv) 28.dp else 14.dp),
-            ) {
-                Text(
-                    "CONTINUE PLAYING",
-                    fontSize = if (isTv) 13.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = .8f),
-                )
-                Text(
-                    ref.name,
-                    fontSize = if (isTv) 30.sp else 19.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "${ref.consoleName} · $playedText",
-                    fontSize = if (isTv) 15.sp else 12.sp,
-                    color = Color.White.copy(alpha = .8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Box(
-                    Modifier
-                        .padding(top = 4.dp)
-                        .background(Color.White, RoundedCornerShape(20.dp))
-                        .padding(horizontal = if (isTv) 20.dp else 14.dp, vertical = if (isTv) 8.dp else 5.dp),
-                ) {
-                    Text("▶  Resume", fontSize = if (isTv) 16.sp else 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                }
-            }
-        }
     }
 }
 

@@ -633,64 +633,6 @@ fun SeekTimecodes(
 
 val buttonSpacing = 12.dp
 
-@Composable
-fun LeftPlaybackButtons(
-    onControllerInteraction: () -> Unit,
-    onClickPlaybackDialogType: (PlaybackDialogType) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.focusGroup(),
-        horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
-    ) {
-        PlaybackButton(
-            iconRes = R.drawable.vector_settings,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
-            },
-            enabled = true,
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier,
-        )
-    }
-}
-
-@Composable
-fun RightPlaybackButtons(
-    onControllerInteraction: () -> Unit,
-    onClickPlaybackDialogType: (PlaybackDialogType) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.focusGroup(),
-        horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
-    ) {
-        // Captions
-        PlaybackButton(
-            enabled = true,
-            iconRes = R.drawable.captions_svgrepo_com,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier,
-        )
-        // Audio
-        PlaybackFaButton(
-            enabled = true,
-            iconRes = R.string.fa_volume_high,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier,
-        )
-    }
-}
-
 @OptIn(UnstableApi::class)
 @Composable
 fun PlaybackButtons(

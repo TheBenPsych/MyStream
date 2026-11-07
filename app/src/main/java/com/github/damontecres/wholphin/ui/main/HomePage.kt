@@ -37,359 +37,35 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.media3.common.Player
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
-import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.services.overviewCache
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.BenflixTip
 import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.CircularProgress
-import com.github.damontecres.wholphin.ui.components.ContextMenu
-import com.github.damontecres.wholphin.ui.components.ContextMenuActions
-import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
-import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.FocusableItemRow
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
-import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
-import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
-import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.data.RowColumn
-import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
-import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
 import com.github.damontecres.wholphin.ui.playback.playable
-import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
-import com.github.damontecres.wholphin.util.StartupTimer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
 import java.time.LocalDate
-import java.util.UUID
-
-@Composable
-fun HomePage(
-    preferences: UserPreferences,
-    modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = hiltViewModel(),
-    playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
-) {
-    val context = LocalContext.current
-    LifecycleStartEffect(Unit) {
-        viewModel.init()
-        onStopOrDispose { }
-    }
-    // Benflix: the admin's alert (new problem report, disk nearly full) only shows while Home is on screen
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        onDispose {
-            com.github.damontecres.wholphin.ui.components.ServerAlertNotice
-                .clear()
-        }
-    }
-    // Benflix: the welcome setup, the first time a person uses Benflix
-    WelcomeGate()
-    val state by viewModel.state.collectAsState()
-    val featured = state.featured
-    val trending = state.trending
-    val trendingMissing = state.trendingMissing
-    val themed = state.themed
-    val monthly = state.monthly
-    val because = state.because
-    val kidsAgain = state.kidsAgain
-    val becauseMore = state.becauseMore
-    val collections = state.collections
-    val mood = state.mood
-    val moodRow = state.moodRow
-    val newest = state.newest
-    val myList = state.myList
-    val comeBack = state.comeBack
-    val welcomeBack = state.welcomeBack
-    val world = state.world
-    val airing = state.airing
-    val spotlight = state.spotlight
-    val genreRows = state.genreRows
-    val animeTop = state.animeTop
-    val animeRows = state.animeRows
-    val previewPlaying by viewModel.previewPlaying.collectAsState()
-    LifecycleStartEffect(Unit) {
-        onStopOrDispose { viewModel.previewTrailer(null) }
-    }
-    val loading = state.loadingState
-    val refreshing = state.refreshState
-    val homeRows = state.homeRows
-    // Benflix start-up stopwatch
-    LaunchedEffect(loading) {
-        if (loading == LoadingState.Success) StartupTimer.mark(StartupTimer.HOME_ROWS)
-    }
-    LaunchedEffect(featured.isNotEmpty()) {
-        if (featured.isNotEmpty()) StartupTimer.finish(context)
-    }
-
-    when (val state = loading) {
-        is LoadingState.Error -> {
-            ErrorMessage(state, modifier)
-        }
-
-        LoadingState.Loading,
-        LoadingState.Pending,
-        -> {
-            LoadingPage(modifier)
-        }
-
-        LoadingState.Success -> {
-            var showContextMenu by remember { mutableStateOf<ContextMenu?>(null) }
-            var showPlaylistDialog by remember { mutableStateOf<UUID?>(null) }
-            var overviewDialog by remember { mutableStateOf<ItemDetailsDialogInfo?>(null) }
-            val scope = rememberCoroutineScope()
-            val overviewContext = LocalContext.current
-            val overviewCache = remember { overviewCache(overviewContext) }
-
-            val playlistState by playlistViewModel.playlistState.collectAsState()
-            var position by rememberPosition()
-
-            val onFocusPosition = remember { { it: RowColumn -> position = it } }
-            val currentHomePrefs by rememberUpdatedState(preferences.appPreferences.homePagePreferences)
-            // The handlers below are remembered once, so they read the rows & settings as they are now
-            val currentHomeRows by rememberUpdatedState(homeRows)
-            val currentAppPrefs by rememberUpdatedState(preferences.appPreferences)
-            val onClickItem =
-                remember {
-                    { clickedPosition: RowColumn, item: BaseItem ->
-                        position = clickedPosition
-                        if (currentHomePrefs.clickToPlay &&
-                            currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
-                        ) {
-                            viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                        } else {
-                            viewModel.navigationManager.navigateTo(item.destination())
-                        }
-                    }
-                }
-
-            // The long-press menu for a Jellyfin item on any Home row. Only Continue watching & Next up
-            // offer to remove it from that row.
-            fun itemMenu(
-                item: BaseItem,
-                canRemoveContinueWatching: Boolean,
-                canRemoveNextUp: Boolean,
-                deletePosition: RowColumn?,
-            ): ContextMenu =
-                ContextMenu.ForBaseItem(
-                    fromLongClick = true,
-                    item = item,
-                    chosenStreams = null,
-                    showGoTo = true,
-                    showStreamChoices = false,
-                    canDelete =
-                        viewModel.canDelete(
-                            item,
-                            currentAppPrefs,
-                        ),
-                    canRemoveContinueWatching = canRemoveContinueWatching,
-                    canRemoveNextUp = canRemoveNextUp,
-                    actions =
-                        ContextMenuActions(
-                            navigateTo = viewModel.navigationManager::navigateTo,
-                            onClickWatch = viewModel::setWatched,
-                            onClickFavorite = viewModel::setFavorite,
-                            onClickAddPlaylist = { itemId ->
-                                playlistViewModel.loadPlaylists()
-                                showPlaylistDialog = itemId
-                            },
-                            onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
-                            onDeleteItem = {
-                                viewModel.deleteItem(deletePosition ?: position, it)
-                            },
-                            onChooseVersion = { _, _ ->
-                                // Not supported on this page
-                            },
-                            onChooseTracks = {
-                                // Not supported on this page
-                            },
-                            onShowOverview = {
-                                overviewDialog = ItemDetailsDialogInfo(it)
-                                if (it.data.overview == null) {
-                                    // Home rows come without descriptions, so fetch this one
-                                    val itemId = it.id
-                                    scope.launch {
-                                        val text = overviewCache.get(itemId)
-                                        overviewDialog = overviewDialog?.copy(overview = text)
-                                    }
-                                }
-                            },
-                            onClearChosenStreams = {},
-                            onClickRemoveFromNextUp = viewModel::removeFromNextUp,
-                        ),
-                )
-            val onLongClickItem =
-                remember {
-                    { clickedPosition: RowColumn, item: BaseItem ->
-                        position = clickedPosition
-                        val row =
-                            (currentHomeRows.getOrNull(clickedPosition.row) as? HomeRowLoadingState.Success)
-                        val canRemoveContinueWatching =
-                            row?.rowType is HomeRowConfig.ContinueWatching || row?.rowType is HomeRowConfig.ContinueWatchingCombined
-                        val canRemoveNextUp =
-                            row?.rowType is HomeRowConfig.NextUp || row?.rowType is HomeRowConfig.ContinueWatchingCombined
-                        showContextMenu =
-                            itemMenu(
-                                item = item,
-                                canRemoveContinueWatching = canRemoveContinueWatching,
-                                canRemoveNextUp = canRemoveNextUp,
-                                deletePosition = null,
-                            )
-                    }
-                }
-            // Benflix: the same menu on the extra poster rows (Top 10, Because you watched, My List...),
-            // which aren't part of the main rows, so nothing to remove them from
-            val onLongClickExtraItem =
-                remember {
-                    { item: BaseItem ->
-                        showContextMenu =
-                            itemMenu(
-                                item = item,
-                                canRemoveContinueWatching = false,
-                                canRemoveNextUp = false,
-                                deletePosition = RowColumn(-1, -1),
-                            )
-                    }
-                }
-            val onClickPlay =
-                remember {
-                    { _: RowColumn, item: BaseItem ->
-                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                    }
-                }
-            val onClickViewMore =
-                remember {
-                    { _: RowColumn, row: HomeRowLoadingState.Success ->
-                        viewModel.navigationManager.navigateTo(
-                            Destination.MoreHomeRow(row.title, row.rowType!!, row.items.size),
-                        )
-                    }
-                }
-
-            // Benflix on phones: pull down at the top to load Home again
-            com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh(
-                refreshing = refreshing is LoadingState.Loading,
-                onRefresh = { viewModel.init() },
-                modifier = modifier,
-            ) {
-                HomePageContent(
-                    homeRows = homeRows,
-                    position = position,
-                    onFocusPosition = onFocusPosition,
-                    onClickItem = onClickItem,
-                    onLongClickItem = onLongClickItem,
-                    onClickPlay = onClickPlay,
-                    loadingState = refreshing,
-                    showClock = preferences.appPreferences.interfacePreferences.showClock,
-                    onUpdateBackdrop = viewModel::updateBackdrop,
-                    showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                    showViewMore = true,
-                    onClickViewMore = onClickViewMore,
-                    featured = featured,
-                    onClickFeaturedPlay = { item ->
-                        if (item.type.playable) {
-                            viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                        } else {
-                            viewModel.navigationManager.navigateTo(item.destination())
-                        }
-                    },
-                    onClickFeaturedInfo = { item ->
-                        viewModel.navigationManager.navigateTo(item.destination())
-                    },
-                    onClickFeaturedFavorite = viewModel::toggleFeaturedFavorite,
-                    onClickSurprise = viewModel::surpriseMe,
-                    trending = trending,
-                    onClickTrending = { item ->
-                        viewModel.navigationManager.navigateTo(item.destination())
-                    },
-                    onLongClickTrending = onLongClickExtraItem,
-                    trendingMissing = trendingMissing,
-                    onClickDiscover = { item ->
-                        viewModel.navigationManager.navigateTo(item.destination)
-                    },
-                    onUpdateDiscoverBackdrop = viewModel::updateBackdrop,
-                    themed = themed,
-                    monthly = monthly,
-                    because = because,
-                    kidsAgain = kidsAgain,
-                    becauseMore = becauseMore,
-                    collections = collections,
-                    mood = mood,
-                    moodRow = moodRow,
-                    onClickMood = viewModel::pickMood,
-                    newest = newest,
-                    myList = myList,
-                    comeBack = comeBack,
-                    welcomeBack = welcomeBack,
-                    world = world,
-                    airing = airing,
-                    spotlight = spotlight,
-                    genreRows = genreRows,
-                    animeTop = animeTop,
-                    animeRows = animeRows,
-                    previewPlayer = viewModel.previewPlayer,
-                    previewPlaying = previewPlaying,
-                    onHeroItemShown = viewModel::previewTrailer,
-                    showNote = true,
-                )
-            }
-            overviewDialog?.let { info ->
-                ItemDetailsDialog(
-                    info = info,
-                    showFilePath = false,
-                    onDismissRequest = { overviewDialog = null },
-                )
-            }
-            showContextMenu?.let { contextMenu ->
-                ContextMenuDialog(
-                    onDismissRequest = { showContextMenu = null },
-                    getMediaSource = null,
-                    contextMenu = contextMenu,
-                    preferredSubtitleLanguage = null,
-                )
-            }
-            showPlaylistDialog?.let { itemId ->
-                PlaylistDialog(
-                    title = stringResource(R.string.add_to_playlist),
-                    state = playlistState,
-                    onDismissRequest = { showPlaylistDialog = null },
-                    onClick = {
-                        playlistViewModel.addToPlaylist(it.id, itemId)
-                        showPlaylistDialog = null
-                    },
-                    createEnabled = true,
-                    onCreatePlaylist = {
-                        playlistViewModel.createPlaylistAndAddItem(it, itemId)
-                        showPlaylistDialog = null
-                    },
-                    onSearch = playlistViewModel::loadPlaylists,
-                    elevation = 3.dp,
-                )
-            }
-        }
-    }
-}
 
 private const val HERO_ROTATE_MS = 7_000L
 
