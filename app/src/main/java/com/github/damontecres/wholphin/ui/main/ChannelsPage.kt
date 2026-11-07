@@ -721,7 +721,7 @@ private fun AddChannelsDialog(
 ) {
     var query by remember { mutableStateOf("") }
     val results = remember(query, list) { searchChannels(list, query).take(30) }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =

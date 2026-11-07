@@ -646,7 +646,7 @@ private fun LinksDialog(
         )
         return
     }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         val close = remember { FocusRequester() }
         LaunchedEffect(Unit) { close.tryRequestFocus() }
         Column(

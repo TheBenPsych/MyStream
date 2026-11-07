@@ -44,7 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.lifecycle.ViewModel
@@ -509,7 +509,7 @@ fun ProfileMenu(
                 .background(BenflixColors.Panel, shape)
                 .border(1.dp, BenflixColors.Line, shape)
         if (narrow) {
-            Column(modifier = outer.width((screenWidth - 32).dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(outer)) {
                 card(Modifier.fillMaxWidth())
                 list(Modifier.fillMaxWidth())
             }
