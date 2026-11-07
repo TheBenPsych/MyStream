@@ -58,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.FontAwesome
@@ -88,6 +90,7 @@ import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
 import com.github.damontecres.wholphin.ui.seekBack
 import com.github.damontecres.wholphin.ui.seekForward
 import com.github.damontecres.wholphin.ui.skipStringRes
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -163,6 +166,7 @@ fun PlaybackControls(
     modifier: Modifier = Modifier,
     initialFocusRequester: FocusRequester = remember { FocusRequester() },
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     val scope = rememberCoroutineScope()
 
@@ -192,6 +196,7 @@ fun PlaybackControls(
             intervals = seekBarIntervals,
             seekBack = seekBack,
             seekForward = seekForward,
+            chapters = chapters,
             modifier =
                 Modifier
                     .padding(vertical = 0.dp)
@@ -508,6 +513,7 @@ fun SeekBar(
     seekForward: Duration,
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     var bufferedProgress by remember(player) { mutableFloatStateOf(player.bufferedPosition.toFloat() / player.duration) }
     var position by remember(player) { mutableLongStateOf(player.currentPosition) }
@@ -520,11 +526,46 @@ fun SeekBar(
             delay(250L)
         }
     }
+    val durationMs = player.duration
+    // Where each chapter starts, as a share of the whole (the first one at 0 needs no cut)
+    val chapterMarks =
+        remember(chapters, durationMs) {
+            if (durationMs <= 0 || chapters.size < 2) {
+                emptyList()
+            } else {
+                chapters
+                    .map { it.position.inWholeMilliseconds.toFloat() / durationMs }
+                    .filter { it > 0.005f && it < 0.995f }
+            }
+        }
+    // The chapter you're in, named above the line (made-up names like "Chapter 3" are left out)
+    val chapterName =
+        remember(chapters, position) {
+            chapters
+                .lastOrNull { it.position.inWholeMilliseconds <= position }
+                ?.name
+                ?.takeIf { it.isNotBlank() && !GENERIC_CHAPTER.matches(it.trim()) }
+        }
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (chapters.size > 1) {
+            Text(
+                text = chapterName.orEmpty(),
+                color = BenflixColors.Soft,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, bottom = 4.dp),
+            )
+        }
         IntervalSeekBarImpl(
+            chapterMarks = chapterMarks,
             progress = progress,
             bufferedProgress = bufferedProgress,
             onSeek = {
@@ -933,3 +974,5 @@ private fun ButtonPreview() {
         }
     }
 }
+
+private val GENERIC_CHAPTER = Regex("(?i)^(chapter|kapitel|chapitre|cap[ií]tulo)?\\s*\\d+$")

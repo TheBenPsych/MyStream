@@ -598,7 +598,10 @@ fun NavDrawer(
                         Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 8.dp),
+                            .padding(
+                                start = if (destination.fullBleed()) 0.dp else 16.dp,
+                                end = if (destination.fullBleed()) 0.dp else 8.dp,
+                            ),
                 )
             }
         }
@@ -640,7 +643,10 @@ fun NavDrawer(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(start = 40.dp, end = 16.dp),
+                    .padding(
+                        start = if (destination.fullBleed()) 0.dp else 40.dp,
+                        end = if (destination.fullBleed()) 0.dp else 16.dp,
+                    ),
         )
     }
 }

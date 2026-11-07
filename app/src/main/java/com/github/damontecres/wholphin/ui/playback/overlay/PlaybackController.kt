@@ -31,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
@@ -62,6 +63,7 @@ fun PlaybackController(
     onChangeState: (OverlayViewState) -> Unit,
     modifier: Modifier = Modifier,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -85,6 +87,7 @@ fun PlaybackController(
             onSeekProgress = onSeekBarChange,
             seekBarInteractionSource = seekBarInteractionSource,
             currentSegment = currentSegment,
+            chapters = chapters,
             modifier = Modifier,
         )
     }
@@ -118,6 +121,7 @@ fun Controller(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     val seekBarFocused by seekBarInteractionSource.collectIsFocusedAsState()
     val verticalOffset by animateDpAsState(
@@ -213,6 +217,7 @@ fun Controller(
             skipBackOnResume = skipBackOnResume,
             currentSegment = currentSegment,
             onClickPlaybackDialogType = onClickPlaybackDialogType,
+            chapters = chapters,
         )
     }
 }

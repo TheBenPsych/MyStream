@@ -19,7 +19,7 @@ object ChannelPrefs {
     private const val FAVOURITES = "favourites"
     private const val RECENT = "recent"
     private const val HIDDEN = "hidden"
-    private const val RECENT_MAX = 5
+    private const val RECENT_MAX = 10
 
     @Volatile private var prefs: SharedPreferences? = null
 
@@ -51,6 +51,22 @@ object ChannelPrefs {
         val now = _favourites.value
         _favourites.value = if (key in now) now - key else now + key
         save(FAVOURITES, _favourites.value)
+    }
+
+    /** Moves a favourite one place left (-1) or right (+1) in the Favourites row */
+    fun moveFavourite(
+        key: String,
+        by: Int,
+    ) {
+        val list = _favourites.value.toMutableList()
+        val from = list.indexOf(key)
+        if (from < 0) return
+        val to = (from + by).coerceIn(0, list.lastIndex)
+        if (to == from) return
+        list.removeAt(from)
+        list.add(to, key)
+        _favourites.value = list
+        save(FAVOURITES, list)
     }
 
     fun addRecent(key: String) {

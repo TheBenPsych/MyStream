@@ -112,7 +112,8 @@ fun SearchPage(
         viewModel.userPreferencesService.flow
             .collectAsState(userPreferences)
             .value.appPreferences.interfacePreferences.searchPreferences
-    val combinedMode = prefs.combinedSearchResults
+    // Benflix redesign: results are always the door columns (one combined search)
+    val combinedMode = true
     val voiceSearchButtonVisible = prefs.showVoiceSearchButton
 
 //    val query = rememberTextFieldState()
@@ -200,8 +201,8 @@ fun SearchPage(
     val positionCallback = { columns: Int, index: Int ->
         showHeader = index < columns
     }
-    val showTabs =
-        seerrActive && state.discoverEnabled && query.isNotBlank() && showHeader && combinedMode
+    // Benflix redesign: no Library / Discover tabs; Ask for it is one of the doors
+    val showTabs = false
     val isLibraryTab = selectedTab == 0
 
     LaunchedEffect(seerrActive, query) {
@@ -401,6 +402,7 @@ fun SearchPage(
                     isLibraryTab && combinedMode -> {
                         SearchCombinedResults(
                             result = state.combinedResults,
+                            askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
                             focusRequester = focusRequesters[COMBINED_ROW],
                             onClickItem = onClickItem,
                             onLongClickItem = { index, item ->
@@ -588,7 +590,21 @@ fun SearchCombinedResults(
     onClickDiscover: (Int, DiscoverItem) -> Unit,
     positionCallback: (columns: Int, position: Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Benflix redesign: the library results show as door columns, with these titles in Ask for it */
+    askFor: List<DiscoverItem>? = null,
 ) {
+    if (askFor != null && result is SearchResult.Success && (result.items.isNotEmpty() || askFor.isNotEmpty())) {
+        val items = remember(result) { result.items.filterNotNull() }
+        SearchDoorResults(
+            items = items,
+            askFor = askFor,
+            focusRequester = focusRequester,
+            onClickItem = { onClickItem(items.indexOf(it), it) },
+            onClickAsk = { onClickDiscover(0, it) },
+            modifier = modifier,
+        )
+        return
+    }
     when (result) {
         SearchResult.NoQuery -> {}
 
