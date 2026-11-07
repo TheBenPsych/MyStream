@@ -651,6 +651,9 @@ class Handler(BaseHTTPRequestHandler):
                 # header, so the sign-in rides along in the address)
                 token = (query.get("api_key") or [""])[0]
             user_id, is_admin, is_kids = check_signed_in(token)
+            if skips is not None and is_admin:
+                # Lets Tower check every season's skip times by itself, without waiting for someone to press play
+                skips.remember_admin(token, user_id)
             if path.startswith("/api/skips/"):
                 # Skip intro / credits times for the player (anyone signed in; fixes not from kids accounts)
                 if skips is None:
