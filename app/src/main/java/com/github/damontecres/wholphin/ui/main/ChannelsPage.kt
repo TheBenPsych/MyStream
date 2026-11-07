@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -62,6 +64,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BENFLIX_GROUP
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelProgram
+import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
 import com.github.damontecres.wholphin.services.DiskCache
@@ -163,6 +166,7 @@ private fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms)
 @Composable
 fun ChannelsPage(
     modifier: Modifier = Modifier,
+    easy: Boolean = false,
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val channels by viewModel.channels.collectAsState()
@@ -175,6 +179,17 @@ fun ChannelsPage(
     }
     if (list.isEmpty()) {
         Text("No channels yet. Add some movies or shows first.", fontSize = 18.sp, modifier = modifier.padding(32.dp))
+        return
+    }
+    // Easy mode: three big choices first (My channels opens the normal page)
+    var easyChoice by rememberSaveable { mutableStateOf(!easy) }
+    if (!easyChoice && !KidsMode.isActive) {
+        EasyChoices(
+            list = list,
+            onMyChannels = { easyChoice = true },
+            onWatch = viewModel::watch,
+            modifier = modifier,
+        )
         return
     }
     // Benflix redesign: one page. The top area describes what's focused; Favourites, Recently
@@ -246,6 +261,8 @@ private fun GuideGrid(
     var showTypes by remember { mutableStateOf(false) }
     var addChannels by remember { mutableStateOf(false) }
     var favouriteMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
+    var laterMenu by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
+    val reminders by ChannelPrefs.reminders.collectAsState()
     // Number buttons anywhere on the page: wait a moment for more digits, then turn that channel on
     LaunchedEffect(digits) {
         if (digits.isEmpty()) return@LaunchedEffect
@@ -498,11 +515,11 @@ private fun GuideGrid(
                                 onClick = {
                                     if (!isTv && !isSelected) {
                                         selected = schedule to program
-                                    } else if (live || schedule.live != null) {
-                                        // A live channel always plays what's on now
+                                    } else if (live) {
                                         viewModel.watch(schedule)
                                     } else {
-                                        viewModel.navigationManager.navigateTo(program.item.destination())
+                                        // A later show: Remind me, watch the channel now, or star it
+                                        laterMenu = schedule to program
                                     }
                                 },
                                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
@@ -547,13 +564,24 @@ private fun GuideGrid(
                                     verticalArrangement = Arrangement.Center,
                                     modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
                                 ) {
-                                    Text(
-                                        text = program.name(),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                                    val bell = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (bell) {
+                                            com.github.damontecres.wholphin.ui.components.BenflixIconImage(
+                                                com.github.damontecres.wholphin.ui.components.BenflixIcon.BELL,
+                                                color = LocalContentColor.current,
+                                                size = 13.dp,
+                                                modifier = Modifier.padding(end = 4.dp),
+                                            )
+                                        }
+                                        Text(
+                                            text = program.name(),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                     if (!program.noGuide) {
                                         Text(
                                             text = clock(program.startMs),
@@ -585,6 +613,37 @@ private fun GuideGrid(
     }
     if (addChannels) {
         AddChannelsDialog(list = all, favourites = favourites, onDismiss = { addChannels = false })
+    }
+    laterMenu?.let { (schedule, program) ->
+        val reminded = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
+        val starred = schedule.key in favourites
+        BenflixChoiceDialog(
+            title = program.name(),
+            subtitle = "${schedule.number}  ${schedule.title}  ·  ${clock(program.startMs)} – ${clock(program.endMs)}",
+            choices =
+                listOfNotNull(
+                    if (KidsMode.isActive) {
+                        null
+                    } else {
+                        BenflixChoice(
+                            label = if (reminded) "Cancel the reminder" else "Remind me",
+                            note = if (reminded) null else "A small note shows a minute before it starts",
+                            onClick = { ChannelPrefs.toggleReminder(ChannelReminder(schedule.key, program.startMs, program.name())) },
+                        )
+                    },
+                    BenflixChoice("Watch this channel now", { viewModel.watch(schedule) }),
+                    BenflixChoice(
+                        if (starred) "Remove from favourites" else "Add to favourites",
+                        { ChannelPrefs.toggleFavourite(schedule.key) },
+                    ),
+                    if (schedule.live == null) {
+                        BenflixChoice("Open its page", { viewModel.navigationManager.navigateTo(program.item.destination()) })
+                    } else {
+                        null
+                    },
+                ),
+            onDismissRequest = { laterMenu = null },
+        )
     }
     favouriteMenu?.let { schedule ->
         BenflixChoiceDialog(
@@ -957,5 +1016,58 @@ private fun GroupHeading(name: String) {
             letterSpacing = 1.sp,
             color = Color(0xFF8B8B94),
         )
+    }
+}
+
+/** Easy mode's Live TV: three big buttons (approved f2-easy) */
+@Composable
+private fun EasyChoices(
+    list: List<ChannelSchedule>,
+    onMyChannels: () -> Unit,
+    onWatch: (ChannelSchedule) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val news = remember(list) { list.firstOrNull { it.group() == "News" } }
+    val benflix = remember(list) { list.firstOrNull { it.group() == BENFLIX_GROUP } }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(80)
+        first.tryRequestFocus()
+    }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxSize().padding(24.dp),
+    ) {
+        EasyButton("My channels", "Your favourites and the full guide", onMyChannels, Modifier.focusRequester(first))
+        if (news != null) EasyButton("Put the news on", news.title, { onWatch(news) })
+        if (benflix != null) EasyButton("Benflix channels", "No ads, from your own movies and shows", { onWatch(benflix) })
+    }
+}
+
+@Composable
+private fun EasyButton(
+    title: String,
+    note: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = BenflixColors.Raised,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.Text,
+                focusedContentColor = BenflixColors.Tray,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 28.dp, vertical = 22.dp)) {
+            Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+            Text(note, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }

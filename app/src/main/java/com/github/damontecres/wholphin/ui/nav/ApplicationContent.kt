@@ -116,5 +116,10 @@ fun ApplicationContent(
                 }
             },
         )
+        // Live TV "Remind me" notes, anywhere in the app
+        com.github.damontecres.wholphin.ui.main.ChannelReminderNote(
+            navigationManager = navigationManager,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
+        )
     }
 }

@@ -61,6 +61,7 @@ enum class BenflixIcon(
     PLAY("M8 5.5v13l10.5-6.5z"),
     ARROW("M5 12h14M13 6l6 6-6 6"),
     PLUS("M12 5v14M5 12h14"),
+    BELL("M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z", "M10 20a2 2 0 0 0 4 0"),
     MORE("M6 12h.01M12 12h.01M18 12h.01"),
     THUMB("M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 2.5 2.5L13 10h5.5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 20H7"),
     ;
