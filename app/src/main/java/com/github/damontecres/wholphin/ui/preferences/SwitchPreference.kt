@@ -6,7 +6,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchColors
 import androidx.tv.material3.SwitchDefaults
 import com.github.damontecres.wholphin.preferences.AppThemeColors
@@ -52,11 +51,11 @@ fun SwitchPreference(
         supportingContent = {
             PreferenceSummary(summary)
         },
+        // Benflix redesign: the words On and Off instead of a switch
         trailingContent = {
-            Switch(
-                checked = value,
-                onCheckedChange = { onClick.invoke() },
-                colors = SwitchColors(),
+            androidx.tv.material3.Text(
+                text = if (value) "On" else "Off",
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             )
         },
         interactionSource = interactionSource,
