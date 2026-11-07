@@ -1,34 +1,27 @@
 package com.github.damontecres.wholphin.ui.playback.overlay
 
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.core.InfiniteRepeatableSpec
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
+import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.ui.PreviewTvSpec
-import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.skipStringRes
-import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
-import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import org.jellyfin.sdk.model.api.MediaSegmentType
 
+/**
+ * Benflix redesign (sk-words): one white pill that says what it skips, "Skip recap", "Skip intro" or
+ * "Skip credits". No blinking. Focus = a white outline around it.
+ */
 @Composable
 fun SkipSegmentButton(
     type: MediaSegmentType,
@@ -37,56 +30,31 @@ fun SkipSegmentButton(
     onLongClick: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource? = null,
 ) {
-    val infiniteTransition = rememberInfiniteTransition("SkipSegmentButton")
-    val color by infiniteTransition.animateColor(
-        initialValue = MaterialTheme.colorScheme.onSurface,
-        targetValue = Color.Transparent,
-        animationSpec =
-            InfiniteRepeatableSpec(
-                animation = tween(durationMillis = 1500, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "SkipSegmentButton_color",
-    )
-    Button(
+    val shape = RoundedCornerShape(50)
+    Surface(
         onClick = onClick,
-        modifier =
-            modifier.drawBehind {
-                val px = 6.dp.toPx()
-                drawRoundRect(
-                    color = color,
-                    cornerRadius = CornerRadius(this.size.width * .5f),
-                    topLeft = Offset(-px, -px),
-                    size = Size(this.size.width + px * 2, this.size.height + px * 2),
-                )
-            },
         onLongClick = onLongClick,
-        enabled = true,
-        contentPadding =
-            PaddingValues(
-                start = 8.dp,
-                top = 4.dp,
-                end = 8.dp,
-                bottom = 4.dp,
-            ),
-        contentHeight = 32.dp,
         interactionSource = interactionSource,
-        content = {
-            Text(text = stringResource(type.skipStringRes))
-        },
-    )
-}
-
-@PreviewTvSpec
-@Composable
-fun SkipSegmentButtonPreview() {
-    WholphinTheme {
-        val source = remember { PreviewInteractionSource() }
-        SkipSegmentButton(
-            type = MediaSegmentType.INTRO,
-            onClick = {},
-            modifier = Modifier.padding(16.dp),
-            interactionSource = source,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), inset = (-4).dp, shape = shape),
+            ),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color(0xFFF2F2F4),
+                contentColor = Color(0xFF0B0C10),
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color(0xFF0B0C10),
+            ),
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(type.skipStringRes),
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
         )
     }
 }

@@ -240,6 +240,8 @@ fun SeriesHeroContent(
                         seasons = state.seasons,
                         seasonIndex = state.inlineSeasonIndex,
                         episodes = state.inlineEpisodes,
+                        // Anime: "S3 E12 · #57", counting every episode of the seasons before
+                        numberOffset = if (state.subDub != null) animeOffset(state.seasons, state.inlineSeasonIndex) else null,
                         side = side,
                         big = easy,
                         wide = wide,
@@ -325,6 +327,9 @@ fun SeriesHeroContent(
                 ),
         )
     }
+    val markUpTo: com.github.damontecres.wholphin.services.MarkWatchedUpToViewModel =
+        androidx.hilt.lifecycle.viewmodel.compose
+            .hiltViewModel()
     held?.let { episode ->
         BenflixChoiceDialog(
             title = episode.name,
@@ -339,6 +344,8 @@ fun SeriesHeroContent(
                             BenflixIcon.CHECK,
                         ),
                     )
+                    // Approved hold menu: Mark watched, Mark all before as watched, Play from the start
+                    add(BenflixChoice("Mark all before as watched", { markUpTo.markUpTo(episode) }, BenflixIcon.CHECK))
                 },
         )
     }
@@ -400,6 +407,7 @@ private fun EpisodesSection(
     seasons: List<BaseItem?>,
     seasonIndex: Int,
     episodes: List<BaseItem>,
+    numberOffset: Int?,
     side: Dp,
     big: Boolean,
     wide: Boolean,
@@ -408,9 +416,20 @@ private fun EpisodesSection(
     onHold: ((BaseItem) -> Unit)?,
 ) {
     var focused by remember(seasonIndex) { mutableStateOf<BaseItem?>(null) }
-    val shown = focused ?: episodes.firstOrNull { !it.played } ?: episodes.firstOrNull()
-    val startIndex = remember(seasonIndex, episodes) { episodes.indexOfFirst { !it.played }.coerceAtLeast(0) }
-    val rowState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+    val all = remember(episodes) { episodes.distinctBy { it.id } }
+    // Some anime seasons already count on from the season before (S2 starts at E25): no "#" then
+    val offset = remember(all, numberOffset) { numberOffset?.takeIf { all.firstOrNull { !it.isSpecial() }?.data?.indexNumber == 1 } }
+    // Long seasons (more than 50 episodes) get group chips: 1-25, 26-50, ... (approved ep-chunks)
+    val groups = remember(all) { if (all.size > LONG_SEASON) all.indices.chunked(GROUP_SIZE) else emptyList() }
+    val firstUnwatched = remember(all) { all.indexOfFirst { !it.played }.coerceAtLeast(0) }
+    var group by remember(seasonIndex, all.size) { mutableStateOf(if (groups.isEmpty()) 0 else firstUnwatched / GROUP_SIZE) }
+    val shownEpisodes =
+        remember(all, group, groups) {
+            if (groups.isEmpty()) all else groups.getOrNull(group)?.map { all[it] }.orEmpty()
+        }
+    val shown = focused ?: shownEpisodes.firstOrNull { !it.played } ?: shownEpisodes.firstOrNull()
+    val startIndex = remember(shownEpisodes) { shownEpisodes.indexOfFirst { !it.played }.coerceAtLeast(0) }
+    val rowState = androidx.compose.runtime.key(seasonIndex, group) { rememberLazyListState(initialFirstVisibleItemIndex = startIndex) }
     val cardWidth =
         if (big) {
             300.dp
@@ -437,11 +456,26 @@ private fun EpisodesSection(
         } else {
             SectionTitle(seasons.firstOrNull()?.name ?: "Episodes", side)
         }
+        if (groups.isNotEmpty()) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = side),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
+            ) {
+                itemsIndexed(groups) { index, range ->
+                    GroupChip(
+                        text = "${range.first() + 1}–${range.last() + 1}",
+                        selected = index == group,
+                        onClick = { group = index },
+                    )
+                }
+            }
+        }
         shown?.let { ep ->
             Text(
                 text =
                     listOfNotNull(
-                        ep.data.indexNumber?.let { "E$it" },
+                        episodeNumber(ep, offset),
                         ep.name,
                         ep.data.overview?.takeIf { it.isNotBlank() },
                     ).joinToString(" · "),
@@ -457,9 +491,10 @@ private fun EpisodesSection(
             contentPadding = PaddingValues(horizontal = side),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(episodes.distinctBy { it.id }, key = { _, it -> it.id.toString() }) { _, ep ->
+            itemsIndexed(shownEpisodes, key = { _, it -> it.id.toString() }) { _, ep ->
                 EpisodeCard(
                     episode = ep,
+                    number = episodeNumber(ep, offset),
                     width = cardWidth,
                     onClick = { onPlay(ep) },
                     onLongClick = onHold?.let { hold -> { hold(ep) } },
@@ -504,6 +539,7 @@ private fun SeasonChip(
 @Composable
 private fun EpisodeCard(
     episode: BaseItem,
+    number: String?,
     width: Dp,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
@@ -551,6 +587,21 @@ private fun EpisodeCard(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
+                if (episode.isSpecial()) {
+                    Text(
+                        text = "SPECIAL",
+                        color = BenflixColors.Tray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp)
+                                .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
                 if (episode.played) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -583,7 +634,7 @@ private fun EpisodeCard(
             }
         }
         Text(
-            text = listOfNotNull(episode.data.indexNumber?.let { "E$it" }, episode.name).joinToString(" · "),
+            text = listOfNotNull(number, episode.name).joinToString(" · "),
             color = if (upcoming) BenflixColors.Muted else BenflixColors.Text,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -622,9 +673,22 @@ private fun showMeta(
     val seasons = state.seasons.size
     val status =
         when {
-            d.status.equals("Ended", true) -> "Ended"
-            d.status.equals("Continuing", true) -> "Still airing"
-            else -> null
+            d.status.equals("Ended", true) -> {
+                "Ended"
+            }
+
+            // Approved: "New episodes on Fridays" in the info line when Jellyfin knows the day
+            d.status.equals("Continuing", true) -> {
+                d.airDays
+                    ?.takeIf { it.size in 1..2 }
+                    ?.joinToString(" and ") { day -> day.name.lowercase().replaceFirstChar { it.uppercase() } + "s" }
+                    ?.let { "New episodes on $it" }
+                    ?: "Still airing"
+            }
+
+            else -> {
+                null
+            }
         }
     return listOfNotNull(
         d.productionYear?.toString(),
@@ -674,4 +738,69 @@ private fun ShowProgress.words(): String? {
         }
     val count = if (episodesLeft == 1) "1 episode left" else "$episodesLeft episodes left"
     return listOfNotNull(count, time).joinToString(" · ")
+}
+
+/** Seasons with more than this many episodes get group chips */
+private const val LONG_SEASON = 50
+
+/** Episodes per group chip */
+private const val GROUP_SIZE = 25
+
+/** A special Jellyfin shows inside a season (where it aired) */
+private fun BaseItem.isSpecial(): Boolean = data.parentIndexNumber == 0
+
+/** "E5", "Special" for specials, or on anime "E12 · #57" (counting every episode of the seasons before) */
+private fun episodeNumber(
+    episode: BaseItem,
+    offset: Int?,
+): String? {
+    if (episode.isSpecial()) return "Special"
+    val number = episode.data.indexNumber ?: return null
+    return if (offset != null && offset > 0) "E$number · #${offset + number}" else "E$number"
+}
+
+/** How many episodes the seasons before this one have (not counting Specials), or null if unknown */
+private fun animeOffset(
+    seasons: List<BaseItem?>,
+    seasonIndex: Int,
+): Int? {
+    if (seasonIndex <= 0) return 0
+    var total = 0
+    seasons.take(seasonIndex).forEach { season ->
+        if (season == null) return null
+        if (season.data.indexNumber == 0) return@forEach
+        total += season.data.childCount ?: return null
+    }
+    return total
+}
+
+@Composable
+private fun GroupChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    // Approved gc-square: squarer white chips for groups (seasons stay round and blue)
+    val shape = RoundedCornerShape(8.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (selected) BenflixColors.Text else BenflixColors.Raised,
+                contentColor = if (selected) BenflixColors.Tray else BenflixColors.Soft,
+                focusedContainerColor = if (selected) BenflixColors.Text else BenflixColors.FocusRow,
+                focusedContentColor = if (selected) BenflixColors.Tray else BenflixColors.Text,
+            ),
+        border = doorFocusBorder(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
 }
