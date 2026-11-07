@@ -48,6 +48,14 @@ fun ChannelReminderNote(
     modifier: Modifier = Modifier,
 ) {
     val reminders by ChannelPrefs.reminders.collectAsState()
+    // "Remind me every time": keep adding the next showings from today's line-up
+    val everyTime by ChannelPrefs.everyTime.collectAsState()
+    LaunchedEffect(everyTime.isNotEmpty()) {
+        while (everyTime.isNotEmpty()) {
+            ChannelPrefs.addEveryTime(ChannelSession.lineup)
+            delay(EVERY_CHECK_MS)
+        }
+    }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(reminders.isNotEmpty()) {
         while (reminders.isNotEmpty()) {
@@ -134,3 +142,6 @@ private fun NoteButton(
 
 private const val NOTICE_MS = 60_000L
 private const val LATE_MS = 2 * 60_000L
+
+/** How often the "every time" shows are looked for in the line-up */
+private const val EVERY_CHECK_MS = 5 * 60_000L

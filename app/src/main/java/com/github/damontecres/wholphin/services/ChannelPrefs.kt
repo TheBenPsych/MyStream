@@ -20,6 +20,7 @@ object ChannelPrefs {
     private const val RECENT = "recent"
     private const val HIDDEN = "hidden"
     private const val REMINDERS = "reminders"
+    private const val EVERY = "every"
     private const val RECENT_MAX = 10
 
     @Volatile private var prefs: SharedPreferences? = null
@@ -59,6 +60,44 @@ object ChannelPrefs {
         save(REMINDERS, _reminders.value.map { it.encode() })
     }
 
+    private val _everyTime = MutableStateFlow<Set<String>>(emptySet())
+
+    /** "Remind me every time" shows, as "channel key|show name" (approved: second reminder button) */
+    val everyTime: StateFlow<Set<String>> = _everyTime
+
+    fun isEveryTime(
+        key: String,
+        title: String,
+    ) = "$key|$title" in _everyTime.value
+
+    fun toggleEveryTime(
+        key: String,
+        title: String,
+    ) {
+        val id = "$key|$title"
+        _everyTime.value = if (id in _everyTime.value) _everyTime.value - id else _everyTime.value + id
+        save(EVERY, _everyTime.value.toList())
+    }
+
+    /** Adds a reminder for each upcoming showing of the "every time" shows in today's line-up */
+    fun addEveryTime(lineup: List<ChannelSchedule>) {
+        if (_everyTime.value.isEmpty() || lineup.isEmpty()) return
+        val now = System.currentTimeMillis()
+        val wanted =
+            lineup.flatMap { schedule ->
+                schedule.programs
+                    .filter { !it.noGuide && it.startMs > now && "${schedule.key}|${it.showName()}" in _everyTime.value }
+                    .map { ChannelReminder(schedule.key, it.startMs, it.showName()) }
+            }
+        val missing = wanted.filterNot { w -> _reminders.value.any { it.key == w.key && it.startMs == w.startMs } }
+        if (missing.isEmpty()) return
+        _reminders.value = _reminders.value + missing
+        save(REMINDERS, _reminders.value.map { it.encode() })
+    }
+
+    /** The saved settings file (null before [load]) */
+    fun prefsOrNull(): SharedPreferences? = prefs
+
     /** Called once when the app starts */
     fun load(context: Context) {
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -66,6 +105,7 @@ object ChannelPrefs {
         _favourites.value = read(p, FAVOURITES)
         _recent.value = read(p, RECENT)
         _hidden.value = read(p, HIDDEN).toSet()
+        _everyTime.value = read(p, EVERY).toSet()
         val now = System.currentTimeMillis()
         _reminders.value = read(p, REMINDERS).mapNotNull { ChannelReminder.decode(it) }.filter { it.startMs > now - REMINDER_KEEP_MS }
     }
@@ -174,3 +214,6 @@ data class ChannelReminder(
 
 /** Old reminders are forgotten 10 minutes after their show started */
 private const val REMINDER_KEEP_MS = 10 * 60_000L
+
+/** The show's name for an episode, else the title (the same name the guide shows) */
+private fun ChannelProgram.showName(): String = item.data.seriesName ?: item.title.orEmpty()

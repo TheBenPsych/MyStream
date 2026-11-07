@@ -200,6 +200,38 @@ data class ChannelSchedule(
     ): List<ChannelProgram> = programs.filter { it.endMs > fromMs && it.startMs < toMs }
 }
 
+/** What the watching banner shows: the channel, what's on with time left, what's next */
+data class ChannelBannerInfo(
+    val number: Int,
+    val name: String,
+    val now: String?,
+    val startMs: Long,
+    val endMs: Long,
+    val next: String?,
+    val nextStartMs: Long,
+    val key: String,
+    val own: Boolean,
+)
+
+private fun bannerFor(
+    schedule: ChannelSchedule,
+    now: Long,
+): ChannelBannerInfo {
+    val on = schedule.programAt(now)?.takeIf { !it.noGuide }
+    val next = on?.let { current -> schedule.programs.firstOrNull { it.startMs >= current.endMs && !it.noGuide } }
+    return ChannelBannerInfo(
+        number = schedule.number,
+        name = schedule.title,
+        now = on?.item?.title,
+        startMs = on?.startMs ?: 0L,
+        endMs = on?.endMs ?: 0L,
+        next = next?.item?.title,
+        nextStartMs = next?.startMs ?: 0L,
+        key = schedule.key,
+        own = schedule.live == null,
+    )
+}
+
 /**
  * Builds the day's channel line-up and remembers which channel you're watching,
  * so Up/Down in the player can flip channels
@@ -213,10 +245,15 @@ object ChannelSession {
     private var currentNumber: Int? = null
     private var currentItemId: UUID? = null
 
-    private val _banner = MutableStateFlow<String?>(null)
+    private val _banner = MutableStateFlow<ChannelBannerInfo?>(null)
 
-    /** "3  Sitcoms · The Office", shown for a moment after you change channel */
-    val banner: StateFlow<String?> = _banner
+    /** The watching banner (approved wt-banner), shown for a moment after you change channel */
+    val banner: StateFlow<ChannelBannerInfo?> = _banner
+
+    /** True when [itemId] is a show playing on one of Benflix's own channels (it can start from the beginning) */
+    fun isOwnChannelProgram(itemId: String?): Boolean = ownWatching && itemId != null && itemId == currentItemId?.toString()
+
+    private var ownWatching = false
 
     fun clearBanner() {
         _banner.value = null
@@ -226,6 +263,7 @@ object ChannelSession {
     fun stopWatching() {
         currentNumber = null
         currentItemId = null
+        ownWatching = false
     }
 
     val lastNumber: Int? get() = currentNumber
@@ -495,13 +533,8 @@ object ChannelSession {
             // A live channel: just turn it on
             currentNumber = schedule.number
             currentItemId = live.id
-            val on =
-                schedule
-                    .programAt(now)
-                    ?.takeIf { !it.noGuide }
-                    ?.item
-                    ?.title
-            _banner.value = listOfNotNull("${schedule.number}  ${live.name}", on).joinToString("  ·  ")
+            ownWatching = false
+            _banner.value = bannerFor(schedule, now)
             if (replacePlayer) navigationManager.goBack()
             navigationManager.navigateTo(Destination.Playback(live.id, 0L))
             return
@@ -509,7 +542,8 @@ object ChannelSession {
         val program = schedule.programAt(now) ?: return
         currentNumber = schedule.number
         currentItemId = program.item.id
-        _banner.value = "${schedule.number}  ${schedule.title}  ·  ${program.item.title.orEmpty()}"
+        ownWatching = true
+        _banner.value = bannerFor(schedule, now)
         if (replacePlayer) navigationManager.goBack()
         navigationManager.navigateTo(Destination.Playback(program.item.id, (now - program.startMs).coerceAtLeast(0L)))
     }

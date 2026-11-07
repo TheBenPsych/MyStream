@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -108,6 +109,15 @@ class ChannelsViewModel
         /** null while loading */
         private val _channels = MutableStateFlow<List<ChannelSchedule>?>(null)
         val channels: StateFlow<List<ChannelSchedule>?> = _channels
+
+        private val pickPrefs get() = ChannelPrefs.prefsOrNull()
+
+        /** This profile already saw "Pick your channels" on this device */
+        fun pickedBefore(): Boolean = pickPrefs?.getBoolean("picked_" + serverRepository.currentUser?.id, false) ?: true
+
+        fun markPicked() {
+            pickPrefs?.edit()?.putBoolean("picked_" + serverRepository.currentUser?.id, true)?.apply()
+        }
 
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
@@ -614,6 +624,19 @@ private fun GuideGrid(
     if (addChannels) {
         AddChannelsDialog(list = all, favourites = favourites, onDismiss = { addChannels = false })
     }
+    // Approved: a new profile's first visit opens "Pick your channels" (once per profile on this device)
+    var picking by remember { mutableStateOf(!KidsMode.isActive && favourites.isEmpty() && !viewModel.pickedBefore()) }
+    if (picking) {
+        AddChannelsDialog(
+            list = all.filter { it.live != null },
+            favourites = favourites,
+            onDismiss = {
+                picking = false
+                viewModel.markPicked()
+            },
+            picking = true,
+        )
+    }
     laterMenu?.let { (schedule, program) ->
         val reminded = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
         val starred = schedule.key in favourites
@@ -629,6 +652,19 @@ private fun GuideGrid(
                             label = if (reminded) "Cancel the reminder" else "Remind me",
                             note = if (reminded) null else "A small note shows a minute before it starts",
                             onClick = { ChannelPrefs.toggleReminder(ChannelReminder(schedule.key, program.startMs, program.name())) },
+                        )
+                    },
+                    if (KidsMode.isActive || program.noGuide) {
+                        null
+                    } else {
+                        val every = ChannelPrefs.isEveryTime(schedule.key, program.name())
+                        BenflixChoice(
+                            label = if (every) "Stop reminding me every time" else "Remind me every time",
+                            note = if (every) null else "Every time ${program.name()} is on this channel",
+                            onClick = {
+                                ChannelPrefs.toggleEveryTime(schedule.key, program.name())
+                                ChannelPrefs.addEveryTime(ChannelSession.lineup)
+                            },
                         )
                     },
                     BenflixChoice("Watch this channel now", { viewModel.watch(schedule) }),
@@ -718,9 +754,18 @@ private fun AddChannelsDialog(
     list: List<ChannelSchedule>,
     favourites: List<String>,
     onDismiss: () -> Unit,
+    picking: Boolean = false,
 ) {
     var query by remember { mutableStateOf("") }
-    val results = remember(query, list) { searchChannels(list, query).take(30) }
+    // "Pick your channels" (a new profile's first visit) lists every channel by type before you type
+    val results =
+        remember(query, list) {
+            if (picking && query.isBlank()) {
+                list.sortedBy { ChannelTileOrder.indexOf(it.group()).let { i -> if (i < 0) 99 else i } }
+            } else {
+                searchChannels(list, query).take(30)
+            }
+        }
     com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -730,8 +775,21 @@ private fun AddChannelsDialog(
                     .background(BenflixColors.Panel, RoundedCornerShape(14.dp))
                     .padding(18.dp),
         ) {
-            Text("Add channels", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = BenflixColors.Text)
-            Text("Type a channel's name or number, then pick it.", fontSize = 13.sp, color = BenflixColors.Muted)
+            Text(
+                if (picking) "Pick your channels" else "Add channels",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = BenflixColors.Text,
+            )
+            Text(
+                if (picking) {
+                    "Star the ones you like. They'll be first on this page. Press Back when you're done."
+                } else {
+                    "Type a channel's name or number, then pick it."
+                },
+                fontSize = 13.sp,
+                color = BenflixColors.Muted,
+            )
             val box = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 delay(80)
@@ -939,35 +997,101 @@ private fun GuideHeader(
 }
 
 /**
- * The little "3  Sitcoms · The Office" card in the corner of the player after you change channel
+ * Benflix redesign (wt-banner): the watching banner along the bottom after you change channel. The
+ * channel number and name (with a star if it's a favourite), what's on with the time left and a thin
+ * line, and what's next. While the channel starts it says "Tuning in…"; it hides 5 seconds after
+ * the picture starts.
  */
 @Composable
-fun ChannelBanner(modifier: Modifier = Modifier) {
+fun ChannelBanner(
+    playing: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val banner by ChannelSession.banner.collectAsState()
-    LaunchedEffect(banner) {
+    LaunchedEffect(banner, playing) {
         if (banner != null) {
-            delay(BANNER_MS)
+            // If the channel never starts, don't leave "Tuning in…" up forever
+            delay(if (playing) BANNER_MS else 20_000L)
             ChannelSession.clearBanner()
         }
     }
+    val favourites by ChannelPrefs.favourites.collectAsState()
     AnimatedVisibility(visible = banner != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
-        Text(
-            text = banner.orEmpty(),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
+        val info = banner ?: return@AnimatedVisibility
+        val now = remember(info) { System.currentTimeMillis() }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier =
                 Modifier
-                    .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-        )
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .85f))))
+                    .padding(start = 40.dp, end = 40.dp, top = 40.dp, bottom = 28.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(info.number.toString(), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                Text(info.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                if (info.key in favourites) Text("★", fontSize = 20.sp, color = Color.White)
+                if (info.own) {
+                    Text(
+                        text = "NO ADS",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = .6.sp,
+                        color = Color(0xFF04150B),
+                        modifier =
+                            Modifier
+                                .background(NoAdsGreen, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
+                }
+            }
+            if (!playing) {
+                Text("Tuning in…", fontSize = 17.sp, color = BenflixColors.Soft)
+            } else if (info.now != null) {
+                val left = ((info.endMs - now) / 60_000L).coerceAtLeast(0L)
+                Text(
+                    text = "${info.now}  ·  ${if (left >= 60) "${left / 60} h ${left % 60} min" else "$left min"} left",
+                    fontSize = 17.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+                val length = (info.endMs - info.startMs).coerceAtLeast(1L)
+                Box(
+                    Modifier
+                        .widthIn(max = 420.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = .25f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(((now - info.startMs).toFloat() / length).coerceIn(0f, 1f))
+                            .height(3.dp)
+                            .background(Color.White),
+                    )
+                }
+                info.next?.let { next ->
+                    val at =
+                        java.time.Instant
+                            .ofEpochMilli(info.nextStartMs)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalTime()
+                            .format(
+                                java.time.format.DateTimeFormatter
+                                    .ofPattern("h:mm"),
+                            )
+                    Text("Next at $at  ·  $next", fontSize = 14.sp, color = BenflixColors.Muted, maxLines = 1)
+                }
+            }
+        }
     }
 }
 
 private const val HALF_HOUR = 30L * 60_000L
 private const val GUIDE_HOURS = 2L
 private const val NUMBER_WAIT_MS = 1_500L
-private const val BANNER_MS = 4_000L
+private const val BANNER_MS = 5_000L
 private val CHANNEL_COL = 176.dp
 private val HEADER_HEIGHT = 170.dp
 
