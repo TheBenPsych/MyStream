@@ -52,7 +52,9 @@ fun ChannelReminderNote(
     LaunchedEffect(reminders.isNotEmpty()) {
         while (reminders.isNotEmpty()) {
             now = System.currentTimeMillis()
-            delay(1_000L)
+            // Tick every second only near a reminder; otherwise check twice a minute
+            val soonest = reminders.filter { now - it.startMs < LATE_MS }.minOfOrNull { it.startMs - NOTICE_MS - now } ?: 30_000L
+            delay(if (soonest > 1_000L) soonest.coerceAtMost(30_000L) else 1_000L)
         }
     }
     val due = reminders.firstOrNull { it.startMs - now <= NOTICE_MS && now - it.startMs < LATE_MS }
