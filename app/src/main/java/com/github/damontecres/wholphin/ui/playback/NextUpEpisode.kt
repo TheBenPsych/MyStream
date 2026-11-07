@@ -92,6 +92,8 @@ fun NextUpEpisode(
     heading: String? = null,
     buttonText: String? = null,
     onNotNow: (() -> Unit)? = null,
+    /** The countdown words (with %d for the seconds), e.g. "Plays in %d" for movies */
+    countdownTextRes: Int = R.string.player_next_episode_in,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
@@ -215,7 +217,7 @@ fun NextUpEpisode(
                             Text(
                                 text =
                                     if (counting) {
-                                        stringResource(R.string.player_next_episode_in, timeLeft!!.inWholeSeconds)
+                                        stringResource(countdownTextRes, timeLeft!!.inWholeSeconds)
                                     } else {
                                         buttonText ?: stringResource(R.string.player_next_episode)
                                     },

@@ -101,8 +101,9 @@ internal suspend fun PlaybackViewModel.findRecap(item: BaseItemDto): BenflixReca
 }
 
 /**
- * Benflix "Watch next": when a movie's credits start (or near its end), offer one similar
- * movie the profile hasn't watched. It's only a card in the corner and never autoplays.
+ * Benflix "Up next": when a movie's credits start (or near its end), offer the next movie in its
+ * collection, or else the first similar movie the profile hasn't watched. A corner card with a
+ * countdown; see [BenflixAutoplayChain] for when it stops starting movies by itself.
  */
 internal fun PlaybackViewModel.watchForMovieNext(item: BaseItem) {
     movieNextJob?.cancel()
@@ -111,8 +112,20 @@ internal fun PlaybackViewModel.watchForMovieNext(item: BaseItem) {
     if (item.type != BaseItemKind.MOVIE) return
     movieNextJob =
         viewModelScope.launchIO {
-            val pick =
+            val userId = serverRepository.currentUser?.id
+            val inCollection =
                 try {
+                    userId?.let { collectionLookup?.collectionFor(it, item.id) }?.let { collection ->
+                        val index = collection.items.indexOfFirst { it.id == item.id }
+                        collection.items.drop(index + 1).firstOrNull()
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    null
+                }
+            val pick =
+                inCollection ?: try {
                     api.libraryApi
                         .getSimilarItems(
                             GetSimilarItemsRequest(

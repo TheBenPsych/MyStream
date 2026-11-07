@@ -673,6 +673,7 @@ fun PlaybackPageContent(
                 currentPlayback = state.currentPlayback,
                 trickplayInfo = state.currentMediaInfo.trickPlayInfo,
                 trickplayUrlFor = viewModel::getTrickplayUrl,
+                chapters = state.currentMediaInfo.chapters,
                 currentSegment = state.currentSegment?.segment,
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
                 analyticsState = state.analyticsState,
@@ -944,6 +945,19 @@ fun PlaybackPageContent(
             modifier = Modifier.align(Alignment.BottomEnd),
         ) {
             state.movieNext?.let {
+                // Benflix redesign: a 20 second countdown, then the next movie starts by itself
+                // (not at bedtime, and not after 3 movies in a row with nobody pressing anything)
+                val autoPlay = remember(it.id) { viewModel.shouldAutoPlayNextUp() && BenflixAutoplayChain.allowed() }
+                var movieTimeLeft by remember(it.id) { mutableLongStateOf(MOVIE_COUNTDOWN_SECONDS) }
+                if (autoPlay) {
+                    LaunchedEffect(it.id) {
+                        while (movieTimeLeft > 0) {
+                            delay(1.seconds)
+                            movieTimeLeft--
+                        }
+                        viewModel.autoPlayMovieNext()
+                    }
+                }
                 NextUpEpisode(
                     title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
                     description = it.data.overview,
@@ -953,10 +967,12 @@ fun PlaybackPageContent(
                         viewModel.reportInteraction()
                         viewModel.playMovieNext()
                     },
-                    timeLeft = null,
+                    timeLeft = if (autoPlay) movieTimeLeft.seconds else null,
+                    totalCountdown = if (autoPlay) MOVIE_COUNTDOWN_SECONDS.seconds else null,
                     runtime = it.data.runTimeTicks?.ticks,
                     heading = stringResource(R.string.player_watch_next),
                     buttonText = stringResource(R.string.player_play_this),
+                    countdownTextRes = R.string.player_plays_in,
                     onNotNow = viewModel::dismissMovieNext,
                     modifier =
                         Modifier
@@ -1001,16 +1017,14 @@ fun PlaybackPageContent(
                 }
                 if (autoPlayEnabled) {
                     LaunchedEffect(Unit) {
-                        if (timeLeft == 0L) {
+                        while (timeLeft > 0) {
+                            delay(1.seconds)
+                            timeLeft--
+                        }
+                        if (timeLeft == 0L && autoPlayEnabled) {
+                            // Counted so Kids profiles stop after 3 in a row with no button pressed
+                            BenflixAutoplayChain.count++
                             viewModel.playNextUp()
-                        } else {
-                            while (timeLeft > 0) {
-                                delay(1.seconds)
-                                timeLeft--
-                            }
-                            if (timeLeft == 0L && autoPlayEnabled) {
-                                viewModel.playNextUp()
-                            }
                         }
                     }
                 }
@@ -1237,3 +1251,6 @@ private const val RECAP_SECONDS = 20
 
 /** Benflix: how far a double-tap jumps on phones */
 private const val DOUBLE_TAP_SEEK_MS = 10_000L
+
+/** Benflix redesign: seconds before the next movie starts by itself */
+private const val MOVIE_COUNTDOWN_SECONDS = 20L
