@@ -172,18 +172,20 @@ private fun WideDoor(
         if (isTv) restore.tryRequestFocus()
         restored = true
     }
-    val posterWidth = if (easy) 128.dp else 100.dp
+    // Ben (TV): cards were too small to read; 120 wide with a slightly shorter top area still shows the next row
+    val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val topHeight = (maxHeight * if (easy) 0.40f else 0.44f).coerceIn(170.dp, 300.dp)
+        val topHeight = (maxHeight * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
         Column(Modifier.fillMaxSize()) {
             PreviewArea(item = preview, easy = easy, height = topHeight)
             LazyColumn(
                 state = columnState,
                 contentPadding = PaddingValues(bottom = 48.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                // Ben: a little more room between rows so the next row only just peeks in
+                verticalArrangement = Arrangement.spacedBy(if (isTv && !easy) 30.dp else 20.dp),
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -410,7 +412,8 @@ private fun PreviewWords(
             fontSize = if (easy) 38.sp else 32.sp,
             lineHeight = if (easy) 40.sp else 34.sp,
             fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
+            // One line on the normal page so the shorter top area always fits the words
+            maxLines = if (easy) 2 else 1,
             overflow = TextOverflow.Ellipsis,
         )
         val meta = remember(item) { metaLine(item) }

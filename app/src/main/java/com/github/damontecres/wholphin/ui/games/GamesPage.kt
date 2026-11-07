@@ -539,7 +539,7 @@ internal fun ServerGameCard(
                                 .align(Alignment.BottomStart)
                                 .fillMaxWidth(progress)
                                 .height(6.dp)
-                                .background(Color(0xFFE50914)),
+                                .background(Color.White),
                         )
                     }
                     Text(

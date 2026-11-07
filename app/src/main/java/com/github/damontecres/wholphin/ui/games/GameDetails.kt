@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -125,7 +127,15 @@ fun GameDetailsPage(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(tint.copy(alpha = 0.7f), Color(0xFF0D0B0C), Color(0xFF0D0B0C)))),
+                .background(
+                    if (isTv) {
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF0B0C10), Color(0xFF0B0C10)),
+                        )
+                    } else {
+                        Brush.verticalGradient(listOf(tint.copy(alpha = 0.7f), Color(0xFF0D0B0C), Color(0xFF0D0B0C)))
+                    },
+                ),
         ) {
             val cover: @Composable (Modifier) -> Unit = { mod ->
                 Box(
@@ -153,83 +163,106 @@ fun GameDetailsPage(
                     }
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(if (isTv) 40.dp else 16.dp),
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = if (isTv) 56.dp else 16.dp, vertical = if (isTv) 36.dp else 16.dp),
-            ) {
-                cover(Modifier.width(if (isTv) 260.dp else 110.dp))
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 8.dp),
+            if (isTv) {
+                TvGameHero(
+                    choice = choice,
+                    info = info,
+                    saves = saves,
+                    playTimeMs = playTimeMs,
+                    favourite = favourite,
+                    token = token,
+                    focus = focus,
+                    onPlay = onPlay,
+                    onFavourite = onFavourite,
+                    onRemove = onRemove,
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 40.dp else 16.dp),
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
+                            .fillMaxSize()
+                            .padding(horizontal = if (isTv) 56.dp else 16.dp, vertical = if (isTv) 36.dp else 16.dp),
                 ) {
-                    Text(ref.name, fontSize = if (isTv) 34.sp else 22.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    val facts =
-                        listOfNotNull(
-                            ref.consoleName,
-                            info?.year?.takeIf { it > 0 }?.toString(),
-                            info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
-                            info?.genres?.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                            playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
-                            if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download" else null,
-                        )
-                    Text(facts.joinToString("  ·  "), fontSize = if (isTv) 15.sp else 12.sp, color = Color.White.copy(alpha = .8f))
-                    // Buttons
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (choice.resume) {
-                            DetailButton("▶  Resume", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(true) }
-                            DetailButton("Start over") { onPlay(false) }
-                        } else {
-                            DetailButton("▶  Play", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(false) }
+                    cover(Modifier.width(if (isTv) 260.dp else 110.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 8.dp),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(ref.name, fontSize = if (isTv) 34.sp else 22.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        val facts =
+                            listOfNotNull(
+                                ref.consoleName,
+                                info?.year?.takeIf { it > 0 }?.toString(),
+                                info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
+                                info?.genres?.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                                playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
+                                if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download" else null,
+                            )
+                        Text(facts.joinToString("  ·  "), fontSize = if (isTv) 15.sp else 12.sp, color = Color.White.copy(alpha = .8f))
+                        // Buttons
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (choice.resume) {
+                                DetailButton("▶  Resume", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(true) }
+                                DetailButton("Start over") { onPlay(false) }
+                            } else {
+                                DetailButton("▶  Play", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(false) }
+                            }
+                            DetailButton(if (favourite) "♥  Favourite" else "♡  Favourite", onClick = onFavourite)
                         }
-                        DetailButton(if (favourite) "♥  Favourite" else "♡  Favourite", onClick = onFavourite)
-                    }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (!isTv) {
-                            DetailButton(if (choice.pinned) "Stop keeping for trips" else "Keep for trips") { onKeep(!choice.pinned) }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (!isTv) {
+                                DetailButton(if (choice.pinned) "Stop keeping for trips" else "Keep for trips") { onKeep(!choice.pinned) }
+                            }
+                            // Kids can't remove games from the device
+                            if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this device", onClick = onRemove)
                         }
-                        // Kids can't remove games from the device
-                        if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this device", onClick = onRemove)
-                    }
-                    if (choice.downloaded && !KidsMode.isActive) {
-                        Text(
-                            "Removing frees up space. Your saves are kept on Tower.",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = .6f),
-                        )
-                    }
-                    when {
-                        info == null -> {
-                            Text("Loading the story…", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
-                        }
-
-                        info.summary.isNotBlank() -> {
+                        if (choice.downloaded && !KidsMode.isActive) {
                             Text(
-                                info.summary,
-                                fontSize = if (isTv) 16.sp else 13.sp,
-                                color = Color.White.copy(alpha = .9f),
-                                modifier = Modifier.widthIn(max = 760.dp),
+                                "Removing frees up space. Your saves are kept on Tower.",
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = .6f),
                             )
                         }
-                    }
-                    info?.companies?.takeIf { it.isNotEmpty() }?.let {
-                        Text("Made by ${it.joinToString(", ")}", fontSize = 13.sp, color = Color.White.copy(alpha = .6f))
-                    }
-                    if (saves.isNotEmpty()) {
-                        Text("Your saves", fontSize = if (isTv) 20.sp else 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            saves.forEach { spot -> SaveTile(spot, token, isTv) }
+                        when {
+                            info == null -> {
+                                Text("Loading the story…", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
+                            }
+
+                            info.summary.isNotBlank() -> {
+                                Text(
+                                    info.summary,
+                                    fontSize = if (isTv) 16.sp else 13.sp,
+                                    color = Color.White.copy(alpha = .9f),
+                                    modifier = Modifier.widthIn(max = 760.dp),
+                                )
+                            }
                         }
-                        Text(
-                            "Resume picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = .6f),
-                        )
+                        info?.companies?.takeIf { it.isNotEmpty() }?.let {
+                            Text("Made by ${it.joinToString(", ")}", fontSize = 13.sp, color = Color.White.copy(alpha = .6f))
+                        }
+                        if (saves.isNotEmpty()) {
+                            Text(
+                                "Your saves",
+                                fontSize = if (isTv) 20.sp else 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                saves.forEach { spot -> SaveTile(spot, token, isTv) }
+                            }
+                            Text(
+                                "Resume picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = .6f),
+                            )
+                        }
                     }
                 }
             }
@@ -296,7 +329,7 @@ private fun DetailButton(
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -308,5 +341,135 @@ private fun DetailButton(
         modifier = modifier,
     ) {
         Text(text, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+    }
+}
+
+/**
+ * Benflix redesign (game page, TV): like a movie's page. The game's picture (your last save, or the box
+ * art) fills the right side, the name, facts, story, a short how-to line and the buttons sit on the left,
+ * and Your saves is a row underneath.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TvGameHero(
+    choice: GameChoice,
+    info: GameInfo?,
+    saves: List<SaveSpot>,
+    playTimeMs: Long,
+    favourite: Boolean,
+    token: String,
+    focus: FocusRequester,
+    onPlay: (resume: Boolean) -> Unit,
+    onFavourite: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    val context = LocalContext.current
+    val ref = choice.ref
+    val picture: Any? = saves.firstOrNull { it.picture != null }?.picture ?: ref.coverUrl
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.62f)
+                .align(Alignment.TopEnd)
+                .clipToBounds(),
+        ) {
+            picture?.let { pic ->
+                AsyncImage(
+                    model =
+                        remember(pic) {
+                            ImageRequest
+                                .Builder(context)
+                                .data(pic)
+                                .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
+                                .build()
+                        },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    // Old games are tiny pictures: keep the pixels sharp when they're made big
+                    filterQuality = FilterQuality.None,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.horizontalGradient(
+                        0f to Color(0xFF0B0C10),
+                        0.4f to Color(0xFF0B0C10).copy(alpha = .6f),
+                        0.8f to Color.Transparent,
+                    ),
+                ),
+            )
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 0.85f to Color(0xFF0B0C10))))
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 56.dp, end = 56.dp, top = 40.dp, bottom = 32.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth(0.5f)) {
+                Text(ref.name, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2)
+                val facts =
+                    listOfNotNull(
+                        ref.consoleName,
+                        info?.year?.takeIf { it > 0 }?.toString(),
+                        info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
+                        info
+                            ?.genres
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.take(2)
+                            ?.joinToString(", "),
+                        playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
+                    )
+                Text(facts.joinToString("  ·  "), fontSize = 15.sp, color = Color.White.copy(alpha = .8f), maxLines = 2)
+                when {
+                    info == null -> {
+                        Text("Loading the story…", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
+                    }
+
+                    info.summary.isNotBlank() -> {
+                        Text(
+                            info.summary,
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                            color = Color.White.copy(alpha = .9f),
+                            maxLines = 3,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Text(
+                    "Hold Back (or the ☰ button) during the game for saves and the menu.",
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = .6f),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (choice.resume) {
+                        DetailButton("▶  Keep playing", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(true) }
+                        DetailButton("Start over") { onPlay(false) }
+                    } else {
+                        DetailButton("▶  Play", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(false) }
+                    }
+                    DetailButton(if (favourite) "♥  Favourite" else "♡  Favourite", onClick = onFavourite)
+                    // Kids can't remove games from the device
+                    if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this TV", onClick = onRemove)
+                }
+            }
+            if (saves.isNotEmpty()) {
+                Text(
+                    "Your saves",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    saves.forEach { spot -> SaveTile(spot, token, true) }
+                }
+            }
+        }
     }
 }

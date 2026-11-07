@@ -296,7 +296,7 @@ private fun Winner(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.3.sp,
-                color = Color(0xFFE50914),
+                color = Color(0xFF9A9AA3),
             )
             AsyncImage(
                 model = LocalImageUrlService.current.rememberImageUrl(item),

@@ -273,7 +273,7 @@ fun DownloadsPage(
                                     }
                                 },
                             fontSize = 13.sp,
-                            color = if (status == DownloadStatus.Failed) Color(0xFFE50914) else Color(0xFFB3B3B3),
+                            color = if (status == DownloadStatus.Failed) Color(0xFFFF8A8A) else Color(0xFFB3B3B3),
                         )
                     }
                     Text(

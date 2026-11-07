@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
@@ -276,45 +275,64 @@ fun GameInfoPage(
         )
 
     if (isTv) {
-        val h = LocalConfiguration.current.screenHeightDp.dp
+        // Benflix redesign (game page): like a movie's page. The picture fills the right of the screen
+        // behind everything, the words and Play sit on the left, and the leaderboard and settings below.
+        // The words are never squeezed into a fixed box, so Play can't be cut off; if it's all too tall
+        // for the TV, FitScreen shrinks it.
         Box(modifier.fillMaxSize().background(PuzzleBg)) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.68f)
+                    .align(Alignment.TopEnd)
+                    .clipToBounds(),
+            ) {
+                Preview(info, pictures)
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(0f to PuzzleBg, 0.45f to PuzzleBg.copy(alpha = .55f), 0.75f to Color.Transparent),
+                    ),
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(0.45f to Color.Transparent, 0.8f to PuzzleBg),
+                    ),
+                )
+            }
             FitScreen(true) {
-                Column(Modifier.fillMaxWidth().height(h)) {
-                    Box(Modifier.fillMaxWidth().weight(0.56f).clipToBounds()) {
-                        Box(Modifier.fillMaxHeight().fillMaxWidth(0.64f).align(Alignment.TopEnd)) {
-                            Preview(info, pictures)
-                            Box(
-                                Modifier.fillMaxSize().background(
-                                    Brush.horizontalGradient(0f to PuzzleBg, 0.35f to Color.Transparent),
-                                ),
-                            )
-                            Box(
-                                Modifier.fillMaxSize().background(
-                                    Brush.verticalGradient(0.7f to Color.Transparent, 1f to PuzzleBg),
-                                ),
-                            )
-                        }
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.fillMaxWidth(0.46f).padding(start = 64.dp, top = 40.dp),
-                        ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 64.dp, end = 64.dp, top = 44.dp, bottom = 32.dp),
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxWidth(0.5f),
+                    ) {
+                        Text(
+                            info.title.uppercase(),
+                            fontFamily = BenflixTitleFont,
+                            fontSize = 56.sp,
+                            lineHeight = 56.sp,
+                            color = Color.White,
+                        )
+                        Pills(info.pills)
+                        Text(info.about, fontSize = 20.sp, lineHeight = 28.sp, color = Color.White.copy(alpha = .92f))
+                        // How to play as one short line under the description
+                        if (info.steps.isNotEmpty()) {
                             Text(
-                                info.title.uppercase(),
-                                fontFamily = BenflixTitleFont,
-                                fontSize = 56.sp,
-                                lineHeight = 56.sp,
-                                color = Color.White,
+                                info.steps.joinToString("  ·  "),
+                                fontSize = 15.sp,
+                                lineHeight = 21.sp,
+                                color = Color.White.copy(alpha = .7f),
                             )
-                            Pills(info.pills)
-                            Text(info.about, fontSize = 20.sp, lineHeight = 28.sp, color = Color.White.copy(alpha = .92f))
-                            buttons()
                         }
+                        buttons()
                     }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(20.dp),
-                        modifier = Modifier.fillMaxWidth().weight(0.44f).padding(start = 64.dp, end = 64.dp, top = 8.dp, bottom = 40.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     ) {
-                        sections.forEach { (title, body) -> Section(title, Modifier.weight(1f).fillMaxHeight(), body) }
+                        sections.drop(1).forEach { (title, body) -> Section(title, Modifier.weight(1f), body) }
                     }
                 }
             }

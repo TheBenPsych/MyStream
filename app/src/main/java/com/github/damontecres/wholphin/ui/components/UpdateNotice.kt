@@ -1,32 +1,18 @@
 package com.github.damontecres.wholphin.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
@@ -37,13 +23,10 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -107,27 +90,12 @@ fun UpdateBang(
     ) {
         Text(
             text = text,
-            color = Color.White,
+            color = Color(0xFF0B0C10),
             fontSize = (size.value * (if (text.length > 1) .56f else .72f)).sp,
             lineHeight = (size.value * .72f).sp,
             fontWeight = FontWeight.Black,
         )
     }
-}
-
-/**
- * The tip bubble, pointing at whatever it's placed in (the cogwheel on TV, My Benflix on phones).
- * Put it inside a Box around that button. [above] puts it over the button instead of under it.
- * It never takes focus, so the remote keeps working normally while it shows.
- */
-@Composable
-fun UpdateTip(
-    text: String,
-    above: Boolean,
-) {
-    val show by UpdateNotice.tip.collectAsState()
-    val guest by GuestMode.active.collectAsState()
-    NoticeTip(text, above, show && !guest, UpdateNotice::hideTip)
 }
 
 /**
@@ -167,21 +135,6 @@ fun rememberServerAlert(): Boolean {
     val kids by KidsMode.active.collectAsState()
     val guest by GuestMode.active.collectAsState()
     return text != null && !kids && !guest
-}
-
-/** The admin's alert bubble. [where] says how to get to the Server page, like "Open Settings, then Server." */
-@Composable
-fun ServerAlertTip(
-    where: String,
-    above: Boolean,
-) {
-    val text by ServerAlertNotice.text.collectAsState()
-    val show by ServerAlertNotice.tip.collectAsState()
-    // Waits for the update bubble to finish first, so two never show at once
-    val updateTip by UpdateNotice.tip.collectAsState()
-    val guest by GuestMode.active.collectAsState()
-    val current = text ?: return
-    NoticeTip("$current $where", above, show && !updateTip && !guest, ServerAlertNotice::hideTip)
 }
 
 /**
@@ -241,102 +194,6 @@ fun rememberRequestReadyCount(): Int {
     return if (kids || guest) 0 else count
 }
 
-/** The "Your request is here" bubble. [where] says how to find it, like "It's in More, then My Benflix." */
-@Composable
-fun RequestReadyTip(
-    where: String,
-    above: Boolean,
-) {
-    val tips by RequestReadyNotice.tips.collectAsState()
-    // Waits for the update and Server bubbles first, so two never show at once
-    val updateTip by UpdateNotice.tip.collectAsState()
-    val serverTip by ServerAlertNotice.tip.collectAsState()
-    val guest by GuestMode.active.collectAsState()
-    val tip = tips.firstOrNull() ?: return
-    NoticeTip(
-        text = "Your request is here: ${tip.title}! $where",
-        above = above,
-        show = !updateTip && !serverTip && !guest,
-        onHidden = { RequestReadyNotice.tipDone(tip) },
-        durationMs = RequestReadyNotice.TIP_MS,
-        poster = tip.posterUrl,
-    )
-}
-
-@Composable
-private fun NoticeTip(
-    text: String,
-    above: Boolean,
-    show: Boolean,
-    onHidden: () -> Unit,
-    durationMs: Long = UpdateNotice.TIP_MS,
-    poster: String? = null,
-) {
-    val kids by KidsMode.active.collectAsState()
-    if (kids) return
-    var visible by remember { mutableStateOf(false) }
-    // Keyed on the text too, so the next request's bubble starts its own count
-    LaunchedEffect(show, text) {
-        if (show) {
-            visible = true
-            delay(durationMs)
-            visible = false
-            delay(400)
-            onHidden()
-        } else {
-            visible = false
-        }
-    }
-    if (!show) return
-    val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 6.dp.roundToPx() }
-    val edge = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
-    Popup(
-        popupPositionProvider = remember(above, gap, edge) { TipPosition(above, gap, edge) },
-        properties = PopupProperties(focusable = false),
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn() + slideInVertically { if (above) it / 4 else -it / 4 },
-            exit = fadeOut() + slideOutVertically { if (above) it / 4 else -it / 4 },
-        ) {
-            Column(horizontalAlignment = Alignment.End) {
-                if (!above) Pointer(up = true)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .widthIn(max = 300.dp)
-                            .background(TIP_BG, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                ) {
-                    if (poster != null) {
-                        coil3.compose.AsyncImage(
-                            model = poster,
-                            contentDescription = null,
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .size(width = 32.dp, height = 48.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF333338)),
-                        )
-                    } else {
-                        UpdateBang(size = 18.dp)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = text,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                    )
-                }
-                if (above) Pointer(up = false)
-            }
-        }
-    }
-}
-
 /** The little triangle that points from the bubble to the button */
 @Composable
 private fun Pointer(up: Boolean) {
@@ -390,5 +247,6 @@ private class TipPosition(
     }
 }
 
-private val UPDATE_RED = Color(0xFFE50914)
+// Benflix redesign: the update dot is white with dark words, not red
+private val UPDATE_RED = Color(0xFFF2F2F4)
 private val TIP_BG = Color(0xF2232328)

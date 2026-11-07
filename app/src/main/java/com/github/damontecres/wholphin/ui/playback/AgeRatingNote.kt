@@ -75,13 +75,13 @@ fun AgeRatingNote(
                     .background(Color(0x99000000), RoundedCornerShape(8.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            // A thin red bar, the way the age note looks on big streaming apps
+            // A thin white bar beside the rating (Benflix redesign: no red)
             Box(
                 modifier =
                     Modifier
                         .width(3.dp)
                         .height(if (isTv) 40.dp else 32.dp)
-                        .background(Color(0xFFE50914), RoundedCornerShape(2.dp)),
+                        .background(Color.White, RoundedCornerShape(2.dp)),
             )
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(

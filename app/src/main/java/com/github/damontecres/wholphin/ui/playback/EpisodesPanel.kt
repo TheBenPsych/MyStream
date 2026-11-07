@@ -301,14 +301,14 @@ private fun EpisodePanelCard(
                 if (nowPlaying) {
                     Text(
                         text = stringResource(R.string.player_now_playing),
-                        color = Color.White,
+                        color = Color(0xFF0B0C10),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(8.dp)
-                                .background(Color(0xFFE50914), RoundedCornerShape(4.dp))
+                                .background(Color.White, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
@@ -339,7 +339,7 @@ private fun EpisodePanelCard(
                             Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                .background(Color(0xFFE50914)),
+                                .background(Color.White),
                         )
                     }
                 }
