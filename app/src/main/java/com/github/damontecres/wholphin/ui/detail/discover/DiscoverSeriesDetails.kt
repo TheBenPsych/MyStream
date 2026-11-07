@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.api.seerr.model.TvDetails
@@ -38,8 +39,6 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
-import com.github.damontecres.wholphin.services.jellyfinId
-import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
@@ -50,7 +49,6 @@ import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.QuickDetailsText
-import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
@@ -64,7 +62,6 @@ import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.successValue
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.api.ImageType
 import kotlin.math.roundToInt
 
 @Composable
@@ -433,21 +430,19 @@ fun DiscoverSeriesDetailsHeader(
     showLogo: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val imageUrlService = LocalImageUrlService.current
-    val logoImageUrl =
-        remember(series) {
-            series.mediaInfo?.jellyfinId?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.LOGO)
-            }
-        }
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier,
     ) {
-        TitleOrLogo(
-            title = series.name,
-            logoImageUrl = logoImageUrl,
-            showLogo = showLogo,
+        // Benflix redesign: the big white name, like the Movies page
+        androidx.tv.material3.Text(
+            text = series.name.orEmpty(),
+            color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+            fontSize = 40.sp,
+            lineHeight = 42.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .fillMaxWidth(.75f)
