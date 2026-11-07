@@ -87,13 +87,24 @@ fun SwitchServerContent(
     }
 
     when (val st = state.loading) {
-        is LoadingState.Error -> ErrorMessage(st, modifier)
+        is LoadingState.Error -> {
+            ErrorMessage(st, modifier)
+        }
 
         LoadingState.Loading,
         LoadingState.Pending,
-        -> LoadingPage(modifier)
+        -> {
+            LoadingPage(modifier)
+        }
 
-        LoadingState.Success -> SwitchServerContentInternal(state, viewModel, modifier)
+        LoadingState.Success -> {
+            // Benflix redesign: a brand-new device asks "Is this your server?" (or for the address) first
+            if (state.servers.isEmpty()) {
+                FirstServerScreen(state, viewModel, modifier)
+            } else {
+                SwitchServerContentInternal(state, viewModel, modifier)
+            }
+        }
     }
 }
 
