@@ -30,11 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -114,6 +117,7 @@ fun BenflixTopBar(
     profileFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     big: Boolean = false,
+    overPicture: Boolean = false,
 ) {
     val scale = if (big) 1.2f else 1f
     Row(
@@ -145,24 +149,54 @@ fun BenflixTopBar(
             )
         }
         Spacer(Modifier.weight(1f))
-        if (showClock) BigClock(scale = scale)
-        TopBarIconButton(
-            icon = BenflixIcon.SEARCH,
-            contentDescription = "Search",
-            selected = searchSelected,
-            onClick = onClickSearch,
-            size = 40.dp * scale,
-        )
-        ProfileButton(
-            user = user,
-            userImageUrl = userImageUrl,
-            badge = badge,
-            onClick = onClickProfile,
-            pictureSize = 40.dp * scale,
-            modifier = Modifier.focusRequester(profileFocusRequester),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = if (overPicture) Modifier.softShadow() else Modifier,
+        ) {
+            if (showClock) BigClock(scale = scale)
+            TopBarIconButton(
+                icon = BenflixIcon.SEARCH,
+                contentDescription = "Search",
+                selected = searchSelected,
+                onClick = onClickSearch,
+                size = 40.dp * scale,
+            )
+            ProfileButton(
+                user = user,
+                userImageUrl = userImageUrl,
+                badge = badge,
+                onClick = onClickProfile,
+                pictureSize = 40.dp * scale,
+                modifier = Modifier.focusRequester(profileFocusRequester),
+            )
+        }
     }
 }
+
+/**
+ * Ben: when the bar sits over a door's picture, a soft dark shadow behind the clock, search and your
+ * picture keeps them easy to see on bright pictures. A plain drawing, so it costs nothing on older TVs.
+ */
+private fun Modifier.softShadow(): Modifier =
+    drawBehind {
+        val w = size.width + 120.dp.toPx()
+        val h = size.height + 56.dp.toPx()
+        scale(scaleX = 1f, scaleY = h / w, pivot = center) {
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        0f to Color.Black.copy(alpha = .62f),
+                        0.55f to Color.Black.copy(alpha = .35f),
+                        1f to Color.Transparent,
+                        center = center,
+                        radius = w / 2f,
+                    ),
+                radius = w / 2f,
+                center = center,
+            )
+        }
+    }
 
 /** The phone header: logo (and the door's name) on the left, search and your picture on the right. No clock. */
 @Composable
