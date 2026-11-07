@@ -100,6 +100,27 @@ fun DiscoverItemCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
+            // Benflix redesign: a white outline when focused, no growing (like every other poster)
+            shape =
+                CardDefaults.shape(
+                    androidx.compose.foundation.shape
+                        .RoundedCornerShape(8.dp),
+                ),
+            scale = CardDefaults.scale(focusedScale = 1f),
+            border =
+                CardDefaults.border(
+                    focusedBorder =
+                        androidx.tv.material3.Border(
+                            border =
+                                androidx.compose.foundation.BorderStroke(
+                                    3.dp,
+                                    com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                ),
+                            shape =
+                                androidx.compose.foundation.shape
+                                    .RoundedCornerShape(8.dp),
+                        ),
+                ),
         ) {
             Box(
                 modifier =

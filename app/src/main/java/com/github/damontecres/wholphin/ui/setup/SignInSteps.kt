@@ -1,5 +1,10 @@
 package com.github.damontecres.wholphin.ui.setup
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +36,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -56,6 +63,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
+import timber.log.Timber
 
 /*
  * Benflix redesign (approved 2026-11-07, s2-kb-below): signing in is one question per screen, your
@@ -203,7 +211,7 @@ fun SignInScreens(
 }
 
 @Composable
-private fun Question(
+internal fun Question(
     title: String,
     hint: String,
 ) {
@@ -226,13 +234,14 @@ private fun Question(
 
 /** The box you type into, its line (white, or soft red when something is wrong), and on TV the keyboard */
 @Composable
-private fun Answer(
+internal fun Answer(
     value: String,
     onValue: (String) -> Unit,
     password: Boolean,
     error: String?,
     isTv: Boolean,
     onDone: () -> Unit,
+    fieldTag: String = "sign_in_text",
 ) {
     val boxWidth = 520.dp
     Column(
@@ -288,7 +297,8 @@ private fun Answer(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
-                        .focusRequester(focus),
+                        .focusRequester(focus)
+                        .testTag(fieldTag),
             )
         }
         Box(
@@ -312,6 +322,8 @@ private fun Answer(
             value = value,
             onValue = onValue,
             onDone = onDone,
+            // No talking your password out loud
+            voice = !password,
             modifier = Modifier.padding(top = 18.dp),
         )
     }
@@ -366,7 +378,7 @@ private fun Line(
 }
 
 @Composable
-private fun SignInButton(
+internal fun SignInButton(
     label: String,
     modifier: Modifier = Modifier,
     white: Boolean = false,
@@ -430,8 +442,23 @@ private fun SignInKeyboard(
     value: String,
     onValue: (String) -> Unit,
     onDone: () -> Unit,
+    voice: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // A Talk key, only where the TV can turn speech into words
+    val context = LocalContext.current
+    val canTalk =
+        voice &&
+            remember { Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).resolveActivity(context.packageManager) != null }
+    val talk =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let(onValue)
+        }
     var upper by remember { mutableStateOf(false) }
     var symbols by remember { mutableStateOf(false) }
     var qwerty by rememberSaveable { mutableStateOf(false) }
@@ -469,7 +496,19 @@ private fun SignInKeyboard(
         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
             Key(if (upper) "abc" else "Shift", key * 2 + gap, selected = upper) { upper = !upper }
             Key(if (symbols) "abc" else "#+=", key * 2 + gap, selected = symbols) { symbols = !symbols }
-            Key("Space", key * 4 + gap * 3) { onValue("$value ") }
+            if (canTalk) {
+                Key("Talk", key) {
+                    try {
+                        talk.launch(
+                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM),
+                        )
+                    } catch (e: ActivityNotFoundException) {
+                        Timber.w(e, "No speech app")
+                    }
+                }
+            }
+            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { onValue("$value ") }
             Key(if (qwerty) "A-Z" else "QWERTY", key * 2 + gap) { qwerty = !qwerty }
             Key("Done", key * 2 + gap, white = true) { onDone() }
         }

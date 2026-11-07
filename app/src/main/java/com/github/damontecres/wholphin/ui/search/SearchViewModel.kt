@@ -61,6 +61,7 @@ import org.jellyfin.sdk.api.client.extensions.personsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -84,6 +85,7 @@ class SearchViewModel
         private val keyValueService: KeyValueService,
         private val navDrawerService: NavDrawerService,
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
+        private val gameLibrary: com.github.damontecres.wholphin.services.GameLibraryClient,
     ) : ViewModel(),
         ContextMenuProvider {
         /** Benflix: recent searches are kept per account */
@@ -129,6 +131,25 @@ class SearchViewModel
                             (0 until maxOf(movies.size, shows.size))
                                 .flatMap { listOfNotNull(movies.getOrNull(it), shows.getOrNull(it)) }
                                 .take(POPULAR_COUNT)
+                        // Then what the household actually watched most this month, worked out on Tower
+                        // (needs the latest helper; until then the Top 10 picks above stay)
+                        val household =
+                            try {
+                                val answer = gameLibrary.getJson("/api/popular").optJSONArray("items")
+                                (0 until (answer?.length() ?: 0)).mapNotNull {
+                                    answer
+                                        ?.optJSONObject(it)
+                                        ?.optString("id")
+                                        ?.toUUIDOrNull()
+                                }
+                            } catch (ex: kotlinx.coroutines.CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.i("Household popular not available: %s", ex.message)
+                                emptyList()
+                            }
+                        val picks = doorData.byIds(userId, household).take(POPULAR_COUNT)
+                        if (picks.size >= POPULAR_MIN) _popular.value = picks
                     } catch (ex: kotlinx.coroutines.CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -728,3 +749,6 @@ private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseIte
 
 /** How many titles the Popular row shows before you type */
 private const val POPULAR_COUNT = 12
+
+/** Fewer than this many household picks and the Top 10 picks stay */
+private const val POPULAR_MIN = 4

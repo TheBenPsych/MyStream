@@ -4,17 +4,14 @@ import android.app.Application
 import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.test.core.app.ApplicationProvider
@@ -99,7 +96,8 @@ class BasicUiTests {
 
     lateinit var switchServerViewModel: SwitchServerViewModel
 
-    val discovery: DiscoveryService = mockk()
+    // Relaxed: looking for servers on the Wi-Fi finds none, so the first-run screen asks for the address
+    val discovery: DiscoveryService = mockk(relaxed = true)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
@@ -166,22 +164,15 @@ class BasicUiTests {
 
         TestModule.testDispatcher.scheduler.advanceUntilIdle()
 
-        composeTestRule.onNodeWithText("Add Server").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("add_server").performKeyInput {
-            pressKey(Key.DirectionDown) // TODO fix focus
+        // Benflix redesign: a new device looks on the Wi-Fi first, then asks for the address
+        composeTestRule.mainClock.advanceTimeBy(5_000)
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("What's your server address?").fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule
-            .onNodeWithTag("add_server")
-            .assertIsFocused()
-            .performClickEnter()
-
-        composeTestRule.onNodeWithText("Discovered Servers").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Enter server address").performClickEnter()
-        composeTestRule.onNodeWithText("Enter Server IP or URL").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("server_url_text").performTextInput("localhost")
         composeTestRule
-            .onNodeWithText("Submit")
+            .onNodeWithText("Next")
             .assertIsEnabled()
             .requestFocus()
             .performClickEnter()
@@ -235,22 +226,15 @@ class BasicUiTests {
 
         TestModule.testDispatcher.scheduler.advanceUntilIdle()
 
-        composeTestRule.onNodeWithText("Add Server").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("add_server").performKeyInput {
-            pressKey(Key.DirectionDown) // TODO fix focus
+        // Benflix redesign: a new device looks on the Wi-Fi first, then asks for the address
+        composeTestRule.mainClock.advanceTimeBy(5_000)
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("What's your server address?").fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule
-            .onNodeWithTag("add_server")
-            .assertIsFocused()
-            .performClickEnter()
-
-        composeTestRule.onNodeWithText("Discovered Servers").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Enter server address").performClickEnter()
-        composeTestRule.onNodeWithText("Enter Server IP or URL").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("server_url_text").performTextInput("localhost")
         composeTestRule
-            .onNodeWithText("Submit")
+            .onNodeWithText("Next")
             .assertIsEnabled()
             .requestFocus()
             .performClickEnter()
@@ -259,6 +243,6 @@ class BasicUiTests {
 
         Assert.assertTrue(switchServerViewModel.state.value.addServerState is LoadingState.Error)
 
-        composeTestRule.onNodeWithText("Server returned invalid response").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Couldn't reach that server. Check the address and try again.").assertIsDisplayed()
     }
 }

@@ -458,6 +458,72 @@ def save_info(user_id, game_id):
     return out
 
 
+_popular = {"at": 0.0, "items": None}
+_popular_lock = threading.Lock()
+POPULAR_DAYS = 30
+POPULAR_CACHE_S = 3600
+
+
+def _played_at(text):
+    """Jellyfin's "2026-11-07T14:00:00.0000000Z" as seconds, or 0"""
+    try:
+        return time.mktime(time.strptime(str(text)[:19], "%Y-%m-%dT%H:%M:%S")) - time.timezone
+    except (ValueError, TypeError):
+        return 0
+
+
+def household_popular():
+    """What the household watched most in the last 30 days: movies and shows, ranked by how many
+    people watched them (then by plays). Uses the admin's sign-in that Tower keeps for skip times,
+    and leaves out Kids accounts. Worked out at most once an hour."""
+    with _popular_lock:
+        if _popular["items"] is not None and time.time() - _popular["at"] < POPULAR_CACHE_S:
+            return _popular["items"]
+        token = (getattr(skips, "_admin", None) or {}).get("token") if skips is not None else None
+        if not token:
+            raise HelperError(503, "Ben needs to open Benflix once so Tower can see what everyone watched.")
+        status, data, _ = jellyfin_call("GET", "/Users", token=token)
+        if status != 200:
+            raise HelperError(503, "Tower couldn't read the people list. Ben needs to open Benflix again.")
+        cutoff = time.time() - POPULAR_DAYS * 86400
+        people, plays = {}, {}
+        for user in json.loads(data):
+            policy = user.get("Policy") or {}
+            if policy.get("IsDisabled") or policy.get("MaxParentalRating") is not None:
+                continue
+            uid = user.get("Id")
+            query = urllib.parse.urlencode(
+                {
+                    "Recursive": "true",
+                    "IsPlayed": "true",
+                    "IncludeItemTypes": "Movie,Episode",
+                    "Fields": "SeriesId",
+                    "SortBy": "DatePlayed",
+                    "SortOrder": "Descending",
+                    "Limit": "400",
+                    "EnableImages": "false",
+                }
+            )
+            st, body, _ = jellyfin_call("GET", f"/Users/{uid}/Items?{query}", token=token)
+            if st != 200:
+                continue
+            for item in json.loads(body).get("Items") or []:
+                if _played_at((item.get("UserData") or {}).get("LastPlayedDate")) < cutoff:
+                    break
+                if item.get("Type") == "Episode":
+                    key = ("Series", item.get("SeriesId"))
+                else:
+                    key = ("Movie", item.get("Id"))
+                if not key[1]:
+                    continue
+                people.setdefault(key, set()).add(uid)
+                plays[key] = plays.get(key, 0) + 1
+        ranked = sorted(people, key=lambda k: (len(people[k]), plays[k]), reverse=True)[:20]
+        items = [{"id": k[1], "type": k[0], "people": len(people[k])} for k in ranked]
+        _popular.update({"at": time.time(), "items": items})
+        return items
+
+
 def recent_saves(user_id):
     """This account's games with a "pick up where you left off" save, newest first"""
     base = os.path.join(SAVES, user_id)
@@ -715,6 +781,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, bios_list())
             if method == "GET" and path == "/api/bios/file":
                 return self.send_file(bios_file((query.get("path") or [""])[0]))
+            if method == "GET" and path == "/api/popular":
+                # Search's Popular row: what the household watches most (not for Kids)
+                if is_kids:
+                    return self.send(200, {"items": []})
+                return self.send(200, {"items": household_popular()})
             if method == "GET" and path == "/api/saves/recent":
                 return self.send(200, recent_saves(user_id))
             m = re.fullmatch(r"/api/save/(\d+)", path)

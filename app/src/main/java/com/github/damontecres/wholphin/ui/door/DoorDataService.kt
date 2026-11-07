@@ -445,6 +445,18 @@ class DoorDataService
                 }
             }
 
+        /** These titles, in this order (ones that aren't there any more are left out) */
+        suspend fun byIds(
+            userId: UUID,
+            ids: List<UUID>,
+        ): List<BaseItem> {
+            if (ids.isEmpty()) return emptyList()
+            val found =
+                items(GetItemsRequest(userId = userId, ids = ids, fields = SlimItemFields, enableUserData = true))
+                    .associateBy { it.id }
+            return ids.mapNotNull { found[it] }
+        }
+
         private suspend fun items(request: GetItemsRequest): List<BaseItem> =
             safe {
                 api.itemsApi
