@@ -98,6 +98,7 @@ fun SearchDoorResults(
     onClickItem: (BaseItem) -> Unit,
     onClickAsk: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    didYouMean: String? = null,
 ) {
     val isTv = rememberIsTv()
     val kids = KidsMode.isActive
@@ -159,6 +160,16 @@ fun SearchDoorResults(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 16.dp, end = 16.dp, bottom = 40.dp),
         ) {
+            // Approved: a typo still finds things, and says what it found
+            if (didYouMean != null) {
+                Text(
+                    text = "Did you mean $didYouMean?",
+                    color = BenflixColors.Soft,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
             FocusLine(focused = focused, isTv = isTv)
             val shownDoors = SearchDoor.entries.filter { it != SearchDoor.ASK || !kids }
             if (isTv) {
