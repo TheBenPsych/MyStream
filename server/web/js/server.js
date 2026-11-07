@@ -711,4 +711,3 @@ PAGES.chores = (el) => {
   };
   draw(); every(5000, draw);
 };
-
