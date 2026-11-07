@@ -11,8 +11,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.requestFocus
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.test.core.app.ApplicationProvider
 import com.github.damontecres.wholphin.services.ScreensaverService
@@ -174,7 +174,8 @@ class BasicUiTests {
         composeTestRule
             .onNodeWithText("Next")
             .assertIsEnabled()
-            .performClick()
+            .requestFocus()
+            .performClickEnter()
 
         TestModule.testDispatcher.scheduler.advanceUntilIdle()
 
@@ -235,7 +236,8 @@ class BasicUiTests {
         composeTestRule
             .onNodeWithText("Next")
             .assertIsEnabled()
-            .performClick()
+            .requestFocus()
+            .performClickEnter()
 
         TestModule.testDispatcher.scheduler.advanceUntilIdle()
 
