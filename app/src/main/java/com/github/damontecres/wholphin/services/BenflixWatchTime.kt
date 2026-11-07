@@ -12,7 +12,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,7 +24,11 @@ data class WatchTime(
     /** When Benflix first started counting for this profile (on any TV or phone), in ms, or null if never */
     val sinceMs: Long?,
     val secondsByMonth: Map<YearMonth, Long>,
+    /** Benflix redesign (My watching): seconds per week (the Monday it starts) per door ("movies", "shows", "livetv") */
+    val secondsByWeekDoor: Map<LocalDate, Map<String, Long>> = emptyMap(),
 ) {
+    fun week(start: LocalDate = weekStart()): Map<String, Long> = secondsByWeekDoor[start].orEmpty()
+
     fun seconds(month: YearMonth) = secondsByMonth[month] ?: 0L
 
     fun seconds(year: Int) = secondsByMonth.filterKeys { it.year == year }.values.sum()
@@ -61,6 +68,10 @@ class BenflixWatchTime
         fun add(
             userId: UUID?,
             ms: Long,
+            /** Which door it was ("movies", "shows", "livetv"), for this week's door bar on My watching */
+            door: String? = null,
+            /** false = only this week's door bar (Live TV isn't in the monthly and yearly numbers) */
+            monthly: Boolean = true,
         ) {
             if (userId == null || ms <= 0) return
             val send =
@@ -68,7 +79,14 @@ class BenflixWatchTime
                     val counts = counts(userId)
                     val now = System.currentTimeMillis()
                     if (counts.sinceMs == null) counts.sinceMs = now
-                    counts.ms[YearMonth.now().toString()] = (counts.ms[YearMonth.now().toString()] ?: 0L) + ms
+                    if (monthly) counts.ms[YearMonth.now().toString()] = (counts.ms[YearMonth.now().toString()] ?: 0L) + ms
+                    if (door != null) {
+                        val key = weekKey(weekStart(), door)
+                        counts.ms[key] = (counts.ms[key] ?: 0L) + ms
+                        // Only the last few weeks are kept, so the saved line stays small
+                        val oldest = weekStart().minusWeeks(WEEKS_KEPT)
+                        counts.ms.keys.removeAll { k -> parseWeekKey(k)?.first?.isBefore(oldest) == true }
+                    }
                     prefs.edit { putString(userId.toString(), counts.encode()) }
                     val last = lastSentMs[userId] ?: 0L
                     val tick = SystemClock.elapsedRealtime()
@@ -127,12 +145,19 @@ class BenflixWatchTime
                 } + mine
             val since = all.mapNotNull { it.sinceMs }.minOrNull()
             val byMonth = mutableMapOf<YearMonth, Long>()
+            val byWeek = mutableMapOf<LocalDate, MutableMap<String, Long>>()
             all.forEach { counts ->
-                counts.ms.forEach { (month, ms) ->
-                    runCatching { YearMonth.parse(month) }.getOrNull()?.let { byMonth[it] = (byMonth[it] ?: 0L) + ms / 1000L }
+                counts.ms.forEach { (key, ms) ->
+                    val week = parseWeekKey(key)
+                    if (week != null) {
+                        val doors = byWeek.getOrPut(week.first) { mutableMapOf() }
+                        doors[week.second] = (doors[week.second] ?: 0L) + ms / 1000L
+                    } else {
+                        runCatching { YearMonth.parse(key) }.getOrNull()?.let { byMonth[it] = (byMonth[it] ?: 0L) + ms / 1000L }
+                    }
                 }
             }
-            return WatchTime(since, byMonth)
+            return WatchTime(since, byMonth, byWeek)
         }
 
         private fun counts(userId: UUID): Counts =
@@ -184,3 +209,20 @@ class BenflixWatchTime
             private const val SEND_EVERY_MS = 5 * 60_000L
         }
     }
+
+/** The Monday this week started */
+fun weekStart(today: LocalDate = LocalDate.now()): LocalDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+/** "w2026-11-02.movies": one door's watching in the week starting that Monday */
+private fun weekKey(
+    start: LocalDate,
+    door: String,
+) = "w$start.$door"
+
+private fun parseWeekKey(key: String): Pair<LocalDate, String>? {
+    if (!key.startsWith("w")) return null
+    val date = runCatching { LocalDate.parse(key.substring(1).substringBefore('.')) }.getOrNull() ?: return null
+    return date to key.substringAfter('.', "")
+}
+
+private const val WEEKS_KEPT = 8L
