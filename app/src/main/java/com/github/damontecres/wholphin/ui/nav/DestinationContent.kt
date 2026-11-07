@@ -52,7 +52,6 @@ import com.github.damontecres.wholphin.ui.preferences.PreferencesPage
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleStylePage
 import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreferencesPage
 import com.github.damontecres.wholphin.ui.search.SearchPage
-import com.github.damontecres.wholphin.ui.setup.InstallUpdatePage
 import com.github.damontecres.wholphin.ui.slideshow.SlideshowPage
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClose
@@ -520,7 +519,8 @@ fun DestinationContent(
                     modifier = modifier,
                 )
             } else {
-                InstallUpdatePage(preferences, modifier)
+                com.github.damontecres.wholphin.ui.setup
+                    .HelpAndUpdatesPage(preferences, modifier)
             }
         }
 
