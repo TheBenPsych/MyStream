@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.ImageUrlService
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -1035,6 +1036,13 @@ class PlaybackViewModel
                                 player = player,
                                 getState = { playbackItemState },
                                 countWatchTime = playback.item.type == BaseItemKind.MOVIE || playback.item.type == BaseItemKind.EPISODE,
+                                watchDoor =
+                                    when (playback.item.type) {
+                                        BaseItemKind.MOVIE -> "movies"
+                                        BaseItemKind.EPISODE -> "shows"
+                                        BaseItemKind.TV_CHANNEL, BaseItemKind.PROGRAM, BaseItemKind.LIVE_TV_PROGRAM -> "livetv"
+                                        else -> null
+                                    },
                             )
                         player.addListener(activityListener)
                         this@PlaybackViewModel.activityListener = activityListener
@@ -1328,6 +1336,12 @@ class PlaybackViewModel
             mutableState.update { it.copy(movieNext = null) }
         }
 
+        /** The Up next card's countdown ran out: the next movie starts on its own (counted, see [BenflixAutoplayChain]) */
+        fun autoPlayMovieNext() {
+            BenflixAutoplayChain.count++
+            playMovieNext()
+        }
+
         fun playMovieNext() {
             val next = state.value.movieNext ?: return
             mutableState.update { it.copy(movieNext = null) }
@@ -1342,6 +1356,11 @@ class PlaybackViewModel
         @JvmField
         @Inject
         var fillerService: FillerService? = null
+
+        /** Benflix: the next movie in a collection, for the Up next card (null in tests) */
+        @JvmField
+        @Inject
+        var collectionLookup: com.github.damontecres.wholphin.services.CollectionLookup? = null
 
         /** Benflix: sends "Report a problem" reports, here used for damaged files (null in tests) */
         @JvmField
@@ -1821,6 +1840,7 @@ class PlaybackViewModel
         fun reportInteraction() {
 //            Timber.v("reportInteraction")
             lastInteractionDate = Date()
+            BenflixAutoplayChain.reset()
         }
 
         /**
@@ -1851,6 +1871,8 @@ class PlaybackViewModel
                 !BenflixBedtime.lockedNow() &&
                     !BenflixScreenTime.lockedNow() &&
                     it.autoPlayNext &&
+                    // Benflix redesign: Kids profiles stop after 3 episodes in a row with no button pressed
+                    (!KidsMode.isActive || BenflixAutoplayChain.allowed()) &&
                     if (it.passOutProtectionMs > 0 && !shuffleSession) {
                         (Date().time - lastInteractionDate.time) < it.passOutProtectionMs
                     } else {
@@ -2369,3 +2391,18 @@ private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatic
 private val damagedReported: MutableSet<UUID> =
     java.util.concurrent.ConcurrentHashMap
         .newKeySet()
+
+/**
+ * Benflix redesign: how many movies (or Kids episodes) started on their own in a row. Any button
+ * press sets it back to 0; after 3 in a row with nobody pressing anything, autoplay stops.
+ */
+internal object BenflixAutoplayChain {
+    @Volatile var count = 0
+
+    /** The first one plus two that started by themselves = 3 */
+    fun allowed(): Boolean = count < 2
+
+    fun reset() {
+        count = 0
+    }
+}

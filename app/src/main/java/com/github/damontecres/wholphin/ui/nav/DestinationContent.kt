@@ -40,9 +40,11 @@ import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
+import com.github.damontecres.wholphin.ui.door.DoorBrowsePage
+import com.github.damontecres.wholphin.ui.door.DoorPage
+import com.github.damontecres.wholphin.ui.door.DoorRowGridPage
 import com.github.damontecres.wholphin.ui.games.GamesPage
 import com.github.damontecres.wholphin.ui.games.PlayGamePage
-import com.github.damontecres.wholphin.ui.main.HomePage
 import com.github.damontecres.wholphin.ui.main.MoodPage
 import com.github.damontecres.wholphin.ui.playback.PlayExternalPage
 import com.github.damontecres.wholphin.ui.playback.PlaybackPage
@@ -50,8 +52,8 @@ import com.github.damontecres.wholphin.ui.preferences.PreferencesPage
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleStylePage
 import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreferencesPage
 import com.github.damontecres.wholphin.ui.search.SearchPage
-import com.github.damontecres.wholphin.ui.setup.InstallUpdatePage
 import com.github.damontecres.wholphin.ui.slideshow.SlideshowPage
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClose
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
@@ -72,10 +74,28 @@ fun DestinationContent(
     }
     when (destination) {
         is Destination.Home -> {
-            HomePage(
+            // Benflix redesign: Home is the four doors
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main.DoorsHomePage(
                 preferences = preferences,
                 modifier = modifier,
             )
+        }
+
+        Destination.MoviesDoor -> {
+            DoorPage(BenflixDoor.MOVIES, preferences, onClearBackdrop, modifier)
+        }
+
+        Destination.ShowsDoor -> {
+            DoorPage(BenflixDoor.SHOWS, preferences, onClearBackdrop, modifier)
+        }
+
+        is Destination.DoorBrowse -> {
+            DoorBrowsePage(destination, preferences, modifier)
+        }
+
+        is Destination.DoorRowGrid -> {
+            DoorRowGridPage(destination, modifier)
         }
 
         is Destination.Playback -> {
@@ -355,7 +375,7 @@ fun DestinationContent(
         Destination.Channels -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main
-                .ChannelsPage(modifier)
+                .ChannelsPage(modifier, easy = preferences.appPreferences.benflixPreferences.easyRead)
         }
 
         Destination.WatchOrder -> {
@@ -499,7 +519,8 @@ fun DestinationContent(
                     modifier = modifier,
                 )
             } else {
-                InstallUpdatePage(preferences, modifier)
+                com.github.damontecres.wholphin.ui.setup
+                    .HelpAndUpdatesPage(preferences, modifier)
             }
         }
 

@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Settings sections -->
-    <string name="benflix_settings_profile">Profile</string>
+    <string name="benflix_settings_profile">You</string>
     <string name="benflix_settings_watching">Watching</string>
     <string name="benflix_settings_look">Look</string>
-    <string name="benflix_settings_phone">Phone &amp; mobile data</string>
+    <string name="benflix_settings_phone">Phones and TVs</string>
+    <string name="benflix_settings_picture">Picture and sound</string>
+    <string name="benflix_settings_hint_picture">Subtitle look, audio and subtitle languages</string>
     <string name="benflix_settings_help">Help</string>
     <string name="benflix_settings_search">Search settings</string>
     <string name="benflix_settings_search_results">Matching settings</string>
@@ -106,14 +108,14 @@
     <string name="benflix_easy_read_off">Normal text size</string>
     <!-- New Settings page: one line under each section in the menu -->
     <string name="benflix_settings_hint_profile">PIN lock, your colour, birthday, language</string>
-    <string name="benflix_settings_hint_watching">Subtitles, next episode, skip buttons</string>
+    <string name="benflix_settings_hint_watching">Next episode, resume, skip buttons</string>
     <string name="benflix_settings_hint_look">Easy-read text, late-night look</string>
-    <string name="benflix_settings_hint_phone">Lower quality away from Wi-Fi</string>
+    <string name="benflix_settings_hint_phone">Mobile data, buzz on touch</string>
     <string name="benflix_settings_hint_help">How to use Benflix, version, updates</string>
     <string name="benflix_settings_hint_server">Who is watching, disk space, tools</string>
     <string name="benflix_settings_hint_advanced">Player, picture quality, requests</string>
-    <string name="benflix_settings_advanced">Advanced</string>
-    <string name="benflix_settings_parental">Parental controls</string>
+    <string name="benflix_settings_advanced">Behind the scenes</string>
+    <string name="benflix_settings_parental">Family</string>
     <string name="benflix_settings_hint_parental">Parent PIN, Kids bedtime, Big kids, Guest</string>
     <string name="benflix_parental_more">Big kids, Guest tile, what Kids watched</string>
     <string name="benflix_parental_more_summary">Asks for the parent PIN first if one is set</string>

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.TimeDisplay
@@ -90,6 +91,7 @@ fun PlaybackOverlay(
     trickplayInfo: TrickplayInfo? = null,
     trickplayUrlFor: (Int) -> String? = { null },
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     val seekBarFocused by seekBarInteractionSource.collectIsFocusedAsState()
     // Will be used for preview/trick play images
@@ -104,7 +106,12 @@ fun PlaybackOverlay(
         }
     val subtitleHeight =
         remember(item?.subtitleLong, density) {
-            if (item?.subtitleLong.isNotNullOrBlank()) with(density) { subtitleTextSize.toDp() } else 0.dp
+            // Episodes have one line of words (see PlaybackController), so no second line
+            if (item?.type != org.jellyfin.sdk.model.api.BaseItemKind.EPISODE && item?.subtitleLong.isNotNullOrBlank()) {
+                with(density) { subtitleTextSize.toDp() }
+            } else {
+                0.dp
+            }
         }
 
     // This will be calculated after composition
@@ -199,6 +206,7 @@ fun PlaybackOverlay(
                                     controllerHeight = with(density) { it.size.height.toDp() }
                                 },
                         seekBarInteractionSource = seekBarInteractionSource,
+                        chapters = chapters,
                     )
                 }
             }

@@ -34,10 +34,12 @@ class TrackActivityPlaybackListener(
     private val api: ApiClient,
     private val player: Player,
     /** Benflix: count real watch time for the monthly and yearly stats (movies and episodes only) */
-    countWatchTime: Boolean = false,
+    private val countWatchTime: Boolean = false,
+    /** Benflix: which door this is ("movies", "shows", "livetv") for this week's bar on My watching */
+    private val watchDoor: String? = null,
     private val getState: () -> PlaybackItemState?,
 ) : Player.Listener {
-    private val watchUser = if (countWatchTime) BenflixWatchTime.instance?.currentUserId() else null
+    private val watchUser = if (countWatchTime || watchDoor != null) BenflixWatchTime.instance?.currentUserId() else null
 
     /** When it last started playing (or was last counted), 0 while paused or stopped */
     private var playingSinceMs = 0L
@@ -48,7 +50,12 @@ class TrackActivityPlaybackListener(
         if (watchUser == null) return
         val now = SystemClock.elapsedRealtime()
         if (playingSinceMs > 0) {
-            BenflixWatchTime.instance?.add(watchUser, (now - playingSinceMs).coerceIn(0L, MAX_STEP_MS))
+            BenflixWatchTime.instance?.add(
+                userId = watchUser,
+                ms = (now - playingSinceMs).coerceIn(0L, MAX_STEP_MS),
+                door = watchDoor,
+                monthly = countWatchTime,
+            )
         }
         playingSinceMs = if (stillPlaying ?: (playingSinceMs > 0)) now else 0L
     }

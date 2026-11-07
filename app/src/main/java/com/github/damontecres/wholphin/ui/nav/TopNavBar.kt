@@ -49,7 +49,6 @@ import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,7 +62,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
-import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.ifElse
@@ -225,19 +223,6 @@ fun TopNavBar(
                     height = if (squeeze >= 2) 22.dp else 26.dp,
                     modifier = Modifier.padding(end = listOf(14.dp, 8.dp, 6.dp)[squeeze]),
                 )
-                if (kids) {
-                    Text(
-                        text = stringResource(R.string.kids_profile).uppercase(),
-                        color = Color.Black,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier =
-                            Modifier
-                                .padding(end = 8.dp)
-                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
-                }
                 tabs.forEachIndexed { index, tab ->
                     TopNavTabButton(
                         tab = tab,
@@ -483,17 +468,6 @@ private fun TopNavIconButton(
     }
 }
 
-/**
- * Builds the tab name for a nav drawer item, using "My List" for favorites
- */
-@Composable
-fun topNavTitle(item: NavDrawerItem): String =
-    if (item is NavDrawerItem.Favorites) {
-        stringResource(R.string.my_list)
-    } else {
-        item.name(LocalContext.current)
-    }
-
 /** The floating bar: Benflix graphite, see-through so the artwork shows a little */
 private val FLOATING_BAR = Color(0xE018181C)
 private const val BROWSE_KEY = 1000
@@ -505,12 +479,18 @@ private const val MAX_SQUEEZE = 2
 /** Height of the top line of the bar (logo and buttons) */
 val TopNavBarHeight = 44.dp
 
-/** The Benflix logo. On holidays and birthdays the whole word wears that day's look (see HolidayLogo.kt) */
+/** The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids get a small "kids" word after it. */
 @Composable
 fun BenflixLogo(
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 26.dp,
+    markModifier: Modifier = Modifier,
 ) {
-    val celebration by CelebrationNow.current.collectAsState()
-    HolidayAwareLogo(celebration = celebration, modifier = modifier, height = height)
+    val kids by KidsMode.active.collectAsState()
+    com.github.damontecres.wholphin.ui.components.BenflixWordLogo(
+        height = height,
+        extra = if (kids) "kids" else null,
+        markModifier = markModifier,
+        modifier = modifier,
+    )
 }

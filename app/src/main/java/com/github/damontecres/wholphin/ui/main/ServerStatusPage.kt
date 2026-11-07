@@ -34,15 +34,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -109,14 +105,10 @@ enum class ServerSection(
     val hint: String,
     val icon: ImageVector,
 ) {
-    OVERVIEW("Overview", "How the server is doing, and anything that needs you", Icons.Default.Home),
-    NOW("Right now", "Who's watching, and how hard the server works for it", Icons.Default.PlayArrow),
-    LIBRARY("Library", "Movie and show numbers, disk space and the library checkup", Icons.AutoMirrored.Filled.List),
-    REQUESTS("Requests", "Movies and shows people asked for, waiting for your yes or no", Icons.Default.Add),
-    DOWNLOADS("Downloads", "What's downloading, stuck downloads, and your apps on Tower", Icons.Default.KeyboardArrowDown),
-    PEOPLE("People", "Accounts for family and friends", Icons.Default.Person),
-    PROBLEMS("Problems", "Problems people reported and problems from the server", Icons.Default.Warning),
-    MESSAGES("Messages", "Notes on Home, the welcome note and pop-ups", Icons.Default.Edit),
+    OVERVIEW("Overview", "How the server is doing, requests and problems that need you", Icons.Default.Home),
+    NOW("Watching", "Who's watching, and how hard the server works for it", Icons.Default.PlayArrow),
+    LIBRARY("Library", "Movie and show numbers, disk space, the library checkup and downloads", Icons.AutoMirrored.Filled.List),
+    PEOPLE("People", "Accounts for family and friends, and messages to them", Icons.Default.Person),
     TOOLS("Tools", "Scan for new stuff, the server's chores, tidy track names, and restarting Jellyfin", Icons.Default.Build),
 }
 
@@ -322,9 +314,14 @@ fun ServerStatusPage(
     LaunchedEffect(section, isAdmin) {
         if (!isAdmin) return@LaunchedEffect
         when (section) {
+            ServerSection.OVERVIEW -> {
+                requestsViewModel.loadRequests(mineOnly = false)
+            }
+
             ServerSection.PEOPLE -> {
                 toolsViewModel.loadPeople()
                 data.loadHistory()
+                toolsViewModel.loadNotes()
             }
 
             ServerSection.NOW -> {
@@ -336,21 +333,9 @@ fun ServerStatusPage(
                 towerViewModel.loadTracks()
             }
 
-            ServerSection.DOWNLOADS -> {
+            ServerSection.LIBRARY -> {
                 data.refreshTower()
             }
-
-            ServerSection.REQUESTS -> {
-                requestsViewModel.loadRequests(mineOnly = false)
-            }
-
-            ServerSection.MESSAGES -> {
-                toolsViewModel.loadNotes()
-                // For "send to some people"
-                toolsViewModel.loadPeople()
-            }
-
-            else -> {}
         }
     }
 
@@ -390,6 +375,8 @@ fun ServerStatusPage(
                     when {
                         header == null -> Light.UNKNOWN
                         header?.online == false -> Light.BAD
+                        reports.orEmpty().isNotEmpty() -> Light.WARN
+                        problems.orEmpty().sumOf { it.count } >= MANY_PROBLEMS -> Light.WARN
                         else -> Light.GOOD
                     },
                 ServerSection.NOW to
@@ -400,22 +387,10 @@ fun ServerStatusPage(
                     },
                 ServerSection.LIBRARY to
                     when {
-                        disks == null -> Light.UNKNOWN
-                        disks.orEmpty().any { it.nearlyFull } -> Light.WARN
-                        else -> Light.GOOD
-                    },
-                ServerSection.DOWNLOADS to
-                    when {
-                        tower == null -> Light.UNKNOWN
+                        disks == null && tower == null -> Light.UNKNOWN
                         brokenApps(tower).isNotEmpty() -> Light.BAD
+                        disks.orEmpty().any { it.nearlyFull } -> Light.WARN
                         tower?.downloads.orEmpty().any { it.stuck } -> Light.WARN
-                        else -> Light.GOOD
-                    },
-                ServerSection.PROBLEMS to
-                    when {
-                        problems == null && reports == null -> Light.UNKNOWN
-                        reports.orEmpty().isNotEmpty() -> Light.WARN
-                        problems.orEmpty().sumOf { it.count } >= MANY_PROBLEMS -> Light.WARN
                         else -> Light.GOOD
                     },
             )
@@ -424,14 +399,14 @@ fun ServerStatusPage(
         remember(header, disks, problems, reports, waitingRequests, tower) {
             buildList {
                 brokenApps(tower).forEach {
-                    add(NeedsYou("${it.nice} isn't running properly on Tower", Light.BAD, ServerSection.DOWNLOADS))
+                    add(NeedsYou("${it.nice} isn't running properly on Tower", Light.BAD, ServerSection.LIBRARY))
                 }
                 tower?.downloads.orEmpty().count { it.stuck }.takeIf { it > 0 }?.let {
                     add(
                         NeedsYou(
                             if (it == 1) "1 download is stuck" else "$it downloads are stuck",
                             Light.WARN,
-                            ServerSection.DOWNLOADS,
+                            ServerSection.LIBRARY,
                         ),
                     )
                 }
@@ -440,7 +415,7 @@ fun ServerStatusPage(
                         NeedsYou(
                             if (waitingRequests == 1) "1 request is waiting for you" else "$waitingRequests requests are waiting for you",
                             Light.WARN,
-                            ServerSection.REQUESTS,
+                            ServerSection.OVERVIEW,
                         ),
                     )
                 }
@@ -455,12 +430,12 @@ fun ServerStatusPage(
                         NeedsYou(
                             if (it == 1) "1 problem reported by family" else "$it problems reported by family",
                             Light.WARN,
-                            ServerSection.PROBLEMS,
+                            ServerSection.OVERVIEW,
                         ),
                     )
                 }
                 problems.orEmpty().sumOf { it.count }.takeIf { it >= MANY_PROBLEMS }?.let {
-                    add(NeedsYou("$it problems on the server in the last day", Light.WARN, ServerSection.PROBLEMS))
+                    add(NeedsYou("$it problems on the server in the last day", Light.WARN, ServerSection.OVERVIEW))
                 }
             }
         }
@@ -487,9 +462,17 @@ fun ServerStatusPage(
                     items(needsYou) { need ->
                         ServerActionRow(
                             headline = need.text,
+                            // Requests and problems are further down this page, so those have no Go button
                             onClick = { section = need.section },
                             leading = { Dot(need.light) },
-                            actions = listOf("Go" to { section = need.section }),
+                            actions =
+                                if (need.section ==
+                                    ServerSection.OVERVIEW
+                                ) {
+                                    emptyList()
+                                } else {
+                                    listOf("Go" to { section = need.section })
+                                },
                         )
                     }
                 }
@@ -507,9 +490,23 @@ fun ServerStatusPage(
                         onClick = { section = ServerSection.NOW },
                     )
                 }
-                towerOverviewItems(tower, towerProblem) { section = ServerSection.DOWNLOADS }
-                libraryNumberItems(library)
-                diskItems(disks)
+                // Requests and problems live here now, under Needs you (Benflix redesign: 5 sections)
+                requestItems(
+                    connected = seerrActive,
+                    requests = requests,
+                    onAnswer = requestsViewModel::answer,
+                    onApproveAll = requestsViewModel::approveAll,
+                )
+                problemReportItems(
+                    reports = reports,
+                    viewModel = toolsViewModel,
+                    showDialog = { toolsDialog = it },
+                    sectionTitle = sectionTitle,
+                    onFileDetails = adminTitle::fileDetails,
+                    onFixMatch = adminTitle::openFixMatch,
+                )
+                serverProblemItems(problems)
+                towerOverviewItems(tower, towerProblem) { section = ServerSection.LIBRARY }
                 startupSpeedItem(sectionTitle)
             }
 
@@ -526,17 +523,24 @@ fun ServerStatusPage(
                 historyItems(history)
             }
 
-            ServerSection.REQUESTS -> {
-                requestItems(
-                    connected = seerrActive,
-                    requests = requests,
-                    onAnswer = requestsViewModel::answer,
-                    onApproveAll = requestsViewModel::approveAll,
-                )
+            ServerSection.LIBRARY -> {
+                libraryNumberItems(library)
+                diskItems(disks)
+                towerDownloadItems(tower, towerProblem, towerViewModel)
+                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
+                    when {
+                        tower == null -> emptyList()
+                        title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
+                        title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
+                        else -> emptyList()
+                    }
+                }
+                spaceItems(toolsState, toolsViewModel, sectionTitle)
             }
 
-            ServerSection.DOWNLOADS -> {
-                towerDownloadItems(tower, towerProblem, towerViewModel)
+            ServerSection.PEOPLE -> {
+                peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
+                messageItems(toolsState, { toolsDialog = it }, sectionTitle)
             }
 
             ServerSection.TOOLS -> {
@@ -551,40 +555,6 @@ fun ServerStatusPage(
                 )
                 speedCheckItems(speedState, speedCheck)
                 trackTidyItems(tracks, tracksProblem, towerViewModel)
-            }
-
-            ServerSection.LIBRARY -> {
-                libraryNumberItems(library)
-                diskItems(disks)
-                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
-                    when {
-                        tower == null -> emptyList()
-                        title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
-                        title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
-                        else -> emptyList()
-                    }
-                }
-                spaceItems(toolsState, toolsViewModel, sectionTitle)
-            }
-
-            ServerSection.PEOPLE -> {
-                peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
-            }
-
-            ServerSection.PROBLEMS -> {
-                problemReportItems(
-                    reports = reports,
-                    viewModel = toolsViewModel,
-                    showDialog = { toolsDialog = it },
-                    sectionTitle = sectionTitle,
-                    onFileDetails = adminTitle::fileDetails,
-                    onFixMatch = adminTitle::openFixMatch,
-                )
-                serverProblemItems(problems)
-            }
-
-            ServerSection.MESSAGES -> {
-                messageItems(toolsState, { toolsDialog = it }, sectionTitle)
             }
         }
     }
@@ -633,7 +603,7 @@ fun ServerStatusPage(
                         ListItem(
                             selected = s == section,
                             onClick = { section = s },
-                            // Benflix look A: flat rows; the section you're on is filled with the profile colour
+                            // Benflix redesign: flat grey rows; the section you're on is a lighter grey, focus = white outline
                             scale =
                                 androidx.tv.material3.ListItemDefaults
                                     .scale(focusedScale = 1f),
@@ -642,13 +612,20 @@ fun ServerStatusPage(
                                     .shape(RoundedCornerShape(10.dp)),
                             colors =
                                 androidx.tv.material3.ListItemDefaults.colors(
-                                    selectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                                    selectedContentColor = Color.White,
-                                    focusedSelectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                                    focusedSelectedContentColor = Color.White,
+                                    selectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
+                                    selectedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                    focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
+                                    focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                    focusedSelectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
+                                    focusedSelectedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
                                 ),
                             border =
                                 androidx.tv.material3.ListItemDefaults.border(
+                                    focusedBorder =
+                                        androidx.tv.material3.Border(
+                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                            shape = RoundedCornerShape(10.dp),
+                                        ),
                                     focusedSelectedBorder =
                                         androidx.tv.material3.Border(
                                             androidx.compose.foundation.BorderStroke(3.dp, Color.White),
@@ -944,9 +921,7 @@ private fun GlanceRow(
         listOf(
             ServerSection.OVERVIEW to "Server",
             ServerSection.NOW to (watchingCount?.let { "$it watching" } ?: "Watching"),
-            ServerSection.LIBRARY to "Disks",
-            ServerSection.DOWNLOADS to "Apps",
-            ServerSection.PROBLEMS to "Problems",
+            ServerSection.LIBRARY to "Library",
         )
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         items(labels) { (s, label) ->
@@ -955,6 +930,20 @@ private fun GlanceRow(
                 selected = false,
                 onClick = { onClick(s) },
                 headlineContent = { Text(label, fontSize = 15.sp, maxLines = 1) },
+                // Words as well as the colour: OK, Check or Problem
+                supportingContent = {
+                    Text(
+                        text =
+                            when (light) {
+                                Light.GOOD -> "OK"
+                                Light.WARN -> "Check"
+                                Light.BAD -> "Problem"
+                                Light.UNKNOWN -> "Checking…"
+                            },
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                    )
+                },
                 leadingContent = { Dot(light) },
                 modifier =
                     Modifier
@@ -1416,9 +1405,9 @@ internal fun LoadingBox(text: String) {
     }
 }
 
-private val GoodGreen = Color(0xFF46D37A)
-private val WarnGold = Color(0xFFF2B84B)
-private val BadRed = Color(0xFFE5484D)
+private val GoodGreen = Color(0xFF5BD18B)
+private val WarnGold = Color(0xFFE8D44D)
+private val BadRed = Color(0xFFFF7A7A)
 
 @Composable
 internal fun SectionTitle(text: String) {

@@ -14,10 +14,12 @@ import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.CollectionLookup
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.MediaManagementService
+import com.github.damontecres.wholphin.services.MovieCollection
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
 import com.github.damontecres.wholphin.services.PlaybackPrep
@@ -80,6 +82,7 @@ class MovieViewModel
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
         private val playbackPrep: PlaybackPrep,
+        private val collectionLookup: CollectionLookup,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -135,7 +138,8 @@ class MovieViewModel
                         chapters = chapters,
                     )
                 }
-                backdropService.submit(movie, strongGlow = true)
+                // Benflix redesign: the movie page draws its own full-screen picture (no glow)
+                backdropService.clearBackdrop()
                 // Benflix: get the movie ready to play while the page is open
                 playbackPrep.hold(movie.data)
                 viewModelScope.launchIO {
@@ -157,6 +161,12 @@ class MovieViewModel
                 }
                 // Benflix "More from this director"
                 viewModelScope.launchIO { loadDirector(movie) }
+                // Benflix redesign: "Part 1 of 3" and the "In this collection" row
+                viewModelScope.launchIO {
+                    val userId = serverRepository.currentUser?.id ?: return@launchIO
+                    val collection = collectionLookup.collectionFor(userId, movie.id)
+                    _state.update { it.copy(collection = collection) }
+                }
                 viewModelScope.launchIO {
                     val extras = extrasService.getExtras(itemId)
                     _state.update {
@@ -352,6 +362,8 @@ data class MovieState(
     /** Benflix "More from this director" */
     val directorName: String? = null,
     val fromDirector: List<BaseItem> = emptyList(),
+    /** Benflix redesign: the collection this movie is part of */
+    val collection: MovieCollection? = null,
 ) {
     val movie: BaseItem? = (loading as? DataLoadingState.Success<BaseItem>)?.data
 }

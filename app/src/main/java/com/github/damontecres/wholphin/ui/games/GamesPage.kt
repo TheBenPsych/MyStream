@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,6 +37,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +67,8 @@ import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * The Games tab: quick built-in games, plus your own game collection from RomM on the server
@@ -85,6 +89,8 @@ fun GamesPage(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier =
             modifier
+                // Opens on the first game tile (a group requester hands focus to its first child)
+                .focusRequester(focusRequester)
                 .verticalScroll(rememberScrollState())
                 .padding(
                     start = if (isTv) 48.dp else 0.dp,
@@ -93,20 +99,11 @@ fun GamesPage(
                     bottom = 24.dp,
                 ),
     ) {
-        Text(
-            text = "Benflix Games",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
         // One "works with" line for the whole page, instead of chips on every tile
         WorksWith(
             text = if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
             isTv = isTv,
         )
-        // Leaderboards first: your bests and everyone's top scores, each card can take focus so the remote reaches them
-        val board by viewModel.board.collectAsState()
-        LaunchedEffect(Unit) { viewModel.refreshBoard() }
-        Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = focusRequester)
         // Ember Road as a slim banner, then one row each for Movie puzzles, Party and Arcade.
         // Every tile opens the game's own page first (preview, how to play, scores).
         EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) })
@@ -129,7 +126,10 @@ fun GamesPage(
                 )
 
             @Composable
-            fun Card(ref: GameRef) {
+            fun Card(
+                ref: GameRef,
+                onClick: () -> Unit = { viewModel.choose(ref) },
+            ) {
                 val status =
                     when {
                         prep?.gameId == ref.id -> prep?.text
@@ -150,29 +150,8 @@ fun GamesPage(
                     token = viewModel.gamesToken,
                     status = status,
                     progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
-                    onClick = { viewModel.choose(ref) },
+                    onClick = onClick,
                     modifier = cardSize,
-                )
-            }
-            DeviceCard(power, isTv)
-            // Refreshes after a game is downloaded or removed, not only when the library reloads
-            val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
-            StorageCard(
-                games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
-                isTv = isTv,
-                // Kids can't delete games from the device
-                onRemove =
-                    if (KidsMode.isActive) {
-                        null
-                    } else {
-                        { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
-                    },
-            )
-            if (!isTv) {
-                ActionTile(
-                    title = "Use this phone as a controller",
-                    subtitle = "For a game playing on a TV in the house",
-                    onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
                 )
             }
             when (val state = library) {
@@ -250,6 +229,31 @@ fun GamesPage(
                         }
                     val favourites by viewModel.favourites.collectAsState()
                     val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
+                    if (recent.isNotEmpty()) {
+                        Text(
+                            text = "Continue playing",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                        ) {
+                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    // Continue playing starts the game straight away, where you left off
+                                    Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
+                                    Text(
+                                        text = "${ref.consoleName} · ${playedAgo(time)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        modifier = Modifier.width(if (isTv) 150.dp else 110.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (favRefs.isNotEmpty()) {
                         Text(
                             text = "Favourite games",
@@ -263,33 +267,20 @@ fun GamesPage(
                             items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
                         }
                     }
-                    if (recent.isNotEmpty()) {
-                        Text(
-                            text = "Continue playing",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                        ) {
-                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Card(ref)
-                                    Text(
-                                        text = "${ref.consoleName} · ${playedAgo(time)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        modifier = Modifier.width(if (isTv) 150.dp else 110.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
                     var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
                     val open = playable.firstOrNull { it.first.slug == openSlug }
                     BackHandler(enabled = open != null) { openSlug = null }
+                    // Opening or leaving a console removes the focused tile, so focus moves on by itself
+                    val consoleFocus = remember { FocusRequester() }
+                    var wasOpen by remember { mutableStateOf(false) }
+                    LaunchedEffect(open != null) {
+                        if (open != null) {
+                            consoleFocus.tryRequestFocus()
+                        } else if (wasOpen) {
+                            focusRequester.tryRequestFocus()
+                        }
+                        wasOpen = open != null
+                    }
                     if (open == null) {
                         // A grid of consoles: photo, name and how many games. Press one to see its games.
                         if (playable.isNotEmpty()) {
@@ -307,7 +298,7 @@ fun GamesPage(
                                 if (fit == DevicePower.Fit.MAY_BE_SLOW) "may be slow on this ${if (isTv) "TV" else "phone"}" else null,
                                 if (isTv && local.remoteFriendly) "works with the remote" else null,
                             )
-                        ActionTile(title = "← All consoles", subtitle = console.name, onClick = { openSlug = null })
+                        // Back returns to all consoles (no extra tile, as approved)
                         Text(
                             text =
                                 "${console.name} (${console.games.size})" +
@@ -315,20 +306,19 @@ fun GamesPage(
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
-                        var sort by rememberSaveable { mutableStateOf(GameSort.AZ) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            GameSort.entries.forEach { mode ->
+                        // Sort is remembered per console (A to Z to start)
+                        var sort by rememberSaveable(console.slug) { mutableStateOf(GameSort.AZ) }
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.focusRequester(consoleFocus)) {
+                            items(GameSort.entries.toList(), key = { "sort-${it.name}" }) { mode ->
                                 SortChip(mode.label, selected = mode == sort) { sort = mode }
                             }
                         }
                         val rows =
-                            remember(console, recent, favourites, sort) {
+                            remember(console, favourites) {
                                 consoleRows(
                                     console,
-                                    recent.map { it.first.id },
                                     viewModel.localGames.downloaded().map { it.ref.id },
                                     favourites,
-                                    sort,
                                 )
                             }
                         rows.forEach { (title, games) ->
@@ -344,11 +334,55 @@ fun GamesPage(
                                 items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
                             }
                         }
+                        // Play time per game is a small file each, so it's only read for Most played
+                        val playTimes by produceState(emptyMap<Int, Long>(), console, sort) {
+                            if (sort == GameSort.MOST) {
+                                value =
+                                    withContext(Dispatchers.IO) { console.games.associate { it.id to viewModel.playTime(it.id) } }
+                            }
+                        }
+                        val sections =
+                            remember(console, sort, recent, playTimes) {
+                                consoleGridSections(console.games, sort, recent.map { it.first.id }, playTimes)
+                            }
+                        val config = LocalConfiguration.current
+                        ConsoleGameGrid(
+                            sections = sections,
+                            cardWidth = if (isTv) 150.dp else 110.dp,
+                            height = (config.screenHeightDp * if (isTv) 0.8f else 0.75f).dp,
+                            showLetters = sort == GameSort.AZ,
+                            card = { game -> refs[game.id]?.let { Card(it) } },
+                        )
                     }
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                 }
             }
+            DeviceCard(power, isTv)
+            // Refreshes after a game is downloaded or removed, not only when the library reloads
+            val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
+            StorageCard(
+                games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
+                isTv = isTv,
+                // Kids can't delete games from the device
+                onRemove =
+                    if (KidsMode.isActive) {
+                        null
+                    } else {
+                        { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
+                    },
+            )
+            if (!isTv) {
+                ActionTile(
+                    title = "Use this phone as a controller",
+                    subtitle = "For a game playing on a TV in the house",
+                    onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
+                )
+            }
         }
+        // Leaderboards at the bottom: your bests and everyone's top scores (each card takes focus)
+        val board by viewModel.board.collectAsState()
+        LaunchedEffect(Unit) { viewModel.refreshBoard() }
+        Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = remember { FocusRequester() })
     }
 
     val choice by viewModel.choice.collectAsState()

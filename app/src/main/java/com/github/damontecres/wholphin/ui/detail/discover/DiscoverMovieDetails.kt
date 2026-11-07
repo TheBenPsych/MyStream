@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
@@ -24,23 +21,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.api.seerr.model.MovieDetails
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.DiscoverRating
-import com.github.damontecres.wholphin.data.model.LocalTrailer
-import com.github.damontecres.wholphin.data.model.RemoteTrailer
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.data.model.canRequestMovies
@@ -48,11 +38,9 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
-import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
-import com.github.damontecres.wholphin.ui.cards.SeasonCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
@@ -349,82 +337,6 @@ fun DiscoverMovieDetailsContent(
                                 .fillMaxWidth()
                                 .focusRequester(focusRequesters[RECOMMENDED_ROW]),
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TrailerRow(
-    trailers: List<Trailer>,
-    onClickTrailer: (Trailer) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val state = rememberLazyListState()
-    val firstFocus = remember { FocusRequester() }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        Text(
-            text = stringResource(R.string.trailers_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        LazyRow(
-            state = state,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRestorer(firstFocus),
-        ) {
-            itemsIndexed(trailers) { index, item ->
-                val cardModifier =
-                    if (index == 0) {
-                        Modifier.focusRequester(firstFocus)
-                    } else {
-                        Modifier
-                    }
-                when (item) {
-                    is LocalTrailer -> {
-                        SeasonCard(
-                            item = item.baseItem,
-                            onClick = { onClickTrailer.invoke(item) },
-                            onLongClick = {},
-                            imageHeight = Cards.height2x3,
-                            imageWidth = Dp.Unspecified,
-                            showImageOverlay = false,
-                            modifier = cardModifier,
-                        )
-                    }
-
-                    is RemoteTrailer -> {
-                        val subtitle =
-                            when (item.url.toUri().host) {
-                                "youtube.com", "www.youtube.com" -> "YouTube"
-                                else -> null
-                            }
-                        SeasonCard(
-                            title = item.name,
-                            subtitle = subtitle,
-                            name = item.name,
-                            imageUrl = null,
-                            isFavorite = false,
-                            isPlayed = false,
-                            unplayedItemCount = 0,
-                            playedPercentage = 0.0,
-                            numberOfVersions = -1,
-                            onClick = { onClickTrailer.invoke(item) },
-                            onLongClick = {},
-                            modifier = cardModifier,
-                            showImageOverlay = false,
-                            imageHeight = Cards.height2x3,
-                            imageWidth = Dp.Unspecified,
-                        )
-                    }
                 }
             }
         }

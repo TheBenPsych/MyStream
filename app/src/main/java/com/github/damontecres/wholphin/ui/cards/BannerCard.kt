@@ -165,8 +165,8 @@ fun BannerCard(
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
             ),
-        // Benflix: the tile you're on grows a little and gets a thin white outline
-        scale = CardDefaults.scale(focusedScale = 1.06f),
+        // Benflix redesign: the tile you're on only gets a white outline (no growing)
+        scale = CardDefaults.scale(focusedScale = 1f),
         shape = CardDefaults.shape(Cards.focusShape),
         border = Cards.focusBorder(),
     ) {

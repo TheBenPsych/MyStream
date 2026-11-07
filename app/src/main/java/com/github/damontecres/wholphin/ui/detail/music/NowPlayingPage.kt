@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.music
 
 import android.Manifest
-import android.view.Gravity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,8 +68,6 @@ import com.github.damontecres.wholphin.ui.findActivity
 import com.github.damontecres.wholphin.ui.nav.Backdrop
 import com.github.damontecres.wholphin.ui.playback.PlaybackKeyHandler
 import com.github.damontecres.wholphin.ui.playback.isUp
-import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialog
-import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialogItem
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
@@ -422,42 +419,6 @@ fun NowPlayingPage(
             },
         )
     }
-}
-
-@Composable
-fun NowPlayingBottomDialog(
-    showDebugInfo: Boolean,
-    lyricsActive: Boolean,
-    songHasLyrics: Boolean,
-    onDismissRequest: () -> Unit,
-    onClickShowDebug: () -> Unit,
-    onClickLyrics: () -> Unit,
-) {
-    val choices =
-        mapOf(
-            BottomDialogItem(
-                data = 0,
-                headline = stringResource(if (showDebugInfo) R.string.hide_debug_info else R.string.show_debug_info),
-                supporting = null,
-            ) to onClickShowDebug,
-            BottomDialogItem(
-                data = 0,
-                headline = stringResource(if (lyricsActive) R.string.hide_lyrics else R.string.show_lyrics),
-                supporting = if (songHasLyrics) stringResource(R.string.song_has_lyrics) else null,
-            ) to onClickLyrics,
-        )
-
-    BottomDialog(
-        choices = choices.keys.toList(),
-        onDismissRequest = {
-            onDismissRequest.invoke()
-        },
-        onSelectChoice = { _, choice ->
-            choices[choice]?.invoke()
-            onDismissRequest.invoke()
-        },
-        gravity = Gravity.START,
-    )
 }
 
 @Composable

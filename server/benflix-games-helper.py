@@ -8,9 +8,11 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
   (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
   Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
 - Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
-- The same tools in a PC browser: open http://<server>:8097 and sign in with a Jellyfin admin login.
-  The page is benflix-web.html next to this file. /api/web/login signs in through Jellyfin, and
-  /api/web/jf/... passes the browser's requests on to Jellyfin (so the browser only talks to this helper).
+- Benflix in a web browser: open http://<server>:8097 and anyone signs in with their Benflix name.
+  The app is in web/ next to this file (benflix_web.py serves it and keeps it up to date from GitHub).
+  /api/web/login signs in through Jellyfin, /api/web/jf/... passes the browser's requests on to
+  Jellyfin, and /api/web/stream/... streams video (so the browser only talks to this helper).
+  The old tools page (benflix-web.html) is only used if web/ is missing.
 
 Settings come from environment variables: ROMM_URL, ROMM_USER, ROMM_PASS, JELLYFIN_URL.
 Started by benflix-games-helper-setup.sh. Only uses the Python standard library.
@@ -36,6 +38,11 @@ try:  # Where the intro and credits really are, worked out on Tower (benflix_ski
     import benflix_skips as skips
 except ImportError:
     skips = None
+
+try:  # Benflix in a web browser (the files, Quick Connect, video), in benflix_web.py next to this file
+    import benflix_web as web
+except ImportError:
+    web = None
 
 try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next to this file
     import benflix_server_tools as tools
@@ -211,14 +218,18 @@ _kids_ids = set()  # games a kids account may download, filled by load_games()
 WEB_PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benflix-web.html")
 
 
-def jellyfin_call(method, path, token=None, body=None, device_id="benflix-web"):
-    """Sends one request to Jellyfin for the browser page. Returns (status, body bytes, content type)."""
-    auth = f'MediaBrowser Client="Benflix Web", Device="PC browser", DeviceId="{device_id}", Version="1.0"'
+def jellyfin_auth(token=None, device_id="benflix-web"):
+    auth = f'MediaBrowser Client="Benflix Web", Device="Web browser", DeviceId="{device_id}", Version="2.0"'
     if token:
         auth += f', Token="{token}"'
-    headers = {"Authorization": auth, "Accept": "application/json"}
+    return auth
+
+
+def jellyfin_call(method, path, token=None, body=None, device_id="benflix-web", content_type="application/json"):
+    """Sends one request to Jellyfin for the browser page. Returns (status, body bytes, content type)."""
+    headers = {"Authorization": jellyfin_auth(token, device_id), "Accept": "application/json"}
     if body is not None:
-        headers["Content-Type"] = "application/json"
+        headers["Content-Type"] = content_type or "application/json"
     req = urllib.request.Request(JELLYFIN_URL + path, data=body, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -240,13 +251,21 @@ def web_login(info):
         raise HelperError(401, "Jellyfin didn't accept that name and password.")
     if status != 200:
         raise HelperError(502, f"Jellyfin answered with an error ({status}). If you limit how many devices a person can use, sign out somewhere else first.")
-    auth = json.loads(data)
+    return web_session(json.loads(data))
+
+
+def web_session(auth):
+    """What the browser keeps after signing in: the Jellyfin sign-in and who the person is"""
     user = auth.get("User") or {}
-    is_admin = bool((user.get("Policy") or {}).get("IsAdministrator"))
-    if not is_admin:
-        jellyfin_call("POST", "/Sessions/Logout", token=auth.get("AccessToken"), device_id=device)
-        raise HelperError(403, "Only the server admin can use the Benflix tools page.")
-    return {"token": auth.get("AccessToken"), "name": user.get("Name"), "id": user.get("Id")}
+    policy = user.get("Policy") or {}
+    return {
+        "token": auth.get("AccessToken"),
+        "name": user.get("Name"),
+        "id": user.get("Id"),
+        "admin": bool(policy.get("IsAdministrator")),
+        "kids": policy.get("MaxParentalRating") is not None or str(user.get("Name", "")).lower() == "kids",
+        "image": user.get("PrimaryImageTag"),
+    }
 
 
 def load_games():
@@ -473,7 +492,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         if content_type.startswith("image/"):
             self.send_header("Cache-Control", "max-age=86400")
-        elif content_type.startswith("text/html"):
+        elif content_type.startswith("text/"):
             self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)
@@ -514,6 +533,27 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             raise HelperError(400, "That didn't make sense to the helper.")
 
+    def web_device(self):
+        """The browser's own device id (each profile signed in on a browser has its own)"""
+        d = re.sub(r"[^\w-]", "", self.headers.get("X-Benflix-Device", ""))[:60]
+        return "benflix-web-" + d if d else "benflix-web"
+
+    def quick_connect(self, method, path):
+        """Sign in with a code: the browser shows a code, the person types it on a TV or phone already signed in"""
+        device = self.web_device()
+        try:
+            if method == "POST" and path == "/api/web/qc/start":
+                return self.send(200, web.quick_connect_start(jellyfin_call, device))
+            body = self.read_json() if method == "POST" else {}
+            secret = str(body.get("secret") or "")
+            if method == "POST" and path == "/api/web/qc/check":
+                return self.send(200, web.quick_connect_check(jellyfin_call, device, secret))
+            if method == "POST" and path == "/api/web/qc/finish":
+                return self.send(200, web_session(web.quick_connect_finish(jellyfin_call, device, secret)))
+        except ValueError as e:
+            raise HelperError(400, str(e))
+        return self.send(404, {"error": "Not found"})
+
     def admin_route(self, method, path, query):
         """The Server page tools. Returns False when the path isn't one of them."""
         if tools is None:
@@ -550,7 +590,9 @@ class Handler(BaseHTTPRequestHandler):
             path = path[len(AWAY_PATH):] or "/"
             via_internet = True
         try:
-            if via_internet and (path.startswith("/api/admin/") or path.startswith("/api/web") or path in ("/", "/web", "/index.html")):
+            if via_internet and (
+                path.startswith("/api/admin/") or path.startswith("/api/web") or path.startswith("/web/") or path in ("/", "/web", "/index.html")
+            ):
                 # Tower's tools (restarting apps, fixing files) only work from home, never through the internet
                 raise HelperError(403, "Tower's tools only work at home.")
             if method == "GET" and path == "/health":
@@ -562,6 +604,7 @@ class Handler(BaseHTTPRequestHandler):
                         "server_tools": tools is not None,
                         "web": True,
                         "live_tv": livetv is not None,
+                        "web_app": web is not None,
                         "skips": skips is not None and skips.tools_ok(),
                     },
                 )
@@ -578,6 +621,15 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
                 with open(found[0], "rb") as f:
                     return self.send(200, f.read(), found[1])
+            if web is not None and method in ("GET", "HEAD") and (path in ("/", "/web", "/index.html") or path.startswith("/web/")):
+                # Benflix in a web browser (server/web in the repo)
+                rel = path[len("/web/"):] if path.startswith("/web/") else "index.html"
+                found = web.file_for(rel)
+                if found:
+                    with open(found[0], "rb") as f:
+                        return self.send(200, f.read(), found[1])
+                if path.startswith("/web/"):
+                    raise HelperError(404, "Not found")
             if method == "GET" and path in ("/", "/web", "/index.html"):
                 if not os.path.isfile(WEB_PAGE):
                     raise HelperError(404, "The tools page isn't on the server yet. Run the Benflix setup command again.")
@@ -585,9 +637,18 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, f.read(), "text/html; charset=utf-8")
             if method == "POST" and path == "/api/web/login":
                 return self.send(200, web_login(self.read_json()))
+            if web is not None and path.startswith("/api/web/qc/"):
+                return self.quick_connect(method, path)
+            if method == "GET" and path == "/api/web/version":
+                return self.send(200, web.status() if web is not None else {"ready": False})
             token = self.headers.get("X-Benflix-Token", "")
-            if not token and path.startswith("/api/web/jf/") and "/Images/" in path:
-                # Pictures on the browser page (an <img> can't send the header, so the sign-in rides along)
+            if not token and method in ("GET", "HEAD") and (
+                (path.startswith("/api/web/jf/") and "/Images/" in path)
+                or path.startswith("/api/web/stream/")
+                or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/file|bios/file)", path)
+            ):
+                # Pictures, video and game files in the browser (an <img>, <video> or emulator can't send the
+                # header, so the sign-in rides along in the address)
                 token = (query.get("api_key") or [""])[0]
             user_id, is_admin, is_kids = check_signed_in(token)
             if path.startswith("/api/skips/"):
@@ -602,10 +663,13 @@ class Handler(BaseHTTPRequestHandler):
                 if self.admin_route(method, path, query) is not False:
                     return
                 return self.send(404, {"error": "Not found"})
+            if web is not None and path.startswith("/api/web/stream/") and method in ("GET", "HEAD"):
+                # Video, sound and subtitles for the browser player, passed on from Jellyfin a piece at a time
+                jf_path = path[len("/api/web/stream"):] + (("?" + parsed.query) if parsed.query else "")
+                return web.stream(self, JELLYFIN_URL + jf_path, jellyfin_auth(token, self.web_device()))
             if path.startswith("/api/web/jf/"):
-                # The browser page's Jellyfin requests (admin only, like the Server page)
-                if not is_admin:
-                    raise HelperError(403, "Only the server admin can use the Benflix tools page.")
+                # The browser's Jellyfin requests. Everyone signed in can use them; Jellyfin itself checks
+                # what each person is allowed to see and change.
                 body = None
                 if method in ("POST", "PUT", "DELETE"):
                     length = int(self.headers.get("Content-Length") or 0)
@@ -613,7 +677,9 @@ class Handler(BaseHTTPRequestHandler):
                         raise HelperError(413, "That's too big.")
                     body = self.rfile.read(length) if length > 0 else b""
                 jf_path = path[len("/api/web/jf"):] + (("?" + parsed.query) if parsed.query else "")
-                status, data, ctype = jellyfin_call(method, jf_path, token=token, body=body)
+                status, data, ctype = jellyfin_call(
+                    method, jf_path, token=token, body=body, device_id=self.web_device(), content_type=self.headers.get("Content-Type")
+                )
                 return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
                 games = load_games()
@@ -692,11 +758,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self.route("DELETE")
 
+    def do_HEAD(self):
+        self.route("HEAD")
+
 
 if __name__ == "__main__":
     if livetv is not None:
         livetv.start()
     if skips is not None:
         skips.start(jellyfin_call)
+    if web is not None:
+        web.start()
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

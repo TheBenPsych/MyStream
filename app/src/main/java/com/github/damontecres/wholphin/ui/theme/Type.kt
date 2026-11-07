@@ -14,6 +14,7 @@ val BenflixFont =
         Font(R.font.outfit_medium, FontWeight.Medium),
         Font(R.font.outfit_semibold, FontWeight.SemiBold),
         Font(R.font.outfit_bold, FontWeight.Bold),
+        Font(R.font.outfit_extrabold, FontWeight.ExtraBold),
     )
 
 /** Tall movie-poster style letters (Bebas Neue) for big titles */

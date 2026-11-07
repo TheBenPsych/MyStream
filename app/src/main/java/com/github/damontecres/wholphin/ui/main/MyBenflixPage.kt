@@ -74,7 +74,7 @@ class MyBenflixViewModel
             private val lastRows = java.util.concurrent.ConcurrentHashMap<String, List<HubRow>>()
 
             // Continue watching lives on Home, so it isn't repeated here
-            private val ROW_TITLES = listOf("My List", REQUESTS_ROW, "Liked", "Watch history")
+            private val ROW_TITLES = listOf("My List", REQUESTS_ROW, "You liked", "Watched lately")
 
             /** Benflix: things you asked for in Requests that are now on Benflix, newest first */
             const val REQUESTS_ROW = "Your requests are here"
@@ -158,7 +158,7 @@ class MyBenflixViewModel
                         },
                         suspend {
                             HubRow(
-                                "Liked",
+                                "You liked",
                                 safe {
                                     api.itemsApi
                                         .getItems(request(filters = listOf(ItemFilter.LIKES), sortBy = ItemSortBy.DATE_PLAYED))
@@ -169,7 +169,7 @@ class MyBenflixViewModel
                         },
                         suspend {
                             HubRow(
-                                "Watch history",
+                                "Watched lately",
                                 safe {
                                     api.itemsApi
                                         .getItems(
@@ -259,7 +259,10 @@ fun MyBenflixPage(
                         guest = GuestMode.isActive,
                         onClickParents = { showParentPin = true },
                     )
-                    if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard()
+                    if (!GuestMode.isActive && !KidsMode.isActive) {
+                        WeekWatchingCard()
+                        MonthStatsCard()
+                    }
                     when {
                         rows == null -> {
                             LoadingPage(Modifier.fillMaxWidth().height(120.dp), focusEnabled = false)
@@ -348,7 +351,13 @@ fun MyBenflixPage(
             }
         }
         // Benflix: this month so far
-        if (!GuestMode.isActive && !KidsMode.isActive) MonthStatsCard(Modifier.padding(start = 8.dp))
+        if (!GuestMode.isActive && !KidsMode.isActive) {
+            // Benflix redesign (My watching): this week's big number and door bar, then this month
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(start = 8.dp)) {
+                WeekWatchingCard(Modifier.weight(1f, fill = false))
+                MonthStatsCard(Modifier.weight(1f, fill = false))
+            }
+        }
         if (showParentPin) {
             ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
         }

@@ -66,7 +66,6 @@ import kotlin.random.Random
 val EmberBg = Color(0xFF120D14)
 val EmberPanel = Color(0xFF231A26)
 val EmberGold = Color(0xFFFFC94D)
-val EmberEmber = Color(0xFFE0662A)
 val EmberText = Color(0xFFF3EAD8)
 val EmberDim = Color(0xFFB8A99A)
 val EmberGood = Color(0xFF7BD88F)

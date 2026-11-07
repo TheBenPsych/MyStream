@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.KeyEventType
@@ -157,6 +158,7 @@ fun IntervalSeekBarImpl(
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     enabled: Boolean = true,
+    chapterMarks: List<Float> = emptyList(),
 ) {
     val isFocused by interactionSource.collectIsFocusedAsState()
     var hasSeeked by remember { mutableStateOf(false) }
@@ -195,6 +197,7 @@ fun IntervalSeekBarImpl(
         },
         interactionSource = interactionSource,
         modifier = modifier,
+        chapterMarks = chapterMarks,
     )
 }
 
@@ -215,8 +218,9 @@ private fun SeekBarDisplay(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     onTouchSeek: ((Float) -> Unit)? = null,
+    chapterMarks: List<Float> = emptyList(),
 ) {
-    // Benflix red progress, like a streaming service
+    // Benflix redesign: a white progress line, cut into chapters when the file has them
     val color = BenflixRed
     val onSurface = MaterialTheme.colorScheme.onSurface
 
@@ -375,6 +379,16 @@ private fun SeekBarDisplay(
                     strokeWidth = size.height,
                     cap = StrokeCap.Round,
                 )
+                // Chapter cuts: small dark gaps across the line
+                val gap = 3.dp.toPx()
+                chapterMarks.forEach { mark ->
+                    val x = size.width * mark
+                    drawRect(
+                        color = Color.Black,
+                        topLeft = Offset(x - gap / 2, 0f),
+                        size = Size(gap, size.height),
+                    )
+                }
                 drawCircle(
                     color = color,
                     radius = size.height + 2,

@@ -31,11 +31,13 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSegmentDto
 import java.time.LocalTime
 import kotlin.time.Duration
@@ -62,14 +64,25 @@ fun PlaybackController(
     onChangeState: (OverlayViewState) -> Unit,
     modifier: Modifier = Modifier,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
         Controller(
-            title = item?.title,
-            subtitle = item?.subtitleLong,
+            // Benflix redesign: episodes read "Show · S2 E5 · Episode" on one line
+            title =
+                if (item?.type == BaseItemKind.EPISODE) {
+                    listOfNotNull(
+                        item.data.seriesName,
+                        item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
+                        item.data.name,
+                    ).joinToString(" · ")
+                } else {
+                    item?.title
+                },
+            subtitle = if (item?.type == BaseItemKind.EPISODE) null else item?.subtitleLong,
             player = player,
             controllerViewState = controllerViewState,
             showPlay = showPlay,
@@ -85,6 +98,7 @@ fun PlaybackController(
             onSeekProgress = onSeekBarChange,
             seekBarInteractionSource = seekBarInteractionSource,
             currentSegment = currentSegment,
+            chapters = chapters,
             modifier = Modifier,
         )
     }
@@ -118,6 +132,7 @@ fun Controller(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    chapters: List<Chapter> = emptyList(),
 ) {
     val seekBarFocused by seekBarInteractionSource.collectIsFocusedAsState()
     val verticalOffset by animateDpAsState(
@@ -213,6 +228,7 @@ fun Controller(
             skipBackOnResume = skipBackOnResume,
             currentSegment = currentSegment,
             onClickPlaybackDialogType = onClickPlaybackDialogType,
+            chapters = chapters,
         )
     }
 }

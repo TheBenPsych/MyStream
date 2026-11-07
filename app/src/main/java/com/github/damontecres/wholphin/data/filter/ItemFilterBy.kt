@@ -65,17 +65,6 @@ val DefaultForStudiosFilterOptions =
         DecadeFilter,
     )
 
-val DefaultPlaylistItemsOptions =
-    listOf(
-        PlayedFilter,
-        FavoriteFilter,
-        CommunityRatingFilter,
-        OfficialRatingFilter,
-        VideoTypeFilter,
-        YearFilter,
-        DecadeFilter,
-    )
-
 /**
  * Abstract way to filter data
  */

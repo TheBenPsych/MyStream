@@ -163,6 +163,29 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Benflix redesign: the Movies door (amber) */
+    @Serializable
+    data object MoviesDoor : Destination(false)
+
+    /** Benflix redesign: the Shows door (blue) */
+    @Serializable
+    data object ShowsDoor : Destination(false)
+
+    /** A "Browse by" tile inside a door: genres, collections, studios / networks, or everything */
+    @Serializable
+    data class DoorBrowse(
+        val door: String,
+        val what: String,
+    ) : Destination(false)
+
+    /** A door row's "See all": the whole list as a grid */
+    @Serializable
+    data class DoorRowGrid(
+        val door: String,
+        val key: String,
+        val title: String,
+    ) : Destination(false)
+
     /** A TV guide of Benflix channels made from your library */
     @Serializable
     data object Channels : Destination(false)

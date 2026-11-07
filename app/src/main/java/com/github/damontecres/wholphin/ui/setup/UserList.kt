@@ -1,12 +1,10 @@
 package com.github.damontecres.wholphin.ui.setup
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,13 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -55,7 +50,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -64,15 +58,11 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.Cards
-import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
-import com.github.damontecres.wholphin.ui.theme.BenflixRedBase
-import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
-import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.time.LocalDate
@@ -129,13 +119,15 @@ fun UserList(
                         .focusRestorer(firstFocusRequester)
                         .focusRequester(focusRequester),
             ) {
+                // Focus starts on whoever watched last
+                val startIndex = users.indexOfFirst { it.user.id == currentUser?.id }.coerceAtLeast(0)
                 itemsIndexed(users) { index, user ->
                     UserIconCard(
                         user = user,
                         isCurrentUser = user.user.id == currentUser?.id,
                         onClick = { onSwitchUser.invoke(user.user) },
                         onLongClick = { showDeleteDialog = user },
-                        modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
+                        modifier = if (index == startIndex) Modifier.focusRequester(firstFocusRequester) else Modifier,
                     )
                 }
                 kidsUser?.let { grownUp ->
@@ -153,43 +145,16 @@ fun UserList(
                         }
                     }
                 }
-                // Add User card - always rightmost
-                item {
-                    AddUserCard(
-                        onClick = { onAddUser.invoke() },
-                    )
-                }
             }
         }
 
-        // Switch servers button below user list - centered
+        // Small links under the row: add someone, or change server
         Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Button(
-                onClick = { onSwitchServer.invoke() },
-                modifier = Modifier.width(200.dp), // Fixed width for consistency
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.fa_arrow_left_arrow_right),
-                        fontFamily = FontAwesome,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.switch_servers),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
+            WhoLink(text = "Add someone", onClick = onAddUser)
+            WhoLink(text = "Change server", onClick = onSwitchServer)
         }
     }
     showDeleteDialog?.let { user ->
@@ -238,6 +203,33 @@ fun UserList(
             name = user.user.name,
             onPick = { index -> onPickPicture.invoke(user.user, index) },
             onDismissRequest = { pickPictureFor = null },
+        )
+    }
+}
+
+/** A quiet text link on Who's watching that lights up when focused */
+@Composable
+private fun WhoLink(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusRow,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
 }
@@ -375,11 +367,6 @@ private fun UserIconCard(
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val chosen = AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) }
-    // Look Book pick P4: the tile you're on glows in that person's own profile colour
-    ProfileColours.init(androidx.compose.ui.platform.LocalContext.current)
-    val glowColour = ProfileColours.get(user.user.id)?.toColor() ?: BenflixRedBase
-    val focused by interactionSource.collectIsFocusedAsState()
-    val glow by animateFloatAsState(if (focused) 1f else 0f, label = "profileGlow")
 
     Column(
         modifier = modifier,
@@ -393,21 +380,7 @@ private fun UserIconCard(
             interactionSource = interactionSource,
             modifier =
                 Modifier
-                    .size(cardSize)
-                    .drawBehind {
-                        if (glow > 0f) {
-                            // A soft halo made of a few see-through layers (no blur, so it stays fast on TVs)
-                            for (layer in 1..GLOW_LAYERS) {
-                                val grow = size.minDimension * (0.10f + 0.07f * layer)
-                                drawRoundRect(
-                                    color = glowColour.copy(alpha = glow * 0.22f / layer),
-                                    topLeft = Offset(-grow, -grow),
-                                    size = Size(size.width + grow * 2, size.height + grow * 2),
-                                    cornerRadius = CornerRadius(grow + size.minDimension * 0.12f),
-                                )
-                            }
-                        }
-                    },
+                    .size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -421,12 +394,12 @@ private fun UserIconCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = glowColour,
+                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
                                 ),
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -538,86 +511,8 @@ fun UserIconCardImagePreview() {
     }
 }
 
-/**
- * Add User card component - displays a + icon in a circle
- */
-@Composable
-private fun AddUserCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    // Use a neutral gray color for the add user card
-    val addUserColor = MaterialTheme.colorScheme.surfaceVariant
-
-    // Card dimensions - circular card (same as user cards)
-    val cardSize = LocalProfileTileSize.current
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
-    ) {
-        // Rounded square tile with colored background, like a streaming service profile
-        Surface(
-            onClick = onClick,
-            interactionSource = interactionSource,
-            modifier = Modifier.size(cardSize),
-            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
-            colors =
-                ClickableSurfaceDefaults.colors(
-                    containerColor = addUserColor.copy(alpha = 0.4f),
-                    focusedContainerColor = addUserColor.copy(alpha = 0.6f),
-                ),
-            border =
-                ClickableSurfaceDefaults.border(
-                    focusedBorder =
-                        Border(
-                            border =
-                                BorderStroke(
-                                    width = 3.dp,
-                                    color = profileBorderColor(),
-                                ),
-                            shape = ProfileTileShape,
-                        ),
-                ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_user),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(cardSize * 0.4f), // Size of the + icon
-                )
-            }
-        }
-
-        // "Add User" text below the card
-        Text(
-            text = stringResource(R.string.add_user),
-            style =
-                MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    shadow = ReadableTextShadow,
-                ),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .width(cardSize)
-                    .padding(horizontal = 4.dp),
-        )
-    }
-}
-
-private val ProfileTileShape = RoundedCornerShape(10.dp)
+/** Benflix redesign: round pictures (w-row) */
+private val ProfileTileShape = CircleShape
 
 /**
  * How big the Who's watching tiles are. The screen makes them smaller when space is short
@@ -682,7 +577,7 @@ private fun KidsProfileCard(
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Image(
                 painter = painterResource(R.drawable.benflix_avatar_kids),
@@ -744,7 +639,7 @@ private fun GuestProfileCard(
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Text(text = "?", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = Color.White)

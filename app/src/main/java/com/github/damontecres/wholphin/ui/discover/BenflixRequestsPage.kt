@@ -1393,8 +1393,12 @@ private fun FindShelf(
     // Coming back from a details page: pick up anything just asked for
     LifecycleResumeEffect(Unit) {
         viewModel.refreshRequested()
+        // Benflix redesign: "Waiting for you" and "Your requests" rows sit at the top of each tab
+        viewModel.loadRequests(mineOnly = !viewModel.isAdmin)
         onPauseOrDispose { }
     }
+    val requestEntries by viewModel.requests.collectAsState()
+    val mySeerrId by viewModel.mySeerrId.collectAsState(initial = null)
     val allRows by viewModel.rows.collectAsState()
     val failedRows by viewModel.failedRows.collectAsState()
     val special by viewModel.special.collectAsState()
@@ -1496,6 +1500,35 @@ private fun FindShelf(
                 onFocusItem = viewModel::loadScore,
             )
             return@LazyColumn
+        }
+        // Movies tab shows movie requests, Shows and Anime show show requests (anime movies sit with Movies)
+        val tabType = if (section == FindSection.MOVIES) SeerrItemType.MOVIE else SeerrItemType.TV
+        val tabRequests = requestEntries.orEmpty().filter { it.item?.type == tabType }
+        if (viewModel.isAdmin) {
+            val waitingForYou = tabRequests.filter { it.status == RequestStatus.PENDING && !it.available }
+            item(key = "rows-waiting") {
+                RequestCardRow(
+                    title = "Waiting for you",
+                    entries = waitingForYou,
+                    waiting = true,
+                    onOpen = { e -> e.item?.let { openItem(it) } },
+                    onAnswer = viewModel::answer,
+                )
+            }
+        }
+        val mine =
+            tabRequests.filter { e ->
+                (!viewModel.isAdmin || (mySeerrId != null && e.request.requestedBy?.id == mySeerrId)) &&
+                    !(e.available && BenflixCantFind.daysSince(e.request.updatedAt ?: e.request.createdAt)?.let { it > 7 } == true)
+            }
+        item(key = "rows-mine") {
+            RequestCardRow(
+                title = "Your requests",
+                entries = mine,
+                waiting = false,
+                onOpen = { e -> e.item?.let { openItem(it) } },
+                onAnswer = viewModel::answer,
+            )
         }
         item {
             LazyRow(

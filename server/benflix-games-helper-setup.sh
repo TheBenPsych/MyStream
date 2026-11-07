@@ -29,12 +29,26 @@ HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_skips.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_web.py benflix_skips.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
   fi
 done
+
+say "Downloading Benflix for web browsers"
+mkdir -p "$APP/web"
+if curl -fsSL "$RAW/web/files.txt" -o "$APP/web/files.txt"; then
+  bad=0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    mkdir -p "$APP/web/$(dirname "$f")"
+    curl -fsSL "$RAW/web/$f" -o "$APP/web/$f" || bad=1
+  done < "$APP/web/files.txt"
+  if [ "$bad" = 0 ]; then echo "  ok  $(grep -c . "$APP/web/files.txt") files"; else echo "  PROBLEM  Some web files didn't download. Run this command again."; fi
+else
+  echo "  PROBLEM  Couldn't download the web version. Check the server has internet."
+fi
 
 say "RomM login for the helper"
 ENV=$APP/helper.env
@@ -118,7 +132,9 @@ docker run -d --name benflix-games --restart unless-stopped --network host \
 # The first start also installs ffmpeg for the skip times, which can take a minute or two
 for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
-  echo "  ok  Benflix tools in a PC browser: open http://$HOST_IP:8097 and sign in with your Jellyfin admin login"
+  if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"web_app": true'; then
+    echo "  ok  Benflix in a web browser: open http://$HOST_IP:8097 on any computer at home. Everyone signs in with their own Benflix name."
+  else echo "  PROBLEM  The web version didn't load. Send this output to Claude."; fi
 elif curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play; then echo "  ok  http://$HOST_IP:8097 (games only: the Server page tools didn't load)"; else
   echo "  PROBLEM  The helper didn't start. Its log:"
   docker logs --tail 20 benflix-games 2>&1
@@ -155,3 +171,4 @@ fi
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."
 echo "The Server page (My Benflix > Server) now shows your apps, downloads and how busy Tower is."
+echo "Benflix in a web browser: http://$HOST_IP:8097 (it updates itself every hour)."

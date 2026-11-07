@@ -191,14 +191,6 @@ val MediaSourceInfo.embeddedSubtitleCount: Int
             ?.count { it.type == MediaStreamType.SUBTITLE && !it.isExternal } ?: 0
 
 /**
- * Returns the number of video streams there are
- */
-val MediaSourceInfo.videoStreamCount: Int
-    get() =
-        mediaStreams
-            ?.count { it.type == MediaStreamType.VIDEO } ?: 0
-
-/**
  * Returns the number of audio streams there are
  */
 val MediaSourceInfo.audioStreamCount: Int

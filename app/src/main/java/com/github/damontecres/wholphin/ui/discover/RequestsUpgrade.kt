@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -26,19 +25,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -61,7 +55,6 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.Year
 import java.time.format.DateTimeFormatter
@@ -356,120 +349,6 @@ fun RequestsSearchBox(
                     }
                 },
     )
-}
-
-/**
- * Big banner across the top of a Requests tab: the top trending titles that aren't on Benflix,
- * turning every 7 seconds like Home.
- */
-@Composable
-fun RequestsBanner(
-    items: List<DiscoverItem>,
-    onAsk: (DiscoverItem) -> Unit,
-    onInfo: (DiscoverItem) -> Unit,
-    modifier: Modifier = Modifier,
-    // Lands on the banner's first button, so the page can start there like Home does
-    focusRequester: FocusRequester? = null,
-) {
-    if (items.isEmpty()) return
-    var index by remember(items.size) { mutableIntStateOf(0) }
-    LaunchedEffect(index, items.size) {
-        if (items.size > 1) {
-            delay(BANNER_TURN_MS)
-            index = (index + 1) % items.size
-        }
-    }
-    val item = items[index.coerceIn(0, items.lastIndex)]
-    val asked = item.availability == SeerrAvailability.PENDING || item.availability == SeerrAvailability.PROCESSING
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                // At least this tall, and taller when the words need it (narrow phones), so the
-                // buttons are never cut off
-                .heightIn(min = 300.dp)
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(PANEL),
-    ) {
-        AsyncImage(
-            model = item.backDropUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize(),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to Color.Black.copy(alpha = .92f),
-                            .55f to Color.Black.copy(alpha = .45f),
-                            1f to Color.Transparent,
-                        ),
-                    ),
-        )
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier =
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .widthIn(max = 520.dp)
-                    .padding(24.dp),
-        ) {
-            Text(
-                text = "TRENDING, NOT ON BENFLIX",
-                fontSize = 12.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold,
-                color = RED,
-            )
-            Text(
-                text = item.title.orEmpty(),
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val facts =
-                listOfNotNull(
-                    item.releaseDate?.year?.toString(),
-                    if (item.type == SeerrItemType.TV) "Show" else "Movie",
-                    item.score?.let { "★ ${"%.1f".format(it)}" },
-                ).joinToString("  ·  ")
-            Text(text = facts, fontSize = 14.sp, color = MUTED)
-            Text(
-                text = item.overview.orEmpty(),
-                fontSize = 15.sp,
-                color = Color(0xFFDADADF),
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp)) {
-                val askModifier = if (!asked && focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
-                val infoModifier = if (asked && focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
-                Button(onClick = { if (!asked) onAsk(item) }, enabled = !asked, modifier = askModifier) {
-                    Text(if (asked) "Requested" else "Ask for it")
-                }
-                Button(onClick = { onInfo(item) }, modifier = infoModifier) { Text("More info") }
-            }
-            if (items.size > 1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    items.indices.forEach { i ->
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(width = if (i == index) 20.dp else 7.dp, height = 4.dp)
-                                    .clip(CircleShape)
-                                    .background(if (i == index) RED else Color.White.copy(alpha = .35f)),
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 private const val BANNER_TURN_MS = 7_000L

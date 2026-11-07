@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -112,7 +113,8 @@ fun SearchPage(
         viewModel.userPreferencesService.flow
             .collectAsState(userPreferences)
             .value.appPreferences.interfacePreferences.searchPreferences
-    val combinedMode = prefs.combinedSearchResults
+    // Benflix redesign: results are always the door columns (one combined search)
+    val combinedMode = true
     val voiceSearchButtonVisible = prefs.showVoiceSearchButton
 
 //    val query = rememberTextFieldState()
@@ -200,8 +202,8 @@ fun SearchPage(
     val positionCallback = { columns: Int, index: Int ->
         showHeader = index < columns
     }
-    val showTabs =
-        seerrActive && state.discoverEnabled && query.isNotBlank() && showHeader && combinedMode
+    // Benflix redesign: no Library / Discover tabs; Ask for it is one of the doors
+    val showTabs = false
     val isLibraryTab = selectedTab == 0
 
     LaunchedEffect(seerrActive, query) {
@@ -378,131 +380,158 @@ fun SearchPage(
                             },
                 )
             }
-            Box(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                if (query.isBlank()) {
-                    // Nothing typed yet: recent searches, moods and genres to browse
-                    SearchStart(
-                        navigationManager = viewModel.navigationManager,
-                        account = viewModel.recentAccount,
-                        onClickRecent = {
+            // Benflix redesign: on a TV the A to Z keyboard sits on the left, results on the right
+            val keyboardTv = rememberIsTv()
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (keyboardTv) {
+                    val suggestions =
+                        remember(state.combinedResults) {
+                            (state.combinedResults as? SearchResult.Success)
+                                ?.items
+                                ?.mapNotNull { it?.name }
+                                ?.distinct()
+                                ?.take(5)
+                                .orEmpty()
+                        }
+                    SearchKeyboard(
+                        query = query,
+                        onQueryChange = { query = it },
+                        suggestions = if (query.isBlank()) emptyList() else suggestions,
+                        onSuggestion = {
                             query = it
                             triggerImmediateSearch(it)
                         },
-                        modifier = Modifier.fillMaxSize(),
+                        big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
+                        modifier = Modifier.fillMaxHeight(),
                     )
-                    return@Box
                 }
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                ) {
+                    if (query.isBlank()) {
+                        // Nothing typed yet: recent searches, moods and genres to browse
+                        SearchStart(
+                            navigationManager = viewModel.navigationManager,
+                            account = viewModel.recentAccount,
+                            onClickRecent = {
+                                query = it
+                                triggerImmediateSearch(it)
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        return@Box
+                    }
 //            SideEffect {
 //                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
 //            }
-                when {
-                    isLibraryTab && combinedMode -> {
-                        SearchCombinedResults(
-                            result = state.combinedResults,
-                            focusRequester = focusRequesters[COMBINED_ROW],
-                            onClickItem = onClickItem,
-                            onLongClickItem = { index, item ->
-                                onLongClickItem(COMBINED_ROW, index, item)
-                            },
-                            onPlayItem = onPlayItem,
-                            onClickPosition = { setPosition(it) },
-                            onClickDiscover = onClickDiscover,
-                            positionCallback = positionCallback,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                    when {
+                        isLibraryTab && combinedMode -> {
+                            SearchCombinedResults(
+                                result = state.combinedResults,
+                                askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
+                                focusRequester = focusRequesters[COMBINED_ROW],
+                                onClickItem = onClickItem,
+                                onLongClickItem = { index, item ->
+                                    onLongClickItem(COMBINED_ROW, index, item)
+                                },
+                                onPlayItem = onPlayItem,
+                                onClickPosition = { setPosition(it) },
+                                onClickDiscover = onClickDiscover,
+                                positionCallback = positionCallback,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
 
-                    !isLibraryTab && combinedMode -> {
-                        SearchCombinedResults(
-                            result = state.seerrResults,
-                            focusRequester = focusRequesters[SEERR_ROW],
-                            onClickItem = onClickItem,
-                            onLongClickItem = { _, _ -> },
-                            onPlayItem = onPlayItem,
-                            onClickPosition = { setPosition(it) },
-                            onClickDiscover = onClickDiscover,
-                            positionCallback = positionCallback,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                        !isLibraryTab && combinedMode -> {
+                            SearchCombinedResults(
+                                result = state.seerrResults,
+                                focusRequester = focusRequesters[SEERR_ROW],
+                                onClickItem = onClickItem,
+                                onLongClickItem = { _, _ -> },
+                                onPlayItem = onPlayItem,
+                                onClickPosition = { setPosition(it) },
+                                onClickDiscover = onClickDiscover,
+                                positionCallback = positionCallback,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
 
-                    isLibraryTab -> {
-                        LazyColumn(
-                            contentPadding =
-                                PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 8.dp,
-                                    bottom = 44.dp,
-                                ),
-                            verticalArrangement = Arrangement.spacedBy(0.dp),
-                            modifier = Modifier.focusGroup(),
-                        ) {
-                            itemsIndexed(state.includedSearchableTypes) { index, type ->
-                                val rowIndex = RESULTS_START + index
-                                val result = state.results.getOrDefault(type, SearchResult.Searching)
-                                val focusRequester =
-                                    remember(state.includedSearchableTypes.size) {
-                                        focusRequesters.getOrNull(rowIndex) ?: FocusRequester()
-                                    }
-                                SearchRowResult(
-                                    title = type.titleStringRes,
-                                    result = result,
-                                    rowIndex = rowIndex,
-                                    position = position,
-                                    focusRequester = focusRequester,
-                                    onClickItem = onClickItem,
-                                    onLongClickItem = { index, item ->
-                                        onLongClickItem(rowIndex, index, item)
-                                    },
-                                    onClickPosition = { setPosition(it) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    cardContent = { index, item, mod, onClick, onLongClick ->
-                                        SearchPageCard(
-                                            item = item,
-                                            type = type,
-                                            onClick = {
-                                                setPosition(RowColumn(rowIndex, index))
-                                                onClick.invoke()
-                                            },
-                                            onLongClick = onLongClick,
-                                            modifier = mod,
-                                        )
-                                    },
-                                )
-                            }
-
-                            if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
-                                // Benflix "Ask for it": point people to switching on requests
-                                item {
-                                    ListItem(
-                                        selected = false,
-                                        onClick = {
-                                            viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
+                        isLibraryTab -> {
+                            LazyColumn(
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 8.dp,
+                                        bottom = 44.dp,
+                                    ),
+                                verticalArrangement = Arrangement.spacedBy(0.dp),
+                                modifier = Modifier.focusGroup(),
+                            ) {
+                                itemsIndexed(state.includedSearchableTypes) { index, type ->
+                                    val rowIndex = RESULTS_START + index
+                                    val result = state.results.getOrDefault(type, SearchResult.Searching)
+                                    val focusRequester =
+                                        remember(state.includedSearchableTypes.size) {
+                                            focusRequesters.getOrNull(rowIndex) ?: FocusRequester()
+                                        }
+                                    SearchRowResult(
+                                        title = type.titleStringRes,
+                                        result = result,
+                                        rowIndex = rowIndex,
+                                        position = position,
+                                        focusRequester = focusRequester,
+                                        onClickItem = onClickItem,
+                                        onLongClickItem = { index, item ->
+                                            onLongClickItem(rowIndex, index, item)
                                         },
-                                        headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
-                                        supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
-                                        modifier = Modifier.padding(top = 12.dp),
+                                        onClickPosition = { setPosition(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        cardContent = { index, item, mod, onClick, onLongClick ->
+                                            SearchPageCard(
+                                                item = item,
+                                                type = type,
+                                                onClick = {
+                                                    setPosition(RowColumn(rowIndex, index))
+                                                    onClick.invoke()
+                                                },
+                                                onLongClick = onLongClick,
+                                                modifier = mod,
+                                            )
+                                        },
                                     )
                                 }
-                            }
-                            if (seerrActive && state.discoverEnabled) {
-                                item {
-                                    SearchRowResult(
-                                        title = R.string.benflix_not_on_benflix,
-                                        result = state.seerrResults,
-                                        rowIndex = SEERR_ROW,
-                                        position = position,
-                                        focusRequester = focusRequesters[SEERR_ROW],
-                                        onClickItem = onClickItem,
-                                        onLongClickItem = { _, _ -> },
-                                        onClickDiscover = onClickDiscover,
-                                        onClickPosition = { setPosition(it) },
-                                        cardContent = { _, _, _, _, _ -> },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
+
+                                if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
+                                    // Benflix "Ask for it": point people to switching on requests
+                                    item {
+                                        ListItem(
+                                            selected = false,
+                                            onClick = {
+                                                viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
+                                            },
+                                            headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
+                                            supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
+                                            modifier = Modifier.padding(top = 12.dp),
+                                        )
+                                    }
+                                }
+                                if (seerrActive && state.discoverEnabled) {
+                                    item {
+                                        SearchRowResult(
+                                            title = R.string.benflix_not_on_benflix,
+                                            result = state.seerrResults,
+                                            rowIndex = SEERR_ROW,
+                                            position = position,
+                                            focusRequester = focusRequesters[SEERR_ROW],
+                                            onClickItem = onClickItem,
+                                            onLongClickItem = { _, _ -> },
+                                            onClickDiscover = onClickDiscover,
+                                            onClickPosition = { setPosition(it) },
+                                            cardContent = { _, _, _, _, _ -> },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -588,7 +617,21 @@ fun SearchCombinedResults(
     onClickDiscover: (Int, DiscoverItem) -> Unit,
     positionCallback: (columns: Int, position: Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Benflix redesign: the library results show as door columns, with these titles in Ask for it */
+    askFor: List<DiscoverItem>? = null,
 ) {
+    if (askFor != null && result is SearchResult.Success && (result.items.isNotEmpty() || askFor.isNotEmpty())) {
+        val items = remember(result) { result.items.filterNotNull() }
+        SearchDoorResults(
+            items = items,
+            askFor = askFor,
+            focusRequester = focusRequester,
+            onClickItem = { onClickItem(items.indexOf(it), it) },
+            onClickAsk = { onClickDiscover(0, it) },
+            modifier = modifier,
+        )
+        return
+    }
     when (result) {
         SearchResult.NoQuery -> {}
 
