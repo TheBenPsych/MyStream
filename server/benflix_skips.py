@@ -763,13 +763,8 @@ def _fix_segment(kind, fix, found, auto, length):
 
 def answer(item_id, token, user_id, is_admin):
     """Benflix asks this when an episode or movie starts playing"""
-    if is_admin and token and _admin.get("token") != token:
-        _admin.update({"token": token, "user": user_id})
-        _write("admin.json", dict(_admin))
-        try:
-            os.chmod(_path("admin.json"), 0o600)
-        except OSError:
-            pass
+    if is_admin:
+        remember_admin(token, user_id)
     item = _item(item_id, token, user_id)
     length = (item.get("RunTimeTicks") or 0) / TICKS
     eid = item.get("Id") or item_id
@@ -858,10 +853,57 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json):
     return 404, {"error": "Not found"}
 
 
-# ---------- Every night: get every season ready ----------
+# ---------- In the background: get every season ready ----------
+
+_last_sweep = {"at": 0.0}
+
+
+def remember_admin(token, user_id):
+    """The admin's sign-in, so Tower can read the whole library by itself (it's only kept on Tower).
+    The first time it's known, Tower starts checking every season straight away."""
+    if not _dir or not token:
+        return
+    with _lock:
+        if _admin.get("token") == token:
+            return
+        first = not _admin.get("token")
+        _admin.update({"token": token, "user": user_id})
+        _write("admin.json", dict(_admin))
+        try:
+            os.chmod(_path("admin.json"), 0o600)
+        except OSError:
+            pass
+    if first:
+        threading.Thread(target=sweep, args=("first sign-in",), daemon=True).start()
+
+
+def sweep(why):
+    """Queues every season that hasn't been checked yet. Shows someone plays always go first."""
+    token, user_id = _admin.get("token"), _admin.get("user")
+    if not token or not tools_ok():
+        return
+    with _lock:
+        if time.time() - _last_sweep["at"] < 3600:
+            return
+        _last_sweep["at"] = time.time()
+    try:
+        q = urllib.parse.urlencode({"IncludeItemTypes": "Season", "Recursive": "true", "userId": user_id or ""})
+        seasons = (_get(f"/Items?{q}", token) or {}).get("Items") or []
+        added = 0
+        for s in seasons:
+            if s.get("SeriesId") and not _season_fresh(s["Id"]):
+                _enqueue("season", f"season-{s['Id']}", {"series": s["SeriesId"], "season": s["Id"]}, 5)
+                added += 1
+        log(f"{why}: {added} seasons to check in the background")
+    except Exception as e:
+        _last_sweep["at"] = 0.0  # Try again next time
+        log(f"{why}: couldn't start checking the library: {e!r}")
 
 
 def _nightly():
+    """Right after the helper starts (when the admin's sign-in is known), then every night for new episodes"""
+    time.sleep(120)
+    sweep("start-up")
     done_day = None
     while True:
         time.sleep(600)
@@ -869,17 +911,4 @@ def _nightly():
         if not (3 <= now.tm_hour < 5) or done_day == now.tm_yday:
             continue
         done_day = now.tm_yday
-        token, user_id = _admin.get("token"), _admin.get("user")
-        if not token or not tools_ok():
-            continue
-        try:
-            q = urllib.parse.urlencode({"IncludeItemTypes": "Season", "Recursive": "true", "userId": user_id or ""})
-            seasons = (_get(f"/Items?{q}", token) or {}).get("Items") or []
-            added = 0
-            for s in seasons:
-                if s.get("SeriesId") and not _season_fresh(s["Id"]):
-                    _enqueue("season", f"season-{s['Id']}", {"series": s["SeriesId"], "season": s["Id"]}, 5)
-                    added += 1
-            log(f"night run: {added} seasons to check")
-        except Exception as e:
-            log(f"night run couldn't start: {e!r}")
+        sweep("night run")
