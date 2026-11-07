@@ -170,6 +170,20 @@ fun SwitchUserContent(
                         .background(BenflixColors.Tray)
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
+                // Ben: the logo sits top left, exactly where the top bar's logo is, so after you pick a
+                // profile the doors grow out of it in place. The intro's logo glides into this spot,
+                // so it stays hidden until it lands
+                BenflixWordLogo(
+                    height = if (isTvLayout) 26.dp else 22.dp,
+                    markModifier =
+                        Modifier.onGloballyPositioned { BenflixIntroState.whoMark = it.boundsInWindow() },
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = if (isTvLayout) 40.dp else 16.dp, top = if (isTvLayout) 27.dp else 17.dp)
+                            .onGloballyPositioned { BenflixIntroState.whoLogo = it.boundsInWindow() }
+                            .graphicsLayer { alpha = if (introRunning) 0f else 1f },
+                )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier =
@@ -177,16 +191,6 @@ fun SwitchUserContent(
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = if (isTvLayout) 40.dp else 32.dp),
                 ) {
-                    // The intro's logo glides into exactly this spot, so it stays hidden until it lands
-                    BenflixWordLogo(
-                        height = WHO_LOGO_HEIGHT.dp,
-                        markModifier =
-                            Modifier.onGloballyPositioned { BenflixIntroState.whoMark = it.boundsInWindow() },
-                        modifier =
-                            Modifier
-                                .onGloballyPositioned { BenflixIntroState.whoLogo = it.boundsInWindow() }
-                                .graphicsLayer { alpha = if (introRunning) 0f else 1f },
-                    )
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
@@ -528,7 +532,6 @@ private fun UserStateError(
 }
 
 /** The logo at the top of Who's watching (the intro's logo glides into it) */
-private const val WHO_LOGO_HEIGHT = 30
 
 /** Screens shorter than this (in dp) get the compact Who's watching layout */
 private const val SHORT_SCREEN_DP = 600
