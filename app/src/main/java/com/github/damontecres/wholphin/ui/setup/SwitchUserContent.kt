@@ -531,8 +531,6 @@ private fun UserStateError(
     }
 }
 
-/** The logo at the top of Who's watching (the intro's logo glides into it) */
-
 /** Screens shorter than this (in dp) get the compact Who's watching layout */
 private const val SHORT_SCREEN_DP = 600
 
