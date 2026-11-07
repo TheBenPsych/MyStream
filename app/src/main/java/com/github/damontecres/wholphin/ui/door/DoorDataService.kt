@@ -21,6 +21,7 @@ import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaType
@@ -354,6 +355,26 @@ class DoorDataService
             }.shuffledIf(sortBy == ItemSortBy.RANDOM)
                 .take(limit)
 
+        /** Every title in these libraries for the All movies / All shows grid (no stories, to stay light) */
+        suspend fun everything(
+            userId: UUID,
+            parentIds: List<UUID>,
+            type: BaseItemKind,
+        ): List<BaseItem> =
+            fromLibraries(parentIds) { parentId ->
+                GetItemsRequest(
+                    userId = userId,
+                    parentId = parentId,
+                    includeItemTypes = listOf(type),
+                    recursive = true,
+                    sortBy = listOf(ItemSortBy.DATE_CREATED),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = listOf(ItemFields.SORT_NAME, ItemFields.DATE_CREATED, ItemFields.DATE_LAST_MEDIA_ADDED),
+                    enableUserData = true,
+                    limit = EVERYTHING_LIMIT,
+                )
+            }
+
         /** Every id in these libraries (used to tell anime apart), remembered for an hour */
         suspend fun idsIn(
             userId: UUID,
@@ -426,6 +447,7 @@ class DoorDataService
         companion object {
             const val ROW = 20
             const val TOP = 10
+            private const val EVERYTHING_LIMIT = 5000
             private const val TOP_MIN = 5
             private const val BECAUSE_TRIES = 4
             private const val BECAUSE_MIN = 5

@@ -299,6 +299,28 @@ class DoorViewModel
                 }
         }
 
+        /** Where a grid's chips are remembered: per person, per door, per list */
+        fun gridKey(
+            door: BenflixDoor,
+            list: String,
+        ) = "${serverRepository.currentUser?.id}-${door.name}-$list"
+
+        /** Everything behind a door, for the All movies / All shows grid; the second value is the anime ids */
+        suspend fun everything(door: BenflixDoor): Pair<List<BaseItem>, Set<UUID>> {
+            val userId = serverRepository.currentUser?.id ?: return emptyList<BaseItem>() to emptySet()
+            val libs = libraries()
+            val movies = door == BenflixDoor.MOVIES
+            val type = if (movies) BaseItemKind.MOVIE else BaseItemKind.SERIES
+            val main = libs.ofKind(if (movies) LibraryKind.MOVIES else LibraryKind.SHOWS)
+            val anime = libs.ofKind(if (movies) LibraryKind.ANIME_MOVIES else LibraryKind.ANIME_SHOWS)
+            val standUp = if (movies) libs.ofKind(LibraryKind.STANDUP) else emptyList()
+            return coroutineScope {
+                val all = async { data.everything(userId, main + anime + standUp, type) }
+                val animeIds = async { data.idsIn(userId, anime, type) }
+                all.await() to animeIds.await()
+            }
+        }
+
         /** The whole list behind a row's "See all" tile */
         suspend fun fullRow(
             door: BenflixDoor,
