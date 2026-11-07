@@ -151,9 +151,9 @@ fun HiddenGenresPicker(
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = if (off) BenflixRed else Color(0xFF2A2A30),
-                        contentColor = Color.White,
+                        contentColor = if (off) com.github.damontecres.wholphin.ui.theme.OnBenflixRed else Color.White,
                         focusedContainerColor = if (off) BenflixRed else Color(0xFF45454F),
-                        focusedContentColor = Color.White,
+                        focusedContentColor = if (off) com.github.damontecres.wholphin.ui.theme.OnBenflixRed else Color.White,
                     ),
                 border =
                     ClickableSurfaceDefaults.border(

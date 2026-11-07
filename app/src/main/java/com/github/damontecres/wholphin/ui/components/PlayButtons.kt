@@ -128,9 +128,9 @@ fun ExpandablePlayButtons(
                     if (flat) {
                         androidx.tv.material3.ButtonDefaults.colors(
                             containerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                            contentColor = androidx.compose.ui.graphics.Color.White,
+                            contentColor = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                             focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                            focusedContentColor = androidx.compose.ui.graphics.Color.White,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                         )
                     } else {
                         androidx.tv.material3.ButtonDefaults.colors(
@@ -426,16 +426,19 @@ private fun flatShape() =
             .shape(shape = androidx.compose.foundation.shape.CircleShape)
     }
 
-/** Benflix look A: the main button (Play) is filled with the profile colour, with a white ring when focused */
+/**
+ * Benflix redesign: buttons are dark grey with white words, and the one you're on turns white with
+ * dark words (easy to spot from the sofa, and nothing moves)
+ */
 @Composable
 private fun primaryColors() =
     androidx.tv.material3.ClickableSurfaceDefaults.colors(
-        containerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-        contentColor = Color.White,
-        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-        focusedContentColor = Color.White,
-        pressedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-        pressedContentColor = Color.White,
+        containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusRow,
+        contentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+        pressedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+        pressedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
     )
 
 @Composable

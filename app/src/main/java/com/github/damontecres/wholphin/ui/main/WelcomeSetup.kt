@@ -621,7 +621,7 @@ fun WelcomePage(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color(0xFF0B0B0D)),
+                .background(Color(0xFF0B0C10)),
     ) {
         // The dimmed sliding poster wall from Who's watching (a plain dark background in Lite mode),
         // with a dark scrim on top so the text stays easy to read
@@ -1417,7 +1417,7 @@ private fun PosterTile(
                     "✓",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                     modifier =
                         Modifier
                             .align(Alignment.TopEnd)

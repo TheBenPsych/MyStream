@@ -82,7 +82,7 @@ fun GridCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
-            scale = CardDefaults.scale(focusedScale = 1.06f),
+            scale = CardDefaults.scale(focusedScale = 1f),
             shape = CardDefaults.shape(Cards.focusShape),
             border = Cards.focusBorder(),
         ) {

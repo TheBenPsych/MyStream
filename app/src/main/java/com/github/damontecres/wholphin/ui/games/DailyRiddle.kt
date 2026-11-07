@@ -484,7 +484,7 @@ fun DailyRiddlePage(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color(0xFF0B0B0D))
+                .background(Color(0xFF0B0C10))
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 24.dp else 12.dp),
     ) {
         FitScreen(isTv) { RiddleContent(state, isTv, viewModel) }

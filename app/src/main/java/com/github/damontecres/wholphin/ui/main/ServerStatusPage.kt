@@ -643,9 +643,9 @@ fun ServerStatusPage(
                             colors =
                                 androidx.tv.material3.ListItemDefaults.colors(
                                     selectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                                    selectedContentColor = Color.White,
+                                    selectedContentColor = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                                     focusedSelectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixRed,
-                                    focusedSelectedContentColor = Color.White,
+                                    focusedSelectedContentColor = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                                 ),
                             border =
                                 androidx.tv.material3.ListItemDefaults.border(
