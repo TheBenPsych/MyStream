@@ -255,56 +255,26 @@ enum class GameSort(
     val label: String,
 ) {
     AZ("A to Z"),
+    RECENT("Recently played"),
+    MOST("Most played"),
     GENRE("Genre"),
     YEAR("Year"),
 }
 
-/** Rows inside one console: played lately, on this device, favourites, then all games by letter, genre or year */
+/** Short rows above one console's grid: what's saved on this device, and your favourites */
 internal fun consoleRows(
     console: GameConsole,
-    recentIds: List<Int>,
     downloadedIds: List<Int>,
     favouriteIds: Set<Int>,
-    sort: GameSort,
 ): List<Pair<String, List<ServerGame>>> {
     val byId = console.games.associateBy { it.id }
     val rows = mutableListOf<Pair<String, List<ServerGame>>>()
-    recentIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "Played lately" to it }
     downloadedIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "On this device" to it }
     console.games
         .filter { it.id in favouriteIds }
         .sortedBy { it.name.lowercase() }
         .takeIf { it.isNotEmpty() }
         ?.let { rows += "Favourites" to it }
-    val sorted = console.games.sortedBy { it.name.lowercase() }
-    when (sort) {
-        GameSort.AZ -> {
-            if (sorted.size <= 24) {
-                rows += "All games" to sorted
-            } else {
-                sorted
-                    .groupBy {
-                        val c = it.name.firstOrNull()?.uppercaseChar() ?: '#'
-                        if (c in 'A'..'Z') c.toString() else "#"
-                    }.toSortedMap()
-                    .forEach { (letter, games) -> rows += letter to games }
-            }
-        }
-
-        GameSort.GENRE -> {
-            val groups = sorted.groupBy { it.genres.firstOrNull() ?: "Other" }
-            groups.keys
-                .sortedWith(compareBy({ it == "Other" }, { -(groups[it]?.size ?: 0) }))
-                .forEach { rows += it to groups.getValue(it) }
-        }
-
-        GameSort.YEAR -> {
-            sorted
-                .groupBy { if (it.year > 0) it.year.toString() else "Unknown year" }
-                .toSortedMap(compareBy<String> { it == "Unknown year" }.thenByDescending { it })
-                .forEach { (year, games) -> rows += year to games }
-        }
-    }
     return rows
 }
 
