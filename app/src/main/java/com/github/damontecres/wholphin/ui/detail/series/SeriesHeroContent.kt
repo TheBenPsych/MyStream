@@ -51,6 +51,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
+import com.github.damontecres.wholphin.services.ShowProgress
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.PersonRow
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
@@ -659,4 +660,18 @@ private fun showSideLines(series: BaseItem): List<Pair<String, String>> {
         starring.takeIf { it.isNotBlank() }?.let { "Starring" to it },
         network?.takeIf { it.isNotBlank() }?.let { "Network" to it },
     )
+}
+
+/** "12 episodes left · 8 h 20 m" under the buttons once you've started a show */
+private fun ShowProgress.words(): String? {
+    if (!started || episodesLeft <= 0) return null
+    val time =
+        when {
+            minutesLeft <= 0 -> null
+            minutesLeft < 60 -> "$minutesLeft m"
+            minutesLeft % 60 == 0L -> "${minutesLeft / 60} h"
+            else -> "${minutesLeft / 60} h ${minutesLeft % 60} m"
+        }
+    val count = if (episodesLeft == 1) "1 episode left" else "$episodesLeft episodes left"
+    return listOfNotNull(count, time).joinToString(" · ")
 }
