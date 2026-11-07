@@ -580,7 +580,8 @@ private fun GuideGrid(
     }
     if (showTypes) {
         val groups = remember(all) { all.map { it.group() }.distinct() }
-        HideTypesDialog(groups = groups, hidden = ChannelPrefs.hidden.value) { showTypes = false }
+        val hiddenNow by ChannelPrefs.hidden.collectAsState()
+        HideTypesDialog(groups = groups, hidden = hiddenNow) { showTypes = false }
     }
     if (addChannels) {
         AddChannelsDialog(list = all, favourites = favourites, onDismiss = { addChannels = false })
