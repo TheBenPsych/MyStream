@@ -8,22 +8,25 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ProvideTextStyle
 import androidx.tv.material3.contentColorFor
 import com.github.damontecres.wholphin.preferences.AppSliderPreference
-import com.github.damontecres.wholphin.ui.components.SliderBar
 
 @Composable
 fun SliderPreference(
@@ -68,23 +71,61 @@ fun SliderPreference(
                 Modifier
                     .fillMaxSize(),
         ) {
-            SliderBar(
-                value = value,
-                min = preference.min,
-                max = preference.max,
-                interval = preference.interval,
-                onChange = onChange,
-                enableWrapAround = false,
-                interactionSource = interactionSource,
-                modifier = Modifier.weight(1f),
-            )
-
-            if (!summaryBelow) {
-                PreferenceSummary(summary, color = contentColor)
+            // Benflix redesign: numbers are − value +, saved as soon as they change
+            val step = preference.interval.coerceAtLeast(1)
+            StepButton("−", enabled = value > preference.min, interactionSource = interactionSource) {
+                onChange((value - step).coerceAtLeast(preference.min))
             }
+            // The value sits between − and + (or the plain number when there's no summary)
+            if (!summaryBelow) {
+                PreferenceSummary(summary ?: value.toString(), color = contentColor)
+            }
+            StepButton("+", enabled = value < preference.max, interactionSource = interactionSource) {
+                onChange((value + step).coerceAtMost(preference.max))
+            }
+            Spacer(Modifier.weight(1f))
         }
         if (summaryBelow) {
             PreferenceSummary(summary, color = contentColor)
         }
+    }
+}
+
+@Composable
+private fun StepButton(
+    label: String,
+    enabled: Boolean,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(50)
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        enabled = enabled,
+        interactionSource = interactionSource,
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(shape),
+        colors =
+            androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
+                contentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+            ),
+        border =
+            com.github.damontecres.wholphin.ui.door
+                .doorFocusBorder(shape),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f),
+        modifier = Modifier.size(44.dp),
+    ) {
+        androidx.tv.material3.Text(
+            text = label,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.Center),
+        )
     }
 }
