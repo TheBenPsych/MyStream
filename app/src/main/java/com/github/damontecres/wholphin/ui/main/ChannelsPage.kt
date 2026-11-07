@@ -64,6 +64,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BENFLIX_GROUP
 import com.github.damontecres.wholphin.services.ChannelPrefs
+import com.github.damontecres.wholphin.services.ChannelTileOrder
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.ChannelSchedule
