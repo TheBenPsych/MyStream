@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
-import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.api.seerr.model.TvDetails
-import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.DiscoverRating
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -47,7 +43,6 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
-import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
@@ -536,55 +531,4 @@ fun DiscoverSeriesDetailsHeader(
             }
         }
     }
-}
-
-fun buildDialogForSeason(
-    resources: Resources,
-    s: BaseItem,
-    onClickItem: (BaseItem) -> Unit,
-    markPlayed: (Boolean) -> Unit,
-    onClickPlay: (Boolean) -> Unit,
-): DialogParams {
-    val items =
-        buildList {
-            add(
-                DialogItem(resources.getString(R.string.go_to), Icons.Default.PlayArrow) {
-                    onClickItem.invoke(s)
-                },
-            )
-            if (s.data.userData?.played == true) {
-                add(
-                    DialogItem(resources.getString(R.string.mark_unwatched), R.string.fa_eye) {
-                        markPlayed.invoke(false)
-                    },
-                )
-            } else {
-                add(
-                    DialogItem(resources.getString(R.string.mark_watched), R.string.fa_eye_slash) {
-                        markPlayed.invoke(true)
-                    },
-                )
-            }
-            add(
-                DialogItem(
-                    resources.getString(R.string.play),
-                    Icons.Default.PlayArrow,
-                ) {
-                    onClickPlay.invoke(false)
-                },
-            )
-            add(
-                DialogItem(
-                    resources.getString(R.string.shuffle),
-                    R.string.fa_shuffle,
-                ) {
-                    onClickPlay.invoke(true)
-                },
-            )
-        }
-    return DialogParams(
-        title = s.name ?: resources.getString(R.string.tv_season),
-        fromLongClick = true,
-        items = items,
-    )
 }

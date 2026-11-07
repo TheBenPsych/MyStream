@@ -116,11 +116,6 @@ fun CollectionFolderViewScope.CollectionFolderGrid(
     }
 }
 
-data class PositionItem(
-    val position: Int,
-    val item: BaseItem,
-)
-
 data class CollectionFolderGridParameters(
     val columns: Int = 6,
     val spacing: Dp = 16.dp,

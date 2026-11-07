@@ -49,7 +49,6 @@ import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -468,17 +467,6 @@ private fun TopNavIconButton(
         )
     }
 }
-
-/**
- * Builds the tab name for a nav drawer item, using "My List" for favorites
- */
-@Composable
-fun topNavTitle(item: NavDrawerItem): String =
-    if (item is NavDrawerItem.Favorites) {
-        stringResource(R.string.my_list)
-    } else {
-        item.name(LocalContext.current)
-    }
 
 /** The floating bar: Benflix graphite, see-through so the artwork shows a little */
 private val FLOATING_BAR = Color(0xE018181C)

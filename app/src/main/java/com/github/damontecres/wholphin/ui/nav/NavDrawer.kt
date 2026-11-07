@@ -652,7 +652,7 @@ fun NavDrawer(
 }
 
 /** "Report a problem" from the profile menu, about the app itself */
-private val APP_PROBLEMS =
+internal val APP_PROBLEMS =
     listOf(
         "Something won't play",
         "The app is slow",

@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,7 +21,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -38,29 +34,17 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.R
-import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.LogoEffect
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -171,124 +155,6 @@ fun PosterWall(
 private const val POSTER_WALL_MAX = 12
 
 // ---------------------------------------------------------------- holiday scenes
-
-/** The font for a holiday's greeting on the profile screen */
-fun holidayFont(effect: LogoEffect): FontFamily? =
-    when (effect) {
-        LogoEffect.GHOST_PEEK -> FontFamily(Font(R.font.holiday_creepster))
-        LogoEffect.TWINKLE_LIGHTS -> FontFamily(Font(R.font.holiday_mountains))
-        LogoEffect.FIREWORKS_GOLD -> FontFamily(Font(R.font.holiday_monoton))
-        LogoEffect.HEART_FLOAT -> FontFamily(Font(R.font.holiday_greatvibes))
-        LogoEffect.GREEN_SHIMMER -> FontFamily(Font(R.font.holiday_lobster))
-        LogoEffect.FIREWORKS_USA -> FontFamily(Font(R.font.holiday_bungee))
-        LogoEffect.FALLING_LEAVES -> FontFamily(Font(R.font.holiday_playfair_italic, style = FontStyle.Italic))
-        LogoEffect.CONFETTI -> FontFamily(Font(R.font.holiday_pacifico))
-        LogoEffect.MARIGOLDS -> FontFamily(Font(R.font.holiday_sancreek))
-        LogoEffect.LANTERNS -> FontFamily(Font(R.font.holiday_kaushan))
-        LogoEffect.EMBERS -> FontFamily(Font(R.font.holiday_rye))
-        LogoEffect.STAR_PAIR -> FontFamily(Font(R.font.holiday_caveatbrush))
-        LogoEffect.BLOSSOMS -> FontFamily(Font(R.font.holiday_sniglet))
-        LogoEffect.HYPERSPACE -> FontFamily(Font(R.font.holiday_orbitron))
-        LogoEffect.ZAPS -> FontFamily(Font(R.font.holiday_luckiestguy))
-        LogoEffect.COIN -> FontFamily(Font(R.font.holiday_pressstart))
-        LogoEffect.FIRE_TRAILS -> FontFamily(Font(R.font.holiday_righteous))
-        LogoEffect.FLOWER_BLOOM -> FontFamily(Font(R.font.holiday_satisfy))
-        LogoEffect.SUNSET -> FontFamily(Font(R.font.holiday_alfaslab))
-        LogoEffect.SPROUTS -> FontFamily(Font(R.font.holiday_amatic))
-        LogoEffect.SPOOKY_CAT -> FontFamily(Font(R.font.holiday_specialelite))
-        LogoEffect.GROUNDHOG -> FontFamily(Font(R.font.holiday_chewy))
-        LogoEffect.HARVEST_MOON -> FontFamily(Font(R.font.holiday_mashanzheng))
-        LogoEffect.POPCORN -> FontFamily(Font(R.font.holiday_shrikhand))
-        LogoEffect.GAME_BUTTONS -> FontFamily(Font(R.font.holiday_audiowide))
-        LogoEffect.CAT_TAIL -> FontFamily(Font(R.font.holiday_patrickhand))
-        LogoEffect.PAW_PRINTS -> FontFamily(Font(R.font.holiday_fredoka))
-        LogoEffect.PIRATE_FLAG -> FontFamily(Font(R.font.holiday_pirata))
-        LogoEffect.NONE -> null
-    }
-
-/**
- * A drawn, moving scene for the holiday: haunted house and bats, snowy cabin, fireworks over the city, and so on.
- *
- * The scene is painted on a background thread into a small picture about 25 times a second, and the
- * screen only shows the latest picture. So however busy a scene is, the part of the app that reacts to
- * the remote stays free, and picking a profile never lags.
- */
-@Composable
-fun HolidayScene(
-    effect: LogoEffect,
-    modifier: Modifier = Modifier,
-) {
-    val lite = LiteMode.isOn(LocalContext.current)
-    // Benflix: once this holiday's recorded video is on the device, play it instead of drawing live
-    val video = rememberSceneVideo(effect)
-    if (!lite && video != null) {
-        androidx.compose.foundation.layout.Box(modifier = modifier.clipToBounds()) {
-            SceneVideo(video, Modifier.matchParentSize())
-            Canvas(modifier = Modifier.matchParentSize()) { sceneVignette() }
-        }
-        return
-    }
-    // The newest finished picture, and a counter that changes with each new one so the screen redraws
-    val frame = remember { mutableStateOf<ImageBitmap?>(null) }
-    val frameNo = remember { mutableIntStateOf(0) }
-    LaunchedEffect(effect, lite) {
-        withContext(Dispatchers.Default) {
-            val painter = ScenePainter(effect)
-            // three pictures in turn, so the one on screen is never the one being painted
-            val pictures = List(3) { ImageBitmap(SCENE_W, SCENE_H) }
-            val start = System.nanoTime()
-            var n = 0
-            while (isActive) {
-                val began = System.nanoTime()
-                val t = STILL_SECONDS + if (lite) 0f else (began - start) / 1_000_000_000f
-                val picture = pictures[n % pictures.size]
-                painter.paint(picture, t)
-                frame.value = picture
-                frameNo.intValue = ++n
-                if (lite) break
-                val tookMs = (System.nanoTime() - began) / 1_000_000
-                delay((SCENE_FRAME_MS - tookMs).coerceAtLeast(MIN_REST_MS))
-            }
-        }
-    }
-    Canvas(modifier = modifier.clipToBounds()) {
-        if (frameNo.intValue < 0) return@Canvas // read the counter, so it redraws for every new picture
-        val picture = frame.value
-        if (picture != null) {
-            // Fill the screen, cropping the edges if its shape differs
-            val sc = max(size.width / SCENE_W, size.height / SCENE_H)
-            val w = (SCENE_W * sc).roundToInt()
-            val h = (SCENE_H * sc).roundToInt()
-            drawImage(
-                picture,
-                dstOffset = IntOffset(((size.width - w) / 2).roundToInt(), ((size.height - h) / 2).roundToInt()),
-                dstSize = IntSize(w, h),
-                filterQuality = FilterQuality.Low,
-            )
-        }
-        sceneVignette()
-    }
-}
-
-/** Soft vignette so the profiles and text stay easy to read */
-private fun DrawScope.sceneVignette() {
-    drawRect(
-        Brush.verticalGradient(
-            0f to Color.Black.copy(alpha = .35f),
-            .3f to Color.Transparent,
-            .6f to Color.Transparent,
-            1f to Color.Black.copy(alpha = .55f),
-        ),
-    )
-    drawRect(
-        Brush.radialGradient(
-            .35f to Color.Transparent,
-            1f to Color.Black.copy(alpha = .5f),
-            center = center,
-            radius = size.maxDimension * .7f,
-        ),
-    )
-}
 
 /** The size of the painted scene picture (a quarter of a 1080p screen; it is soft and dimmed anyway) */
 internal const val SCENE_W = 960

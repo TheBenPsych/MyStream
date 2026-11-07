@@ -362,8 +362,6 @@ data class BaseItem(
     }
 }
 
-val BaseItemDto.aspectRatioFloat: Float? get() = width?.let { w -> height?.let { h -> w.toFloat() / h.toFloat() } }
-
 /** The server strips leading articles (eg "The ") from [BaseItemDto.sortName]. */
 val BaseItemDto.alphabetSortName: String get() = sortName ?: name ?: ""
 

@@ -1,12 +1,10 @@
 package com.github.damontecres.wholphin.ui.setup
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,13 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -55,7 +50,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -64,15 +58,11 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.Cards
-import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
-import com.github.damontecres.wholphin.ui.theme.BenflixRedBase
-import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
-import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.time.LocalDate
@@ -517,85 +507,6 @@ fun UserIconCardImagePreview() {
             name = "A smith",
             imageUrl = null,
             modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-/**
- * Add User card component - displays a + icon in a circle
- */
-@Composable
-private fun AddUserCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    // Use a neutral gray color for the add user card
-    val addUserColor = MaterialTheme.colorScheme.surfaceVariant
-
-    // Card dimensions - circular card (same as user cards)
-    val cardSize = LocalProfileTileSize.current
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(cardSize * 0.1f + 10.dp),
-    ) {
-        // Rounded square tile with colored background, like a streaming service profile
-        Surface(
-            onClick = onClick,
-            interactionSource = interactionSource,
-            modifier = Modifier.size(cardSize),
-            shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
-            colors =
-                ClickableSurfaceDefaults.colors(
-                    containerColor = addUserColor.copy(alpha = 0.4f),
-                    focusedContainerColor = addUserColor.copy(alpha = 0.6f),
-                ),
-            border =
-                ClickableSurfaceDefaults.border(
-                    focusedBorder =
-                        Border(
-                            border =
-                                BorderStroke(
-                                    width = 3.dp,
-                                    color = profileBorderColor(),
-                                ),
-                            shape = ProfileTileShape,
-                        ),
-                ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_user),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(cardSize * 0.4f), // Size of the + icon
-                )
-            }
-        }
-
-        // "Add User" text below the card
-        Text(
-            text = stringResource(R.string.add_user),
-            style =
-                MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    shadow = ReadableTextShadow,
-                ),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .width(cardSize)
-                    .padding(horizontal = 4.dp),
         )
     }
 }

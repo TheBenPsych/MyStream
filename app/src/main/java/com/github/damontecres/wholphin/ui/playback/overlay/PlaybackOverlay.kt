@@ -106,7 +106,12 @@ fun PlaybackOverlay(
         }
     val subtitleHeight =
         remember(item?.subtitleLong, density) {
-            if (item?.subtitleLong.isNotNullOrBlank()) with(density) { subtitleTextSize.toDp() } else 0.dp
+            // Episodes have one line of words (see PlaybackController), so no second line
+            if (item?.type != org.jellyfin.sdk.model.api.BaseItemKind.EPISODE && item?.subtitleLong.isNotNullOrBlank()) {
+                with(density) { subtitleTextSize.toDp() }
+            } else {
+                0.dp
+            }
         }
 
     // This will be calculated after composition

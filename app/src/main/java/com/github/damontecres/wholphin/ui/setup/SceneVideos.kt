@@ -1,29 +1,8 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import android.content.Context
-import androidx.annotation.OptIn
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
-import androidx.media3.ui.compose.modifiers.resizeWithContentScale
-import androidx.media3.ui.compose.state.rememberPresentationState
 import com.github.damontecres.wholphin.services.LogoEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withLock
@@ -131,49 +110,4 @@ object SceneVideos {
     }
 
     private const val KEEP = 4
-}
-
-/** The scene's video, once it's on this device (downloads it the first time) */
-@Composable
-internal fun rememberSceneVideo(effect: LogoEffect): File? {
-    val context = LocalContext.current
-    var video by remember(effect) { mutableStateOf(SceneVideos.cached(context, effect)) }
-    LaunchedEffect(effect) {
-        // Downloaded now, shown from the next time Who's watching opens (no jump mid-scene)
-        if (video == null) SceneVideos.fetch(context, effect)
-    }
-    return video
-}
-
-/** Plays the scene's video on a loop, silently, filling the screen */
-@OptIn(UnstableApi::class)
-@Composable
-internal fun SceneVideo(
-    video: File,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val player =
-        remember(video) {
-            ExoPlayer
-                .Builder(context)
-                .build()
-                .apply {
-                    setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(video)))
-                    repeatMode = Player.REPEAT_MODE_ONE
-                    volume = 0f
-                    videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
-                    playWhenReady = true
-                    prepare()
-                }
-        }
-    DisposableEffect(player) { onDispose { player.release() } }
-    val presentation = rememberPresentationState(player)
-    Box(modifier = modifier.clipToBounds()) {
-        PlayerSurface(
-            player = player,
-            surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-            modifier = Modifier.fillMaxSize().resizeWithContentScale(ContentScale.Crop, presentation.videoSizeDp),
-        )
-    }
 }
