@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.github.damontecres.wholphin.ui.touch.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -62,6 +61,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.PreviewPlayers
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import timber.log.Timber
