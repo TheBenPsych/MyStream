@@ -496,11 +496,13 @@ val TopNavBarHeight = 44.dp
 fun BenflixLogo(
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 26.dp,
+    markModifier: Modifier = Modifier,
 ) {
     val kids by KidsMode.active.collectAsState()
     com.github.damontecres.wholphin.ui.components.BenflixWordLogo(
         height = height,
         extra = if (kids) "kids" else null,
+        markModifier = markModifier,
         modifier = modifier,
     )
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -368,7 +369,11 @@ private const val CHANNELS_INDEX = -6
 private const val REQUESTS_INDEX = -7
 
 /**
- * Display the top navigation bar with [DestinationContent] below it
+ * Display the top bar with [DestinationContent] below it.
+ *
+ * Benflix redesign: there are no tabs any more. Home has four doors (Movies, Shows, Live TV, Games),
+ * and the bar only has the logo (plus the door's name inside a door), a big clock, search and your
+ * picture, which opens the profile menu. Phones get the same header and no bottom menu.
  */
 @Composable
 fun NavDrawer(
@@ -386,9 +391,8 @@ fun NavDrawer(
             // Keyed to the server, user & Kids level to ensure its reset when switching any of them
             key = "${server.id}_${user.id}_${KidsMode.level}",
         ),
+    menuViewModel: ProfileMenuViewModel = hiltViewModel(),
 ) {
-    // Keep the highlighted tab right after Back, too
-    LaunchedEffect(destination) { viewModel.updateSelectedIndex() }
     val focusRequester = remember { FocusRequester() }
 
     // If the user presses back while on the home page, move to the top bar, another back press will quit the app
@@ -398,189 +402,178 @@ fun NavDrawer(
     BackHandler(enabled = (isTv && !topBarFocused && destination is Destination.Home)) {
         focusRequester.tryRequestFocus()
     }
-    val serviceState by viewModel.serviceState.collectAsState()
-    val state by viewModel.state.collectAsState()
-    // A negative index is a built-in page, >=0 is a library
-    val selectedIndex = state.selectedIndex
-
     val userImageUrl = remember(user) { viewModel.getUserImage(user) }
-    // Benflix: a red number on Requests when family requests are waiting (admins only)
+    // Benflix: requests waiting for the main profile to say yes or no
     hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
     val requestsWaiting by RequestsWaiting.count.collectAsState()
-    val tabs =
+    val kids by KidsMode.active.collectAsState()
+    val guest by com.github.damontecres.wholphin.services.GuestMode.active
+        .collectAsState()
+    val easy = kids || guest || preferences.appPreferences.benflixPreferences.easyRead
+    val updateAlert =
+        com.github.damontecres.wholphin.ui.components
+            .rememberUpdateAlert()
+    val serverAlert =
+        com.github.damontecres.wholphin.ui.components
+            .rememberServerAlert()
+    val readyCount =
+        com.github.damontecres.wholphin.ui.components
+            .rememberRequestReadyCount()
+    // A bigger white dot on your picture when something needs you
+    val badge = !kids && !guest && (updateAlert || serverAlert || readyCount > 0 || requestsWaiting > 0)
+
+    var showMenu by remember { mutableStateOf(false) }
+    var confirmSignOut by remember { mutableStateOf(false) }
+    var showReport by remember { mutableStateOf(false) }
+    val reportViewModel: com.github.damontecres.wholphin.services.ReportProblemViewModel = hiltViewModel()
+    // Phones: Downloads (saved on this phone) covers the page until closed
+    var downloadsOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(destination) { downloadsOpen = false }
+
+    val onClickSearch = {
+        viewModel.navigationManager.navigateTo(Destination.Search())
+    }
+    val onClickProfile = {
+        if (easy) {
+            // Kids, Guest and Easy mode: the picture goes straight to Who's watching
+            viewModel.navigateToSetup(SetupDestination.UserList(server))
+        } else {
+            menuViewModel.load()
+            showMenu = true
+        }
+    }
+    val menuItems =
         buildList {
+            fun go(d: Destination) {
+                showMenu = false
+                viewModel.navigationManager.navigateTo(d)
+            }
             add(
-                TopNavTab(
-                    title = stringResource(R.string.home),
-                    selected = selectedIndex == HOME_INDEX,
-                    onClick = {
-                        viewModel.setIndex(HOME_INDEX)
-                        // Benflix: Home always starts on the banner
-                        com.github.damontecres.wholphin.ui.main.HomeJump
-                            .request()
-                        if (destination is Destination.Home) {
-                            viewModel.navigationManager.reloadHome()
-                            onClearBackdrop.invoke()
-                        } else {
-                            viewModel.navigationManager.goToHome()
-                        }
-                    },
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.REQUESTS,
+                    title = stringResource(R.string.benflix_requests),
+                    onClick = { go(Destination.Requests) },
+                    note =
+                        when {
+                            requestsWaiting > 0 -> "$requestsWaiting waiting"
+                            readyCount > 0 -> "$readyCount ready"
+                            else -> null
+                        },
                 ),
             )
-            if (serviceState.nowPlayingEnabled) {
+            add(
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.STATS,
+                    title = "My watching",
+                    onClick = { go(Destination.MyBenflix) },
+                ),
+            )
+            if (!isTv) {
                 add(
-                    TopNavTab(
-                        title = stringResource(R.string.now_playing),
-                        selected = selectedIndex == NOW_PLAYING_INDEX,
+                    ProfileMenuItem(
+                        icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.DOWNLOAD,
+                        title = "Downloads",
                         onClick = {
-                            viewModel.setIndex(NOW_PLAYING_INDEX)
-                            viewModel.navigationManager.navigateTo(Destination.NowPlaying)
+                            showMenu = false
+                            downloadsOpen = true
                         },
                     ),
                 )
             }
-            val allItems = serviceState.items + serviceState.moreItems
-            allItems.forEachIndexed { index, item ->
+            add(
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.GEAR,
+                    title = stringResource(R.string.settings),
+                    onClick = { go(Destination.Settings(PreferenceScreenOption.BASIC)) },
+                ),
+            )
+            if (menuViewModel.isAdmin) {
                 add(
-                    TopNavTab(
-                        title = topNavTitle(item),
-                        selected = selectedIndex == index,
-                        onClick = { viewModel.onClickDrawerItem(index, item) },
-                        libraryId = (item as? ServerNavDrawerItem)?.itemId,
+                    ProfileMenuItem(
+                        icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.SERVER,
+                        title = "Server",
+                        onClick = { go(Destination.ServerStatus) },
+                        note = if (serverAlert) "Check" else null,
                     ),
                 )
             }
             add(
-                TopNavTab(
-                    title = stringResource(R.string.games),
-                    selected = selectedIndex == GAMES_INDEX,
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.HELP,
+                    title = "Help and updates",
+                    onClick = { go(Destination.UpdateApp) },
+                    note = if (updateAlert) "Update ready" else null,
+                ),
+            )
+            add(
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.FLAG,
+                    title = "Report a problem",
                     onClick = {
-                        viewModel.setIndex(GAMES_INDEX)
-                        viewModel.navigationManager.navigateToFromDrawer(Destination.Games)
+                        showMenu = false
+                        showReport = true
                     },
                 ),
             )
-        }
-
-    val onClickChannels = {
-        viewModel.setIndex(CHANNELS_INDEX)
-        viewModel.navigationManager.navigateToFromDrawer(Destination.Channels)
-    }
-    val onClickSearch = {
-        viewModel.setIndex(SEARCH_INDEX)
-        viewModel.navigationManager.navigateToFromDrawer(Destination.Search())
-    }
-    val onClickSettings = {
-        viewModel.navigationManager.navigateTo(
-            Destination.Settings(
-                PreferenceScreenOption.BASIC,
-            ),
-        )
-    }
-    val onClickProfile = {
-        viewModel.navigateToSetup(
-            SetupDestination.UserList(server),
-        )
-    }
-    if (!isTv) {
-        // Phones: logo on top, menu along the bottom.
-        // The logo bar slides away while you scroll down and comes back as soon as you scroll up.
-        var headerVisible by remember { mutableStateOf(true) }
-        // Clips (the trailer feed) covers the page above the bottom menu until you leave it
-        var clipsOpen by remember { mutableStateOf(false) }
-        // Downloads (saved on this phone) also covers the page in the same way
-        var downloadsOpen by remember { mutableStateOf(false) }
-        LaunchedEffect(destination) {
-            headerVisible = true
-            clipsOpen = false
-            downloadsOpen = false
-        }
-        // The same extras the TV has under My Benflix and More
-        val phoneExtras =
-            listOfNotNull(
-                TopNavTab(
-                    title = stringResource(R.string.phone_my_page),
-                    selected = selectedIndex == MY_BENFLIX_INDEX && !clipsOpen && !downloadsOpen,
+            add(
+                ProfileMenuItem(
+                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.SIGN_OUT,
+                    title = "Sign out",
                     onClick = {
-                        clipsOpen = false
-                        downloadsOpen = false
-                        viewModel.setIndex(MY_BENFLIX_INDEX)
-                        viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+                        showMenu = false
+                        confirmSignOut = true
                     },
+                    apart = true,
                 ),
-                if (KidsMode.isActive) {
-                    null
-                } else {
-                    TopNavTab(
-                        title =
-                            stringResource(R.string.benflix_requests) +
-                                if (requestsWaiting > 0) " ($requestsWaiting)" else "",
-                        selected = selectedIndex == REQUESTS_INDEX && !clipsOpen && !downloadsOpen,
+            )
+        }
+    if (showMenu) {
+        val minutes by menuViewModel.minutes.collectAsState()
+        ProfileMenu(
+            user = user,
+            userImageUrl = userImageUrl,
+            minutesWatched = minutes,
+            items = menuItems,
+            onSwitchProfile = {
+                showMenu = false
+                viewModel.navigateToSetup(SetupDestination.UserList(server))
+            },
+            onDismissRequest = { showMenu = false },
+        )
+    }
+    if (showReport) {
+        com.github.damontecres.wholphin.ui.components.DialogPopup(
+            showDialog = true,
+            title = "Report a problem",
+            dialogItems =
+                APP_PROBLEMS.map { problem ->
+                    com.github.damontecres.wholphin.ui.components.DialogItem(
+                        headlineContent = { androidx.tv.material3.Text(problem) },
                         onClick = {
-                            clipsOpen = false
-                            downloadsOpen = false
-                            viewModel.setIndex(REQUESTS_INDEX)
-                            viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
+                            showReport = false
+                            reportViewModel.report(null, "Benflix app", problem)
                         },
                     )
                 },
-                TopNavTab(
-                    title = stringResource(R.string.mood_quiz),
-                    selected = false,
-                    onClick = {
-                        clipsOpen = false
-                        downloadsOpen = false
-                        viewModel.navigationManager.navigateTo(Destination.MoodQuiz)
-                    },
-                ),
-                TopNavTab(
-                    title = "This or that",
-                    selected = false,
-                    onClick = {
-                        clipsOpen = false
-                        downloadsOpen = false
-                        viewModel.navigationManager.navigateTo(Destination.ThisOrThat)
-                    },
-                ),
-                TopNavTab(
-                    title = stringResource(R.string.watch_in_order),
-                    selected = false,
-                    onClick = {
-                        clipsOpen = false
-                        downloadsOpen = false
-                        viewModel.navigationManager.navigateTo(Destination.WatchOrder)
-                    },
-                ),
-            )
-        val phoneTabs =
-            tabs.map { tab ->
-                tab.copy(
-                    selected = tab.selected && !clipsOpen && !downloadsOpen,
-                    onClick = {
-                        clipsOpen = false
-                        downloadsOpen = false
-                        tab.onClick()
-                    },
-                )
-            }
-        val headerScroll =
-            remember {
-                object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-                    override fun onPreScroll(
-                        available: androidx.compose.ui.geometry.Offset,
-                        source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
-                    ): androidx.compose.ui.geometry.Offset {
-                        if (available.y < -6f) {
-                            headerVisible = false
-                        } else if (available.y > 6f) {
-                            headerVisible = true
-                        }
-                        return androidx.compose.ui.geometry.Offset.Zero
-                    }
-                }
-            }
+            onDismissRequest = { showReport = false },
+            waitToLoad = false,
+        )
+    }
+    if (confirmSignOut) {
+        com.github.damontecres.wholphin.ui.components.ConfirmDialog(
+            title = "Sign out of Benflix?",
+            body = "You'll need your password to sign in again on this ${if (isTv) "TV" else "phone"}.",
+            onCancel = { confirmSignOut = false },
+            onConfirm = {
+                confirmSignOut = false
+                menuViewModel.signOut()
+            },
+        )
+    }
+
+    if (!isTv) {
         Column(modifier = modifier) {
-            if (downloadsOpen && !clipsOpen) {
+            if (downloadsOpen) {
                 com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
                     onClose = { downloadsOpen = false },
                     modifier =
@@ -588,207 +581,56 @@ fun NavDrawer(
                             .weight(1f)
                             .fillMaxWidth(),
                 )
-            }
-            if (clipsOpen) {
-                com.github.damontecres.wholphin.ui.main.ClipsPage(
-                    onClose = { clipsOpen = false },
+            } else {
+                BenflixPhoneHeader(
+                    door = destination.door(),
+                    user = user,
+                    userImageUrl = userImageUrl,
+                    badge = badge,
+                    onClickSearch = onClickSearch,
+                    onClickProfile = onClickProfile,
+                )
+                DestinationContent(
+                    destination = destination,
+                    preferences = preferences,
+                    onClearBackdrop = onClearBackdrop,
                     modifier =
                         Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 8.dp),
                 )
             }
-            AnimatedVisibility(
-                visible = headerVisible && !clipsOpen && !downloadsOpen,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                PhoneHeader()
-            }
-            if (!clipsOpen && !downloadsOpen) {
-                // Benflix: My Benflix on phones shows every library and the extras on the page itself
-                androidx.compose.runtime.CompositionLocalProvider(
-                    com.github.damontecres.wholphin.ui.main.LocalPhoneMenu provides
-                        com.github.damontecres.wholphin.ui.main.PhoneMenu(
-                            libraries = phoneTabs.drop(1),
-                            // My page is the page itself
-                            extras = phoneExtras.drop(1),
-                            onClickDownloads = {
-                                clipsOpen = false
-                                downloadsOpen = true
-                            },
-                            onClickSettings = onClickSettings,
-                            onClickProfile = onClickProfile,
-                        ),
-                ) {
-                    DestinationContent(
-                        destination = destination,
-                        preferences = preferences,
-                        onClearBackdrop = onClearBackdrop,
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .nestedScroll(headerScroll)
-                                .padding(start = 16.dp, end = 8.dp),
-                    )
-                }
-            }
-            PhoneNavBar(
-                tabs = phoneTabs,
-                // Shrinks to icons only while you scroll down (same moment the header hides)
-                compact = !headerVisible && !clipsOpen && !downloadsOpen,
-                clipsSelected = clipsOpen,
-                onClickClips = {
-                    downloadsOpen = false
-                    clipsOpen = true
-                },
-                onClickDownloads = {
-                    clipsOpen = false
-                    downloadsOpen = true
-                },
-                channelsSelected = selectedIndex == CHANNELS_INDEX && !clipsOpen && !downloadsOpen,
-                onClickChannels = {
-                    clipsOpen = false
-                    downloadsOpen = false
-                    onClickChannels()
-                },
-                user = user,
-                userImageUrl = userImageUrl,
-                searchSelected = selectedIndex == SEARCH_INDEX && !clipsOpen && !downloadsOpen,
-                onClickSearch = {
-                    clipsOpen = false
-                    downloadsOpen = false
-                    onClickSearch()
-                },
-                onClickSettings = onClickSettings,
-                onClickProfile = onClickProfile,
-                extras = phoneExtras,
-            )
         }
         return
     }
-    // TV: one slim line. Home, Browse (every library in one list), Channels, Games, Requests and More
-    // (My Benflix, Now playing and the extras like the mood quiz)
-    val allItems = serviceState.items + serviceState.moreItems
-    val moviesIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.MOVIES }
-    val showsIndex = allItems.indexOfFirst { it is ServerNavDrawerItem && it.type == CollectionType.TVSHOWS }
-    val myListIndex = allItems.indexOfFirst { it is NavDrawerItem.Favorites }
-    // tabs = Home, (Now playing), every library in order, Games
-    val libraryOffset = if (serviceState.nowPlayingEnabled) 2 else 1
-    val myBenflixTitle = stringResource(R.string.my_benflix)
-    val libraryTabs =
-        tabs.filterIndexed { i, _ -> i >= libraryOffset && i != tabs.lastIndex && i - libraryOffset != myListIndex }
-    val firstLibraries =
-        listOf(moviesIndex, showsIndex).filter { it >= 0 }.mapNotNull { tabs.getOrNull(libraryOffset + it) }
-    val libraryArt by viewModel.libraryArt.collectAsState()
-    // Fetch the Browse card pictures a few seconds after start, so they're ready when Browse opens
-    val libraries = remember(allItems) { allItems.filterIsInstance<ServerNavDrawerItem>() }
-    LaunchedEffect(libraries) {
-        delay(4_000)
-        viewModel.loadLibraryArt(libraries)
-    }
-    val browseTabs =
-        (firstLibraries + libraryTabs.filter { tab -> firstLibraries.none { it === tab } }).map { tab ->
-            val art = tab.libraryId?.let { libraryArt[it] }
-            if (art == null) tab else tab.copy(imageUrl = art.imageUrl, count = art.count)
-        }
-    val kids by KidsMode.active.collectAsState()
-    val myBenflixTab =
-        TopNavTab(
-            title = myBenflixTitle,
-            selected = selectedIndex == MY_BENFLIX_INDEX,
-            onClick = {
-                viewModel.setIndex(MY_BENFLIX_INDEX)
-                viewModel.navigationManager.navigateToFromDrawer(Destination.MyBenflix)
+    Column(
+        modifier =
+            modifier.onPreviewKeyEvent { event ->
+                // Holding the remote's Menu button also opens the profile menu
+                val native = event.nativeKeyEvent
+                if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU &&
+                    native.action == android.view.KeyEvent.ACTION_DOWN &&
+                    native.repeatCount == MENU_HOLD_REPEATS
+                ) {
+                    onClickProfile()
+                    true
+                } else {
+                    false
+                }
             },
-            hint = stringResource(R.string.more_hint_my_benflix),
-            isProfile = true,
-            // Benflix: requests that have arrived and you haven't looked at yet
-            badge =
-                com.github.damontecres.wholphin.ui.components
-                    .rememberRequestReadyCount(),
-        )
-    // Home, Channels, Games, Requests (not for Kids). My Benflix is the first thing under More.
-    val mainTabs =
-        listOfNotNull(
-            tabs.first(),
-            TopNavTab(
-                title = stringResource(R.string.channels),
-                selected = selectedIndex == CHANNELS_INDEX,
-                onClick = onClickChannels,
-            ),
-            tabs.last(),
-            if (kids) {
-                null
-            } else {
-                TopNavTab(
-                    title = stringResource(R.string.benflix_requests),
-                    selected = selectedIndex == REQUESTS_INDEX,
-                    onClick = {
-                        viewModel.setIndex(REQUESTS_INDEX)
-                        viewModel.navigationManager.navigateToFromDrawer(Destination.Requests)
-                    },
-                    badge = requestsWaiting,
-                )
-            },
-        )
-    val surpriseContext = androidx.compose.ui.platform.LocalContext.current
-    val moreTabs =
-        listOf(myBenflixTab) +
-            tabs
-                .filterIndexed { i, _ -> i in 1 until libraryOffset }
-                .map { it.copy(hint = stringResource(R.string.more_hint_now_playing), glyph = MoreGlyphs.MUSIC) } +
-            listOf(
-                TopNavTab(
-                    title = stringResource(R.string.surprise_me),
-                    selected = false,
-                    onClick = { viewModel.surpriseMe(surpriseContext) },
-                    hint = "Opens a random movie or show you haven't seen",
-                    glyph = stringResource(R.string.fa_dice),
-                ),
-                TopNavTab(
-                    title = stringResource(R.string.trailer_shuffle),
-                    selected = false,
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.TrailerShuffle) },
-                    hint = stringResource(R.string.more_hint_trailer_shuffle),
-                    glyph = MoreGlyphs.SHUFFLE,
-                ),
-                TopNavTab(
-                    title = stringResource(R.string.watch_in_order),
-                    selected = false,
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.WatchOrder) },
-                    hint = stringResource(R.string.more_hint_watch_in_order),
-                    glyph = MoreGlyphs.LIST,
-                ),
-                TopNavTab(
-                    title = stringResource(R.string.mood_quiz),
-                    selected = false,
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.MoodQuiz) },
-                    hint = stringResource(R.string.more_hint_mood_quiz),
-                    glyph = MoreGlyphs.SMILE,
-                ),
-                TopNavTab(
-                    title = "This or that",
-                    selected = false,
-                    onClick = { viewModel.navigationManager.navigateTo(Destination.ThisOrThat) },
-                    hint = "Pick one of two posters, 8 rounds, the winner is tonight's pick",
-                    glyph = MoreGlyphs.SMILE,
-                ),
-            )
-    Column(modifier = modifier) {
-        TopNavBar(
-            tabs = mainTabs,
-            moreTabs = moreTabs,
-            browseTabs = browseTabs,
+    ) {
+        BenflixTopBar(
+            door = destination.door(),
             user = user,
             userImageUrl = userImageUrl,
             showClock = preferences.appPreferences.interfacePreferences.showClock,
-            searchSelected = selectedIndex == SEARCH_INDEX,
+            badge = badge,
+            searchSelected = destination is Destination.Search,
             onClickSearch = onClickSearch,
-            onClickSettings = onClickSettings,
             onClickProfile = onClickProfile,
-            focusRequester = focusRequester,
+            profileFocusRequester = focusRequester,
+            big = easy,
             modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
         )
         DestinationContent(
@@ -802,6 +644,19 @@ fun NavDrawer(
         )
     }
 }
+
+/** "Report a problem" from the profile menu, about the app itself */
+private val APP_PROBLEMS =
+    listOf(
+        "Something won't play",
+        "The app is slow",
+        "The app closed by itself",
+        "Something looks wrong",
+        "Something else",
+    )
+
+/** Holding Menu: Android repeats the key while held; this many repeats is about half a second */
+private const val MENU_HOLD_REPEATS = 10
 
 val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
 

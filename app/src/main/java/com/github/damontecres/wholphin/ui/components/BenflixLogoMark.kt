@@ -76,6 +76,8 @@ fun BenflixWordLogo(
     height: Dp = 26.dp,
     wordColor: Color = BenflixColors.Text,
     extra: String? = null,
+    /** Extra modifier for just the squares (the intro and the Home doors need to know where they are) */
+    markModifier: Modifier = Modifier,
 ) {
     // The logo keeps its own size even when Easy read makes the words bigger
     val fontScale = LocalDensity.current.fontScale
@@ -85,7 +87,7 @@ fun BenflixWordLogo(
         horizontalArrangement = Arrangement.spacedBy(height * 0.32f),
         modifier = modifier.semantics { contentDescription = "Benflix" },
     ) {
-        BenflixMark(size = height * 0.92f)
+        BenflixMark(size = height * 0.92f, modifier = markModifier)
         Text(
             text = "Benflix",
             style =

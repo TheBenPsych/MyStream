@@ -129,13 +129,15 @@ fun UserList(
                         .focusRestorer(firstFocusRequester)
                         .focusRequester(focusRequester),
             ) {
+                // Focus starts on whoever watched last
+                val startIndex = users.indexOfFirst { it.user.id == currentUser?.id }.coerceAtLeast(0)
                 itemsIndexed(users) { index, user ->
                     UserIconCard(
                         user = user,
                         isCurrentUser = user.user.id == currentUser?.id,
                         onClick = { onSwitchUser.invoke(user.user) },
                         onLongClick = { showDeleteDialog = user },
-                        modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
+                        modifier = if (index == startIndex) Modifier.focusRequester(firstFocusRequester) else Modifier,
                     )
                 }
                 kidsUser?.let { grownUp ->
@@ -153,43 +155,16 @@ fun UserList(
                         }
                     }
                 }
-                // Add User card - always rightmost
-                item {
-                    AddUserCard(
-                        onClick = { onAddUser.invoke() },
-                    )
-                }
             }
         }
 
-        // Switch servers button below user list - centered
+        // Small links under the row: add someone, or change server
         Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Button(
-                onClick = { onSwitchServer.invoke() },
-                modifier = Modifier.width(200.dp), // Fixed width for consistency
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.fa_arrow_left_arrow_right),
-                        fontFamily = FontAwesome,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.switch_servers),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
+            WhoLink(text = "Add someone", onClick = onAddUser)
+            WhoLink(text = "Change server", onClick = onSwitchServer)
         }
     }
     showDeleteDialog?.let { user ->
@@ -238,6 +213,33 @@ fun UserList(
             name = user.user.name,
             onPick = { index -> onPickPicture.invoke(user.user, index) },
             onDismissRequest = { pickPictureFor = null },
+        )
+    }
+}
+
+/** A quiet text link on Who's watching that lights up when focused */
+@Composable
+private fun WhoLink(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusRow,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
 }
@@ -375,11 +377,6 @@ private fun UserIconCard(
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val chosen = AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) }
-    // Look Book pick P4: the tile you're on glows in that person's own profile colour
-    ProfileColours.init(androidx.compose.ui.platform.LocalContext.current)
-    val glowColour = ProfileColours.get(user.user.id)?.toColor() ?: BenflixRedBase
-    val focused by interactionSource.collectIsFocusedAsState()
-    val glow by animateFloatAsState(if (focused) 1f else 0f, label = "profileGlow")
 
     Column(
         modifier = modifier,
@@ -393,21 +390,7 @@ private fun UserIconCard(
             interactionSource = interactionSource,
             modifier =
                 Modifier
-                    .size(cardSize)
-                    .drawBehind {
-                        if (glow > 0f) {
-                            // A soft halo made of a few see-through layers (no blur, so it stays fast on TVs)
-                            for (layer in 1..GLOW_LAYERS) {
-                                val grow = size.minDimension * (0.10f + 0.07f * layer)
-                                drawRoundRect(
-                                    color = glowColour.copy(alpha = glow * 0.22f / layer),
-                                    topLeft = Offset(-grow, -grow),
-                                    size = Size(size.width + grow * 2, size.height + grow * 2),
-                                    cornerRadius = CornerRadius(grow + size.minDimension * 0.12f),
-                                )
-                            }
-                        }
-                    },
+                    .size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -421,12 +404,12 @@ private fun UserIconCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = glowColour,
+                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
                                 ),
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -582,7 +565,7 @@ private fun AddUserCard(
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -617,7 +600,8 @@ private fun AddUserCard(
     }
 }
 
-private val ProfileTileShape = RoundedCornerShape(10.dp)
+/** Benflix redesign: round pictures (w-row) */
+private val ProfileTileShape = CircleShape
 
 /**
  * How big the Who's watching tiles are. The screen makes them smaller when space is short
@@ -682,7 +666,7 @@ private fun KidsProfileCard(
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Image(
                 painter = painterResource(R.drawable.benflix_avatar_kids),
@@ -744,7 +728,7 @@ private fun GuestProfileCard(
                             shape = ProfileTileShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Text(text = "?", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = Color.White)

@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -58,8 +61,10 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.holidayFor
+import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixWordLogo
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.EditTextBox
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
@@ -70,6 +75,7 @@ import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.touch.dialogWidth
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -116,6 +122,8 @@ fun SwitchUserContent(
         bigKids: Boolean = false,
         guest: Boolean = false,
     ) {
+        // Benflix redesign: after picking someone, Home's doors grow out of the logo once
+        BenflixIntroState.doorsPending = true
         // Kids / Guest are set by the view model, and only kept if the switch works
         val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
         scope.launch {
@@ -160,163 +168,95 @@ fun SwitchUserContent(
         }
 
         LoadingState.Success -> {
-            // A drawn holiday scene on holidays, otherwise a slow wall of the server's posters
-            val holiday = remember { holidayFor(LocalDate.now()) }
-            // Smaller TVs (and older ones like TCL Android 9 sets) have little height to spare, so the
-            // greeting gets smaller, the server name is left off and the tiles shrink to leave room for the names
-            val shortScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < SHORT_SCREEN_DP
-            val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+            // Benflix redesign (w-row): a plain dark page, the logo on top, "Who's watching?" and one
+            // centred row of round pictures with names under them. No poster wall, no fun facts.
+            val introRunning by BenflixIntroState.running.collectAsState()
+            androidx.compose.runtime.DisposableEffect(Unit) {
+                onDispose {
+                    BenflixIntroState.whoMark = null
+                    BenflixIntroState.whoLogo = null
+                }
+            }
+            val isTvLayout = rememberIsTv()
             Box(
                 modifier =
                     modifier
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(BenflixColors.Tray)
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
-                if (holiday != null) {
-                    HolidayScene(holiday.effect, Modifier.fillMaxSize())
-                } else {
-                    PosterWall(state.posterWall, Modifier.fillMaxSize())
-                }
-                // Benflix: the profiles fill the space above the fun fact, so the two never overlap
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = if (isTvLayout) 40.dp else 32.dp),
                 ) {
-                    androidx.compose.foundation.layout.BoxWithConstraints(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    // The intro's logo glides into exactly this spot, so it stays hidden until it lands
+                    BenflixWordLogo(
+                        height = WHO_LOGO_HEIGHT.dp,
+                        markModifier =
+                            Modifier.onGloballyPositioned { BenflixIntroState.whoMark = it.boundsInWindow() },
+                        modifier =
+                            Modifier
+                                .onGloballyPositioned { BenflixIntroState.whoLogo = it.boundsInWindow() }
+                                .graphicsLayer { alpha = if (introRunning) 0f else 1f },
+                    )
+                    androidx.compose.foundation.layout
+                        .Spacer(Modifier.weight(1f))
+                    val holiday = remember { holidayFor(LocalDate.now()) }
+                    Text(
+                        text = holiday?.text ?: stringResource(R.string.select_user),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BenflixColors.Text,
+                        textAlign = TextAlign.Center,
+                    )
+                    androidx.compose.foundation.layout
+                        .Spacer(Modifier.height(36.dp))
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        LocalProfileTileSize provides if (isTvLayout) 120.dp else 88.dp,
                     ) {
-                        // Everything around the tiles, so the tiles (and the names under them) always fit
-                        val greetingSize = if (shortScreen) 34 else 52
-
-                        fun tileFor(headerDp: Float) = (maxHeight.value - (32 + headerDp + 24 + 24 + 10 + 30 * fontScale + 24 + 56)) / 1.1f
-                        val everydayHeaderDp = (if (shortScreen) 44f else 44f + 8 + 28) * fontScale
-                        val everydayTile = tileFor(everydayHeaderDp).coerceIn(MIN_TILE_DP, Cards.serverUserCircle.value)
-                        // Holidays keep the profiles exactly the size they are on other days. The greeting only gets
-                        // its own line when there's room to spare (phones, big screens); otherwise it takes the place of
-                        // "Who's watching?", so nothing below gets squeezed or cut off
-                        val greetingOwnLine =
-                            holiday != null && tileFor(everydayHeaderDp + greetingSize * 1.35f + 8) >= everydayTile - 0.5f
-                        val tileSize = everydayTile.dp
-                        androidx.compose.runtime.CompositionLocalProvider(LocalProfileTileSize provides tileSize) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(24.dp),
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        // A soft dark glow behind the text and profiles, with no hard edges
-                                        .drawBehind {
-                                            val glow =
-                                                Brush.radialGradient(
-                                                    0f to Color.Black.copy(alpha = .6f),
-                                                    .45f to Color.Black.copy(alpha = .4f),
-                                                    .72f to Color.Transparent,
-                                                    center = center,
-                                                    radius = size.width / 2,
-                                                )
-                                            scale(1f, (size.height * 1.5f / size.width).coerceAtMost(1f), pivot = center) {
-                                                drawCircle(glow, radius = size.width / 2, center = center)
-                                            }
-                                        }.padding(16.dp),
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    // The holiday greeting, big and in the holiday's own lettering
-                                    holiday?.takeIf { greetingOwnLine }?.let {
-                                        Text(
-                                            text = it.text,
-                                            fontFamily = holidayFont(it.effect),
-                                            fontSize = greetingSize.sp,
-                                            color = Color(it.color),
-                                            textAlign = TextAlign.Center,
-                                            style =
-                                                TextStyle(
-                                                    shadow = Shadow(Color(it.color).copy(alpha = .7f), blurRadius = 28f),
-                                                ),
-                                        )
-                                    }
-                                    if (holiday != null && !greetingOwnLine) {
-                                        // Not enough room for both lines: the greeting takes the headline's place and size
-                                        Text(
-                                            text = holiday.text,
-                                            style =
-                                                MaterialTheme.typography.displaySmall.copy(
-                                                    fontFamily = holidayFont(holiday.effect),
-                                                    shadow = Shadow(Color(holiday.color).copy(alpha = .7f), blurRadius = 28f),
-                                                ),
-                                            color = Color(holiday.color),
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        )
-                                    } else {
-                                        Text(
-                                            text = stringResource(R.string.select_user),
-                                            style = MaterialTheme.typography.displaySmall.copy(shadow = ReadableTextShadow),
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
-                                    // The server's name is left off on small screens to make room for the names
-                                    if (!shortScreen) {
-                                        Text(
-                                            text = server.name ?: server.url,
-                                            style = MaterialTheme.typography.titleLarge.copy(shadow = ReadableTextShadow),
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
+                        UserList(
+                            users = state.users,
+                            currentUser = currentUser,
+                            onSwitchUser = { user ->
+                                if (user.accessToken == null || user.requireLogin) {
+                                    showAddUserDialog(user)
+                                } else if (user.hasPin) {
+                                    switchUserWithPin = user
+                                } else {
+                                    trySwitchUser(user)
                                 }
-                                UserList(
-                                    users = state.users,
-                                    currentUser = currentUser,
-                                    onSwitchUser = { user ->
-                                        if (user.accessToken == null || user.requireLogin) {
-                                            showAddUserDialog(user)
-                                        } else if (user.hasPin) {
-                                            switchUserWithPin = user
-                                        } else {
-                                            trySwitchUser(user)
-                                        }
-                                    },
-                                    onAddUser = {
-                                        showAddUserDialog(null)
-                                    },
-                                    // Built-in Kids profile, using a saved grown-up sign-in on this TV. The parent PIN,
-                                    // bedtime and limit belong to the whole TV (see BenflixParentPin), not this sign-in
-                                    kidsUser =
-                                        state.users
-                                            .map { it.user }
-                                            .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
-                                            ?.firstOrNull { it.accessToken != null && !it.requireLogin },
-                                    onKids = { user -> trySwitchUser(user, kids = true) },
-                                    showBigKids = remember { KidsMode.bigKidsTile(context) },
-                                    onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
-                                    showGuest = remember { GuestMode.tileOn(context) },
-                                    onGuest = { user -> trySwitchUser(user, guest = true) },
-                                    onRemoveUser = { user ->
-                                        viewModel.removeUser(user)
-                                    },
-                                    onPickPicture = { user, index -> viewModel.pickPicture(user, index) },
-                                    onSwitchServer = {
-                                        viewModel.setupNavigationManager.navigateTo(
-                                            SetupDestination.ServerList,
-                                        )
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
+                            },
+                            onAddUser = {
+                                showAddUserDialog(null)
+                            },
+                            // Built-in Kids profile, using a saved grown-up sign-in on this TV. The parent PIN,
+                            // bedtime and limit belong to the whole TV (see BenflixParentPin), not this sign-in
+                            kidsUser =
+                                state.users
+                                    .map { it.user }
+                                    .takeIf { users -> users.none { it.name?.trim().equals("kids", ignoreCase = true) } }
+                                    ?.firstOrNull { it.accessToken != null && !it.requireLogin },
+                            onKids = { user -> trySwitchUser(user, kids = true) },
+                            showBigKids = remember { KidsMode.bigKidsTile(context) },
+                            onBigKids = { user -> trySwitchUser(user, kids = true, bigKids = true) },
+                            showGuest = remember { GuestMode.tileOn(context) },
+                            onGuest = { user -> trySwitchUser(user, guest = true) },
+                            onRemoveUser = { user ->
+                                viewModel.removeUser(user)
+                            },
+                            onPickPicture = { user, index -> viewModel.pickPicture(user, index) },
+                            onSwitchServer = {
+                                viewModel.setupNavigationManager.navigateTo(
+                                    SetupDestination.ServerList,
                                 )
-                            }
-                        }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
-                    // Benflix: a "Did you know?" fact at the bottom middle, below Switch server
-                    // A fixed space for it, so the profiles don't jump when the fact fades in
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxWidth().height(150.dp).padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
-                    ) {
-                        FunFactCard(fact = state.funFact)
-                    }
+                    androidx.compose.foundation.layout
+                        .Spacer(Modifier.weight(1.3f))
                 }
                 val resources = LocalResources.current
                 val message =
@@ -638,6 +578,9 @@ private fun FunFactCard(
         }
     }
 }
+
+/** The logo at the top of Who's watching (the intro's logo glides into it) */
+private const val WHO_LOGO_HEIGHT = 30
 
 /** Screens shorter than this (in dp) get the compact Who's watching layout */
 private const val SHORT_SCREEN_DP = 600
