@@ -44,7 +44,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.lifecycle.ViewModel
@@ -68,6 +67,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -509,7 +509,13 @@ fun ProfileMenu(
                 .background(BenflixColors.Panel, shape)
                 .border(1.dp, BenflixColors.Line, shape)
         if (narrow) {
-            Column(modifier = outer.width((screenWidth - 32).dp)) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .then(outer),
+            ) {
                 card(Modifier.fillMaxWidth())
                 list(Modifier.fillMaxWidth())
             }
