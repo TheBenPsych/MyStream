@@ -1028,6 +1028,13 @@ class PlaybackViewModel
                                 player = player,
                                 getState = { playbackItemState },
                                 countWatchTime = playback.item.type == BaseItemKind.MOVIE || playback.item.type == BaseItemKind.EPISODE,
+                                watchDoor =
+                                    when (playback.item.type) {
+                                        BaseItemKind.MOVIE -> "movies"
+                                        BaseItemKind.EPISODE -> "shows"
+                                        BaseItemKind.TV_CHANNEL, BaseItemKind.PROGRAM, BaseItemKind.LIVE_TV_PROGRAM -> "livetv"
+                                        else -> null
+                                    },
                             )
                         player.addListener(activityListener)
                         this@PlaybackViewModel.activityListener = activityListener
