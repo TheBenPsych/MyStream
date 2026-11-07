@@ -97,7 +97,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -1485,26 +1484,24 @@ private fun FindShelf(
     }
     val searching = query.trim().length >= 2
     val isTv = rememberIsTv()
-    // Benflix redesign: on TV a Movies-door top area describes the poster you're on (it waits half a second)
-    var focusedItem by remember(section) { mutableStateOf<DiscoverItem?>(null) }
-    var shownItem by remember(section) { mutableStateOf<DiscoverItem?>(null) }
-    LaunchedEffect(focusedItem) {
-        val item = focusedItem ?: return@LaunchedEffect
-        if (shownItem != null) delay(PREVIEW_DELAY_MS)
-        shownItem = item
-    }
-    val onFocusPoster: (DiscoverItem) -> Unit = { item ->
-        focusedItem = item
-        viewModel.loadScore(item)
-    }
+    // Benflix redesign: on TV a Movies-door top area describes the poster you're on. Only the top area
+    // reads this, so moving along a row doesn't redraw the whole page.
+    val focusedItem = remember(section) { mutableStateOf<DiscoverItem?>(null) }
+    val onFocusPoster: (DiscoverItem) -> Unit =
+        remember(section, isTv) {
+            { item ->
+                if (isTv) focusedItem.value = item
+                viewModel.loadScore(item)
+            }
+        }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val previewHeight = (maxHeight * 0.34f).coerceIn(150.dp, 260.dp)
         Column(Modifier.fillMaxSize()) {
             if (isTv) {
-                val preview = shownItem ?: rows?.firstNotNullOfOrNull { visible(it.items).firstOrNull() }
-                RequestPreview(
-                    item = preview,
-                    score = preview?.let { scores[it.requestKey()] ?: it.score?.let { s -> "★ ${"%.1f".format(s)}" } },
+                DelayedRequestPreview(
+                    focused = focusedItem,
+                    fallback = rows?.firstNotNullOfOrNull { visible(it.items).firstOrNull() },
+                    scores = scores,
                     height = previewHeight,
                 )
             }
@@ -1690,8 +1687,6 @@ private fun FindShelf(
         }
     }
 }
-
-private const val PREVIEW_DELAY_MS = 500L
 
 /** Benflix: quick picks on the Requests Anime tab; each opens the anime deep search with it picked */
 private val ANIME_QUICK_PICKS =

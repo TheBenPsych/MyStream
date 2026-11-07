@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import kotlinx.coroutines.delay
 
 /*
  * Benflix redesign (approved 2026-11-07): the Requests page looks like the Movies door. A top area
@@ -68,6 +70,29 @@ private fun DiscoverItem.statusWord(): String? =
         SeerrAvailability.AVAILABLE -> "ON BENFLIX"
         else -> null
     }
+
+/** The top area, following [focused] once you've stopped on a poster for half a second */
+@Composable
+fun DelayedRequestPreview(
+    focused: State<DiscoverItem?>,
+    fallback: DiscoverItem?,
+    scores: Map<String, String>,
+    height: Dp,
+) {
+    var shown by remember { mutableStateOf<DiscoverItem?>(null) }
+    val target = focused.value
+    LaunchedEffect(target) {
+        if (target == null) return@LaunchedEffect
+        if (shown != null) delay(PREVIEW_DELAY_MS)
+        shown = target
+    }
+    val item = shown ?: fallback
+    RequestPreview(
+        item = item,
+        score = item?.let { scores[it.requestKey()] ?: it.score?.let { s -> "★ ${"%.1f".format(s)}" } },
+        height = height,
+    )
+}
 
 /** The top area: the focused title's picture on the right, its name, year, score and story on the left */
 @Composable
@@ -368,3 +393,4 @@ private val POSTER_SHAPE = RoundedCornerShape(8.dp)
 private val SIDE_ROW = 16.dp
 private const val PICTURE_WIDTH = 0.62f
 private const val PICTURE_FADE_MS = 450
+private const val PREVIEW_DELAY_MS = 500L
