@@ -44,6 +44,7 @@ import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.TrackIndex
 import com.github.damontecres.wholphin.preferences.AppPreference
+import com.github.damontecres.wholphin.services.SkipFix
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.formatMaxBitrate
@@ -72,6 +73,9 @@ enum class PlaybackDialogType {
 
     /** Benflix: seasons and episodes over the video (shown by PlaybackPage, not here) */
     EPISODES,
+
+    /** Benflix: mark where the intro or credits really are, when a skip was wrong */
+    FIX_SKIPS,
 }
 
 data class PlaybackSettings(
@@ -206,6 +210,13 @@ fun PlaybackDialog(
                     )
                     add(
                         BottomDialogItem(
+                            data = PlaybackDialogType.FIX_SKIPS,
+                            headline = "Fix skip times",
+                            supporting = "Skip came at the wrong time? Mark where the intro or credits really are",
+                        ),
+                    )
+                    add(
+                        BottomDialogItem(
                             data = PlaybackDialogType.DEBUG,
                             headline = stringResource(if (settings.showDebugInfo) R.string.hide_debug_info else R.string.show_debug_info),
                             supporting = null,
@@ -300,6 +311,36 @@ fun PlaybackDialog(
         PlaybackDialogType.SURROUND_PASSTHROUGH -> {}
 
         PlaybackDialogType.EPISODES -> {}
+
+        PlaybackDialogType.FIX_SKIPS -> {
+            // Benflix: each fix is saved on Tower, which finds the same spot in the show's other episodes
+            val choices =
+                listOf(
+                    SkipFix.INTRO_START to "Intro starts here",
+                    SkipFix.INTRO_END to "Intro ends here",
+                    SkipFix.CREDITS_START to "Credits start here",
+                    SkipFix.CREDITS_END to "Credits end here",
+                    SkipFix.NO_INTRO to "No intro in this episode",
+                    SkipFix.NO_INTRO_SHOW to "No intro in this whole show",
+                    SkipFix.UNDO to "Undo my fixes for this episode",
+                ).map { (fix, name) ->
+                    BottomDialogItem(
+                        data = fix,
+                        headline = name,
+                        supporting = skipFixHint(fix),
+                    )
+                }
+            BottomDialog(
+                choices = choices,
+                currentChoice = null,
+                onDismissRequest = onDismissRequest,
+                onSelectChoice = { _, choice ->
+                    onDismissRequest.invoke()
+                    onPlaybackActionClick.invoke(PlaybackAction.FixSkip(choice.data))
+                },
+                gravity = leftGravity,
+            )
+        }
 
         PlaybackDialogType.SUBTITLE_DELAY -> {
             Dialog(
@@ -595,3 +636,15 @@ fun StreamChoiceBottomDialog(
         }
     }
 }
+
+/** Benflix: the small line under each "Fix skip times" choice */
+private fun skipFixHint(fix: SkipFix): String? =
+    when (fix) {
+        SkipFix.INTRO_START -> "Press when the intro's first second plays"
+        SkipFix.INTRO_END -> "Press right after the intro's last second"
+        SkipFix.CREDITS_START -> "Press when the credits begin"
+        SkipFix.CREDITS_END -> "Only if a scene or preview comes after the credits"
+        SkipFix.NO_INTRO -> "Stops the Skip intro button on this episode"
+        SkipFix.NO_INTRO_SHOW -> "Stops the Skip intro button on every episode"
+        SkipFix.UNDO -> null
+    }

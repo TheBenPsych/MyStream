@@ -34,6 +34,11 @@ try:  # Free Live TV channels for Jellyfin, checked nightly (benflix_livetv.py n
 except ImportError:
     livetv = None
 
+try:  # Where the intro and credits really are, worked out on Tower (benflix_skips.py next to this file)
+    import benflix_skips as skips
+except ImportError:
+    skips = None
+
 try:  # Benflix in a web browser (the files, Quick Connect, video), in benflix_web.py next to this file
     import benflix_web as web
 except ImportError:
@@ -593,7 +598,15 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/health":
                 return self.send(
                     200,
-                    {"ok": True, "local_play": True, "server_tools": tools is not None, "web": True, "web_app": web is not None, "live_tv": livetv is not None},
+                    {
+                        "ok": True,
+                        "local_play": True,
+                        "server_tools": tools is not None,
+                        "web": True,
+                        "live_tv": livetv is not None,
+                        "web_app": web is not None,
+                        "skips": skips is not None and skips.tools_ok(),
+                    },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
                 # Jellyfin reads the channel list and guide from here (at home only, no sign-in needed)
@@ -638,6 +651,12 @@ class Handler(BaseHTTPRequestHandler):
                 # header, so the sign-in rides along in the address)
                 token = (query.get("api_key") or [""])[0]
             user_id, is_admin, is_kids = check_signed_in(token)
+            if path.startswith("/api/skips/"):
+                # Skip intro / credits times for the player (anyone signed in; fixes not from kids accounts)
+                if skips is None:
+                    raise HelperError(503, "Skip times aren't on the server yet. Run the Benflix setup command again.")
+                status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
+                return self.send(status, answer)
             if path.startswith("/api/admin/"):
                 if not is_admin:
                     raise HelperError(403, "Only the server admin can use the Server page tools.")
@@ -746,6 +765,8 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if livetv is not None:
         livetv.start()
+    if skips is not None:
+        skips.start(jellyfin_call)
     if web is not None:
         web.start()
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)

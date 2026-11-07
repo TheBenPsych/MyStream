@@ -367,6 +367,10 @@ fun PlaybackPageContent(
             is PlaybackAction.ChangeBitrate -> {
                 viewModel.changeMaxBitrate(it.maxBitrate)
             }
+
+            is PlaybackAction.FixSkip -> {
+                viewModel.fixSkip(it.fix)
+            }
         }
     }
 

@@ -78,6 +78,7 @@ import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.preferences.AppThemeColors
+import com.github.damontecres.wholphin.services.SkipFix
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
@@ -139,6 +140,11 @@ sealed interface PlaybackAction {
 
     data class ChangeBitrate(
         val maxBitrate: Long,
+    ) : PlaybackAction
+
+    /** Benflix: a fix from "Fix skip times", saved at the current spot in the video */
+    data class FixSkip(
+        val fix: SkipFix,
     ) : PlaybackAction
 }
 

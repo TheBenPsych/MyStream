@@ -2,7 +2,9 @@
 # Benflix helper: lets Benflix play your RomM games right on the TV or phone, and powers the
 # Tower tools on Benflix's Server page (apps, downloads, how busy Tower is, track tidy).
 # The helper sends each game's files, your BIOS files and your saves to Benflix, and keeps the saves
-# (one folder per Jellyfin account) in Games/saves. Safe to run again any time.
+# (one folder per Jellyfin account) in Games/saves. It also works out where the intro and credits
+# really are in every episode, for Benflix's Skip buttons (saved in appdata/benflix-skips).
+# Safe to run again any time.
 #
 # Run on the Unraid server (Tools > Terminal):
 #   curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash
@@ -15,18 +17,19 @@ APP=/mnt/user/appdata/benflix-games
 MEDIA=/mnt/user/Homelab/Media
 TRACKS=/mnt/user/appdata/benflix-tracks
 LIVETV=/mnt/user/appdata/benflix-livetv
+SKIPS=/mnt/user/appdata/benflix-skips
 OLD=/mnt/user/appdata/wolf/benflix
 RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV"
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_web.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_web.py benflix_skips.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -123,10 +126,11 @@ docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
   --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" \
-  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix >/dev/null 2>&1 || echo "Track tool missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" \
+  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5
-for _ in 1 2 3 4 5 6; do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
+# The first start also installs ffmpeg for the skip times, which can take a minute or two
+for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
   if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"web_app": true'; then
     echo "  ok  Benflix in a web browser: open http://$HOST_IP:8097 on any computer at home. Everyone signs in with their own Benflix name."
@@ -143,6 +147,15 @@ have() {
 }
 have "scph5501.bin" "PlayStation 1 (scph5501.bin or scph1001.bin; most games still work without it)"
 have "gba_bios.bin" "Game Boy Advance (optional)"
+
+say "Skip intro and credits"
+if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"skips": true'; then
+  echo "  ok  Tower now works out where each episode's intro and credits are."
+  echo "      A season is checked the first time someone plays it (about a minute), and every"
+  echo "      other season overnight. Progress: http://$HOST_IP:8097/api/skips/status (needs sign-in)"
+else
+  echo "  PROBLEM  The skip times tools (ffmpeg and fpcalc) didn't install. Send this output to Claude."
+fi
 
 say "Free Live TV"
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"live_tv": true'; then
