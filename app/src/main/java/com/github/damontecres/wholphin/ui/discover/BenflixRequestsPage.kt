@@ -1794,6 +1794,7 @@ private fun RequestList(
     arrivedOnly: Boolean?,
     showSearch: Boolean = false,
 ) {
+    val isTv = rememberIsTv()
     LifecycleResumeEffect(mineOnly) {
         viewModel.loadRequests(mineOnly)
         onPauseOrDispose { }
@@ -1896,6 +1897,7 @@ private fun RequestList(
                     onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
                     onMenu = { menuItem = it },
                     onFocusItem = {},
+                    isTv = isTv,
                 )
                 return@LazyColumn
             }
