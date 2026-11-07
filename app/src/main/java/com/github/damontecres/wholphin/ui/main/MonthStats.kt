@@ -179,7 +179,7 @@ fun MonthStatsCard(
         modifier =
             modifier
                 .widthIn(max = 720.dp)
-                .background(Color(0xFF1C1C21), RoundedCornerShape(14.dp))
+                .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel, RoundedCornerShape(14.dp))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text(
@@ -187,7 +187,7 @@ fun MonthStatsCard(
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.3.sp,
-            color = Color(0xFFE50914),
+            color = Color(0xFF9A9AA3),
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(28.dp),

@@ -371,7 +371,7 @@ private fun RemoteKey(
                 .background(
                     if (highlight) {
                         androidx.compose.ui.graphics
-                            .Color(0xFFE50914)
+                            .Color(0xFFF2F2F4)
                     } else {
                         androidx.compose.ui.graphics
                             .Color(0xFF26262B)
@@ -382,6 +382,17 @@ private fun RemoteKey(
                     onClick()
                 }.padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
-        Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
+        Text(
+            label,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color =
+                if (highlight) {
+                    androidx.compose.ui.graphics
+                        .Color(0xFF0B0C10)
+                } else {
+                    androidx.compose.ui.graphics.Color.White
+                },
+        )
     }
 }

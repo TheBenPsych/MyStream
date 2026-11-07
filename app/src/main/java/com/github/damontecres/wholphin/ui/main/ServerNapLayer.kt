@@ -166,7 +166,7 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.widthIn(max = 620.dp).padding(24.dp),
             ) {
-                Text("BENFLIX", fontFamily = BenflixTitleFont, fontSize = 56.sp, color = Color(0xFFE50914))
+                Text("BENFLIX", fontFamily = BenflixTitleFont, fontSize = 56.sp, color = Color.White)
                 Text(
                     "The server is taking a nap, or being worked on",
                     fontSize = 24.sp,

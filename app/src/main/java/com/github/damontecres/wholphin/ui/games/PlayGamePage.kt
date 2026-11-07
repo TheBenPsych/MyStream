@@ -345,7 +345,7 @@ internal fun GameCard(
             text = prompt,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFE50914),
+            color = Color.White,
             textAlign = TextAlign.Center,
         )
     }

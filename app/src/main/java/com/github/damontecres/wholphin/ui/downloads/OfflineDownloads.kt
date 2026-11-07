@@ -402,9 +402,9 @@ private fun OfflineButton(
         colors =
             androidx.tv.material3.ButtonDefaults.colors(
                 containerColor = if (primary) BENFLIX_RED else Color(0xFF333333),
-                contentColor = Color.White,
-                focusedContainerColor = if (primary) Color(0xFFF6121D) else Color(0xFF4D4D4D),
-                focusedContentColor = Color.White,
+                contentColor = if (primary) Color(0xFF0B0C10) else Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color(0xFF0B0C10),
             ),
         modifier = modifier.widthIn(min = 240.dp),
     ) {
@@ -418,4 +418,5 @@ private fun OfflineButton(
     }
 }
 
-private val BENFLIX_RED = Color(0xFFE50914)
+// Benflix redesign: main buttons are white with dark words
+private val BENFLIX_RED = Color(0xFFF2F2F4)
