@@ -163,6 +163,14 @@ sealed class Destination(
     @Serializable
     data object Games : Destination(false)
 
+    /** Benflix redesign: the Movies door (amber) */
+    @Serializable
+    data object MoviesDoor : Destination(false)
+
+    /** Benflix redesign: the Shows door (blue) */
+    @Serializable
+    data object ShowsDoor : Destination(false)
+
     /** A TV guide of Benflix channels made from your library */
     @Serializable
     data object Channels : Destination(false)

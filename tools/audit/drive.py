@@ -77,7 +77,7 @@ def log(msg):
 
 
 # text that only shows once you are on the home screen (Benflix rows, or plain Wholphin's rows)
-HOME_RE = r"Continue watching|Top 10|New on Benflix|My List|Because you watched|^Home$|Next Up|Recently Added|Continue Watching"
+HOME_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |^Live TV$|Continue watching|^Home$"
 PKG_LABEL = re.compile(r"Benflix|MyStream", re.I)
 SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
 
@@ -338,20 +338,9 @@ def focus_sweep(name, max_moves=60):
 
 
 def back_to_home():
-    if MODE != "tv":
-        for _ in range(3):
-            # the bottom bar shrinks to icons while scrolled down: scroll up so its words come back
-            sh("input swipe 500 600 500 2000 300")
-            time.sleep(1)
-            n = find(dump(), r"^Home$")
-            if n is not None:
-                tap(n)
-                time.sleep(2)
-                return
-            key("BACK", wait=1)
-        return
+    """Back until Home's greeting shows (no Home tab any more in the redesign)"""
     for _ in range(6):
-        if find(dump(), r"^Home$") is not None:
+        if find(dump(), HOME_GREETING_RE) is not None:
             return
         key("BACK", wait=1)
 
@@ -576,6 +565,11 @@ def welcome_setup():
         log(f"welcome setup done: {len(seen)} steps")
 
 
+# Benflix redesign: Home shows a greeting and the four doors
+HOME_GREETING_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |Día de"
+DOORS_RE = HOME_GREETING_RE + r"|^Live TV$"
+
+
 def main():
     global focus_sweep, monkey
     if SMOKE:
@@ -599,10 +593,11 @@ def main():
         if n is not None:
             tap(n)
             time.sleep(1)
-    t = wait_for(r"Continue watching|Top 10|New on Benflix|My List|Because you watched", 60)
-    REPORT["timings"]["home rows visible (s)"] = t
+    # Benflix redesign: Home is a greeting and four doors (Movies, Shows, Live TV, Games)
+    t = wait_for(DOORS_RE, 60)
+    REPORT["timings"]["home doors visible (s)"] = t
     shot("home")
-    if t is None and find(dump(), r"^Home$") is None:
+    if t is None:
         log("never got signed in; stopping here")
         REPORT["problems"].append({"type": "robot could not sign in"})
         return
@@ -625,12 +620,8 @@ def main():
     if not out_of_time():
         ember_road()
 
-    # Visit every tab in the top bar / bottom bar
-    tabs = (
-        [r"^Home$", r"Browse", r"^Channels$", r"^Games$", r"My Benflix", r"^More$", r"Search"]
-        if MODE == "tv"
-        else [r"^Home$", r"^Search$", r"^Clips$", r"^Channels$", r"My Benflix"]
-    )
+    # Open each door from Home, and Search
+    tabs = [r"^Movies$", r"^Shows$", r"^Live TV$", r"^Games$", r"^Search$"]
     for tab in tabs:
         if out_of_time():
             break
@@ -662,8 +653,10 @@ def main():
         if MODE == "tv":
             focus_sweep(name)
 
-    # Open a movie's details, then play it for a bit
+    # Open a movie's details (inside the Movies door), then play it for a bit
     back_to_home()
+    press(r"^Movies$", timeout=8)
+    time.sleep(5)
     if MODE == "tv":
         key("DPAD_DOWN", 2)
         key("DPAD_CENTER", wait=1)
@@ -690,12 +683,18 @@ def main():
         key("BACK", 2, wait=1.5)
         shot("after-player")
 
-    # Settings
+    # Settings, from the profile menu (your picture, top right)
     back_to_home()
     if MODE == "tv":
-        press(r"^Settings$", timeout=6)
+        key("DPAD_UP", 2, wait=0.6)
+        key("DPAD_CENTER", wait=1.5)
     else:
-        press(r"My Benflix", timeout=6)
+        n = find(dump(), r"^Search$")
+        if n is not None:
+            a, b, c, d = bounds(n)
+            sh(f"input tap {c + 60} {(b + d) // 2}")
+            time.sleep(1.5)
+    press(r"^Settings$", timeout=6)
     time.sleep(2)
     shot("settings")
 

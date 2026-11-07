@@ -1,48 +1,80 @@
 package com.github.damontecres.wholphin.ui
 
+import android.content.Context
+import android.media.AudioManager
 import android.media.MediaPlayer
+import androidx.annotation.RawRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.components.BenflixWordLogo
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.util.StartupTimer
 import com.github.damontecres.wholphin.util.WholphinDispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * Benflix startup animation. The logo shows still while the app loads behind it (so nothing
- * lags), then the "ta-dum" sound plays as a soft light sweeps across the logo, it settles, and
- * everything fades away (Ben's Look Book pick: light sweep, no zoom). It plays every fresh launch.
+ * Shared spots the startup intro and the Home doors need (Ben's approved intro, Nov 2026):
+ * the logo on Who's watching, the logo squares in the top bar, and whether the doors should grow
+ * out of the logo the next time Home opens.
+ */
+object BenflixIntroState {
+    private val _running = MutableStateFlow(false)
+
+    /** The intro is on screen. Who's watching hides its own logo until the moving one lands on it. */
+    val running: StateFlow<Boolean> = _running
+
+    fun setRunning(value: Boolean) {
+        _running.value = value
+    }
+
+    /** Where Who's watching draws its logo (the whole logo, in window pixels) */
+    @Volatile
+    var whoLogo: Rect? = null
+
+    /** Where the squares of that logo are */
+    @Volatile
+    var whoMark: Rect? = null
+
+    /** Where the top bar's logo squares are, so the doors can grow out of them */
+    @Volatile
+    var barMark: Rect? = null
+
+    /** A profile was just picked on Who's watching: the doors grow out of the logo once */
+    var doorsPending by mutableStateOf(false)
+}
+
+/**
+ * Benflix startup intro (approved r2-flow): the logo fades in (0.3 s) to two soft mallet notes, holds
+ * for 0.4 s, then glides up into its spot on Who's watching while the page fades in behind it.
+ * About 1.5 s, no skipping. It plays on every fresh open (not when coming back from another app).
+ * If Who's watching isn't on screen (a slow server, or the app went straight to Home), the logo fades away.
+ * New animations stay on even in Lite mode (Ben's rule, Nov 2026).
  */
 @Composable
 fun BenflixIntro(
@@ -50,117 +82,122 @@ fun BenflixIntro(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val sweep = remember { Animatable(0f) }
-    val markAlpha = remember { Animatable(0f) }
-    val wordAlpha = remember { Animatable(0f) }
+    val logoAlpha = remember { Animatable(0f) }
     val screenAlpha = remember { Animatable(1f) }
+    val glide = remember { Animatable(0f) }
+    var logoRect by remember { mutableStateOf<Rect?>(null) }
+    var markRect by remember { mutableStateOf<Rect?>(null) }
+    var target by remember { mutableStateOf<Pair<Rect, Rect>?>(null) }
     LaunchedEffect(Unit) {
-        // Get the sound ready while the still logo is showing. Benflix speed: this used to happen
-        // before the logo could even fade in, which held the whole intro up on slower TVs
-        val playerAsync =
-            async(WholphinDispatchers.IO) {
-                try {
-                    MediaPlayer.create(context, R.raw.benflix_intro)?.apply {
-                        setVolume(.7f, .7f)
-                        setOnCompletionListener { it.release() }
-                    }
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not load intro sound")
-                    null
+        BenflixIntroState.setRunning(true)
+        try {
+            launch { playIntroSound(context, R.raw.benflix_intro_open, INTRO_VOLUME) }
+            logoAlpha.animateTo(1f, tween(FADE_MS))
+            delay(HOLD_MS)
+            // Wait a little for Who's watching to be ready (a slow server goes on anyway)
+            var waited = 0L
+            while (BenflixIntroState.whoMark == null && waited < WAIT_FOR_PAGE_MS) {
+                delay(40)
+                waited += 40
+            }
+            val whoLogo = BenflixIntroState.whoLogo
+            val whoMark = BenflixIntroState.whoMark
+            if (whoLogo != null && whoMark != null && logoRect != null && markRect != null) {
+                target = whoLogo to whoMark
+                coroutineScope {
+                    launch { glide.animateTo(1f, tween(GLIDE_MS, easing = FastOutSlowInEasing)) }
+                    launch { screenAlpha.animateTo(0f, tween(GLIDE_MS)) }
+                }
+            } else {
+                coroutineScope {
+                    launch { logoAlpha.animateTo(0f, tween(FADE_OUT_MS)) }
+                    launch { screenAlpha.animateTo(0f, tween(FADE_OUT_MS)) }
                 }
             }
-        var player: MediaPlayer? = null
-        var started = false
-        try {
-            // 1) Still logo for about 2 seconds while the app loads in the background
-            coroutineScope {
-                launch { markAlpha.animateTo(1f, tween(300)) }
-                launch { wordAlpha.animateTo(1f, tween(300)) }
-            }
-            // Benflix speed: stop holding as soon as the app is ready behind the logo
-            delay(INTRO_MIN_HOLD_MS)
-            withTimeoutOrNull(INTRO_MAX_HOLD_MS - INTRO_MIN_HOLD_MS) { StartupTimer.signedIn.first { it } }
-            // 2) Sound + a soft light sweeps across the logo
-            player = playerAsync.await()
-            try {
-                player?.start()
-                started = player != null
-            } catch (ex: Exception) {
-                Timber.w(ex, "Could not play intro sound")
-            }
-            sweep.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
-            delay(350)
-            // 3) Settle and fade away
-            screenAlpha.animateTo(0f, tween(500))
         } finally {
-            if (!started) player?.release()
+            BenflixIntroState.setRunning(false)
             StartupTimer.mark(StartupTimer.INTRO)
             onFinished()
         }
     }
     Box(
         contentAlignment = Alignment.Center,
-        modifier =
-            modifier
+        modifier = modifier.fillMaxSize(),
+    ) {
+        Box(
+            Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = screenAlpha.value }
-                .background(Color.Black),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher_foreground),
-                contentDescription = null,
-                modifier =
-                    Modifier
-                        .size(260.dp)
-                        .graphicsLayer {
-                            alpha = markAlpha.value
-                            compositingStrategy = CompositingStrategy.Offscreen
-                        }.lightSweep { sweep.value },
-            )
-            Image(
-                painter = painterResource(R.drawable.benflix_logo),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier =
-                    Modifier
-                        .height(36.dp)
-                        .graphicsLayer {
-                            alpha = wordAlpha.value
-                            compositingStrategy = CompositingStrategy.Offscreen
-                        }.lightSweep { sweep.value },
-            )
-        }
+                .background(BenflixColors.Tray),
+        )
+        BenflixWordLogo(
+            height = INTRO_LOGO_HEIGHT.dp,
+            markModifier = Modifier.onGloballyPositioned { if (glide.value == 0f) markRect = it.boundsInWindow() },
+            modifier =
+                Modifier
+                    .onGloballyPositioned { if (glide.value == 0f) logoRect = it.boundsInWindow() }
+                    .graphicsLayer {
+                        alpha = logoAlpha.value
+                        val t = target
+                        val row = logoRect
+                        val mark = markRect
+                        if (t != null && row != null && mark != null && mark.width > 0f) {
+                            val (_, toMark) = t
+                            val p = glide.value
+                            val s = 1f + (toMark.width / mark.width - 1f) * p
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = s
+                            scaleY = s
+                            val endX = toMark.left - row.left - (mark.left - row.left) * (toMark.width / mark.width)
+                            val endY = toMark.top - row.top - (mark.top - row.top) * (toMark.width / mark.width)
+                            translationX = endX * p
+                            translationY = endY * p
+                        }
+                    },
+        )
     }
 }
 
 /**
- * A soft white band that slides across whatever it is on (only over the drawn pixels).
- * [progress] goes 0 to 1; at 0 and 1 the band is off the edges, so nothing shows.
+ * Plays one of the intro sounds quietly. Phones on silent or vibrate stay quiet (TVs always play).
  */
-private fun Modifier.lightSweep(progress: () -> Float): Modifier =
-    drawWithContent {
-        drawContent()
-        val p = progress()
-        if (p <= 0f || p >= 1f) return@drawWithContent
-        val band = size.width * 0.35f
-        val x = -band + (size.width + band * 2) * p
-        drawRect(
-            brush =
-                Brush.linearGradient(
-                    0f to Color.Transparent,
-                    0.5f to Color.White.copy(alpha = 0.75f),
-                    1f to Color.Transparent,
-                    start = Offset(x - band, 0f),
-                    end = Offset(x + band, size.height * 0.4f),
-                ),
-            blendMode = BlendMode.SrcAtop,
-        )
+suspend fun playIntroSound(
+    context: Context,
+    @RawRes sound: Int,
+    volume: Float,
+) {
+    val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    val isTv = context.packageManager.hasSystemFeature("android.software.leanback")
+    if (!isTv && audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+    val player =
+        withContext(WholphinDispatchers.IO) {
+            try {
+                MediaPlayer.create(context, sound)?.apply {
+                    setVolume(volume, volume)
+                    setOnCompletionListener { it.release() }
+                }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not load intro sound")
+                null
+            }
+        } ?: return
+    try {
+        player.start()
+    } catch (ex: Exception) {
+        Timber.w(ex, "Could not play intro sound")
+        player.release()
     }
+}
 
-/** The still logo shows at least this long, and at most the longer one while the app loads */
-private const val INTRO_MIN_HOLD_MS = 600L
-private const val INTRO_MAX_HOLD_MS = 1_700L
+/** How big the logo is in the middle of the screen */
+private const val INTRO_LOGO_HEIGHT = 56
+
+/** Quiet, about half volume (doors sound is a little louder) */
+const val INTRO_VOLUME = 0.45f
+const val DOORS_VOLUME = 0.55f
+
+private const val FADE_MS = 300
+private const val HOLD_MS = 400L
+private const val GLIDE_MS = 800
+private const val FADE_OUT_MS = 300
+private const val WAIT_FOR_PAGE_MS = 900L
