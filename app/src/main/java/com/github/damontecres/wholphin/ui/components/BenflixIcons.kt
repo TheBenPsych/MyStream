@@ -57,6 +57,12 @@ enum class BenflixIcon(
     DOWNLOAD("M12 4v11M7 10l5 5 5-5M5 20h14"),
     FLAG("M5 21V4M5 4h11l-2 4 2 4H5"),
     BACK("M15 6l-6 6 6 6"),
+    CHECK("M5 12.5l4.5 4.5L19 7"),
+    PLAY("M8 5.5v13l10.5-6.5z"),
+    ARROW("M5 12h14M13 6l6 6-6 6"),
+    PLUS("M12 5v14M5 12h14"),
+    MORE("M6 12h.01M12 12h.01M18 12h.01"),
+    THUMB("M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 2.5 2.5L13 10h5.5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 20H7"),
     ;
 
     /** Built once per icon */

@@ -2,11 +2,7 @@ package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.filter.DefaultForGenresFilterOptions
@@ -14,10 +10,8 @@ import com.github.damontecres.wholphin.data.filter.DefaultForStudiosFilterOption
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.ui.components.ItemGrid
 import com.github.damontecres.wholphin.ui.components.LicenseInfo
-import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.data.MovieSortOptions
 import com.github.damontecres.wholphin.ui.data.rememberSortOptions
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderGeneric
@@ -46,6 +40,9 @@ import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
+import com.github.damontecres.wholphin.ui.door.DoorBrowsePage
+import com.github.damontecres.wholphin.ui.door.DoorPage
+import com.github.damontecres.wholphin.ui.door.DoorRowGridPage
 import com.github.damontecres.wholphin.ui.games.GamesPage
 import com.github.damontecres.wholphin.ui.games.PlayGamePage
 import com.github.damontecres.wholphin.ui.main.MoodPage
@@ -57,12 +54,11 @@ import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreference
 import com.github.damontecres.wholphin.ui.search.SearchPage
 import com.github.damontecres.wholphin.ui.setup.InstallUpdatePage
 import com.github.damontecres.wholphin.ui.slideshow.SlideshowPage
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClose
-import dagger.hilt.android.lifecycle.HiltViewModel
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import timber.log.Timber
-import javax.inject.Inject
 
 /**
  * Chose the page for the [Destination]
@@ -88,11 +84,19 @@ fun DestinationContent(
         }
 
         Destination.MoviesDoor -> {
-            DoorLibraryPage(CollectionType.MOVIES, preferences, onClearBackdrop, modifier)
+            DoorPage(BenflixDoor.MOVIES, preferences, onClearBackdrop, modifier)
         }
 
         Destination.ShowsDoor -> {
-            DoorLibraryPage(CollectionType.TVSHOWS, preferences, onClearBackdrop, modifier)
+            DoorPage(BenflixDoor.SHOWS, preferences, onClearBackdrop, modifier)
+        }
+
+        is Destination.DoorBrowse -> {
+            DoorBrowsePage(destination, preferences, modifier)
+        }
+
+        is Destination.DoorRowGrid -> {
+            DoorRowGridPage(destination, modifier)
         }
 
         is Destination.Playback -> {
@@ -582,45 +586,6 @@ fun DestinationContent(
                 modifier = modifier,
             )
         }
-    }
-}
-
-@HiltViewModel
-class DoorLibraryViewModel
-    @Inject
-    constructor(
-        navDrawerService: NavDrawerService,
-    ) : ViewModel() {
-        val state = navDrawerService.state
-    }
-
-/**
- * Inside a door until its own page is built: the first library of that kind (Movies or Shows),
- * other than anime, which gets its own rows later.
- */
-@Composable
-fun DoorLibraryPage(
-    type: CollectionType,
-    preferences: UserPreferences,
-    onClearBackdrop: () -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: DoorLibraryViewModel = hiltViewModel(),
-) {
-    val state by viewModel.state.collectAsState()
-    val libraries =
-        (state.items + state.moreItems)
-            .filterIsInstance<ServerNavDrawerItem>()
-            .filter { it.type == type }
-    val library = libraries.firstOrNull { !it.name.contains("anime", ignoreCase = true) } ?: libraries.firstOrNull()
-    if (library == null) {
-        LoadingPage(modifier)
-    } else {
-        DestinationContent(
-            destination = library.destination,
-            preferences = preferences,
-            onClearBackdrop = onClearBackdrop,
-            modifier = modifier,
-        )
     }
 }
 

@@ -84,8 +84,13 @@ fun Destination.door(): BenflixDoor? =
         is Destination.ShowsDoor -> BenflixDoor.SHOWS
         is Destination.Channels -> BenflixDoor.LIVE_TV
         is Destination.Games -> BenflixDoor.GAMES
+        is Destination.DoorBrowse -> BenflixDoor.entries.firstOrNull { it.name == door }
+        is Destination.DoorRowGrid -> BenflixDoor.entries.firstOrNull { it.name == door }
         else -> null
     }
+
+/** Door pages draw right up to the screen's edges (their picture fills the right side) */
+fun Destination.fullBleed(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor
 
 /**
  * The redesigned TV top bar (approved h4-classic): the logo on the left (just decoration), and inside
