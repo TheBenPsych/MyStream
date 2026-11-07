@@ -65,8 +65,8 @@ fun ExpandableDiscoverButtons(
         ) {
             val baseText =
                 when (availability) {
-                    // Benflix: family members "ask Ben", the admin just requests
-                    SeerrAvailability.UNKNOWN -> if (isAdmin) R.string.request else R.string.benflix_ask_to_add
+                    // Benflix redesign: one white "Ask for it" for everyone
+                    SeerrAvailability.UNKNOWN -> R.string.benflix_ask_for_it
 
                     // Benflix look A: say where the ask is, in plain words
                     SeerrAvailability.PENDING -> if (isAdmin) R.string.pending else R.string.benflix_asked_waiting
@@ -111,7 +111,8 @@ fun ExpandableDiscoverButtons(
                 ExpandableFaButton(
                     title = text,
                     iconStringRes = icon,
-                    // Benflix look A: the main button is red when it does something
+                    white = !blocked && !noAsking && availability == SeerrAvailability.UNKNOWN && canRequest,
+                    // Benflix look A: the main button stands out when it does something
                     primary =
                         !blocked && !noAsking &&
                             (
