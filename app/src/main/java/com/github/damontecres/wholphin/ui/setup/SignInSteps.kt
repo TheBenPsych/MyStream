@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -240,6 +241,7 @@ internal fun Answer(
     error: String?,
     isTv: Boolean,
     onDone: () -> Unit,
+    fieldTag: String = "sign_in_text",
 ) {
     val boxWidth = 520.dp
     Column(
@@ -295,7 +297,8 @@ internal fun Answer(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
-                        .focusRequester(focus),
+                        .focusRequester(focus)
+                        .testTag(fieldTag),
             )
         }
         Box(

@@ -133,6 +133,7 @@ fun FirstServerScreen(
                         error = error,
                         isTv = isTv,
                         onDone = { if (address.isNotBlank() && !connecting) viewModel.addServer(address.trim(), showToast = false) },
+                        fieldTag = "server_url_text",
                     )
                     SignInButton(
                         label = "Next",
