@@ -1360,8 +1360,8 @@ sealed interface AppPreference<Pref, T> {
 }
 
 /**
- * Benflix: Settings in five plain sections. All the technical player and server options live under
- * Advanced at the bottom. A search box at the top finds any setting by name.
+ * Benflix redesign: Settings in eight groups (You, Watching, Picture and sound, Look, Family, Phones
+ * and TVs, Help, Behind the scenes). The technical player and server options live in Behind the scenes. A search box at the top finds any setting by name.
  */
 val basicPreferences =
     listOf(
@@ -1384,8 +1384,6 @@ val basicPreferences =
             title = R.string.benflix_settings_watching,
             preferences =
                 listOf(
-                    AppPreference.SubtitleStyle,
-                    AppPreference.UserProfileSettings,
                     AppPreference.AutoPlayNextUp,
                     AppPreference.AutoPlayNextDelay,
                     AppPreference.ShowNextUpTiming,
@@ -1393,13 +1391,17 @@ val basicPreferences =
                     AppPreference.SkipForward,
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
-                    AppPreference.AutoMpvStyledSubs,
-                    AppPreference.EnglishSubtitlesOnly,
                 ),
         ),
         PreferenceGroup(
-            title = R.string.benflix_settings_parental,
-            preferences = listOf(AppPreference.ParentPin, AppPreference.ParentalMore),
+            title = R.string.benflix_settings_picture,
+            preferences =
+                listOf(
+                    AppPreference.SubtitleStyle,
+                    AppPreference.UserProfileSettings,
+                    AppPreference.AutoMpvStyledSubs,
+                    AppPreference.EnglishSubtitlesOnly,
+                ),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_look,
@@ -1417,6 +1419,10 @@ val basicPreferences =
                         listOf(AppPreference.LateNightStart),
                     ),
                 ),
+        ),
+        PreferenceGroup(
+            title = R.string.benflix_settings_parental,
+            preferences = listOf(AppPreference.ParentPin, AppPreference.ParentalMore),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_phone,
@@ -1437,8 +1443,8 @@ val basicPreferences =
             title = R.string.more,
             preferences =
                 buildList {
+                    // The Server page lives in the profile menu
                     add(AppPreference.QuickConnect)
-                    add(AppPreference.ServerPage)
                     add(AppPreference.AdvancedSettings)
                 },
         ),
@@ -1452,6 +1458,7 @@ val basicPreferences =
 val guestPreferences: Set<AppPreference<AppPreferences, out Any?>> =
     buildSet {
         addAll(basicPreferences.first { it.title == R.string.benflix_settings_watching }.preferences)
+        addAll(basicPreferences.first { it.title == R.string.benflix_settings_picture }.preferences)
         add(AppPreference.HowToUse)
         add(AppPreference.InstalledVersion)
     }

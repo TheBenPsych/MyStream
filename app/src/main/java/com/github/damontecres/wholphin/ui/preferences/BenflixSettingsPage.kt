@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
@@ -89,6 +90,7 @@ private fun hintFor(
     when (title) {
         R.string.benflix_settings_profile -> R.string.benflix_settings_hint_profile
         R.string.benflix_settings_watching -> R.string.benflix_settings_hint_watching
+        R.string.benflix_settings_picture -> R.string.benflix_settings_hint_picture
         R.string.benflix_settings_look -> R.string.benflix_settings_hint_look
         R.string.benflix_settings_phone -> R.string.benflix_settings_hint_phone
         R.string.benflix_settings_parental -> R.string.benflix_settings_hint_parental
@@ -101,6 +103,7 @@ private fun iconFor(
     when (title) {
         R.string.benflix_settings_profile -> Icons.Default.Person
         R.string.benflix_settings_watching -> Icons.Default.PlayArrow
+        R.string.benflix_settings_picture -> Icons.Default.Settings
         R.string.benflix_settings_look -> Icons.Default.Star
         R.string.benflix_settings_phone -> Icons.Default.Phone
         R.string.benflix_settings_parental -> Icons.Default.Lock
@@ -115,7 +118,9 @@ private fun buildSections(
     buildList {
         basicPreferences.forEach { group ->
             val guestHidden =
-                group.title != R.string.benflix_settings_watching && group.title != R.string.benflix_settings_help
+                group.title != R.string.benflix_settings_watching &&
+                    group.title != R.string.benflix_settings_picture &&
+                    group.title != R.string.benflix_settings_help
             if (guest && guestHidden) {
                 // Guest: only Watching and Help (no Quick Connect, Server page, Advanced, profile or parental)
             } else if (group.title == R.string.more) {
