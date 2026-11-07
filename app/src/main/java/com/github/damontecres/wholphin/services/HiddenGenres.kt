@@ -147,6 +147,26 @@ class HiddenGenresStore
             return genres
         }
 
+        /** "More of this" genres (approved setup genre rows), lower case; they get their own row in the doors */
+        suspend fun loadMore(userId: UUID): Set<String> =
+            try {
+                HiddenGenres.decode(displayPreferencesService.getDisplayPreferences(userId).customPrefs[MORE_KEY])
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't read liked genres")
+                emptySet()
+            }
+
+        suspend fun saveMore(
+            userId: UUID,
+            genres: Set<String>,
+        ) {
+            displayPreferencesService.updateDisplayPreferences(userId) {
+                if (genres.isEmpty()) remove(MORE_KEY) else put(MORE_KEY, HiddenGenres.encode(genres))
+            }
+        }
+
         suspend fun save(
             userId: UUID,
             genres: Set<String>,
@@ -157,3 +177,6 @@ class HiddenGenresStore
             HiddenGenres.hidden = genres.map { it.lowercase() }.toSet()
         }
     }
+
+/** Where "More of this" genres are saved in the person's settings */
+private const val MORE_KEY = "benflix.moreGenres"

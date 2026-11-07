@@ -73,11 +73,33 @@ class HiddenGenresViewModel
 
         private val saveLock = Mutex()
 
+        /** "More of this" ones, lower case */
+        private val _more = MutableStateFlow<Set<String>>(emptySet())
+        val more: StateFlow<Set<String>> = _more
+
+        /** More of this on/off. Turning it on also un-hides the genre */
+        fun toggleMore(genre: String) {
+            val key = genre.lowercase()
+            _more.value = _more.value.let { if (key in it) it - key else it + key }
+            if (key in _more.value && key in _hidden.value) toggle(genre)
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id ?: return@launch
+                try {
+                    saveLock.withLock { store.saveMore(userId, _more.value) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't save liked genres")
+                }
+            }
+        }
+
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 try {
                     _hidden.value = store.load(userId)
+                    _more.value = store.loadMore(userId)
                     _genres.value =
                         api.genresApi
                             .getGenres(
@@ -103,6 +125,7 @@ class HiddenGenresViewModel
             val key = genre.lowercase()
             val now = _hidden.value.let { if (key in it) it - key else it + key }
             _hidden.value = now
+            if (key in now && key in _more.value) toggleMore(genre)
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val userId = serverRepository.currentUser?.id ?: return@launch
                 try {
@@ -195,5 +218,80 @@ fun HiddenGenresDialog(onDismiss: () -> Unit) {
             HiddenGenresPicker()
             Button(onClick = onDismiss) { Text("Done") }
         }
+    }
+}
+
+/**
+ * Benflix redesign (setup, approved p2-gen-rows): one row per genre with "More of this" and "Hide for me".
+ * More of this gets its own row in the Movies and Shows doors; hidden is hidden everywhere for this person.
+ */
+@Composable
+fun GenreRowsPicker(
+    modifier: Modifier = Modifier,
+    viewModel: HiddenGenresViewModel = hiltViewModel(),
+) {
+    val genres by viewModel.genres.collectAsState()
+    val hidden by viewModel.hidden.collectAsState()
+    val more by viewModel.more.collectAsState()
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(genres.isNotEmpty()) { if (genres.isNotEmpty()) focus.tryRequestFocus() }
+    if (genres.isEmpty()) {
+        Text("Loading genres…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.widthIn(max = 720.dp).fillMaxWidth()) {
+        genres.forEachIndexed { index, genre ->
+            val key = genre.lowercase()
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    genre,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (key in hidden) Color.White.copy(alpha = .45f) else Color.White,
+                    modifier = Modifier.weight(1f),
+                )
+                GenreChoice(
+                    text = "More of this",
+                    on = key in more,
+                    onClick = { viewModel.toggleMore(genre) },
+                    modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
+                )
+                GenreChoice(text = "Hide for me", on = key in hidden, onClick = { viewModel.toggle(genre) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenreChoice(
+    text: String,
+    on: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (on) Color.White else Color(0xFF2A2A30),
+                contentColor = if (on) Color(0xFF0B0C10) else Color.White,
+                focusedContainerColor = if (on) Color.White else Color(0xFF45454F),
+                focusedContentColor = if (on) Color(0xFF0B0C10) else Color.White,
+            ),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), inset = (-3).dp, shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier,
+    ) {
+        Text(
+            if (on) "✓ $text" else text,
+            fontSize = 15.sp,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+        )
     }
 }

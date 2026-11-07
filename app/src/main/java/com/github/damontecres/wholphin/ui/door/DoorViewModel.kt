@@ -72,6 +72,7 @@ class DoorViewModel
         private val serverRepository: ServerRepository,
         private val navDrawerService: NavDrawerService,
         private val aniListLibraries: AniListLibraries,
+        private val hiddenGenresStore: com.github.damontecres.wholphin.services.HiddenGenresStore,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow(DoorPageState())
@@ -150,7 +151,7 @@ class DoorViewModel
                 if (easy) {
                     listOf(KEEP, MY_LIST, NEW)
                 } else {
-                    listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, ANIME, STAND_UP)
+                    listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
                 }
             aniListLibraries.warm(anime, userId)
             _state.update {
@@ -197,6 +198,7 @@ class DoorViewModel
                             _state.update { st -> st.copy(pick = pickFrom(found.second) ?: st.pick) }
                         }
                     }
+                    launch { moreGenreRow(userId, order, BaseItemKind.MOVIE) }
                     launch {
                         val dislikes = disliked.await()
                         val items = data.fromLibrary(userId, anime, BaseItemKind.MOVIE).filter { it.id !in dislikes }
@@ -219,7 +221,7 @@ class DoorViewModel
                 if (easy) {
                     listOf(KEEP, MY_LIST, NEW_SHOWS)
                 } else {
-                    listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, ANIME, TOP_10_ANIME)
+                    listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
                 }
             aniListLibraries.warm(anime, userId)
             _state.update {
@@ -269,6 +271,7 @@ class DoorViewModel
                             _state.update { st -> st.copy(pick = pickFrom(found.second) ?: st.pick) }
                         }
                     }
+                    launch { moreGenreRow(userId, order, BaseItemKind.SERIES) }
                     launch {
                         val dislikes = disliked.await()
                         val items = data.fromLibrary(userId, anime, BaseItemKind.SERIES).filter { it.id !in dislikes }
@@ -359,6 +362,22 @@ class DoorViewModel
             }
         }
 
+        /** A "More Comedy" row for one of the genres they picked "More of this" for in setup */
+        private suspend fun moreGenreRow(
+            userId: UUID,
+            order: List<String>,
+            type: BaseItemKind,
+        ) {
+            val genre = hiddenGenresStore.loadMore(userId).randomOrNull()
+            if (genre == null) {
+                remove(MORE_GENRE)
+                return
+            }
+            val items = data.inGenre(userId, type, genre)
+            val name = genre.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
+            putOrRemove(order, DoorRowData(MORE_GENRE, "More $name", items))
+        }
+
         companion object {
             const val KEEP = "keep"
             const val MY_LIST = "mylist"
@@ -368,6 +387,7 @@ class DoorViewModel
             const val TOP_10 = "top10"
             const val TOP_10_ANIME = "top10anime"
             const val BECAUSE = "because"
+            const val MORE_GENRE = "moregenre"
             const val ANIME = "anime"
             const val STAND_UP = "standup"
 

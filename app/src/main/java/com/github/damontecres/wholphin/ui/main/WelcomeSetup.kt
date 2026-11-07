@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,7 +80,6 @@ import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.preferences.SubtitleModePreference
 import com.github.damontecres.wholphin.preferences.updateBenflixPreferences
 import com.github.damontecres.wholphin.preferences.updateSubtitlePreferences
-import com.github.damontecres.wholphin.services.BenflixBedtime
 import com.github.damontecres.wholphin.services.BenflixDeviceCheck
 import com.github.damontecres.wholphin.services.BenflixSettingsSync
 import com.github.damontecres.wholphin.services.DeviceChoices
@@ -90,19 +89,17 @@ import com.github.damontecres.wholphin.services.DisplayPreferencesService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
-import com.github.damontecres.wholphin.ui.setup.PosterWall
 import com.github.damontecres.wholphin.ui.setup.ReadableTextShadow
 import com.github.damontecres.wholphin.ui.setup.benflixAvatarFor
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices
 import com.github.damontecres.wholphin.ui.theme.toColor
@@ -138,17 +135,14 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * The steps of the welcome setup, in order. Every step must be answered (only the parent PIN can be
- * turned down with "No thanks"). [FINISH] is the "You're all set" screen, not a question.
+ * The steps of the new-profile setup (approved redesign): Picture, Subtitles, Word size, Favourites,
+ * Genres, then "All set". Each one has a small "Skip for now". [BROUGHT_OVER] is the one page people
+ * who did the old setup see instead ("We brought your settings over"). [FINISH] isn't a question.
  */
-enum class WelcomeStep { HELLO, DEVICE_CHECK, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, FAVORITES, HIDE_GENRES, FINISH }
+enum class WelcomeStep { BROUGHT_OVER, PICTURE, SUBTITLES, EASY_READ, FAVORITES, HIDE_GENRES, FINISH }
 
-/** The steps that get a dot at the top (everything but the finish screen) */
-private val DottedSteps = WelcomeStep.entries.filter { it != WelcomeStep.FINISH }
-
-/** The steps that are questions (Hello, the device check and the finish screen aren't) */
-private val QuestionCount =
-    WelcomeStep.entries.count { it != WelcomeStep.HELLO && it != WelcomeStep.DEVICE_CHECK && it != WelcomeStep.FINISH }
+/** The steps that get a white dot at the top */
+private val DottedSteps = WelcomeStep.entries.filter { it != WelcomeStep.FINISH && it != WelcomeStep.BROUGHT_OVER }
 
 /** A poster on the "Pick a few things you love" wall */
 data class WelcomePoster(
@@ -222,12 +216,9 @@ class WelcomeViewModel
         /** Likes already saved on the server (when they left the favourites step) */
         private var savedLikes = emptySet<UUID>()
 
-        private val _subtitles = MutableStateFlow<SubtitleModePreference?>(null)
+        // Answers they gave before are filled in (approved)
+        private val _subtitles = MutableStateFlow<SubtitleModePreference?>(serverRepository.currentUser?.appPreferences?.subtitleMode)
         val subtitles: StateFlow<SubtitleModePreference?> = _subtitles
-
-        /** A real still from one of their movies, for the subtitle sample */
-        private val _still = MutableStateFlow<String?>(null)
-        val still: StateFlow<String?> = _still
 
         private val _profileImage = MutableStateFlow<String?>(null)
         val profileImage: StateFlow<String?> = _profileImage
@@ -265,15 +256,6 @@ class WelcomeViewModel
             }
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
-                    _still.value = loadStill()
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Welcome: couldn't load a still for the subtitle sample")
-                }
-            }
-            viewModelScope.launch(WholphinDispatchers.IO) {
-                try {
                     val id = userId ?: return@launch
                     val tag =
                         api.userApi
@@ -302,9 +284,10 @@ class WelcomeViewModel
         private fun stepKey(): String? = userId?.toString()
 
         private fun savedStep(): WelcomeStep {
-            val key = stepKey() ?: return WelcomeStep.HELLO
-            val name = stepPrefs.getString(key, null) ?: return WelcomeStep.HELLO
-            return WelcomeStep.entries.firstOrNull { it.name == name } ?: WelcomeStep.HELLO
+            val first = if (broughtOver) WelcomeStep.BROUGHT_OVER else WelcomeStep.PICTURE
+            val key = stepKey() ?: return first
+            val name = stepPrefs.getString(key, null) ?: return first
+            return WelcomeStep.entries.firstOrNull { it.name == name } ?: first
         }
 
         private fun goTo(step: WelcomeStep) {
@@ -316,6 +299,12 @@ class WelcomeViewModel
             val steps = WelcomeStep.entries
             val current = _step.value
             if (current == WelcomeStep.FAVORITES) saveLikes()
+            // The common answer is picked already: keep it even if they skip
+            if (current == WelcomeStep.SUBTITLES && _subtitles.value == null) setSubtitles(SubtitleModePreference.SMART)
+            if (current == WelcomeStep.BROUGHT_OVER) {
+                goTo(WelcomeStep.PICTURE)
+                return
+            }
             val index = steps.indexOf(current)
             if (index < steps.lastIndex) {
                 goTo(steps[index + 1])
@@ -324,10 +313,10 @@ class WelcomeViewModel
             }
         }
 
-        /** Back one step. On the first step it does nothing (the setup can't be left halfway) */
+        /** Back one step. On the first step it does nothing */
         fun back(): Boolean {
             val index = WelcomeStep.entries.indexOf(_step.value)
-            if (index <= 0) return false
+            if (index <= 0 || (_step.value == WelcomeStep.PICTURE && !broughtOver)) return false
             goTo(WelcomeStep.entries[index - 1])
             return true
         }
@@ -516,23 +505,6 @@ class WelcomeViewModel
             return mixed.map { it.toPoster() }
         }
 
-        private suspend fun loadStill(): String? {
-            val movie =
-                api.itemsApi
-                    .getItems(
-                        GetItemsRequest(
-                            userId = userId,
-                            includeItemTypes = listOf(BaseItemKind.MOVIE),
-                            recursive = true,
-                            imageTypes = listOf(ImageType.BACKDROP),
-                            sortBy = listOf(ItemSortBy.RANDOM),
-                            limit = 1,
-                        ),
-                    ).content.items
-                    .firstOrNull() ?: return null
-            return imageUrlService.getItemImageUrl(itemId = movie.id, imageType = ImageType.BACKDROP, maxWidth = 1280)
-        }
-
         companion object {
             private const val POOL_EACH = 30
             private const val POSTERS_SHOWN = 24
@@ -540,12 +512,24 @@ class WelcomeViewModel
             private const val SEARCH_DELAY_MS = 350L
             private const val STEP_PREFS = "benflix_welcome_step"
 
-            /** At least this many favourites before Next (fewer only when the library is smaller) */
-            const val MIN_PICKS = 3
-
             // Benflix: "2" so everyone, including people from before the welcome setup existed, gets it once
             // (the first version skipped anyone who had already watched something)
-            const val KEY = "benflix.welcomed3"
+            const val KEY = "benflix.welcomed4"
+
+            /** The old setup's key: people who did it get the one "We brought your settings over" page */
+            const val OLD_KEY = "benflix.welcomed3"
+
+            /** Set by the gate before opening the setup: this person did the old setup */
+            @Volatile var broughtOver = false
+
+            /** Settings > Run setup again: start from the first question */
+            fun restart(
+                context: Context,
+                userId: UUID,
+            ) {
+                broughtOver = false
+                context.getSharedPreferences(STEP_PREFS, Context.MODE_PRIVATE).edit { remove(userId.toString()) }
+            }
 
             suspend fun markWelcomed(
                 displayPreferencesService: DisplayPreferencesService,
@@ -578,6 +562,7 @@ class WelcomeGateViewModel
                     withTimeoutOrNull(SYNC_WAIT_MS) { settingsSync.ready.first { it == userId } }
                     val prefs = displayPreferencesService.getDisplayPreferences(userId).customPrefs
                     if (prefs[WelcomeViewModel.KEY] != null) return@launch
+                    WelcomeViewModel.broughtOver = prefs[WelcomeViewModel.OLD_KEY] != null
                     withContext(WholphinDispatchers.Main) { navigationManager.navigateTo(Destination.Welcome) }
                 } catch (ex: CancellationException) {
                     throw ex
@@ -607,40 +592,16 @@ fun WelcomePage(
     viewModel: WelcomeViewModel = hiltViewModel(),
 ) {
     val step by viewModel.step.collectAsState()
-    val posters by viewModel.posters.collectAsState()
-    val device by viewModel.device.collectAsState()
-    val accent by viewModel.accent.collectAsState(BenflixAccent.ACCENT_RED)
     val isTv = rememberIsTv()
-    val context = LocalContext.current
-    // The device check may switch Lite mode on, so look again once it's done
-    val lite = remember(device) { LiteMode.isOn(context) }
-    val wall = remember(posters) { posters.mapNotNull { it.imageUrl } }
     // Back goes back a step; on the first step it does nothing (the setup is only done once it's finished)
     BackHandler { viewModel.back() }
+    // Approved: neutral greys on the plain dark tray, the logo top left and white dots for the steps
     Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color(0xFF0B0C10)),
+                .background(BenflixColors.Tray),
     ) {
-        // The dimmed sliding poster wall from Who's watching (a plain dark background in Lite mode),
-        // with a dark scrim on top so the text stays easy to read
-        if (!lite) {
-            PosterWall(wall, Modifier.fillMaxSize())
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = .45f)),
-            )
-        }
-        // Softly tinted with their colour, like profile themes tint Home
-        if (accent.tintsPage()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(accent.toColor().copy(alpha = PAGE_TINT)),
-            )
-        }
         Box(
             contentAlignment = Alignment.TopCenter,
             modifier =
@@ -655,16 +616,16 @@ fun WelcomePage(
                 modifier = Modifier.widthIn(max = 960.dp).fillMaxWidth(),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("BENFLIX", fontFamily = BenflixTitleFont, fontSize = 30.sp, color = BenflixRed, modifier = Modifier.weight(1f))
-                    if (step != WelcomeStep.FINISH) StepDots(step)
+                    com.github.damontecres.wholphin.ui.nav
+                        .BenflixLogo(height = 26.dp)
+                    Spacer(Modifier.weight(1f))
+                    if (step in DottedSteps) StepDots(step)
                 }
                 when (step) {
-                    WelcomeStep.HELLO -> HelloStep(viewModel)
-                    WelcomeStep.DEVICE_CHECK -> DeviceCheckStep(viewModel)
+                    WelcomeStep.BROUGHT_OVER -> BroughtOverStep(viewModel)
                     WelcomeStep.PICTURE -> PictureStep(viewModel, isTv)
                     WelcomeStep.SUBTITLES -> SubtitlesStep(viewModel)
                     WelcomeStep.EASY_READ -> EasyReadStep(viewModel)
-                    WelcomeStep.PARENT_PIN -> ParentPinStep(viewModel)
                     WelcomeStep.FAVORITES -> FavoritesStep(viewModel, isTv)
                     WelcomeStep.HIDE_GENRES -> HideGenresStep(viewModel)
                     WelcomeStep.FINISH -> FinishStep(viewModel, isTv)
@@ -673,12 +634,6 @@ fun WelcomePage(
         }
     }
 }
-
-/** Benflix red keeps the classic black look and Mono is all greys, so only the others tint (like profile themes) */
-private fun BenflixAccent.tintsPage(): Boolean =
-    this != BenflixAccent.ACCENT_RED && this != BenflixAccent.ACCENT_MONO && this != BenflixAccent.UNRECOGNIZED
-
-private const val PAGE_TINT = 0.10f
 
 /** Small dots for the steps: the current one wider and filled, done ones dimmer */
 @Composable
@@ -717,7 +672,7 @@ private fun StepTitle(
     }
 }
 
-/** Back (after the first step) and the main button, at the bottom of each step. There's no Skip: every step counts */
+/** Back (after the first step), the main button and a small "Skip for now" (approved), at the bottom of each step */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepButtons(
@@ -734,7 +689,7 @@ private fun StepButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        if (step != WelcomeStep.HELLO) {
+        if (step != WelcomeStep.PICTURE && step != WelcomeStep.BROUGHT_OVER) {
             OutlinedButton(onClick = { viewModel.back() }) { Text("Back") }
         }
         Button(
@@ -745,6 +700,22 @@ private fun StepButtons(
             Text(nextLabel)
         }
         extra()
+        if (step in DottedSteps) {
+            androidx.tv.material3.Surface(
+                onClick = viewModel::next,
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        contentColor = BenflixColors.Muted,
+                        focusedContainerColor = BenflixColors.FocusRow,
+                        focusedContentColor = BenflixColors.Text,
+                    ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            ) {
+                Text("Skip for now", fontSize = 15.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+            }
+        }
     }
 }
 
@@ -803,126 +774,6 @@ private fun ProfileTile(
     }
 }
 
-@Composable
-private fun HelloStep(viewModel: WelcomeViewModel) {
-    val focus = remember { FocusRequester() }
-    val accent by viewModel.accent.collectAsState(BenflixAccent.ACCENT_RED)
-    val image by viewModel.profileImage.collectAsState()
-    val isTv = rememberIsTv()
-    LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    viewModel.userId?.let { id ->
-        ProfileTile(id, viewModel.userName, image, accent, size = 110.dp)
-    }
-    Text(
-        "Hi ${viewModel.userName.ifBlank { "there" }}! Let's make Benflix yours.",
-        fontSize = 32.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-    )
-    Text("Takes about a minute", fontSize = 18.sp, color = Color.White.copy(alpha = .7f), textAlign = TextAlign.Center)
-    Text(
-        "A quick check of this ${if (isTv) "TV" else "phone"}, then $QuestionCount quick questions. " +
-            "You can change any of it later in Settings.",
-        fontSize = 18.sp,
-        color = Color.White.copy(alpha = .85f),
-        textAlign = TextAlign.Center,
-    )
-    StepButtons(viewModel, nextLabel = "Let's go", focus = focus)
-}
-
-/** Looks at this device, sets Lite mode and the screensaver to suit it, and says what it found */
-@Composable
-private fun DeviceCheckStep(viewModel: WelcomeViewModel) {
-    val device by viewModel.device.collectAsState()
-    val failed by viewModel.deviceFailed.collectAsState()
-    val isTv = rememberIsTv()
-    val word = if (isTv) "TV" else "phone"
-    val focus = remember { FocusRequester() }
-    val done = device != null || failed
-    LaunchedEffect(done) { if (done) focus.tryRequestFocus() }
-    StepTitle("Let's check this $word", "So Benflix runs as smoothly as it can here.")
-    val panel =
-        Modifier
-            .fillMaxWidth()
-            .background(Color(0xCC16161A), RoundedCornerShape(12.dp))
-            .padding(16.dp)
-    val result = device
-    when {
-        result != null -> {
-            val (report, choices) = result
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = panel) {
-                Text(
-                    "This ${report.deviceWord}: ${report.hardwareLine()}.",
-                    fontSize = 18.sp,
-                    color = Color.White,
-                )
-                Text(report.playsLine(), fontSize = 18.sp, color = Color.White.copy(alpha = .85f))
-                Text("We set Benflix to:", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("• " + liteLine(choices, report.deviceWord), fontSize = 17.sp, color = Color.White.copy(alpha = .9f))
-                Text("• " + motionLine(choices), fontSize = 17.sp, color = Color.White.copy(alpha = .9f))
-            }
-            Text(
-                if (report.weak) {
-                    if (report.isTv) {
-                        "This TV is on the older side, so Benflix keeps things light. For the best Benflix, a newer " +
-                            "streaming device helps: a Google TV Streamer, a Chromecast with Google TV (4K) or an " +
-                            "Nvidia Shield plays everything your server has in full quality."
-                    } else {
-                        "This phone is on the older side, so Benflix keeps things light. A newer phone would play " +
-                            "everything your server has in full quality."
-                    }
-                } else {
-                    "This ${report.deviceWord} is a great fit for Benflix. It plays nearly everything in full quality."
-                },
-                fontSize = 17.sp,
-                color = if (report.weak) Color(0xFFFFD27A) else Color(0xFF9BE59B),
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                "You can change these later in Settings: Lite mode is in the speed meter (tap Installed version " +
-                    "5 times), and screensaver motion is under Screensaver.",
-                fontSize = 15.sp,
-                color = Color.White.copy(alpha = .7f),
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        failed -> {
-            Text(
-                "We couldn't check this $word, and that's okay. Benflix will still work.",
-                fontSize = 18.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        else -> {
-            Text("Checking this $word…", fontSize = 18.sp, color = Color.White, textAlign = TextAlign.Center)
-        }
-    }
-    StepButtons(viewModel, focus = focus, enabled = done)
-}
-
-private fun liteLine(
-    choices: DeviceChoices,
-    word: String,
-): String {
-    val base =
-        if (choices.lite) {
-            "Lite mode on (smoother on this $word: no trailer previews on Home, still backgrounds)"
-        } else {
-            "Lite mode off (trailer previews play on Home)"
-        }
-    return if (choices.liteByYou) "$base. You picked this before, so we kept it." else base
-}
-
-private fun motionLine(choices: DeviceChoices): String {
-    val base =
-        if (choices.screensaverMotion) "Screensaver motion on" else "Screensaver motion off (a still slideshow, lighter work)"
-    return if (choices.screensaverMotionByYou) "$base. You picked this before, so we kept it." else base
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PictureStep(
@@ -936,7 +787,7 @@ private fun PictureStep(
     val image by viewModel.profileImage.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle("Pick your picture and colour")
+    StepTitle("Pick your picture", "Then pick a colour for behind it.")
     val preview: @Composable () -> Unit = {
         // A live preview of their Who's watching tile
         ProfileTile(userId, viewModel.userName, image, accent, size = if (isTv) 150.dp else 120.dp)
@@ -973,7 +824,7 @@ private fun PictureStep(
                     }
                 }
             }
-            Text("Your colour", fontSize = 18.sp, color = Color.White, modifier = Modifier.padding(top = 4.dp))
+            Text("Its background colour", fontSize = 18.sp, color = Color.White, modifier = Modifier.padding(top = 4.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1012,13 +863,13 @@ private fun PictureStep(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SubtitlesStep(viewModel: WelcomeViewModel) {
-    val chosen by viewModel.subtitles.collectAsState()
-    val still by viewModel.still.collectAsState()
+    // The common answer (Only for other languages) is picked already (approved)
+    val chosen = viewModel.subtitles.collectAsState().value ?: SubtitleModePreference.SMART
     val fontSize by viewModel.subtitleFontSize.collectAsState(SubtitleSize.MEDIUM.fontSize)
     val size = SubtitleSize.nearest(if (fontSize > 0) fontSize else SubtitleSize.MEDIUM.fontSize)
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle("Do you like subtitles?", "This is for movies and shows in your own language. Anime always gets English subtitles.")
+    StepTitle("Subtitles", "When should they show, and how big? Anime always gets English subtitles.")
     val options =
         listOf(
             "Off" to SubtitleModePreference.NONE,
@@ -1045,7 +896,7 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
         color = Color.White.copy(alpha = .75f),
         textAlign = TextAlign.Center,
     )
-    // A sample of how subtitles look, over a still from one of their own movies
+    // A sample of how subtitles look, over a Benflix drawing (the same every time, approved)
     Box(
         contentAlignment = Alignment.BottomCenter,
         modifier =
@@ -1053,16 +904,29 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
                 .fillMaxWidth(.7f)
                 .aspectRatio(16f / 7f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF26323C)),
+                .background(Brush.verticalGradient(listOf(Color(0xFF2B3A5C), Color(0xFF6B5A7A), Color(0xFFE0A070)))),
     ) {
-        if (still != null) {
-            AsyncImage(
-                model = still,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        // A low sun and two hills
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .size(70.dp)
+                .background(Color(0xFFFFD08A), CircleShape),
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(.7f)
+                .fillMaxHeight(.38f)
+                .background(Color(0xFF1E2A3A), RoundedCornerShape(topEnd = 200.dp)),
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .fillMaxWidth(.55f)
+                .fillMaxHeight(.28f)
+                .background(Color(0xFF15202D), RoundedCornerShape(topStart = 200.dp)),
+        )
         Text(
             text = "This is how your subtitles will look.",
             fontSize = (size.fontSize * SAMPLE_SCALE).sp,
@@ -1086,10 +950,7 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
             }
         }
     }
-    StepButtons(viewModel, enabled = chosen != null)
-    if (chosen == null) {
-        Text("Pick one of the three to go on.", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
-    }
+    StepButtons(viewModel)
 }
 
 /** The subtitle sample is smaller than a full screen, so its text is too */
@@ -1101,7 +962,10 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
     val posters by viewModel.posters.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle("Is this easy to read?", if (easyRead) "This is the bigger text. You can switch back if you like." else null)
+    StepTitle(
+        "How big should the words be?",
+        if (easyRead) "Bigger turns on Easy mode: bigger words and fewer rows everywhere." else "This is the normal size.",
+    )
     // A small sample of what Home looks like, with their own posters once they've loaded
     val details = listOf("32 min left", "S1:E4", "1 hr 10 min left")
     val progress = listOf(.7f, .35f, .45f)
@@ -1169,7 +1033,7 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
                                 Modifier
                                     .fillMaxWidth(progress[i])
                                     .fillMaxHeight()
-                                    .background(BenflixRed, CircleShape),
+                                    .background(Color.White, CircleShape),
                             )
                         }
                     }
@@ -1177,104 +1041,29 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
             }
         }
     }
-    StepButtons(
-        viewModel,
-        nextLabel = if (easyRead) "Keep it bigger" else "Looks good",
-        focus = focus,
+    // Normal or Bigger (approved p2-word-split): Bigger turns on Easy mode, and the rest of setup grows too
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedButton(onClick = { viewModel.setEasyRead(!easyRead) }) {
-            Text(if (easyRead) "Use normal text" else "Make it bigger")
+        Button(onClick = { viewModel.setEasyRead(false) }, modifier = Modifier.focusRequester(focus)) {
+            Text(if (!easyRead) "✓ Normal" else "Normal")
+        }
+        Button(onClick = { viewModel.setEasyRead(true) }) {
+            Text(if (easyRead) "✓ Bigger" else "Bigger")
         }
     }
+    StepButtons(viewModel)
 }
 
-/**
- * Families can set a parent PIN (one for the whole TV), which puts the Kids profile to bed at the bedtime
- * they pick. The only step that can be turned down ("No thanks").
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ParentPinStep(
-    viewModel: WelcomeViewModel,
-    bedtimeViewModel: BedtimeViewModel = hiltViewModel(),
-) {
-    val context = LocalContext.current
-    val hasPin by bedtimeViewModel.hasPin.collectAsState()
-    var checked by remember { mutableStateOf(false) }
-    // Whether this TV had a PIN before this step (then it isn't asked for again)
-    var hadPin by remember { mutableStateOf(false) }
-    var showDialog by remember { mutableStateOf(false) }
-    var bedtime by remember { mutableIntStateOf(BenflixBedtime.bedtimeHour) }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        hadPin = bedtimeViewModel.loadPin() == true
-        BenflixBedtime.load(context)
-        bedtime = BenflixBedtime.bedtimeHour
-        checked = true
-    }
-    LaunchedEffect(checked, hasPin) { if (checked) focus.tryRequestFocus() }
-    val explanation =
-        "Kids get their own profile on every TV, set up for them automatically. With a parent PIN, Kids locks " +
-            "at bedtime, and only a grown-up can unlock it with the PIN. You pick the bedtime: 8, 9 or 10 PM."
-    when {
-        !checked -> {
-            StepTitle("Got kids?", explanation)
-            Text("Checking for a parent PIN…", fontSize = 18.sp, color = Color.White)
-            StepButtons(viewModel, enabled = false)
-        }
-
-        hasPin -> {
-            StepTitle(
-                if (hadPin) "This TV already has a parent PIN" else "Parent PIN saved",
-                "When should Kids go to bed? Kids locks at bedtime until 6 AM, and the PIN gives 30 more minutes.",
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                BenflixBedtime.BEDTIME_HOURS.forEach { hour ->
-                    OutlinedButton(onClick = {
-                        BenflixBedtime.setBedtimeHour(context, hour)
-                        bedtime = hour
-                    }) {
-                        val label = BenflixBedtime.label(hour)
-                        Text(if (hour == bedtime) "✓ $label" else label)
-                    }
-                }
-            }
-            StepButtons(viewModel, focus = focus)
-        }
-
-        else -> {
-            StepTitle("Got kids? Set a parent PIN", explanation)
-            StepButtons(
-                viewModel,
-                nextLabel = "Set a parent PIN",
-                focus = focus,
-                onNext = { showDialog = true },
-            ) {
-                OutlinedButton(onClick = viewModel::next) { Text("No thanks") }
-            }
-        }
-    }
-    if (showDialog) {
-        ParentPinDialog(
-            hasPin = hasPin,
-            checkPin = bedtimeViewModel::checkPin,
-            setPin = bedtimeViewModel::setPin,
-            onDone = { showDialog = false },
-        )
-    }
-}
-
-/** Last question: genres this person never wants to see (they can change it later in Settings > Profile) */
+/** Last question (approved p2-gen-rows): More of this / Hide for me for each genre */
 @Composable
 private fun HideGenresStep(viewModel: WelcomeViewModel) {
     StepTitle(
-        title = "Anything else? Hide genres you never want to see",
-        subtitle = "Press a genre to hide it from your Home and library pages. Search still finds it. Hiding nothing is fine too.",
+        title = "Genres",
+        subtitle = "More of this gets its own row. Hide for me takes it out everywhere for you (Search still finds it).",
     )
-    HiddenGenresPicker(modifier = Modifier.padding(vertical = 8.dp))
+    GenreRowsPicker(modifier = Modifier.padding(vertical = 8.dp))
     StepButtons(viewModel, nextLabel = "Done")
 }
 
@@ -1292,11 +1081,9 @@ private fun FavoritesStep(
     // On a phone nothing is focused, so the keyboard doesn't pop up by itself.
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (isTv) focus.tryRequestFocus() }
-    // 3 picks, or fewer only when the library itself has fewer than 3 things
-    val needed = if (loaded) minOf(WelcomeViewModel.MIN_PICKS, posters.size) else WelcomeViewModel.MIN_PICKS
     StepTitle(
         "Pick a few things you love",
-        if (picked.isEmpty()) "Pick 3 or more and your Home fills up with things like them." else "${picked.size} picked",
+        if (picked.isEmpty()) "About 3 is plenty. Your rows fill up with things like them." else "${picked.size} picked",
     )
     WelcomeSearchBox(query = query, onQueryChange = viewModel::search, isTv = isTv, focus = focus)
     val showing = if (query.isBlank()) posters else results
@@ -1329,15 +1116,7 @@ private fun FavoritesStep(
     StepButtons(
         viewModel,
         nextLabel = if (picked.isEmpty()) "Next" else "Next (${picked.size} picked)",
-        enabled = loaded && picked.size >= needed,
     )
-    if (loaded && picked.size < needed) {
-        Text(
-            "Pick ${needed - picked.size} more to go on.",
-            fontSize = 14.sp,
-            color = Color.White.copy(alpha = .6f),
-        )
-    }
 }
 
 /** The search box above the poster wall. On a TV it only takes typing once it's pressed (so the D-pad can pass it) */
@@ -1430,60 +1209,78 @@ private fun PosterTile(
     }
 }
 
-/** "You're all set": a peek at their new Home, then Go to Home (only now is the setup marked done) */
+/**
+ * "All set, Noel" (approved p2-end-plain): no button, Home opens by itself after about 2 seconds. Those
+ * seconds are used to get Home ready, so it opens straight away.
+ */
 @Composable
 private fun FinishStep(
     viewModel: WelcomeViewModel,
     isTv: Boolean,
 ) {
-    val picked by viewModel.picked.collectAsState()
-    val posters by viewModel.posters.collectAsState()
+    LaunchedEffect(Unit) {
+        delay(FINISH_MS)
+        viewModel.finish()
+    }
+    Spacer(Modifier.height(if (isTv) 120.dp else 80.dp))
+    Text(
+        "All set, ${viewModel.userName}",
+        fontSize = if (isTv) 44.sp else 34.sp,
+        fontWeight = FontWeight.ExtraBold,
+        color = Color.White,
+        textAlign = TextAlign.Center,
+    )
+    Text("Opening Benflix…", fontSize = 18.sp, color = BenflixColors.Muted)
+}
+
+/** How long "All set" shows before Home opens */
+private const val FINISH_MS = 2_000L
+
+/**
+ * People who did the old setup see just this page (approved p2-back-page): what was brought over,
+ * then Looks good, or Change them (runs the steps with their answers filled in).
+ */
+@Composable
+private fun BroughtOverStep(viewModel: WelcomeViewModel) {
+    val easyRead by viewModel.easyRead.collectAsState(false)
+    val subtitles by viewModel.subtitles.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    val count = if (isTv) 6 else 4
-    val peek = (picked.values.toList() + posters.filter { it.id !in picked }).take(count)
-    StepTitle("You're all set", "Here's a peek at your new Home. It fills up more as you watch.")
+    StepTitle("We brought your settings over", "Benflix has a new look. Here's what you picked before.")
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             Modifier
-                .background(Color(0xE616161A), RoundedCornerShape(12.dp))
-                .padding(16.dp),
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
+                .background(BenflixColors.Panel, RoundedCornerShape(14.dp))
+                .padding(18.dp),
     ) {
-        Text(
-            picked.values.firstOrNull()?.let { "Because you love ${it.name}" } ?: "Picked for you",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            peek.forEach { poster ->
-                Box(
-                    Modifier
-                        .width(if (isTv) 110.dp else 86.dp)
-                        .aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFF2A2A30)),
-                ) {
-                    Text(
-                        poster.name,
-                        fontSize = 12.sp,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center).padding(4.dp),
-                    )
-                    AsyncImage(
-                        model = poster.imageUrl,
-                        contentDescription = poster.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+        val subs =
+            when (subtitles) {
+                SubtitleModePreference.NONE -> "Off"
+                SubtitleModePreference.ALWAYS -> "Always on"
+                else -> "Only for other languages"
             }
-        }
+        BroughtLine("Subtitles", subs)
+        BroughtLine("Word size", if (easyRead) "Bigger" else "Normal")
+        BroughtLine("Picture", "Kept")
+        BroughtLine("Favourites and hidden genres", "Kept")
     }
-    StepButtons(viewModel, nextLabel = "Go to Home", focus = focus, onNext = viewModel::finish)
+    StepButtons(viewModel, nextLabel = "Looks good", focus = focus, onNext = viewModel::finish) {
+        OutlinedButton(onClick = viewModel::next) { Text("Change them") }
+    }
+}
+
+@Composable
+private fun BroughtLine(
+    name: String,
+    value: String,
+) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(name, fontSize = 16.sp, color = BenflixColors.Muted, modifier = Modifier.weight(1f))
+        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    }
 }
 
 private const val AVATARS_PER_ROW = 4

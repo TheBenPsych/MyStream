@@ -1042,6 +1042,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_hidden_genres,
             )
 
+        /** Benflix redesign: Settings > You > Run setup again (the new-profile setup, from the first question) */
+        val RunSetupAgain =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_run_setup_again,
+            )
+
         /** Benflix: the parent PIN that guards Kids bedtime (and later other parental controls) */
         val ParentPin =
             AppClickablePreference<AppPreferences>(
@@ -1373,6 +1379,7 @@ val basicPreferences =
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
                     AppPreference.HiddenGenresPref,
+                    AppPreference.RunSetupAgain,
                     AppPreference.AniListTracking,
                     AppPreference.MalTracking,
                     AppPreference.UserInterfaceLanguage,
