@@ -32,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -225,8 +227,28 @@ fun GamesPage(
                         bottom = 24.dp,
                     ),
         ) {
-            // Approved order: Continue playing, Movie puzzles, Party, Ember Road, Consoles, Arcade, Leaderboards
-            if (recent.isNotEmpty()) {
+            // Approved order: Continue playing, Movie puzzles, Party, Ember Road, Consoles, Arcade, Leaderboards.
+            // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
+            val keep = if (!wide) recent.firstOrNull() else null
+            if (keep != null) {
+                val (ref, time) = keep
+                KeepPlayingCard(
+                    ref = ref,
+                    line = "${ref.consoleName} · Played ${playedAgo(time)}",
+                    token = viewModel.gamesToken,
+                    status =
+                        when {
+                            prep?.gameId == ref.id -> prep?.text
+                            starting == ref.id -> "Starting…"
+                            else -> null
+                        },
+                    onPlay = { viewModel.playHere(context, ref, resume = true) },
+                    onOpen = { viewModel.choose(ref) },
+                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                )
+            }
+            val rowRecent = if (keep != null) recent.drop(1) else recent
+            if (rowRecent.isNotEmpty()) {
                 Text(
                     text = "Continue playing",
                     fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
@@ -237,7 +259,7 @@ fun GamesPage(
                     horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
                     contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                 ) {
-                    items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                    items(rowRecent, key = { "recent-${it.first.id}" }) { (ref, time) ->
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             // Continue playing starts the game straight away, where you left off
                             Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
@@ -368,7 +390,11 @@ fun GamesPage(
                             // Sort is remembered per console (A to Z to start)
                             var sort by rememberSaveable(console.slug) { mutableStateOf(GameSort.AZ) }
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.focusRequester(consoleFocus)) {
-                                items(GameSort.entries.toList(), key = { "sort-${it.name}" }) { mode ->
+                                // "Best score" only once RomM has ratings for this console
+                                items(
+                                    GameSort.entries.filter { it != GameSort.BEST || console.games.any { g -> g.rating > 0.0 } },
+                                    key = { "sort-${it.name}" },
+                                ) { mode ->
                                     SortChip(mode.label, selected = mode == sort) { sort = mode }
                                 }
                             }
@@ -541,6 +567,101 @@ internal fun ActionTile(
         ) {
             Text(title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
             Text(subtitle, fontSize = BenflixType.small, color = BenflixColors.Soft)
+        }
+    }
+}
+
+/**
+ * Phones: the last game played as one big card at the top of Games (approved "Keep playing"), with its
+ * box art, name, console and a pink Play button. Play carries on where you left off; the card opens the
+ * game's page.
+ */
+@Composable
+private fun KeepPlayingCard(
+    ref: GameRef,
+    line: String,
+    token: String,
+    status: String?,
+    onPlay: () -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val context = LocalContext.current
+    Surface(
+        onClick = onOpen,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(width = 100.dp, height = 140.dp)
+                    .background(Color(0xFF1F1F1F), RoundedCornerShape(10.dp)),
+            ) {
+                if (ref.coverUrl != null) {
+                    AsyncImage(
+                        model =
+                            remember(ref.coverUrl) {
+                                ImageRequest
+                                    .Builder(context)
+                                    .data(ref.coverUrl)
+                                    .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
+                                    .build()
+                            },
+                        contentDescription = ref.name,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp)),
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "KEEP PLAYING",
+                    color = BenflixColors.Games,
+                    fontSize = BenflixType.tag,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp,
+                )
+                Text(
+                    text = ref.name,
+                    color = BenflixColors.Text,
+                    fontSize = BenflixType.rowName,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(text = status ?: line, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                Surface(
+                    onClick = onPlay,
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                    colors =
+                        ClickableSurfaceDefaults.colors(
+                            containerColor = BenflixColors.Games,
+                            contentColor = BenflixColors.OnGames,
+                            focusedContainerColor = BenflixColors.Games,
+                            focusedContentColor = BenflixColors.OnGames,
+                        ),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                    modifier = Modifier.padding(top = 6.dp),
+                ) {
+                    Text(
+                        text = "▶  Play",
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 9.dp),
+                    )
+                }
+            }
         }
     }
 }

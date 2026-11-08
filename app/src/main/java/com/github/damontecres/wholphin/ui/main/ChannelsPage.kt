@@ -69,6 +69,7 @@ import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
 import com.github.damontecres.wholphin.services.ChannelTileOrder
+import com.github.damontecres.wholphin.services.CustomChannel
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -90,7 +91,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.genresApi
+import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
@@ -123,6 +129,10 @@ class ChannelsViewModel
         }
 
         init {
+            reload()
+        }
+
+        private fun reload() {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 _channels.value =
                     try {
@@ -144,6 +154,57 @@ class ChannelsViewModel
         }
 
         fun watch(schedule: ChannelSchedule) = ChannelSession.tune(navigationManager, schedule)
+
+        /** Make a channel, step 2: the shows, genres or collections on the server, A to Z */
+        suspend fun loadPicks(kind: CustomChannel.Kind): List<MakeChannelPick> =
+            withContext(WholphinDispatchers.IO) {
+                val userId = serverRepository.currentUser?.id
+                try {
+                    when (kind) {
+                        CustomChannel.Kind.GENRE -> {
+                            api.genresApi
+                                .getGenres(userId = userId, includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES))
+                                .content.items
+                                .mapNotNull { dto -> dto.name?.let { MakeChannelPick(null, it) } }
+                                .distinctBy { it.name.lowercase() }
+                                .sortedBy { it.name.lowercase() }
+                        }
+
+                        else -> {
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        includeItemTypes =
+                                            listOf(if (kind == CustomChannel.Kind.SHOW) BaseItemKind.SERIES else BaseItemKind.BOX_SET),
+                                        recursive = true,
+                                        sortBy = listOf(ItemSortBy.SORT_NAME),
+                                        enableImages = false,
+                                        enableUserData = false,
+                                        limit = 3000,
+                                    ),
+                                ).content.items
+                                .map { MakeChannelPick(it.id, it.name.orEmpty()) }
+                        }
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not list things for Make a channel")
+                    emptyList()
+                }
+            }
+
+        /** Saves a made channel and builds today's guide again with it in */
+        fun makeChannel(channel: CustomChannel) {
+            ChannelPrefs.addMine(channel)
+            reload()
+        }
+
+        fun removeChannel(channel: CustomChannel) {
+            ChannelPrefs.removeMine(channel.id)
+            reload()
+        }
     }
 
 /** What a program is called in the guide: the show's name for an episode */
@@ -273,6 +334,9 @@ private fun GuideGrid(
     var digits by remember { mutableStateOf("") }
     var showTypes by remember { mutableStateOf(false) }
     var addChannels by remember { mutableStateOf(false) }
+    var makeChannel by remember { mutableStateOf(false) }
+    var mineMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
+    val mine by ChannelPrefs.mine.collectAsState()
     var favouriteMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
     var laterMenu by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
     val reminders by ChannelPrefs.reminders.collectAsState()
@@ -303,7 +367,7 @@ private fun GuideGrid(
                 .padding(top = 12.dp, start = 8.dp)
                 .onPreviewKeyEvent { event ->
                     val digit = digitOf(event) ?: return@onPreviewKeyEvent false
-                    if (addChannels) return@onPreviewKeyEvent false
+                    if (addChannels || makeChannel) return@onPreviewKeyEvent false
                     if (event.type == KeyEventType.KeyUp && digits.length < 4) digits += digit
                     true
                 },
@@ -373,7 +437,7 @@ private fun GuideGrid(
                     }
                 }
             }
-            if (benflixChannels.isNotEmpty()) {
+            run {
                 item(key = "row-benflix") {
                     ChannelTileRow(title = "Benflix channels · No ads") {
                         items(benflixChannels, key = { "b-${it.key}" }) { schedule ->
@@ -381,7 +445,10 @@ private fun GuideGrid(
                                 schedule = schedule,
                                 width = if (isTv) 220.dp else 160.dp,
                                 onClick = { viewModel.watch(schedule) },
-                                onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                                onLongClick = {
+                                    // A home-made channel can also be taken away again
+                                    if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
+                                },
                                 modifier =
                                     Modifier
                                         .then(
@@ -392,6 +459,15 @@ private fun GuideGrid(
                                             },
                                         ).onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
                             )
+                        }
+                        // Approved "Make a channel": the last tile in the Benflix channels row
+                        if (mine.size < CustomChannel.MAX) {
+                            item(key = "make") {
+                                AddChannelsTile(
+                                    label = "+  Make a channel",
+                                    onClick = { makeChannel = true },
+                                )
+                            }
                         }
                     }
                 }
@@ -650,6 +726,34 @@ private fun GuideGrid(
     if (addChannels) {
         AddChannelsDialog(list = all, favourites = favourites, onDismiss = { addChannels = false })
     }
+    if (makeChannel) {
+        MakeChannelFlow(
+            loadPicks = viewModel::loadPicks,
+            onMake = {
+                makeChannel = false
+                viewModel.makeChannel(it)
+            },
+            onDismiss = { makeChannel = false },
+        )
+    }
+    mineMenu?.let { schedule ->
+        val custom = schedule.custom
+        if (custom != null) {
+            val starred = schedule.key in favourites
+            BenflixChoiceDialog(
+                title = schedule.title,
+                choices =
+                    listOf(
+                        BenflixChoice(
+                            label = if (starred) "Take off Favourites" else "Add to Favourites",
+                            onClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                        ),
+                        BenflixChoice("Remove this channel", { viewModel.removeChannel(custom) }),
+                    ),
+                onDismissRequest = { mineMenu = null },
+            )
+        }
+    }
     // Approved: a new profile's first visit opens "Pick your channels" (once per profile on this device)
     var picking by remember { mutableStateOf(!KidsMode.isActive && favourites.isEmpty() && !viewModel.pickedBefore()) }
     if (picking) {
@@ -750,6 +854,7 @@ private fun ChannelTileRow(
 private fun AddChannelsTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = "+  Add channels",
 ) {
     Surface(
         onClick = onClick,
@@ -769,7 +874,7 @@ private fun AddChannelsTile(
         modifier = modifier.width(160.dp).height(64.dp),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("+  Add channels", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+            Text(label, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
         }
     }
 }

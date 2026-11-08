@@ -24,6 +24,7 @@ object ChannelPrefs {
     private const val RECENT_MAX = 10
     private const val COUNT = "count_"
     private const val DECLINED = "declined"
+    private const val MINE = "mine"
     private const val SUGGEST_AFTER = 3
 
     @Volatile private var prefs: SharedPreferences? = null
@@ -62,6 +63,27 @@ object ChannelPrefs {
             }
         save(REMINDERS, _reminders.value.map { it.encode() })
     }
+
+    private val _mine = MutableStateFlow<List<CustomChannel>>(emptyList())
+
+    /** Channels the person made with "Make a channel", oldest first */
+    val mine: StateFlow<List<CustomChannel>> = _mine
+
+    fun addMine(channel: CustomChannel) {
+        _mine.value = (_mine.value.filter { it.id != channel.id } + channel).takeLast(CustomChannel.MAX)
+        saveMine()
+    }
+
+    fun removeMine(id: String) {
+        val key = CustomChannel.KEY_PREFIX + id
+        _mine.value = _mine.value.filter { it.id != id }
+        saveMine()
+        if (key in _favourites.value) toggleFavourite(key)
+        _recent.value = _recent.value.filter { it != key }
+        save(RECENT, _recent.value)
+    }
+
+    private fun saveMine() = save(MINE, _mine.value.map { it.encode() })
 
     private val _everyTime = MutableStateFlow<Set<String>>(emptySet())
 
@@ -109,6 +131,7 @@ object ChannelPrefs {
         _recent.value = read(p, RECENT)
         _hidden.value = read(p, HIDDEN).toSet()
         _everyTime.value = read(p, EVERY).toSet()
+        _mine.value = read(p, MINE).mapNotNull { CustomChannel.decode(it) }
         val now = System.currentTimeMillis()
         _reminders.value = read(p, REMINDERS).mapNotNull { ChannelReminder.decode(it) }.filter { it.startMs > now - REMINDER_KEEP_MS }
     }
@@ -174,6 +197,7 @@ object ChannelPrefs {
             .put(FAVOURITES, JSONArray(_favourites.value))
             .put(RECENT, JSONArray(_recent.value))
             .put(HIDDEN, JSONArray(_hidden.value.toList().sorted()))
+            .put(MINE, JSONArray(_mine.value.map { it.encode() }))
 
     /** Swap in the picks saved on the person's account (when they pick their profile) */
     fun restore(json: JSONObject) {
@@ -189,6 +213,10 @@ object ChannelPrefs {
             json.optJSONArray(HIDDEN)?.let {
                 _hidden.value = it.strings().toSet()
                 save(HIDDEN, _hidden.value.toList())
+            }
+            json.optJSONArray(MINE)?.let {
+                _mine.value = it.strings().mapNotNull { text -> CustomChannel.decode(text) }
+                saveMine()
             }
         } catch (ex: Exception) {
             Timber.w(ex, "Could not read saved channel picks")

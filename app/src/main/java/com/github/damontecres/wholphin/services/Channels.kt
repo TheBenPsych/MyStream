@@ -31,6 +31,7 @@ import kotlin.random.Random
 
 private val MOVIE = listOf(BaseItemKind.MOVIE)
 private val EPISODE = listOf(BaseItemKind.EPISODE)
+private val COLLECTION_TYPES = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
 
 /**
  * A Benflix channel: something from your own library is always "on", like regular TV.
@@ -184,11 +185,13 @@ data class ChannelSchedule(
     val channel: BenflixChannel?,
     val programs: List<ChannelProgram>,
     val live: LiveChannel? = null,
+    /** A channel the person made ("Make a channel") */
+    val custom: CustomChannel? = null,
 ) {
-    val title: String get() = live?.name ?: channel?.title.orEmpty()
+    val title: String get() = live?.name ?: custom?.name ?: channel?.title.orEmpty()
 
     /** What favourites and Recently watched save the channel as (live numbers can change, names don't) */
-    val key: String get() = live?.let { "live:" + it.name.lowercase() } ?: "own:${channel?.name}"
+    val key: String get() = live?.let { "live:" + it.name.lowercase() } ?: custom?.key ?: "own:${channel?.name}"
 
     fun programAt(timeMs: Long): ChannelProgram? = programs.firstOrNull { timeMs >= it.startMs && timeMs < it.endMs }
 
@@ -341,14 +344,24 @@ object ChannelSession {
                 .sorted()
                 .joinToString("|")
                 .hashCode()
-        val key = "$userId-$level-$genres-$today"
+        val mine = ChannelPrefs.mine.value
+        val mineHash =
+            mine
+                .joinToString("|") { it.encode() }
+                .hashCode()
+        val key = "$userId-$level-$genres-$mineHash-$today"
         if (key == builtFor && ownSchedules.isNotEmpty()) return ownSchedules
         val fileName = "channels-$key-v$CACHE_VERSION"
         diskCache?.read(fileName, SavedLineup.serializer(), CACHE_MAX_AGE_MS)?.let { saved ->
             val restored =
                 saved.channels.mapNotNull { c ->
+                    val programs = c.programs.map { ChannelProgram(it.item, it.startMs, it.endMs) }
+                    if (c.channel.startsWith(CustomChannel.KEY_PREFIX)) {
+                        val custom = mine.firstOrNull { it.key == c.channel } ?: return@mapNotNull null
+                        return@mapNotNull ChannelSchedule(c.number, null, programs, custom = custom)
+                    }
                     val channel = BenflixChannel.entries.firstOrNull { it.name == c.channel } ?: return@mapNotNull null
-                    ChannelSchedule(c.number, channel, c.programs.map { ChannelProgram(it.item, it.startMs, it.endMs) })
+                    ChannelSchedule(c.number, channel, programs)
                 }
             if (restored.isNotEmpty()) {
                 ownSchedules = restored
@@ -361,9 +374,11 @@ object ChannelSession {
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        val wanted = BenflixChannel.entries.filter { if (kids) it.kids else it.main }
+        val builtIn = BenflixChannel.entries.filter { if (kids) it.kids else it.main }
+        // The person's own channels come after the 10 "No ads" ones
+        val wanted: List<Pair<BenflixChannel?, CustomChannel?>> = builtIn.map { it to null } + mine.map { null to it }
         val libraries =
-            if (wanted.any { it.library != null }) {
+            if (builtIn.any { it.library != null }) {
                 try {
                     api.userViewsApi
                         .getUserViews(userId = userId)
@@ -386,25 +401,31 @@ object ChannelSession {
         var shownUpTo = 0
         coroutineScope {
             wanted
-                .mapIndexed { i, channel ->
+                .mapIndexed { i, (channel, custom) ->
                     async {
                         val programs =
                             permits.withPermit {
                                 try {
-                                    val libs =
-                                        channel.library?.let { word ->
-                                            libraries.filter { it.second.contains(word, ignoreCase = true) }.map { it.first }
-                                        }
-                                    buildChannel(api, userId, channel, libs, today.toEpochDay(), midnight)
+                                    if (custom != null) {
+                                        buildCustom(api, userId, custom, today.toEpochDay(), midnight)
+                                    } else if (channel != null) {
+                                        val libs =
+                                            channel.library?.let { word ->
+                                                libraries.filter { it.second.contains(word, ignoreCase = true) }.map { it.first }
+                                            }
+                                        buildChannel(api, userId, channel, libs, today.toEpochDay(), midnight)
+                                    } else {
+                                        null
+                                    }
                                 } catch (ex: CancellationException) {
                                     throw ex
                                 } catch (ex: Exception) {
-                                    Timber.w(ex, "Channel ${channel.title} failed")
+                                    Timber.w(ex, "Channel ${channel?.title ?: custom?.name} failed")
                                     null
                                 }
                             }
                         synchronized(lock) {
-                            done[i] = programs?.let { ChannelSchedule(0, channel, it) }
+                            done[i] = programs?.let { ChannelSchedule(0, channel, it, custom = custom) }
                             finished[i] = true
                             // Show every channel up to the first one still loading
                             var upTo = shownUpTo
@@ -428,7 +449,7 @@ object ChannelSession {
                     built.map { sch ->
                         SavedChannel(
                             sch.number,
-                            sch.channel?.name.orEmpty(),
+                            sch.custom?.key ?: sch.channel?.name.orEmpty(),
                             sch.programs.map { SavedProgram(it.item, it.startMs, it.endMs) },
                         )
                     },
@@ -444,7 +465,7 @@ object ChannelSession {
 
     private fun request(
         userId: UUID?,
-        channel: BenflixChannel,
+        channel: BenflixChannel?,
         types: List<BaseItemKind>,
         parentId: UUID?,
         genres: List<String>?,
@@ -455,7 +476,7 @@ object ChannelSession {
         includeItemTypes = types,
         recursive = true,
         genres = genres?.ifEmpty { null },
-        years = channel.years?.toList(),
+        years = channel?.years?.toList(),
         sortBy = listOf(ItemSortBy.RANDOM),
         limit = limit,
         // Only what the guide shows: small answers load fast
@@ -503,6 +524,104 @@ object ChannelSession {
                 .sortedBy { it.id }
                 // The same line-up all day, a new one tomorrow
                 .shuffled(Random(epochDay * 7919 + channel.ordinal))
+        return fillDay(pool, midnight)
+    }
+
+    /**
+     * A channel the person made: one show's episodes, a genre's movies and/or shows, or a collection.
+     * "In order" goes through them in order and carries on from a new place each day.
+     */
+    private suspend fun buildCustom(
+        api: ApiClient,
+        userId: UUID?,
+        custom: CustomChannel,
+        epochDay: Long,
+        midnight: Long,
+    ): List<ChannelProgram>? {
+        val seed = epochDay * 7919 + custom.id.hashCode()
+        val found =
+            when (custom.kind) {
+                CustomChannel.Kind.SHOW -> {
+                    val show = custom.targetId ?: return null
+                    api.itemsApi
+                        .getItems(
+                            request(userId, null, EPISODE, show, null, CUSTOM_POOL).let {
+                                if (custom.inOrder) {
+                                    it.copy(sortBy = listOf(ItemSortBy.PARENT_INDEX_NUMBER, ItemSortBy.INDEX_NUMBER))
+                                } else {
+                                    it
+                                }
+                            },
+                        ).content.items
+                }
+
+                CustomChannel.Kind.COLLECTION -> {
+                    val box = custom.targetId ?: return null
+                    val inside =
+                        api.itemsApi
+                            .getItems(
+                                request(userId, null, COLLECTION_TYPES, box, null, CUSTOM_POOL)
+                                    .copy(recursive = false, sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.SORT_NAME)),
+                            ).content.items
+                    // A show in a collection plays its episodes
+                    inside.flatMap { dto ->
+                        if (dto.type == BaseItemKind.SERIES) {
+                            api.itemsApi
+                                .getItems(
+                                    request(userId, null, EPISODE, dto.id, null, EPISODES_PER_SHOW * 4)
+                                        .copy(sortBy = listOf(ItemSortBy.PARENT_INDEX_NUMBER, ItemSortBy.INDEX_NUMBER)),
+                                ).content.items
+                        } else {
+                            listOf(dto)
+                        }
+                    }
+                }
+
+                CustomChannel.Kind.GENRE -> {
+                    val genre = custom.genre ?: return null
+                    val movies =
+                        if (custom.what != CustomChannel.What.SHOWS) {
+                            api.itemsApi
+                                .getItems(request(userId, null, MOVIE, null, listOf(genre), CHANNEL_POOL))
+                                .content.items
+                        } else {
+                            emptyList()
+                        }
+                    val episodes =
+                        if (custom.what != CustomChannel.What.MOVIES) {
+                            // Genres usually sit on the show, so pick shows and use their episodes
+                            api.itemsApi
+                                .getItems(request(userId, null, listOf(BaseItemKind.SERIES), null, listOf(genre), SHOWS_PER_CHANNEL))
+                                .content.items
+                                .flatMap { show ->
+                                    api.itemsApi
+                                        .getItems(request(userId, null, EPISODE, show.id, null, EPISODES_PER_SHOW))
+                                        .content.items
+                                }
+                        } else {
+                            emptyList()
+                        }
+                    movies + episodes
+                }
+            }
+        val usable = found.filter { (it.runTimeTicks ?: 0L) > MIN_RUNTIME_TICKS }.distinctBy { it.id }
+        if (usable.isEmpty()) return null
+        val pool =
+            if (custom.inOrder && custom.kind != CustomChannel.Kind.GENRE) {
+                // Carry on from a new place each day, like a channel running all the time
+                val start = Math.floorMod(seed, usable.size.toLong()).toInt()
+                usable.drop(start) + usable.take(start)
+            } else {
+                usable.sortedBy { it.id }.shuffled(Random(seed))
+            }
+        return fillDay(pool, midnight)
+    }
+
+    /** Lays [pool] end to end from midnight, repeating, for the whole guide */
+    private fun fillDay(
+        pool: List<org.jellyfin.sdk.model.api.BaseItemDto>,
+        midnight: Long,
+    ): List<ChannelProgram>? {
         if (pool.isEmpty()) return null
         val end = midnight + SCHEDULE_HOURS * 3_600_000L
         val programs = mutableListOf<ChannelProgram>()
@@ -581,7 +700,10 @@ private const val CHANNEL_POOL = 120
 private const val CHANNELS_PARALLEL = 6
 private const val SHOWS_PER_CHANNEL = 12
 private const val EPISODES_PER_SHOW = 15
-private const val CACHE_VERSION = 2
+
+// A whole show (most are well under this many episodes)
+private const val CUSTOM_POOL = 800
+private const val CACHE_VERSION = 3
 private const val CACHE_MAX_AGE_MS = 26L * 3_600_000L
 private const val SCHEDULE_HOURS = 30L
 

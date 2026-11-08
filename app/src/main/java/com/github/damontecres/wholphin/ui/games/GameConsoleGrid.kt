@@ -86,6 +86,15 @@ internal fun consoleGridSections(
                 .map { GridSection(it, groups.getValue(it)) }
         }
 
+        GameSort.BEST -> {
+            val rated = sorted.filter { it.rating > 0.0 }.sortedByDescending { it.rating }
+            val rest = sorted.filter { it.rating <= 0.0 }
+            listOfNotNull(
+                rated.takeIf { it.isNotEmpty() }?.let { GridSection("Best loved", it) },
+                rest.takeIf { it.isNotEmpty() }?.let { GridSection(if (rated.isEmpty()) null else "No score yet", it) },
+            )
+        }
+
         GameSort.YEAR -> {
             sorted
                 .groupBy { if (it.year > 0) it.year.toString() else "Unknown year" }

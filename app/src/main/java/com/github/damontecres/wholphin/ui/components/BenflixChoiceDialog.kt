@@ -100,7 +100,7 @@ fun BenflixChoiceDialog(
 }
 
 @Composable
-private fun ChoiceRow(
+internal fun ChoiceRow(
     choice: BenflixChoice,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

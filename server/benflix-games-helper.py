@@ -299,6 +299,7 @@ def load_games():
                     "year": release_year(g),
                     "genres": genres_of(g),
                     "kids": kids_safe(g),
+                    "rating": rating_of(g),
                 }
             )
             if kids_safe(g):
@@ -324,6 +325,33 @@ def release_year(g):
             return int(when[:4])
     except Exception:
         pass
+    return 0
+
+
+def rating_of(g):
+    """How well loved a game is, 0-100 (0 if unknown). RomM fills this in from IGDB (and ScreenScraper or
+    LaunchBox when it uses those). Used for the Games "Best on <console>" rows."""
+    m = g.get("metadatum") or {}
+    igdb = g.get("igdb_metadata") or {}
+    for value in (
+        m.get("average_rating"),
+        igdb.get("total_rating"),
+        igdb.get("aggregated_rating"),
+        (g.get("ss_metadata") or {}).get("ss_score"),
+        (g.get("launchbox_metadata") or {}).get("community_rating"),
+    ):
+        try:
+            r = float(value)
+        except (TypeError, ValueError):
+            continue
+        if r <= 0:
+            continue
+        # Some sources score out of 5 or 10
+        if r <= 5:
+            r *= 20
+        elif r <= 10:
+            r *= 10
+        return round(min(r, 100.0), 1)
     return 0
 
 
