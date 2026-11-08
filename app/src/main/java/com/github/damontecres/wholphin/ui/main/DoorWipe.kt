@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -22,11 +23,18 @@ import androidx.compose.ui.util.lerp
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Approved polish idea "Opening a door feels like walking in": when you pick a door on Home, its flat
  * colour grows from the door to fill the screen, the door's page opens underneath, and the colour fades
- * away (about a quarter of a second in all). Only a flat colour, so it stays quick on older TVs.
+ * away. Only a flat colour, so it stays quick on older TVs.
+ *
+ * Ben: the colour used to fade straight away while Home was still cross-fading out, so Home's doors
+ * showed through and the page's rows popped in after. Now the page swaps in instantly under the colour
+ * (no cross-fade, see ApplicationContent), and the colour stays until the page says its first rows are
+ * on screen ([ready]), or [MAX_HOLD_MS] at most, then fades straight onto the finished page.
  * On for everyone, Lite mode or not (Ben's rule for the new animations).
  */
 object DoorWipe {
@@ -41,6 +49,20 @@ object DoorWipe {
     private val _wipe = MutableStateFlow<Wipe?>(null)
     val wipe: StateFlow<Wipe?> = _wipe
 
+    private val _ready = MutableStateFlow(false)
+
+    /** True while the colour covers the screen: the page change underneath shouldn't animate */
+    val covering: Boolean get() = _wipe.value != null
+
+    /** Called by a door's page once its first rows (or its empty message) are on screen */
+    fun ready() {
+        _ready.value = true
+    }
+
+    internal suspend fun awaitReady() {
+        _ready.first { it }
+    }
+
     /** Fills the screen with [color] from [from], runs [then] (open the page), then fades out */
     fun start(
         color: Color,
@@ -48,6 +70,7 @@ object DoorWipe {
         then: () -> Unit,
     ) {
         if (_wipe.value != null) return
+        _ready.value = false
         _wipe.value = Wipe(color, from, then)
     }
 
@@ -67,6 +90,11 @@ fun DoorWipeOverlay(modifier: Modifier = Modifier) {
     LaunchedEffect(w.id) {
         grow.animateTo(1f, tween(BenflixMotion.IN_MS, easing = BenflixMotion.Ease))
         w.then()
+        // Hold the colour until the page has its first rows, so it fades onto the finished page
+        withTimeoutOrNull(MAX_HOLD_MS) { DoorWipe.awaitReady() }
+        // Let the page draw a frame before the colour starts to go
+        withFrameNanos { }
+        withFrameNanos { }
         fade.animateTo(0f, tween(FADE_MS, easing = BenflixMotion.Ease))
         DoorWipe.done(w.id)
     }
@@ -91,4 +119,7 @@ fun DoorWipeOverlay(modifier: Modifier = Modifier) {
     }
 }
 
-private const val FADE_MS = 220
+private const val FADE_MS = 260
+
+/** Slow server or TV: never hold the colour longer than this; the page's grey rows show instead */
+private const val MAX_HOLD_MS = 1500L

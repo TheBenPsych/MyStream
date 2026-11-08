@@ -1,5 +1,11 @@
 package com.github.damontecres.wholphin.ui.nav
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -85,6 +91,16 @@ fun ApplicationContent(
         NavDisplay(
             backStack = navigationManager.backStack,
             onBack = { navigationManager.goBack() },
+            // Opening a door from Home: the door's colour already covers the screen, so swap the page in
+            // at once underneath it. A cross-fade here let Home's doors show through as the colour faded (Ben).
+            // Everything else keeps the usual fade.
+            transitionSpec = {
+                if (com.github.damontecres.wholphin.ui.main.DoorWipe.covering) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    fadeIn(tween(NAV_FADE_MS)) togetherWith fadeOut(tween(NAV_FADE_MS))
+                }
+            },
             entryDecorators =
                 listOf(
                     rememberSaveableStateHolderNavEntryDecorator(),
@@ -128,3 +144,6 @@ fun ApplicationContent(
         )
     }
 }
+
+/** The usual page-to-page fade (the same as the navigation library's own) */
+private const val NAV_FADE_MS = 700

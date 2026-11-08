@@ -103,6 +103,11 @@ fun DoorPage(
         onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()
+    // Opening from Home: the door colour waits for the top row (or the empty message), then fades onto the page
+    val firstReady = state.loaded || state.entries().firstOrNull() is DoorEntry.Real
+    LaunchedEffect(firstReady) {
+        if (firstReady) com.github.damontecres.wholphin.ui.main.DoorWipe.ready()
+    }
     val kids by KidsMode.active.collectAsState()
     val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
     val isTv = rememberIsTv()
