@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /**
  * Benflix redesign: a Requests title page looks like a Movies page. On TV and wide screens the
@@ -56,7 +57,7 @@ fun RequestHeroLayout(
                 },
             )
         }
-        content(if (wide) Modifier.heightIn(min = pageHeight - 24.dp) else Modifier, wide)
+        content(if (wide) Modifier.heightIn(min = pageHeight - 24.dp).scrollAsOneBlock(maxHeight = pageHeight) else Modifier, wide)
     }
 }
 

@@ -60,8 +60,25 @@ fun getDateFormatter(): DateTimeFormatter {
     return dateFormatter
 }
 
-// TODO server returns in UTC, but sdk converts to local time
-// eg 2020-02-14T00:00:00.0000000Z => 2020-02-13T17:00:00 PT => Feb 13, 2020
+/**
+ * Benflix: Jellyfin keeps release, air and birth dates as midnight UTC, and the SDK moves them into this
+ * time zone, which in the Americas lands on the evening of the day before (Feb 14 became Feb 13). This
+ * is the real day.
+ */
+val BaseItemDto.premiereDay: LocalDate?
+    get() =
+        premiereDate
+            ?.atZone(ZoneId.systemDefault())
+            ?.withZoneSameInstant(java.time.ZoneOffset.UTC)
+            ?.toLocalDate()
+
+/** Benflix: the same fix for a death date (see [premiereDay]) */
+val BaseItemDto.endDay: LocalDate?
+    get() =
+        endDate
+            ?.atZone(ZoneId.systemDefault())
+            ?.withZoneSameInstant(java.time.ZoneOffset.UTC)
+            ?.toLocalDate()
 
 /**
  * Format a [LocalDateTime] as `Aug 24, 2000`

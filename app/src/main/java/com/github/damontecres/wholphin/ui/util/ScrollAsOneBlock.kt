@@ -8,7 +8,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
@@ -25,10 +27,13 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Modifier.scrollAsOneBlock(): Modifier {
+fun Modifier.scrollAsOneBlock(maxHeight: Dp? = null): Modifier {
     if (!rememberIsTv()) return this
     val windowHeight = LocalWindowInfo.current.containerSize.height
-    val responder = remember(windowHeight) { OneBlockResponder(windowHeight * MAX_SHARE) }
+    // Benflix: a page that already sits below the top bar can pass its own height, so a block as tall as the
+    // page stays whole instead of being cut to 70% of the screen (which hid the request page's title)
+    val maxPx = with(LocalDensity.current) { maxHeight?.toPx() } ?: (windowHeight * MAX_SHARE)
+    val responder = remember(maxPx) { OneBlockResponder(maxPx) }
     return this
         .onSizeChanged { responder.size = it }
         .bringIntoViewResponder(responder)

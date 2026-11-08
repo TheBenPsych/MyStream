@@ -210,6 +210,7 @@ private fun KidsClock() {
     val words =
         when {
             minutes <= 0 -> "No watching time left today"
+            minutes == 1 -> "1 minute left today"
             minutes < 60 -> "$minutes minutes left today"
             minutes % 60 == 0 -> if (minutes == 60) "1 hour left today" else "${minutes / 60} hours left today"
             else -> "${minutes / 60} h ${minutes % 60} min left today"

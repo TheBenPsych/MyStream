@@ -11,6 +11,7 @@ import com.github.damontecres.wholphin.services.LogoEffect
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.HomeRowFields
+import com.github.damontecres.wholphin.ui.premiereDay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -331,7 +332,7 @@ internal suspend fun HomeViewModel.onThisDay(
                     ),
                 ).content.items
                 .filter {
-                    val date = it.premiereDate ?: return@filter false
+                    val date = it.premiereDay ?: return@filter false
                     date.monthValue == today.monthValue && date.dayOfMonth == today.dayOfMonth && date.year < today.year
                 }.map { it.id }
                 .also {
@@ -344,7 +345,7 @@ internal suspend fun HomeViewModel.onThisDay(
             .getItems(baseRequest.copy(ids = listOf(id), includeItemTypes = listOf(BaseItemKind.MOVIE)))
             .content.items
             .firstOrNull() ?: return emptyList()
-    val years = today.year - (movie.premiereDate?.year ?: return emptyList())
+    val years = today.year - (movie.premiereDay?.year ?: return emptyList())
     val label = if (years == 1) "Came out 1 year ago today" else "Came out $years years ago today"
     return listOf(FeaturedItem(BaseItem(movie), FeaturedReason.ON_THIS_DAY, becauseOf = label))
 }

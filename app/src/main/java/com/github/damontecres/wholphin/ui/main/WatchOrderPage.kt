@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -334,7 +335,7 @@ class WatchOrderViewModel
                                         storyNumber = i + 1,
                                         year = dto?.productionYear ?: entry.year,
                                         releaseDay =
-                                            dto?.premiereDate?.toLocalDate()?.toEpochDay()
+                                            dto?.premiereDay?.toEpochDay()
                                                 ?: java.time.LocalDate
                                                     .of(entry.year, 12, 31)
                                                     .toEpochDay(),

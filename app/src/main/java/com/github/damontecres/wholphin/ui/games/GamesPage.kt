@@ -72,6 +72,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -249,28 +250,31 @@ fun GamesPage(
             }
             val rowRecent = if (keep != null) recent.drop(1) else recent
             if (rowRecent.isNotEmpty()) {
-                Text(
-                    text = "Continue playing",
-                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                ) {
-                    items(rowRecent, key = { "recent-${it.first.id}" }) { (ref, time) ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            // Continue playing starts the game straight away, where you left off
-                            Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
-                            if (!wide) {
-                                Text(
-                                    text = "${ref.consoleName} · ${playedAgo(time)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    modifier = Modifier.width(110.dp),
-                                )
+                // TV: the row name comes into view with the row
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                    Text(
+                        text = "Continue playing",
+                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                    ) {
+                        items(rowRecent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                // Continue playing starts the game straight away, where you left off
+                                Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
+                                if (!wide) {
+                                    Text(
+                                        text = "${ref.consoleName} · ${playedAgo(time)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        modifier = Modifier.width(110.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -328,17 +332,19 @@ fun GamesPage(
                         }
                         val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
                         if (favRefs.isNotEmpty()) {
-                            Text(
-                                text = "Favourites",
-                                fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                            ) {
-                                items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                                Text(
+                                    text = "Favourites",
+                                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                                ) {
+                                    items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
+                                }
                             }
                         }
                         var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
@@ -357,21 +363,23 @@ fun GamesPage(
                         }
                         if (open == null) {
                             // A grid of consoles: photo, name and how many games. Press one to see its games.
-                            if (playable.isNotEmpty()) {
-                                Text(
-                                    text = "Consoles",
-                                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground,
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                                if (playable.isNotEmpty()) {
+                                    Text(
+                                        text = "Consoles",
+                                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                }
+                                ConsoleGrid(
+                                    playable = playable,
+                                    isTv = isTv,
+                                    onOpen = { openSlug = it },
+                                    lastPlayed = { c -> recent.firstOrNull { it.first.slug == c.slug }?.first?.name },
+                                    onFocus = onFocus,
                                 )
                             }
-                            ConsoleGrid(
-                                playable = playable,
-                                isTv = isTv,
-                                onOpen = { openSlug = it },
-                                lastPlayed = { c -> recent.firstOrNull { it.first.slug == c.slug }?.first?.name },
-                                onFocus = onFocus,
-                            )
                         } else {
                             val (console, local, fit) = open
                             val notes =
@@ -407,16 +415,18 @@ fun GamesPage(
                                     )
                                 }
                             rows.forEach { (title, games) ->
-                                Text(
-                                    text = title,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                                ) {
-                                    items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                                    Text(
+                                        text = title,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                                    ) {
+                                        items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
+                                    }
                                 }
                             }
                             // Play time per game is a small file each, so it's only read for Most played

@@ -21,7 +21,6 @@ import org.jellyfin.sdk.model.api.LocationType
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -94,7 +93,7 @@ class BenflixLibraryCheckup
                 .content.items
 
         private suspend fun missingEpisodes(userId: UUID): List<CheckupItem> {
-            val now = LocalDateTime.now(ZoneOffset.UTC)
+            val now = LocalDateTime.now()
             return items(
                 GetItemsRequest(
                     userId = userId,
@@ -378,7 +377,7 @@ class BenflixLibraryCheckup
                     ).forEach { played += it.seriesId ?: it.id }
                 }
             }
-            val yearAgo = LocalDateTime.now(ZoneOffset.UTC).minusYears(1)
+            val yearAgo = LocalDateTime.now().minusYears(1)
             return moviesAndShows(userId, listOf(ItemFields.DATE_CREATED))
                 .filter { it.id !in played && it.dateCreated?.isBefore(yearAgo) == true }
                 .sortedBy { it.dateCreated }

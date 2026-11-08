@@ -934,7 +934,8 @@ private fun RecapContent(
     val left = st.members.filter { it.gone }
     val lines =
         listOfNotNull(
-            "${st.day} days on the road, ${st.route.size} lands",
+            "${st.day} ${if (st.day == 1) "day" else "days"} on the road, " +
+                "${st.route.size} ${if (st.route.size == 1) "land" else "lands"}",
             "Made it: " + made.joinToString().ifEmpty { "nobody" },
             if (left.isNotEmpty()) "Went home: " + left.joinToString { "${it.name} (${it.goneWhy})" } else null,
             e.pet?.let { if (st.petGone) "${it.name} got lost along the way" else "${it.name} came too" },
