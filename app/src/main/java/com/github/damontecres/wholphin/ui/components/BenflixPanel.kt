@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -70,17 +71,21 @@ fun BenflixPanelDialog(
     ) {
         val shown = remember { MutableTransitionState(false).apply { targetState = true } }
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            // Tapping the dimmed page closes the panel (phones; a TV remote never lands here)
+            // Tapping the dimmed page closes the panel (phones). It must never take the remote's
+            // focus: a menu opened by holding OK has its rows switched off for a moment, so focus
+            // could land here and letting go of OK would close the menu straight away.
             Box(
                 Modifier
                     .fillMaxSize()
                     .then(
                         if (properties.dismissOnClickOutside) {
-                            Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onDismissRequest,
-                            )
+                            Modifier
+                                .focusProperties { canFocus = false }
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onDismissRequest,
+                                )
                         } else {
                             Modifier
                         },

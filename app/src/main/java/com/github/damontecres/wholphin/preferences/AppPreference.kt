@@ -1031,6 +1031,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.profile_protection,
             )
 
+        /** Benflix: Settings > You > Profile picture (the same pictures as Who's watching) */
+        val ProfilePicturePref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_profile_picture,
+            )
+
         val BirthdayPreference =
             AppClickablePreference<AppPreferences>(
                 title = R.string.my_birthday,
@@ -1376,6 +1382,7 @@ val basicPreferences =
             preferences =
                 listOf(
                     AppPreference.ProtectProfilePreference,
+                    AppPreference.ProfilePicturePref,
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
                     AppPreference.HiddenGenresPref,

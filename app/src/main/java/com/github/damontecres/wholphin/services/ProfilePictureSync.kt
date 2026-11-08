@@ -11,6 +11,7 @@ import android.graphics.Shader
 import android.util.Base64
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
@@ -88,6 +89,16 @@ class ProfilePictureSync
             if (saved != null) {
                 val index = saved.toIntOrNull()?.takeIf { it in BenflixAvatars.indices }
                 if (AvatarChoices.get(user.id) != index) setHere(user.id, index)
+                // Pictures sent while the old full-colour pictures were still in the app came out as a
+                // plain square, so send their picture again once, drawn properly on their colour
+                val redrawn = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val redrawnKey = "redrawn-v2-${user.id}"
+                val token = user.accessToken
+                if (index != null && token != null && !redrawn.getBoolean(redrawnKey, false)) {
+                    if (upload(serverUrl, user.id, token, index)) {
+                        redrawn.edit { putBoolean(redrawnKey, true) }
+                    }
+                }
             } else {
                 val local = AvatarChoices.get(user.id) ?: return
                 val token = user.accessToken ?: return
@@ -231,6 +242,7 @@ class ProfilePictureSync
 
         companion object {
             const val KEY = "benflix.avatar"
+            private const val PREFS = "benflix_avatar_sync"
             private const val AUTOMATIC = -1
         }
     }

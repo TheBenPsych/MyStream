@@ -661,6 +661,34 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.ProfilePicturePref -> {
+                                        var showPicturePicker by remember { mutableStateOf(false) }
+                                        val user = currentUser
+                                        com.github.damontecres.wholphin.ui.setup.AvatarChoices
+                                            .init(LocalContext.current)
+                                        val picked =
+                                            user?.id?.let {
+                                                com.github.damontecres.wholphin.ui.setup.AvatarChoices
+                                                    .get(it)
+                                            }
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { if (user != null) showPicturePicker = true },
+                                            modifier = focusModifier,
+                                            summary = picked?.let { "Picture ${it + 1}" } ?: "Automatic",
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                        if (showPicturePicker && user != null) {
+                                            com.github.damontecres.wholphin.ui.setup.AvatarPickerDialog(
+                                                userId = user.id,
+                                                name = user.name,
+                                                onPick = { index -> viewModel.pickPicture(index) },
+                                                onDismissRequest = { showPicturePicker = false },
+                                            )
+                                        }
+                                    }
+
                                     AppPreference.BirthdayPreference -> {
                                         LaunchedEffect(Unit) { viewModel.loadBirthday() }
                                         val birthday by viewModel.birthday.collectAsState()
