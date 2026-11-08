@@ -52,7 +52,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
  * What the Games top area describes (approved redesign, part 1): the game, console or puzzle
  * you're on, like the Movies door's top area.
  */
-data class GamePreview(
+internal data class GamePreview(
     val key: String,
     /** Small line above the name, like "SNES" or "Arcade · Play alone" */
     val kicker: String,

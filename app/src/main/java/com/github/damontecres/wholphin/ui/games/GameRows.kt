@@ -41,7 +41,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
-data class RowGame(
+internal data class RowGame(
     val key: String,
     val title: String,
     val short: String,
@@ -61,7 +61,7 @@ data class RowGame(
  * row of tiles with the description always showing. About 4 and a half tiles per row on TV.
  */
 @Composable
-fun GameRows(
+internal fun GameRows(
     viewModel: GamesViewModel,
     isTv: Boolean,
     /** Which rows to draw here: "puzzles", "party", "arcade" (the page puts other rows between them) */
@@ -102,9 +102,10 @@ fun GameRows(
                     listOf(Color(0xFF444450), Color(0xFF1C1C22)),
                     R.string.fa_mobile_screen,
                     "Phone",
-                ) {
-                    viewModel.navigationManager.navigateTo(Destination.PartyJoin)
-                }
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.PartyJoin) },
+                    kind = "Party",
+                    playWith = listOf(PlayWith.PHONE),
+                )
             } else {
                 null
             },
@@ -249,7 +250,7 @@ private fun RowTile(
 
 /** Ember Road as a slim banner under the leaderboards (the spot Ben picked, half as tall) */
 @Composable
-fun EmberBanner(
+internal fun EmberBanner(
     isTv: Boolean,
     onClick: () -> Unit,
     onFocus: (GamePreview) -> Unit = {},
