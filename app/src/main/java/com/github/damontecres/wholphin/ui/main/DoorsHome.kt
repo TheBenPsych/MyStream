@@ -1,9 +1,7 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -27,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,7 +56,6 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
@@ -66,26 +64,29 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.BenflixIntroState
-import com.github.damontecres.wholphin.ui.DOORS_VOLUME
+import com.github.damontecres.wholphin.ui.DOOR_NOTE_VOLUME
+import com.github.damontecres.wholphin.ui.IntroPace
+import com.github.damontecres.wholphin.ui.IntroSounds
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.playIntroSound
+import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.waitForSettled
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -124,6 +125,10 @@ class HomeDoorsViewModel
         private val _news = MutableStateFlow<List<HomeNews>>(emptyList())
         val news: StateFlow<List<HomeNews>> = _news
 
+        /** The news has been looked up (or there is none to look up), so Home's layout won't shift */
+        private val _loaded = MutableStateFlow(false)
+        val loaded: StateFlow<Boolean> = _loaded
+
         val userName: String
             get() =
                 when {
@@ -139,6 +144,7 @@ class HomeDoorsViewModel
         fun load() {
             if (KidsMode.isActive || GuestMode.isActive) {
                 _news.value = emptyList()
+                _loaded.value = true
                 return
             }
             viewModelScope.launchIO {
@@ -150,6 +156,8 @@ class HomeDoorsViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load Home news")
+                } finally {
+                    _loaded.value = true
                 }
             }
         }
@@ -308,28 +316,53 @@ fun DoorsHomePage(
 
     // The doors-grow moment, once, right after a profile is picked
     val grow = remember { BenflixIntroState.doorsPending }
-    val progress = remember { BenflixDoor.entries.map { Animatable(if (grow) 0f else 1f) } }
+    val progress = remember { BenflixDoor.entries.map { mutableFloatStateOf(if (grow) 0f else 1f) } }
     val doorRects = remember { mutableStateOf(arrayOfNulls<Rect>(BenflixDoor.entries.size)) }
     var animating by remember { mutableStateOf(grow) }
+    // The doors' spots are only locked in once they've settled and the growing starts
+    var started by remember { mutableStateOf(!grow) }
     val moviesFocus = remember { FocusRequester() }
     var focusedOnce by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (grow) {
             BenflixIntroState.doorsPending = false
-            // Wait for the doors and the logo to be measured (a moment at most)
-            var waited = 0
-            while ((doorRects.value.any { it == null } || BenflixIntroState.barMark == null) && waited < 600) {
-                delay(16)
-                waited += 16
-            }
-            launch { playIntroSound(context, R.raw.benflix_intro_doors, DOORS_VOLUME) }
-            progress.forEachIndexed { i, anim ->
-                launch {
-                    delay(i * DOOR_STAGGER_MS)
-                    anim.animateTo(1f, tween(DOOR_GROW_MS, easing = FastOutSlowInEasing))
+            // Get everything ready before anything moves, so the doors grow smoothly and the notes
+            // land with them on every TV: the notes in memory, Home's news in (so the doors don't
+            // shift), and the doors and logo measured and settled for a few frames.
+            IntroSounds.awaitReady(context)
+            withTimeoutOrNull(WAIT_FOR_NEWS_MS) { viewModel.loaded.first { it } }
+            waitForSettled(WAIT_FOR_DOORS_MS) {
+                val rects = doorRects.value
+                val mark = BenflixIntroState.barMark
+                if (rects.any { it == null } || mark == null) {
+                    null
+                } else {
+                    // One box that changes whenever any door or the logo moves
+                    Rect(
+                        rects.sumOf { it!!.left.toDouble() }.toFloat() + mark.left,
+                        rects.sumOf { it!!.top.toDouble() }.toFloat() + mark.top,
+                        rects.sumOf { it!!.right.toDouble() }.toFloat() + mark.right,
+                        rects.sumOf { it!!.bottom.toDouble() }.toFloat() + mark.bottom,
+                    )
                 }
             }
-            delay(DOOR_STAGGER_MS * (progress.size - 1) + DOOR_GROW_MS)
+            val pace = IntroPace.measure(context, frames = 6)
+            val f = pace.stretch
+            started = true
+            // Each door starts growing a moment after the one before, with its own note on that frame
+            val stagger = DOOR_STAGGER_MS * f
+            val growMs = DOOR_GROW_MS * f
+            var played = 0
+            runIntroTimeline(stagger * (progress.size - 1) + growMs, pace) { t ->
+                while (played < progress.size && t >= played * stagger) {
+                    IntroSounds.play(context, IntroSounds.DOORS[played], DOOR_NOTE_VOLUME)
+                    played++
+                }
+                progress.forEachIndexed { i, state ->
+                    val p = ((t - i * stagger) / growMs).coerceIn(0f, 1f)
+                    state.floatValue = FastOutSlowInEasing.transform(p)
+                }
+            }
             animating = false
         }
         if (!focusedOnce || grow) {
@@ -352,10 +385,13 @@ fun DoorsHomePage(
     val doorModifier: (Int) -> Modifier = { i ->
         Modifier
             .onGloballyPositioned { coords ->
-                if (doorRects.value[i] == null || !animating) {
-                    val copy = doorRects.value.copyOf()
-                    copy[i] = coords.boundsInWindow()
-                    doorRects.value = copy
+                if (!started || !animating) {
+                    val now = coords.boundsInWindow()
+                    if (doorRects.value[i] != now) {
+                        val copy = doorRects.value.copyOf()
+                        copy[i] = now
+                        doorRects.value = copy
+                    }
                 }
             }.graphicsLayer {
                 val p = progress[i].value
@@ -617,5 +653,11 @@ private fun NewsPill(
 
 /** Phone doors: a little taller than wide */
 private const val PHONE_DOOR_RATIO = 0.8f
-private const val DOOR_STAGGER_MS = 70L
-private const val DOOR_GROW_MS = 560
+private const val DOOR_STAGGER_MS = 70f
+private const val DOOR_GROW_MS = 560f
+
+/** The longest Home waits for its news before the doors grow (a slow server goes on anyway) */
+private const val WAIT_FOR_NEWS_MS = 1500L
+
+/** The longest Home waits for the doors to settle in place */
+private const val WAIT_FOR_DOORS_MS = 1000L
