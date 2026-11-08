@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -179,7 +180,15 @@ fun MovieHeroContent(
                                 modifier =
                                     Modifier
                                         .weight(1f)
-                                        .widthIn(max = 620.dp),
+                                        .widthIn(max = 620.dp)
+                                        // Coming back up to the buttons shows the whole top again (name included)
+                                        .onFocusChanged {
+                                            if (it.hasFocus &&
+                                                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
+                                            ) {
+                                                scope.launch { listState.animateScrollToItem(0) }
+                                            }
+                                        },
                             ) {
                                 HeroButtons(
                                     movie = movie,
@@ -396,7 +405,8 @@ private fun HeroWords(
                 )
             }
         }
-        Box(Modifier.padding(top = 18.dp)) { buttons() }
+        // A Column, not a Box: the buttons and the "below" hint must sit one under the other
+        Column(Modifier.padding(top = 18.dp)) { buttons() }
     }
 }
 
@@ -428,7 +438,7 @@ private fun HeroButtons(
                 modifier = Modifier.focusRequester(firstButton),
             )
             state.trailers.firstOrNull()?.let { trailer ->
-                HeroButton(label = "Trailer", icon = BenflixIcon.FILM, big = big, onClick = { actions.trailer(trailer) })
+                HeroButton(label = "Trailer", icon = BenflixIcon.TRAILER, big = big, onClick = { actions.trailer(trailer) })
             }
             HeroButton(
                 label = "My List",

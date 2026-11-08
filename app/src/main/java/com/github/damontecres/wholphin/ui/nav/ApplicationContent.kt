@@ -70,8 +70,10 @@ fun ApplicationContent(
         val isTv =
             com.github.damontecres.wholphin.ui.touch
                 .rememberIsTv()
-        val onPhoneHome = !isTv && navigationManager.backStack.lastOrNull() is Destination.Home
-        if (!onPhoneHome) {
+        val top = navigationManager.backStack.lastOrNull()
+        val onPhoneHome = !isTv && top is Destination.Home
+        // Movie and show pages draw their own picture; a second one here doubled it behind the top bar
+        if (!onPhoneHome && top?.drawsOwnPicture() != true) {
             Backdrop(
                 drawerIsOpen = drawerState.isOpen,
                 backdropStyle = backdropStyle,
