@@ -409,6 +409,9 @@ fun NavDrawer(
     hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
     val requestsWaiting by RequestsWaiting.count.collectAsState()
     val requestsUnseen by RequestsWaiting.unseen.collectAsState()
+    // Benflix: searched two weeks with nothing found, so Ben should start looking himself
+    val lookYourself by RequestsWaiting.lookYourself.collectAsState()
+    val lookYourselfUnseen by RequestsWaiting.lookYourselfUnseen.collectAsState()
     val kids by KidsMode.active.collectAsState()
     val guest by com.github.damontecres.wholphin.services.GuestMode.active
         .collectAsState()
@@ -427,7 +430,7 @@ fun NavDrawer(
             .rememberUpdateDot()
     // A bigger white dot on your picture when something new needs you. Waiting requests only count until
     // you've seen them (opening Requests), and "Mark all as seen" in the menu clears the lot.
-    val badge = !kids && !guest && (updateDot || serverAlert || readyCount > 0 || requestsUnseen > 0)
+    val badge = !kids && !guest && (updateDot || serverAlert || readyCount > 0 || requestsUnseen > 0 || lookYourselfUnseen > 0)
 
     var showMenu by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -463,6 +466,7 @@ fun NavDrawer(
                     note =
                         when {
                             requestsWaiting > 0 -> "$requestsWaiting waiting"
+                            lookYourself.isNotEmpty() -> "${lookYourself.size} to look for"
                             readyCount > 0 -> "$readyCount ready"
                             else -> null
                         },

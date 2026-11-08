@@ -360,6 +360,8 @@ fun ServerStatusPage(
     val seerrActive by requestsViewModel.active.collectAsState(false)
     val waitingRequests by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.count
         .collectAsState()
+    val lookYourself by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.lookYourself
+        .collectAsState()
     val tower by data.tower.collectAsState()
     val towerProblem by data.towerProblem.collectAsState()
     val tracks by towerViewModel.tracks.collectAsState()
@@ -394,7 +396,7 @@ fun ServerStatusPage(
             )
         }
     val needsYou =
-        remember(header, disks, problems, reports, waitingRequests, tower) {
+        remember(header, disks, problems, reports, waitingRequests, lookYourself, tower) {
             buildList {
                 brokenApps(tower).forEach {
                     add(NeedsYou("${it.nice} isn't running properly on Tower", Light.BAD, ServerSection.LIBRARY))
@@ -412,6 +414,20 @@ fun ServerStatusPage(
                     add(
                         NeedsYou(
                             if (waitingRequests == 1) "1 request is waiting for you" else "$waitingRequests requests are waiting for you",
+                            Light.WARN,
+                            ServerSection.OVERVIEW,
+                        ),
+                    )
+                }
+                if (lookYourself.isNotEmpty()) {
+                    val n = lookYourself.size
+                    add(
+                        NeedsYou(
+                            if (n == 1) {
+                                "1 request has been searching for 2 weeks. Look for it yourself"
+                            } else {
+                                "$n requests have been searching for 2 weeks. Look for them yourself"
+                            },
                             Light.WARN,
                             ServerSection.OVERVIEW,
                         ),

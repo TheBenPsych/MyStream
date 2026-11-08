@@ -1117,7 +1117,11 @@ class BenflixRequestsViewModel
                         cantFindList.forget(arrived.filter { it !in stillMissing })
                         // A week of "Still looking" with nothing found turns into "Couldn't find it" by itself
                         // (it fetches every request itself, not just the ones shown here)
-                        if (!mineOnly) cantFindList.autoCheck()
+                        if (!mineOnly) {
+                            cantFindList.autoCheck()
+                            // Benflix: the two-week "Look for it yourself" ones are on screen now, so no dot for them
+                            RequestsWaiting.markSeen()
+                        }
                     }
                 } catch (ex: CancellationException) {
                     throw ex
@@ -2035,18 +2039,23 @@ private fun RequestList(
                 }
 
                 fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
+
+                // Benflix (Ben, 2026-11-08): two weeks of searching with nothing found, so Ben starts looking himself.
+                // Only on his list, and not ones he already stopped by hand.
+                fun RequestEntry.lookYourself() = !mineOnly && viewModel.isAdmin && needsLookingFor(cantFindKey()?.let { cantFind[it] })
                 val stillAsking = { it: RequestEntry -> !it.notFound() }
                 val groups =
                     listOf(
                         (if (mineOnly) "Waiting for Ben" else "Waiting for you") to
                             list.filter { !it.available && it.status == RequestStatus.PENDING && stillAsking(it) },
+                        LOOK_YOURSELF_GROUP to list.filter { it.lookYourself() },
                         "On the way" to
                             list.filter {
                                 !it.available && it.status != RequestStatus.PENDING &&
                                     it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE &&
-                                    !it.notFound()
+                                    !it.notFound() && !it.lookYourself()
                             },
-                        "Couldn't find" to list.filter { it.notFound() },
+                        "Couldn't find" to list.filter { it.notFound() && !it.lookYourself() },
                         "Ready to watch" to list.filter { it.available },
                         "Declined" to
                             list.filter {
@@ -2067,6 +2076,7 @@ private fun RequestList(
                             val canMark = isBen && entry.status == RequestStatus.APPROVED
                             RequestRow(
                                 entry = entry,
+                                lookYourself = entry.lookYourself(),
                                 showWho = !mineOnly,
                                 canAnswer = !mineOnly && entry.status == RequestStatus.PENDING && !entry.available,
                                 onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
@@ -2099,6 +2109,7 @@ private fun RequestList(
 private fun RequestRow(
     entry: RequestEntry,
     showWho: Boolean,
+    lookYourself: Boolean = false,
     canAnswer: Boolean,
     onOpen: () -> Unit,
     onAnswer: (Boolean) -> Unit,
@@ -2188,7 +2199,7 @@ private fun RequestRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, isAdminList = isAdminList)
+                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, isAdminList = isAdminList, lookYourself = lookYourself)
                 if (cantFind != null) CantFindNoteLine(cantFind)
                 if (cantFind == null) {
                     RequestSteps(
@@ -2217,6 +2228,7 @@ private fun StatusTag(
     cantFind: CantFindEntry? = null,
     daysWaiting: Long? = null,
     isAdminList: Boolean = false,
+    lookYourself: Boolean = false,
 ) {
     // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself,
     // but the week only starts once it's out plus a few weeks (Ben's rule)
@@ -2228,6 +2240,10 @@ private fun StatusTag(
         when {
             entry.available -> {
                 "On Benflix" to Color(0xFF3DD68C)
+            }
+
+            lookYourself -> {
+                "Look for it yourself · day ${(looking ?: 0) + 1}" to BenflixColors.Movies
             }
 
             cantFind != null -> {
@@ -2274,6 +2290,20 @@ private fun StatusTag(
         Text(text = text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
     }
 }
+
+/** Benflix: the group on Ben's Requests list for ones searched two weeks with nothing found */
+private const val LOOK_YOURSELF_GROUP = "Look for these yourself"
+
+/**
+ * Benflix: approved, nothing here or downloading, and searched [RequestsWaiting.LOOK_YOURSELF_DAYS] days or more.
+ * Not ones Ben stopped by hand ([cantFind] marked by him, which takes them out of Radarr / Sonarr).
+ */
+fun RequestEntry.needsLookingFor(cantFind: CantFindEntry?): Boolean =
+    status == RequestStatus.APPROVED &&
+        !available &&
+        !downloading &&
+        (cantFind == null || cantFind.auto) &&
+        (clock?.daysLooking ?: 0) >= RequestsWaiting.LOOK_YOURSELF_DAYS
 
 /** Benflix: the "Couldn't find it" key for this request ("MOVIE-123" / "TV-456") */
 fun RequestEntry.cantFindKey(): String? {

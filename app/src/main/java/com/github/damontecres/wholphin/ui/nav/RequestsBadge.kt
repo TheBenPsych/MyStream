@@ -42,6 +42,22 @@ object RequestsWaiting {
     /** Waiting requests the admin hasn't seen yet (these light up the dot) */
     val unseen: StateFlow<Int> = _unseen
 
+    private val _lookYourself = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Admin: approved requests that have been "still looking" for [LOOK_YOURSELF_DAYS] days or more with nothing found,
+     * so Ben knows to start hunting for them himself. By "MOVIE-123" / "TV-456" key.
+     */
+    val lookYourself: StateFlow<Set<String>> = _lookYourself
+
+    private val _lookYourselfUnseen = MutableStateFlow(0)
+
+    /** Ones of [lookYourself] the admin hasn't seen on Requests yet (these light up the dot too) */
+    val lookYourselfUnseen: StateFlow<Int> = _lookYourselfUnseen
+
+    /** Days of "Still looking" before a request is flagged for Ben to look for himself (Ben: "maybe 2 weeks") */
+    const val LOOK_YOURSELF_DAYS = 14L
+
     private var prefs: SharedPreferences? = null
     private var userKey: String = "none"
     private var ids: List<Int> = emptyList()
@@ -56,9 +72,20 @@ object RequestsWaiting {
         ids = emptyList()
         _count.value = 0
         _unseen.value = 0
+        _lookYourself.value = emptySet()
+        _lookYourselfUnseen.value = 0
     }
 
     private fun seenKey() = "waiting-seen-$userKey"
+
+    private fun lookSeenKey() = "look-yourself-seen-$userKey"
+
+    /** Admin: the requests stuck long enough for Ben to look for them himself, right now */
+    fun setLookYourself(keys: Set<String>) {
+        _lookYourself.value = keys
+        val seen = prefs?.let { OrderedSeen.read(it, lookSeenKey()).toSet() }.orEmpty()
+        _lookYourselfUnseen.value = keys.count { it !in seen }
+    }
 
     /** The waiting requests right now, by request id */
     fun setWaiting(waiting: List<Int>) {
@@ -78,6 +105,9 @@ object RequestsWaiting {
     fun markSeen() {
         prefs?.let { p -> if (ids.isNotEmpty()) OrderedSeen.add(p, seenKey(), ids.map { it.toString() }, MAX_SEEN) }
         _unseen.value = 0
+        val look = _lookYourself.value
+        prefs?.let { p -> if (look.isNotEmpty()) OrderedSeen.add(p, lookSeenKey(), look.toList(), MAX_SEEN) }
+        _lookYourselfUnseen.value = 0
     }
 
     private const val PREFS = "benflix_dot"
