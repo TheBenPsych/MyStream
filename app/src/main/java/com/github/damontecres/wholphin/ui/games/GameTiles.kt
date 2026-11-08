@@ -20,14 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.R
-import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
@@ -62,11 +60,11 @@ internal fun PlayIcon(kind: PlayWith) {
             }
 
             PlayWith.CONTROLLER -> {
-                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 15.sp, color = Color.White)
+                BenflixIconImage(BenflixIcon.PAD, Color.White, 17.dp)
             }
 
             PlayWith.PHONE -> {
-                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 15.sp, color = Color.White)
+                BenflixIconImage(BenflixIcon.PHONE, Color.White, 17.dp)
             }
         }
     }
@@ -94,11 +92,11 @@ internal fun Badge(
             }
 
             PlayWith.CONTROLLER -> {
-                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 13.sp, color = Color.White)
+                BenflixIconImage(BenflixIcon.PAD, Color.White, 15.dp)
             }
 
             PlayWith.PHONE -> {
-                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 13.sp, color = Color.White)
+                BenflixIconImage(BenflixIcon.PHONE, Color.White, 15.dp)
             }
         }
         Text(
