@@ -898,6 +898,9 @@ class BenflixRequestsViewModel
         /** What's typed in the search box */
         val searchQuery = MutableStateFlow("")
 
+        /** Which search results are anime (by their TMDB id) */
+        val searchAnime = MutableStateFlow<Set<Int>>(emptySet())
+
         @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
         private val searchRaw: StateFlow<List<DiscoverItem>?> =
             searchQuery
@@ -909,7 +912,14 @@ class BenflixRequestsViewModel
                         null
                     } else {
                         try {
-                            seerrService.search(query).map { seerrService.createDiscoverItem(it) }
+                            val raw = seerrService.search(query)
+                            // Benflix redesign: search splits Movies, Shows and Anime (Japanese animation)
+                            searchAnime.value =
+                                raw
+                                    .filter { it.genreIds?.contains(16) == true && it.originalLanguage == "ja" }
+                                    .map { it.id }
+                                    .toSet()
+                            raw.map { seerrService.createDiscoverItem(it) }
                         } catch (ex: CancellationException) {
                             throw ex
                         } catch (ex: Exception) {
@@ -1408,6 +1418,8 @@ private fun FindShelf(
     val scores by viewModel.scores.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val searchAnime by viewModel.searchAnime.collectAsState()
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
     val baseRows = allRows[key]
     // Benflix: "Because you watched" goes after the first row, "Finish the collection" after Popular
     val rows =
@@ -1494,6 +1506,23 @@ private fun FindShelf(
                 viewModel.loadScore(item)
             }
         }
+    if (isTv && searchOpen) {
+        RequestSearchScreen(
+            query = query,
+            onQuery = { viewModel.searchQuery.value = it },
+            results = searchResults,
+            anime = searchAnime,
+            visible = visible,
+            onOpen = openItem,
+            onMenu = { if (it.type != SeerrItemType.PERSON) menuItem = it },
+            onFocus = { viewModel.loadScore(it) },
+            onClose = {
+                searchOpen = false
+                viewModel.searchQuery.value = ""
+            },
+        )
+        return
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val previewHeight = (maxHeight * 0.34f).coerceIn(150.dp, 260.dp)
         Column(Modifier.fillMaxSize()) {
@@ -1512,11 +1541,16 @@ private fun FindShelf(
             ) {
                 // Benflix: no big banner here (Ben asked), the page starts with the search box like the other tabs
                 item(key = "search") {
-                    RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+                    if (isTv) {
+                        RequestSearchButton(onClick = { searchOpen = true })
+                    } else {
+                        RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+                    }
                 }
-                if (searching) {
+                if (searching && !isTv) {
                     searchShelves(
                         results = searchResults,
+                        anime = searchAnime,
                         visible = visible,
                         scoreLine = scoreLine,
                         onOpen = openItem,
@@ -1741,6 +1775,7 @@ private fun LoadFailed(
 /** Search results as rows: Movies, Shows and People */
 private fun LazyListScope.searchShelves(
     results: List<DiscoverItem>?,
+    anime: Set<Int> = emptySet(),
     visible: (List<DiscoverItem>) -> List<DiscoverItem>,
     scoreLine: (DiscoverItem) -> String?,
     onOpen: (DiscoverItem) -> Unit,
@@ -1752,13 +1787,11 @@ private fun LazyListScope.searchShelves(
         item { LoadingPage(Modifier.height(200.dp), focusEnabled = false) }
         return
     }
-    val shown = visible(results)
+    // Benflix redesign: Movies, Shows and Anime kept apart; titles already on Benflix are left out
+    val (doors, people) = splitRequestResults(visible(results), anime)
     val groups =
-        listOf(
-            "Movies" to shown.filter { it.type == SeerrItemType.MOVIE },
-            "Shows" to shown.filter { it.type == SeerrItemType.TV },
-            "People" to shown.filter { it.type == SeerrItemType.PERSON },
-        ).filter { it.second.isNotEmpty() }
+        (doors.map { (door, list) -> door.title to list } + ("People" to people))
+            .filter { it.second.isNotEmpty() }
     if (groups.isEmpty()) {
         item {
             Text(
