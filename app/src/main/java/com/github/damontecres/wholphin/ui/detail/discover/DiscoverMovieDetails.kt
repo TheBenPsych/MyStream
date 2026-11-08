@@ -1,13 +1,13 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
@@ -73,6 +73,7 @@ fun DiscoverMovieDetails(
     }
     val state by viewModel.state.collectAsState()
     val userConfig by viewModel.userConfig.collectAsState(null)
+    val backdrop by viewModel.backdrop.collectAsState()
     val requestEnabled by viewModel.requestEnabled.collectAsState(false)
     val request4kEnabled by viewModel.request4kEnabled.collectAsState(false)
 
@@ -138,6 +139,7 @@ fun DiscoverMovieDetails(
                 trailerOnClick = {
                     TrailerService.onClick(context, it, viewModel::navigateTo)
                 },
+                backdropUrl = backdrop,
                 modifier = modifier,
             )
             if (showRequestDialog) {
@@ -195,6 +197,7 @@ fun DiscoverMovieDetailsContent(
     onLongClickPerson: (Int, DiscoverItem) -> Unit,
     onLongClickSimilar: (Int, DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    backdropUrl: String? = null,
 ) {
     // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
     val cantFindKeys by CantFindBlocked.keys.collectAsState()
@@ -207,21 +210,24 @@ fun DiscoverMovieDetailsContent(
     LaunchedEffect(Unit) {
         focusRequesters.getOrNull(position)?.tryRequestFocus()
     }
-    Box(modifier = modifier) {
+    val listState = rememberLazyListState()
+    RequestHeroLayout(backdropUrl = backdropUrl, listState = listState, modifier = modifier) { heroModifier, wide ->
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 48.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             item {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalArrangement = Arrangement.Bottom,
                     modifier =
-                        Modifier
+                        heroModifier
                             .scrollAsOneBlock()
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester),
                 ) {
+                    if (!wide) RequestPhonePicture(backdropUrl, Modifier.padding(top = 8.dp))
                     DiscoverMovieDetailsHeader(
                         preferences = preferences,
                         movie = movie,

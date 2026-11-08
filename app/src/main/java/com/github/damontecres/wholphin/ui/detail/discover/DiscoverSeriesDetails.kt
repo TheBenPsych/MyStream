@@ -1,13 +1,13 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
@@ -99,6 +99,7 @@ fun DiscoverSeriesDetails(
         is DataLoadingState.Success<TvDetails> -> {
             val item = st.data
             val userConfig by viewModel.userConfig.collectAsState(null)
+            val backdrop by viewModel.backdrop.collectAsState()
             DiscoverSeriesDetailsContent(
                 isAdmin =
                     viewModel.serverRepository.currentUserDto
@@ -115,6 +116,7 @@ fun DiscoverSeriesDetails(
                 similar = state.similar,
                 recommended = state.recommended,
                 modifier = modifier,
+                backdropUrl = backdrop,
                 onClickItem = { index, item ->
                     viewModel.navigateTo(Destination.DiscoveredItem(item))
                 },
@@ -228,6 +230,7 @@ fun DiscoverSeriesDetailsContent(
     onLongClickPerson: (Int, DiscoverItem) -> Unit,
     onLongClickSimilar: (Int, DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    backdropUrl: String? = null,
 ) {
     // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
     val cantFindKeys by CantFindBlocked.keys.collectAsState()
@@ -244,28 +247,29 @@ fun DiscoverSeriesDetailsContent(
     }
     var moreDialog by remember { mutableStateOf<DialogParams?>(null) }
 
-    Box(
-        modifier = modifier,
-    ) {
+    val listState = rememberLazyListState()
+    RequestHeroLayout(backdropUrl = backdropUrl, listState = listState, modifier = modifier) { heroModifier, wide ->
         Column(
             modifier =
                 Modifier
                     .fillMaxSize(),
         ) {
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier,
             ) {
                 item {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalArrangement = Arrangement.Bottom,
                         modifier =
-                            Modifier
+                            heroModifier
                                 .scrollAsOneBlock()
                                 .fillMaxWidth()
                                 .bringIntoViewRequester(bringIntoViewRequester),
                     ) {
+                        if (!wide) RequestPhonePicture(backdropUrl, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
                         DiscoverSeriesDetailsHeader(
                             series = series,
                             rating = rating,

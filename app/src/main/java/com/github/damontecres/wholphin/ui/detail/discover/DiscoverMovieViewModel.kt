@@ -69,6 +69,9 @@ class DiscoverMovieViewModel
             fun create(item: DiscoverItem): DiscoverMovieViewModel
         }
 
+        /** The big picture behind the page */
+        val backdrop = kotlinx.coroutines.flow.MutableStateFlow(item.backDropUrl)
+
         private val _state = MutableStateFlow(DiscoverMovieState())
         val state: StateFlow<DiscoverMovieState> = _state
 
@@ -121,7 +124,9 @@ class DiscoverMovieViewModel
                     val movie = seerrService.api.moviesApi.movieMovieIdGet(movieId = item.id)
                     _state.update { it.copy(movie = DataLoadingState.Success(movie)) }
                     val discoveredItem = seerrService.createDiscoverItem(movie)
-                    backdropService.submit(discoveredItem)
+                    // Benflix redesign: the page draws its own big picture (like the Movies page)
+                    backdropService.clearBackdrop()
+                    backdrop.value = discoveredItem.backDropUrl ?: backdrop.value
 
                     updateCanCancel()
 
