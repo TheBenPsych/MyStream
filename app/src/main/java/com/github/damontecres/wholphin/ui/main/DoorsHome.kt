@@ -81,10 +81,6 @@ import com.github.damontecres.wholphin.ui.waitForSettled
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneOffset
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +92,10 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import timber.log.Timber
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneOffset
+import javax.inject.Inject
 
 /** One news pill under the greeting. [door] picks the dot colour (null = white, app news). */
 data class HomeNews(
