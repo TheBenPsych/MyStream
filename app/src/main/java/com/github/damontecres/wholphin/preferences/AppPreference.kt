@@ -1335,7 +1335,10 @@ sealed interface AppPreference<Pref, T> {
             AppChoicePreference<AppPreferences, Int>(
                 title = R.string.benflix_autoplay_limit,
                 defaultValue = 0,
-                getter = { it.playbackPreferences.passOutProtectionMs.milliseconds.inWholeHours.toInt() },
+                getter = {
+                    it.playbackPreferences.passOutProtectionMs.milliseconds.inWholeHours
+                        .toInt()
+                },
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { passOutProtectionMs = value.hours.inWholeMilliseconds }
                 },
