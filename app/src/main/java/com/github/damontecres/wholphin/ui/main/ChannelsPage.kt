@@ -250,6 +250,8 @@ fun ChannelsPage(
     // Back in the guide means you're not flipping channels any more
     LaunchedEffect(Unit) { ChannelSession.stopWatching() }
     val list = channels
+    // Opening from Home: the door colour waits for the channels, then fades onto the page
+    LaunchedEffect(list != null) { if (list != null) DoorWipe.ready() }
     if (list == null) {
         LoadingPage(modifier.fillMaxSize())
         return
