@@ -422,6 +422,9 @@ def sign_in():
         if find(root, HOME_RE) is not None:
             log("signed in")
             break
+        if find(root, r"^Step 1 of \d+$") is not None:
+            log("signed in (first-time setup is showing)")
+            break
         if root is None:
             # the screen can't be read right now (it never "settles" while something animates); wait and look again
             shot(f"login-unreadable-{step}")
@@ -565,8 +568,9 @@ def welcome_setup():
     # Easy read: Looks good. Parent PIN: No thanks. Hide genres (last): Done. Then the finish screen: Go to Home.
     buttons = [r"^Let's go$", r"^Next", r"^Looks good$", r"^No thanks$", r"^Done$"]
     seen = []
+    tries = {}
     finished = False
-    for _ in range(30):
+    for _ in range(40):
         root = dump()
         step = find(root, r"^Step \d+ of \d+$")
         if step is None:
@@ -576,11 +580,24 @@ def welcome_setup():
                 shot("welcome-finish")
                 tap(n)
                 finished = True
+            elif find(root, r"^All set") is not None or find(root, HOME_RE) is not None:
+                # the redesign's "All set" opens Home by itself
+                shot("welcome-finish")
+                finished = True
             break
         label = step.get("content-desc") or step.get("text") or ""
         if label not in seen:
             seen.append(label)
             shot("welcome-" + label.split()[1])
+        tries[label] = tries.get(label, 0) + 1
+        # stuck on a step (a choice the robot doesn't understand): use its small "Skip for now"
+        if tries[label] > 4:
+            n = find(root, r"^Skip for now$")
+            if n is not None:
+                log(f"welcome setup: skipping {label}")
+                tap(n)
+                time.sleep(2)
+                continue
         # subtitles: pick a mode first (Next stays off until one is picked)
         # (once picked it shows a tick; on TV the explanation underneath can also read just
         # "Only for other languages", so don't keep pressing it)
