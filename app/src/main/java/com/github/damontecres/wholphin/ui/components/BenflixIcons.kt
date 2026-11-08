@@ -34,6 +34,7 @@ enum class BenflixIcon(
         "M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0z",
         "M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2",
     ),
+
     // A classic controller: rounded body with two grips, a plus pad on the left and two buttons on the right
     PAD(
         "M8 6h8a5.5 5.5 0 0 1 5.4 4.5l.8 4.6a2.8 2.8 0 0 1-5 2.2L15.5 15.5h-7l-1.7 1.8a2.8 2.8 0 0 1-5-2.2l.8-4.6A5.5 5.5 0 0 1 8 6z",
