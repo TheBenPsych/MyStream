@@ -192,8 +192,9 @@ private fun GameRow(
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
-            val width: Dp = if (isTv) (maxWidth - gap * 6) / 6.5f else maxWidth * 0.42f
-            val tileHeight = gameTileHeight(isTv)
+            // Ben: tall cards like movie and show posters, with room for the whole name (up to three lines)
+            val width: Dp = if (isTv) 150.dp else (maxWidth * 0.34f).coerceIn(104.dp, 150.dp)
+            val tileHeight = maxOf(width * 1.4f, posterTileHeight(isTv))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -206,7 +207,7 @@ private fun GameRow(
                         g,
                         isTv,
                         Modifier
-                            .size(width = width, height = if (isTv) maxOf(width * 0.62f, tileHeight) else maxOf(96.dp, tileHeight))
+                            .size(width = width, height = tileHeight)
                             .onFocusChanged { if (it.isFocused) onFocus(g) },
                     )
                 }
@@ -233,10 +234,25 @@ internal fun gameTileHeight(
     }
 }
 
+/** How tall a poster-shaped game tile must be: padding, the big icon square, three lines of name and the kind */
+@Composable
+private fun posterTileHeight(isTv: Boolean): Dp {
+    val density = LocalDensity.current
+    return with(density) {
+        val name = (if (isTv) BenflixType.lead else BenflixType.body).toDp() * TILE_LINE * NAME_LINES
+        val kind = BenflixType.tag.toDp() * TILE_LINE
+        (if (isTv) 14.dp else 12.dp) * 2 + posterIconSize(isTv) + name + kind + 12.dp
+    }
+}
+
+private fun posterIconSize(isTv: Boolean): Dp = if (isTv) 52.dp else 44.dp
+
+private const val NAME_LINES = 3
+
 /** Room for one line of text, as a share of its size (Outfit sits a little tall) */
 private const val TILE_LINE = 1.4f
 
-/** A Benflix game tile (approved redesign): dark card, small colour square with the icon, name and kind. No grow. */
+/** A Benflix game tile: a tall dark card (poster shaped), colour square with the icon, the full name and kind. No grow. */
 @Composable
 private fun RowTile(
     g: RowGame,
@@ -259,14 +275,14 @@ private fun RowTile(
                     .fillMaxSize()
                     .padding(if (isTv) 14.dp else 12.dp),
         ) {
-            GameIconSquare(g.colors, g.icon)
+            GameIconSquare(g.colors, g.icon, size = posterIconSize(isTv))
             Box(Modifier.weight(1f))
             Text(
                 g.title,
                 fontSize = if (isTv) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = BenflixColors.Text,
-                maxLines = 1,
+                maxLines = NAME_LINES,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(

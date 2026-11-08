@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -403,8 +404,14 @@ internal fun ConsoleGrid(
                 modifier =
                     Modifier
                         .width(tileWidth)
-                        .height(maxOf(if (isTv) 104.dp else 92.dp, gameTileHeight(isTv, padding = 12.dp, top = 4.dp)))
-                        .onFocusChanged {
+                        // Room for a two-line console name, so long names aren't cut off
+                        .height(
+                            maxOf(
+                                if (isTv) 116.dp else 104.dp,
+                                gameTileHeight(isTv, padding = 12.dp, top = 4.dp) +
+                                    with(LocalDensity.current) { (if (isTv) BenflixType.lead else BenflixType.body).toDp() * 1.4f },
+                            ),
+                        ).onFocusChanged {
                             if (it.isFocused) {
                                 val last = lastPlayed(console)
                                 onFocus(
@@ -447,7 +454,7 @@ internal fun ConsoleGrid(
                         fontSize = if (isTv) BenflixType.lead else BenflixType.body,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(count, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
