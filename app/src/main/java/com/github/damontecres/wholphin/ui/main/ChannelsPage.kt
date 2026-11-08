@@ -667,6 +667,8 @@ private fun GuideGrid(
                                                 .background(BenflixRed),
                                     )
                                 }
+                                // A show that's nearly over is only a sliver: no squashed "Ki…" and cut-off time in it
+                                if (widthFor(to - from) >= 52.dp) {
                                 Column(
                                     verticalArrangement = Arrangement.Center,
                                     modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
@@ -696,6 +698,7 @@ private fun GuideGrid(
                                             maxLines = 1,
                                         )
                                     }
+                                }
                                 }
                             }
                         }

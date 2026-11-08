@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
+import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -117,6 +118,8 @@ fun MovieHeroContent(
     val collection = state.collection
     val part = collection?.partOf(movie.id)
     val listState = rememberLazyListState()
+    var heroFocused by remember { mutableStateOf(false) }
+    KeepHeroAtTop(listState, heroFocused)
     val scope = rememberCoroutineScope()
     val firstButton = remember { FocusRequester() }
     val collectionRow = remember { FocusRequester() }
@@ -186,13 +189,7 @@ fun MovieHeroContent(
                                         .weight(1f)
                                         .widthIn(max = 620.dp)
                                         // Coming back up to the buttons shows the whole top again (name included)
-                                        .onFocusChanged {
-                                            if (it.hasFocus &&
-                                                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
-                                            ) {
-                                                scope.launch { listState.animateScrollToItem(0) }
-                                            }
-                                        },
+                                        .onFocusChanged { heroFocused = it.hasFocus },
                             ) {
                                 HeroButtons(
                                     movie = movie,

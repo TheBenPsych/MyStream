@@ -56,7 +56,7 @@ class DevicePower private constructor(
             val cpu =
                 buildString {
                     append("$cores cores")
-                    if (maxGhz > 0) append(" up to %.1f GHz".format(Locale.US, maxGhz))
+                    if (maxGhz >= 0.1) append(" up to %.1f GHz".format(Locale.US, maxGhz))
                     if (cpuName.isNotBlank()) append(" ($cpuName)")
                 }
             parts.add(cpu)

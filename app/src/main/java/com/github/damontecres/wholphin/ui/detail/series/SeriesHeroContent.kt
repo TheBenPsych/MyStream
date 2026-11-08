@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
+import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,7 +75,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
 
@@ -117,7 +116,8 @@ fun SeriesHeroContent(
     val wide = isTv || config.screenWidthDp > config.screenHeightDp
     val side = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+    var heroFocused by remember { mutableStateOf(false) }
+    KeepHeroAtTop(listState, heroFocused)
     val firstButton = remember { FocusRequester() }
     var showMore by remember { mutableStateOf(false) }
     var showRate by remember { mutableStateOf(false) }
@@ -212,13 +212,7 @@ fun SeriesHeroContent(
                                         .weight(1f)
                                         .widthIn(max = 620.dp)
                                         // Coming back up to the buttons shows the whole top again (name included)
-                                        .onFocusChanged {
-                                            if (it.hasFocus &&
-                                                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
-                                            ) {
-                                                scope.launch { listState.animateScrollToItem(0) }
-                                            }
-                                        },
+                                        .onFocusChanged { heroFocused = it.hasFocus },
                             ) {
                                 buttons()
                                 if (isTv && !easy) {
