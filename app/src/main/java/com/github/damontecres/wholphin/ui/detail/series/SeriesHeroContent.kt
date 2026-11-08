@@ -662,7 +662,13 @@ private fun EpisodeCard(
         if (upcoming) {
             episode.data.premiereDay?.let {
                 // "Coming Sat, Nov 8" instead of "Coming 2026-11-08"
-                val day = remember(it) { it.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d", java.util.Locale.getDefault())) }
+                val day =
+                    remember(it) {
+                        it.format(
+                            java.time.format.DateTimeFormatter
+                                .ofPattern("EEE, MMM d", java.util.Locale.getDefault()),
+                        )
+                    }
                 Text(text = "Coming $day", color = BenflixColors.Muted, fontSize = BenflixType.tag)
             }
         }

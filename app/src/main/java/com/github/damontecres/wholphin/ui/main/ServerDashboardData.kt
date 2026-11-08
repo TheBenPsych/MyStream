@@ -347,7 +347,6 @@ class ServerDashboardData
                         text = it.name,
                         userId = it.userId,
                         at = it.date,
-                        // The server's times already arrive in this time zone
                         time = it.date.format(dayFormat),
                     )
                 }

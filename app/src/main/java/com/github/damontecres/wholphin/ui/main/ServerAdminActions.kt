@@ -131,7 +131,6 @@ class BenflixServerActions
                             running = task.state != TaskState.IDLE,
                             progress = task.currentProgressPercentage?.toInt(),
                             lastRun =
-                                // The server's times already arrive in this time zone
                                 result?.endTimeUtc?.format(format),
                             failed = result?.status == TaskCompletionStatus.FAILED || result?.status == TaskCompletionStatus.ABORTED,
                             error = result?.errorMessage,
