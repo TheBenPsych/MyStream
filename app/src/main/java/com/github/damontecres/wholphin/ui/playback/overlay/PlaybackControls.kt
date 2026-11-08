@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,6 +58,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,6 +85,8 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.formatDuration
+import com.github.damontecres.wholphin.ui.formatTime
+import androidx.compose.ui.platform.LocalContext
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
@@ -230,10 +232,10 @@ fun PlaybackControls(
 }
 
 /**
- * Benflix player buttons, laid out like a streaming service: round play & skip buttons on the left,
- * labeled buttons (Next episode, Subtitles, Audio, Speed, Settings) on the right.
+ * Benflix player buttons (approved redesign): play/pause, back and forward (plus Next episode) on the left,
+ * the Skip pill and small round Episodes, Subtitles, Audio and Settings buttons on the right.
  */
-@OptIn(UnstableApi::class, ExperimentalLayoutApi::class)
+@OptIn(UnstableApi::class)
 @Composable
 fun NetflixControlRow(
     player: Player,
@@ -251,16 +253,7 @@ fun NetflixControlRow(
     episodesEnabled: Boolean = false,
 ) {
     val roundButtons: @Composable () -> Unit = {
-        PlayerCircleButton(
-            faIcon = R.string.fa_rotate_left,
-            label = seekBack.inWholeSeconds.toString(),
-            size = 48.dp,
-            onClick = {
-                onControllerInteraction.invoke()
-                player.seekBack(seekBack)
-            },
-            onControllerInteraction = onControllerInteraction,
-        )
+        // Approved redesign order: play/pause first, then back and forward
         PlayerCircleButton(
             faIcon = if (showPlay) R.string.fa_play else R.string.fa_pause,
             label = null,
@@ -280,6 +273,16 @@ fun NetflixControlRow(
             modifier = Modifier.focusRequester(initialFocusRequester),
         )
         PlayerCircleButton(
+            faIcon = R.string.fa_rotate_left,
+            label = seekBack.inWholeSeconds.toString(),
+            size = 48.dp,
+            onClick = {
+                onControllerInteraction.invoke()
+                player.seekBack(seekBack)
+            },
+            onControllerInteraction = onControllerInteraction,
+        )
+        PlayerCircleButton(
             faIcon = R.string.fa_rotate_right,
             label = seekForward.inWholeSeconds.toString(),
             size = 48.dp,
@@ -290,6 +293,7 @@ fun NetflixControlRow(
             onControllerInteraction = onControllerInteraction,
         )
     }
+    // Labeled buttons that only show when they matter: the white Skip pill, Start from the beginning
     val pillButtons: @Composable () -> Unit = {
         currentSegment?.let { segment ->
             PlayerPillButton(
@@ -316,104 +320,93 @@ fun NetflixControlRow(
                 onControllerInteraction = onControllerInteraction,
             )
         }
-        if (nextEnabled) {
-            PlayerPillButton(
-                text = stringResource(R.string.player_next_episode),
-                faIcon = R.string.fa_caret_right,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.Next)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-        }
+    }
+    // Approved redesign: small round icon buttons on the right (same on TV and phone)
+    val iconButtons: @Composable (Dp) -> Unit = { size ->
         if (episodesEnabled) {
-            PlayerPillButton(
-                text = stringResource(R.string.player_episodes),
+            PlayerCircleButton(
                 faIcon = R.string.fa_list_ul,
+                label = null,
+                size = size,
                 onClick = {
                     onControllerInteraction.invoke()
                     onClickPlaybackDialogType.invoke(PlaybackDialogType.EPISODES)
                 },
                 onControllerInteraction = onControllerInteraction,
+                modifier = Modifier.semantics { contentDescription = "Episodes" },
             )
         }
-        PlayerPillButton(
-            text = stringResource(R.string.player_subtitles),
+        PlayerCircleButton(
             faIcon = R.string.fa_closed_captioning,
+            label = null,
+            size = size,
             onClick = {
                 onControllerInteraction.invoke()
                 onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
             },
             onControllerInteraction = onControllerInteraction,
+            modifier = Modifier.semantics { contentDescription = "Subtitles" },
         )
-        PlayerPillButton(
-            text = stringResource(R.string.player_audio),
+        PlayerCircleButton(
             faIcon = R.string.fa_volume_high,
+            label = null,
+            size = size,
             onClick = {
                 onControllerInteraction.invoke()
                 onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
             },
             onControllerInteraction = onControllerInteraction,
+            modifier = Modifier.semantics { contentDescription = "Audio" },
         )
         // Speed, Night mode, picture size and the rest live under the sliders button to keep the bar simple
-        PlayerPillButton(
-            text = null,
+        PlayerCircleButton(
             faIcon = R.string.fa_sliders,
+            label = null,
+            size = size,
             onClick = {
                 onControllerInteraction.invoke()
                 onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
             },
             onControllerInteraction = onControllerInteraction,
+            modifier = Modifier.semantics { contentDescription = "Settings" },
         )
     }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(modifier = modifier.focusGroup()) {
-            if (maxWidth >= WIDE_CONTROLS_MIN_WIDTH) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    roundButtons()
-                    // Benflix: labeled buttons sit on the right; if there are too many for one
-                    // line (say Skip intro + Next episode + Episodes), they wrap neatly instead of being cut off
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        pillButtons()
-                    }
+            // Phones sideways use the same one-line layout as the TV, just a little smaller
+            val compact = maxWidth < WIDE_CONTROLS_MIN_WIDTH
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                roundButtons()
+                if (nextEnabled) {
+                    PlayerPillButton(
+                        text = if (compact) null else stringResource(R.string.player_next_episode),
+                        faIcon = R.string.fa_caret_right,
+                        onClick = {
+                            onControllerInteraction.invoke()
+                            onPlaybackActionClick.invoke(PlaybackAction.Next)
+                        },
+                        onControllerInteraction = onControllerInteraction,
+                        modifier = Modifier.semantics { contentDescription = "Next episode" },
+                    )
                 }
-            } else {
-                // Benflix on narrow screens (phones): the buttons don't fit on one line, so
-                // play & skip go in the middle and the labeled buttons wrap onto lines below.
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    ) {
-                        roundButtons()
-                    }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        pillButtons()
-                    }
+                    pillButtons()
+                    iconButtons(if (compact) 40.dp else 44.dp)
                 }
             }
         }
     }
 }
 
-/** Narrower than this, the player buttons go on several lines instead of one */
+/** Narrower than this (phones sideways), the player buttons get a little smaller */
 private val WIDE_CONTROLS_MIN_WIDTH = 820.dp
 
 /**
@@ -604,6 +597,7 @@ fun SeekBar(
             positionMs = position,
             durationMs = player.duration,
             modifier = Modifier.fillMaxWidth(),
+            endsAtSpeed = player.playbackParameters.speed,
         )
     }
 }
@@ -613,7 +607,10 @@ fun SeekTimecodes(
     positionMs: Long,
     durationMs: Long,
     modifier: Modifier = Modifier,
+    // Benflix redesign: when set, the right side reads "-1:09:44 · ends 9:52 PM"
+    endsAtSpeed: Float? = null,
 ) {
+    val context = LocalContext.current
     val currentLayoutDirection = LocalLayoutDirection.current
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
@@ -626,7 +623,16 @@ fun SeekTimecodes(
             val positionText =
                 remember(positionSec) { resources.formatDuration(positionSec.seconds) }
             val remainingText =
-                remember(remainingSec) { "-${resources.formatDuration(remainingSec.seconds)}" }
+                remember(remainingSec, endsAtSpeed) {
+                    val left = "-${resources.formatDuration(remainingSec.seconds)}"
+                    if (endsAtSpeed == null || remainingSec < 0) {
+                        left
+                    } else {
+                        val realSec = (remainingSec / endsAtSpeed.coerceAtLeast(0.1f)).toLong()
+                        val ends = formatTime(context, java.time.LocalTime.now().plusSeconds(realSec))
+                        "$left · ends $ends"
+                    }
+                }
             CompositionLocalProvider(LocalLayoutDirection provides currentLayoutDirection) {
                 Text(
                     text = positionText,

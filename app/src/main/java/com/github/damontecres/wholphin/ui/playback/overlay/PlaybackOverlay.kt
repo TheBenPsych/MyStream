@@ -9,9 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOut
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -24,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -42,23 +39,23 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.tv.material3.Text
 import androidx.media3.common.Player
-import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.ui.AppColors
-import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.TimeDisplay
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.playback.AnalyticsState
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.CurrentPlayback
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
-import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import kotlin.time.Duration
@@ -99,20 +96,6 @@ fun PlaybackOverlay(
     var seekProgressPercent = (seekProgressMs.toDouble() / player.duration).toFloat()
 
     val density = LocalDensity.current
-
-    val titleHeight =
-        remember(item?.title, density) {
-            if (item?.title.isNotNullOrBlank()) with(density) { titleTextSize.toDp() } else 0.dp
-        }
-    val subtitleHeight =
-        remember(item?.subtitleLong, density) {
-            // Episodes have one line of words (see PlaybackController), so no second line
-            if (item?.type != org.jellyfin.sdk.model.api.BaseItemKind.EPISODE && item?.subtitleLong.isNotNullOrBlank()) {
-                with(density) { subtitleTextSize.toDp() }
-            } else {
-                0.dp
-            }
-        }
 
     // This will be calculated after composition
     var controllerHeight by remember { mutableStateOf(0.dp) }
@@ -239,7 +222,7 @@ fun PlaybackOverlay(
                                 .align(Alignment.BottomStart)
                                 .offsetByPercent(
                                     xPercentage = seekProgressPercent.coerceIn(0f, 1f),
-                                ).padding(bottom = controllerHeight - titleHeight - subtitleHeight),
+                                ).padding(bottom = controllerHeight + 12.dp),
                     ) {
                         TrickplayPreview(
                             seekProgressMs = seekProgressMs,
@@ -251,30 +234,75 @@ fun PlaybackOverlay(
             }
         }
 
-        // Top
-        val logoImageUrl = LocalImageUrlService.current.rememberImageUrl(item, ImageType.LOGO)
+        // Top left: the name in plain words (approved redesign, same on TV and phone).
+        // Movies: name + "2023 · PG-13". Episodes: "Show · S2 E5 · Episode" on one line.
+        val topTitle =
+            remember(item) {
+                if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
+                    listOfNotNull(
+                        item.data.seriesName,
+                        item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
+                        item.data.name,
+                    ).joinToString(" · ")
+                } else {
+                    item?.title
+                }
+            }
+        val topLine =
+            remember(item) {
+                if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
+                    null
+                } else {
+                    listOfNotNull(
+                        item?.data?.productionYear?.toString(),
+                        item?.data?.officialRating?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ").ifBlank { null }
+                }
+            }
         AnimatedVisibility(
-            visible = !showDebugInfo && logoImageUrl.isNotNullOrBlank() && controllerViewState.controlsVisible,
-            enter = slideIn { IntOffset(x = -it.width / 2, y = -it.height / 2) } + fadeIn(),
-            exit = slideOut { IntOffset(x = -it.width / 2, y = -it.height / 2) } + fadeOut(),
+            visible = !showDebugInfo && topTitle.isNotNullOrBlank() && controllerViewState.controlsVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier =
                 Modifier
                     .align(Alignment.TopStart),
         ) {
-            AsyncImage(
-                model = logoImageUrl,
-                contentDescription = "Logo",
-                alignment = Alignment.TopStart,
-                modifier =
-                    Modifier
-                        .size(width = 240.dp, height = 120.dp)
-                        .padding(16.dp),
-            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(topScrim),
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(.7f)
+                            .padding(start = 28.dp, top = 22.dp, bottom = 40.dp),
+                ) {
+                    Text(
+                        text = topTitle.orEmpty(),
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    topLine?.let {
+                        Text(
+                            text = it,
+                            color = Color.White.copy(alpha = .75f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
         AnimatedVisibility(
             visible = !showDebugInfo && showClock && controllerViewState.controlsVisible,
-            enter = slideIn { IntOffset(x = it.width / 2, y = -it.height / 2) } + fadeIn(),
-            exit = slideOut { IntOffset(x = it.width / 2, y = -it.height / 2) } + fadeOut(),
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd),
@@ -319,6 +347,12 @@ fun PlaybackOverlay(
         }
     }
 }
+
+/** Soft shade at the top so the name stays readable over bright pictures */
+private val topScrim =
+    Brush.verticalGradient(
+        colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
+    )
 
 /**
  * The view state of the overlay
