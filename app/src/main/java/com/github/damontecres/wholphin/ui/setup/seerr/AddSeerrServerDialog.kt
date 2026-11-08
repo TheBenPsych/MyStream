@@ -30,6 +30,7 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.ScrollableDialog
 import com.github.damontecres.wholphin.ui.preferences.rememberSeerrDialogBody
 import com.github.damontecres.wholphin.util.LoadingState
@@ -85,7 +86,7 @@ fun SeerrDialog(
                     BasicDialog(
                         onDismissRequest = onDismissRequest,
                     ) {
-                        LoadingPage(Modifier.padding(16.dp))
+                        LoadingSpinner(Modifier.padding(16.dp))
                     }
                 }
 

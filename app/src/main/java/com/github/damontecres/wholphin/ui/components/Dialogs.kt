@@ -231,12 +231,10 @@ fun DialogPopup(
         } else {
             waiting = false
         }
-        Dialog(
+        BenflixPanelDialog(
             onDismissRequest = onDismissRequest,
             properties = properties,
         ) {
-            val elevatedContainerColor =
-                MaterialTheme.colorScheme.surfaceColorAtElevation(elevation)
             DialogPopupContent(
                 title = title,
                 header = header,
@@ -259,12 +257,7 @@ fun DialogPopup(
                                 waiting = false
                             }
                             false
-                        }.shadow(elevation = elevation, shape = RoundedCornerShape(28.0.dp))
-                        .graphicsLayer {
-                            this.clip = true
-                            this.shape = RoundedCornerShape(28.0.dp)
-                        }.drawBehind { drawRect(color = elevatedContainerColor) }
-                        .padding(PaddingValues(24.dp)),
+                        },
             )
         }
     }
@@ -379,31 +372,20 @@ fun ScrollableDialog(
             columnState.scrollBy(if (reverse) -scrollAmount else scrollAmount)
         }
     }
-    Dialog(
+    // Benflix: shown in the shared side panel (TV) / bottom sheet (phone); width and maxHeight are
+    // kept for callers but the panel sets the size now
+    BenflixPanelDialog(
         onDismissRequest = onDismissRequest,
-        properties =
-            DialogProperties(
-                usePlatformDefaultWidth = false,
-            ),
     ) {
         LazyColumn(
             state = columnState,
-            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(itemSpacing),
             content = content,
             modifier =
                 Modifier
-                    // Never wider than the phone screen
-                    .padding(horizontal = 12.dp)
-                    .widthIn(max = width)
                     .fillMaxWidth()
-                    .heightIn(max = maxHeight)
                     .focusable()
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(10.dp))
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(10.dp),
-                    ).onKeyEvent {
+                    .onKeyEvent {
                         if (it.type == KeyEventType.KeyUp) {
                             return@onKeyEvent false
                         }
@@ -431,22 +413,12 @@ fun BasicDialog(
     elevation: Dp = 1.dp,
     content: @Composable () -> Unit,
 ) {
-    Dialog(
+    // Benflix: every pop-up is the shared side panel (TV) / bottom sheet (phone)
+    BenflixPanelDialog(
         onDismissRequest = onDismissRequest,
         properties = properties,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .shadow(elevation = elevation, shape = RoundedCornerShape(10.dp))
-                    .background(
-                        // Benflix Graphite (neutral dark grey) at the default 1dp
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(elevation.coerceAtLeast(2.dp)),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-        ) {
-            content()
-        }
+        content()
     }
 }
 

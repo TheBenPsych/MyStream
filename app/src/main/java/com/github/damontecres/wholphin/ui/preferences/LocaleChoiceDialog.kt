@@ -23,6 +23,7 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopupContent
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -150,7 +151,7 @@ fun LocaleChoiceDialog(
             LoadingState.Loading,
             LoadingState.Pending,
             -> {
-                LoadingPage()
+                LoadingSpinner()
             }
 
             LoadingState.Success -> {

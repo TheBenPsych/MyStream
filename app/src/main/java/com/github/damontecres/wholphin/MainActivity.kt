@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.CoilConfig
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.PlayExternalViewModel
@@ -295,7 +296,7 @@ class MainActivity : AppCompatActivity() {
                                             .fillMaxSize()
                                             .background(Color.Black),
                                 ) {
-                                    LoadingPage()
+                                    LoadingSpinner()
                                 }
                             }
                         } else {

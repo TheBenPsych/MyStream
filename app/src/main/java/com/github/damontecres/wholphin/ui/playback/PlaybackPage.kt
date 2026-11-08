@@ -115,6 +115,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixTip
 import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.overlay.DpadSeekOverlay
 import com.github.damontecres.wholphin.ui.playback.overlay.PauseIndicator
@@ -175,7 +176,7 @@ fun PlaybackPage(
         LoadingState.Pending,
         LoadingState.Loading,
         -> {
-            LoadingPage(modifier.background(Color.Black))
+            LoadingSpinner(modifier.background(Color.Black))
         }
 
         LoadingState.Success -> {
@@ -547,7 +548,7 @@ fun PlaybackPageContent(
                         .matchParentSize()
                         .background(Color.Black),
                 ) {
-                    LoadingPage(focusEnabled = false)
+                    LoadingSpinner(focusEnabled = false)
                 }
             } else {
                 AnimatedVisibility(
@@ -556,7 +557,7 @@ fun PlaybackPageContent(
                     exit = fadeOut(tween(easing = LinearEasing)),
                     modifier = Modifier.matchParentSize(),
                 ) {
-                    LoadingPage(
+                    LoadingSpinner(
                         focusEnabled = false,
                         modifier =
                             Modifier

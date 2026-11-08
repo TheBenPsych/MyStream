@@ -34,6 +34,7 @@ import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.findActivity
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
@@ -420,12 +421,12 @@ fun PlayExternalPage(
 
     when (val l = state.loading) {
         LoadingState.Pending -> {
-            LoadingPage(modifier, false)
+            LoadingSpinner(modifier, false)
         }
 
         LoadingState.Loading,
         -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
         }
 
         is LoadingState.Error -> {
@@ -433,7 +434,7 @@ fun PlayExternalPage(
         }
 
         LoadingState.Success -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
             if (!launched) {
                 LifecycleStartEffect(Unit) {
                     Timber.i("Launching external playback")

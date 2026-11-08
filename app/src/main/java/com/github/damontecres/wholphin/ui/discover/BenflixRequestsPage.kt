@@ -1908,6 +1908,36 @@ private fun RequestList(
             },
         )
     }
+    val familyVisible: (List<DiscoverItem>) -> List<DiscoverItem> = { items ->
+        if (familySearch) {
+            items.filter {
+                it.type == SeerrItemType.PERSON || ratings[it.requestKey()]?.familyFriendly(it.type) == true
+            }
+        } else {
+            items
+        }
+    }
+    // Benflix polish: on TV the family list searches with the same full-screen Benflix keyboard page
+    // as the main Requests page, instead of the old typing box
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    val searchAnime by viewModel.searchAnime.collectAsState()
+    if (isTv && showSearch && searchOpen) {
+        RequestSearchScreen(
+            query = query,
+            onQuery = { viewModel.searchQuery.value = it },
+            results = searchResults,
+            anime = searchAnime,
+            visible = familyVisible,
+            onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
+            onMenu = { if (it.type != SeerrItemType.PERSON) menuItem = it },
+            onFocus = {},
+            onClose = {
+                searchOpen = false
+                viewModel.searchQuery.value = ""
+            },
+        )
+        return
+    }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
@@ -1915,20 +1945,16 @@ private fun RequestList(
     ) {
         if (showSearch) {
             item {
-                RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+                if (isTv) {
+                    RequestSearchButton(onClick = { searchOpen = true })
+                } else {
+                    RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+                }
             }
-            if (query.trim().length >= 2) {
+            if (!isTv && query.trim().length >= 2) {
                 searchShelves(
                     results = searchResults,
-                    visible = { items ->
-                        if (familySearch) {
-                            items.filter {
-                                it.type == SeerrItemType.PERSON || ratings[it.requestKey()]?.familyFriendly(it.type) == true
-                            }
-                        } else {
-                            items
-                        }
-                    },
+                    visible = familyVisible,
                     scoreLine = { it.releaseDate?.year?.toString() },
                     onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
                     onMenu = { menuItem = it },
