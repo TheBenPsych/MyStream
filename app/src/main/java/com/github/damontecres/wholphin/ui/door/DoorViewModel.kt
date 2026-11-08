@@ -58,6 +58,10 @@ data class DoorPageState(
     val loaded: Boolean = false,
     /** Phones: the "Picked for you" card */
     val pick: BaseItem? = null,
+    /** Every row this door can have, in page order */
+    val order: List<String> = emptyList(),
+    /** Rows still loading: they show as grey placeholder rows in their place, so nothing jumps (Ben) */
+    val pending: Set<String> = emptySet(),
     /** Nothing came back and the server's libraries couldn't be read either: it's out of reach, not empty */
     val offline: Boolean = false,
 )
@@ -84,6 +88,9 @@ class DoorViewModel
         var focusedRow: String? = null
         var focusedIndex: Int = 0
 
+        /** False until you press a button or touch the page; until then the door keeps you on the first card of the top row */
+        var userMoved = false
+
         private var door: BenflixDoor? = null
         private var loadJob: Job? = null
         private var loadedAt = 0L
@@ -99,6 +106,7 @@ class DoorViewModel
                 _state.value = DoorPageState()
                 focusedRow = null
                 focusedIndex = 0
+                userMoved = false
             }
             this.door = door
             loadedFor = key
@@ -113,7 +121,7 @@ class DoorViewModel
                     // Nothing at all and no libraries means the server couldn't be reached: say so, and try again next time
                     val offline = _state.value.rows.isEmpty() && libraries().isEmpty()
                     loadedAt = if (offline) 0L else System.currentTimeMillis()
-                    _state.update { it.copy(loaded = true, offline = offline) }
+                    _state.update { it.copy(loaded = true, offline = offline, pending = emptySet()) }
                 }
         }
 
@@ -144,11 +152,15 @@ class DoorViewModel
             val clean = row.copy(items = row.items.distinctBy { it.id })
             _state.update { st ->
                 val rows = (st.rows.filter { it.key != row.key } + clean).sortedBy { order.indexOf(it.key) }
-                st.copy(rows = rows)
+                st.copy(rows = rows, pending = st.pending - row.key)
             }
         }
 
-        private fun remove(key: String) = _state.update { st -> st.copy(rows = st.rows.filter { it.key != key }) }
+        private fun remove(key: String) =
+            _state.update { st -> st.copy(rows = st.rows.filter { it.key != key }, pending = st.pending - key) }
+
+        /** Marks every row as loading, so the page draws grey placeholder rows until each one arrives */
+        private fun startRows(order: List<String>) = _state.update { it.copy(order = order, pending = order.toSet()) }
 
         private fun putOrRemove(
             order: List<String>,
@@ -167,6 +179,7 @@ class DoorViewModel
                 } else {
                     listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
                 }
+            startRows(order)
             aniListLibraries.warm(anime, userId)
             _state.update {
                 it.copy(
@@ -241,6 +254,7 @@ class DoorViewModel
                 } else {
                     listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
                 }
+            startRows(order)
             aniListLibraries.warm(anime, userId)
             _state.update {
                 it.copy(

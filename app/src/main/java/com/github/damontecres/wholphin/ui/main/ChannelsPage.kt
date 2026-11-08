@@ -291,11 +291,12 @@ private fun GuideGrid(
         remember(recentKeys, favourites, byKey, declinedNow) {
             ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
         }
-    val hasRows = favouriteChannels.isNotEmpty() || benflixChannels.isNotEmpty() || recentChannels.isNotEmpty()
     LaunchedEffect(Unit) {
         delay(80)
-        // Opens on the first favourite (or the first Benflix channel when there are none yet)
-        if (hasRows) rowFocus.tryRequestFocus() else firstFocus.tryRequestFocus()
+        // Ben: opens at the very top, on the first card of the top row: the first favourite, or
+        // "+ Add channels" when there are none yet (it used to jump down to the Benflix channels)
+        listState.scrollToItem(0)
+        if (!rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
     }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -348,9 +349,7 @@ private fun GuideGrid(
                         AddChannelsTile(
                             onClick = { addChannels = true },
                             modifier =
-                                if (favouriteChannels.isEmpty() &&
-                                    benflixChannels.isEmpty()
-                                ) {
+                                if (favouriteChannels.isEmpty()) {
                                     Modifier.focusRequester(rowFocus)
                                 } else {
                                     Modifier
@@ -384,14 +383,7 @@ private fun GuideGrid(
                                 onClick = { viewModel.watch(schedule) },
                                 onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
                                 modifier =
-                                    Modifier
-                                        .then(
-                                            if (favouriteChannels.isEmpty() && schedule == benflixChannels.first()) {
-                                                Modifier.focusRequester(rowFocus)
-                                            } else {
-                                                Modifier
-                                            },
-                                        ).onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
+                                    Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
                             )
                         }
                     }
