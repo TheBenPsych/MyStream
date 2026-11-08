@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -249,7 +250,7 @@ fun HubRows(
         header?.let { item { it() } }
         rows.forEachIndexed { rowIndex, row ->
             item(key = row.title) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.scrollAsOneBlock()) {
                     ItemRowTitle(row.title)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),

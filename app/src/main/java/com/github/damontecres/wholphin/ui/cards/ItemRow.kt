@@ -30,6 +30,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -80,7 +81,7 @@ fun <T> ItemRow(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
-            modifier.focusProperties {
+            modifier.scrollAsOneBlock().focusProperties {
                 onEnter = {
                     focusRequester.tryRequestFocus()
                 }

@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 
 /*
@@ -212,7 +213,7 @@ fun RequestDoorRow(
     subtitleFor: (DiscoverItem) -> String? = { null },
 ) {
     val first = remember { FocusRequester() }
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
             text = title,
             color = BenflixColors.Text,
