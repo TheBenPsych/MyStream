@@ -73,6 +73,8 @@
     <string name="fa_magnifying_glass" translatable="false">&#xf002;</string>
     <string name="fa_bars" translatable="false">&#xf0c9;</string>
     <string name="fa_gamepad" translatable="false">&#xf11b;</string>
+    <string name="fa_trophy" translatable="false">&#xf091;</string>
+    <string name="fa_bolt" translatable="false">&#xf0e7;</string>
     <string name="fa_mobile_screen" translatable="false">&#xf3cd;</string>
     <string name="fa_face_smile" translatable="false">&#xf118;</string>
     <string name="fa_bookmark" translatable="false">&#xf02e;</string>

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -33,7 +34,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 
@@ -46,6 +49,11 @@ data class RowGame(
     val icon: Int?,
     val badge: String,
     val onClick: () -> Unit,
+    /** Small grey word under the name, like "Arcade" */
+    val kind: String = "",
+    /** The game's board (for the top area's top 3), if it has one */
+    val boardId: String? = null,
+    val playWith: List<PlayWith> = emptyList(),
 )
 
 /**
@@ -56,6 +64,10 @@ data class RowGame(
 fun GameRows(
     viewModel: GamesViewModel,
     isTv: Boolean,
+    /** Which rows to draw here: "puzzles", "party", "arcade" (the page puts other rows between them) */
+    only: Set<String> = setOf("puzzles", "party", "arcade"),
+    board: Map<String, List<HighScore>>? = null,
+    onFocus: (GamePreview) -> Unit = {},
 ) {
     val kids = KidsMode.isActive
 
@@ -67,9 +79,18 @@ fun GameRows(
         MovieGame.entries
             .filter { it.group == MovieGameGroup.PUZZLE && it.visibleNow(kids) }
             .map { g ->
-                RowGame(g.name, g.title, g.short, g.colors, g.icon, badge(g.boardKey?.let { viewModel.bestExtra(it) } ?: 0)) {
-                    open("movie:${g.name}")
-                }
+                RowGame(
+                    g.name,
+                    g.title,
+                    g.short,
+                    g.colors,
+                    g.icon,
+                    badge(g.boardKey?.let { viewModel.bestExtra(it) } ?: 0),
+                    onClick = { open("movie:${g.name}") },
+                    kind = "Movie puzzle",
+                    boardId = g.boardKey,
+                    playWith = listOf(PlayWith.REMOTE, PlayWith.PHONE),
+                )
             }
     val party =
         listOfNotNull(
@@ -90,10 +111,33 @@ fun GameRows(
         ) +
             MovieGame.entries
                 .filter { it.group == MovieGameGroup.PARTY && it.visibleNow(kids) }
-                .map { g -> RowGame(g.name, g.title, g.short, g.colors, g.icon, "Party") { open("movie:${g.name}") } }
+                .map { g ->
+                    RowGame(
+                        g.name,
+                        g.title,
+                        g.short,
+                        g.colors,
+                        g.icon,
+                        "Party",
+                        onClick = { open("movie:${g.name}") },
+                        kind = "Party · Needs phones · 3 to 8 players",
+                        playWith = listOf(PlayWith.PHONE),
+                    )
+                }
     val arcade =
         BuiltInGame.entries.map { g ->
-            RowGame(g.name, g.title, g.tagline, g.colors, null, badge(viewModel.best(g))) { open("arcade:${g.name}") }
+            RowGame(
+                g.name,
+                g.title,
+                g.tagline,
+                g.colors,
+                R.string.fa_bolt,
+                badge(viewModel.best(g)),
+                onClick = { open("arcade:${g.name}") },
+                kind = "Arcade · Play alone",
+                boardId = g.name,
+                playWith = listOfNotNull(if (g.remoteOk) PlayWith.REMOTE else null, PlayWith.CONTROLLER, PlayWith.PHONE),
+            )
         } +
             RowGame(
                 "surprise",
@@ -102,33 +146,43 @@ fun GameRows(
                 listOf(Color(0xFF3A3A44), Color(0xFF16161B)),
                 R.string.fa_dice,
                 "Random",
-            ) {
-                viewModel.surprise(viewModel.featured())
-            }
+                onClick = { viewModel.surprise(viewModel.featured()) },
+                kind = "Arcade",
+            )
 
-    GameRow("Movie puzzles", "Made from the movies and shows on Tower", puzzles, isTv)
-    if (party.isNotEmpty()) GameRow("Party", "Everyone plays on their phone", party, isTv)
-    GameRow("Arcade", null, arcade, isTv)
+    val focus: (RowGame) -> Unit = { g ->
+        onFocus(
+            GamePreview(
+                key = g.key,
+                kicker = g.kind,
+                title = g.title,
+                line = g.badge.takeIf { it.startsWith("Best") }?.replace("Best", "Your best"),
+                about = g.short,
+                top3 = topThree(board, g.boardId),
+                colors = g.colors,
+                icon = g.icon,
+                playWith = g.playWith,
+            ),
+        )
+    }
+    if ("puzzles" in only) GameRow("Movie puzzles", puzzles, isTv, focus)
+    if ("party" in only && party.isNotEmpty()) GameRow("Party", party, isTv, focus)
+    if ("arcade" in only) GameRow("Arcade", arcade, isTv, focus)
 }
 
 @Composable
 private fun GameRow(
     title: String,
-    sub: String?,
     games: List<RowGame>,
     isTv: Boolean,
+    onFocus: (RowGame) -> Unit,
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-            if (sub != null) {
-                Text(sub, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
-            }
-        }
+        Text(title, fontSize = if (isTv) 20.sp else 18.sp, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val gap = if (isTv) 18.dp else 12.dp
-            val width: Dp = if (isTv) (maxWidth - gap * 4) / 4.5f else maxWidth * 0.62f
+            val gap = if (isTv) 16.dp else 12.dp
+            val width: Dp = if (isTv) (maxWidth - gap * 6) / 6.5f else maxWidth * 0.42f
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -136,12 +190,21 @@ private fun GameRow(
                 items(
                     games,
                     key = { it.key },
-                ) { g -> RowTile(g, isTv, Modifier.size(width = width, height = if (isTv) width * 0.58f else 132.dp)) }
+                ) { g ->
+                    RowTile(
+                        g,
+                        isTv,
+                        Modifier
+                            .size(width = width, height = if (isTv) width * 0.62f else 96.dp)
+                            .onFocusChanged { if (it.isFocused) onFocus(g) },
+                    )
+                }
             }
         }
     }
 }
 
+/** A Benflix game tile (approved redesign): dark card, small colour square with the icon, name and kind. No grow. */
 @Composable
 private fun RowTile(
     g: RowGame,
@@ -152,53 +215,34 @@ private fun RowTile(
     Surface(
         onClick = g.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
+        colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
         modifier = modifier,
     ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.linearGradient(g.colors))
-                .padding(if (isTv) 14.dp else 12.dp),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(if (isTv) 14.dp else 12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxSize()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    g.icon?.let {
-                        Text(stringResource(it), fontFamily = FontAwesome, fontSize = 15.sp, color = Color.White.copy(alpha = .85f))
-                    }
-                    Text(
-                        g.title,
-                        fontSize = if (isTv) 19.sp else 17.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    g.short,
-                    fontSize = if (isTv) 14.sp else 13.sp,
-                    lineHeight = if (isTv) 18.sp else 17.sp,
-                    color = Color.White.copy(alpha = .9f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Box(Modifier.weight(1f))
-                Text(
-                    g.badge,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier =
-                        Modifier
-                            .background(
-                                Color.Black.copy(alpha = .5f),
-                                RoundedCornerShape(6.dp),
-                            ).padding(horizontal = 7.dp, vertical = 2.dp),
-                )
-            }
+            GameIconSquare(g.colors, g.icon)
+            Box(Modifier.weight(1f))
+            Text(
+                g.title,
+                fontSize = if (isTv) 17.sp else 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = BenflixColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                g.kind.substringBefore(" · "),
+                fontSize = 12.sp,
+                color = BenflixColors.Muted,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -208,15 +252,31 @@ private fun RowTile(
 fun EmberBanner(
     isTv: Boolean,
     onClick: () -> Unit,
+    onFocus: (GamePreview) -> Unit = {},
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth().onFocusChanged {
+                if (it.isFocused) {
+                    onFocus(
+                        GamePreview(
+                            key = "ember",
+                            kicker = "Adventure",
+                            title = "Ember Road",
+                            about = "Pixel adventure: carry a dragon egg across a wild land. Android phones can join in.",
+                            colors = EMBER_COLOURS,
+                            icon = R.string.fa_dragon,
+                            playWith = listOf(PlayWith.REMOTE, PlayWith.CONTROLLER, PlayWith.PHONE),
+                        ),
+                    )
+                }
+            },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -225,7 +285,7 @@ fun EmberBanner(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = if (isTv) 64.dp else 72.dp)
-                    .background(Brush.linearGradient(listOf(Color(0xFFB8281E), Color(0xFF2B1B4D))))
+                    .background(Brush.linearGradient(EMBER_COLOURS.map { it.copy(alpha = .5f) } + BenflixColors.Raised))
                     .padding(horizontal = 18.dp, vertical = 10.dp),
         ) {
             Text(stringResource(R.string.fa_dragon), fontFamily = FontAwesome, fontSize = 22.sp, color = Color.White)
@@ -247,3 +307,5 @@ fun EmberBanner(
         }
     }
 }
+
+private val EMBER_COLOURS = listOf(Color(0xFFB8281E), Color(0xFF2B1B4D))

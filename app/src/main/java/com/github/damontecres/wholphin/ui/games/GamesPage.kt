@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
@@ -68,6 +69,7 @@ import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -82,78 +84,158 @@ fun GamesPage(
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
     val isTv = rememberIsTv()
     val context = LocalContext.current
+    val config = LocalConfiguration.current
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp
     val library by viewModel.library.collectAsState()
     val starting by viewModel.starting.collectAsState()
+    val board by viewModel.board.collectAsState()
+    LaunchedEffect(Unit) { viewModel.refreshBoard() }
     var askAddress by remember { mutableStateOf(false) }
+    val power = remember { DevicePower.get(context) }
+    val prep by viewModel.localGames.prep.collectAsState()
+    val favourites by viewModel.favourites.collectAsState()
+    val towerRecent by viewModel.towerRecent.collectAsState()
+    // Only consoles this device can play (some may be a bit slow)
+    val ready = library as? LibraryState.Ready
+    val playable =
+        remember(ready) {
+            ready?.consoles.orEmpty().mapNotNull { c ->
+                val local = LocalConsole.forSlug(c.slug) ?: return@mapNotNull null
+                val fit = power.fit(local.power)
+                if (fit == DevicePower.Fit.TOO_MUCH) null else Triple(c, local, fit)
+            }
+        }
+    val refs =
+        remember(playable) {
+            playable
+                .flatMap { (c, _, _) ->
+                    c.games.map {
+                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
+                    }
+                }.toMap()
+        }
+    val recent =
+        remember(refs, starting, towerRecent) {
+            viewModel.recentPlayed().mapNotNull { (id, time) -> refs[id]?.let { it to time } }.take(10)
+        }
+
+    // The top area (TV and wide screens) describes what you're on; it waits half a second after you stop
+    var focused by remember { mutableStateOf<GamePreview?>(null) }
+    var shown by remember { mutableStateOf<GamePreview?>(null) }
+    LaunchedEffect(focused) {
+        val p = focused ?: return@LaunchedEffect
+        if (shown != null) delay(500)
+        shown = p
+    }
+    val onFocus: (GamePreview) -> Unit = { focused = it }
+
+    fun refPreview(
+        ref: GameRef,
+        time: Long?,
+    ): GamePreview =
+        GamePreview(
+            key = "game-${ref.id}",
+            kicker = ref.consoleName,
+            title = ref.name,
+            line = time?.let { "Played ${playedAgo(it)}" },
+            picture = ref.coverUrl,
+            pictureToken = viewModel.gamesToken,
+            playWith =
+                listOfNotNull(
+                    if (LocalConsole.forSlug(ref.slug)?.remoteFriendly == true) PlayWith.REMOTE else null,
+                    PlayWith.CONTROLLER,
+                    PlayWith.PHONE,
+                ),
+        )
+    val recentTimes = remember(recent) { recent.associate { it.first.id to it.second } }
+    val cardSize =
+        Modifier.size(
+            width = if (isTv) 150.dp else 110.dp,
+            height = if (isTv) 210.dp else 154.dp,
+        )
+
+    @Composable
+    fun Card(
+        ref: GameRef,
+        onClick: () -> Unit = { viewModel.choose(ref) },
+    ) {
+        val status =
+            when {
+                prep?.gameId == ref.id -> prep?.text
+                starting == ref.id -> "Starting…"
+                else -> null
+            }
+        ServerGameCard(
+            game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+            // Approved: the works-with icons live in the top area, not on the box art
+            playWith = if (wide) emptyList() else listOfNotNull(if (LocalConsole.forSlug(ref.slug)?.remoteFriendly == true) PlayWith.REMOTE else null),
+            token = viewModel.gamesToken,
+            status = status,
+            progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
+            onClick = onClick,
+            modifier = cardSize.onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
+        )
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        if (wide) {
+            val first =
+                recent.firstOrNull()?.let { refPreview(it.first, it.second) }
+            GamesTopArea(
+                preview = shown ?: first,
+                height = (config.screenHeightDp * 0.36f).dp.coerceIn(170.dp, 300.dp),
+                modifier = Modifier.padding(start = if (isTv) 48.dp else 16.dp, end = if (isTv) 48.dp else 8.dp),
+            )
+        }
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier =
-            modifier
+            Modifier
+                .weight(1f)
                 // Opens on the first game tile (a group requester hands focus to its first child)
                 .focusRequester(focusRequester)
                 .verticalScroll(rememberScrollState())
                 .padding(
                     start = if (isTv) 48.dp else 0.dp,
                     end = if (isTv) 48.dp else 8.dp,
-                    top = if (isTv) 24.dp else 8.dp,
+                    top = if (isTv) 8.dp else 8.dp,
                     bottom = 24.dp,
                 ),
     ) {
-        // One "works with" line for the whole page, instead of chips on every tile
-        WorksWith(
-            text = if (isTv) "Quick games you can play with your TV remote." else "Quick games you can play by tapping.",
-            isTv = isTv,
-        )
-        // Ember Road as a slim banner, then one row each for Movie puzzles, Party and Arcade.
-        // Every tile opens the game's own page first (preview, how to play, scores).
-        EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) })
-        GameRows(viewModel = viewModel, isTv = isTv)
+        // Approved order: Continue playing, Movie puzzles, Party, Ember Road, Consoles, Arcade, Leaderboards
+        if (recent.isNotEmpty()) {
+            Text(
+                text = "Continue playing",
+                fontSize = if (isTv) 20.sp else 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+            ) {
+                items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Continue playing starts the game straight away, where you left off
+                        Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
+                        if (!wide) {
+                            Text(
+                                text = "${ref.consoleName} · ${playedAgo(time)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                modifier = Modifier.width(110.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles", "party"), board = board, onFocus = onFocus)
+        EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) }, onFocus = onFocus)
 
         // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
         if (library != LibraryState.Hidden) {
-            Text(
-                text = "Your games",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            val power = remember { DevicePower.get(context) }
-            val prep by viewModel.localGames.prep.collectAsState()
-            val cardSize =
-                Modifier.size(
-                    width = if (isTv) 150.dp else 110.dp,
-                    height = if (isTv) 210.dp else 154.dp,
-                )
-
-            @Composable
-            fun Card(
-                ref: GameRef,
-                onClick: () -> Unit = { viewModel.choose(ref) },
-            ) {
-                val status =
-                    when {
-                        prep?.gameId == ref.id -> prep?.text
-                        starting == ref.id -> "Starting…"
-                        else -> null
-                    }
-                ServerGameCard(
-                    game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
-                    playWith =
-                        remember(ref.slug) {
-                            val local = LocalConsole.forSlug(ref.slug)
-                            listOfNotNull(
-                                if (local?.remoteFriendly == true) PlayWith.REMOTE else null,
-                                PlayWith.CONTROLLER,
-                                PlayWith.PHONE,
-                            )
-                        },
-                    token = viewModel.gamesToken,
-                    status = status,
-                    progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
-                    onClick = onClick,
-                    modifier = cardSize,
-                )
-            }
             when (val state = library) {
                 LibraryState.Hidden -> {}
 
@@ -195,69 +277,12 @@ fun GamesPage(
                     if (state.consoles.isEmpty()) {
                         InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                     }
-                    // Only consoles this device can play (some may be a bit slow)
-                    val playable =
-                        remember(state) {
-                            state.consoles.mapNotNull { c ->
-                                val local = LocalConsole.forSlug(c.slug) ?: return@mapNotNull null
-                                val fit = power.fit(local.power)
-                                if (fit == DevicePower.Fit.TOO_MUCH) null else Triple(c, local, fit)
-                            }
-                        }
-                    if (playable.isNotEmpty()) {
-                        InfoText(
-                            if (isTv) {
-                                "Press a game to play it on this TV. Any Bluetooth controller works. Back opens the game menu."
-                            } else {
-                                "Tap a game to play it on this phone with on-screen buttons, or a Bluetooth controller."
-                            },
-                        )
-                    }
-                    val refs =
-                        remember(state) {
-                            playable
-                                .flatMap { (c, _, _) ->
-                                    c.games.map {
-                                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
-                                    }
-                                }.toMap()
-                        }
-                    val towerRecent by viewModel.towerRecent.collectAsState()
-                    val recent =
-                        remember(state, starting, towerRecent) {
-                            viewModel.recentPlayed().mapNotNull { (id, time) -> refs[id]?.let { it to time } }
-                        }
-                    val favourites by viewModel.favourites.collectAsState()
                     val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
-                    if (recent.isNotEmpty()) {
-                        Text(
-                            text = "Continue playing",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                        ) {
-                            items(recent, key = { "recent-${it.first.id}" }) { (ref, time) ->
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    // Continue playing starts the game straight away, where you left off
-                                    Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
-                                    Text(
-                                        text = "${ref.consoleName} · ${playedAgo(time)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        modifier = Modifier.width(if (isTv) 150.dp else 110.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
                     if (favRefs.isNotEmpty()) {
                         Text(
-                            text = "Favourite games",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "Favourites",
+                            fontSize = if (isTv) 20.sp else 18.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         LazyRow(
@@ -286,11 +311,18 @@ fun GamesPage(
                         if (playable.isNotEmpty()) {
                             Text(
                                 text = "Consoles",
-                                style = MaterialTheme.typography.titleLarge,
+                                fontSize = if (isTv) 20.sp else 18.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
                         }
-                        ConsoleGrid(playable = playable, isTv = isTv, onOpen = { openSlug = it })
+                        ConsoleGrid(
+                            playable = playable,
+                            isTv = isTv,
+                            onOpen = { openSlug = it },
+                            lastPlayed = { c -> recent.firstOrNull { it.first.slug == c.slug }?.first?.name },
+                            onFocus = onFocus,
+                        )
                     } else {
                         val (console, local, fit) = open
                         val notes =
@@ -357,6 +389,30 @@ fun GamesPage(
                     ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                 }
             }
+        }
+        GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
+        // Leaderboards last: every game, its top 3 and your place, all time
+        val boardGames =
+            remember(board) {
+                BuiltInGame.entries.map { g ->
+                    BoardGame(g.name, g.title, { viewModel.navigationManager.navigateTo(Destination.GameInfo("arcade:${g.name}")) }, viewModel.best(g))
+                } +
+                    if (KidsMode.isActive) {
+                        emptyList()
+                    } else {
+                        MovieGame.entries.filter { it.boardKey != null && it.visibleNow(false) }.map { g ->
+                            BoardGame(
+                                g.boardKey!!,
+                                g.title,
+                                { viewModel.navigationManager.navigateTo(Destination.GameInfo("movie:${g.name}")) },
+                                viewModel.bestExtra(g.boardKey),
+                            )
+                        }
+                    }
+            }
+        val myName = remember { viewModel.myBoardName() }
+        LeaderboardRow(games = boardGames, board = board, myName = myName, isTv = isTv, onFocus = onFocus)
+        if (library != LibraryState.Hidden) {
             DeviceCard(power, isTv)
             // Refreshes after a game is downloaded or removed, not only when the library reloads
             val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
@@ -379,15 +435,11 @@ fun GamesPage(
                 )
             }
         }
-        // Leaderboards at the bottom: your bests and everyone's top scores (each card takes focus)
-        val board by viewModel.board.collectAsState()
-        LaunchedEffect(Unit) { viewModel.refreshBoard() }
-        Leaderboards(viewModel = viewModel, board = board, isTv = isTv, firstFocus = remember { FocusRequester() })
+    }
     }
 
     val choice by viewModel.choice.collectAsState()
     val info by viewModel.info.collectAsState()
-    val favourites by viewModel.favourites.collectAsState()
     choice?.let { c ->
         GameDetailsPage(
             choice = c,
@@ -443,7 +495,7 @@ internal fun ActionTile(
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
@@ -477,7 +529,7 @@ internal fun ServerGameCard(
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
