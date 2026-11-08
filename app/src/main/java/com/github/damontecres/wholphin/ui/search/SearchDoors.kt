@@ -47,6 +47,9 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -70,6 +73,7 @@ private enum class SearchDoor(
     MOVIES("Movies", BenflixColors.Movies),
     SHOWS("Shows", BenflixColors.Shows),
     LIVE_TV("Live TV", BenflixColors.LiveTv),
+    GAMES("Games", BenflixColors.Games),
     ASK("Ask for it", BenflixColors.Text),
 }
 
@@ -81,6 +85,10 @@ private sealed interface Focused {
 
     data class Ask(
         val item: DiscoverItem,
+    ) : Focused
+
+    data class Game(
+        val game: SearchGame,
     ) : Focused
 }
 
@@ -99,6 +107,8 @@ fun SearchDoorResults(
     onClickAsk: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
     didYouMean: String? = null,
+    games: List<SearchGame> = emptyList(),
+    onClickGame: (SearchGame) -> Unit = {},
 ) {
     val isTv = rememberIsTv()
     val kids = KidsMode.isActive
@@ -129,8 +139,10 @@ fun SearchDoorResults(
         BackHandler { seeAll = null }
         SeeAllGrid(
             title = openAll.title,
-            items = if (openAll == SearchDoor.ASK) emptyList() else doors[openAll].orEmpty(),
+            items = if (openAll == SearchDoor.ASK || openAll == SearchDoor.GAMES) emptyList() else doors[openAll].orEmpty(),
             ask = if (openAll == SearchDoor.ASK) ask else emptyList(),
+            games = if (openAll == SearchDoor.GAMES) games else emptyList(),
+            onClickGame = onClickGame,
             onClickItem = onClickItem,
             onClickAsk = onClickAsk,
             modifier = modifier,
@@ -139,19 +151,17 @@ fun SearchDoorResults(
     }
 
     val firstDoor =
-        remember(doors, ask) {
+        remember(doors, ask, games) {
             SearchDoor.entries.firstOrNull { d ->
-                if (d ==
-                    SearchDoor.ASK
-                ) {
-                    ask.isNotEmpty()
-                } else {
-                    doors[d].orEmpty().isNotEmpty()
+                when (d) {
+                    SearchDoor.ASK -> ask.isNotEmpty()
+                    SearchDoor.GAMES -> games.isNotEmpty()
+                    else -> doors[d].orEmpty().isNotEmpty()
                 }
             }
         }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val cardWidth = if (isTv) ((maxWidth - 32.dp - 18.dp * 3) / 4 - 10.dp) / 2 else 104.dp
+        val cardWidth = if (isTv) ((maxWidth - 32.dp - 18.dp * 4) / 5 - 10.dp) / 2 else 104.dp
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier =
@@ -179,6 +189,8 @@ fun SearchDoorResults(
                             door = door,
                             items = doors[door].orEmpty(),
                             ask = if (door == SearchDoor.ASK) ask else emptyList(),
+                            games = if (door == SearchDoor.GAMES) games else emptyList(),
+                            onClickGame = onClickGame,
                             cardWidth = cardWidth,
                             first = if (door == firstDoor) focusRequester else null,
                             onFocus = { focused = it },
@@ -195,6 +207,8 @@ fun SearchDoorResults(
                         door = door,
                         items = doors[door].orEmpty(),
                         ask = if (door == SearchDoor.ASK) ask else emptyList(),
+                        games = if (door == SearchDoor.GAMES) games else emptyList(),
+                        onClickGame = onClickGame,
                         cardWidth = cardWidth,
                         first = if (door == firstDoor) focusRequester else null,
                         onClickItem = onClickItem,
@@ -245,6 +259,11 @@ private fun FocusLine(
 
                 is Focused.Ask -> {
                     focused.item.backDropUrl
+                }
+
+                // Box art from Tower needs a token, so games show words only here
+                is Focused.Game -> {
+                    null
                 }
 
                 null -> {
@@ -311,6 +330,10 @@ private fun FocusLine(
                                 .orEmpty(),
                             item.overview.orEmpty(),
                         )
+                    }
+
+                    is Focused.Game -> {
+                        listOf("Game · ${focused.game.kind}", focused.game.title, "", "")
                     }
 
                     null -> {
@@ -388,6 +411,8 @@ private fun DoorColumn(
     door: SearchDoor,
     items: List<BaseItem>,
     ask: List<DiscoverItem>,
+    games: List<SearchGame>,
+    onClickGame: (SearchGame) -> Unit,
     cardWidth: Dp,
     first: FocusRequester?,
     onFocus: (Focused) -> Unit,
@@ -396,7 +421,12 @@ private fun DoorColumn(
     onSeeAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val count = if (door == SearchDoor.ASK) ask.size else items.size
+    val count =
+        when (door) {
+            SearchDoor.ASK -> ask.size
+            SearchDoor.GAMES -> games.size
+            else -> items.size
+        }
     val askDoor = door == SearchDoor.ASK
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -427,7 +457,19 @@ private fun DoorColumn(
             return@Column
         }
         val cards: List<@Composable (Modifier) -> Unit> =
-            if (askDoor) {
+            if (door == SearchDoor.GAMES) {
+                games.take(4).map { game ->
+                    { mod: Modifier ->
+                        SearchGameCard(
+                            game,
+                            cardWidth,
+                            onClick = { onClickGame(game) },
+                            onFocus = { onFocus(Focused.Game(game)) },
+                            modifier = mod,
+                        )
+                    }
+                }
+            } else if (askDoor) {
                 ask.take(4).map { item ->
                     { mod: Modifier ->
                         AskCard(item, cardWidth, onClick = { onClickAsk(item) }, onFocus = { onFocus(Focused.Ask(item)) }, modifier = mod)
@@ -464,13 +506,20 @@ private fun PhoneDoorRow(
     door: SearchDoor,
     items: List<BaseItem>,
     ask: List<DiscoverItem>,
+    games: List<SearchGame>,
+    onClickGame: (SearchGame) -> Unit,
     cardWidth: Dp,
     first: FocusRequester?,
     onClickItem: (BaseItem) -> Unit,
     onClickAsk: (DiscoverItem) -> Unit,
     onSeeAll: () -> Unit,
 ) {
-    val count = if (door == SearchDoor.ASK) ask.size else items.size
+    val count =
+        when (door) {
+            SearchDoor.ASK -> ask.size
+            SearchDoor.GAMES -> games.size
+            else -> items.size
+        }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DoorHeading(door.title, door.color, count)
         if (count == 0) {
@@ -478,7 +527,17 @@ private fun PhoneDoorRow(
             return@Column
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 16.dp)) {
-            if (door == SearchDoor.ASK) {
+            if (door == SearchDoor.GAMES) {
+                items(games.take(20), key = { "g-${it.key}" }) { game ->
+                    SearchGameCard(
+                        game,
+                        cardWidth,
+                        onClick = { onClickGame(game) },
+                        onFocus = {},
+                        modifier = if (first != null && game == games.first()) Modifier.focusRequester(first) else Modifier,
+                    )
+                }
+            } else if (door == SearchDoor.ASK) {
                 items(ask.take(20), key = { "a-${it.id}" }) { item ->
                     AskCard(
                         item,
@@ -606,6 +665,8 @@ private fun SeeAllGrid(
     ask: List<DiscoverItem>,
     onClickItem: (BaseItem) -> Unit,
     onClickAsk: (DiscoverItem) -> Unit,
+    games: List<SearchGame> = emptyList(),
+    onClickGame: (SearchGame) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isTv = rememberIsTv()
@@ -628,7 +689,17 @@ private fun SeeAllGrid(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(bottom = 40.dp, end = 8.dp),
             ) {
-                if (ask.isNotEmpty()) {
+                if (games.isNotEmpty()) {
+                    items(games, key = { "g-${it.key}" }) { game ->
+                        SearchGameCard(
+                            game,
+                            width,
+                            onClick = { onClickGame(game) },
+                            onFocus = {},
+                            modifier = if (game == games.first()) Modifier.focusRequester(first) else Modifier,
+                        )
+                    }
+                } else if (ask.isNotEmpty()) {
                     items(ask, key = { "a-${it.id}" }) { item ->
                         AskCard(
                             item,
@@ -649,6 +720,73 @@ private fun SeeAllGrid(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** A game in the Games door: its box art, or a dark card with its colour square and name */
+@Composable
+private fun SearchGameCard(
+    game: SearchGame,
+    width: Dp,
+    onClick: () -> Unit,
+    onFocus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = BenflixColors.Raised,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.Raised,
+                focusedContentColor = BenflixColors.Text,
+            ),
+        border = doorFocusBorder(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier =
+            modifier
+                .size(width = width, height = width / POSTER_RATIO)
+                .onFocusChanged { if (it.isFocused) onFocus() },
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(8.dp),
+            ) {
+                if (game.colors.isNotEmpty()) {
+                    com.github.damontecres.wholphin.ui.games
+                        .GameIconSquare(game.colors, game.icon, size = 22.dp)
+                }
+                Text(
+                    text = game.title,
+                    color = BenflixColors.Text,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(game.kind, color = BenflixColors.Muted, fontSize = 10.sp, maxLines = 1)
+            }
+            if (game.coverUrl != null) {
+                AsyncImage(
+                    model =
+                        remember(game.coverUrl) {
+                            ImageRequest
+                                .Builder(context)
+                                .data(game.coverUrl)
+                                .apply {
+                                    game.token?.let { httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", it).build()) }
+                                }.build()
+                        },
+                    contentDescription = game.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }

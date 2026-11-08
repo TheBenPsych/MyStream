@@ -148,6 +148,14 @@ fun GamesPage(
                 ),
         )
     val recentTimes = remember(recent) { recent.associate { it.first.id to it.second } }
+    // A game picked in Search opens its page as soon as the game list is here
+    LaunchedEffect(refs) {
+        val id = PendingGameOpen.id ?: return@LaunchedEffect
+        refs[id]?.let {
+            PendingGameOpen.id = null
+            viewModel.choose(it)
+        }
+    }
     val cardSize =
         Modifier.size(
             width = if (isTv) 150.dp else 110.dp,

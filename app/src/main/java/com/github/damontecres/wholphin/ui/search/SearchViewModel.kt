@@ -104,6 +104,100 @@ class SearchViewModel
         /** Before you type: the Top 10 movies and shows, mixed (approved Popular row) */
         val popular: StateFlow<List<BaseItem>> = _popular
 
+        private val _games = MutableStateFlow<List<SearchGame>>(emptyList())
+
+        /** Approved search: games are their own door (Benflix games and your own games on Tower) */
+        val games: StateFlow<List<SearchGame>> = _games
+        private var romGames: List<SearchGame>? = null
+
+        private suspend fun romGames(): List<SearchGame> {
+            romGames?.let { return it }
+            val power =
+                com.github.damontecres.wholphin.games.DevicePower
+                    .get(context)
+            val kids = KidsMode.isActive
+            val list =
+                gameLibrary
+                    .savedLibrary()
+                    .orEmpty()
+                    .flatMap { c ->
+                        val local =
+                            com.github.damontecres.wholphin.games.LocalConsole
+                                .forSlug(c.slug)
+                        if (local == null ||
+                            power.fit(local.power) == com.github.damontecres.wholphin.games.DevicePower.Fit.TOO_MUCH
+                        ) {
+                            emptyList()
+                        } else {
+                            c.games
+                                .filter { !kids || it.kids }
+                                .map { g ->
+                                    SearchGame(
+                                        key = "rom-${g.id}",
+                                        title = g.name,
+                                        kind = c.name,
+                                        coverUrl = g.coverUrl,
+                                        token = gameLibrary.token,
+                                        romId = g.id,
+                                    )
+                                }
+                        }
+                    }
+            romGames = list
+            return list
+        }
+
+        private fun searchGames(query: String?) {
+            val q = query?.trim()?.lowercase().orEmpty()
+            if (q.isEmpty()) {
+                _games.value = emptyList()
+                return
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val kids = KidsMode.isActive
+                val benflix =
+                    com.github.damontecres.wholphin.ui.games.MovieGame.entries
+                        .filter { it.visibleNow(kids) }
+                        .map {
+                            SearchGame(
+                                key = "movie-${it.name}",
+                                title = it.title,
+                                kind = "Benflix game",
+                                destination = Destination.GameInfo("movie:${it.name}"),
+                                colors = it.colors,
+                                icon = it.icon,
+                            )
+                        } +
+                        com.github.damontecres.wholphin.ui.games.BuiltInGame.entries.map {
+                            SearchGame(
+                                key = "arcade-${it.name}",
+                                title = it.title,
+                                kind = "Arcade",
+                                destination = Destination.GameInfo("arcade:${it.name}"),
+                                colors = it.colors,
+                            )
+                        } +
+                        SearchGame(
+                            key = "ember",
+                            title = "Ember Road",
+                            kind = "Adventure",
+                            destination = Destination.EmberRoad,
+                        )
+                val all =
+                    try {
+                        benflix + romGames()
+                    } catch (e: Exception) {
+                        Timber.w(e, "Search: couldn't read the game list")
+                        benflix
+                    }
+                val found =
+                    all
+                        .filter { it.title.lowercase().contains(q) }
+                        .sortedWith(compareBy({ !it.title.lowercase().startsWith(q) }, { it.title.length }))
+                if (currentQuery?.trim()?.lowercase() == q) _games.value = found
+            }
+        }
+
         private val _state = MutableStateFlow(SearchState())
         val state: StateFlow<SearchState> = _state
         val position = MutableStateFlow(RowColumn(0, 0))
@@ -245,6 +339,7 @@ class SearchViewModel
             }
             currentQuery = query
             combinedMode = combined
+            searchGames(query)
             // Benflix speed: stop searching for what was typed before, so the server only works on
             // the newest words (and an older, slower answer can't replace the new one)
             synchronized(searchJobs) {
@@ -752,3 +847,19 @@ private const val POPULAR_COUNT = 12
 
 /** Fewer than this many household picks and the Top 10 picks stay */
 private const val POPULAR_MIN = 4
+
+/** A game in the search results' Games door */
+data class SearchGame(
+    val key: String,
+    val title: String,
+    /** "NES", "Arcade", "Benflix game" */
+    val kind: String,
+    /** Where a Benflix game opens; null for your own games (they open on the Games page) */
+    val destination: Destination? = null,
+    val coverUrl: String? = null,
+    val token: String? = null,
+    val colors: List<androidx.compose.ui.graphics.Color> = emptyList(),
+    val icon: Int? = null,
+    /** Your own game on Tower */
+    val romId: Int? = null,
+)

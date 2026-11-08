@@ -371,3 +371,9 @@ internal fun GameIconSquare(
         )
     }
 }
+
+/** A game picked somewhere else (like Search) that the Games page should open once its list is ready */
+object PendingGameOpen {
+    @Volatile
+    var id: Int? = null
+}
