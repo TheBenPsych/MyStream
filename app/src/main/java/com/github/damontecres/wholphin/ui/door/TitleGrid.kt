@@ -61,8 +61,8 @@ import java.time.format.TextStyle as DateTextStyle
 enum class TitleSort(
     val label: String,
 ) {
-    /** The order the list came in (See all / My List) */
-    AS_LISTED("Recently added"),
+    /** The order the list came in (See all / My List). Anime and Stand-up rows come A to Z, so not "Recently added". */
+    AS_LISTED("Same as the row"),
     NEWEST_EPISODE("Newest episode"),
     NEWEST("Newest added"),
     A_TO_Z("A to Z"),
@@ -152,8 +152,8 @@ fun TitleGrid(
                 }.filter {
                     when (watching) {
                         WatchingFilter.ALL -> true
-                        WatchingFilter.NOT_STARTED -> it.data.userData?.played != true && it.data.userData?.lastPlayedDate == null
-                        WatchingFilter.WATCHING -> it.data.userData?.played != true && it.data.userData?.lastPlayedDate != null
+                        WatchingFilter.NOT_STARTED -> it.data.userData?.played != true && !it.started()
+                        WatchingFilter.WATCHING -> it.data.userData?.played != true && it.started()
                         WatchingFilter.FINISHED -> it.data.userData?.played == true
                     }
                 }.filter { search.isBlank() || it.name?.contains(search.trim(), ignoreCase = true) == true }
@@ -316,6 +316,13 @@ fun TitleGrid(
         )
     }
 }
+
+/**
+ * A show counts as started when some of it was watched. Jellyfin only fills a show's own "last played" when
+ * the whole show was marked, so the share of episodes watched is checked too.
+ */
+private fun BaseItem.started(): Boolean =
+    data.userData?.lastPlayedDate != null || (data.userData?.playedPercentage ?: 0.0) > 0.0
 
 private fun List<BaseItem>.sortedFor(sort: TitleSort): List<BaseItem> =
     when (sort) {
