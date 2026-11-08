@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,7 +34,6 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ServerNap
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -159,14 +157,14 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(Brush.radialGradient(listOf(Color(0xFF1B1446), Color(0xFF050510)))),
+                    .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.widthIn(max = 620.dp).padding(24.dp),
             ) {
-                Text("BENFLIX", fontFamily = BenflixTitleFont, fontSize = 56.sp, color = Color.White)
+                com.github.damontecres.wholphin.ui.nav.BenflixLogo(height = 44.dp)
                 Text(
                     "The server is taking a nap, or being worked on",
                     fontSize = 24.sp,

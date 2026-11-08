@@ -868,10 +868,10 @@ private fun GuideHeader(
                 color = if (live) BenflixRed else Color(0xFF8B8B94),
             )
             Text(
-                text = program.name().uppercase(),
-                fontFamily = BenflixTitleFont,
-                fontSize = if (isTv) 36.sp else 22.sp,
-                lineHeight = if (isTv) 36.sp else 22.sp,
+                text = program.name(),
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isTv) 28.sp else 18.sp,
+                lineHeight = if (isTv) 32.sp else 22.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

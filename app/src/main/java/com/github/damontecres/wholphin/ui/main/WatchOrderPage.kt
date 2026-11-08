@@ -53,7 +53,6 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -393,9 +392,9 @@ fun WatchOrderPage(
         modifier = modifier.padding(top = 16.dp, start = 8.dp),
     ) {
         Text(
-            text = "WATCH IN ORDER",
-            fontFamily = BenflixTitleFont,
-            fontSize = 48.sp,
+            text = "Watch in order",
+            fontWeight = FontWeight.Bold,
+            fontSize = 35.sp,
             letterSpacing = 1.sp,
         )
         val all = lists

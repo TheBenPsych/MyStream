@@ -22,7 +22,6 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixTips
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -80,9 +79,9 @@ fun HowToPage(modifier: Modifier = Modifier) {
     ) {
         item {
             Text(
-                text = "HOW TO USE BENFLIX",
-                fontFamily = BenflixTitleFont,
-                fontSize = 44.sp,
+                text = "How to use Benflix",
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
                 letterSpacing = 1.sp,
                 modifier = Modifier.padding(bottom = 4.dp),
             )

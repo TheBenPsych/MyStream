@@ -50,7 +50,6 @@ import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -270,7 +269,7 @@ fun BedtimeLayer(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
             ) {
-                Text(text = "TIME FOR BED!", fontFamily = BenflixTitleFont, fontSize = 64.sp, color = Color.White)
+                Text(text = "Time for bed!", fontWeight = FontWeight.Bold, fontSize = 46.sp, color = Color.White)
                 Text(
                     text = "Benflix is sleeping too. See you in the morning!",
                     fontSize = 20.sp,
@@ -337,9 +336,9 @@ private fun ScreenTimeUp(viewModel: BedtimeViewModel) {
                 modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
             ) {
                 Text(
-                    text = "THAT'S ALL FOR TODAY!",
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 56.sp,
+                    text = "That's all for today!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )

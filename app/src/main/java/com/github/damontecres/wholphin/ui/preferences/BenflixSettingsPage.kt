@@ -68,7 +68,6 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.basicPreferences
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -321,8 +320,8 @@ fun BenflixSettingsPage(
             ) {
                 Text(
                     text = stringResource(R.string.settings),
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 29.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Card {
@@ -408,8 +407,8 @@ private fun ProfileHeader(name: String) {
         Column {
             Text(
                 text = stringResource(R.string.settings),
-                fontFamily = BenflixTitleFont,
-                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (name.isNotBlank()) {
