@@ -477,8 +477,12 @@ private fun EpisodesSection(
                 modifier = Modifier.padding(bottom = 12.dp),
             ) {
                 itemsIndexed(groups) { index, range ->
+                    // The episode numbers on the cards, so a season that counts on (E26 to E75) isn't labelled 1-25
+                    val numbers = range.mapNotNull { i -> all[i].takeIf { !it.isSpecial() }?.data?.indexNumber }
+                    val from = numbers.minOrNull() ?: (range.first() + 1)
+                    val to = numbers.maxOrNull() ?: (range.last() + 1)
                     GroupChip(
-                        text = "${range.first() + 1}–${range.last() + 1}",
+                        text = "$from–$to",
                         selected = index == group,
                         onClick = { group = index },
                     )

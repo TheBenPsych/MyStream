@@ -270,7 +270,8 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
         val minutes = week.minutes % 60
         Text(
             "This week: about ${if (hours > 0) "$hours hr " else ""}$minutes min · " +
-                "${week.episodes} episodes · ${week.movies} movies",
+                "${week.episodes} ${if (week.episodes == 1) "episode" else "episodes"} · " +
+                "${week.movies} ${if (week.movies == 1) "movie" else "movies"}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         LazyRow(
