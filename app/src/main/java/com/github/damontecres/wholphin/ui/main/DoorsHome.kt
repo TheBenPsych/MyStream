@@ -64,23 +64,27 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.BenflixIntroState
+import com.github.damontecres.wholphin.ui.DOOR_NOTE_VOLUME
+import com.github.damontecres.wholphin.ui.IntroPace
+import com.github.damontecres.wholphin.ui.IntroSounds
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.DOOR_NOTE_VOLUME
-import com.github.damontecres.wholphin.ui.IntroPace
-import com.github.damontecres.wholphin.ui.IntroSounds
 import com.github.damontecres.wholphin.ui.runIntroTimeline
-import com.github.damontecres.wholphin.ui.waitForSettled
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.waitForSettled
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneOffset
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,10 +96,6 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import timber.log.Timber
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneOffset
-import javax.inject.Inject
 
 /** One news pill under the greeting. [door] picks the dot colour (null = white, app news). */
 data class HomeNews(

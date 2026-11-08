@@ -46,7 +46,12 @@ object IntroSounds {
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
-            val p = SoundPool.Builder().setMaxStreams(6).setAudioAttributes(attrs).build()
+            val p =
+                SoundPool
+                    .Builder()
+                    .setMaxStreams(6)
+                    .setAudioAttributes(attrs)
+                    .build()
             pool = p
             p.setOnLoadCompleteListener { sp, sampleId, status ->
                 synchronized(this) {
