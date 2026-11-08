@@ -177,17 +177,24 @@ fun GamesPage(
             viewModel.choose(it)
         }
     }
-    val cardSize =
-        Modifier.size(
-            width = if (isTv) 150.dp else 110.dp,
-            height = if (isTv) 210.dp else 154.dp,
-        )
+    // Ben: box art comes in different shapes per console (SNES and N64 boxes are wide, NES and Genesis tall),
+    // so each card takes its cover's real shape at one shared height and the whole cover always shows
+    val cardHeight = if (isTv) 210.dp else 154.dp
+    val cardSize = Modifier.size(width = cardHeight * BoxArt.DEFAULT_RATIO, height = cardHeight)
 
     @Composable
     fun Card(
         ref: GameRef,
+        /** In a grid every card keeps its console's shape, so the columns line up */
+        fixedShape: Boolean = false,
         onClick: () -> Unit = { viewModel.choose(ref) },
     ) {
+        val ratio =
+            if (fixedShape) {
+                BoxArt.consoleRatio(ref.slug)
+            } else {
+                ref.coverUrl?.let { BoxArt.measured[it] } ?: BoxArt.consoleRatio(ref.slug)
+            }
         val status =
             when {
                 prep?.gameId == ref.id -> prep?.text
@@ -215,7 +222,10 @@ fun GamesPage(
             status = status,
             progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
             onClick = onClick,
-            modifier = cardSize.onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
+            modifier =
+                Modifier
+                    .size(width = cardHeight * ratio, height = cardHeight)
+                    .onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
         )
     }
 
@@ -244,7 +254,7 @@ fun GamesPage(
                         bottom = 24.dp,
                     ),
         ) {
-            // Approved order: Continue playing, Movie puzzles, Party, Ember Road, Consoles, Arcade, Leaderboards.
+            // Order: Continue playing, Movie puzzles, Party, Arcade, Ember Road, Favourites, Consoles, Leaderboards.
             // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
             val keep = if (!wide) recent.firstOrNull() else null
             if (keep != null) {
@@ -307,7 +317,7 @@ fun GamesPage(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
-                                        modifier = Modifier.width(110.dp),
+                                        modifier = Modifier.width(cardHeight * BoxArt.DEFAULT_RATIO),
                                     )
                                 }
                             }
@@ -316,6 +326,8 @@ fun GamesPage(
                 }
             }
             GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles", "party"), board = board, onFocus = onFocus)
+            // Ben: the Arcade games come before your Favourites and Consoles
+            GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
             EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) }, onFocus = onFocus)
 
             // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
@@ -478,17 +490,16 @@ fun GamesPage(
                             val config = LocalConfiguration.current
                             ConsoleGameGrid(
                                 sections = sections,
-                                cardWidth = if (isTv) 150.dp else 110.dp,
+                                cardWidth = cardHeight * BoxArt.consoleRatio(console.slug),
                                 height = (config.screenHeightDp * if (isTv) 0.8f else 0.75f).dp,
                                 showLetters = sort == GameSort.AZ,
-                                card = { game -> refs[game.id]?.let { Card(it) } },
+                                card = { game -> refs[game.id]?.let { Card(it, fixedShape = true) } },
                             )
                         }
                         ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                     }
                 }
             }
-            GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
             // Leaderboards last: every game, its top 3 and your place, all time
             val boardGames =
                 remember(board) {
@@ -661,7 +672,7 @@ private fun KeepPlayingCard(
                                     .build()
                             },
                         contentDescription = ref.name,
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
                         modifier =
                             Modifier
                                 .fillMaxSize()
@@ -759,7 +770,9 @@ internal fun ServerGameCard(
                                 .build()
                         },
                     contentDescription = game.name,
-                    contentScale = ContentScale.Crop,
+                    // The whole cover, never cut off; the card learns the cover's shape the first time it loads
+                    contentScale = ContentScale.Fit,
+                    onSuccess = { BoxArt.learn(game.coverUrl, it.painter.intrinsicSize) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
