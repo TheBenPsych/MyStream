@@ -68,7 +68,6 @@ import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
-import com.github.damontecres.wholphin.services.ChannelTileOrder
 import com.github.damontecres.wholphin.services.CustomChannel
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.KidsMode
@@ -121,15 +120,6 @@ class ChannelsViewModel
         /** null while loading */
         private val _channels = MutableStateFlow<List<ChannelSchedule>?>(null)
         val channels: StateFlow<List<ChannelSchedule>?> = _channels
-
-        private val pickPrefs get() = ChannelPrefs.prefsOrNull()
-
-        /** This profile already saw "Pick your channels" on this device */
-        fun pickedBefore(): Boolean = pickPrefs?.getBoolean("picked_" + serverRepository.currentUser?.id, false) ?: true
-
-        fun markPicked() {
-            pickPrefs?.edit()?.putBoolean("picked_" + serverRepository.currentUser?.id, true)?.apply()
-        }
 
         init {
             reload()
@@ -759,19 +749,8 @@ private fun GuideGrid(
             )
         }
     }
-    // Approved: a new profile's first visit opens "Pick your channels" (once per profile on this device)
-    var picking by remember { mutableStateOf(!KidsMode.isActive && favourites.isEmpty() && !viewModel.pickedBefore()) }
-    if (picking) {
-        AddChannelsDialog(
-            list = all.filter { it.live != null },
-            favourites = favourites,
-            onDismiss = {
-                picking = false
-                viewModel.markPicked()
-            },
-            picking = true,
-        )
-    }
+    // Ben (2026-11-08): no "Pick your channels" pop-up when Live TV opens. Favourites are added
+    // from a channel or the Add channels box instead.
     laterMenu?.let { (schedule, program) ->
         val reminded = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
         val starred = schedule.key in favourites
@@ -938,18 +917,9 @@ private fun AddChannelsDialog(
     list: List<ChannelSchedule>,
     favourites: List<String>,
     onDismiss: () -> Unit,
-    picking: Boolean = false,
 ) {
     var query by remember { mutableStateOf("") }
-    // "Pick your channels" (a new profile's first visit) lists every channel by type before you type
-    val results =
-        remember(query, list) {
-            if (picking && query.isBlank()) {
-                list.sortedBy { ChannelTileOrder.indexOf(it.group()).let { i -> if (i < 0) 99 else i } }
-            } else {
-                searchChannels(list, query).take(30)
-            }
-        }
+    val results = remember(query, list) { searchChannels(list, query).take(30) }
     com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -960,17 +930,13 @@ private fun AddChannelsDialog(
                     .padding(18.dp),
         ) {
             Text(
-                if (picking) "Pick your channels" else "Add channels",
+                "Add channels",
                 fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.ExtraBold,
                 color = BenflixColors.Text,
             )
             Text(
-                if (picking) {
-                    "Star the ones you like. They'll be first on this page. Press Back when you're done."
-                } else {
-                    "Type a channel's name or number, then pick it."
-                },
+                "Type a channel's name or number, then pick it.",
                 fontSize = BenflixType.small,
                 color = BenflixColors.Muted,
             )
