@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.main.HomePageHeader
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
@@ -336,8 +337,8 @@ fun CollectionDetailsContent(
                         Modifier.sharedBounds(
                             rememberSharedContentState(key = "header"),
                             animatedVisibilityScope = this@AnimatedContent,
-                            enter = slideInVertically { it / 2 } + fadeIn(),
-                            exit = slideOutVertically { it / 2 } + fadeOut(),
+                            enter = slideInVertically { it / 2 } + fadeIn(BenflixMotion.enter()),
+                            exit = slideOutVertically { it / 2 } + fadeOut(BenflixMotion.exit()),
                         ),
                     ) {
                         // This box exists so that there is something focusable above the item content
@@ -372,8 +373,8 @@ fun CollectionDetailsContent(
                                 .sharedBounds(
                                     rememberSharedContentState(key = "header"),
                                     animatedVisibilityScope = this@AnimatedContent,
-                                    enter = slideInVertically { -it / 2 } + fadeIn(),
-                                    exit = slideOutVertically { -it / 2 } + fadeOut(),
+                                    enter = slideInVertically { -it / 2 } + fadeIn(BenflixMotion.enter()),
+                                    exit = slideOutVertically { -it / 2 } + fadeOut(BenflixMotion.exit()),
                                 ).padding(bottom = 16.dp)
                                 .fillMaxWidth()
                                 .onFocusChanged {

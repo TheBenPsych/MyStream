@@ -74,6 +74,31 @@ enum class BenflixIcon(
         "M11 18.5h2",
     ),
     THUMB("M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 2.5 2.5L13 10h5.5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 20H7"),
+
+    // Polish round (Nov 2026): the rest of the app's icons in the same rounded line style
+    TRASH("M4 7h16M9 7V4.5h6V7", "M6 7l1 13h10l1-13", "M10 11v5M14 11v5"),
+    MORE_VERT("M12 6h.01M12 12h.01M12 18h.01"),
+    REFRESH("M19.5 12a7.5 7.5 0 1 1-2.2-5.3", "M19.5 4.5v4h-4"),
+    BACK_ARROW("M19 12H5M11 6l-6 6 6 6"),
+    WARNING("M12 4l9 16H3z", "M12 10v4M12 17h.01"),
+    STAR("M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"),
+    PERSON("M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0z", "M4.5 20a7.5 7.5 0 0 1 15 0"),
+    INFO("M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0z", "M12 11v5M12 8h.01"),
+    PENCIL("M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"),
+    CLOSE("M6 6l12 12M18 6L6 18"),
+    LIST("M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"),
+    CHEVRON("M9 6l6 6-6 6"),
+    MENU("M4 7h16M4 12h16M4 17h16"),
+    CALENDAR("M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z", "M4 10h16M8 3v4M16 3v4"),
+    SHARE(
+        "M4 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0z",
+        "M16 6a2 2 0 1 0 4 0a2 2 0 1 0-4 0z",
+        "M16 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0z",
+        "M7.8 11l8.4-4M7.8 13l8.4 4",
+    ),
+    LOCK("M6.5 11h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z", "M8.5 11V8a3.5 3.5 0 0 1 7 0v3"),
+    HOME("M4 11l8-7 8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5z"),
+    WRENCH("M14.5 4.5a4.5 4.5 0 0 0 5 5.9L11 19a2.1 2.1 0 0 1-3-3l8.6-8.5a4.5 4.5 0 0 0-2.1-3z"),
     ;
 
     /** Built once per icon */
@@ -98,6 +123,28 @@ enum class BenflixIcon(
         }
         builder.build()
     }
+}
+
+/**
+ * The play arrow for Play buttons: the same rounded triangle as [BenflixIcon.PLAY], filled in, so it
+ * still reads as "Play" from across the room
+ */
+val BenflixPlayFilled: ImageVector by lazy {
+    ImageVector
+        .Builder(
+            name = "PLAY_FILLED",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).addPath(
+            pathData = addPathNodes("M8 5.5v13l10.5-6.5z"),
+            fill = SolidColor(Color.White),
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ).build()
 }
 
 /** Draws a [BenflixIcon] in [color] */

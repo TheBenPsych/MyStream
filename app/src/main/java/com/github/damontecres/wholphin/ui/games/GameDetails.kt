@@ -47,6 +47,7 @@ import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -415,14 +416,10 @@ private fun TvGameHero(
             }
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(
-                        0f to Color(0xFF0B0C10),
-                        0.4f to Color(0xFF0B0C10).copy(alpha = .6f),
-                        0.8f to Color.Transparent,
-                    ),
+                    BenflixShade.heroSide,
                 ),
             )
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 0.85f to Color(0xFF0B0C10))))
+            Box(Modifier.fillMaxSize().background(BenflixShade.bottom(0.4f)))
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),

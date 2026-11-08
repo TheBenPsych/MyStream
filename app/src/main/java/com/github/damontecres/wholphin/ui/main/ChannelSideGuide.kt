@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -68,7 +69,7 @@ fun ChannelSideGuide(
         AnimatedVisibility(
             visible = visible,
             enter = if (upright) slideInVertically { it } else slideInHorizontally { it },
-            exit = fadeOut(),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier =
                 if (upright) {
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.55f)

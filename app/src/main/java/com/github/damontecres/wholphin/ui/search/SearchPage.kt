@@ -81,6 +81,7 @@ import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -309,8 +310,8 @@ fun SearchPage(
                 ) {
                     AnimatedVisibility(
                         visible = voiceSearchButtonVisible,
-                        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
-                        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
+                        enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.End),
+                        exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.End),
                     ) {
                         VoiceSearchButton(
                             onSpeechResult = { spokenText ->
@@ -359,8 +360,8 @@ fun SearchPage(
             }
             AnimatedVisibility(
                 visible = showTabs,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
+                enter = expandVertically(BenflixMotion.enter()),
+                exit = shrinkVertically(BenflixMotion.exit()),
             ) {
                 TabRow(
                     selectedTabIndex = selectedTab,

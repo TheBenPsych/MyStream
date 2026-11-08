@@ -92,6 +92,7 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -288,8 +289,8 @@ fun PreferencesContent(
     AnimatedVisibility(
         visible = visible,
         // Benflix: every settings page now fades in (the old slide-in panel was Wholphin's look)
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(BenflixMotion.enter()),
+        exit = fadeOut(BenflixMotion.exit()),
         modifier = modifier,
     ) {
         LaunchedEffect(Unit) {

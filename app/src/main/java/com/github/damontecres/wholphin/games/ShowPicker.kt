@@ -32,9 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -204,7 +202,7 @@ private fun SearchBox(
                     .padding(horizontal = 18.dp, vertical = 10.dp),
             decorationBox = { inner ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Search, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                    Icon(BenflixIcon.SEARCH.vector, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
                     Box(Modifier.padding(start = 10.dp)) {
                         if (query.isEmpty()) Text("Movies or shows", color = Color.White.copy(alpha = 0.45f), fontSize = 18.sp)
                         inner()
@@ -420,7 +418,7 @@ private fun PickerChip(
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
-        if (icon) Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = fg, modifier = Modifier.size(18.dp))
+        if (icon) Icon(BenflixIcon.BACK_ARROW.vector, null, tint = fg, modifier = Modifier.size(18.dp))
         Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }

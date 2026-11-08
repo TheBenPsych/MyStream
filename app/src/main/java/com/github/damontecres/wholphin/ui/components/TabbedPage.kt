@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.components
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +25,7 @@ import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.RememberedTabService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
@@ -169,8 +169,8 @@ fun TabbedPage(
     ) {
         AnimatedVisibility(
             showTabs,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = expandVertically(BenflixMotion.enter()),
+            exit = shrinkVertically(BenflixMotion.exit()),
         ) {
             TabRow(
                 selectedTabIndex = selectedTabIndex,
@@ -216,8 +216,8 @@ fun <T> KeyedTabbedPage(
     ) {
         AnimatedVisibility(
             showTabs,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = expandVertically(BenflixMotion.enter()),
+            exit = shrinkVertically(BenflixMotion.exit()),
         ) {
             KeyedTabRow(
                 selectedTabKey = selectedTabKey,
@@ -231,8 +231,8 @@ fun <T> KeyedTabbedPage(
         AnimatedContent(
             targetState = selectedTabKey,
             transitionSpec = {
-                (fadeIn(animationSpec = tween(300, delayMillis = 100)))
-                    .togetherWith(fadeOut(animationSpec = tween(200)))
+                fadeIn(BenflixMotion.enter())
+                    .togetherWith(fadeOut(BenflixMotion.exit()))
             },
         ) { tabKey ->
             val tab = tabs[tabKey]

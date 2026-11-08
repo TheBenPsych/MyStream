@@ -371,14 +371,17 @@ fun DoorsHomePage(
     }
 
     val onDoor: (BenflixDoor) -> Unit = { door ->
-        viewModel.navigationManager.navigateTo(
-            when (door) {
-                BenflixDoor.MOVIES -> Destination.MoviesDoor
-                BenflixDoor.SHOWS -> Destination.ShowsDoor
-                BenflixDoor.LIVE_TV -> Destination.Channels
-                BenflixDoor.GAMES -> Destination.Games
-            },
-        )
+        // Approved door colour fill: the door's colour grows to fill the screen, then the page opens
+        DoorWipe.start(door.color, doorRects.value.getOrNull(door.ordinal)) {
+            viewModel.navigationManager.navigateTo(
+                when (door) {
+                    BenflixDoor.MOVIES -> Destination.MoviesDoor
+                    BenflixDoor.SHOWS -> Destination.ShowsDoor
+                    BenflixDoor.LIVE_TV -> Destination.Channels
+                    BenflixDoor.GAMES -> Destination.Games
+                },
+            )
+        }
     }
 
     val doorModifier: (Int) -> Modifier = { i ->

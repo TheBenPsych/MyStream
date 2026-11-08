@@ -25,6 +25,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.LocalAlwaysShowButtonLabels
@@ -187,7 +188,7 @@ fun ImageControlsOverlay(
 //            ExpandablePlayButton(
 //                title = R.string.more,
 //                resume = Duration.ZERO,
-//                icon = Icons.Default.MoreVert,
+//                icon = BenflixIcon.MORE_VERT.vector,
 //                onClick = { moreOnClick.invoke() },
 //                modifier = Modifier.onFocusChanged(onFocused),
 //            )

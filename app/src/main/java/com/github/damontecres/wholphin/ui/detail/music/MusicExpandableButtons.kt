@@ -4,9 +4,6 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -18,6 +15,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.DeleteButton
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
@@ -50,7 +49,7 @@ fun MusicExpandableButtons(
                 ExpandablePlayButton(
                     title = R.string.play,
                     resume = Duration.ZERO,
-                    icon = Icons.Default.PlayArrow,
+                    icon = BenflixPlayFilled,
                     primary = true,
                     onClick = { actions.onClickPlay.invoke(false) },
                     modifier =
@@ -99,7 +98,7 @@ fun MusicExpandableButtons(
                 ExpandablePlayButton(
                     title = R.string.more,
                     resume = Duration.ZERO,
-                    icon = Icons.Default.MoreVert,
+                    icon = BenflixIcon.MORE_VERT.vector,
                     onClick = { actions.onClickMore.invoke() },
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )

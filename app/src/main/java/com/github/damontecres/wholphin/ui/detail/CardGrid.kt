@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.playback.isBackwardButton
 import com.github.damontecres.wholphin.ui.playback.isForwardButton
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -419,8 +420,8 @@ fun <T : CardGridItem> CardGrid(
                     }
                     androidx.compose.animation.AnimatedVisibility(
                         visible = showFooter && footerVisible,
-                        enter = androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.fadeOut(),
+                        enter = androidx.compose.animation.fadeIn(BenflixMotion.enter()),
+                        exit = androidx.compose.animation.fadeOut(BenflixMotion.exit()),
                         modifier = Modifier.align(Alignment.BottomCenter),
                     ) {
                         Box(

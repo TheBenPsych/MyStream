@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -33,6 +30,8 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.TextButton
@@ -157,7 +156,7 @@ fun ProgramDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.PlayArrow,
+                                            imageVector = BenflixPlayFilled,
                                             contentDescription = stringResource(R.string.delete),
                                         )
                                         Text(
@@ -201,7 +200,7 @@ fun ProgramDialog(
                                                 ) {
                                                     if (isSeriesRecording) {
                                                         Icon(
-                                                            imageVector = Icons.Default.Close,
+                                                            imageVector = BenflixIcon.CLOSE.vector,
                                                             contentDescription = null,
                                                             tint = Color.Red,
                                                         )
@@ -248,7 +247,7 @@ fun ProgramDialog(
                                                 ) {
                                                     if (isRecording) {
                                                         Icon(
-                                                            imageVector = Icons.Default.Close,
+                                                            imageVector = BenflixIcon.CLOSE.vector,
                                                             contentDescription = null,
                                                             tint = Color.Red,
                                                         )

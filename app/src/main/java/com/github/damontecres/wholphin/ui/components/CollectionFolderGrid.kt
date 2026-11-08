@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.remember
@@ -44,6 +42,7 @@ import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.detail.GridItemDetails
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.main.HomePageHeader
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
@@ -294,8 +293,8 @@ fun CollectionFolderHeader(
 ) {
     AnimatedVisibility(
         showHeader,
-        enter = expandVertically(),
-        exit = shrinkVertically(),
+        enter = expandVertically(BenflixMotion.enter()),
+        exit = shrinkVertically(BenflixMotion.exit()),
         modifier = modifier,
     ) {
         val focusRequester = remember { FocusRequester() }
@@ -377,7 +376,7 @@ fun CollectionFolderHeader(
                         ExpandablePlayButton(
                             title = R.string.play,
                             resume = Duration.ZERO,
-                            icon = Icons.Default.PlayArrow,
+                            icon = BenflixPlayFilled,
                             onClick = { onClickPlayAll.invoke(false) },
                             enabled = listIsNotEmpty,
                         )

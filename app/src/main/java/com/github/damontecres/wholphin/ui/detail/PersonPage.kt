@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,8 +46,6 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
-import com.github.damontecres.wholphin.ui.AspectRatios
-import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
@@ -63,20 +62,21 @@ import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
 import com.github.damontecres.wholphin.ui.endDay
 import com.github.damontecres.wholphin.ui.formatDate
-import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.DataLoadingState
-import com.github.damontecres.wholphin.util.DiscoverRequestType
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.RowLoadingState
 import dagger.assisted.Assisted
@@ -209,7 +209,8 @@ class PersonViewModel
                             request,
                             GetItemsRequestHandler,
                             viewModelScope,
-                            pageSize = 15,
+                            // Benflix: enough for a whole door column and its "See all" in one go
+                            pageSize = 60,
                             useSeriesForPrimary = false,
                         ).init()
                     _state.update {
@@ -334,9 +335,7 @@ fun PersonPage(
 
 private const val HEADER_ROW = 0
 private const val MOVIE_ROW = 1
-private const val SERIES_ROW = 2
-private const val EPISODE_ROW = 3
-private const val DISCOVER_ROW = EPISODE_ROW + 1
+private const val DISCOVER_ROW = 4
 
 @Composable
 fun PersonPageContent(
@@ -371,6 +370,9 @@ fun PersonPageContent(
         }
     }
     var focusedOnHeader by remember { mutableStateOf(true) }
+    val isTv = rememberIsTv()
+    // The poster you last opened, so Back lands on it again
+    var focusKey by rememberSaveable { mutableStateOf<String?>(null) }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         userScrollEnabled = !focusedOnHeader,
@@ -398,88 +400,81 @@ fun PersonPageContent(
                         },
             )
         }
-        item {
-            LoadingRow(
-                title = rowTitle(stringResource(R.string.movies_title), movies),
-                state = movies,
-                rowIndex = MOVIE_ROW,
-                position = position,
-                focusRequester = focusRequester,
-                onClickItem = onClickItem,
-                onClickPosition = { position = it },
-                showIfEmpty = false,
-                modifier = Modifier.fillMaxWidth(),
+        // Approved actor page: their work split by door (Movies, Shows, Not on Benflix)
+        val doors =
+            listOfNotNull(
+                (movies as? RowLoadingState.Success)
+                    ?.items
+                    ?.filterNotNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { PersonDoor.Library("movies", "Movies", BenflixColors.Movies, it) },
+                (series as? RowLoadingState.Success)
+                    ?.items
+                    ?.filterNotNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { PersonDoor.Library("shows", "Shows", BenflixColors.Shows, it) },
+                discovered.takeIf { it.isNotEmpty() }?.let { PersonDoor.Ask(it) },
             )
+        val onItem = { key: String, item: BaseItem ->
+            focusKey = key
+            position = RowColumn(MOVIE_ROW, 0)
+            onClickItem(0, item)
         }
-        item {
-            LoadingRow(
-                title = rowTitle(stringResource(R.string.tv_shows_title), series),
-                state = series,
-                rowIndex = SERIES_ROW,
-                position = position,
-                focusRequester = focusRequester,
-                onClickItem = onClickItem,
-                onClickPosition = { position = it },
-                showIfEmpty = false,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        val onAsk = { key: String, item: DiscoverItem ->
+            focusKey = key
+            position = RowColumn(DISCOVER_ROW, 0)
+            onClickDiscover(0, item)
         }
-        item {
-            LoadingRow(
-                title = rowTitle(stringResource(R.string.episodes), episodes),
-                state = episodes,
-                rowIndex = EPISODE_ROW,
-                position = position,
-                focusRequester = focusRequester,
-                onClickItem = onClickItem,
-                onClickPosition = { position = it },
-                showIfEmpty = false,
-                horizontalPadding = 24.dp,
-                modifier = Modifier.fillMaxWidth(),
-                cardContent = { index, item, mod, onClick, onLongClick ->
-                    SeasonCard(
-                        item = item,
-                        onClick = {
-                            position = RowColumn(EPISODE_ROW, index)
-                            onClick.invoke()
-                        },
-                        onLongClick = onLongClick,
-                        imageHeight = Cards.heightEpisode,
-                        aspectRatio = item?.aspectRatio ?: AspectRatios.FOUR_THREE,
-                        modifier =
-                            mod
-                                .ifElse(
-                                    position.row == EPISODE_ROW && position.column == index,
-                                    Modifier.focusRequester(focusRequester),
-                                ),
-                    )
-                },
-            )
-        }
-        if (discovered.isNotEmpty()) {
-            item {
-                DiscoverRow(
-                    row =
-                        DiscoverRowData(
-                            // Approved: titles not on Benflix yet sit in "Ask for it"
-                            com.github.damontecres.wholphin.ui.util
-                                .StringStringProvider("Ask for it"),
-                            DataLoadingState.Success(discovered),
-                            DiscoverRequestType.UNKNOWN,
-                        ),
-                    onClickItem = { index: Int, item: DiscoverItem ->
-                        position = RowColumn(DISCOVER_ROW, index)
-                        onClickDiscover.invoke(index, item)
-                    },
-                    onLongClickItem = { _, _ -> },
-                    onCardFocus = {},
+        if (isTv) {
+            item(key = "doors") {
+                PersonDoorColumns(
+                    doors = doors,
+                    focusKey = focusKey,
                     focusRequester = focusRequester,
-                    enableViewMore = enableViewMoreDiscover,
-                    onClickViewMore = {
-                        position = RowColumn(DISCOVER_ROW, discovered.size)
-                        onClickViewMoreDiscover.invoke()
-                    },
+                    onClickItem = onItem,
+                    onClickAsk = onAsk,
+                    modifier = Modifier.padding(bottom = 32.dp),
                 )
+            }
+        } else {
+            doors.forEach { door ->
+                item(key = "door-${door.key}") {
+                    PersonDoorRow(
+                        door = door,
+                        focusKey = focusKey,
+                        focusRequester = focusRequester,
+                        onClickItem = onItem,
+                        onClickAsk = onAsk,
+                        posterWidth = 108.dp,
+                    )
+                }
+            }
+        }
+        if (enableViewMoreDiscover) {
+            item(key = "ask-more") {
+                androidx.tv.material3.Surface(
+                    onClick = onClickViewMoreDiscover,
+                    shape =
+                        androidx.tv.material3.ClickableSurfaceDefaults
+                            .shape(RoundedCornerShape(50)),
+                    colors =
+                        androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                            containerColor = BenflixColors.Raised,
+                            contentColor = BenflixColors.Soft,
+                            focusedContainerColor = BenflixColors.Text,
+                            focusedContentColor = BenflixColors.Tray,
+                        ),
+                    scale =
+                        androidx.tv.material3.ClickableSurfaceDefaults
+                            .scale(focusedScale = 1f),
+                    modifier = Modifier.padding(horizontal = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge),
+                ) {
+                    Text(
+                        text = "More to ask for  →",
+                        fontSize = BenflixType.small,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
     }

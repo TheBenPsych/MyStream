@@ -21,11 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -162,7 +157,7 @@ fun ExpandablePlayButtons(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     androidx.tv.material3.Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = BenflixPlayFilled,
                         contentDescription = null,
                     )
                     androidx.tv.material3.Text(
@@ -202,7 +197,7 @@ fun ExpandablePlayButtons(
                         ExpandablePlayButton(
                             title = if (resumePosition > Duration.ZERO) R.string.resume else R.string.play,
                             resume = resumePosition,
-                            icon = Icons.Default.PlayArrow,
+                            icon = BenflixPlayFilled,
                             onClick = playOnClick,
                             primary = true,
                             modifier =
@@ -217,7 +212,7 @@ fun ExpandablePlayButtons(
                         ExpandablePlayButton(
                             title = R.string.restart,
                             resume = Duration.ZERO,
-                            icon = Icons.Default.Refresh,
+                            icon = BenflixIcon.REFRESH.vector,
                             onClick = playOnClick,
                             modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                             mirrorIcon = true,
@@ -342,7 +337,7 @@ fun ExpandablePlayButtons(
                     ExpandablePlayButton(
                         title = R.string.more,
                         resume = Duration.ZERO,
-                        icon = Icons.Default.MoreVert,
+                        icon = BenflixIcon.MORE_VERT.vector,
                         onClick = { moreOnClick.invoke() },
                         modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                     )
@@ -751,7 +746,7 @@ fun DeleteButton(
         resume = Duration.ZERO,
         icon = {
             Icon(
-                imageVector = Icons.Default.Delete,
+                imageVector = BenflixIcon.TRASH.vector,
                 contentDescription = null,
                 tint = if (iconTint.isSpecified) iconTint else LocalContentColor.current,
                 modifier =
@@ -812,7 +807,7 @@ private fun ViewOptionsPreview() {
             ExpandablePlayButton(
                 title = R.string.play,
                 resume = Duration.ZERO,
-                icon = Icons.Default.PlayArrow,
+                icon = BenflixPlayFilled,
                 onClick = {},
                 interactionSource = source,
             )

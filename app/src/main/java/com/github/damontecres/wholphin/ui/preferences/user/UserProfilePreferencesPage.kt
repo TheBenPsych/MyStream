@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.preferences.ClickPreference
 import com.github.damontecres.wholphin.ui.preferences.ComposablePreference
 import com.github.damontecres.wholphin.ui.preferences.PreferenceValidation
 import com.github.damontecres.wholphin.ui.preferences.benflixSettingCard
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.SubtitlePlaybackMode
 import timber.log.Timber
@@ -96,8 +97,8 @@ fun UserProfilePreferencesContent(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = fadeIn(BenflixMotion.enter()),
+        exit = fadeOut(BenflixMotion.exit()),
         modifier = modifier,
     ) {
         LaunchedEffect(Unit) {

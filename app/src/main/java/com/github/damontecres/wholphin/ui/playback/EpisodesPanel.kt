@@ -48,6 +48,8 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.cards.EpisodeStandIn
+import com.github.damontecres.wholphin.ui.cards.hasOwnPicture
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -295,12 +297,16 @@ private fun EpisodePanelCard(
                     .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                     .background(Color.DarkGray),
             ) {
-                AsyncImage(
-                    model = LocalImageUrlService.current.rememberImageUrl(episode),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                )
+                if (episode.hasOwnPicture()) {
+                    AsyncImage(
+                        model = LocalImageUrlService.current.rememberImageUrl(episode),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                    )
+                } else {
+                    EpisodeStandIn(episode, EPISODE_CARD_WIDTH)
+                }
                 if (nowPlaying) {
                     Text(
                         text = stringResource(R.string.player_now_playing),

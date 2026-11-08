@@ -25,8 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +49,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.AudioItem
 import com.github.damontecres.wholphin.services.rememberQueue
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.main.settings.MoveDirection
@@ -58,6 +57,7 @@ import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.overlay.SeekBar
 import com.github.damontecres.wholphin.ui.preferences.MoveButton
 import com.github.damontecres.wholphin.ui.roundSeconds
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
@@ -129,8 +129,8 @@ fun NowPlayingOverlay(
         )
         AnimatedVisibility(
             visible = showButtons,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = expandVertically(BenflixMotion.enter()),
+            exit = shrinkVertically(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.CenterHorizontally),
@@ -246,7 +246,7 @@ fun NowPlayingOverlay(
                                 modifier = Modifier.size(32.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
+                                    imageVector = BenflixIcon.MORE_VERT.vector,
                                     contentDescription = stringResource(R.string.more),
                                 )
                             }

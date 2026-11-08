@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +37,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.AspectRatio
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import kotlinx.coroutines.delay
@@ -100,7 +99,7 @@ fun ViewMoreCard(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = BenflixIcon.ARROW.vector,
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = "View more",
                     modifier = Modifier.fillMaxSize(.66f),

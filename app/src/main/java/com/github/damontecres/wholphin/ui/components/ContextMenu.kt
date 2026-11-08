@@ -3,15 +3,6 @@ package com.github.damontecres.wholphin.ui.components
 import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -463,7 +454,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoTo(item)
@@ -475,7 +466,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.resume),
-                        Icons.Default.PlayArrow,
+                        BenflixPlayFilled,
                         dismissOnClick = true,
                     ) {
                         actions.navigateTo(
@@ -489,7 +480,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.restart),
-                        Icons.Default.Refresh,
+                        BenflixIcon.REFRESH.vector,
                         dismissOnClick = true,
                     ) {
                         actions.navigateTo(
@@ -504,7 +495,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.play),
-                        Icons.Default.PlayArrow,
+                        BenflixPlayFilled,
                         dismissOnClick = true,
                     ) {
                         actions.navigateTo(
@@ -590,7 +581,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.add_to_queue),
-                    Icons.Default.Add,
+                    BenflixIcon.PLUS.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickAddToQueue(item)
@@ -621,7 +612,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.delete),
-                    Icons.Default.Delete,
+                    BenflixIcon.TRASH.vector,
                     iconColor = Color.Red.copy(alpha = .8f),
                     dismissOnClick = false,
                 ) {
@@ -677,7 +668,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     "Refresh info and pictures",
-                    Icons.Default.Refresh,
+                    BenflixIcon.REFRESH.vector,
                     dismissOnClick = false,
                     onClick = onRefreshInfo,
                 ),
@@ -688,7 +679,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     "File details",
-                    Icons.Default.Info,
+                    BenflixIcon.INFO.vector,
                     dismissOnClick = false,
                     onClick = onFileDetails,
                 ),
@@ -754,7 +745,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_series),
-                    Icons.AutoMirrored.Filled.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                     dismissOnClick = true,
                 ) {
                     actions.navigateTo(
@@ -771,7 +762,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.media_information),
-                    Icons.Default.Info,
+                    BenflixIcon.INFO.vector,
                     dismissOnClick = true,
                 ) {
                     onShowOverview.invoke()
@@ -782,7 +773,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.clear_track_choices),
-                    Icons.Default.Delete,
+                    BenflixIcon.TRASH.vector,
                     dismissOnClick = true,
                 ) {
                     onClearChosenStreams()
@@ -793,7 +784,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.play_with),
-                    Icons.Default.PlayArrow,
+                    BenflixPlayFilled,
                     dismissOnClick = false,
                     onClick = onClickPlayWith,
                 ),
@@ -804,7 +795,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     "Report a problem",
-                    Icons.Default.Warning,
+                    BenflixIcon.WARNING.vector,
                     dismissOnClick = false,
                     onClick = onReportProblem,
                 ),
@@ -865,7 +856,7 @@ fun ContextMenu(
             add(
                 DialogItem(
                     stringResource(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                 ) {
                     actions.navigateTo(Destination.MediaItem(itemId, BaseItemKind.PERSON, null))
                 },
@@ -938,7 +929,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                     dismissOnClick = true,
                 ) {
                     actions.navigateTo(item.destination())
@@ -948,7 +939,7 @@ fun buildContextForMusic(
         add(
             DialogItem(
                 resources.getString(R.string.play),
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlay(index, item)
@@ -957,7 +948,7 @@ fun buildContextForMusic(
         add(
             DialogItem(
                 resources.getString(R.string.play_next),
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlayNext(index, item)
@@ -967,7 +958,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.remove_from_queue),
-                    Icons.Default.Delete,
+                    BenflixIcon.TRASH.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickRemoveFromQueue(index, item)
@@ -977,7 +968,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.add_to_queue),
-                    Icons.Default.Add,
+                    BenflixIcon.PLUS.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickAddToQueue(item)
@@ -1008,7 +999,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.delete),
-                    Icons.Default.Delete,
+                    BenflixIcon.TRASH.vector,
                     iconColor = Color.Red.copy(alpha = .8f),
                     dismissOnClick = false,
                 ) {
@@ -1090,7 +1081,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.play),
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlay(index, item)
@@ -1099,7 +1090,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.play_next),
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlayNext(index, item)
@@ -1108,7 +1099,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.remove_from_queue),
-                Icons.Default.Delete,
+                BenflixIcon.TRASH.vector,
                 dismissOnClick = true,
             ) {
                 actions.onClickRemoveFromQueue(index, item)
@@ -1118,7 +1109,7 @@ fun buildContextForMusicQueue(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_album),
-                    Icons.Default.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoToAlbum.invoke(item.albumId)
@@ -1129,7 +1120,7 @@ fun buildContextForMusicQueue(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_artist),
-                    Icons.Default.ArrowForward,
+                    BenflixIcon.ARROW.vector,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoToArtist.invoke(item.artistId)

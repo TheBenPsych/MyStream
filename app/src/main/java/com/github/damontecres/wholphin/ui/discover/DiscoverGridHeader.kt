@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.data.filter.FilterValueOption
 import com.github.damontecres.wholphin.ui.components.DiscoverFilterByButton
 import com.github.damontecres.wholphin.ui.components.DiscoverSortByButton
 import com.github.damontecres.wholphin.ui.components.GridTitle
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 
 @Composable
 fun DiscoverGridHeader(
@@ -44,8 +45,8 @@ fun DiscoverGridHeader(
 ) {
     AnimatedVisibility(
         showHeader,
-        enter = expandVertically(),
-        exit = shrinkVertically(),
+        enter = expandVertically(BenflixMotion.enter()),
+        exit = shrinkVertically(BenflixMotion.exit()),
         modifier = modifier,
     ) {
         Column(

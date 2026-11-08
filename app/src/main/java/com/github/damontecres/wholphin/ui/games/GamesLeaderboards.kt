@@ -270,6 +270,7 @@ enum class GameSort(
     MOST("Most played"),
     GENRE("Genre"),
     YEAR("Year"),
+    BEST("Best score"),
 }
 
 /** Short rows above one console's grid: what's saved on this device, and your favourites */
@@ -280,6 +281,7 @@ internal fun consoleRows(
 ): List<Pair<String, List<ServerGame>>> {
     val byId = console.games.associateBy { it.id }
     val rows = mutableListOf<Pair<String, List<ServerGame>>>()
+    bestOn(console).takeIf { it.isNotEmpty() }?.let { rows += "Best on ${console.name}" to it }
     downloadedIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { rows += "On this device" to it }
     console.games
         .filter { it.id in favouriteIds }
@@ -288,6 +290,19 @@ internal fun consoleRows(
         ?.let { rows += "Favourites" to it }
     return rows
 }
+
+/**
+ * Approved "Best on <console>" row: the 10 best-loved games on a console, from RomM's IGDB ratings, so
+ * nobody has to scroll 800 SNES games. Left out when RomM has too few ratings for that console.
+ */
+internal fun bestOn(console: GameConsole): List<ServerGame> {
+    val rated = console.games.filter { it.rating > 0.0 }
+    if (rated.size < BEST_MIN_RATED) return emptyList()
+    return rated.sortedWith(compareByDescending<ServerGame> { it.rating }.thenBy { it.name.lowercase() }).take(BEST_ROW_SIZE)
+}
+
+private const val BEST_MIN_RATED = 5
+private const val BEST_ROW_SIZE = 10
 
 /** Public domain console photos (by Evan Amos, Wikimedia Commons), by RomM console name */
 internal fun consolePhoto(slug: String): String? =

@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -22,6 +19,8 @@ import com.github.damontecres.wholphin.data.filter.DefaultFilterOptions
 import com.github.damontecres.wholphin.data.filter.FilterValueOption
 import com.github.damontecres.wholphin.data.filter.ItemFilterBy
 import com.github.damontecres.wholphin.data.model.GetItemsFilter
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.DeleteButton
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
@@ -69,7 +68,7 @@ fun CollectionButtons(
                     ExpandablePlayButton(
                         title = R.string.play,
                         resume = Duration.ZERO,
-                        icon = Icons.Default.PlayArrow,
+                        icon = BenflixPlayFilled,
                         primary = true,
                         onClick = { onClickPlayAll.invoke(false) },
                         modifier = Modifier.focusRequester(firstFocus),
@@ -117,7 +116,7 @@ fun CollectionButtons(
                     ExpandablePlayButton(
                         title = R.string.more,
                         resume = Duration.ZERO,
-                        icon = Icons.Default.MoreVert,
+                        icon = BenflixIcon.MORE_VERT.vector,
                         onClick = { moreOnClick.invoke() },
                         modifier = Modifier,
                     )

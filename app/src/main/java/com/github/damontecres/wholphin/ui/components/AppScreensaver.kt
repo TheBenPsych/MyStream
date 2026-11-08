@@ -16,11 +16,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -68,7 +66,9 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_ALPHA
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_END_FRACTION
-import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -79,6 +79,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.shareIn
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.model.api.BaseItemKind
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -130,6 +131,12 @@ sealed interface ScreensaverItem {
         val logoUrl: String?,
         val title: String,
     ) : ScreensaverItem
+}
+
+/** What the screensaver is showing, so OK can open it */
+object ScreensaverJump {
+    @Volatile
+    var item: BaseItem? = null
 }
 
 @Composable
@@ -215,41 +222,44 @@ fun AppScreensaverContent(
                             },
                 )
 
-                var logoError by remember(currentItem) { mutableStateOf(false) }
-                if (!logoError) {
-                    AsyncImage(
-                        model =
-                            ImageRequest
-                                .Builder(LocalContext.current)
-                                .data(currentItem?.logoUrl)
-                                .transitionFactory(CrossFadeFactory(750.milliseconds))
-                                .build(),
-                        contentDescription = "Logo",
-                        onError = {
-                            logoError = true
-                        },
+                // Polish round: the name of what's on screen in the Benflix look, over the same
+                // bottom shade as every other big picture. OK jumps to it.
+                val item = (currentItem as? ScreensaverItem.CurrentItem)
+                androidx.compose.runtime.SideEffect { ScreensaverJump.item = item?.item }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(BenflixShade.bottom(0.55f)),
+                )
+                if (item != null) {
+                    val door = if (item.item.type == BaseItemKind.MOVIE) BenflixColors.Movies else BenflixColors.Shows
+                    Column(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .size(width = 240.dp, height = 120.dp)
-                                .padding(16.dp),
-                    )
-                } else {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(16.dp)
-                                .fillMaxWidth(.5f)
-                                .fillMaxHeight(.3f),
+                                .padding(start = BenflixSpace.tvEdge, bottom = 40.dp)
+                                .fillMaxWidth(.55f),
                     ) {
                         Text(
-                            text = currentItem?.title ?: "",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.displaySmall,
+                            text = if (item.item.type == BaseItemKind.MOVIE) "MOVIE" else "SHOW",
+                            color = door,
+                            fontSize = BenflixType.tag,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                        )
+                        Text(
+                            text = item.title,
+                            color = BenflixColors.Text,
+                            fontSize = BenflixType.pageTitle,
+                            fontWeight = FontWeight.ExtraBold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.BottomStart),
+                        )
+                        Text(
+                            text = "Press OK to watch",
+                            color = BenflixColors.Soft,
+                            fontSize = BenflixType.small,
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
@@ -293,6 +303,14 @@ fun AppScreensaverContent(
         if (showClock) {
             TimeDisplay()
         }
+        // The small logo squares in the corner
+        BenflixMark(
+            size = 26.dp,
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = BenflixSpace.tvEdge, top = 32.dp),
+        )
         // Benflix: a "Did you know?" fact that changes with each picture
         AnimatedVisibility(
             visible = fact.second && fact.first != null,
@@ -312,7 +330,7 @@ fun AppScreensaverContent(
             ) {
                 Text(
                     text = "DID YOU KNOW?",
-                    color = BenflixRed,
+                    color = BenflixColors.Soft,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
                     fontSize = BenflixType.small,

@@ -54,7 +54,9 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.ShowProgress
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.cards.EpisodeStandIn
 import com.github.damontecres.wholphin.ui.cards.PersonRow
+import com.github.damontecres.wholphin.ui.cards.hasOwnPicture
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
@@ -599,14 +601,19 @@ private fun EpisodeCard(
                     .onFocusChanged { if (it.isFocused) onFocus() },
         ) {
             Box(Modifier.fillMaxSize()) {
-                if (url != null) {
+                var failed by remember(episode.id) { mutableStateOf(false) }
+                if (url != null && episode.hasOwnPicture() && !failed) {
                     AsyncImage(
                         model = url,
                         contentDescription = episode.name,
                         contentScale = ContentScale.Crop,
                         alpha = if (upcoming) 0.4f else 1f,
+                        onError = { failed = true },
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else {
+                    // No picture of its own: the show's backdrop with a big episode number
+                    EpisodeStandIn(episode, width)
                 }
                 if (episode.isSpecial()) {
                     Text(

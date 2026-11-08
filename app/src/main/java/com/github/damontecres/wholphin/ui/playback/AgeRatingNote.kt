@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
@@ -65,8 +66,8 @@ fun AgeRatingNote(
     }
     AnimatedVisibility(
         visible = visible && !hidden && rating != null,
-        enter = fadeIn() + slideInHorizontally { -it / 4 },
-        exit = fadeOut(),
+        enter = fadeIn(BenflixMotion.enter()) + slideInHorizontally { -it / 4 },
+        exit = fadeOut(BenflixMotion.exit()),
         modifier = modifier,
     ) {
         Row(

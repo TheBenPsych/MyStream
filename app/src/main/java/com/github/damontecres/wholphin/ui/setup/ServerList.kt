@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -34,6 +31,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.Cards
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import org.jellyfin.sdk.model.api.PublicSystemInfo
 import java.util.UUID
@@ -180,7 +178,7 @@ fun ServerIconCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
+                                imageVector = BenflixIcon.WARNING.vector,
                                 contentDescription = (connectionStatus as? ServerConnectionStatus.Error)?.message,
                                 tint =
                                     if (serverVersionSupported == ServerVersionSupported.NOT_SUPPORTED_IN_FUTURE) {
@@ -296,7 +294,7 @@ fun AddServerCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = BenflixIcon.PLUS.vector,
                     contentDescription = stringResource(R.string.add_server),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(cardSize * 0.4f), // Size of the + icon

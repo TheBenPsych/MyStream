@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.roundMinutes
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -139,8 +140,8 @@ fun CollectionFolderViewScope.CollectionFolderList(
         ) {
             AnimatedVisibility(
                 visible = viewOptions.showDetails,
-                enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
-                exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
+                enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.Start),
+                exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.Start),
             ) {
                 CollectionFolderListDetails(
                     item = focusedItem,

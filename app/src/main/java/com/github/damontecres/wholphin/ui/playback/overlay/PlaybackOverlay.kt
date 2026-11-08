@@ -57,6 +57,7 @@ import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.CurrentPlayback
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.api.TrickplayInfo
@@ -114,8 +115,8 @@ fun PlaybackOverlay(
     ) {
         AnimatedVisibility(
             visible = controllerViewState.controlsVisible && !showDebugInfo,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier = Modifier.matchParentSize(),
         ) {
             // Background scrim for OSD readability
@@ -144,10 +145,12 @@ fun PlaybackOverlay(
             transitionSpec = {
                 if (targetState.ordinal > initialState.ordinal) {
                     // Moving down, so move content up
-                    (slideInVertically { it / 2 } + fadeIn()).togetherWith(slideOutVertically { -it / 2 } + fadeOut())
+                    (slideInVertically { it / 2 } + fadeIn(BenflixMotion.enter()))
+                        .togetherWith(slideOutVertically { -it / 2 } + fadeOut(BenflixMotion.exit()))
                 } else {
                     // Moving up
-                    (slideInVertically { -it / 2 } + fadeIn()).togetherWith(slideOutVertically { it / 2 } + fadeOut())
+                    (slideInVertically { -it / 2 } + fadeIn(BenflixMotion.enter()))
+                        .togetherWith(slideOutVertically { it / 2 } + fadeOut(BenflixMotion.exit()))
                 }
             },
         ) { targetState ->
@@ -207,8 +210,8 @@ fun PlaybackOverlay(
                             stiffness = Spring.StiffnessMedium,
                             visibilityThreshold = IntSize.VisibilityThreshold,
                         ),
-                    ) + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
+                    ) + fadeIn(BenflixMotion.enter()),
+                exit = shrinkVertically(BenflixMotion.exit()) + fadeOut(BenflixMotion.exit()),
             ) {
                 Box(
                     modifier =
@@ -263,8 +266,8 @@ fun PlaybackOverlay(
             }
         AnimatedVisibility(
             visible = !showDebugInfo && topTitle.isNotNullOrBlank() && controllerViewState.controlsVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.TopStart),
@@ -303,8 +306,8 @@ fun PlaybackOverlay(
         }
         AnimatedVisibility(
             visible = !showDebugInfo && showClock && controllerViewState.controlsVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd),
@@ -315,8 +318,8 @@ fun PlaybackOverlay(
         // Debug overlay
         AnimatedVisibility(
             visible = showDebugInfo && controllerViewState.controlsVisible,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut(),
+            enter = slideInVertically(BenflixMotion.enter()) + fadeIn(BenflixMotion.enter()),
+            exit = slideOutVertically(BenflixMotion.exit()) + fadeOut(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.TopStart),

@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.theme
 
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,12 @@ object BenflixMotion {
     const val IN_MS = 180
     const val OUT_MS = 120
     val Ease = CubicBezierEasing(.2f, 0f, 0f, 1f)
+
+    /** How everything arrives: 0.18 seconds, smooth ease */
+    fun <T> enter(): FiniteAnimationSpec<T> = tween(IN_MS, easing = Ease)
+
+    /** How everything leaves: 0.12 seconds, same ease */
+    fun <T> exit(): FiniteAnimationSpec<T> = tween(OUT_MS, easing = Ease)
 }
 
 /** The same page edges everywhere. TV keeps 48 from the edge because some older TVs cut edges off. */

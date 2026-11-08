@@ -23,8 +23,6 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextFieldDefaults.Container
@@ -192,7 +190,7 @@ fun SearchEditTextBox(
         },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = BenflixIcon.SEARCH.vector,
                 contentDescription = stringResource(R.string.search),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -344,7 +342,7 @@ fun SearchEditTextBox(
             ),
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = BenflixIcon.SEARCH.vector,
                 contentDescription = stringResource(R.string.search),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -381,7 +379,7 @@ private fun EditTextBoxPreview() {
                 state = rememberTextFieldState("search"),
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = BenflixIcon.SEARCH.vector,
                         contentDescription = stringResource(R.string.search),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )

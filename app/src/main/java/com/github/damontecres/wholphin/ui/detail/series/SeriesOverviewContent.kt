@@ -20,10 +20,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +45,8 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.cards.ExtrasRow
 import com.github.damontecres.wholphin.ui.cards.PersonRow
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
@@ -402,7 +400,7 @@ private fun SeasonButtons(
             title = if (resume > Duration.ZERO) R.string.resume else R.string.play,
             label = playLabel,
             resume = resume,
-            icon = Icons.Default.PlayArrow,
+            icon = BenflixPlayFilled,
             primary = true,
             enabled = episode != null,
             onClick = playOnClick,
@@ -412,7 +410,7 @@ private fun SeasonButtons(
             ExpandablePlayButton(
                 title = R.string.restart,
                 resume = Duration.ZERO,
-                icon = Icons.Default.Refresh,
+                icon = BenflixIcon.REFRESH.vector,
                 mirrorIcon = true,
                 onClick = playOnClick,
             )
@@ -441,7 +439,7 @@ private fun SeasonButtons(
         ExpandablePlayButton(
             title = R.string.more,
             resume = Duration.ZERO,
-            icon = Icons.Default.MoreVert,
+            icon = BenflixIcon.MORE_VERT.vector,
             enabled = episode != null,
             onClick = { moreOnClick.invoke() },
         )

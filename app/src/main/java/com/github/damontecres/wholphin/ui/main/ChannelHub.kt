@@ -128,7 +128,7 @@ internal fun ChannelLogo(
             AsyncImage(model = logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
         }
     } else {
-        val (from, to) = BadgeColors[(schedule.channel?.ordinal ?: 0) % BadgeColors.size]
+        val (from, to) = BadgeColors[Math.floorMod(schedule.channel?.ordinal ?: schedule.custom?.id.hashCode(), BadgeColors.size)]
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(size).background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(6.dp)),
