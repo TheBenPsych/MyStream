@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -155,8 +156,12 @@ fun GamesPage(
         )
     val recentTimes = remember(recent) { recent.associate { it.first.id to it.second } }
     val hasRecent = recent.isNotEmpty()
-    LaunchedEffect(hasRecent) {
+    // Ben: while your games are still loading, Continue playing shows as a grey row in its place
+    val waitingRecent = remember(library) { library is LibraryState.Loading && viewModel.recentPlayed().isNotEmpty() }
+    LaunchedEffect(hasRecent, waitingRecent) {
         if (userMoved) return@LaunchedEffect
+        // Hold focus for the real Continue playing row (this wait stops as soon as it arrives)
+        if (waitingRecent && !hasRecent) delay(FIRST_FOCUS_WAIT_MS)
         pageScroll.scrollTo(0)
         delay(FIRST_FOCUS_SETTLE_MS)
         if (isTv) focusRequester.tryRequestFocus()
@@ -237,6 +242,25 @@ fun GamesPage(
                     ),
         ) {
             // Approved order: Continue playing, Movie puzzles, Party, Ember Road, Consoles, Arcade, Leaderboards
+            if (recent.isEmpty() && waitingRecent) {
+                Text(
+                    text = "Continue playing",
+                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                    modifier =
+                        Modifier
+                            .padding(vertical = 8.dp, horizontal = 8.dp)
+                            .wrapContentWidth(Alignment.Start, unbounded = true),
+                ) {
+                    repeat(8) {
+                        Box(cardSize.background(BenflixColors.Raised, RoundedCornerShape(10.dp)))
+                    }
+                }
+            }
             if (recent.isNotEmpty()) {
                 Text(
                     text = "Continue playing",
@@ -684,3 +708,4 @@ internal fun playedAgo(time: Long): String {
 }
 
 private const val FIRST_FOCUS_SETTLE_MS = 80L
+private const val FIRST_FOCUS_WAIT_MS = 4_000L

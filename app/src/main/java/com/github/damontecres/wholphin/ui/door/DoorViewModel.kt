@@ -58,6 +58,10 @@ data class DoorPageState(
     val loaded: Boolean = false,
     /** Phones: the "Picked for you" card */
     val pick: BaseItem? = null,
+    /** Every row this door can have, in page order */
+    val order: List<String> = emptyList(),
+    /** Rows still loading: they show as grey placeholder rows in their place, so nothing jumps (Ben) */
+    val pending: Set<String> = emptySet(),
 )
 
 /**
@@ -113,7 +117,7 @@ class DoorViewModel
                         else -> Unit
                     }
                     loadedAt = System.currentTimeMillis()
-                    _state.update { it.copy(loaded = true) }
+                    _state.update { it.copy(loaded = true, pending = emptySet()) }
                 }
         }
 
@@ -134,11 +138,15 @@ class DoorViewModel
             val clean = row.copy(items = row.items.distinctBy { it.id })
             _state.update { st ->
                 val rows = (st.rows.filter { it.key != row.key } + clean).sortedBy { order.indexOf(it.key) }
-                st.copy(rows = rows)
+                st.copy(rows = rows, pending = st.pending - row.key)
             }
         }
 
-        private fun remove(key: String) = _state.update { st -> st.copy(rows = st.rows.filter { it.key != key }) }
+        private fun remove(key: String) =
+            _state.update { st -> st.copy(rows = st.rows.filter { it.key != key }, pending = st.pending - key) }
+
+        /** Marks every row as loading, so the page draws grey placeholder rows until each one arrives */
+        private fun startRows(order: List<String>) = _state.update { it.copy(order = order, pending = order.toSet()) }
 
         private fun putOrRemove(
             order: List<String>,
@@ -157,6 +165,7 @@ class DoorViewModel
                 } else {
                     listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
                 }
+            startRows(order)
             aniListLibraries.warm(anime, userId)
             _state.update {
                 it.copy(
@@ -227,6 +236,7 @@ class DoorViewModel
                 } else {
                     listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
                 }
+            startRows(order)
             aniListLibraries.warm(anime, userId)
             _state.update {
                 it.copy(

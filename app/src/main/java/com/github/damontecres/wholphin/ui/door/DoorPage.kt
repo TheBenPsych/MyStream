@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -163,12 +164,11 @@ private fun WideDoor(
     val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        // Wait for Keep watching (or everything) so focus starts on the first Keep watching poster
+        // Wait until the top row has really loaded (not a grey placeholder), so focus starts on its first card
         withTimeoutOrNull(FIRST_FOCUS_WAIT_MS) {
             snapshotFlow {
-                viewModel.state.value.loaded ||
-                    viewModel.state.value.rows
-                        .any { it.key == DoorViewModel.KEEP }
+                val st = viewModel.state.value
+                st.loaded || st.entries().firstOrNull() is DoorEntry.Real
             }.first { it }
         }
         snapshotFlow {
@@ -209,8 +209,13 @@ private fun WideDoor(
                         .fillMaxWidth()
                         .weight(1f),
             ) {
-                state.rows.forEach { row ->
-                    item(key = row.key) {
+                state.entries().forEach { entry ->
+                    val row = (entry as? DoorEntry.Real)?.row
+                    item(key = entry.key) {
+                        if (row == null) {
+                            WaitingRow(posterWidth = posterWidth, showName = !isTv)
+                            return@item
+                        }
                         DoorRow(
                             row = row,
                             posterWidth = posterWidth,
@@ -231,6 +236,80 @@ private fun WideDoor(
                 if (state.browse.isNotEmpty()) {
                     item(key = "browse") {
                         BrowseRow(state.browse, easy, onBrowse, Modifier.padding(start = SIDE, end = SIDE))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A row on the page: one that has loaded, or a grey placeholder for one still loading */
+private sealed interface DoorEntry {
+    val key: String
+
+    data class Real(
+        val row: DoorRowData,
+    ) : DoorEntry {
+        override val key get() = row.key
+    }
+
+    data class Waiting(
+        override val key: String,
+    ) : DoorEntry
+}
+
+/**
+ * Ben: grey placeholder rows hold each row's place until it loads, so rows don't pop in above
+ * each other. A row that turns out empty just goes away. Same key as the real row, so it swaps in place.
+ */
+private fun DoorPageState.entries(): List<DoorEntry> {
+    if (order.isEmpty()) {
+        // Before the door knows its rows (it's still finding the libraries): a few grey rows
+        return if (!loaded && rows.isEmpty()) List(WAITING_ROWS) { DoorEntry.Waiting("waiting-$it") } else rows.map { DoorEntry.Real(it) }
+    }
+    val byKey = rows.associateBy { it.key }
+    return order.mapNotNull { key ->
+        byKey[key]?.let { DoorEntry.Real(it) } ?: if (key in pending) DoorEntry.Waiting(key) else null
+    }
+}
+
+/** A grey row shaped like a row of posters: a short bar for the name, then grey cards. Not focusable. */
+@Composable
+private fun WaitingRow(
+    posterWidth: Dp,
+    showName: Boolean,
+    side: Dp = SIDE,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .padding(start = side, bottom = 8.dp)
+                .width(140.dp)
+                .height(18.dp)
+                .background(BenflixColors.PanelHigh, RoundedCornerShape(4.dp)),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            // Wider than the screen on purpose, like a real row; the cards past the edge just aren't seen
+            modifier = Modifier.padding(start = side).wrapContentWidth(Alignment.Start, unbounded = true),
+        ) {
+            repeat(WAITING_CARDS) {
+                Column {
+                    Box(
+                        Modifier
+                            .width(posterWidth)
+                            .height(posterWidth / POSTER_RATIO)
+                            .background(BenflixColors.Raised, shape),
+                    )
+                    if (showName) {
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            Modifier
+                                .width(posterWidth * 0.7f)
+                                .height(12.dp)
+                                .background(BenflixColors.Raised, RoundedCornerShape(4.dp)),
+                        )
                     }
                 }
             }
@@ -625,8 +704,13 @@ private fun PhoneDoor(
                     PickedCard(pick, easy, onClick = { onClick(pick) }, Modifier.padding(horizontal = PHONE_SIDE))
                 }
             }
-            state.rows.forEach { row ->
-                item(key = row.key) {
+            state.entries().forEach { entry ->
+                val row = (entry as? DoorEntry.Real)?.row
+                item(key = entry.key) {
+                    if (row == null) {
+                        WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
+                        return@item
+                    }
                     DoorRow(
                         row = row,
                         posterWidth = posterWidth,
@@ -755,5 +839,7 @@ private val PHONE_SIDE = BenflixSpace.phoneEdge
 private const val PICTURE_WIDTH = 0.62f
 private const val PICTURE_FADE_MS = 450
 private const val PREVIEW_DELAY_MS = 500L
-private const val FIRST_FOCUS_WAIT_MS = 2_000L
+private const val FIRST_FOCUS_WAIT_MS = 4_000L
+private const val WAITING_ROWS = 3
+private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
