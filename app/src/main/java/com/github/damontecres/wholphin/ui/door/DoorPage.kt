@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -106,7 +107,7 @@ fun DoorPage(
     // Opening from Home: the door colour waits for the top row (or the empty message), then fades onto the page
     val firstReady = state.loaded || state.entries().firstOrNull() is DoorEntry.Real
     LaunchedEffect(firstReady) {
-        if (firstReady) com.github.damontecres.wholphin.ui.main.DoorWipe.ready()
+        if (firstReady) DoorWipe.ready()
     }
     val kids by KidsMode.active.collectAsState()
     val easy = kids || preferences.appPreferences.benflixPreferences.easyRead

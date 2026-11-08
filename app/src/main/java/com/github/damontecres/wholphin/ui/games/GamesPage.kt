@@ -66,6 +66,7 @@ import com.github.damontecres.wholphin.games.LocalConsole
 import com.github.damontecres.wholphin.games.PhonePadActivity
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ServerGame
+import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
@@ -100,7 +101,7 @@ fun GamesPage(
     // Opening from Home: the door colour waits for the game list, then fades onto the page
     val libraryLoaded = library !is LibraryState.Loading
     LaunchedEffect(libraryLoaded) {
-        if (libraryLoaded) com.github.damontecres.wholphin.ui.main.DoorWipe.ready()
+        if (libraryLoaded) DoorWipe.ready()
     }
     val starting by viewModel.starting.collectAsState()
     val board by viewModel.board.collectAsState()
