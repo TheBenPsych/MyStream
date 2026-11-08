@@ -321,8 +321,7 @@ fun TitleGrid(
  * A show counts as started when some of it was watched. Jellyfin only fills a show's own "last played" when
  * the whole show was marked, so the share of episodes watched is checked too.
  */
-private fun BaseItem.started(): Boolean =
-    data.userData?.lastPlayedDate != null || (data.userData?.playedPercentage ?: 0.0) > 0.0
+private fun BaseItem.started(): Boolean = data.userData?.lastPlayedDate != null || (data.userData?.playedPercentage ?: 0.0) > 0.0
 
 private fun List<BaseItem>.sortedFor(sort: TitleSort): List<BaseItem> =
     when (sort) {
