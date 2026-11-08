@@ -64,3 +64,9 @@ data class CustomChannel(
         fun nameFor(picked: String): String = "$picked 24/7"
     }
 }
+
+/** Make a channel, step 2: one show, genre or collection to pick */
+data class MakeChannelPick(
+    val id: UUID?,
+    val name: String,
+)

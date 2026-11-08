@@ -72,6 +72,7 @@ import com.github.damontecres.wholphin.services.ChannelTileOrder
 import com.github.damontecres.wholphin.services.CustomChannel
 import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.services.MakeChannelPick
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -95,10 +96,10 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
-import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.Instant
 import java.time.ZoneId

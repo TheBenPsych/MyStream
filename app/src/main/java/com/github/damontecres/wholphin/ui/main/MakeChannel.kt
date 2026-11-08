@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.CustomChannel
+import com.github.damontecres.wholphin.services.MakeChannelPick
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
@@ -32,12 +33,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.util.UUID
-
-/** One thing to pick in step 2: a show, a genre or a collection */
-data class MakeChannelPick(
-    val id: UUID?,
-    val name: String,
-)
 
 /**
  * Approved Live TV "Make a channel": three short steps. 1 what kind (a show, a genre or a collection),
@@ -57,7 +52,14 @@ fun MakeChannelFlow(
     var backAsked by remember { mutableIntStateOf(0) }
     var stepAtBack by remember { mutableIntStateOf(0) }
     var made by remember { mutableStateOf(false) }
-    val step = if (kind == null) 1 else if (picked == null) 2 else 3
+    val step =
+        if (kind == null) {
+            1
+        } else if (picked == null) {
+            2
+        } else {
+            3
+        }
     LaunchedEffect(backAsked) {
         if (backAsked == 0) return@LaunchedEffect
         if (made) return@LaunchedEffect
