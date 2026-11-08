@@ -93,6 +93,22 @@ fun Destination.door(): BenflixDoor? =
         else -> null
     }
 
+/**
+ * Movie, show and Requests title pages draw their own full-screen picture. The app's shared picture
+ * behind every page must stay off there, or it shows a second copy of the picture behind the top bar.
+ */
+fun Destination.drawsOwnPicture(): Boolean =
+    (
+        this is Destination.MediaItem &&
+            (
+                type == BaseItemKind.MOVIE ||
+                    type == BaseItemKind.SERIES ||
+                    type == BaseItemKind.VIDEO ||
+                    type == BaseItemKind.MUSIC_VIDEO
+            )
+    ) ||
+        this is Destination.DiscoveredItem
+
 /** Door pages draw right up to the screen's edges (their picture fills the right side) */
 fun Destination.fullBleed(): Boolean =
     this is Destination.MoviesDoor ||

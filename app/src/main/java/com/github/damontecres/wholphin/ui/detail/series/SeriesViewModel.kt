@@ -368,7 +368,10 @@ class SeriesViewModel
 
         fun onResumePage() {
             state.value.series.successValue?.let { item ->
-                viewModelScope.launchDefault { backdropService.submit(item) }
+                // The show page draws its own picture: only the old overview page uses the shared one
+                if (seriesPageType == SeriesPageType.OVERVIEW) {
+                    viewModelScope.launchDefault { backdropService.submit(item) }
+                }
                 val returning = !firstResume
                 firstResume = false
                 // Benflix: something may have been watched since, so find the next episode again
@@ -674,8 +677,10 @@ class SeriesViewModel
                 _state.update { it.copy(episodes = eps) }
             }
             // Kind of hack to ensure the backdrop is reloaded if needed
-            state.value.series.successValue
-                ?.let { backdropService.submit(it) }
+            if (seriesPageType == SeriesPageType.OVERVIEW) {
+                state.value.series.successValue
+                    ?.let { backdropService.submit(it) }
+            }
         }
 
         /** Benflix: the next-up episode found when the page opened */
