@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -372,21 +373,14 @@ private fun PreviewArea(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.horizontalGradient(
-                            0f to BenflixColors.Tray,
-                            0.3f to BenflixColors.Tray.copy(alpha = .85f),
-                            0.7f to Color.Transparent,
-                        ),
+                        BenflixShade.topAreaSide,
                     ),
             )
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
-                            0.5f to Color.Transparent,
-                            1f to BenflixColors.Tray,
-                        ),
+                        BenflixShade.bottom(0.5f),
                     ),
             )
             if (overlap > 0.dp) {

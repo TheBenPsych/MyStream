@@ -399,8 +399,19 @@ class MainActivity : AppCompatActivity() {
         com.github.damontecres.wholphin.ui.util.FastScroll
             .onKey(event)
         if (screensaverService.state.value.run { show || showDim }) {
+            // Benflix screensaver: OK opens what's on screen, any other button just wakes the app
+            val jump =
+                if (screensaverService.state.value.show &&
+                    event.action == KeyEvent.ACTION_DOWN &&
+                    event.keyCode in OK_KEYS
+                ) {
+                    com.github.damontecres.wholphin.ui.components.ScreensaverJump.item
+                } else {
+                    null
+                }
             screensaverService.stop(false)
             screensaverService.pulse()
+            jump?.let { navigationManager.navigateTo(it.destination()) }
             return true
         } else {
             screensaverService.pulse()
@@ -768,3 +779,6 @@ private val Destination?.isPlayback: Boolean
 
 /** Wait this long after opening before checking for an app update */
 private const val UPDATE_CHECK_DELAY_MS = 8_000L
+
+/** The remote buttons that mean "OK" */
+private val OK_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)

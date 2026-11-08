@@ -81,6 +81,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -1196,7 +1197,12 @@ fun ChannelBanner(
         }
     }
     val favourites by ChannelPrefs.favourites.collectAsState()
-    AnimatedVisibility(visible = banner != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+    AnimatedVisibility(
+        visible = banner != null,
+        enter = fadeIn(BenflixMotion.enter()),
+        exit = fadeOut(BenflixMotion.exit()),
+        modifier = modifier,
+    ) {
         val info = banner ?: return@AnimatedVisibility
         val now = remember(info) { System.currentTimeMillis() }
         Column(

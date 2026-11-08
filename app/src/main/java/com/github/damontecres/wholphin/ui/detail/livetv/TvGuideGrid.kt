@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,6 +41,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.preferences.LiveTvPreferences
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
@@ -57,6 +56,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -128,8 +128,8 @@ fun TvGuideGrid(
                 } else {
                     AnimatedVisibility(
                         visible = tvPrefs.showHeader,
-                        enter = expandVertically(),
-                        exit = shrinkVertically(),
+                        enter = expandVertically(BenflixMotion.enter()),
+                        exit = shrinkVertically(BenflixMotion.exit()),
                     ) {
                         TvGuideHeader(
                             program = focusedProgram,
@@ -144,8 +144,8 @@ fun TvGuideGrid(
                     }
                     AnimatedVisibility(
                         focusedPosition.row < 1,
-                        enter = expandVertically(),
-                        exit = shrinkVertically(),
+                        enter = expandVertically(BenflixMotion.enter()),
+                        exit = shrinkVertically(BenflixMotion.exit()),
                     ) {
                         ExpandableFaButton(
                             title = R.string.view_options,
@@ -263,7 +263,7 @@ fun TvGuideGrid(
                 listOf(
                     DialogItem(
                         watchLiveStr,
-                        Icons.Default.PlayArrow,
+                        BenflixPlayFilled,
                         dismissOnClick = true,
                     ) {
                         viewModel.navigationManager.navigateTo(

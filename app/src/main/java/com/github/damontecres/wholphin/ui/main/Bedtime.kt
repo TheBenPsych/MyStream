@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -230,7 +231,7 @@ fun BedtimeLayer(
     // "15 minutes until bedtime": a small note in the corner, even while watching
     Box(contentAlignment = Alignment.TopEnd, modifier = Modifier.fillMaxSize()) {
         val windDownTurn = popupTurn("winddown", BenflixPopups.WIND_DOWN, kids && windDown)
-        AnimatedVisibility(visible = windDownTurn, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = windDownTurn, enter = fadeIn(BenflixMotion.enter()), exit = fadeOut(BenflixMotion.exit())) {
             Column(
                 modifier =
                     Modifier

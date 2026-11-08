@@ -15,13 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +30,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
@@ -146,14 +141,14 @@ data class BenflixSettingsPageInfo(
 fun PreferenceScreenOption.benflixPageInfo(): BenflixSettingsPageInfo =
     when (this) {
         PreferenceScreenOption.BASIC -> {
-            BenflixSettingsPageInfo(R.string.settings, R.string.benflix_settings_hint_help, Icons.Default.Settings)
+            BenflixSettingsPageInfo(R.string.settings, R.string.benflix_settings_hint_help, BenflixIcon.GEAR.vector)
         }
 
         PreferenceScreenOption.ADVANCED -> {
             BenflixSettingsPageInfo(
                 R.string.benflix_settings_advanced,
                 R.string.benflix_settings_hint_advanced,
-                Icons.Default.Build,
+                BenflixIcon.WRENCH.vector,
             )
         }
 
@@ -161,19 +156,19 @@ fun PreferenceScreenOption.benflixPageInfo(): BenflixSettingsPageInfo =
             BenflixSettingsPageInfo(
                 R.string.exoplayer_options,
                 R.string.benflix_settings_hint_exoplayer,
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
             )
         }
 
         PreferenceScreenOption.MPV -> {
-            BenflixSettingsPageInfo(R.string.mpv_options, R.string.benflix_settings_hint_mpv, Icons.Default.PlayArrow)
+            BenflixSettingsPageInfo(R.string.mpv_options, R.string.benflix_settings_hint_mpv, BenflixPlayFilled)
         }
 
         PreferenceScreenOption.SCREENSAVER -> {
             BenflixSettingsPageInfo(
                 R.string.screensaver_settings,
                 R.string.benflix_settings_hint_screensaver,
-                Icons.Default.Star,
+                BenflixIcon.STAR.vector,
             )
         }
 
@@ -181,7 +176,7 @@ fun PreferenceScreenOption.benflixPageInfo(): BenflixSettingsPageInfo =
             BenflixSettingsPageInfo(
                 R.string.skip_behavior,
                 R.string.benflix_settings_hint_skip,
-                Icons.Default.PlayArrow,
+                BenflixPlayFilled,
             )
         }
 
@@ -189,12 +184,12 @@ fun PreferenceScreenOption.benflixPageInfo(): BenflixSettingsPageInfo =
             BenflixSettingsPageInfo(
                 R.string.experimental_settings,
                 R.string.benflix_settings_hint_experimental,
-                Icons.Default.Warning,
+                BenflixIcon.WARNING.vector,
             )
         }
 
         PreferenceScreenOption.HDR_FORMATS -> {
-            BenflixSettingsPageInfo(R.string.hdr_formats, R.string.benflix_settings_hint_hdr, Icons.Default.Settings)
+            BenflixSettingsPageInfo(R.string.hdr_formats, R.string.benflix_settings_hint_hdr, BenflixIcon.GEAR.vector)
         }
     }
 
@@ -202,7 +197,7 @@ val BenflixProfileSettingsInfo =
     BenflixSettingsPageInfo(
         R.string.profile_specific_settings,
         R.string.benflix_settings_hint_profile_server,
-        Icons.Default.Person,
+        BenflixIcon.PERSON.vector,
     )
 
 /**
@@ -271,7 +266,7 @@ private fun WhereYouArePanel(
                         .background(MaterialTheme.colorScheme.primary),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Settings,
+                    imageVector = BenflixIcon.GEAR.vector,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(26.dp),

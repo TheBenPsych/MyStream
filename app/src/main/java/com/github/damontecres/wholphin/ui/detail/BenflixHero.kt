@@ -17,8 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -36,6 +34,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -70,22 +69,14 @@ fun HeroBackground(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        0f to BenflixColors.Tray.copy(alpha = .94f),
-                        0.4f to BenflixColors.Tray.copy(alpha = .7f),
-                        0.75f to BenflixColors.Tray.copy(alpha = .15f),
-                        1f to Color.Transparent,
-                    ),
+                    BenflixShade.heroSide,
                 ),
         )
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        0.35f to Color.Transparent,
-                        1f to BenflixColors.Tray,
-                    ),
+                    BenflixShade.bottom(0.35f),
                 ),
         )
         Box(

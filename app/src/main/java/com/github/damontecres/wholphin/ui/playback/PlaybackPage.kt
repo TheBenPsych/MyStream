@@ -128,6 +128,7 @@ import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.seasonEpisode
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -572,8 +573,8 @@ fun PlaybackPageContent(
                     !controllerViewState.controlsVisible &&
                         skipIndicatorDuration != 0L &&
                         prefs.dpadSeekMode == DpadSeekMode.SEEKBAR_TRICKPLAY,
-                enter = fadeIn() + slideInVertically { it / 2 },
-                exit = fadeOut() + slideOutVertically { it },
+                enter = fadeIn(BenflixMotion.enter()) + slideInVertically { it / 2 },
+                exit = fadeOut(BenflixMotion.exit()) + slideOutVertically { it },
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter),
@@ -937,8 +938,8 @@ fun PlaybackPageContent(
         // Benflix: a heads-up when there's a scene after the credits
         AnimatedVisibility(
             visible = state.afterCreditsScene,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
@@ -960,8 +961,8 @@ fun PlaybackPageContent(
         BackHandler(movieNext != null) { viewModel.dismissMovieNext() }
         AnimatedVisibility(
             visible = movieNext != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier = Modifier.align(Alignment.BottomEnd),
         ) {
             state.movieNext?.let {
@@ -1093,8 +1094,8 @@ fun PlaybackPageContent(
         val notice = state.notice.takeIf { !controllerViewState.controlsVisible && state.nextUp == null && state.showDone == null }
         AnimatedVisibility(
             visible = notice != null,
-            enter = fadeIn() + slideInVertically { -it / 3 },
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()) + slideInVertically { -it / 3 },
+            exit = fadeOut(BenflixMotion.exit()),
             modifier = Modifier.align(Alignment.TopEnd),
         ) {
             state.notice?.let {

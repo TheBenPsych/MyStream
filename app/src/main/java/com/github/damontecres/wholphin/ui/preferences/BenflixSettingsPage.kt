@@ -19,19 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,6 +54,8 @@ import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.basicPreferences
 import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -101,13 +90,13 @@ private fun iconFor(
     @StringRes title: Int,
 ): ImageVector =
     when (title) {
-        R.string.benflix_settings_profile -> Icons.Default.Person
-        R.string.benflix_settings_watching -> Icons.Default.PlayArrow
-        R.string.benflix_settings_picture -> Icons.Default.Settings
-        R.string.benflix_settings_look -> Icons.Default.Star
-        R.string.benflix_settings_phone -> Icons.Default.Phone
-        R.string.benflix_settings_parental -> Icons.Default.Lock
-        else -> Icons.Default.Info
+        R.string.benflix_settings_profile -> BenflixIcon.PERSON.vector
+        R.string.benflix_settings_watching -> BenflixPlayFilled
+        R.string.benflix_settings_picture -> BenflixIcon.GEAR.vector
+        R.string.benflix_settings_look -> BenflixIcon.STAR.vector
+        R.string.benflix_settings_phone -> BenflixIcon.PHONE.vector
+        R.string.benflix_settings_parental -> BenflixIcon.LOCK.vector
+        else -> BenflixIcon.INFO.vector
     }
 
 /** The sections, built from the same lists the settings search uses, so nothing can go missing */
@@ -131,7 +120,7 @@ private fun buildSections(
                                 SettingsSection(
                                     title = R.string.quick_connect,
                                     hint = R.string.quick_connect_summary,
-                                    icon = Icons.Default.Share,
+                                    icon = BenflixIcon.SHARE.vector,
                                     opensQuickConnect = true,
                                 ),
                             )
@@ -142,7 +131,7 @@ private fun buildSections(
                                 SettingsSection(
                                     title = R.string.benflix_server_page,
                                     hint = R.string.benflix_settings_hint_server,
-                                    icon = Icons.AutoMirrored.Filled.List,
+                                    icon = BenflixIcon.LIST.vector,
                                     destination = Destination.ServerStatus,
                                     adminOnly = true,
                                 ),
@@ -154,7 +143,7 @@ private fun buildSections(
                                 SettingsSection(
                                     title = R.string.benflix_settings_advanced,
                                     hint = R.string.benflix_settings_hint_advanced,
-                                    icon = Icons.Default.Build,
+                                    icon = BenflixIcon.WRENCH.vector,
                                     destination = Destination.Settings(PreferenceScreenOption.ADVANCED),
                                 ),
                             )
@@ -248,7 +237,7 @@ fun BenflixSettingsPage(
                 ProfileHeader(userName)
                 MenuRow(
                     title = stringResource(R.string.benflix_settings_search),
-                    icon = Icons.Default.Search,
+                    icon = BenflixIcon.SEARCH.vector,
                     selected = query.isNotBlank(),
                     supporting = query.ifBlank { null },
                     onClick = { showSearch = true },
@@ -328,7 +317,7 @@ fun BenflixSettingsPage(
                 Card {
                     MenuRow(
                         title = stringResource(R.string.benflix_settings_search),
-                        icon = Icons.Default.Search,
+                        icon = BenflixIcon.SEARCH.vector,
                         selected = false,
                         onClick = { showSearch = true },
                     )
@@ -505,7 +494,7 @@ private fun MenuRow(
                                 .UpdateBang(size = 18.dp)
                             if (chevron) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    imageVector = BenflixIcon.CHEVRON.vector,
                                     contentDescription = null,
                                     modifier = Modifier.padding(start = 6.dp).size(20.dp),
                                 )
@@ -523,7 +512,7 @@ private fun MenuRow(
                 chevron -> {
                     {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            imageVector = BenflixIcon.CHEVRON.vector,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )

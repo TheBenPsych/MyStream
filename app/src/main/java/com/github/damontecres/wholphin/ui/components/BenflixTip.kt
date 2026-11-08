@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlinx.coroutines.delay
@@ -89,7 +90,7 @@ fun BenflixTip(
         }
     }
     Box(modifier = modifier.fillMaxSize(), contentAlignment = alignment) {
-        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(BenflixMotion.enter()), exit = fadeOut(BenflixMotion.exit())) {
             Text(
                 text =
                     buildAnnotatedString {

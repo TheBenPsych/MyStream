@@ -26,8 +26,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -560,7 +558,7 @@ fun ConfirmDeleteDialog(
                             modifier = Modifier.padding(horizontal = 4.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = BenflixIcon.TRASH.vector,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                                 modifier = Modifier,

@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,6 +28,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.formatDuration
@@ -154,7 +153,7 @@ fun SongListItem(
                 modifier = Modifier.size(32.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    imageVector = BenflixIcon.MORE_VERT.vector,
                     contentDescription = stringResource(R.string.more),
                 )
             }
@@ -175,7 +174,7 @@ fun MusicQueueMarker(
 ) {
     if (isPlaying) {
         Icon(
-            imageVector = Icons.Default.PlayArrow,
+            imageVector = BenflixPlayFilled,
             contentDescription = null,
             modifier = modifier,
         )

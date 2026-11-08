@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -163,8 +164,8 @@ fun TrailerShufflePage(
         }
         AnimatedVisibility(
             visible = showInfo,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(BenflixMotion.enter()),
+            exit = fadeOut(BenflixMotion.exit()),
             modifier = Modifier.fillMaxSize(),
         ) {
             Box(

@@ -118,6 +118,9 @@ fun ApplicationContent(
                 }
             },
         )
+        // Picking a door on Home: its colour fills the screen and fades into the door's page
+        com.github.damontecres.wholphin.ui.main
+            .DoorWipeOverlay()
         // Live TV "Remind me" notes, anywhere in the app
         com.github.damontecres.wholphin.ui.main.ChannelReminderNote(
             navigationManager = navigationManager,

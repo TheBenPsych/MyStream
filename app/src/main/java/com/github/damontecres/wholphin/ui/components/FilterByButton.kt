@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -114,7 +111,7 @@ fun FilterByButton(
                 TvDropdownMenuItem(
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = BenflixIcon.TRASH.vector,
                             contentDescription = null,
                             tint = Color.Red.copy(alpha = .8f),
                         )
@@ -145,7 +142,7 @@ fun FilterByButton(
                         leadingIcon = {
                             if (currentValue != null) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = BenflixIcon.CHECK.vector,
                                     contentDescription = "Filter active",
                                 )
                             }
@@ -187,7 +184,7 @@ fun FilterByButton(
                         elevation = 5.dp,
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = BenflixIcon.TRASH.vector,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                             )
@@ -271,7 +268,7 @@ fun FilterByButton(
                             leadingIcon = {
                                 if (isSelected) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        imageVector = BenflixIcon.CHECK.vector,
                                         contentDescription = "Filter active",
                                     )
                                 }
@@ -478,7 +475,7 @@ fun DiscoverFilterByButton(
                 TvDropdownMenuItem(
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = BenflixIcon.TRASH.vector,
                             contentDescription = null,
                             tint = Color.Red.copy(alpha = .8f),
                         )
@@ -509,7 +506,7 @@ fun DiscoverFilterByButton(
                         leadingIcon = {
                             if (currentValue != null) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = BenflixIcon.CHECK.vector,
                                     contentDescription = "Filter active",
                                 )
                             }
@@ -551,7 +548,7 @@ fun DiscoverFilterByButton(
                         elevation = 5.dp,
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = BenflixIcon.TRASH.vector,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                             )
@@ -625,7 +622,7 @@ fun DiscoverFilterByButton(
                             leadingIcon = {
                                 if (isSelected) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        imageVector = BenflixIcon.CHECK.vector,
                                         contentDescription = "Filter active",
                                     )
                                 }

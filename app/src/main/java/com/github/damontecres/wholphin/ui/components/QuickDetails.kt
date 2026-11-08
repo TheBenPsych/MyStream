@@ -3,8 +3,6 @@ package com.github.damontecres.wholphin.ui.components
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.collectAsState
@@ -170,7 +168,7 @@ fun rememberQuickDetailsContentMap(textStyle: TextStyle = MaterialTheme.typograp
                     ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Star,
+                        imageVector = BenflixIcon.STAR.vector,
                         tint = FilledStarColor,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),

@@ -13,8 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -22,6 +20,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
@@ -98,12 +97,7 @@ private fun RequestHeroPicture(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.horizontalGradient(
-                            0f to BenflixColors.Tray.copy(alpha = .94f),
-                            0.4f to BenflixColors.Tray.copy(alpha = .7f),
-                            0.75f to BenflixColors.Tray.copy(alpha = .15f),
-                            1f to Color.Transparent,
-                        ),
+                        BenflixShade.heroSide,
                     ),
             )
         }
@@ -111,10 +105,7 @@ private fun RequestHeroPicture(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        0.35f to Color.Transparent,
-                        1f to BenflixColors.Tray,
-                    ),
+                    BenflixShade.bottom(0.35f),
                 ),
         )
         Box(

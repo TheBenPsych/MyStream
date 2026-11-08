@@ -32,13 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,12 +69,15 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -107,11 +103,11 @@ enum class ServerSection(
     val hint: String,
     val icon: ImageVector,
 ) {
-    OVERVIEW("Overview", "How the server is doing, requests and problems that need you", Icons.Default.Home),
-    NOW("Watching", "Who's watching, and how hard the server works for it", Icons.Default.PlayArrow),
-    LIBRARY("Library", "Movie and show numbers, disk space, the library checkup and downloads", Icons.AutoMirrored.Filled.List),
-    PEOPLE("People", "Accounts for family and friends, and messages to them", Icons.Default.Person),
-    TOOLS("Tools", "Scan for new stuff, the server's chores, tidy track names, and restarting Jellyfin", Icons.Default.Build),
+    OVERVIEW("Overview", "How the server is doing, requests and problems that need you", BenflixIcon.HOME.vector),
+    NOW("Watching", "Who's watching, and how hard the server works for it", BenflixPlayFilled),
+    LIBRARY("Library", "Movie and show numbers, disk space, the library checkup and downloads", BenflixIcon.LIST.vector),
+    PEOPLE("People", "Accounts for family and friends, and messages to them", BenflixIcon.PERSON.vector),
+    TOOLS("Tools", "Scan for new stuff, the server's chores, tidy track names, and restarting Jellyfin", BenflixIcon.WRENCH.vector),
 }
 
 /** Benflix: green, gold or red for the traffic lights */
@@ -661,7 +657,7 @@ fun ServerStatusPage(
                         selected = false,
                         onClick = refreshAll,
                         headlineContent = { Text("Refresh", fontSize = BenflixType.body) },
-                        leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(22.dp)) },
+                        leadingContent = { Icon(BenflixIcon.REFRESH.vector, contentDescription = null, modifier = Modifier.size(22.dp)) },
                         modifier = Modifier.padding(top = 12.dp),
                         scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
@@ -842,7 +838,7 @@ private fun PageHeader(
                 Spacer(Modifier.weight(1f))
                 // Phones also get a button, for people who don't know about pulling down
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = BenflixIcon.REFRESH.vector,
                     contentDescription = "Refresh",
                     modifier =
                         Modifier
@@ -870,7 +866,7 @@ private fun PageHeader(
                     delay(30_000)
                 }
             }
-            AnimatedVisibility(visible = loading, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = loading, enter = fadeIn(BenflixMotion.enter()), exit = fadeOut(BenflixMotion.exit())) {
                 StatusChip(text = "Loading new stats…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (!loading && ago != null) {

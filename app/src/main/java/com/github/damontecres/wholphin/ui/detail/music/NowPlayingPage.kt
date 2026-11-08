@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.findActivity
 import com.github.damontecres.wholphin.ui.nav.Backdrop
 import com.github.damontecres.wholphin.ui.playback.PlaybackKeyHandler
 import com.github.damontecres.wholphin.ui.playback.isUp
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
@@ -206,11 +207,11 @@ fun NowPlayingPage(
             ) {
                 val enter =
                     remember {
-                        expandHorizontally(expandFrom = Alignment.Start) + fadeIn()
+                        expandHorizontally(expandFrom = Alignment.Start) + fadeIn(BenflixMotion.enter())
                     }
                 val exit =
                     remember {
-                        shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                        shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(BenflixMotion.exit())
                     }
                 //noinspection UnnecessaryFullyQualifiedName
                 androidx.compose.animation.AnimatedVisibility(

@@ -34,6 +34,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -67,7 +68,12 @@ fun ChannelReminderNote(
         }
     }
     val due = reminders.firstOrNull { it.startMs - now <= NOTICE_MS && now - it.startMs < LATE_MS }
-    AnimatedVisibility(visible = due != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+    AnimatedVisibility(
+        visible = due != null,
+        enter = fadeIn(BenflixMotion.enter()),
+        exit = fadeOut(BenflixMotion.exit()),
+        modifier = modifier,
+    ) {
         val reminder = due ?: return@AnimatedVisibility
         val first = remember(reminder) { FocusRequester() }
         LaunchedEffect(reminder) { first.tryRequestFocus() }

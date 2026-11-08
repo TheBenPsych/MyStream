@@ -40,22 +40,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -93,6 +77,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.text.Cue
 import androidx.palette.graphics.Palette
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
 import timber.log.Timber
 import java.io.File
@@ -1542,7 +1528,7 @@ class GameActivity : ComponentActivity() {
 
                     MenuPage.PLAYERS -> {
                         Group("Players")
-                        MenuButton("Back", Icons.AutoMirrored.Filled.ArrowBack, Modifier.focusRequester(focus)) {
+                        MenuButton("Back", BenflixIcon.BACK_ARROW.vector, Modifier.focusRequester(focus)) {
                             pairingPort = -1
                             page = MenuPage.MAIN
                         }
@@ -1550,7 +1536,7 @@ class GameActivity : ComponentActivity() {
                     }
 
                     MenuPage.HELP -> {
-                        MenuButton("Done", Icons.Filled.Check, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
+                        MenuButton("Done", BenflixIcon.CHECK.vector, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
                         if (isTv) ButtonKey(console, KeyFor.REMOTE, Modifier.fillMaxWidth())
                         ButtonKey(console, KeyFor.CONTROLLER, Modifier.fillMaxWidth())
                         if (isTv) PhoneTip()
@@ -1568,7 +1554,7 @@ class GameActivity : ComponentActivity() {
                     MenuPage.SAVE, MenuPage.LOAD -> {
                         val saving = page == MenuPage.SAVE
                         Group(if (saving) "Save to a slot" else "Load a save")
-                        MenuButton("Back", Icons.AutoMirrored.Filled.ArrowBack, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
+                        MenuButton("Back", BenflixIcon.BACK_ARROW.vector, Modifier.focusRequester(focus)) { page = MenuPage.MAIN }
                         key(slotsChanged) {
                             if (!saving && hasSpot) {
                                 SlotButton("Where you last stopped", GameSaves.file(saveDir, "state"), GameSaves.file(saveDir, "png")) {
@@ -1613,48 +1599,48 @@ class GameActivity : ComponentActivity() {
 
                     MenuPage.MAIN -> {
                         Group("Game")
-                        MenuButton("Resume", Icons.Filled.PlayArrow, Modifier.focusRequester(focus)) { closeMenu() }
-                        MenuButton("Save", Icons.Filled.Add) { page = MenuPage.SAVE }
+                        MenuButton("Resume", BenflixPlayFilled, Modifier.focusRequester(focus)) { closeMenu() }
+                        MenuButton("Save", BenflixIcon.PLUS.vector) { page = MenuPage.SAVE }
                         if (hasSpot || (1..3).any { GameSaves.file(saveDir, "state$it").exists() }) {
-                            MenuButton("Load", Icons.Filled.DateRange) { page = MenuPage.LOAD }
+                            MenuButton("Load", BenflixIcon.CALENDAR.vector) { page = MenuPage.LOAD }
                         }
-                        MenuButton("Restart game", Icons.Filled.Refresh) {
+                        MenuButton("Restart game", BenflixIcon.REFRESH.vector) {
                             onGameThread { RetroNative.reset() }
                             closeMenu()
                         }
                         if (sideShow != null && canSideShow) {
                             Group("Watch")
                             if (!showOn) {
-                                MenuButton("Watch a show on the side", Icons.Filled.Face) { page = MenuPage.PICK }
+                                MenuButton("Watch a show on the side", BenflixIcon.PERSON.vector) { page = MenuPage.PICK }
                             } else {
-                                MenuButton("Change the show", Icons.Filled.Face) { page = MenuPage.PICK }
-                                MenuButton("Size: ${showSize.label.removePrefix("Show: ")}", Icons.Filled.Menu) { nextShowSize() }
+                                MenuButton("Change the show", BenflixIcon.PERSON.vector) { page = MenuPage.PICK }
+                                MenuButton("Size: ${showSize.label.removePrefix("Show: ")}", BenflixIcon.MENU.vector) { nextShowSize() }
                                 val sound =
                                     when (soundMode) {
                                         0 -> "Sound: show and game"
                                         1 -> "Sound: show only"
                                         else -> "Sound: game only"
                                     }
-                                MenuButton(sound, Icons.Filled.Notifications) {
+                                MenuButton(sound, BenflixIcon.BELL.vector) {
                                     soundMode = (soundMode + 1) % 3
                                     applySound()
                                 }
-                                MenuButton("Stop $showTitle".take(40), Icons.Filled.Close) { stopShow() }
+                                MenuButton("Stop $showTitle".take(40), BenflixIcon.CLOSE.vector) { stopShow() }
                             }
                         }
                         Group("Controls")
-                        MenuButton("Buttons", Icons.Filled.Info) { page = MenuPage.HELP }
-                        MenuButton("Players and remotes", Icons.Filled.Person) { page = MenuPage.PLAYERS }
+                        MenuButton("Buttons", BenflixIcon.INFO.vector) { page = MenuPage.HELP }
+                        MenuButton("Players and remotes", BenflixIcon.PERSON.vector) { page = MenuPage.PLAYERS }
                         if (isTv || gamepadSeen) {
-                            MenuButton(if (sideKey) "Hide the button key" else "Show the button key", Icons.Filled.Edit) {
+                            MenuButton(if (sideKey) "Hide the button key" else "Show the button key", BenflixIcon.PENCIL.vector) {
                                 saveSideKey(!sideKey)
                             }
                         }
                         if (isTv) {
-                            MenuButton("Press Start", Icons.AutoMirrored.Filled.ArrowForward) { tapFromMenu(RetroButton.START) }
-                            MenuButton("Press Select", Icons.AutoMirrored.Filled.ArrowForward) { tapFromMenu(RetroButton.SELECT) }
+                            MenuButton("Press Start", BenflixIcon.ARROW.vector) { tapFromMenu(RetroButton.START) }
+                            MenuButton("Press Select", BenflixIcon.ARROW.vector) { tapFromMenu(RetroButton.SELECT) }
                         }
-                        MenuButton("Quit and save", Icons.AutoMirrored.Filled.ExitToApp) { quit() }
+                        MenuButton("Quit and save", BenflixIcon.SIGN_OUT.vector) { quit() }
                     }
                 }
             }
@@ -1672,7 +1658,7 @@ class GameActivity : ComponentActivity() {
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
-            MenuButton("Cancel", Icons.Filled.Close) { pairingPort = -1 }
+            MenuButton("Cancel", BenflixIcon.CLOSE.vector) { pairingPort = -1 }
             return
         }
         Text(
@@ -1681,7 +1667,7 @@ class GameActivity : ComponentActivity() {
             fontSize = 15.sp,
         )
         for (n in 0..3) {
-            MenuButton("Pair Player ${n + 1}", Icons.Filled.Person) { pairingPort = n }
+            MenuButton("Pair Player ${n + 1}", BenflixIcon.PERSON.vector) { pairingPort = n }
         }
         val devices = remember(devicesChanged) { playDevices() }
         if (devices.isNotEmpty()) Group("Connected")
@@ -1694,7 +1680,7 @@ class GameActivity : ComponentActivity() {
                     fontSize = 15.sp,
                     modifier = Modifier.padding(start = 4.dp, top = 6.dp),
                 )
-                MenuButton(if (asPad) "Use it as a remote instead" else "Use it as a controller instead", Icons.Filled.Edit) {
+                MenuButton(if (asPad) "Use it as a remote instead" else "Use it as a controller instead", BenflixIcon.PENCIL.vector) {
                     prefs().edit().putString("dev_kind_" + d.descriptor, if (asPad) "remote" else "controller").apply()
                     ports.remove(d.id)
                     keyMask.fill(0)
@@ -1703,7 +1689,7 @@ class GameActivity : ComponentActivity() {
                 }
             }
         }
-        MenuButton("Reset players", Icons.Filled.Refresh) {
+        MenuButton("Reset players", BenflixIcon.REFRESH.vector) {
             val p = prefs()
             p
                 .edit()

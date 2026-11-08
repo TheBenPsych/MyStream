@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -76,7 +74,7 @@ fun SimpleStarRating(
             )
             val height = with(LocalDensity.current) { LocalTextStyle.current.fontSize.toDp() }
             Icon(
-                imageVector = Icons.Filled.Star,
+                imageVector = BenflixIcon.STAR.vector,
                 tint = starColor,
                 contentDescription = null,
                 modifier = Modifier.height(height),

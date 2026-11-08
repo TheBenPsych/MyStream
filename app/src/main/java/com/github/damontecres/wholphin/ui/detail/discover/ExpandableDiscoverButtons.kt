@@ -4,8 +4,6 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,6 +19,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.TrailerButton
@@ -188,7 +187,7 @@ fun ExpandableDiscoverButtons(
                 item("cancel") {
                     ExpandablePlayButton(
                         title = R.string.benflix_cancel_my_ask,
-                        icon = Icons.Default.Delete,
+                        icon = BenflixIcon.TRASH.vector,
                         onClick = {
                             firstFocus.tryRequestFocus()
                             cancelOnClick.invoke()
@@ -218,7 +217,7 @@ fun ExpandableDiscoverButtons(
 //            ExpandablePlayButton(
 //                R.string.more,
 //                Duration.ZERO,
-//                Icons.Default.MoreVert,
+//                BenflixIcon.MORE_VERT.vector,
 //                { moreOnClick.invoke() },
 //                Modifier
 //                    .onFocusChanged(buttonOnFocusChanged),

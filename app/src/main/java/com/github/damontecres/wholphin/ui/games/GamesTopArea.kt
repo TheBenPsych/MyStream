@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
@@ -162,17 +163,13 @@ internal fun GamesTopArea(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.horizontalGradient(
-                            0f to BenflixColors.Tray,
-                            0.3f to BenflixColors.Tray.copy(alpha = .85f),
-                            0.7f to Color.Transparent,
-                        ),
+                        BenflixShade.topAreaSide,
                     ),
             )
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to BenflixColors.Tray)),
+                    .background(BenflixShade.bottom(0.5f)),
             )
         }
         if (preview != null) {
