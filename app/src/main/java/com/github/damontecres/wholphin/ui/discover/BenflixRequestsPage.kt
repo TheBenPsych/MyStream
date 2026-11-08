@@ -195,6 +195,7 @@ class BenflixRequestsViewModel
         val navigationManager: NavigationManager,
         private val seerrLink: BenflixSeerrLink,
         private val cantFindList: BenflixCantFind,
+        private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
     ) : ViewModel() {
         val active = seerrService.active
 
@@ -1089,7 +1090,16 @@ class BenflixRequestsViewModel
                         }
                     _requests.value = entries
                     _requestsFailed.value = false
-                    if (!mineOnly) RequestsWaiting.set(entries.count { it.status == RequestStatus.PENDING })
+                    if (!mineOnly) {
+                        // Benflix: you're looking at them now, so they no longer light up the dot on your picture
+                        RequestsWaiting.setWaiting(
+                            entries.filter { it.status == RequestStatus.PENDING }.mapNotNull { it.request.id },
+                        )
+                        RequestsWaiting.markSeen()
+                    }
+                    // Benflix: arrived requests count as seen once you've opened Requests too
+                    requestReady.refresh()
+                    requestReady.markAllSeen()
                     // Benflix: "Couldn't find it" labels; ones that have since arrived are cleared
                     cantFindList.refresh()
                     if (isAdmin) {

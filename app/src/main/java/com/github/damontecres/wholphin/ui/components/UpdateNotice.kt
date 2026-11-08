@@ -62,6 +62,36 @@ object UpdateNotice {
 
     /** How long the tip bubble stays before it goes away by itself */
     const val TIP_MS = 9_000L
+
+    private val _dotHiddenFor = MutableStateFlow<String?>(null)
+
+    /**
+     * The update version "Mark all as seen" hid from the dot on your picture. "Update ready" still shows
+     * in the menu; the dot comes back only when an even newer version is out.
+     */
+    val dotHiddenFor: StateFlow<String?> = _dotHiddenFor
+
+    private fun dotPrefs(context: android.content.Context) =
+        context.applicationContext.getSharedPreferences("benflix_dot", android.content.Context.MODE_PRIVATE)
+
+    fun loadDot(context: android.content.Context) {
+        _dotHiddenFor.value = dotPrefs(context).getString("update-hidden", null)
+    }
+
+    fun hideDot(context: android.content.Context) {
+        val v = _version.value ?: return
+        dotPrefs(context).edit().putString("update-hidden", v).apply()
+        _dotHiddenFor.value = v
+    }
+}
+
+/** True when the update should light up the dot on your picture (not hidden by "Mark all as seen") */
+@Composable
+fun rememberUpdateDot(): Boolean {
+    val alert = rememberUpdateAlert()
+    val version by UpdateNotice.version.collectAsState()
+    val hidden by UpdateNotice.dotHiddenFor.collectAsState()
+    return alert && version != hidden
 }
 
 /** True when the red "!" should show (an update is ready, and this isn't Kids) */
