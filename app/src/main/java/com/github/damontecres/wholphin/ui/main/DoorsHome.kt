@@ -95,7 +95,6 @@ import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneOffset
 import javax.inject.Inject
 
 /** One news pill under the greeting. [door] picks the dot colour (null = white, app news). */
@@ -172,7 +171,7 @@ class HomeDoorsViewModel
 
         /** A new episode (or a new season) of a show you're watching, added in the last 3 days */
         private suspend fun episodeNews(): List<HomeNews> {
-            val cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(NEWS_DAYS)
+            val cutoff = LocalDateTime.now().minusDays(NEWS_DAYS)
             val nextUp =
                 try {
                     api.tvShowsApi

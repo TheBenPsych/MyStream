@@ -281,97 +281,102 @@ fun MyBenflixPage(
         )
         return
     }
+    // TV: the name, week card and buttons scroll up with the rows, so the rows get the whole screen
+    // (before, the rows were squeezed into the bit left at the bottom and their names were cut off)
+    val top: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(top = 12.dp, start = 8.dp),
+            ) {
+                user?.let {
+                    UserIconCardImage(
+                        id = it.id,
+                        name =
+                            if (kids) {
+                                KidsMode.displayName
+                            } else if (GuestMode.isActive) {
+                                "Guest"
+                            } else {
+                                it.name
+                            },
+                        imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
+                        modifier = Modifier.size(56.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        text = "My watching",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = BenflixType.hero,
+                        letterSpacing = 1.sp,
+                    )
+                    Text(
+                        text =
+                            if (kids) {
+                                KidsMode.displayName
+                            } else if (GuestMode.isActive) {
+                                "Guest"
+                            } else {
+                                user?.name.orEmpty()
+                            },
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
+            // Benflix: get the Server page ready in the background for the admin
+            PreloadServerPage(isAdmin = GuestMode.isAdmin(userDto) && !kids)
+            // Approved redesign: My watching is only your own watching. Server lives in the profile menu,
+            // and Parental controls, AniList and MyAnimeList live in Settings. Wrapped = December pop-up + this button.
+            if (!kids && !GuestMode.isActive) {
+                Button(
+                    onClick = { BenflixWrappedButton.press() },
+                    modifier = Modifier.padding(start = 8.dp),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) {
+                    Text("Your year so far")
+                }
+            }
+            // Benflix: this month so far
+            if (!GuestMode.isActive && !KidsMode.isActive) {
+                // Benflix redesign (My watching): this week's big number and door bar, then this month
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(start = 8.dp)) {
+                    WeekWatchingCard(Modifier.weight(1f, fill = false))
+                    MonthStatsCard(Modifier.weight(1f, fill = false))
+                }
+            }
+            if (showParentPin) {
+                ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
+            }
+        }
+    }
+    val list = rows
+    if (list != null && list.isNotEmpty()) {
+        HubRows(
+            rows = list,
+            onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
+            header = top,
+            modifier = modifier.fillMaxSize(),
+        )
+        return
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 12.dp, start = 8.dp),
-        ) {
-            user?.let {
-                UserIconCardImage(
-                    id = it.id,
-                    name =
-                        if (kids) {
-                            KidsMode.displayName
-                        } else if (GuestMode.isActive) {
-                            "Guest"
-                        } else {
-                            it.name
-                        },
-                    imageUrl = if (kids) null else remember(it.id) { viewModel.userImageUrl(it.id) },
-                    modifier = Modifier.size(56.dp),
-                )
-            }
-            Column {
-                Text(
-                    text = "My watching",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = BenflixType.hero,
-                    letterSpacing = 1.sp,
-                )
-                Text(
-                    text =
-                        if (kids) {
-                            KidsMode.displayName
-                        } else if (GuestMode.isActive) {
-                            "Guest"
-                        } else {
-                            user?.name.orEmpty()
-                        },
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
-        // Benflix: get the Server page ready in the background for the admin
-        PreloadServerPage(isAdmin = GuestMode.isAdmin(userDto) && !kids)
-        // Approved redesign: My watching is only your own watching. Server lives in the profile menu,
-        // and Parental controls, AniList and MyAnimeList live in Settings. Wrapped = December pop-up + this button.
-        if (!kids && !GuestMode.isActive) {
-            Button(
-                onClick = { BenflixWrappedButton.press() },
-                modifier = Modifier.padding(start = 8.dp),
-                scale = ButtonDefaults.scale(focusedScale = 1f),
-            ) {
-                Text("Your year so far")
-            }
-        }
-        // Benflix: this month so far
-        if (!GuestMode.isActive && !KidsMode.isActive) {
-            // Benflix redesign (My watching): this week's big number and door bar, then this month
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(start = 8.dp)) {
-                WeekWatchingCard(Modifier.weight(1f, fill = false))
-                MonthStatsCard(Modifier.weight(1f, fill = false))
-            }
-        }
-        if (showParentPin) {
-            ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)
-        }
-        when (val list = rows) {
-            null -> {
-                LoadingPage(Modifier.fillMaxSize())
-            }
-
-            else -> {
-                if (list.isEmpty()) {
-                    Text(
-                        text = "Nothing here yet. Add things to My List or give them a thumbs up.",
-                        fontSize = BenflixType.lead,
-                        modifier = Modifier.padding(top = 32.dp, start = 8.dp),
-                    )
-                } else {
-                    HubRows(
-                        rows = list,
-                        onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
+        top()
+        if (list == null) {
+            LoadingPage(Modifier.fillMaxSize())
+        } else {
+            Text(
+                text = "Nothing here yet. Add things to My List or give them a thumbs up.",
+                fontSize = BenflixType.lead,
+                modifier = Modifier.padding(top = 32.dp, start = 8.dp),
+            )
         }
     }
 }

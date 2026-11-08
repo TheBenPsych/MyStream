@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
 internal data class RowGame(
@@ -180,7 +182,8 @@ private fun GameRow(
     onFocus: (RowGame) -> Unit,
 ) {
     if (games.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // TV: the row name always comes into view with the tiles
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.scrollAsOneBlock()) {
         Text(
             title,
             fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
@@ -190,6 +193,7 @@ private fun GameRow(
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
             val width: Dp = if (isTv) (maxWidth - gap * 6) / 6.5f else maxWidth * 0.42f
+            val tileHeight = gameTileHeight(isTv)
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -202,7 +206,7 @@ private fun GameRow(
                         g,
                         isTv,
                         Modifier
-                            .size(width = width, height = if (isTv) width * 0.62f else 96.dp)
+                            .size(width = width, height = if (isTv) maxOf(width * 0.62f, tileHeight) else maxOf(96.dp, tileHeight))
                             .onFocusChanged { if (it.isFocused) onFocus(g) },
                     )
                 }
@@ -210,6 +214,27 @@ private fun GameRow(
         }
     }
 }
+
+/**
+ * How tall a game tile must be to show everything inside it: padding, the icon square, the name and the kind.
+ * Worked out from the real text sizes (and the reader's text size setting), so the words are never cut in half.
+ */
+@Composable
+internal fun gameTileHeight(
+    isTv: Boolean,
+    padding: Dp = if (isTv) 14.dp else 12.dp,
+    top: Dp = 28.dp,
+): Dp {
+    val density = LocalDensity.current
+    return with(density) {
+        val name = (if (isTv) BenflixType.lead else BenflixType.body).toDp() * TILE_LINE
+        val kind = BenflixType.tag.toDp() * TILE_LINE
+        padding * 2 + top + name + kind + 8.dp
+    }
+}
+
+/** Room for one line of text, as a share of its size (Outfit sits a little tall) */
+private const val TILE_LINE = 1.4f
 
 /** A Benflix game tile (approved redesign): dark card, small colour square with the icon, name and kind. No grow. */
 @Composable

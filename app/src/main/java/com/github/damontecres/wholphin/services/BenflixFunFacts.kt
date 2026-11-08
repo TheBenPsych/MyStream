@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.services
 import android.content.Context
 import androidx.core.content.edit
 import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -281,9 +282,9 @@ class BenflixFunFacts
         ): String? {
             val today = LocalDate.now()
             return movies(api, userId, SAMPLE)
-                .firstOrNull { it.premiereDate?.monthValue == today.monthValue && (it.premiereDate?.year ?: today.year) < today.year }
+                .firstOrNull { it.premiereDay?.monthValue == today.monthValue && (it.premiereDay?.year ?: today.year) < today.year }
                 ?.let {
-                    val years = today.year - it.premiereDate!!.year
+                    val years = today.year - (it.premiereDay?.year ?: today.year)
                     "${it.name} came out $years years ago this month."
                 }
         }

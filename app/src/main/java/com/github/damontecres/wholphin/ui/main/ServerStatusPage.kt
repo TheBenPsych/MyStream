@@ -1108,12 +1108,8 @@ private fun LazyListScope.historyItems(history: List<WatchedEntry>?) {
             return
         }
     val (todays, earlier) =
-        list.partition {
-            it.at
-                .atOffset(java.time.ZoneOffset.UTC)
-                .atZoneSameInstant(zone)
-                .toLocalDate() == today
-        }
+        // The server's times already arrive in this time zone
+        list.partition { it.at.toLocalDate() == today }
     item { SectionTitle("Watched today (${todays.size})") }
     if (todays.isEmpty()) item { ServerActionRow(headline = "Nothing yet today") }
     items(todays.take(HISTORY_SHOWN)) { e -> ServerActionRow(headline = e.text, supporting = e.time) }

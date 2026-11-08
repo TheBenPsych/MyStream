@@ -195,6 +195,7 @@ class BenflixRequestsViewModel
         val navigationManager: NavigationManager,
         private val seerrLink: BenflixSeerrLink,
         private val cantFindList: BenflixCantFind,
+        private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
     ) : ViewModel() {
         val active = seerrService.active
 
@@ -535,6 +536,13 @@ class BenflixRequestsViewModel
                                     )
                                 }
                             }.awaitAll()
+                        }.let { all ->
+                            // Benflix: Japanese anime belongs on the Anime tab, not mixed into Movies and Shows
+                            if (section == FindSection.ANIME) {
+                                all
+                            } else {
+                                all.map { row -> row.copy(items = row.items.filterNot { it.isAnime }) }
+                            }
                         }
                     done(rows)
                 }.invokeOnCompletion { loadingRows.remove(key) }
@@ -574,6 +582,7 @@ class BenflixRequestsViewModel
                             language = language,
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
+                        ?.filterNot { it.isAnime }
                         .orEmpty()
                 } else {
                     val anime = section == FindSection.ANIME
@@ -596,6 +605,7 @@ class BenflixRequestsViewModel
                             language = language,
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
+                        ?.filter { anime || !it.isAnime }
                         .orEmpty()
                 }
             } catch (ex: CancellationException) {
@@ -1089,7 +1099,16 @@ class BenflixRequestsViewModel
                         }
                     _requests.value = entries
                     _requestsFailed.value = false
-                    if (!mineOnly) RequestsWaiting.set(entries.count { it.status == RequestStatus.PENDING })
+                    if (!mineOnly) {
+                        // Benflix: you're looking at them now, so they no longer light up the dot on your picture
+                        RequestsWaiting.setWaiting(
+                            entries.filter { it.status == RequestStatus.PENDING }.mapNotNull { it.request.id },
+                        )
+                        RequestsWaiting.markSeen()
+                    }
+                    // Benflix: arrived requests count as seen once you've opened Requests too
+                    requestReady.refresh()
+                    requestReady.markAllSeen()
                     // Benflix: "Couldn't find it" labels; ones that have since arrived are cleared
                     cantFindList.refresh()
                     if (isAdmin) {

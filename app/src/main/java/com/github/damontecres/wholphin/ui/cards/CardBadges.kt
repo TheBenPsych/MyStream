@@ -16,18 +16,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.NewSeasonBack
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 /*
  * Benflix card badges, all in one place so every card looks the same.
@@ -55,16 +54,19 @@ fun CardWordBadge(
     if (newSeason) {
         CardBadge(
             text = "NEW SEASON",
-            background = MaterialTheme.colorScheme.primary,
+            background = BenflixColors.Text,
+            textColor = BenflixColors.Tray,
             modifier = modifier,
         )
         return
     }
     val isNew = remember(item) { item.isNew }
     if (isNew) {
+        // The same short white NEW pill as the Movies and Shows pages (the longer word didn't fit small posters)
         CardBadge(
-            text = stringResource(if (item.type == BaseItemKind.SERIES) R.string.new_episode else R.string.new_badge),
-            background = MaterialTheme.colorScheme.primary,
+            text = stringResource(R.string.new_badge),
+            background = BenflixColors.Text,
+            textColor = BenflixColors.Tray,
             modifier = modifier,
         )
         return
@@ -125,13 +127,15 @@ fun CardBadge(
     text: String,
     modifier: Modifier = Modifier,
     background: Color = Color.Black.copy(alpha = .78f),
+    textColor: Color = Color.White,
 ) = Text(
     text = text,
     fontSize = BenflixType.tag,
     fontWeight = FontWeight.Bold,
     letterSpacing = .5.sp,
-    color = Color.White,
+    color = textColor,
     maxLines = 1,
+    overflow = TextOverflow.Ellipsis,
     modifier =
         modifier
             .background(background, RoundedCornerShape(6.dp))
@@ -144,7 +148,7 @@ fun CardBadge(
  */
 private val BaseItem.isNew: Boolean
     get() {
-        val cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(NEW_DAYS)
+        val cutoff = LocalDateTime.now().minusDays(NEW_DAYS)
         return when (type) {
             BaseItemKind.SERIES -> {
                 (data.userData?.unplayedItemCount ?: 0) > 0 &&

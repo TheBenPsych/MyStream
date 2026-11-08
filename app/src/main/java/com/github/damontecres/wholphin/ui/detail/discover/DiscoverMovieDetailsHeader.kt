@@ -134,7 +134,7 @@ fun DiscoverMovieDetailsHeader(
                 )
             }
 
-            // Benflix: 4 tags, and "+N more" for the rest
+            // Benflix: 3 tags, and "+N more" for the rest
             movie.id?.let { tmdbId ->
                 SeerrTagsBlock(
                     isMovie = true,

@@ -57,7 +57,6 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.successValue
@@ -266,7 +265,6 @@ fun DiscoverSeriesDetailsContent(
                         verticalArrangement = Arrangement.Bottom,
                         modifier =
                             heroModifier
-                                .scrollAsOneBlock()
                                 .fillMaxWidth()
                                 .bringIntoViewRequester(bringIntoViewRequester),
                     ) {
@@ -515,7 +513,7 @@ fun DiscoverSeriesDetailsHeader(
                     textBoxHeight = Dp.Unspecified,
                 )
             }
-            // Benflix: 4 tags, and "+N more" for the rest
+            // Benflix: 3 tags, and "+N more" for the rest
             series.id?.let { tmdbId ->
                 SeerrTagsBlock(
                     isMovie = false,

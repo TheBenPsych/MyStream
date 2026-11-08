@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /**
  * What the Games top area describes (approved redesign, part 1): the game, console or puzzle
@@ -251,7 +252,7 @@ internal fun LeaderboardRow(
     onFocus: (GamePreview) -> Unit,
 ) {
     if (games.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.scrollAsOneBlock()) {
         Text(
             "Leaderboards",
             fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,

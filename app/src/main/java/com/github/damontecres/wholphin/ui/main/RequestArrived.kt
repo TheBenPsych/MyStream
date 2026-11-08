@@ -91,6 +91,7 @@ class RequestReadyService
                 seerrUserId = id
                 lastCheck = 0L
                 _ready.value = emptyList()
+                hereIds = emptyList()
                 RequestReadyNotice.clear()
             }
         }
@@ -107,9 +108,12 @@ class RequestReadyService
             }
         }
 
-        /** My Benflix was opened: everything there now counts as seen, so the red number goes */
+        // Every arrived request, not just the newest few in the row, so marking them seen clears the dot fully
+        private var hereIds: List<Int> = emptyList()
+
+        /** Requests or My watching was opened (or "Mark all as seen"): every arrival counts as seen, so the dot goes */
         fun markAllSeen() {
-            val ids = _ready.value.map { it.requestId }
+            val ids = hereIds.ifEmpty { _ready.value.map { it.requestId } }
             if (ids.isNotEmpty()) OrderedSeen.add(prefs(), seenKey(), ids.map { it.toString() }, MAX_SEEN)
             RequestReadyNotice.setCount(0)
         }
@@ -167,6 +171,7 @@ class RequestReadyService
                             isMovie = SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE,
                         )
                     }
+                hereIds = here.mapNotNull { it.id }
                 RequestReadyNotice.setCount(here.count { it.id.toString() !in seenNow })
                 // Bubbles in the order they arrived: oldest first. Only the newest few, the rest are just remembered.
                 val fresh = here.filter { it.id.toString() !in tippedNow }

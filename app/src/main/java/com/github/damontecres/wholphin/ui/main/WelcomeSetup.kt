@@ -3,9 +3,7 @@ package com.github.damontecres.wholphin.ui.main
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +50,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -97,10 +94,10 @@ import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
+import com.github.damontecres.wholphin.ui.setup.BenflixAvatarImage
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
 import com.github.damontecres.wholphin.ui.setup.ReadableTextShadow
 import com.github.damontecres.wholphin.ui.setup.benflixAvatarFor
-import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -746,8 +743,7 @@ private fun ProfileTile(
                 Modifier
                     .size(size)
                     .clip(shape)
-                    .background(rememberIdColor(userId))
-                    .border(BorderStroke(3.dp, accent.toColor()), shape),
+                    .background(accent.toColor()),
         ) {
             if (chosen == null && !imageUrl.isNullOrBlank() && !imageError) {
                 AsyncImage(
@@ -758,10 +754,11 @@ private fun ProfileTile(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                Image(
-                    painter = painterResource(chosen ?: benflixAvatarFor(userId, name)),
+                // Their picture on the colour they pick, live as they change it
+                BenflixAvatarImage(
+                    res = chosen ?: benflixAvatarFor(userId, name),
+                    background = accent.toColor(),
                     contentDescription = name,
-                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -812,7 +809,7 @@ private fun PictureStep(
                         shape = ClickableSurfaceDefaults.shape(CircleShape),
                         border =
                             ClickableSurfaceDefaults.border(
-                                border = Border(BorderStroke(3.dp, if (index == chosen) accent.toColor() else Color.Transparent)),
+                                border = Border(BorderStroke(3.dp, if (index == chosen) Color.White else Color.Transparent)),
                                 focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
                             ),
                         modifier =
@@ -821,10 +818,10 @@ private fun PictureStep(
                                 .then(if (index == 0) Modifier.focusRequester(focus) else Modifier),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
-                        Image(
-                            painter = painterResource(res),
+                        BenflixAvatarImage(
+                            res = res,
+                            background = accent.toColor(),
                             contentDescription = "Picture ${index + 1}",
-                            contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                         )
                     }

@@ -63,6 +63,8 @@ import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.lengthText
 import com.github.damontecres.wholphin.ui.door.metaLine
+import com.github.damontecres.wholphin.ui.formatDate
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -605,7 +607,7 @@ private fun DetailsBlock(
                     ?.mapNotNull { it.name }
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { "Studio" to it.take(3).joinToString(", ") },
-                dto.premiereDate?.let { "Released" to it.toLocalDate().toString() },
+                dto.premiereDay?.let { "Released" to formatDate(it) },
                 dto.runTimeTicks?.ticks?.let { "Length" to lengthText(it) },
                 dto.officialRating?.let { "Rated" to it },
                 dto.people

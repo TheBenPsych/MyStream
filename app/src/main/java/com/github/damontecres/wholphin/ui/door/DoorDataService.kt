@@ -390,7 +390,10 @@ class DoorDataService
                     recursive = true,
                     sortBy = listOf(ItemSortBy.DATE_CREATED),
                     sortOrder = listOf(SortOrder.DESCENDING),
-                    fields = listOf(ItemFields.SORT_NAME, ItemFields.DATE_CREATED, ItemFields.DATE_LAST_MEDIA_ADDED),
+                    // Shows also ask for their episode count, which lets the server say how much of each was watched
+                    fields =
+                        listOf(ItemFields.SORT_NAME, ItemFields.DATE_CREATED, ItemFields.DATE_LAST_MEDIA_ADDED) +
+                            if (type == BaseItemKind.SERIES) listOf(ItemFields.RECURSIVE_ITEM_COUNT) else emptyList(),
                     enableUserData = true,
                     limit = EVERYTHING_LIMIT,
                 )

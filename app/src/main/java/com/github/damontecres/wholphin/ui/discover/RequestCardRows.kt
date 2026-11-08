@@ -34,6 +34,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /**
  * Benflix redesign (Requests): the two rows at the top of Movies, Shows and Anime.
@@ -50,7 +51,7 @@ internal fun RequestCardRow(
 ) {
     if (entries.isEmpty()) return
     val isTv = rememberIsTv()
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.scrollAsOneBlock()) {
         Text(
             text = "$title (${entries.size})",
             fontSize = BenflixType.rowName,

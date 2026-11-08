@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import org.jellyfin.sdk.model.api.BaseItemKind
 
 /**
@@ -108,7 +109,7 @@ fun MoodRow(
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().scrollAsOneBlock(),
     ) {
         ItemRowTitle(stringResource(R.string.mood_row_title))
         LazyRow(

@@ -403,7 +403,7 @@ internal fun ConsoleGrid(
                 modifier =
                     Modifier
                         .width(tileWidth)
-                        .height(if (isTv) 104.dp else 92.dp)
+                        .height(maxOf(if (isTv) 104.dp else 92.dp, gameTileHeight(isTv, padding = 12.dp, top = 4.dp)))
                         .onFocusChanged {
                             if (it.isFocused) {
                                 val last = lastPlayed(console)
