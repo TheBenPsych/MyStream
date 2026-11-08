@@ -36,6 +36,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -481,7 +484,36 @@ private fun SignInKeyboard(
         }
     val key = 44.dp
     val gap = 6.dp
-    Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = modifier) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(gap),
+        modifier =
+            modifier.onPreviewKeyEvent { event ->
+                // A real keyboard, the phone remote app's keyboard or the remote's number keys type straight in,
+                // instead of only the keys on screen. Arrows, OK and Back still move around as usual.
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val native = event.nativeKeyEvent
+                when {
+                    native.keyCode == android.view.KeyEvent.KEYCODE_DEL -> {
+                        onValue(value.dropLast(1))
+                        true
+                    }
+
+                    native.unicodeChar > ' '.code && !native.isCtrlPressed && !native.isAltPressed -> {
+                        onValue(value + native.unicodeChar.toChar())
+                        true
+                    }
+
+                    native.keyCode == android.view.KeyEvent.KEYCODE_SPACE -> {
+                        onValue("$value ")
+                        true
+                    }
+
+                    else -> {
+                        false
+                    }
+                }
+            },
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
             NUMBERS.forEachIndexed { i, n ->
                 Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { onValue(value + n) }

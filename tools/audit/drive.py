@@ -398,6 +398,19 @@ def monkey():
 
 
 
+def type_answer(edit, text):
+    """Clear the sign-in answer and type [text] in small pieces (a slow emulator drops letters)"""
+    if MODE != "tv" and edit:
+        tap(edit[0])
+        time.sleep(1)
+        sh("input keyevent MOVE_END")
+    sh("input keyevent " + " ".join(["DEL"] * 60))
+    for i in range(0, len(text), 6):
+        sh("input text '%s'" % text[i : i + 6])
+        time.sleep(0.4)
+    time.sleep(1)
+
+
 def sign_in():
     """Sign in to the demo server (or pick the profile again): look at the screen and do the next sensible thing"""
     typed_server = typed_user = False
@@ -417,6 +430,40 @@ def sign_in():
         if step % 3 == 1:
             shot(f"login-{step}")
         edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
+        # Benflix redesign sign-in: one question per screen (TV types with key presses, which the screen keyboard takes)
+        if find(root, r"^Is this your server\?$") is not None:
+            n = find(root, r"^No, type the address$")
+            if n is not None:
+                tap(n)
+                time.sleep(2)
+                continue
+        if find(root, r"^What's your server address\?$") is not None:
+            if find(root, "^" + re.escape(SERVER) + "$") is None:
+                type_answer(edit, SERVER)
+                shot("typed-server")
+                if find(dump(), "^" + re.escape(SERVER) + "$") is None:
+                    log("server address came out wrong, typing again")
+                    continue
+            n = find(dump(), r"^Next$")
+            if n is not None:
+                tap(n)
+            time.sleep(5)
+            continue
+        if find(root, r"^What's your name\?$") is not None:
+            if find(root, rf"^{USER}$") is None:
+                type_answer(edit, USER)
+                shot("typed-user")
+            n = find(dump(), r"^Next$")
+            if n is not None:
+                tap(n)
+            time.sleep(3)
+            continue
+        if find(root, r"What's your password\?$") is not None:
+            n = find(root, r"^Sign in$")
+            if n is not None:
+                tap(n)
+            time.sleep(5)
+            continue
         if find(root, r"Enter Server IP or URL") is not None and edit:
             if not typed_server or (edit[0].get("text") or "") != SERVER:
                 if MODE != "tv":  # on TV the box already has focus; pressing OK would open the keyboard
