@@ -27,7 +27,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 /*
  * Benflix card badges, all in one place so every card looks the same.
@@ -149,7 +148,7 @@ fun CardBadge(
  */
 private val BaseItem.isNew: Boolean
     get() {
-        val cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(NEW_DAYS)
+        val cutoff = LocalDateTime.now().minusDays(NEW_DAYS)
         return when (type) {
             BaseItemKind.SERIES -> {
                 (data.userData?.unplayedItemCount ?: 0) > 0 &&

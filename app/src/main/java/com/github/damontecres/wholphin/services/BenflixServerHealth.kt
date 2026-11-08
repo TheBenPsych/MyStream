@@ -13,7 +13,6 @@ import org.jellyfin.sdk.model.api.LogLevel
 import org.json.JSONObject
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -88,7 +87,7 @@ class BenflixServerHealth
                 safe {
                     withContext(WholphinDispatchers.IO) {
                         api.activityLogApi
-                            .getLogEntries(0, LOG_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(1))
+                            .getLogEntries(0, LOG_LIMIT, LocalDateTime.now().minusDays(1))
                             .content.items
                             .count { it.severity == LogLevel.ERROR || it.severity == LogLevel.CRITICAL }
                     }

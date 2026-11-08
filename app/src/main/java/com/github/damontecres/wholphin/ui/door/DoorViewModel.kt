@@ -58,6 +58,8 @@ data class DoorPageState(
     val loaded: Boolean = false,
     /** Phones: the "Picked for you" card */
     val pick: BaseItem? = null,
+    /** Nothing came back and the server's libraries couldn't be read either: it's out of reach, not empty */
+    val offline: Boolean = false,
 )
 
 /**
@@ -108,9 +110,21 @@ class DoorViewModel
                         BenflixDoor.SHOWS -> loadShows(userId)
                         else -> Unit
                     }
-                    loadedAt = System.currentTimeMillis()
-                    _state.update { it.copy(loaded = true) }
+                    // Nothing at all and no libraries means the server couldn't be reached: say so, and try again next time
+                    val offline = _state.value.rows.isEmpty() && libraries().isEmpty()
+                    loadedAt = if (offline) 0L else System.currentTimeMillis()
+                    _state.update { it.copy(loaded = true, offline = offline) }
                 }
+        }
+
+        /** "Try again" on the can't-reach-the-server note */
+        fun retry() {
+            val door = door ?: return
+            loadedAt = 0L
+            loadJob?.cancel()
+            this.door = null
+            _state.update { it.copy(loaded = false, offline = false) }
+            start(door)
         }
 
         private suspend fun libraries(): List<Library> =
@@ -165,6 +179,9 @@ class DoorViewModel
                         ),
                 )
             }
+            // Phones: "Picked for you" is chosen once everything is in, so the card doesn't swap to another title
+            var newPick: BaseItem? = null
+            var becausePick: BaseItem? = null
             coroutineScope {
                 val disliked = async { data.disliked(userId) }
                 launch {
@@ -179,7 +196,7 @@ class DoorViewModel
                     val dislikes = disliked.await()
                     val items = data.newest(userId, main + anime + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                     putOrRemove(order, DoorRowData(NEW, "New", items, seeAll = true))
-                    _state.update { st -> st.copy(pick = st.pick ?: pickFrom(items)) }
+                    newPick = pickFrom(items)
                 }
                 if (!easy) {
                     launch {
@@ -195,7 +212,7 @@ class DoorViewModel
                             remove(BECAUSE)
                         } else {
                             put(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
-                            _state.update { st -> st.copy(pick = pickFrom(found.second) ?: st.pick) }
+                            becausePick = pickFrom(found.second)
                         }
                     }
                     launch { moreGenreRow(userId, order, BaseItemKind.MOVIE) }
@@ -210,6 +227,7 @@ class DoorViewModel
                     }
                 }
             }
+            _state.update { st -> st.copy(pick = st.pick ?: becausePick ?: newPick) }
         }
 
         private suspend fun loadShows(userId: UUID) {
@@ -234,6 +252,9 @@ class DoorViewModel
                         ),
                 )
             }
+            // Phones: "Picked for you" is chosen once everything is in, so the card doesn't swap to another title
+            var newPick: BaseItem? = null
+            var becausePick: BaseItem? = null
             coroutineScope {
                 val disliked = async { data.disliked(userId) }
                 val animeIds = async { data.idsIn(userId, anime, BaseItemKind.SERIES) }
@@ -253,7 +274,7 @@ class DoorViewModel
                     val dislikes = disliked.await()
                     val items = data.newest(userId, main + anime, BaseItemKind.SERIES).filter { it.id !in dislikes }
                     putOrRemove(order, DoorRowData(NEW_SHOWS, "New shows", items, seeAll = true))
-                    _state.update { st -> st.copy(pick = st.pick ?: pickFrom(items)) }
+                    newPick = pickFrom(items)
                 }
                 if (!easy) {
                     launch {
@@ -268,7 +289,7 @@ class DoorViewModel
                             remove(BECAUSE)
                         } else {
                             put(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
-                            _state.update { st -> st.copy(pick = pickFrom(found.second) ?: st.pick) }
+                            becausePick = pickFrom(found.second)
                         }
                     }
                     launch { moreGenreRow(userId, order, BaseItemKind.SERIES) }
@@ -283,6 +304,7 @@ class DoorViewModel
                     }
                 }
             }
+            _state.update { st -> st.copy(pick = st.pick ?: becausePick ?: newPick) }
         }
 
         /** Something unwatched with a wide picture, for the phone's "Picked for you" card */
