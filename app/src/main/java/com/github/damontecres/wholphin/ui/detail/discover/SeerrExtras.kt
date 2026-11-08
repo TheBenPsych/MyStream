@@ -501,7 +501,7 @@ fun SeerrExtrasBlock(
 }
 
 /**
- * Benflix: the title's tags under the description, grown-up ones first and in red. Shows 4, and a
+ * Benflix: the title's tags under the description, grown-up ones first and in red. Shows 3 (so "+N more" fits on the same line), and a
  * "+N more" button opens the rest.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -558,7 +558,7 @@ fun SeerrTagsBlock(
     }
 }
 
-private const val COLLAPSED_TAGS = 4
+private const val COLLAPSED_TAGS = 3
 private val IMDB_GOLD = Color(0xFFF5C518)
 private val ANILIST_BLUE = Color(0xFF3DB4F2)
 private val MAL_BLUE = Color(0xFF6A8CD8)

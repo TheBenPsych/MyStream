@@ -535,6 +535,13 @@ class BenflixRequestsViewModel
                                     )
                                 }
                             }.awaitAll()
+                        }.let { all ->
+                            // Benflix: Japanese anime belongs on the Anime tab, not mixed into Movies and Shows
+                            if (section == FindSection.ANIME) {
+                                all
+                            } else {
+                                all.map { row -> row.copy(items = row.items.filterNot { it.isAnime }) }
+                            }
                         }
                     done(rows)
                 }.invokeOnCompletion { loadingRows.remove(key) }
@@ -574,6 +581,7 @@ class BenflixRequestsViewModel
                             language = language,
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
+                        ?.filterNot { it.isAnime }
                         .orEmpty()
                 } else {
                     val anime = section == FindSection.ANIME
@@ -596,6 +604,7 @@ class BenflixRequestsViewModel
                             language = language,
                         ).results
                         ?.map { seerrService.createDiscoverItem(it) }
+                        ?.filter { anime || !it.isAnime }
                         .orEmpty()
                 }
             } catch (ex: CancellationException) {

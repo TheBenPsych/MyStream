@@ -436,6 +436,7 @@ class SeerrService
                         ?.toString()
                         ?.toDoubleOrNull()
                         ?.takeIf { it > 0 },
+                isAnime = movie.genreIds?.contains(16) == true && movie.originalLanguage == "ja",
             )
 
         suspend fun createDiscoverItem(movie: MovieDetails): DiscoverItem =
@@ -475,6 +476,7 @@ class SeerrService
                         ?.toString()
                         ?.toDoubleOrNull()
                         ?.takeIf { it > 0 },
+                isAnime = tv.genreIds?.contains(16) == true && tv.originalLanguage == "ja",
             )
 
         suspend fun createDiscoverItem(tv: TvDetails): DiscoverItem =
