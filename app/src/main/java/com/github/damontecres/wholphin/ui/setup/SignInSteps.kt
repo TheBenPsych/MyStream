@@ -482,6 +482,14 @@ private fun SignInKeyboard(
         } else {
             ABC
         }
+    // Keys pressed quickly (a real keyboard) arrive before the screen redraws, so each one builds on the last
+    // thing typed, not on the answer as last drawn (which dropped and mixed up letters)
+    val latest = remember { arrayOf(value) }
+    if (latest[0] != value) latest[0] = value
+    val type = { text: String ->
+        latest[0] = text
+        onValue(text)
+    }
     val key = 44.dp
     val gap = 6.dp
     Column(
@@ -494,17 +502,17 @@ private fun SignInKeyboard(
                 val native = event.nativeKeyEvent
                 when {
                     native.keyCode == android.view.KeyEvent.KEYCODE_DEL -> {
-                        onValue(value.dropLast(1))
+                        type(latest[0].dropLast(1))
                         true
                     }
 
                     native.unicodeChar > ' '.code && !native.isCtrlPressed && !native.isAltPressed -> {
-                        onValue(value + native.unicodeChar.toChar())
+                        type(latest[0] + native.unicodeChar.toChar())
                         true
                     }
 
                     native.keyCode == android.view.KeyEvent.KEYCODE_SPACE -> {
-                        onValue("$value ")
+                        type(latest[0] + " ")
                         true
                     }
 
@@ -516,16 +524,16 @@ private fun SignInKeyboard(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
             NUMBERS.forEachIndexed { i, n ->
-                Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { onValue(value + n) }
+                Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { type(latest[0] + n) }
             }
-            Key("Delete", key * 2 + gap, onLongClick = { onValue("") }) { onValue(value.dropLast(1)) }
+            Key("Delete", key * 2 + gap, onLongClick = { type("") }) { type(latest[0].dropLast(1)) }
         }
         letters.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 row.forEach { l ->
                     val typed = if (upper) l.uppercase() else l
                     Key(typed, key) {
-                        onValue(value + typed)
+                        type(latest[0] + typed)
                         // Shift is for one letter, like a phone
                         if (upper) upper = false
                     }
@@ -547,7 +555,7 @@ private fun SignInKeyboard(
                     }
                 }
             }
-            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { onValue("$value ") }
+            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { type(latest[0] + " ") }
             Key(if (qwerty) "A-Z" else "QWERTY", key * 2 + gap) { qwerty = !qwerty }
             Key("Done", key * 2 + gap, white = true) { onDone() }
         }
