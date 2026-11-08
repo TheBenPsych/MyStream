@@ -66,6 +66,7 @@ import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.progress
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -75,7 +76,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
-import java.time.LocalDateTime
 
 /** What the show page can do */
 class SeriesHeroActions(
@@ -575,7 +575,7 @@ private fun EpisodeCard(
             )
         }
     val progress = remember(episode) { episode.progress() }
-    val upcoming = episode.data.premiereDate?.isAfter(LocalDateTime.now()) == true
+    val upcoming = episode.data.premiereDay?.isAfter(java.time.LocalDate.now()) == true
     val shape = RoundedCornerShape(10.dp)
     Column(Modifier.width(width)) {
         Surface(
@@ -660,8 +660,10 @@ private fun EpisodeCard(
             modifier = Modifier.padding(top = 6.dp),
         )
         if (upcoming) {
-            episode.data.premiereDate?.let {
-                Text(text = "Coming ${it.toLocalDate()}", color = BenflixColors.Muted, fontSize = BenflixType.tag)
+            episode.data.premiereDay?.let {
+                // "Coming Sat, Nov 8" instead of "Coming 2026-11-08"
+                val day = remember(it) { it.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d", java.util.Locale.getDefault())) }
+                Text(text = "Coming $day", color = BenflixColors.Muted, fontSize = BenflixType.tag)
             }
         }
     }

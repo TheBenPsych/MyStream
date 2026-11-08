@@ -9,7 +9,6 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.Duration
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 /**
  * Benflix Smart resume: when you come back to something you stopped part way through,
@@ -17,10 +16,10 @@ import java.time.ZoneOffset
  * Less than a day away: 5 seconds. A day or more: 15 seconds. A week or more: 30 seconds.
  */
 object SmartResume {
-    /** @param lastPlayed when it was last played, in UTC (that's what Jellyfin sends) */
+    /** @param lastPlayed when it was last played (Jellyfin's time, already in this time zone) */
     fun rewindMs(
         lastPlayed: LocalDateTime?,
-        now: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC),
+        now: LocalDateTime = LocalDateTime.now(),
     ): Long {
         if (lastPlayed == null) return 5_000L
         val away = Duration.between(lastPlayed, now)

@@ -44,7 +44,6 @@ import timber.log.Timber
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
-import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -160,8 +159,12 @@ class MonthStatsViewModel
             )
         }
 
-        // Jellyfin dates are in UTC
-        private fun toMs(date: LocalDateTime) = date.toInstant(ZoneOffset.UTC).toEpochMilli()
+        // Jellyfin dates arrive already moved into this time zone
+        private fun toMs(date: LocalDateTime) =
+            date
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
     }
 
 /** "Your November": hours watched, top genre and most-watched show */

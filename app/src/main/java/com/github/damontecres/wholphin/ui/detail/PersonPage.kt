@@ -61,11 +61,13 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
+import com.github.damontecres.wholphin.ui.endDay
 import com.github.damontecres.wholphin.ui.formatDate
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
@@ -285,8 +287,8 @@ fun PersonPage(
                 name = name,
                 overview = person.data.overview,
                 imageUrl = imageUrl,
-                birthdate = person.data.premiereDate?.toLocalDate(),
-                deathdate = person.data.endDate?.toLocalDate(),
+                birthdate = person.data.premiereDay,
+                deathdate = person.data.endDay,
                 birthPlace = person.data.productionLocations?.firstOrNull(),
                 favorite = person.favorite,
                 movies = state.movies,

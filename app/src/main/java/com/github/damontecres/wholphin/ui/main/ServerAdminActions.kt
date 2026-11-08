@@ -27,8 +27,6 @@ import org.jellyfin.sdk.model.api.TaskInfo
 import org.jellyfin.sdk.model.api.TaskState
 import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
@@ -133,12 +131,8 @@ class BenflixServerActions
                             running = task.state != TaskState.IDLE,
                             progress = task.currentProgressPercentage?.toInt(),
                             lastRun =
-                                result?.endTimeUtc?.let {
-                                    it
-                                        .atOffset(ZoneOffset.UTC)
-                                        .atZoneSameInstant(ZoneId.systemDefault())
-                                        .format(format)
-                                },
+                                // The server's times already arrive in this time zone
+                                result?.endTimeUtc?.format(format),
                             failed = result?.status == TaskCompletionStatus.FAILED || result?.status == TaskCompletionStatus.ABORTED,
                             error = result?.errorMessage,
                         )

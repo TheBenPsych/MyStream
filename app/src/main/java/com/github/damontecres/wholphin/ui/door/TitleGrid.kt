@@ -46,6 +46,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -336,7 +337,7 @@ private fun List<BaseItem>.sortedFor(sort: TitleSort): List<BaseItem> =
 
         TitleSort.YEAR -> {
             sortedByDescending {
-                it.data.premiereDate?.toLocalDate()
+                it.data.premiereDay
                     ?: it.data.productionYear?.let { y -> LocalDate.of(y, 1, 1) }
             }
         }
@@ -397,7 +398,7 @@ private fun headingFor(
         }
 
         TitleSort.YEAR -> {
-            val year = item.data.premiereDate?.year ?: item.data.productionYear
+            val year = item.data.premiereDay?.year ?: item.data.productionYear
             when {
                 year == null -> "Year unknown"
                 year >= today.year - 1 -> year.toString()

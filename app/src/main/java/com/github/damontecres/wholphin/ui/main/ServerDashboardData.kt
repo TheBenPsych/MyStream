@@ -41,8 +41,6 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -340,7 +338,7 @@ class ServerDashboardData
         private suspend fun readHistory(): List<WatchedEntry> {
             val dayFormat = DateTimeFormatter.ofPattern("EEE h:mm a")
             return api.activityLogApi
-                .getLogEntries(0, HISTORY_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(7), true)
+                .getLogEntries(0, HISTORY_LIMIT, LocalDateTime.now().minusDays(7), true)
                 .content.items
                 .filter { it.type.equals("VideoPlayback", ignoreCase = true) }
                 .sortedByDescending { it.date }
@@ -349,11 +347,8 @@ class ServerDashboardData
                         text = it.name,
                         userId = it.userId,
                         at = it.date,
-                        time =
-                            it.date
-                                .atOffset(ZoneOffset.UTC)
-                                .atZoneSameInstant(ZoneId.systemDefault())
-                                .format(dayFormat),
+                        // The server's times already arrive in this time zone
+                        time = it.date.format(dayFormat),
                     )
                 }
         }
@@ -560,7 +555,7 @@ class ServerDashboardData
                 ).content.totalRecordCount
 
         private suspend fun countAddedThisWeek(): Int {
-            val weekAgo = LocalDateTime.now(ZoneOffset.UTC).minusDays(7)
+            val weekAgo = LocalDateTime.now().minusDays(7)
             var count = 0
             var start = 0
             while (start < MAX_RECENT) {
@@ -592,7 +587,7 @@ class ServerDashboardData
             val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
             val entries =
                 api.activityLogApi
-                    .getLogEntries(0, LOG_LIMIT, LocalDateTime.now(ZoneOffset.UTC).minusDays(1))
+                    .getLogEntries(0, LOG_LIMIT, LocalDateTime.now().minusDays(1))
                     .content.items
                     .filter { it.severity == LogLevel.ERROR || it.severity == LogLevel.CRITICAL }
             // Newest first; the same problem many times shows once with "×N"
@@ -603,11 +598,7 @@ class ServerDashboardData
                     val newest = list.maxBy { it.first.date }.first
                     ServerProblem(
                         text = text,
-                        time =
-                            newest.date
-                                .atOffset(ZoneOffset.UTC)
-                                .atZoneSameInstant(ZoneId.systemDefault())
-                                .format(timeFormat),
+                        time = newest.date.format(timeFormat),
                         tip = list.first().second.second,
                         count = list.size,
                     ) to newest.date
