@@ -6,6 +6,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
+import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -256,7 +257,19 @@ class BenflixCantFind
                                 request.media?.status != SeerrAvailability.PARTIALLY_AVAILABLE.status &&
                                 (daysSince(request.updatedAt ?: request.createdAt) ?: 0) >= AUTO_DAYS
                         }
-                    val byKey = old.groupBy { it.cantFindKey() }.filterKeys { it != null && it !in known }
+                    // Benflix: Ben stopped these by hand (taken out of Radarr / Sonarr), so nothing is searching any more
+                    val stopped = all.filter { !it.auto && !it.keepLooking }.map { it.key }.toSet()
+                    val lookDays = RequestsWaiting.LOOK_YOURSELF_DAYS
+                    val byKey =
+                        old
+                            .groupBy { it.cantFindKey() }
+                            .filterKeys { key -> key != null && (key !in known || key !in stopped) }
+                            .filter { (key, asks) ->
+                                // Already labelled: only worth a look-up once it could be two weeks in
+                                key !in known ||
+                                    asks.any { (daysSince(it.updatedAt ?: it.createdAt) ?: 0) >= lookDays }
+                            }
+                    val lookYourself = mutableSetOf<String>()
                     val toMark =
                         byKey.mapNotNull { (key, asks) ->
                             val first = asks.first()
@@ -281,6 +294,9 @@ class BenflixCantFind
                             ) {
                                 return@mapNotNull null
                             }
+                            // Benflix (Ben, 2026-11-08): two weeks of searching with nothing found, so he starts looking himself
+                            if (looking >= lookDays) lookYourself += key!!
+                            if (key in known) return@mapNotNull null
                             val title = ((raw["title"] ?: raw["name"]) as? JsonPrimitive)?.contentOrNull
                             val poster = (raw["posterPath"] as? JsonPrimitive)?.contentOrNull?.let { TMDB_POSTER + it }
                             CantFindEntry(
@@ -292,6 +308,7 @@ class BenflixCantFind
                                 auto = true,
                             )
                         }
+                    RequestsWaiting.setLookYourself(lookYourself)
                     if (toMark.isEmpty()) return@withContext
                     // Benflix: only the label. Nothing is taken out of Radarr / Sonarr or blocked in Seerr by itself:
                     // "nothing downloading and not on Benflix yet" is also what it looks like in the gap after
