@@ -24,6 +24,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -46,8 +48,6 @@ import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Benflix: this month so far, on My Benflix */
 data class MonthStats(

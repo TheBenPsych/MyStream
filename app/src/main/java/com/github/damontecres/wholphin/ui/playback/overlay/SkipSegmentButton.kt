@@ -16,9 +16,9 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.skipStringRes
-import org.jellyfin.sdk.model.api.MediaSegmentType
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import org.jellyfin.sdk.model.api.MediaSegmentType
 
 /**
  * Benflix redesign (sk-words): one white pill that says what it skips, "Skip recap", "Skip intro" or

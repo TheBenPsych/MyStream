@@ -28,12 +28,12 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.github.damontecres.wholphin.ui.AspectRatios
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Genre
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import java.util.UUID
-import com.github.damontecres.wholphin.ui.Cards
 
 @Composable
 fun GenreCard(
@@ -72,9 +72,9 @@ fun GenreCard(
             CardDefaults.colors(
                 containerColor = Color.Transparent,
             ),
-            scale = CardDefaults.scale(focusedScale = 1f),
-            shape = CardDefaults.shape(Cards.focusShape),
-            border = Cards.focusBorder(),
+        scale = CardDefaults.scale(focusedScale = 1f),
+        shape = CardDefaults.shape(Cards.focusShape),
+        border = Cards.focusBorder(),
     ) {
         Box(
             contentAlignment = Alignment.Center,

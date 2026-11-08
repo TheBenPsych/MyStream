@@ -37,6 +37,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +47,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** One rule on the side of the grid, like "Has Keanu Reeves" or "Made in the 90s" */
 data class GridRule(
@@ -404,7 +404,7 @@ private fun GridBoard(
                             Modifier
                                 .size(cell)
                                 .then(if (i == firstEmpty) Modifier.focusRequester(focus) else Modifier),
-                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         if (t != null) {
                             AsyncImage(

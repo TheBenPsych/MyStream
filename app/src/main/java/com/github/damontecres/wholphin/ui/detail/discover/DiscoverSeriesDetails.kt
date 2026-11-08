@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -63,7 +64,6 @@ import com.github.damontecres.wholphin.util.successValue
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import kotlin.math.roundToInt
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun DiscoverSeriesDetails(

@@ -40,6 +40,7 @@ import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.services.MalScores
 import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,7 +63,6 @@ import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.roundToInt
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix: extra facts for a movie or show you could ask for: age rating, where it's from, IMDb and Rotten

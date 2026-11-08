@@ -23,11 +23,11 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.NewSeasonBack
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.LocalDateTime
 import java.time.ZoneOffset
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
  * Benflix card badges, all in one place so every card looks the same.

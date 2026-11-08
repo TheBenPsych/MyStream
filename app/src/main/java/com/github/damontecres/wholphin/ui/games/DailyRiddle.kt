@@ -39,7 +39,10 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LibraryKind
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -65,9 +68,6 @@ import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 sealed interface RiddleState {
     data object Loading : RiddleState
@@ -662,7 +662,7 @@ private fun RiddleRound(
                         Modifier
                             .weight(1f)
                             .then(if (r == 0 && c == 0) Modifier.focusRequester(firstFocus) else Modifier),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }

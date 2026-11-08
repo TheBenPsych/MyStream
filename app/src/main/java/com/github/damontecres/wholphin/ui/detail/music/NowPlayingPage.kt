@@ -51,6 +51,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.state.rememberCurrentMediaItemState
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -74,7 +75,6 @@ import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.extensions.ticks
 import java.util.Date
 import kotlin.time.Duration.Companion.seconds
-import androidx.tv.material3.ButtonDefaults
 
 @OptIn(UnstableApi::class)
 @Composable

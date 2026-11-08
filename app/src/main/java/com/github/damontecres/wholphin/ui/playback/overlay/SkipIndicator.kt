@@ -23,8 +23,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.ifElse
-import kotlin.math.abs
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import kotlin.math.abs
 
 /**
  * Shows a rotating indicator when seeking. Displays the amount of seconds in the [durationMs].

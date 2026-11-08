@@ -67,6 +67,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -76,8 +78,6 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /**
  * Benflix redesign: the inside of the Movies and Shows doors (approved mv-preview + pv-fade).
@@ -682,7 +682,13 @@ private fun PickedCard(
                 )
                 val meta = remember(item) { metaLine(item) }
                 if (meta.isNotEmpty()) {
-                    Text(text = meta, color = BenflixColors.Soft, fontSize = BenflixType.tag, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                    Text(
+                        text = meta,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.tag,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
         }

@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
@@ -80,6 +81,8 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -97,9 +100,6 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.PlaystateCommand
 import timber.log.Timber
 import javax.inject.Inject
-import androidx.tv.material3.ListItemDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Benflix: the parts of the Server page, like the menu in Jellyfin's Dashboard */
 enum class ServerSection(
@@ -953,7 +953,7 @@ private fun GlanceRow(
                         .width(170.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(ServerCardColor),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
+                scale = ListItemDefaults.scale(focusedScale = 1f),
             )
         }
     }
@@ -1479,7 +1479,13 @@ private fun DiskBar(disk: ServerDisk) {
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(text = disk.name, fontSize = BenflixType.body, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(
+                text = disk.name,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
             Text(
                 text = "${sizeText(disk.freeBytes)} free of ${sizeText(disk.totalBytes)}",
                 fontSize = BenflixType.small,

@@ -14,8 +14,8 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.CardDefaults
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.ImageUrlService
-import org.jellyfin.sdk.model.api.ItemFields
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import org.jellyfin.sdk.model.api.ItemFields
 
 // This file is for constants used for the UI
 

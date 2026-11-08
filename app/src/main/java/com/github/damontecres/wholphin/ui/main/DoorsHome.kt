@@ -75,6 +75,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playIntroSound
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.StartupTimer
@@ -95,7 +96,6 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One news pill under the greeting. [door] picks the dot colour (null = white, app news). */
 data class HomeNews(

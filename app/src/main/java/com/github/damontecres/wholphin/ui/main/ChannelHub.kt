@@ -51,13 +51,13 @@ import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** How a channel type is named on its tile and in the side guide */
 internal fun groupLabel(group: String): String =
@@ -271,7 +271,13 @@ internal fun HideTypesDialog(
                     .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
                     .padding(18.dp),
         ) {
-            Text("Channel types", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
+            Text(
+                "Channel types",
+                fontFamily = BenflixFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = BenflixType.pageTitle,
+                color = Color.White,
+            )
             Text("Turn off the types you never watch.", fontSize = BenflixType.small, color = Muted)
             val first = remember { FocusRequester() }
             LaunchedEffect(Unit) {
@@ -304,7 +310,12 @@ internal fun HideTypesDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         ) {
-                            Text(groupLabel(group), fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text(
+                                groupLabel(group),
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
                             Text(
                                 text = if (shown) "Shown" else "Hidden",
                                 fontSize = BenflixType.tag,

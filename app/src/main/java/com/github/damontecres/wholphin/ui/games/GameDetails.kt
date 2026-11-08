@@ -46,10 +46,10 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** What the game details page shows besides the buttons */
 data class GameInfo(
@@ -194,7 +194,12 @@ fun GameDetailsPage(
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState()),
                     ) {
-                        Text(ref.name, fontSize = if (isTv) BenflixType.hero else BenflixType.rowName, fontWeight = FontWeight.Black, color = Color.White)
+                        Text(
+                            ref.name,
+                            fontSize = if (isTv) BenflixType.hero else BenflixType.rowName,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                        )
                         val facts =
                             listOfNotNull(
                                 ref.consoleName,
@@ -204,7 +209,11 @@ fun GameDetailsPage(
                                 playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
                                 if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download" else null,
                             )
-                        Text(facts.joinToString("  ·  "), fontSize = if (isTv) BenflixType.body else BenflixType.tag, color = BenflixColors.Soft)
+                        Text(
+                            facts.joinToString("  ·  "),
+                            fontSize = if (isTv) BenflixType.body else BenflixType.tag,
+                            color = BenflixColors.Soft,
+                        )
                         // Buttons
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (choice.resume) {
@@ -304,7 +313,13 @@ private fun SaveTile(
                 )
             }
         }
-        Text(spot.title, fontSize = if (isTv) BenflixType.small else BenflixType.tag, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        Text(
+            spot.title,
+            fontSize = if (isTv) BenflixType.small else BenflixType.tag,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 1,
+        )
         Text(savedAgoText(spot.time), fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
     }
 }
@@ -342,7 +357,12 @@ private fun DetailButton(
             ),
         modifier = modifier,
     ) {
-        Text(text, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+        Text(
+            text,
+            fontSize = BenflixType.body,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+        )
     }
 }
 
@@ -413,7 +433,14 @@ private fun TvGameHero(
                     .padding(start = 56.dp, end = 56.dp, top = 40.dp, bottom = 32.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth(0.5f)) {
-                Text(ref.name, fontSize = BenflixType.hero, lineHeight = BenflixType.hero * 1.1f, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2)
+                Text(
+                    ref.name,
+                    fontSize = BenflixType.hero,
+                    lineHeight = BenflixType.hero * 1.1f,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    maxLines = 2,
+                )
                 val facts =
                     listOfNotNull(
                         ref.consoleName,

@@ -59,15 +59,15 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.PreviewPlayers
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import timber.log.Timber
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix: YouTube trailers play in a pop-up inside the app (no jumping out to the YouTube app,
@@ -481,7 +481,13 @@ private fun FailedMessage(
                 ) { Text("Open in YouTube") }
                 Button(onClick = onClose, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Close") }
             } else {
-                Button(onClick = onClose, modifier = Modifier.focusRequester(buttonFocus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Close") }
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier.focusRequester(buttonFocus),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) {
+                    Text("Close")
+                }
             }
         }
         Box(modifier = Modifier.weight(1f).size(1.dp))

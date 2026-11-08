@@ -57,9 +57,9 @@ import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ServerGame
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /**
  * Leaderboards at the top of Games: "Your high scores" on one half and everyone's top scores on the other
@@ -183,7 +183,14 @@ internal fun BoardLine(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(Modifier.weight(0.42f)) {
-            Text(game, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                game,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (ranked != null) {
                 Text(ranked, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -338,7 +345,12 @@ internal fun SortChip(
                 focusedContentColor = Color.Black,
             ),
     ) {
-        Text(text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text(
+            text,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
     }
 }
 

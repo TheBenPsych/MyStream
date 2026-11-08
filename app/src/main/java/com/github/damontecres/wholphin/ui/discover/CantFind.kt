@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -48,6 +49,7 @@ import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.services.CantFindOutcome
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,8 +57,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** The orange-red used for "Couldn't find it" everywhere */
 val CANT_FIND_COLOR = Color(0xFFF07A3E)
@@ -176,7 +176,10 @@ fun CantFindDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (typed.isNotBlank()) {
-                    Button(onClick = { onMark(typed) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Save my note", maxLines = 1) }
+                    Button(
+                        onClick = { onMark(typed) },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    ) { Text("Save my note", maxLines = 1) }
                 }
                 Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
             }
@@ -246,7 +249,10 @@ fun CantFindBlock(
                 )
             }
             if (viewModel.isAdmin) {
-                Button(onClick = { viewModel.undo(key) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1) }
+                Button(
+                    onClick = { viewModel.undo(key) },
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) { Text("Try again", maxLines = 1) }
             }
         }
         CantFindNoteLine(entry)
@@ -282,7 +288,9 @@ fun CantFindOnlyRow(
     val isTv = rememberIsTv()
     val buttons: @Composable () -> Unit = {
         Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Details", maxLines = 1, softWrap = false) }
-        onTryAgain?.let { Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) } }
+        onTryAgain?.let {
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) }
+        }
     }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),

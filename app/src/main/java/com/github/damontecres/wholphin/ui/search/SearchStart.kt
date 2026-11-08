@@ -36,8 +36,8 @@ import com.github.damontecres.wholphin.ui.main.MoodRow
 import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
  * Benflix recent searches, kept per account (Kids has its own list, Guest keeps none).
@@ -119,7 +119,7 @@ fun SearchStart(
                                         focusedContainerColor = Color.White,
                                         focusedContentColor = Color.Black,
                                     ),
-                                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                                scale = ButtonDefaults.scale(focusedScale = 1f),
                             ) {
                                 Text(text = text, fontSize = BenflixType.body)
                             }
@@ -264,7 +264,7 @@ private fun StartButton(
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
-            scale = ButtonDefaults.scale(focusedScale = 1f),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = text, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
     }

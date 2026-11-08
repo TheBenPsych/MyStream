@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -47,6 +48,7 @@ import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -77,8 +79,6 @@ import java.time.format.TextStyle
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-import androidx.tv.material3.ClickableSurfaceDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** A movie that goes with this show, and where it fits ("after Season 1") */
 data class WatchOrderMovie(

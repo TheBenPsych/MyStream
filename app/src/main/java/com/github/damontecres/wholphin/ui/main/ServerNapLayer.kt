@@ -28,12 +28,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.OutlinedButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ServerNap
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -51,9 +54,6 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.systemApi
 import timber.log.Timber
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.OutlinedButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class ServerNapViewModel
@@ -183,9 +183,18 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
                 )
                 Text("Checking again in $countdown seconds…", fontSize = BenflixType.body, color = Color(0xFFA19D99))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    Button(onClick = viewModel::tryNow, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try now") }
+                    Button(
+                        onClick = viewModel::tryNow,
+                        modifier = Modifier.focusRequester(focus),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    ) {
+                        Text("Try now")
+                    }
                     if (!isTv) {
-                        OutlinedButton(onClick = viewModel::hideForAWhile, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) { Text("Watch my downloads") }
+                        OutlinedButton(
+                            onClick = viewModel::hideForAWhile,
+                            scale = OutlinedButtonDefaults.scale(focusedScale = 1f),
+                        ) { Text("Watch my downloads") }
                     }
                 }
             }

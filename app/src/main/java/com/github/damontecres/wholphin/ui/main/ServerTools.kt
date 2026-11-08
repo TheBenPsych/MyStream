@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
@@ -45,6 +47,7 @@ import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -61,9 +64,6 @@ import org.jellyfin.sdk.model.api.MessageCommand
 import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ListItemDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** What the Server page's tools show: the note, people and the library checkup */
 data class ServerToolsState(

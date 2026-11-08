@@ -252,7 +252,7 @@ private fun TimelinePlay(
                             Modifier
                                 .height(small * 1.5f)
                                 .then(if (slot == middle) Modifier.focusRequester(focus) else Modifier),
-                                scale = ButtonDefaults.scale(focusedScale = 1f),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text("Here", textAlign = TextAlign.Center)
                     }

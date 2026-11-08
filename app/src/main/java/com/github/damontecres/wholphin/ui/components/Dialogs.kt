@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -81,7 +82,6 @@ import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import java.util.UUID
-import androidx.tv.material3.ListItemDefaults
 
 /**
  * Parameters for rendering a [DialogPopup]
@@ -332,7 +332,7 @@ fun DialogPopupContent(
                                         focusRequesters[0],
                                         focusRequesters[dialogItems.lastIndex],
                                     ),
-                                    scale = ListItemDefaults.scale(focusedScale = 1f),
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }
                 }

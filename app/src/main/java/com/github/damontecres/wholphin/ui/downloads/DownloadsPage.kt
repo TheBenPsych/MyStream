@@ -52,11 +52,11 @@ import com.github.damontecres.wholphin.services.DownloadService
 import com.github.damontecres.wholphin.services.DownloadStatus
 import com.github.damontecres.wholphin.services.DownloadedItem
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class DownloadsViewModel

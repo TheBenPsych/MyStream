@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.Clock
@@ -67,7 +68,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix "Next episode" panel: a picture of the next episode, its name, and a big white
@@ -189,7 +189,7 @@ fun NextUpEpisode(
                             .weight(1f, fill = false)
                             .height(44.dp)
                             .focusRequester(focusRequester),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Box(contentAlignment = Alignment.CenterStart) {
                         // Countdown fill

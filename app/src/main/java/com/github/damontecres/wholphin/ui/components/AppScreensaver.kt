@@ -69,6 +69,7 @@ import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_ALPHA
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_END_FRACTION
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -81,7 +82,6 @@ import org.jellyfin.sdk.api.client.ApiClient
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class ScreensaverViewModel

@@ -31,9 +31,9 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
-import org.jellyfin.sdk.model.api.BaseItemKind
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import org.jellyfin.sdk.model.api.BaseItemKind
 
 /**
  * "Pick a mood": each mood finds movies & shows using what the server knows about them

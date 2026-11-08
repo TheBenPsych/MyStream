@@ -54,8 +54,8 @@ import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import kotlinx.coroutines.delay
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import kotlinx.coroutines.delay
 
 /*
  * Benflix redesign (approved 2026-11-07): the Requests page looks like the Movies door. A top area

@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.BuildConfig
@@ -89,7 +90,6 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.tv.material3.ListItemDefaults
 
 internal const val SEARCH_ROW = 0
 internal const val TAB_ROW = SEARCH_ROW + 1

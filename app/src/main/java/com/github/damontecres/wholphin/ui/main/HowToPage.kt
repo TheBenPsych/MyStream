@@ -19,13 +19,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixTips
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import androidx.tv.material3.ListItemDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 private data class HowToTip(
     val title: String,
@@ -127,7 +127,7 @@ fun HowToPage(modifier: Modifier = Modifier) {
                             .then(
                                 if (sectionIndex == 0 && index == 0) Modifier.focusRequester(firstFocus) else Modifier,
                             ),
-                            scale = ListItemDefaults.scale(focusedScale = 1f),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }

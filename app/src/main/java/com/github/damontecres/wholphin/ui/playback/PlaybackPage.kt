@@ -97,6 +97,7 @@ import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -125,7 +126,9 @@ import com.github.damontecres.wholphin.ui.playback.overlay.rememberSeekBarState
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.applyTo
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.seasonEpisode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClosePlayer
@@ -143,9 +146,6 @@ import kotlin.math.abs
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * The actual playback page which shows media & playback controls
@@ -1260,7 +1260,11 @@ private fun RecapCard(
         recap.overview?.let {
             Text(text = it, fontSize = BenflixType.body, color = BenflixColors.Text, maxLines = 5, overflow = TextOverflow.Ellipsis)
         }
-        Button(onClick = onStart, modifier = Modifier.padding(top = 6.dp).focusRequester(focusRequester), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+        Button(
+            onClick = onStart,
+            modifier = Modifier.padding(top = 6.dp).focusRequester(focusRequester),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+        ) {
             Text("Start next episode ($secondsLeft)")
         }
     }

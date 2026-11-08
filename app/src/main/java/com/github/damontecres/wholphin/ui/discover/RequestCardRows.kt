@@ -32,8 +32,8 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
  * Benflix redesign (Requests): the two rows at the top of Movies, Shows and Anime.

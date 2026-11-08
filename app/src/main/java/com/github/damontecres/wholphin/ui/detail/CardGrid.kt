@@ -628,7 +628,7 @@ fun AlphabetButtons(
                                 focusedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         },
-                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     // Use border color for selected letter when focused, tertiary for unfocused-selected
                     val color =

@@ -36,8 +36,8 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import org.jellyfin.sdk.model.api.ImageType
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import org.jellyfin.sdk.model.api.ImageType
 
 /**
  * The movie / show page picture (approved dt-hero): the wide picture fills the page, darkened on the

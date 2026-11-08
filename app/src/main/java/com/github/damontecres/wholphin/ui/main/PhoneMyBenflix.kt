@@ -40,8 +40,8 @@ import com.github.damontecres.wholphin.ui.components.rememberUpdateAlert
 import com.github.damontecres.wholphin.ui.nav.TopNavTab
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import java.util.UUID
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import java.util.UUID
 
 /**
  * Benflix on phones: what the My Benflix page needs from the bottom menu

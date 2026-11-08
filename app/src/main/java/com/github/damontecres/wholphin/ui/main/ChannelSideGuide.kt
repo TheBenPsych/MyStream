@@ -44,10 +44,10 @@ import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.util.UUID
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * The guide that slides in while watching a channel, so you can look for something else and keep

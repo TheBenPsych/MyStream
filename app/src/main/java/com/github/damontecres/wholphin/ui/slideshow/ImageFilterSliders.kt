@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -33,7 +34,6 @@ import com.github.damontecres.wholphin.ui.components.SliderBar
 import com.github.damontecres.wholphin.ui.components.SliderColors
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
-import androidx.tv.material3.ButtonDefaults
 
 const val DRAG_THROTTLE_DELAY = 50L
 

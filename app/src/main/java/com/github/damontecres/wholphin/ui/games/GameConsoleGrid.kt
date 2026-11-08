@@ -31,8 +31,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import kotlinx.coroutines.launch
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import kotlinx.coroutines.launch
 
 /** One heading in the console grid (null = no heading) and its games */
 internal data class GridSection(

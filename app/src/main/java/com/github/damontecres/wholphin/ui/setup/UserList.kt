@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -62,14 +63,13 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.time.LocalDate
 import java.util.UUID
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * Display a list of users plus option to add a new one or switch servers
@@ -293,7 +293,7 @@ private fun AvatarPickerDialog(
                                 Modifier
                                     .size(72.dp)
                                     .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
-                                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         ) {
                             Image(
                                 painter = painterResource(res),

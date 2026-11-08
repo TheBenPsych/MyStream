@@ -47,6 +47,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -86,6 +87,8 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -132,9 +135,6 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Which shelf of the admin "Find new stuff" page */
 enum class FindSection {
@@ -2066,10 +2066,18 @@ private fun RequestRow(
     val isTv = rememberIsTv()
     val buttons: @Composable () -> Unit = {
         if (canAnswer) {
-            Button(onClick = { onAnswer(true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Approve", maxLines = 1, softWrap = false) }
-            Button(onClick = { onAnswer(false) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Decline", maxLines = 1, softWrap = false) }
+            Button(
+                onClick = { onAnswer(true) },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) { Text("Approve", maxLines = 1, softWrap = false) }
+            Button(
+                onClick = { onAnswer(false) },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) { Text("Decline", maxLines = 1, softWrap = false) }
         } else if (entry.item != null) {
-            Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false) }
+            Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false)
+            }
         }
         onCantFind?.let {
             Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Can't find", maxLines = 1, softWrap = false) }
@@ -2271,7 +2279,10 @@ private fun PasswordDialog(
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { if (password.isNotEmpty()) onConnect(password) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Connect") }
+                Button(
+                    onClick = { if (password.isNotEmpty()) onConnect(password) },
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) { Text("Connect") }
                 Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
             }
         }

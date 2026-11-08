@@ -68,9 +68,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.OutlinedButtonDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -101,6 +103,7 @@ import com.github.damontecres.wholphin.ui.setup.benflixAvatarFor
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices
 import com.github.damontecres.wholphin.ui.theme.toColor
@@ -134,9 +137,6 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.OutlinedButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * The steps of the new-profile setup (approved redesign): Picture, Subtitles, Word size, Favourites,
@@ -819,7 +819,7 @@ private fun PictureStep(
                             Modifier
                                 .size(60.dp)
                                 .then(if (index == 0) Modifier.focusRequester(focus) else Modifier),
-                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Image(
                             painter = painterResource(res),
@@ -953,7 +953,10 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SubtitleSize.entries.forEach { option ->
-            OutlinedButton(onClick = { viewModel.setSubtitleSize(option.fontSize) }, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) {
+            OutlinedButton(
+                onClick = { viewModel.setSubtitleSize(option.fontSize) },
+                scale = OutlinedButtonDefaults.scale(focusedScale = 1f),
+            ) {
                 Text(if (option == size) "✓ ${option.label}" else option.label)
             }
         }
@@ -1054,7 +1057,9 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(onClick = { viewModel.setEasyRead(false) }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+        Button(onClick = {
+            viewModel.setEasyRead(false)
+        }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(if (!easyRead) "✓ Normal" else "Normal")
         }
         Button(onClick = { viewModel.setEasyRead(true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {

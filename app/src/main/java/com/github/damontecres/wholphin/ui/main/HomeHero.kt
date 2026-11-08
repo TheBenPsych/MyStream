@@ -59,10 +59,10 @@ import com.github.damontecres.wholphin.ui.components.LocalFlatButtons
 import com.github.damontecres.wholphin.ui.components.MinButtonSize
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlin.time.Duration
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 enum class FeaturedReason {
     NEW,

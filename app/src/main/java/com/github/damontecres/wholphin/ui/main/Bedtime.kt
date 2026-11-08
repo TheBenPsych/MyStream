@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -50,6 +51,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,8 +69,6 @@ import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class BedtimeViewModel
@@ -279,7 +279,11 @@ fun BedtimeLayer(
                     textAlign = TextAlign.Center,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 16.dp)) {
-                    Button(onClick = { askPin = true }, modifier = Modifier.focusRequester(focusRequester), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                    Button(
+                        onClick = { askPin = true },
+                        modifier = Modifier.focusRequester(focusRequester),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    ) {
                         Text("Grown-up: 30 more minutes", fontWeight = FontWeight.Medium)
                     }
                 }
@@ -426,7 +430,10 @@ fun ParentPinDialog(
                 ) {
                     Text("Parent PIN", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { step = ParentPinStep.NEW }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Change PIN") }
+                        Button(
+                            onClick = { step = ParentPinStep.NEW },
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                        ) { Text("Change PIN") }
                         Button(onClick = {
                             scope.launch {
                                 if (setPin(null)) {

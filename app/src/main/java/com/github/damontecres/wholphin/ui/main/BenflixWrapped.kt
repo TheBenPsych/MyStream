@@ -27,6 +27,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixWatchTime
@@ -37,6 +38,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,8 +59,6 @@ import timber.log.Timber
 import java.time.LocalDate
 import java.time.ZoneOffset
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One profile's year on Benflix */
 data class WrappedYear(
@@ -297,7 +297,11 @@ fun BenflixWrappedLayer(
             }
             w.topMovie?.let { Text("Favourite movie: $it", color = Color.White, fontSize = BenflixType.lead, textAlign = TextAlign.Center) }
             w.topGenre?.let { Text("Most watched: $it", color = Color(0xFFE5E5EA), fontSize = BenflixType.body) }
-            Button(onClick = viewModel::done, modifier = Modifier.padding(top = 8.dp).focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+            Button(
+                onClick = viewModel::done,
+                modifier = Modifier.padding(top = 8.dp).focusRequester(focus),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) {
                 Text("Thanks, Benflix!")
             }
         }

@@ -49,7 +49,10 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -69,9 +72,6 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * A movie in the game, with its IMDb rating (out of 10). Jellyfin's "community rating" comes
@@ -388,7 +388,7 @@ private fun HigherLowerRound(
                         Modifier
                             .weight(1f)
                             .then(if (i == 0) Modifier.focusRequester(first) else Modifier),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text(label, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
@@ -480,7 +480,14 @@ private fun HigherLowerEnd(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(top = 24.dp),
     ) {
-        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White, textAlign = TextAlign.Center)
+        Text(
+            title,
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+        )
         Text(body, fontSize = 20.sp, color = BenflixColors.Soft, textAlign = TextAlign.Center)
         Button(onClick = onClick, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(button)

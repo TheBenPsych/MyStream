@@ -49,10 +49,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /**
  * Benflix "Ember Road": an old-school pixel adventure. Carry a dragon egg across a wild magical
@@ -154,7 +154,14 @@ private fun EmberPage(
                 .let { if (scroll) it.fillMaxSize().verticalScroll(rememberScrollState()) else it.fillMaxWidth() }
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 28.dp else 16.dp),
     ) {
-        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = EmberGold, textAlign = TextAlign.Center)
+        Text(
+            title,
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
+            color = EmberGold,
+            textAlign = TextAlign.Center,
+        )
         content()
     }
 }
@@ -592,7 +599,13 @@ private fun GalleryScreen(
                             Modifier.fillMaxWidth().height(if (isTv) 130.dp else 88.dp).background(Color(0xFF0C080E)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("?", color = EmberDim, fontSize = BenflixType.pageTitle, fontFamily = BenflixFont, fontWeight = FontWeight.Bold)
+                            Text(
+                                "?",
+                                color = EmberDim,
+                                fontSize = BenflixType.pageTitle,
+                                fontFamily = BenflixFont,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                     }
                     Text(

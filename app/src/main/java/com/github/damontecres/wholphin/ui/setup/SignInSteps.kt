@@ -60,12 +60,12 @@ import com.github.damontecres.wholphin.ui.components.BenflixWordLogo
 import com.github.damontecres.wholphin.ui.components.QrCode
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import timber.log.Timber
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /*
  * Benflix redesign (approved 2026-11-07, s2-kb-below): signing in is one question per screen, your
@@ -284,7 +284,12 @@ internal fun Answer(
                 onValueChange = onValue,
                 singleLine = true,
                 textStyle =
-                    TextStyle(color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+                    TextStyle(
+                        color = BenflixColors.Text,
+                        fontSize = BenflixType.rowName,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    ),
                 cursorBrush = SolidColor(BenflixColors.Text),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions =
@@ -547,7 +552,19 @@ private fun Key(
         modifier = modifier.width(width).height(40.dp),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = label, fontSize = if (label.length > 1) BenflixType.small else BenflixType.lead, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                text = label,
+                fontSize =
+                    if (label.length >
+                        1
+                    ) {
+                        BenflixType.small
+                    } else {
+                        BenflixType.lead
+                    },
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
     }
 }

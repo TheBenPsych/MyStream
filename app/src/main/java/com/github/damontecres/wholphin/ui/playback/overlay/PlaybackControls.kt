@@ -72,6 +72,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -94,6 +95,7 @@ import com.github.damontecres.wholphin.ui.seekBack
 import com.github.damontecres.wholphin.ui.seekForward
 import com.github.damontecres.wholphin.ui.skipStringRes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -107,8 +109,6 @@ import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import androidx.tv.material3.Button as TvButton
-import androidx.tv.material3.ListItemDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Possible actions the user can take during playback
@@ -917,7 +917,7 @@ fun <T> BottomDialog(
                             Modifier
                                 .bringIntoViewRequester(bringIntoViewRequesters[index])
                                 .focusRequester(focusRequesters[index]),
-                                scale = ListItemDefaults.scale(focusedScale = 1f),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

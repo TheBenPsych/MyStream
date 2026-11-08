@@ -30,8 +30,8 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.formatSeasonEpisode
-import java.time.LocalDateTime
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import java.time.LocalDateTime
 
 @Composable
 fun Program(

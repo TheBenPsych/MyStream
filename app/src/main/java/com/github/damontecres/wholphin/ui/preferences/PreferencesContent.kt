@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.SingletonImageLoader
@@ -99,7 +100,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun PreferencesContent(

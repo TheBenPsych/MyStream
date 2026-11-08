@@ -24,6 +24,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.OutlinedButtonDefaults
 import androidx.tv.material3.Text
@@ -31,6 +32,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.BACKSPACE
 import com.github.damontecres.wholphin.services.BENFLIX_TYPE
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -47,8 +49,6 @@ import org.jellyfin.sdk.model.api.PlaystateCommand
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.time.Duration
-import androidx.tv.material3.ListItemDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Another Benflix (usually a TV) that's open right now and signed in as you */
 data class BenflixScreen(

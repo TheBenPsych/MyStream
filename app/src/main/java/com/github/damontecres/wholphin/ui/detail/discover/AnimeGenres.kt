@@ -46,6 +46,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -65,6 +66,7 @@ import com.github.damontecres.wholphin.ui.discover.ActiveFilterChip
 import com.github.damontecres.wholphin.ui.discover.RequestsChip
 import com.github.damontecres.wholphin.ui.discover.RequestsSearchBox
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -81,8 +83,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import timber.log.Timber
 import javax.inject.Inject
-import androidx.tv.material3.ButtonDefaults
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
  * Benflix: anime genres on a request's details page (Isekai, Slice of Life...), from AniList, and a page
@@ -736,7 +736,12 @@ fun AnimeGenrePage(
                             color = Color.White,
                             fontSize = BenflixType.body,
                         )
-                        if (failed) Button(onClick = { viewModel.reload() }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again") }
+                        if (failed) {
+                            Button(
+                                onClick = { viewModel.reload() },
+                                scale = ButtonDefaults.scale(focusedScale = 1f),
+                            ) { Text("Try again") }
+                        }
                     }
                 }
             }

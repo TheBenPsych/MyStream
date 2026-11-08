@@ -59,10 +59,10 @@ import com.github.damontecres.wholphin.games.ShowPicker
 import com.github.damontecres.wholphin.games.SideShow
 import com.github.damontecres.wholphin.games.SideShowItem
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
-import com.github.damontecres.wholphin.ui.tryRequestFocus
-import kotlinx.coroutines.delay
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.tryRequestFocus
+import kotlinx.coroutines.delay
 
 /** The journey itself: the picture on top, the words and choices below */
 @Composable

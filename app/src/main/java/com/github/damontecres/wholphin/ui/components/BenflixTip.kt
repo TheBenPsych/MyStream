@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import kotlinx.coroutines.delay
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import kotlinx.coroutines.delay
 
 /** The first-time tips Benflix shows, each only once on a device */
 enum class BenflixTipId(

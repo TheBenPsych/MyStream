@@ -61,10 +61,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * "Mini Benflix": a full-screen picker for the show that plays next to the game.

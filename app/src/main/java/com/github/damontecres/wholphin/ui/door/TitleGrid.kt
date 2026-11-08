@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
@@ -54,7 +55,6 @@ import java.time.LocalDate
 import java.util.Locale
 import java.util.UUID
 import java.time.format.TextStyle as DateTextStyle
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** How the All movies / All shows grid is ordered */
 enum class TitleSort(

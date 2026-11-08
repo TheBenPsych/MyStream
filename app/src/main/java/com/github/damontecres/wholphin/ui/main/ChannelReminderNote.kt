@@ -34,9 +34,9 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix redesign (rm-early): a minute before a show you asked to be reminded about, a small note
@@ -137,7 +137,12 @@ private fun NoteButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
     ) {
-        Text(label, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text(
+            label,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
     }
 }
 

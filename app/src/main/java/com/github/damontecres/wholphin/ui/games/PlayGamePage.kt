@@ -56,11 +56,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import timber.log.Timber
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * Full screen game. Works with the TV remote, a controller, a keyboard, or touch.
@@ -340,7 +340,12 @@ internal fun GameCard(
     ) {
         Text(text = title, fontSize = BenflixType.hero, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
         lines.forEach {
-            Text(it, fontSize = BenflixType.rowName, color = if (highlight) Color(0xFFFFD54F) else Color.White, textAlign = TextAlign.Center)
+            Text(
+                it,
+                fontSize = BenflixType.rowName,
+                color = if (highlight) Color(0xFFFFD54F) else Color.White,
+                textAlign = TextAlign.Center,
+            )
         }
         Text(howTo, fontSize = BenflixType.body, color = BenflixColors.Soft, textAlign = TextAlign.Center)
         Text(

@@ -78,6 +78,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -96,9 +99,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 @HiltViewModel
 class ChannelsViewModel
@@ -566,7 +566,11 @@ private fun GuideGrid(
                                     if (isSelected) {
                                         ClickableSurfaceDefaults.border(
                                             border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
-                                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(6.dp)),
+                                            focusedBorder =
+                                                Border(
+                                                    BorderStroke(3.dp, BenflixColors.Text),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                ),
                                         )
                                     } else {
                                         ClickableSurfaceDefaults.border()
@@ -809,7 +813,12 @@ private fun SuggestButton(
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text, fontSize = BenflixType.tag, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        Text(
+            text,
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }
 

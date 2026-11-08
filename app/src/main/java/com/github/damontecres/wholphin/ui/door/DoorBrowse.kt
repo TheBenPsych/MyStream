@@ -30,10 +30,10 @@ import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import java.util.UUID
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** A door's "Browse by" page: Genres, Collections, Studios / Networks, or everything */
 @Composable

@@ -60,6 +60,8 @@ import com.github.damontecres.wholphin.ui.games.puzzles.AnimeMode
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -70,8 +72,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** What a game's own page shows, for a movie game or an arcade game */
 data class GamePageInfo(
@@ -240,7 +240,9 @@ fun GameInfoPage(
                 )
             }
             if (info.movie?.party != null && !isTv) {
-                Button(onClick = { viewModel.join() }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Join a TV's game", fontSize = BenflixType.lead) }
+                Button(onClick = {
+                    viewModel.join()
+                }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Join a TV's game", fontSize = BenflixType.lead) }
             }
         }
     }
@@ -267,7 +269,9 @@ fun GameInfoPage(
                     if (KidsMode.isActive) {
                         InfoLine("Kids titles only")
                     } else {
-                        Button(onClick = { viewModel.nextAnime() }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(anime.label, fontSize = BenflixType.body) }
+                        Button(onClick = {
+                            viewModel.nextAnime()
+                        }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(anime.label, fontSize = BenflixType.body) }
                         InfoLine("Uses everything on Tower. Press to change the anime mix.", dim = true)
                     }
                 } else {
@@ -318,7 +322,12 @@ fun GameInfoPage(
                             color = Color.White,
                         )
                         Pills(info.pills)
-                        Text(info.about, fontSize = BenflixType.rowName, lineHeight = BenflixType.rowName * 1.25f, color = BenflixColors.Text)
+                        Text(
+                            info.about,
+                            fontSize = BenflixType.rowName,
+                            lineHeight = BenflixType.rowName * 1.25f,
+                            color = BenflixColors.Text,
+                        )
                         // How to play as one short line under the description
                         if (info.steps.isNotEmpty()) {
                             Text(

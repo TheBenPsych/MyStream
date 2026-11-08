@@ -122,7 +122,7 @@ fun PersonCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
-                scale = CardDefaults.scale(focusedScale = 1f),
+            scale = CardDefaults.scale(focusedScale = 1f),
         ) {
             ItemCardImage(
                 imageUrl = imageUrl,

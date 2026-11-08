@@ -33,6 +33,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -46,6 +47,8 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -63,9 +66,6 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import androidx.tv.material3.ButtonDefaults
 
 /**
  * Benflix "This or that": two posters, pick one. The winner stays and meets a new one,
@@ -320,11 +320,26 @@ private fun Winner(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (item != null) {
-                Button(onClick = { onPlay(item) }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Button(
+                    onClick = { onPlay(item) },
+                    modifier = Modifier.focusRequester(focus),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) {
                     Text("Let's watch it")
                 }
             }
-            Button(onClick = onAgain, modifier = if (item == null) Modifier.focusRequester(focus) else Modifier, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+            Button(
+                onClick = onAgain,
+                modifier =
+                    if (item ==
+                        null
+                    ) {
+                        Modifier.focusRequester(focus)
+                    } else {
+                        Modifier
+                    },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) {
                 Text("Play again")
             }
         }

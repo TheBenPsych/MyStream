@@ -255,7 +255,12 @@ internal fun LeaderboardRow(
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Leaderboards", fontSize = if (isTv) BenflixType.rowName else BenflixType.lead, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
+        Text(
+            "Leaderboards",
+            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+            fontWeight = FontWeight.SemiBold,
+            color = BenflixColors.Text,
+        )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),

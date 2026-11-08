@@ -60,11 +60,11 @@ import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.yearText
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One door column in search results */
 private enum class SearchDoor(
@@ -358,7 +358,15 @@ private fun FocusLine(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (meta.isNotEmpty()) Text(meta, color = BenflixColors.Soft, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (meta.isNotEmpty()) {
+                Text(
+                    meta,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
             if (story.isNotEmpty()) {
                 Text(
                     text = story,

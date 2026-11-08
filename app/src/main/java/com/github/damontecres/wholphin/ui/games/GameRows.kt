@@ -181,7 +181,12 @@ private fun GameRow(
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, fontSize = if (isTv) BenflixType.rowName else BenflixType.lead, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
+        Text(
+            title,
+            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+            fontWeight = FontWeight.SemiBold,
+            color = BenflixColors.Text,
+        )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
             val width: Dp = if (isTv) (maxWidth - gap * 6) / 6.5f else maxWidth * 0.42f

@@ -54,13 +54,13 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import java.time.LocalDate
 import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 private val RED = BenflixColors.Text
 private val PANEL = Color(0xFF18181C)

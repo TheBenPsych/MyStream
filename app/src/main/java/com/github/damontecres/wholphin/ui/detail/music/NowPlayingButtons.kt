@@ -45,10 +45,10 @@ import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackButton
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackButtons
 import com.github.damontecres.wholphin.ui.playback.overlay.buttonSpacing
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import kotlin.time.Duration.Companion.seconds
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @OptIn(UnstableApi::class)
 @Composable

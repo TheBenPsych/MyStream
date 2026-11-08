@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.services.TowerDownload
 import com.github.damontecres.wholphin.services.TowerStatus
 import com.github.damontecres.wholphin.services.TrackTidy
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -36,7 +37,6 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import timber.log.Timber
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Benflix: something on the Tower tools that asks "are you sure?" first */
 sealed interface TowerAsk {

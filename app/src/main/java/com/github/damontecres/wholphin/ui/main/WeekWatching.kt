@@ -35,6 +35,7 @@ import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.weekStart
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,7 +47,6 @@ import timber.log.Timber
 import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One door's part of this week's watching */
 data class DoorTime(

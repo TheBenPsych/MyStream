@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -80,7 +81,6 @@ import kotlinx.coroutines.flow.StateFlow
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.YearMonth
 import javax.inject.Inject
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /** Which door a page belongs to, so the top bar can show its name in the door's colour */
 fun Destination.door(): BenflixDoor? =

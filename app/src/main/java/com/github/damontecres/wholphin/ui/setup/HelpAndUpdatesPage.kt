@@ -38,9 +38,9 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.main.HowToPage
 import com.github.damontecres.wholphin.ui.nav.APP_PROBLEMS
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 private enum class HelpSection(
     val title: String,
