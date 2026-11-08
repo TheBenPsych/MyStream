@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.cards.PendingIndicator
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.formatSeasonNumber
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -415,7 +416,7 @@ fun RequestSeasonsDialog(
             LoadingState.Loading,
             LoadingState.Pending,
             -> {
-                LoadingPage(Modifier)
+                LoadingSpinner(Modifier)
             }
 
             LoadingState.Success -> {

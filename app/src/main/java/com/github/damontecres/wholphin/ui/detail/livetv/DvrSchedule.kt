@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.seasonEpisode
@@ -153,7 +154,7 @@ fun DvrSchedule(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
         }
 
         LoadingState.Success -> {

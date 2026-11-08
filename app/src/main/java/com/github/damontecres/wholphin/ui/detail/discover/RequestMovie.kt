@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.DialogPopupContent
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -84,7 +85,7 @@ fun RequestMovie(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
         }
 
         LoadingState.Success -> {

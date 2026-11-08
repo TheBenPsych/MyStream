@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.formatBytes
@@ -361,7 +362,7 @@ fun InstallUpdatePage(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
         }
 
         LoadingState.Success -> {

@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.QueueContextActions
 import com.github.damontecres.wholphin.ui.findActivity
 import com.github.damontecres.wholphin.ui.nav.Backdrop
@@ -374,7 +375,7 @@ fun NowPlayingPage(
             )
         }
         if (state.musicServiceState.loadingState is LoadingState.Loading) {
-            LoadingPage(focusEnabled = false)
+            LoadingSpinner(focusEnabled = false)
         }
     }
     showContextMenu?.let { contextMenu ->

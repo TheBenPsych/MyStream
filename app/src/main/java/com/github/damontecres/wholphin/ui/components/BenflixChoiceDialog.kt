@@ -56,19 +56,15 @@ fun BenflixChoiceDialog(
     onDismissRequest: () -> Unit,
     subtitle: String? = null,
 ) {
-    Dialog(
+    BenflixPanelDialog(
         onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         val first = remember { FocusRequester() }
         LaunchedEffect(Unit) { first.tryRequestFocus() }
         Column(
             modifier =
                 Modifier
-                    .padding(24.dp)
-                    .widthIn(min = 300.dp, max = 440.dp)
-                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
-                    .padding(vertical = 16.dp, horizontal = 12.dp)
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

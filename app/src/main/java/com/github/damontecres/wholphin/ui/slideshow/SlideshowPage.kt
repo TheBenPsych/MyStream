@@ -65,6 +65,7 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.isDirectionalDpad
 import com.github.damontecres.wholphin.ui.playback.isDpad
@@ -105,7 +106,7 @@ fun SlideshowPage(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingSpinner(modifier)
         }
 
         LoadingState.Success -> {
@@ -364,7 +365,7 @@ fun SlideshowPage(
                     }
 
                     ImageLoadingState.Loading -> {
-                        LoadingPage(modifier, false)
+                        LoadingSpinner(modifier, false)
                     }
 
                     is ImageLoadingState.Success -> {

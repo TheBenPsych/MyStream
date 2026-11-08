@@ -73,6 +73,7 @@ import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.ScrollableDialog
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
@@ -976,7 +977,7 @@ fun PreferencesContent(
                     DataLoadingState.Pending,
                     DataLoadingState.Loading,
                     -> {
-                        LoadingPage()
+                        LoadingSpinner()
                     }
 
                     is DataLoadingState.Success<Release> -> {
