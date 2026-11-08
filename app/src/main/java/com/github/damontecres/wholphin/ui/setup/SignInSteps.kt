@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +37,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -140,6 +144,8 @@ fun SignInScreens(
                     Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
+                        // Phones: the buttons stay above the keyboard instead of hiding behind it
+                        .imePadding()
                         .verticalScroll(rememberScrollState())
                         .padding(top = if (isTv) 72.dp else 64.dp, bottom = 24.dp, start = 16.dp, end = 16.dp),
             ) {
@@ -479,21 +485,58 @@ private fun SignInKeyboard(
         } else {
             ABC
         }
+    // Keys pressed quickly (a real keyboard) arrive before the screen redraws, so each one builds on the last
+    // thing typed, not on the answer as last drawn (which dropped and mixed up letters)
+    val latest = remember { arrayOf(value) }
+    if (latest[0] != value) latest[0] = value
+    val type = { text: String ->
+        latest[0] = text
+        onValue(text)
+    }
     val key = 44.dp
     val gap = 6.dp
-    Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = modifier) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(gap),
+        modifier =
+            modifier.onPreviewKeyEvent { event ->
+                // A real keyboard, the phone remote app's keyboard or the remote's number keys type straight in,
+                // instead of only the keys on screen. Arrows, OK and Back still move around as usual.
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val native = event.nativeKeyEvent
+                when {
+                    native.keyCode == android.view.KeyEvent.KEYCODE_DEL -> {
+                        type(latest[0].dropLast(1))
+                        true
+                    }
+
+                    native.unicodeChar > ' '.code && !native.isCtrlPressed && !native.isAltPressed -> {
+                        type(latest[0] + native.unicodeChar.toChar())
+                        true
+                    }
+
+                    native.keyCode == android.view.KeyEvent.KEYCODE_SPACE -> {
+                        type(latest[0] + " ")
+                        true
+                    }
+
+                    else -> {
+                        false
+                    }
+                }
+            },
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
             NUMBERS.forEachIndexed { i, n ->
-                Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { onValue(value + n) }
+                Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { type(latest[0] + n) }
             }
-            Key("Delete", key * 2 + gap, onLongClick = { onValue("") }) { onValue(value.dropLast(1)) }
+            Key("Delete", key * 2 + gap, onLongClick = { type("") }) { type(latest[0].dropLast(1)) }
         }
         letters.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 row.forEach { l ->
                     val typed = if (upper) l.uppercase() else l
                     Key(typed, key) {
-                        onValue(value + typed)
+                        type(latest[0] + typed)
                         // Shift is for one letter, like a phone
                         if (upper) upper = false
                     }
@@ -515,7 +558,7 @@ private fun SignInKeyboard(
                     }
                 }
             }
-            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { onValue("$value ") }
+            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { type(latest[0] + " ") }
             Key(if (qwerty) "A-Z" else "QWERTY", key * 2 + gap) { qwerty = !qwerty }
             Key("Done", key * 2 + gap, white = true) { onDone() }
         }

@@ -398,6 +398,19 @@ def monkey():
 
 
 
+def type_answer(edit, text):
+    """Clear the sign-in answer and type [text] in small pieces (a slow emulator drops letters)"""
+    if MODE != "tv" and edit:
+        tap(edit[0])
+        time.sleep(1)
+        sh("input keyevent MOVE_END")
+    sh("input keyevent " + " ".join(["DEL"] * 60))
+    for i in range(0, len(text), 6):
+        sh("input text '%s'" % text[i : i + 6])
+        time.sleep(0.4)
+    time.sleep(1)
+
+
 def sign_in():
     """Sign in to the demo server (or pick the profile again): look at the screen and do the next sensible thing"""
     typed_server = typed_user = False
@@ -409,6 +422,9 @@ def sign_in():
         if find(root, HOME_RE) is not None:
             log("signed in")
             break
+        if find(root, r"^Step 1 of \d+$") is not None:
+            log("signed in (first-time setup is showing)")
+            break
         if root is None:
             # the screen can't be read right now (it never "settles" while something animates); wait and look again
             shot(f"login-unreadable-{step}")
@@ -417,6 +433,44 @@ def sign_in():
         if step % 3 == 1:
             shot(f"login-{step}")
         edit = [n for n in nodes(root) if n.get("class", "").endswith("EditText")]
+        # Benflix redesign sign-in: one question per screen (TV types with key presses, which the screen keyboard takes)
+        if find(root, r"^Is this your server\?$") is not None:
+            n = find(root, r"^No, type the address$")
+            if n is not None:
+                tap(n)
+                time.sleep(2)
+                continue
+        if find(root, r"^What's your server address\?$") is not None:
+            if find(root, "^" + re.escape(SERVER) + "$") is None:
+                type_answer(edit, SERVER)
+                shot("typed-server")
+                if find(dump(), "^" + re.escape(SERVER) + "$") is None:
+                    log("server address came out wrong, typing again")
+                    continue
+            n = find(dump(), r"^Next$")
+            if n is not None:
+                tap(n)
+            time.sleep(5)
+            continue
+        if find(root, r"^What's your name\?$") is not None:
+            if find(root, rf"^{USER}$") is None:
+                type_answer(edit, USER)
+                shot("typed-user")
+            n = find(dump(), r"^Next$")
+            if n is not None:
+                tap(n)
+            time.sleep(3)
+            continue
+        if find(root, r"What's your password\?$") is not None:
+            if MODE != "tv" and step % 2 == 0:
+                key("ENTER", wait=0.5)  # the phone keyboard's Go key signs in
+            else:
+                n = find(root, r"^Sign in$")
+                if n is not None:
+                    tap(n)
+            time.sleep(6)
+            log("password step: " + " | ".join(x for x in texts(dump()) if x)[:300])
+            continue
         if find(root, r"Enter Server IP or URL") is not None and edit:
             if not typed_server or (edit[0].get("text") or "") != SERVER:
                 if MODE != "tv":  # on TV the box already has focus; pressing OK would open the keyboard
@@ -514,8 +568,9 @@ def welcome_setup():
     # Easy read: Looks good. Parent PIN: No thanks. Hide genres (last): Done. Then the finish screen: Go to Home.
     buttons = [r"^Let's go$", r"^Next", r"^Looks good$", r"^No thanks$", r"^Done$"]
     seen = []
+    tries = {}
     finished = False
-    for _ in range(30):
+    for _ in range(40):
         root = dump()
         step = find(root, r"^Step \d+ of \d+$")
         if step is None:
@@ -525,11 +580,24 @@ def welcome_setup():
                 shot("welcome-finish")
                 tap(n)
                 finished = True
+            elif find(root, r"^All set") is not None or find(root, HOME_RE) is not None:
+                # the redesign's "All set" opens Home by itself
+                shot("welcome-finish")
+                finished = True
             break
         label = step.get("content-desc") or step.get("text") or ""
         if label not in seen:
             seen.append(label)
             shot("welcome-" + label.split()[1])
+        tries[label] = tries.get(label, 0) + 1
+        # stuck on a step (a choice the robot doesn't understand): use its small "Skip for now"
+        if tries[label] > 4:
+            n = find(root, r"^Skip for now$")
+            if n is not None:
+                log(f"welcome setup: skipping {label}")
+                tap(n)
+                time.sleep(2)
+                continue
         # subtitles: pick a mode first (Next stays off until one is picked)
         # (once picked it shows a tick; on TV the explanation underneath can also read just
         # "Only for other languages", so don't keep pressing it)
