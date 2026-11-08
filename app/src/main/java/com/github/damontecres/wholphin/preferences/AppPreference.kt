@@ -1326,6 +1326,28 @@ sealed interface AppPreference<Pref, T> {
                 valueToIndex = { MOBILE_DATA_ORDER.indexOf(it).coerceAtLeast(0) },
             )
 
+        /**
+         * Benflix: autoplay keeps going forever by default. Picking a number of hours stops the
+         * next episode (or movie) starting by itself once nobody has pressed a button for that
+         * long. Stored in the old Wholphin passout setting, which already follows the profile.
+         */
+        val AutoplayTimeLimit =
+            AppChoicePreference<AppPreferences, Int>(
+                title = R.string.benflix_autoplay_limit,
+                defaultValue = 0,
+                getter = { it.playbackPreferences.passOutProtectionMs.milliseconds.inWholeHours.toInt() },
+                setter = { prefs, value ->
+                    prefs.updatePlaybackPreferences { passOutProtectionMs = value.hours.inWholeMilliseconds }
+                },
+                displayValues = R.array.benflix_autoplay_limit_options,
+                indexToValue = { AUTOPLAY_LIMIT_HOURS.getOrElse(it) { 0 } },
+                valueToIndex = { AUTOPLAY_LIMIT_HOURS.indexOf(it).coerceAtLeast(0) },
+                summary = R.string.benflix_autoplay_limit_summary,
+            )
+
+        /** 0 = never stop. Matches benflix_autoplay_limit_options */
+        val AUTOPLAY_LIMIT_HOURS = listOf(0, 1, 2, 3, 4, 5, 6, 8)
+
         val ResumeTimer =
             AppChoicePreference<AppPreferences, Int>(
                 title = R.string.benflix_resume_timer,
@@ -1400,6 +1422,7 @@ val basicPreferences =
                 listOf(
                     AppPreference.AutoPlayNextUp,
                     AppPreference.AutoPlayNextDelay,
+                    AppPreference.AutoplayTimeLimit,
                     AppPreference.ShowNextUpTiming,
                     AppPreference.SmartResume,
                     AppPreference.SkipForward,

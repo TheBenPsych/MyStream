@@ -559,7 +559,7 @@ class AppUpgradeHandler
             appPreferences.updateData {
                 it
                     .updatePlaybackPreferences {
-                        passOutProtectionMs = 0
+                        // (passOutProtectionMs is the Benflix "Stop autoplay after" setting now, so it's kept)
                         cinemaMode = false
                         if (playerBackend == PlayerBackend.EXTERNAL_PLAYER) playerBackend = PlayerBackend.EXO_PLAYER
                     }.updateInterfacePreferences {

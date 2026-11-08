@@ -37,6 +37,18 @@
     </string-array>
 
     <!-- Come back where you left off -->
+    <string name="benflix_autoplay_limit">Stop autoplay after</string>
+    <string name="benflix_autoplay_limit_summary">Next episodes keep playing by themselves until this long passes with no button pressed</string>
+    <string-array name="benflix_autoplay_limit_options">
+        <item>Never, keep playing</item>
+        <item>1 hour</item>
+        <item>2 hours</item>
+        <item>3 hours</item>
+        <item>4 hours</item>
+        <item>5 hours</item>
+        <item>6 hours</item>
+        <item>8 hours</item>
+    </string-array>
     <string name="benflix_resume_timer">Ask Who\'s watching again after</string>
     <string-array name="benflix_resume_timer_options">
         <item>Every time</item>
