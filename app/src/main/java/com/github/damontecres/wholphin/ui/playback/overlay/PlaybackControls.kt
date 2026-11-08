@@ -49,17 +49,18 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,7 +87,6 @@ import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
-import androidx.compose.ui.platform.LocalContext
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
@@ -629,7 +629,13 @@ fun SeekTimecodes(
                         left
                     } else {
                         val realSec = (remainingSec / endsAtSpeed.coerceAtLeast(0.1f)).toLong()
-                        val ends = formatTime(context, java.time.LocalTime.now().plusSeconds(realSec))
+                        val ends =
+                            formatTime(
+                                context,
+                                java.time.LocalTime
+                                    .now()
+                                    .plusSeconds(realSec),
+                            )
                         "$left · ends $ends"
                     }
                 }

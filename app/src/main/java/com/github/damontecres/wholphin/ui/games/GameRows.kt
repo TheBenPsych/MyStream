@@ -36,9 +36,9 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
 data class RowGame(

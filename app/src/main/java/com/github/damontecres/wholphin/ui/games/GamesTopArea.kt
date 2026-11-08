@@ -73,7 +73,10 @@ data class GamePreview(
 )
 
 /** "1. BEN 3,880" lines for a game's board */
-internal fun topThree(board: Map<String, List<HighScore>>?, id: String?): List<String> =
+internal fun topThree(
+    board: Map<String, List<HighScore>>?,
+    id: String?,
+): List<String> =
     if (id == null) {
         emptyList()
     } else {
@@ -345,7 +348,6 @@ private fun BoardScoreLine(
         )
     }
 }
-
 
 /** A small square in the game's colour with its icon, used on the redesigned tiles */
 @Composable

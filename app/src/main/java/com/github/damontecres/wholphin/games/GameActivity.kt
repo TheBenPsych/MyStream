@@ -1525,7 +1525,8 @@ class GameActivity : ComponentActivity() {
                         .align(Alignment.CenterEnd)
                         .width(sheetWidth)
                         .fillMaxHeight()
-                        .background(Brush.verticalGradient(listOf(panelTint.copy(alpha = 0.5f), Color(0xF20D0B0C), Color(0xFA0D0B0C))))
+                        // Approved: a plain grey side sheet (game screens are only white, grey and black)
+                        .background(Color(0xF516181E))
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp, vertical = 24.dp),
             ) {
