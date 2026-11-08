@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -238,6 +239,9 @@ fun DiscoverSeriesDetailsContent(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    // Benflix: the scores, "Asked by" and About tags load a moment after the page opens and make the top
+    // block taller. If the buttons already have focus, scroll again so they never end up below the screen.
+    var buttonsFocused by remember { mutableStateOf(false) }
 
     var position by rememberInt()
     val focusRequesters = remember { List(RECOMMENDED_ROW + 1) { FocusRequester() } }
@@ -266,7 +270,14 @@ fun DiscoverSeriesDetailsContent(
                         modifier =
                             heroModifier
                                 .fillMaxWidth()
-                                .bringIntoViewRequester(bringIntoViewRequester),
+                                .bringIntoViewRequester(bringIntoViewRequester)
+                                .onSizeChanged {
+                                    if (buttonsFocused) {
+                                        scope.launch(ExceptionHandler()) {
+                                            bringIntoViewRequester.bringIntoView()
+                                        }
+                                    }
+                                },
                     ) {
                         if (!wide) RequestPhonePicture(backdropUrl, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
                         DiscoverSeriesDetailsHeader(
@@ -288,6 +299,7 @@ fun DiscoverSeriesDetailsContent(
                             moreOnClick = moreOnClick,
                             goToOnClick = goToOnClick,
                             buttonOnFocusChanged = {
+                                buttonsFocused = it.isFocused
                                 if (it.isFocused) {
                                     position = HEADER_ROW
                                     scope.launch(ExceptionHandler()) {
