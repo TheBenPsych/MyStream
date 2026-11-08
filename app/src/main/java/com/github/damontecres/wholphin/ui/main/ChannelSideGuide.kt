@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -148,7 +149,7 @@ private fun SideGuideContent(
                     ) {
                         Text(
                             text = groupLabel(name),
-                            fontSize = 12.sp,
+                            fontSize = BenflixType.tag,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
@@ -160,7 +161,7 @@ private fun SideGuideContent(
         if (shown.isEmpty()) {
             Text(
                 if (query.isBlank()) "No channels here." else "No channel called \"${query.trim()}\"",
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = Color(0xFF8B8B94),
             )
         }

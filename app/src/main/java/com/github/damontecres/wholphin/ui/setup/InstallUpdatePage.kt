@@ -74,6 +74,7 @@ import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -619,7 +620,7 @@ fun DownloadDialog(
             ) {
                 Text(
                     text = stringResource(R.string.downloading),
-                    fontSize = 24.sp,
+                    fontSize = BenflixType.rowName,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (progress != null) {
@@ -644,7 +645,7 @@ fun DownloadDialog(
             if (retryMessage != null) {
                 Text(
                     text = retryMessage,
-                    fontSize = 16.sp,
+                    fontSize = BenflixType.body,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else if (progress != null) {
@@ -652,7 +653,7 @@ fun DownloadDialog(
                 val size = formatBytes(contentLength)
                 Text(
                     text = "$bytes / $size",
-                    fontSize = 18.sp,
+                    fontSize = BenflixType.lead,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }

@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -74,6 +75,7 @@ fun SearchTypeOptionsDialogContent(
                             colors = SwitchColors(),
                         )
                     },
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
             if (discoverAvailable) {
@@ -92,6 +94,7 @@ fun SearchTypeOptionsDialogContent(
                                 colors = SwitchColors(),
                             )
                         },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

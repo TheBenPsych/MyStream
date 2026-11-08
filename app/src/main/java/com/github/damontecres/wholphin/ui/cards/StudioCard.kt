@@ -31,6 +31,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.github.damontecres.wholphin.ui.AspectRatios
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Studio
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
@@ -75,6 +76,9 @@ fun StudioCard(
             CardDefaults.colors(
                 containerColor = Color.Transparent,
             ),
+        scale = CardDefaults.scale(focusedScale = 1f),
+        shape = CardDefaults.shape(Cards.focusShape),
+        border = Cards.focusBorder(),
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -82,7 +86,7 @@ fun StudioCard(
                 Modifier
                     .aspectRatio(AspectRatios.WIDE)
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(10.dp)),
         ) {
             if (imageUrl != null && !error) {
                 AsyncImage(

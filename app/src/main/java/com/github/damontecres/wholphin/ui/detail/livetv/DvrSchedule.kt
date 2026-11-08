@@ -356,5 +356,6 @@ fun Recording(
                 text = time,
             )
         },
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }

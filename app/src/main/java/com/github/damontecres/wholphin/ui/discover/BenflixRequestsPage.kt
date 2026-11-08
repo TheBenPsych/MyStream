@@ -47,6 +47,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -86,6 +87,8 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -1333,7 +1336,7 @@ private fun NotConnected(
         ) {
             Text(
                 text = "Ask for movies and shows",
-                fontSize = 22.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -1344,10 +1347,10 @@ private fun NotConnected(
                         false -> "That password didn't work. Try again, or ask Ben to check your account."
                         null -> "Type your Benflix password once on this device and you can ask Ben for anything that's missing."
                     },
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = { askPassword = true }) {
+            Button(onClick = { askPassword = true }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text("Type my password")
             }
         }
@@ -1359,7 +1362,7 @@ private fun NotConnected(
     ) {
         Text(
             text = "Requests aren't connected on this device yet",
-            fontSize = 22.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -1371,15 +1374,15 @@ private fun NotConnected(
                 } else {
                     "Ask Ben to turn on requests for your account, then you can ask for movies and shows here."
                 },
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (viewModel.isAdmin) {
-            Button(onClick = { showSignIn = true }) {
+            Button(onClick = { showSignIn = true }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text("Sign in to Seerr")
             }
         } else {
-            Button(onClick = { viewModel.retry() }) {
+            Button(onClick = { viewModel.retry() }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text(if (connecting == true) "Connecting…" else "Try again")
             }
         }
@@ -1710,7 +1713,7 @@ private fun FindShelf(
                         item {
                             Text(
                                 text = "Nothing matches. Try fewer filters.",
-                                fontSize = 18.sp,
+                                fontSize = BenflixType.lead,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
                             )
@@ -1765,10 +1768,10 @@ private fun LoadFailed(
     ) {
         Text(
             text = text,
-            fontSize = 18.sp,
+            fontSize = BenflixType.lead,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = onRetry) { Text("Try again", maxLines = 1) }
+        Button(onClick = onRetry, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1) }
     }
 }
 
@@ -1796,7 +1799,7 @@ private fun LazyListScope.searchShelves(
         item {
             Text(
                 text = "No matches. Check the spelling, or try a shorter name.",
-                fontSize = 18.sp,
+                fontSize = BenflixType.lead,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
             )
@@ -1968,7 +1971,7 @@ private fun RequestList(
                                 false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
                                 null -> if (mineOnly) NOTHING_ASKED_YET else "No requests yet."
                             },
-                        fontSize = 18.sp,
+                        fontSize = BenflixType.lead,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(32.dp),
                     )
@@ -1981,6 +1984,7 @@ private fun RequestList(
                         Button(
                             onClick = { confirmAll = true },
                             modifier = Modifier.padding(horizontal = 16.dp),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) { Text("Approve all $waiting") }
                     }
                 }
@@ -2062,16 +2066,24 @@ private fun RequestRow(
     val isTv = rememberIsTv()
     val buttons: @Composable () -> Unit = {
         if (canAnswer) {
-            Button(onClick = { onAnswer(true) }) { Text("Approve", maxLines = 1, softWrap = false) }
-            Button(onClick = { onAnswer(false) }) { Text("Decline", maxLines = 1, softWrap = false) }
+            Button(
+                onClick = { onAnswer(true) },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) { Text("Approve", maxLines = 1, softWrap = false) }
+            Button(
+                onClick = { onAnswer(false) },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) { Text("Decline", maxLines = 1, softWrap = false) }
         } else if (entry.item != null) {
-            Button(onClick = onOpen) { Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false) }
+            Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false)
+            }
         }
         onCantFind?.let {
-            Button(onClick = it) { Text("Can't find", maxLines = 1, softWrap = false) }
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Can't find", maxLines = 1, softWrap = false) }
         }
         onUndoCantFind?.let {
-            Button(onClick = it) { Text("Try again", maxLines = 1, softWrap = false) }
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) }
         }
     }
     val daysWaiting =
@@ -2083,7 +2095,7 @@ private fun RequestRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(Color(0xFF18181C))
                 .padding(10.dp),
     ) {
@@ -2117,7 +2129,7 @@ private fun RequestRow(
             ) {
                 Text(
                     text = entry.item?.title ?: "Unknown title",
-                    fontSize = 18.sp,
+                    fontSize = BenflixType.lead,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = if (isTv) 1 else 2,
@@ -2126,7 +2138,7 @@ private fun RequestRow(
                 val whenAsked = remember(entry.request.createdAt) { ago(entry.request.createdAt) }
                 Text(
                     text = listOfNotNull(if (showWho) "Asked by ${entry.who}" else "You asked", whenAsked).joinToString(" · "),
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     color = Color(0xFFA1A1AA),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2178,15 +2190,15 @@ private fun StatusTag(
             }
 
             entry.status == RequestStatus.PENDING -> {
-                "Waiting for Ben" to Color(0xFFF5A524)
+                "Waiting for Ben" to BenflixColors.Check
             }
 
             entry.status == RequestStatus.DECLINED -> {
-                "Declined" to Color(0xFFE5484D)
+                "Declined" to BenflixColors.Problem
             }
 
             entry.status == RequestStatus.FAILURE -> {
-                "Something went wrong" to Color(0xFFE5484D)
+                "Something went wrong" to BenflixColors.Problem
             }
 
             waiting && clock?.notOut == true -> {
@@ -2214,7 +2226,7 @@ private fun StatusTag(
                 .background(color.copy(alpha = .18f))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
-        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
+        Text(text = text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
     }
 }
 
@@ -2256,7 +2268,7 @@ private fun PasswordDialog(
                     .widthIn(max = 420.dp)
                     .padding(24.dp),
         ) {
-            Text("Your Benflix password", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Your Benflix password", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -2267,8 +2279,11 @@ private fun PasswordDialog(
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { if (password.isNotEmpty()) onConnect(password) }) { Text("Connect") }
-                Button(onClick = onDismiss) { Text("Cancel") }
+                Button(
+                    onClick = { if (password.isNotEmpty()) onConnect(password) },
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) { Text("Connect") }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
             }
         }
     }

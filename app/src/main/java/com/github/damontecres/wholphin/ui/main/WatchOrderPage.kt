@@ -53,6 +53,8 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -394,7 +396,7 @@ fun WatchOrderPage(
         Text(
             text = "Watch in order",
             fontWeight = FontWeight.Bold,
-            fontSize = 35.sp,
+            fontSize = BenflixType.hero,
             letterSpacing = 1.sp,
         )
         val all = lists
@@ -405,7 +407,7 @@ fun WatchOrderPage(
         if (franchises.isEmpty()) {
             Text(
                 text = "Nothing to watch in order here yet.",
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = Color(0xFFB5ABAC),
             )
             return@Column
@@ -447,7 +449,7 @@ fun WatchOrderPage(
                     } else {
                         "${tab.blurb}  ·  ${shown.count { it.item != null }} of ${shown.size} on Benflix"
                     },
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = Color(0xFFB5ABAC),
             )
         }
@@ -476,7 +478,7 @@ fun WatchOrderPage(
                         }
                         Text(
                             text = "${index + 1}",
-                            fontSize = 16.sp,
+                            fontSize = BenflixType.body,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black,
                             modifier =
@@ -492,20 +494,20 @@ fun WatchOrderPage(
                     ) {
                         Text(
                             text = if (entry.entry.show) "${entry.year} · SHOW" else "${entry.year}",
-                            fontSize = 11.sp,
+                            fontSize = BenflixType.tag,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFB5ABAC),
                         )
                         if (entry.entry.mustWatch && tab != OrderTab.ESSENTIALS) {
                             Text(
                                 text = "ESSENTIAL",
-                                fontSize = 10.sp,
+                                fontSize = BenflixType.tag,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = .5.sp,
                                 color = Color.White,
                                 modifier =
                                     Modifier
-                                        .background(Color(0xFFE5303A), RoundedCornerShape(3.dp))
+                                        .background(Color(0xFFE5303A), RoundedCornerShape(6.dp))
                                         .padding(horizontal = 5.dp, vertical = 1.dp),
                             )
                         }
@@ -538,9 +540,9 @@ private fun MissingCard(
             border =
                 ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), shape = RoundedCornerShape(6.dp)),
-                    focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                    focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(6.dp)),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -549,7 +551,7 @@ private fun MissingCard(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text(
                     text = "NOT ON\nBENFLIX\n\nAsk for it",
-                    fontSize = 11.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     textAlign = TextAlign.Center,
@@ -558,11 +560,11 @@ private fun MissingCard(
         }
         Text(
             text = entry.title,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = Color.White.copy(alpha = .45f),
+            color = BenflixColors.Muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -590,7 +592,7 @@ private fun OrderTabButton(
     ) {
         // As wide as the word, so the red line sits right under it
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(IntrinsicSize.Max)) {
-            Text(text = text, fontSize = 17.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
+            Text(text = text, fontSize = BenflixType.lead, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
             Box(
                 Modifier
                     .padding(top = 4.dp)
@@ -606,7 +608,7 @@ private fun OrderTabButton(
 private fun Modifier.androidxBackground(): Modifier =
     this
         .then(
-            Modifier.background(Color.White, RoundedCornerShape(4.dp)),
+            Modifier.background(Color.White, RoundedCornerShape(6.dp)),
         ).padding(horizontal = 8.dp, vertical = 2.dp)
 
 @Composable
@@ -628,8 +630,9 @@ private fun OrderChip(
                 focusedContentColor = Color.Black,
             ),
         modifier = modifier,
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = text, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
     }
 }
 

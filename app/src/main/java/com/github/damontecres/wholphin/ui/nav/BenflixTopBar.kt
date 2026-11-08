@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -142,7 +143,7 @@ fun BenflixTopBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, top = 18.dp, bottom = 6.dp)
+                .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 18.dp, bottom = 6.dp)
                 .height(TopNavBarHeight * scale)
                 .focusGroup()
                 .focusProperties {
@@ -500,7 +501,7 @@ fun ProfileMenu(
             delay(30)
             firstFocus.tryRequestFocus()
         }
-        val shape = RoundedCornerShape(14.dp)
+        val shape = RoundedCornerShape(16.dp)
         val card: @Composable (Modifier) -> Unit = { m ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -622,7 +623,7 @@ private fun MenuRow(
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(9.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = item.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

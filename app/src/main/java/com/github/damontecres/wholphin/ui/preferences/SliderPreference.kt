@@ -27,6 +27,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ProvideTextStyle
 import androidx.tv.material3.contentColorFor
 import com.github.damontecres.wholphin.preferences.AppSliderPreference
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun SliderPreference(
@@ -55,7 +56,7 @@ fun SliderPreference(
             modifier
                 .defaultMinSize(minHeight = 72.dp)
                 .fillMaxWidth()
-                .background(background, shape = RoundedCornerShape(8.dp))
+                .background(background, shape = RoundedCornerShape(10.dp))
                 .padding(PaddingValues(horizontal = 16.dp, vertical = 12.dp)),
     ) {
         PreferenceTitle(title, color = contentColor, modifier = Modifier.padding(bottom = 8.dp))
@@ -123,7 +124,7 @@ private fun StepButton(
     ) {
         androidx.tv.material3.Text(
             text = label,
-            fontSize = 22.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center),
         )

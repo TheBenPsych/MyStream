@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.SingletonImageLoader
@@ -323,6 +324,7 @@ fun PreferencesContent(
                                 PreferenceTitle(message, color = MaterialTheme.colorScheme.error)
                             },
                             modifier = Modifier,
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }
                 }

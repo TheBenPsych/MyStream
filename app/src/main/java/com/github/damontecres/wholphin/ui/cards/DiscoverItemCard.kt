@@ -48,6 +48,8 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.discover.CantFindStrip
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import kotlinx.coroutines.delay
 
@@ -104,7 +106,7 @@ fun DiscoverItemCard(
             shape =
                 CardDefaults.shape(
                     androidx.compose.foundation.shape
-                        .RoundedCornerShape(8.dp),
+                        .RoundedCornerShape(10.dp),
                 ),
             scale = CardDefaults.scale(focusedScale = 1f),
             border =
@@ -118,7 +120,7 @@ fun DiscoverItemCard(
                                 ),
                             shape =
                                 androidx.compose.foundation.shape
-                                    .RoundedCornerShape(8.dp),
+                                    .RoundedCornerShape(10.dp),
                         ),
                 ),
         ) {
@@ -240,7 +242,7 @@ fun AdultContentBanner(
 ) {
     Text(
         text = if (short) "ADULT" else "ADULT CONTENT",
-        fontSize = if (short) 9.sp else 10.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.Bold,
         letterSpacing = .5.sp,
         color = Color.White,
@@ -267,7 +269,7 @@ fun PendingIndicator(modifier: Modifier = Modifier) {
                     color = AppColors.Discover.Yellow,
                     shape = CircleShape,
                 ).background(
-                    color = Color.White.copy(alpha = .85f),
+                    color = BenflixColors.Soft,
                     shape = CircleShape,
                 ).size(16.dp),
     ) {

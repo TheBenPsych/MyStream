@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -72,7 +74,7 @@ fun AgeRatingNote(
             modifier =
                 Modifier
                     .widthIn(max = if (isTv) 520.dp else 320.dp)
-                    .background(Color(0x99000000), RoundedCornerShape(8.dp))
+                    .background(Color(0x99000000), RoundedCornerShape(10.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             // A thin white bar beside the rating (Benflix redesign: no red)
@@ -81,21 +83,21 @@ fun AgeRatingNote(
                     Modifier
                         .width(3.dp)
                         .height(if (isTv) 40.dp else 32.dp)
-                        .background(Color.White, RoundedCornerShape(2.dp)),
+                        .background(Color.White, RoundedCornerShape(6.dp)),
             )
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(
                     text = rating.orEmpty(),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = if (isTv) 20.sp else 16.sp,
+                    fontSize = if (isTv) BenflixType.rowName else BenflixType.body,
                     maxLines = 1,
                 )
                 if (meaning != null) {
                     Text(
                         text = meaning,
-                        color = Color.White.copy(alpha = .85f),
-                        fontSize = if (isTv) 14.sp else 12.sp,
+                        color = BenflixColors.Soft,
+                        fontSize = if (isTv) BenflixType.small else BenflixType.tag,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )

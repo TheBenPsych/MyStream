@@ -60,6 +60,8 @@ import com.github.damontecres.wholphin.ui.games.puzzles.AnimeMode
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -229,15 +231,18 @@ fun GameInfoPage(
                 onClick = { viewModel.play(info) },
                 colors = ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
                 modifier = Modifier.focusRequester(playFocus),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text(
                     if (info.movie?.party != null) "▶ Host on this ${if (isTv) "TV" else "phone"}" else "▶ Play",
-                    fontSize = 18.sp,
+                    fontSize = BenflixType.lead,
                     fontWeight = FontWeight.Bold,
                 )
             }
             if (info.movie?.party != null && !isTv) {
-                Button(onClick = { viewModel.join() }) { Text("Join a TV's game", fontSize = 18.sp) }
+                Button(onClick = {
+                    viewModel.join()
+                }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Join a TV's game", fontSize = BenflixType.lead) }
             }
         }
     }
@@ -264,7 +269,9 @@ fun GameInfoPage(
                     if (KidsMode.isActive) {
                         InfoLine("Kids titles only")
                     } else {
-                        Button(onClick = { viewModel.nextAnime() }) { Text(anime.label, fontSize = 16.sp) }
+                        Button(onClick = {
+                            viewModel.nextAnime()
+                        }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(anime.label, fontSize = BenflixType.body) }
                         InfoLine("Uses everything on Tower. Press to change the anime mix.", dim = true)
                     }
                 } else {
@@ -310,19 +317,24 @@ fun GameInfoPage(
                         Text(
                             info.title,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 40.sp,
-                            lineHeight = 45.sp,
+                            fontSize = BenflixType.hero,
+                            lineHeight = BenflixType.hero * 1.1f,
                             color = Color.White,
                         )
                         Pills(info.pills)
-                        Text(info.about, fontSize = 20.sp, lineHeight = 28.sp, color = Color.White.copy(alpha = .92f))
+                        Text(
+                            info.about,
+                            fontSize = BenflixType.rowName,
+                            lineHeight = BenflixType.rowName * 1.25f,
+                            color = BenflixColors.Text,
+                        )
                         // How to play as one short line under the description
                         if (info.steps.isNotEmpty()) {
                             Text(
                                 info.steps.joinToString("  ·  "),
-                                fontSize = 15.sp,
-                                lineHeight = 21.sp,
-                                color = Color.White.copy(alpha = .7f),
+                                fontSize = BenflixType.body,
+                                lineHeight = BenflixType.body * 1.35f,
+                                color = BenflixColors.Soft,
                             )
                         }
                         buttons()
@@ -351,9 +363,9 @@ fun GameInfoPage(
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to PuzzleBg)))
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(info.title, fontWeight = FontWeight.Bold, fontSize = 29.sp, color = Color.White)
+                Text(info.title, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
                 Pills(info.pills)
-                Text(info.about, fontSize = 17.sp, lineHeight = 24.sp, color = Color.White.copy(alpha = .92f))
+                Text(info.about, fontSize = BenflixType.lead, lineHeight = BenflixType.lead * 1.3f, color = BenflixColors.Text)
                 buttons()
                 sections.forEach { (title, body) -> Section(title, Modifier.fillMaxWidth(), body) }
             }
@@ -412,7 +424,7 @@ private fun Pills(pills: List<String>) {
         pills.forEach {
             Text(
                 it,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 color = Color.White,
                 modifier =
                     Modifier
@@ -435,10 +447,10 @@ private fun Section(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             modifier
-                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(14.dp))
+                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(16.dp))
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Text(title.uppercase(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .6f))
+        Text(title.uppercase(), fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, color = BenflixColors.Muted)
         body()
     }
 }
@@ -450,7 +462,7 @@ private fun InfoLine(
 ) {
     Text(
         text,
-        fontSize = if (dim) 14.sp else 17.sp,
+        fontSize = if (dim) BenflixType.small else BenflixType.lead,
         lineHeight = if (dim) 19.sp else 24.sp,
         color = Color.White.copy(alpha = if (dim) .6f else .92f),
     )
@@ -462,7 +474,7 @@ private fun InfoPair(
     right: String,
 ) {
     Row(Modifier.fillMaxWidth()) {
-        Text(left, fontSize = 17.sp, color = Color.White, modifier = Modifier.weight(1f))
-        Text(right, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(left, fontSize = BenflixType.lead, color = Color.White, modifier = Modifier.weight(1f))
+        Text(right, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }

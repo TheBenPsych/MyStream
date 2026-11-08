@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
@@ -45,6 +47,7 @@ import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -641,6 +644,7 @@ fun ServerActionRow(
             leadingContent = leading,
             trailingContent = trailing,
             modifier = m,
+            scale = ListItemDefaults.scale(focusedScale = 1f),
         )
     }
     // Benflix: every row sits on its own dark rounded card, like the Settings pages, so the page
@@ -649,7 +653,7 @@ fun ServerActionRow(
         modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(ServerCardColor)
     if (actions.isEmpty()) {
         row(card)
@@ -661,7 +665,7 @@ fun ServerActionRow(
         ) {
             row(Modifier.weight(1f))
             actions.forEach { (label, action) ->
-                Button(onClick = action) { Text(label, fontSize = 14.sp) }
+                Button(onClick = action, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(label, fontSize = BenflixType.small) }
             }
         }
     } else {
@@ -674,7 +678,7 @@ fun ServerActionRow(
                 modifier = Modifier.padding(start = 16.dp, end = 12.dp, bottom = 12.dp),
             ) {
                 actions.forEach { (label, action) ->
-                    Button(onClick = action) { Text(label, fontSize = 14.sp) }
+                    Button(onClick = action, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(label, fontSize = BenflixType.small) }
                 }
             }
         }
@@ -779,7 +783,7 @@ fun LazyListScope.messageItems(
             Text(
                 text = "Pop-ups can't arrive instantly right now. They still arrive within about 2 minutes. $LIVE_BLOCKED_HELP",
                 color = Color(0xFFE5B567),
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
             )
         }

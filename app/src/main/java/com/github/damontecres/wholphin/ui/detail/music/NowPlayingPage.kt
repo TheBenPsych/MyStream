@@ -51,6 +51,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.state.rememberCurrentMediaItemState
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -440,6 +441,7 @@ private fun RecordAudioRationaleDialog(
             Button(
                 onClick = onClick,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text(
                     text = stringResource(R.string.continue_string),

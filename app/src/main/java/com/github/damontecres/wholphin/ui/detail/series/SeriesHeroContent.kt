@@ -67,6 +67,8 @@ import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -111,7 +113,7 @@ fun SeriesHeroContent(
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp
-    val side = if (wide) 40.dp else 16.dp
+    val side = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val firstButton = remember { FocusRequester() }
@@ -221,7 +223,7 @@ fun SeriesHeroContent(
                                     Text(
                                         text = "Episodes, more like this and cast below",
                                         color = BenflixColors.Muted,
-                                        fontSize = 13.sp,
+                                        fontSize = BenflixType.small,
                                         modifier = Modifier.padding(top = 14.dp),
                                     )
                                 }
@@ -374,7 +376,7 @@ private fun ShowWords(
         Text(
             text = series.title.orEmpty(),
             color = BenflixColors.Text,
-            fontSize = if (easy) 44.sp else 40.sp,
+            fontSize = BenflixType.hero,
             lineHeight = if (easy) 46.sp else 42.sp,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
@@ -385,7 +387,7 @@ private fun ShowWords(
             Text(
                 text = meta,
                 color = BenflixColors.Soft,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -397,8 +399,8 @@ private fun ShowWords(
                 Text(
                     text = it,
                     color = BenflixColors.Soft,
-                    fontSize = 15.sp,
-                    lineHeight = 21.sp,
+                    fontSize = BenflixType.body,
+                    lineHeight = BenflixType.body * 1.35f,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 10.dp),
@@ -408,7 +410,7 @@ private fun ShowWords(
         // A Column, not a Box: the buttons and the "below" hint must sit one under the other
         Column(Modifier.padding(top = 18.dp)) { buttons() }
         state.progress?.words()?.let {
-            Text(text = it, color = BenflixColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(text = it, color = BenflixColors.Muted, fontSize = BenflixType.small, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -492,7 +494,7 @@ private fun EpisodesSection(
                         ep.data.overview?.takeIf { it.isNotBlank() },
                     ).joinToString(" · "),
                 color = BenflixColors.Soft,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier =
@@ -542,7 +544,7 @@ private fun SeasonChip(
     ) {
         Text(
             text = text,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -574,7 +576,7 @@ private fun EpisodeCard(
         }
     val progress = remember(episode) { episode.progress() }
     val upcoming = episode.data.premiereDate?.isAfter(LocalDateTime.now()) == true
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     Column(Modifier.width(width)) {
         Surface(
             onClick = onClick,
@@ -606,14 +608,14 @@ private fun EpisodeCard(
                     Text(
                         text = "SPECIAL",
                         color = BenflixColors.Tray,
-                        fontSize = 11.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -635,7 +637,7 @@ private fun EpisodeCard(
                             .padding(8.dp)
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(Color(0x99000000)),
                     ) {
                         Box(
@@ -651,7 +653,7 @@ private fun EpisodeCard(
         Text(
             text = listOfNotNull(number, episode.name).joinToString(" · "),
             color = if (upcoming) BenflixColors.Muted else BenflixColors.Text,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -659,7 +661,7 @@ private fun EpisodeCard(
         )
         if (upcoming) {
             episode.data.premiereDate?.let {
-                Text(text = "Coming ${it.toLocalDate()}", color = BenflixColors.Muted, fontSize = 12.sp)
+                Text(text = "Coming ${it.toLocalDate()}", color = BenflixColors.Muted, fontSize = BenflixType.tag)
             }
         }
     }
@@ -673,7 +675,7 @@ private fun SectionTitle(
     Text(
         text = title,
         color = BenflixColors.Text,
-        fontSize = 17.sp,
+        fontSize = BenflixType.lead,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = side, end = side, bottom = 8.dp),
     )
@@ -796,7 +798,7 @@ private fun GroupChip(
     onClick: () -> Unit,
 ) {
     // Approved gc-square: squarer white chips for groups (seasons stay round and blue)
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -812,7 +814,7 @@ private fun GroupChip(
     ) {
         Text(
             text = text,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),

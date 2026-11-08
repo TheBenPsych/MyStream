@@ -78,7 +78,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -189,7 +191,7 @@ fun ChannelsPage(
         return
     }
     if (list.isEmpty()) {
-        Text("No channels yet. Add some movies or shows first.", fontSize = 18.sp, modifier = modifier.padding(32.dp))
+        Text("No channels yet. Add some movies or shows first.", fontSize = BenflixType.lead, modifier = modifier.padding(32.dp))
         return
     }
     // Easy mode: three big choices first (My channels opens the normal page)
@@ -403,7 +405,7 @@ private fun GuideGrid(
                 ) {
                     Text(
                         text = "GUIDE",
-                        fontSize = 12.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp,
                         color = Color(0xFFB8B8C0),
@@ -423,7 +425,7 @@ private fun GuideGrid(
                         ) {
                             Text(
                                 text = "Edit types",
-                                fontSize = 12.sp,
+                                fontSize = BenflixType.tag,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                             )
@@ -438,7 +440,7 @@ private fun GuideGrid(
                     while (t < windowEnd) {
                         Text(
                             text = clock(t),
-                            fontSize = 12.sp,
+                            fontSize = BenflixType.tag,
                             color = Color(0xFF8B8B94),
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.width(widthFor(HALF_HOUR)),
@@ -494,13 +496,14 @@ private fun GuideGrid(
                         ) {
                             Text(
                                 text = if (starred) "★" else "☆",
-                                fontSize = 13.sp,
-                                color = if (starred) StarGold else Color(0xFF55555C),
+                                fontSize = BenflixType.small,
+                                color = if (starred) StarGold else BenflixColors.Muted,
                             )
                             Text(
                                 text = "${schedule.number}",
-                                fontFamily = BenflixTitleFont,
-                                fontSize = 20.sp,
+                                fontFamily = BenflixFont,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = BenflixType.rowName,
                                 textAlign = TextAlign.Center,
                             )
                             val live = schedule.live
@@ -508,20 +511,20 @@ private fun GuideGrid(
                             Column {
                                 Text(
                                     text = schedule.title,
-                                    fontSize = 12.sp,
+                                    fontSize = BenflixType.tag,
                                     fontWeight = FontWeight.Bold,
-                                    lineHeight = 14.sp,
+                                    lineHeight = BenflixType.tag * 1.3f,
                                     maxLines = if (live == null) 1 else 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 if (live == null) {
                                     Text(
                                         text = "NO ADS",
-                                        fontSize = 9.sp,
+                                        fontSize = BenflixType.tag,
                                         fontWeight = FontWeight.ExtraBold,
                                         letterSpacing = .8.sp,
                                         color = NoAdsGreen,
-                                        lineHeight = 10.sp,
+                                        lineHeight = BenflixType.tag * 1.3f,
                                     )
                                 }
                             }
@@ -563,7 +566,11 @@ private fun GuideGrid(
                                     if (isSelected) {
                                         ClickableSurfaceDefaults.border(
                                             border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
-                                            focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
+                                            focusedBorder =
+                                                Border(
+                                                    BorderStroke(3.dp, BenflixColors.Text),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                ),
                                         )
                                     } else {
                                         ClickableSurfaceDefaults.border()
@@ -605,7 +612,7 @@ private fun GuideGrid(
                                         }
                                         Text(
                                             text = program.name(),
-                                            fontSize = 14.sp,
+                                            fontSize = BenflixType.small,
                                             fontWeight = FontWeight.SemiBold,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -614,7 +621,7 @@ private fun GuideGrid(
                                     if (!program.noGuide) {
                                         Text(
                                             text = clock(program.startMs),
-                                            fontSize = 11.sp,
+                                            fontSize = BenflixType.tag,
                                             maxLines = 1,
                                         )
                                     }
@@ -723,7 +730,7 @@ private fun ChannelTileRow(
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
         Text(
             text = title.uppercase(),
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 1.sp,
             color = Color(0xFFB8B8C0),
@@ -746,7 +753,7 @@ private fun AddChannelsTile(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color(0xFF17171B),
@@ -756,13 +763,13 @@ private fun AddChannelsTile(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(8.dp)),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.width(160.dp).height(64.dp),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("+  Add channels", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("+  Add channels", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -780,10 +787,10 @@ private fun SuggestFavouriteTile(
         modifier =
             Modifier
                 .height(64.dp)
-                .background(Color(0xFF17171B), RoundedCornerShape(8.dp))
+                .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp),
     ) {
-        Text("Add $name?", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        Text("Add $name?", fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
         SuggestButton("Add", onAdd)
         SuggestButton("No thanks", onNo)
     }
@@ -806,7 +813,12 @@ private fun SuggestButton(
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        Text(
+            text,
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }
 
@@ -834,12 +846,12 @@ private fun AddChannelsDialog(
             modifier =
                 Modifier
                     .widthIn(max = 520.dp)
-                    .background(BenflixColors.Panel, RoundedCornerShape(14.dp))
+                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
                     .padding(18.dp),
         ) {
             Text(
                 if (picking) "Pick your channels" else "Add channels",
-                fontSize = 20.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.ExtraBold,
                 color = BenflixColors.Text,
             )
@@ -849,7 +861,7 @@ private fun AddChannelsDialog(
                 } else {
                     "Type a channel's name or number, then pick it."
                 },
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = BenflixColors.Muted,
             )
             val box = remember { FocusRequester() }
@@ -877,8 +889,8 @@ private fun AddChannelsDialog(
                         )
                         Text(
                             text = if (starred) "★" else "☆",
-                            fontSize = 18.sp,
-                            color = if (starred) StarGold else Color(0xFF55555C),
+                            fontSize = BenflixType.lead,
+                            color = if (starred) StarGold else BenflixColors.Muted,
                             modifier = Modifier.padding(start = 10.dp),
                         )
                     }
@@ -923,7 +935,7 @@ private fun GuideHeader(
                             "${clock(program.startMs)} – ${clock(program.endMs)}" +
                             (if (schedule.live == null) "  ·  NO ADS" else "")
                     },
-                fontSize = 12.sp,
+                fontSize = BenflixType.tag,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.2.sp,
                 color = if (live) BenflixRed else Color(0xFF8B8B94),
@@ -931,7 +943,7 @@ private fun GuideHeader(
             Text(
                 text = program.name(),
                 fontWeight = FontWeight.Bold,
-                fontSize = if (isTv) 28.sp else 18.sp,
+                fontSize = if (isTv) BenflixType.pageTitle else BenflixType.lead,
                 lineHeight = if (isTv) 32.sp else 22.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -945,7 +957,7 @@ private fun GuideHeader(
                             if (season != null && episode != null) "S$season E$episode" else null,
                             program.item.name,
                         ).joinToString("  ·  "),
-                    fontSize = 15.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -954,8 +966,8 @@ private fun GuideHeader(
             program.item.data.overview?.let {
                 Text(
                     text = it,
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = .72f),
+                    fontSize = BenflixType.small,
+                    color = BenflixColors.Soft,
                     maxLines = if (isTv) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 620.dp),
@@ -969,13 +981,13 @@ private fun GuideHeader(
                             .padding(top = 4.dp)
                             .width(220.dp)
                             .height(4.dp)
-                            .background(Color(0xFF333338), RoundedCornerShape(2.dp)),
+                            .background(Color(0xFF333338), RoundedCornerShape(6.dp)),
                 ) {
                     Box(
                         Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(progress)
-                            .background(BenflixRed, RoundedCornerShape(2.dp)),
+                            .background(BenflixRed, RoundedCornerShape(6.dp)),
                     )
                 }
             }
@@ -986,8 +998,8 @@ private fun GuideHeader(
                 Modifier
                     .fillMaxHeight()
                     .aspectRatio(16f / 9f)
-                    .background(Color(0xFF17171B), RoundedCornerShape(8.dp))
-                    .clip(RoundedCornerShape(8.dp)),
+                    .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(10.dp)),
         ) {
             if (pair != null) {
                 val (schedule, program) = pair
@@ -1041,7 +1053,7 @@ private fun GuideHeader(
                 if (now >= program.startMs && now < program.endMs) {
                     Text(
                         text = "ON NOW",
-                        fontSize = 10.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp,
                         color = BenflixColors.OnLiveTv,
@@ -1049,7 +1061,7 @@ private fun GuideHeader(
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(8.dp)
-                                .background(BenflixRed, RoundedCornerShape(3.dp))
+                                .background(BenflixRed, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
@@ -1087,33 +1099,33 @@ fun ChannelBanner(
                 Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .85f))))
-                    .padding(start = 40.dp, end = 40.dp, top = 40.dp, bottom = 28.dp),
+                    .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 40.dp, bottom = 28.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(info.number.toString(), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                Text(info.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-                if (info.key in favourites) Text("★", fontSize = 20.sp, color = Color.White)
+                Text(info.number.toString(), fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                Text(info.name, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                if (info.key in favourites) Text("★", fontSize = BenflixType.rowName, color = Color.White)
                 if (info.own) {
                     Text(
                         text = "NO ADS",
-                        fontSize = 10.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = .6.sp,
                         color = Color(0xFF04150B),
                         modifier =
                             Modifier
-                                .background(NoAdsGreen, RoundedCornerShape(4.dp))
+                                .background(NoAdsGreen, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 7.dp, vertical = 2.dp),
                     )
                 }
             }
             if (!playing) {
-                Text("Tuning in…", fontSize = 17.sp, color = BenflixColors.Soft)
+                Text("Tuning in…", fontSize = BenflixType.lead, color = BenflixColors.Soft)
             } else if (info.now != null) {
                 val left = ((info.endMs - now) / 60_000L).coerceAtLeast(0L)
                 Text(
                     text = "${info.now}  ·  ${if (left >= 60) "${left / 60} h ${left % 60} min" else "$left min"} left",
-                    fontSize = 17.sp,
+                    fontSize = BenflixType.lead,
                     color = Color.White,
                     maxLines = 1,
                 )
@@ -1123,7 +1135,7 @@ fun ChannelBanner(
                         .widthIn(max = 420.dp)
                         .fillMaxWidth()
                         .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(RoundedCornerShape(6.dp))
                         .background(Color.White.copy(alpha = .25f)),
                 ) {
                     Box(
@@ -1143,7 +1155,7 @@ fun ChannelBanner(
                                 java.time.format.DateTimeFormatter
                                     .ofPattern("h:mm"),
                             )
-                    Text("Next at $at  ·  $next", fontSize = 14.sp, color = BenflixColors.Muted, maxLines = 1)
+                    Text("Next at $at  ·  $next", fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1)
                 }
             }
         }
@@ -1186,18 +1198,18 @@ private fun GroupHeading(name: String) {
         val own = name == BENFLIX_GROUP
         Text(
             text = if (own) "NO ADS" else "LIVE · FREE WITH ADS",
-            fontSize = 10.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = .6.sp,
             color = if (own) Color(0xFF04150B) else Color.White,
             modifier =
                 Modifier
-                    .background(if (own) NoAdsGreen else Color(0xFF3A3A42), RoundedCornerShape(4.dp))
+                    .background(if (own) NoAdsGreen else Color(0xFF3A3A42), RoundedCornerShape(6.dp))
                     .padding(horizontal = 7.dp, vertical = 2.dp),
         )
         Text(
             text = if (own) "BENFLIX CHANNELS · FROM YOUR SERVER" else name.uppercase(),
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 1.sp,
             color = Color(0xFF8B8B94),
@@ -1252,8 +1264,8 @@ private fun EasyButton(
         modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 28.dp, vertical = 22.dp)) {
-            Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
-            Text(note, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
+            Text(note, fontSize = BenflixType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

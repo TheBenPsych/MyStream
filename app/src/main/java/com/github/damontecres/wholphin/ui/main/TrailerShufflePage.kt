@@ -51,6 +51,8 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
@@ -135,7 +137,7 @@ fun TrailerShufflePage(
             Text(
                 text = stringResource(if (state.loading) R.string.loading else R.string.clips_none),
                 color = Color.White,
-                fontSize = 20.sp,
+                fontSize = BenflixType.rowName,
                 modifier = Modifier.align(Alignment.Center),
             )
             return@Box
@@ -178,10 +180,10 @@ fun TrailerShufflePage(
             ) {
                 Text(
                     text = "TRAILER SHUFFLE  ·  ${index + 1} OF ${state.clips.size}",
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.3.sp,
-                    color = Color.White.copy(alpha = .8f),
+                    color = BenflixColors.Soft,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
@@ -205,8 +207,8 @@ fun TrailerShufflePage(
                     clip.item.data.overview?.let {
                         Text(
                             text = it,
-                            color = Color.White.copy(alpha = .85f),
-                            fontSize = 16.sp,
+                            color = BenflixColors.Soft,
+                            fontSize = BenflixType.body,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.widthIn(max = 720.dp),
@@ -248,15 +250,15 @@ private fun Hint(
     ) {
         Text(
             text = key,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
             modifier =
                 Modifier
-                    .background(Color.White, RoundedCornerShape(4.dp))
+                    .background(Color.White, RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
         )
-        Text(text = label, fontSize = 14.sp, color = Color.White)
+        Text(text = label, fontSize = BenflixType.small, color = Color.White)
     }
 }
 

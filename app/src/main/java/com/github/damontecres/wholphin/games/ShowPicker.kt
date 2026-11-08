@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -384,7 +385,7 @@ private fun ProgressLine(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(progress)
-                .background(Color(0xFFE50914)),
+                .background(BenflixColors.Text),
         )
     }
 }

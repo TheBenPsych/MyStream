@@ -61,6 +61,11 @@ fun WholphinTheme(
     val density = LocalDensity.current
     val readDensity =
         if (easyRead) Density(density.density, (density.fontScale * EASY_READ_SCALE).coerceAtMost(EASY_READ_MAX_SCALE)) else density
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    val tvTypography = androidx.compose.runtime.remember(isTv) { appTypography() }
+    val materialTypography = androidx.compose.runtime.remember(isTv) { appMaterialTypography() }
     val finalScheme = if (easyRead) colorScheme.copy(onSurfaceVariant = Color(0xFFE8E8EA)) else colorScheme
     CompositionLocalProvider(
         LocalTheme provides appThemeColors,
@@ -70,11 +75,11 @@ fun WholphinTheme(
         androidx.compose.material3.MaterialTheme(
             colorScheme =
                 if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial,
-            typography = AppMaterialTypography,
+            typography = materialTypography,
         ) {
             MaterialTheme(
                 colorScheme = finalScheme,
-                typography = AppTypography,
+                typography = tvTypography,
                 content = content,
             )
         }

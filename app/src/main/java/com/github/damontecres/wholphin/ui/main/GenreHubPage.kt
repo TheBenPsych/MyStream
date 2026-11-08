@@ -45,6 +45,8 @@ import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -192,7 +194,7 @@ fun GenreHubPage(
         Text(
             text = known?.title ?: genre,
             fontWeight = FontWeight.Bold,
-            fontSize = 40.sp,
+            fontSize = BenflixType.hero,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(top = 12.dp, start = 8.dp),
         )
@@ -205,7 +207,7 @@ fun GenreHubPage(
                 if (list.isEmpty()) {
                     Text(
                         text = "Nothing in $genre yet.",
-                        fontSize = 18.sp,
+                        fontSize = BenflixType.lead,
                         modifier = Modifier.padding(top = 32.dp, start = 8.dp),
                     )
                 } else {
@@ -287,14 +289,14 @@ fun GenreTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         modifier = modifier.size(180.dp, 64.dp),
     ) {
@@ -308,7 +310,7 @@ fun GenreTile(
             Text(
                 text = genre.title,
                 color = Color.White,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             )

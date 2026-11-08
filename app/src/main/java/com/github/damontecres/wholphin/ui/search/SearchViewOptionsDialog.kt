@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
@@ -80,6 +81,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = { onCombinedResultsChange(!combinedResults) },
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
 
                 ListItem(
@@ -105,6 +107,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = { onVoiceSearchButtonVisibleChange(!voiceSearchButtonVisible) },
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
 
                 ListItem(
@@ -114,6 +117,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = onClickFilterTypes,
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }

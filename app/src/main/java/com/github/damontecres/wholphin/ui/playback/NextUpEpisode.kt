@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.Clock
@@ -188,6 +189,7 @@ fun NextUpEpisode(
                             .weight(1f, fill = false)
                             .height(44.dp)
                             .focusRequester(focusRequester),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Box(contentAlignment = Alignment.CenterStart) {
                         // Countdown fill
@@ -217,7 +219,7 @@ fun NextUpEpisode(
                                         buttonText ?: stringResource(R.string.player_next_episode)
                                     },
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                fontSize = BenflixType.body,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -237,11 +239,12 @@ fun NextUpEpisode(
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.player_watch_credits),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = BenflixType.body,
                             maxLines = 1,
                         )
                     }
@@ -259,11 +262,12 @@ fun NextUpEpisode(
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.not_now),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = BenflixType.body,
                             maxLines = 1,
                         )
                     }
@@ -309,7 +313,7 @@ private fun NextUpEpisodePreview() {
                             .align(Alignment.BottomCenter)
                             .background(
                                 MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(10.dp),
                             ),
                 )
             }

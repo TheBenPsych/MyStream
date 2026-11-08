@@ -59,7 +59,8 @@ import com.github.damontecres.wholphin.games.ShowPicker
 import com.github.damontecres.wholphin.games.SideShow
 import com.github.damontecres.wholphin.games.SideShowItem
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 
@@ -158,8 +159,8 @@ fun EmberPlay(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .border(3.dp, EmberText, RoundedCornerShape(4.dp))
-                        .background(EmberBox, RoundedCornerShape(4.dp))
+                        .border(3.dp, EmberText, RoundedCornerShape(6.dp))
+                        .background(EmberBox, RoundedCornerShape(6.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
                     PhaseContent(vm, e, isTv, first, onBag = { bag = true })
@@ -181,8 +182,8 @@ fun EmberPlay(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .border(2.dp, EmberText, RoundedCornerShape(4.dp))
-                        .background(EmberBox, RoundedCornerShape(4.dp))
+                        .border(2.dp, EmberText, RoundedCornerShape(6.dp))
+                        .background(EmberBox, RoundedCornerShape(6.dp))
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -197,7 +198,7 @@ fun EmberPlay(
                     .padding(top = 16.dp, end = 32.dp)
                     .width(380.dp)
                     .aspectRatio(shape)
-                    .border(2.dp, EmberGold, RoundedCornerShape(4.dp))
+                    .border(2.dp, EmberGold, RoundedCornerShape(6.dp))
                     .background(Color.Black),
             ) {
                 AndroidView(factory = { texture }, modifier = Modifier.fillMaxSize())
@@ -307,7 +308,7 @@ private fun Scene(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(6.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
         )
     }
@@ -408,7 +409,7 @@ private fun PartyPanel(
     }
     Box(
         modifier
-            .background(EmberPanel, RoundedCornerShape(8.dp))
+            .background(EmberPanel, RoundedCornerShape(10.dp))
             .padding(horizontal = if (isTv) 14.dp else 8.dp, vertical = if (isTv) 10.dp else 8.dp),
     ) {
         // TV: shrinks a little if a big party doesn't fit (the remote can't scroll this)
@@ -921,7 +922,7 @@ private fun RecapContent(
 ) {
     val st = e.state
     val ending = e.endingDef ?: return
-    Text(ending.title, fontFamily = BenflixTitleFont, color = EmberGold, fontSize = if (isTv) 30.sp else 26.sp)
+    Text(ending.title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, color = EmberGold, fontSize = BenflixType.pageTitle)
     TypeText(if (e.kids && ending.kidsText != null) ending.kidsText else e.fill(ending.text))
     Text(
         "${st.score} points" + if (vm.newBest) "  ·  New best!" else "",
@@ -949,7 +950,7 @@ private fun RecapContent(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2A1C18), RoundedCornerShape(8.dp))
+                .background(Color(0xFF2A1C18), RoundedCornerShape(10.dp))
                 .padding(12.dp),
     ) {
         lines.forEach { Text(it, color = EmberText, fontSize = 15.sp) }
@@ -1013,7 +1014,7 @@ private fun MenuPanel(
                     .verticalScroll(rememberScrollState())
                     .padding(20.dp),
         ) {
-            Text("Ember Road", fontFamily = BenflixTitleFont, color = EmberGold, fontSize = 26.sp)
+            Text("Ember Road", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, color = EmberGold, fontSize = BenflixType.pageTitle)
             EmberButton("Back to the game", onClick = onClose, focusRequester = focus, modifier = Modifier.fillMaxWidth())
             EmberButton("Bag & journal", onClick = onBag, modifier = Modifier.fillMaxWidth())
             if (canShow) {

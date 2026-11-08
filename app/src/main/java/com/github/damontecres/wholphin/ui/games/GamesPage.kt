@@ -66,6 +66,8 @@ import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.Dispatchers
@@ -227,7 +229,7 @@ fun GamesPage(
             if (recent.isNotEmpty()) {
                 Text(
                     text = "Continue playing",
-                    fontSize = if (isTv) 20.sp else 18.sp,
+                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -306,7 +308,7 @@ fun GamesPage(
                         if (favRefs.isNotEmpty()) {
                             Text(
                                 text = "Favourites",
-                                fontSize = if (isTv) 20.sp else 18.sp,
+                                fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
@@ -336,7 +338,7 @@ fun GamesPage(
                             if (playable.isNotEmpty()) {
                                 Text(
                                     text = "Consoles",
-                                    fontSize = if (isTv) 20.sp else 18.sp,
+                                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onBackground,
                                 )
@@ -521,14 +523,14 @@ internal fun ActionTile(
     subtitle: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
         modifier = Modifier.size(width = 280.dp, height = 84.dp),
@@ -537,8 +539,8 @@ internal fun ActionTile(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(subtitle, fontSize = 13.sp, color = Color.White.copy(alpha = .8f))
+            Text(title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(subtitle, fontSize = BenflixType.small, color = BenflixColors.Soft)
         }
     }
 }
@@ -562,7 +564,7 @@ internal fun ServerGameCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1F1F1F), focusedContainerColor = Color(0xFF1F1F1F)),
         modifier = modifier,
@@ -571,7 +573,7 @@ internal fun ServerGameCard(
             // The name sits underneath, so it shows when there's no box art
             Text(
                 text = game.name,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -626,7 +628,7 @@ internal fun ServerGameCard(
                     }
                     Text(
                         text = status ?: "Can't play here yet",
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center,

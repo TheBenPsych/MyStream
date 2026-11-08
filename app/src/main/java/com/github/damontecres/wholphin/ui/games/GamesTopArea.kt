@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * What the Games top area describes (approved redesign, part 1): the game, console or puzzle
@@ -186,22 +187,22 @@ internal fun GamesTopArea(
                 Text(
                     text = preview.kicker,
                     color = BenflixColors.Soft,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
                 Text(
                     text = preview.title,
                     color = BenflixColors.Text,
-                    fontSize = 32.sp,
-                    lineHeight = 34.sp,
+                    fontSize = BenflixType.pageTitle,
+                    lineHeight = BenflixType.pageTitle * 1.15f,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     preview.line?.let {
-                        Text(it, color = BenflixColors.Muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(it, color = BenflixColors.Muted, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     preview.playWith.forEach { PlayIcon(it) }
                 }
@@ -209,8 +210,8 @@ internal fun GamesTopArea(
                     Text(
                         text = it,
                         color = BenflixColors.Soft,
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
+                        fontSize = BenflixType.small,
+                        lineHeight = BenflixType.small * 1.35f,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
@@ -224,7 +225,7 @@ internal fun GamesTopArea(
                     ) {
                         Text(stringResource(R.string.fa_trophy), fontFamily = FontAwesome, fontSize = 13.sp, color = BenflixColors.Soft)
                         preview.top3.forEach {
-                            Text(it, color = BenflixColors.Soft, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(it, color = BenflixColors.Soft, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
                     }
                 }
@@ -254,19 +255,24 @@ internal fun LeaderboardRow(
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Leaderboards", fontSize = if (isTv) 20.sp else 18.sp, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
+        Text(
+            "Leaderboards",
+            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+            fontWeight = FontWeight.SemiBold,
+            color = BenflixColors.Text,
+        )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
         ) {
             items(games, key = { "board-${it.id}" }) { g ->
                 val top = board?.get(g.id).orEmpty()
-                val shape = RoundedCornerShape(12.dp)
+                val shape = RoundedCornerShape(10.dp)
                 Surface(
                     onClick = g.open,
                     shape = ClickableSurfaceDefaults.shape(shape),
                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                    border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+                    border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
                     colors =
                         ClickableSurfaceDefaults.colors(
                             containerColor = BenflixColors.Raised,
@@ -297,7 +303,7 @@ internal fun LeaderboardRow(
                             Text(stringResource(R.string.fa_trophy), fontFamily = FontAwesome, fontSize = 13.sp, color = BenflixColors.Soft)
                             Text(
                                 g.title,
-                                fontSize = 16.sp,
+                                fontSize = BenflixType.body,
                                 fontWeight = FontWeight.Bold,
                                 color = BenflixColors.Text,
                                 maxLines = 1,
@@ -305,9 +311,9 @@ internal fun LeaderboardRow(
                             )
                         }
                         if (board == null) {
-                            Text("Loading…", fontSize = 13.sp, color = BenflixColors.Muted)
+                            Text("Loading…", fontSize = BenflixType.small, color = BenflixColors.Muted)
                         } else if (top.isEmpty()) {
-                            Text("No scores yet", fontSize = 13.sp, color = BenflixColors.Muted)
+                            Text("No scores yet", fontSize = BenflixType.small, color = BenflixColors.Muted)
                         }
                         top.take(3).forEachIndexed { i, e ->
                             BoardScoreLine("${i + 1}. ${e.name.uppercase()}", e.score)
@@ -333,7 +339,7 @@ private fun BoardScoreLine(
     Row(Modifier.fillMaxWidth()) {
         Text(
             left,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             color = if (muted) BenflixColors.Muted else BenflixColors.Text,
             maxLines = 1,
@@ -342,7 +348,7 @@ private fun BoardScoreLine(
         )
         Text(
             "%,d".format(score),
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             color = if (muted) BenflixColors.Muted else BenflixColors.Text,
         )
@@ -361,7 +367,7 @@ internal fun GameIconSquare(
         modifier =
             Modifier
                 .size(size)
-                .background(colors.firstOrNull() ?: BenflixColors.Line, RoundedCornerShape(7.dp)),
+                .background(colors.firstOrNull() ?: BenflixColors.Line, RoundedCornerShape(6.dp)),
     ) {
         Text(
             text = stringResource(icon ?: R.string.fa_bolt),

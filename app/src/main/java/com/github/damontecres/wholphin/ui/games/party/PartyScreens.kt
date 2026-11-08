@@ -68,8 +68,9 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGold
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGreen
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePanel
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -98,7 +99,13 @@ fun PartyHostScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.widthIn(max = 1100.dp).fillMaxWidth(),
             ) {
-                Text(ui.kind.title.uppercase(), fontFamily = BenflixTitleFont, fontSize = if (isTv) 40.sp else 30.sp, color = Color.White)
+                Text(
+                    ui.kind.title,
+                    fontFamily = BenflixFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = BenflixType.pageTitle,
+                    color = Color.White,
+                )
                 when (ui.phase) {
                     PartyPhase.LOBBY -> Lobby(ui, isTv, viewModel)
                     PartyPhase.OVER -> Over(ui, viewModel)
@@ -138,7 +145,11 @@ private fun Lobby(
     }
     ui.error?.let { Text(it, fontSize = 16.sp, color = BenflixRed) }
     val need = ui.kind.minPlayers - ui.players.size
-    Button(onClick = { viewModel.startGame() }, modifier = Modifier.focusRequester(focus)) {
+    Button(
+        onClick = { viewModel.startGame() },
+        modifier = Modifier.focusRequester(focus),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
+    ) {
         Text(if (need > 0) "Needs $need more ${if (need == 1) "player" else "players"}" else "▶ Start with ${ui.players.size}")
     }
 }
@@ -220,7 +231,7 @@ private fun ChoicesShown(choices: List<String>) {
                 "${'A' + i}  $c",
                 fontSize = 18.sp,
                 color = Color.White,
-                modifier = Modifier.background(Color(0xFF2A2A2E), RoundedCornerShape(8.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.background(Color(0xFF2A2A2E), RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
     }
@@ -247,11 +258,21 @@ private fun Over(
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
     val winner = ui.players.maxByOrNull { it.score }
-    Text(winner?.let { "${it.name} wins!" } ?: "Game over", fontFamily = BenflixTitleFont, fontSize = 44.sp, color = PuzzleGold)
+    Text(
+        winner?.let {
+            "${it.name} wins!"
+        } ?: "Game over",
+        fontFamily = BenflixFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = BenflixType.pageTitle,
+        color = PuzzleGold,
+    )
     Scoreboard(ui.players)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = { viewModel.startGame() }, modifier = Modifier.focusRequester(focus)) { Text("Play again") }
-        Button(onClick = { viewModel.backToLobby() }) { Text("Back to players") }
+        Button(onClick = {
+            viewModel.startGame()
+        }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Play again") }
+        Button(onClick = { viewModel.backToLobby() }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Back to players") }
     }
 }
 
@@ -290,7 +311,7 @@ private fun Panel(content: @Composable () -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(10.dp))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) { content() }
 }
@@ -304,7 +325,7 @@ fun DrawingBoard(
     Canvas(
         modifier
             .aspectRatio(4f / 3f)
-            .background(Color.White, RoundedCornerShape(12.dp)),
+            .background(Color.White, RoundedCornerShape(10.dp)),
     ) {
         lines.forEach { line ->
             val pts =
@@ -363,7 +384,7 @@ fun PartyJoinScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
     ) {
-        Text("BENFLIX PARTY", fontFamily = BenflixTitleFont, fontSize = 30.sp, color = Color.White)
+        Text("Benflix Party", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
         val v = view
         if (v == null) {
             Text(
@@ -376,8 +397,14 @@ fun PartyJoinScreen(
                 lineHeight = 25.sp,
                 color = Color.White,
             )
-            tvs.forEach { t -> Button(onClick = { client.join(t) }, modifier = Modifier.fillMaxWidth()) { Text(t.name) } }
-            Button(onClick = onLeave) { Text("Back") }
+            tvs.forEach { t ->
+                Button(
+                    onClick = { client.join(t) },
+                    modifier = Modifier.fillMaxWidth(),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) { Text(t.name) }
+            }
+            Button(onClick = onLeave, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Back") }
             return@Column
         }
         if (v.status.isNotBlank()) Text(v.status, fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
@@ -403,12 +430,13 @@ fun PartyJoinScreen(
                 onClick = { client.press(a.id) },
                 colors = ButtonDefaults.colors(containerColor = Color(0xFF2A2A2E), contentColor = Color.White),
                 modifier = Modifier.fillMaxWidth(),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) { Text(a.label, fontSize = 17.sp, modifier = Modifier.padding(vertical = 4.dp)) }
         }
         Button(onClick = {
             client.leave()
             onLeave()
-        }) { Text("Leave the game") }
+        }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Leave the game") }
     }
 }
 
@@ -452,7 +480,7 @@ private fun SendBox(
                 .border(1.dp, Color(0xFF44444C), RoundedCornerShape(10.dp))
                 .padding(14.dp),
     )
-    Button(onClick = send, modifier = Modifier.fillMaxWidth()) {
+    Button(onClick = send, modifier = Modifier.fillMaxWidth(), scale = ButtonDefaults.scale(focusedScale = 1f)) {
         Text("Send", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
@@ -503,7 +531,7 @@ private fun DrawPad(
     Button(onClick = {
         lines.clear()
         onLine("clear")
-    }) { Text("Clear drawing") }
+    }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Clear drawing") }
 }
 
 private fun encode(points: List<Offset>): String =

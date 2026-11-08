@@ -43,7 +43,8 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -209,18 +210,18 @@ fun MoodQuizPage(
             0, 1 -> {
                 Text(
                     text = "QUESTION ${step + 1} OF 2",
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.3.sp,
                     color = Color(0xFFA69C9D),
                 )
                 Text(
-                    text = if (step == 0) "WHAT'S THE GROUP IN THE MOOD FOR?" else "HOW MUCH TIME, AND WHAT KIND?",
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 48.sp,
-                    letterSpacing = 1.sp,
+                    text = if (step == 0) "What's the group in the mood for?" else "How much time, and what kind?",
+                    fontFamily = BenflixFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = BenflixType.pageTitle,
                 )
-                Text("Pick as many as you like.", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Pick as many as you like.", fontSize = BenflixType.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -257,15 +258,16 @@ fun MoodQuizPage(
                                 step = 2
                             }
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(if (step == 0) "Next" else "Show picks")
                     }
                     if (step == 1) {
-                        Button(onClick = { step = 0 }) { Text("Back") }
+                        Button(onClick = { step = 0 }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Back") }
                     }
                     Text(
                         text = if (count == 0) "Nothing picked: anything goes" else "$count picked",
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
                     )
@@ -298,13 +300,13 @@ private fun QuizResults(
     val results by viewModel.results.collectAsState()
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = title.uppercase(),
-            fontFamily = BenflixTitleFont,
-            fontSize = 44.sp,
-            letterSpacing = 1.sp,
+            text = title,
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
             modifier = Modifier.weight(1f),
         )
-        Button(onClick = onChangeAnswers) { Text("Change answers") }
+        Button(onClick = onChangeAnswers, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Change answers") }
     }
     when (val list = results) {
         null -> {
@@ -313,7 +315,7 @@ private fun QuizResults(
 
         else -> {
             if (list.isEmpty()) {
-                Text("Nothing matched. Try fewer answers.", fontSize = 18.sp)
+                Text("Nothing matched. Try fewer answers.", fontSize = BenflixType.lead)
             } else {
                 LaunchedEffect(list) {
                     delay(80)
@@ -321,7 +323,7 @@ private fun QuizResults(
                 }
                 Text(
                     text = "Best matches first. Ones that fit every mood say so.",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 LazyVerticalGrid(
@@ -346,7 +348,7 @@ private fun QuizResults(
                             if (result.matchesAll) {
                                 Text(
                                     text = "Fits every mood",
-                                    fontSize = 11.sp,
+                                    fontSize = BenflixType.tag,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -368,7 +370,7 @@ private fun QuizChip(
 ) {
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors =
             ButtonDefaults.colors(
@@ -383,15 +385,16 @@ private fun QuizChip(
                     if (on) {
                         androidx.tv.material3.Border(
                             androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFE5303A)),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                         )
                     } else {
                         androidx.tv.material3.Border.None
                     },
             ),
         modifier = modifier.width(180.dp),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text = if (on) "✓  $text" else text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = if (on) "✓  $text" else text, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
     }
 }
 

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -403,6 +404,7 @@ private fun AddServerDialog(
                                     viewModel.addServer(server.url, showToast = true)
                                 },
                                 modifier = Modifier.focusRequester(focusRequester),
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                             )
                         }
                     }

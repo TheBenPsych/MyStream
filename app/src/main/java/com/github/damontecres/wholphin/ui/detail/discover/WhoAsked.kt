@@ -26,6 +26,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.api.seerr.RequestApi
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -36,6 +37,7 @@ import com.github.damontecres.wholphin.ui.discover.CantFindViewModel
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -261,20 +263,23 @@ fun WhoAskedBlock(
                 }
             val boxModifier =
                 Modifier
-                    .background(Color(0x22FFFFFF), RoundedCornerShape(8.dp))
+                    .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             val label: @Composable () -> Unit = {
                 Text(
                     text = listOfNotNull("Asked by ${entry.who}", entry.whenAsked, state).joinToString(" · "),
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
             }
             val buttons: @Composable () -> Unit = {
                 if (entry.status == RequestStatus.PENDING) {
-                    Button(onClick = { viewModel.answer(entry, true) }) { Text("Approve") }
-                    Button(onClick = { viewModel.answer(entry, false) }) { Text("Decline") }
+                    Button(onClick = { viewModel.answer(entry, true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Approve") }
+                    Button(
+                        onClick = { viewModel.answer(entry, false) },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    ) { Text("Decline") }
                 }
             }
             if (isTv) {
@@ -305,7 +310,10 @@ fun WhoAskedBlock(
             }
         }
         if (canMarkCantFind) {
-            Button(onClick = { askCantFind = true }) { Text("Can't find it", maxLines = 1) }
+            Button(
+                onClick = { askCantFind = true },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) { Text("Can't find it", maxLines = 1) }
         }
     }
 }

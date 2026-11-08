@@ -33,6 +33,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -46,7 +47,8 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -159,10 +161,10 @@ fun ThisOrThatPage(
                 .padding(top = if (isTv) 16.dp else 8.dp, start = 8.dp, end = 8.dp),
     ) {
         Text(
-            text = "THIS OR THAT",
-            fontFamily = BenflixTitleFont,
-            fontSize = if (isTv) 48.sp else 36.sp,
-            letterSpacing = 1.sp,
+            text = "This or that",
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
         )
         when {
             pool == null -> {
@@ -185,7 +187,7 @@ fun ThisOrThatPage(
                 val challenger = pool.getOrNull(state.challengerIndex)
                 Text(
                     text = "ROUND ${state.round} OF ${ThisOrThatViewModel.ROUNDS} · WHICH ONE TONIGHT?",
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.3.sp,
                     color = Color(0xFFA69C9D),
@@ -214,7 +216,7 @@ fun ThisOrThatPage(
                         )
                         Text(
                             text = "or",
-                            fontSize = 20.sp,
+                            fontSize = BenflixType.rowName,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = posterWidth * .7f),
@@ -246,7 +248,7 @@ private fun PickPoster(
         Surface(
             onClick = onClick,
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier = modifier.fillMaxWidth().aspectRatio(2f / 3f),
         ) {
             AsyncImage(
@@ -262,7 +264,7 @@ private fun PickPoster(
         }
         Text(
             text = listOfNotNull(item?.name, item?.data?.productionYear?.toString()).joinToString(" · "),
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -289,11 +291,11 @@ private fun Winner(
         modifier = Modifier.padding(bottom = 16.dp),
     ) {
         if (item == null) {
-            Text("Not enough to pick from yet. Try again later.", fontSize = 16.sp)
+            Text("Not enough to pick from yet. Try again later.", fontSize = BenflixType.body)
         } else {
             Text(
                 text = "TONIGHT'S PICK",
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.3.sp,
                 color = Color(0xFF9A9AA3),
@@ -311,18 +313,33 @@ private fun Winner(
             )
             Text(
                 text = item.name.orEmpty(),
-                fontSize = 22.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (item != null) {
-                Button(onClick = { onPlay(item) }, modifier = Modifier.focusRequester(focus)) {
+                Button(
+                    onClick = { onPlay(item) },
+                    modifier = Modifier.focusRequester(focus),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) {
                     Text("Let's watch it")
                 }
             }
-            Button(onClick = onAgain, modifier = if (item == null) Modifier.focusRequester(focus) else Modifier) {
+            Button(
+                onClick = onAgain,
+                modifier =
+                    if (item ==
+                        null
+                    ) {
+                        Modifier.focusRequester(focus)
+                    } else {
+                        Modifier
+                    },
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) {
                 Text("Play again")
             }
         }

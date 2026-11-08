@@ -31,6 +31,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlinx.coroutines.launch
 
 /** One heading in the console grid (null = no heading) and its games */
@@ -151,7 +152,7 @@ internal fun ConsoleGameGrid(
                     item(key = "h-$heading", span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             text = heading,
-                            fontSize = 20.sp,
+                            fontSize = BenflixType.rowName,
                             fontWeight = FontWeight.Bold,
                             color = BenflixColors.Text,
                             modifier = Modifier.padding(top = 6.dp),
@@ -197,7 +198,7 @@ private fun LetterButton(
     ) {
         Text(
             text = letter,
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center),
         )

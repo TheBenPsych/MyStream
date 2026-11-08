@@ -39,6 +39,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
 internal data class RowGame(
@@ -180,7 +181,12 @@ private fun GameRow(
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, fontSize = if (isTv) 20.sp else 18.sp, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
+        Text(
+            title,
+            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+            fontWeight = FontWeight.SemiBold,
+            color = BenflixColors.Text,
+        )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
             val width: Dp = if (isTv) (maxWidth - gap * 6) / 6.5f else maxWidth * 0.42f
@@ -212,12 +218,12 @@ private fun RowTile(
     isTv: Boolean,
     modifier: Modifier,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = g.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
         modifier = modifier,
     ) {
@@ -232,7 +238,7 @@ private fun RowTile(
             Box(Modifier.weight(1f))
             Text(
                 g.title,
-                fontSize = if (isTv) 17.sp else 15.sp,
+                fontSize = if (isTv) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = BenflixColors.Text,
                 maxLines = 1,
@@ -240,7 +246,7 @@ private fun RowTile(
             )
             Text(
                 g.kind.substringBefore(" · "),
-                fontSize = 12.sp,
+                fontSize = BenflixType.tag,
                 color = BenflixColors.Muted,
                 maxLines = 1,
             )
@@ -255,12 +261,12 @@ internal fun EmberBanner(
     onClick: () -> Unit,
     onFocus: (GamePreview) -> Unit = {},
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
         modifier =
             Modifier.fillMaxWidth().onFocusChanged {
@@ -291,18 +297,18 @@ internal fun EmberBanner(
         ) {
             Text(stringResource(R.string.fa_dragon), fontFamily = FontAwesome, fontSize = 22.sp, color = Color.White)
             if (isTv) {
-                Text("Ember Road", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Text("Ember Road", fontSize = BenflixType.rowName, fontWeight = FontWeight.Black, color = Color.White)
                 Text(
                     "Pixel adventure: carry a dragon egg across a wild land. Android phones can join in.",
-                    fontSize = 15.sp,
-                    color = Color.White.copy(alpha = .9f),
+                    fontSize = BenflixType.body,
+                    color = BenflixColors.Text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
                 Column {
-                    Text("Ember Road", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    Text("Pixel adventure. Android phones can join in.", fontSize = 13.sp, color = Color.White.copy(alpha = .9f))
+                    Text("Ember Road", fontSize = BenflixType.lead, fontWeight = FontWeight.Black, color = Color.White)
+                    Text("Pixel adventure. Android phones can join in.", fontSize = BenflixType.small, color = BenflixColors.Text)
                 }
             }
         }

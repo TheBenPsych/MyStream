@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -442,8 +443,8 @@ fun DiscoverSeriesDetailsHeader(
         androidx.tv.material3.Text(
             text = series.name.orEmpty(),
             color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-            fontSize = 40.sp,
-            lineHeight = 42.sp,
+            fontSize = BenflixType.hero,
+            lineHeight = BenflixType.hero * 1.1f,
             fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

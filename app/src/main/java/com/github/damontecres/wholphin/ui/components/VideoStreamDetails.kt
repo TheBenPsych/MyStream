@@ -35,6 +35,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.playback.audioStreamCount
 import com.github.damontecres.wholphin.ui.playback.embeddedSubtitleCount
 import com.github.damontecres.wholphin.ui.playback.externalSubtitlesCount
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.util.StreamFormatting.concatWithSpace
 import com.github.damontecres.wholphin.ui.util.StreamFormatting.formatAudioCodec
@@ -179,13 +180,13 @@ fun StreamLabel(
                 .background(
                     MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .5f),
 //                    MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(6.dp),
                 ).padding(vertical = 4.dp, horizontal = 6.dp),
     ) {
         ProvideTextStyle(
             TextStyle(
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 12.sp,
+                fontSize = BenflixType.tag,
                 fontWeight = FontWeight.SemiBold,
             ),
         ) {

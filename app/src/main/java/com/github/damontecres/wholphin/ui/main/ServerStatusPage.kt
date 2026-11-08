@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
@@ -80,6 +81,8 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -442,7 +445,7 @@ fun ServerStatusPage(
     val sectionTitle: @Composable (String) -> Unit = { SectionTitle(it) }
     val content: LazyListScope.() -> Unit = content@{
         if (!isAdmin) {
-            item { Text("Only the server's admin can see this page.", fontSize = 18.sp) }
+            item { Text("Only the server's admin can see this page.", fontSize = BenflixType.lead) }
             return@content
         }
         when (section) {
@@ -622,7 +625,7 @@ fun ServerStatusPage(
                                 androidx.tv.material3.ListItemDefaults.border(
                                     focusedBorder =
                                         androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                                             shape = RoundedCornerShape(10.dp),
                                         ),
                                     focusedSelectedBorder =
@@ -634,7 +637,7 @@ fun ServerStatusPage(
                             headlineContent = {
                                 Text(
                                     text = s.title,
-                                    fontSize = 18.sp,
+                                    fontSize = BenflixType.lead,
                                     fontWeight = if (s == section) FontWeight.SemiBold else FontWeight.Normal,
                                     maxLines = 1,
                                 )
@@ -650,16 +653,17 @@ fun ServerStatusPage(
                     }
                     Text(
                         text = section.hint,
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
                     )
                     ListItem(
                         selected = false,
                         onClick = refreshAll,
-                        headlineContent = { Text("Refresh", fontSize = 16.sp) },
+                        headlineContent = { Text("Refresh", fontSize = BenflixType.body) },
                         leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(22.dp)) },
                         modifier = Modifier.padding(top = 12.dp),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }
@@ -828,7 +832,7 @@ private fun PageHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = sectionTitle ?: "Server",
-                fontSize = if (isTv) 40.sp else 34.sp,
+                fontSize = BenflixType.hero,
                 lineHeight = if (isTv) 42.sp else 36.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
@@ -870,13 +874,13 @@ private fun PageHeader(
                 StatusChip(text = "Loading new stats…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (!loading && ago != null) {
-                Text(text = ago!!, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = ago!!, fontSize = BenflixType.small, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Benflix: anything slow keeps loading quietly; say what, so it's clear the page isn't stuck
             if (!loading && waitingOn.isNotEmpty()) {
                 Text(
                     text = "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…",
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -928,7 +932,7 @@ private fun GlanceRow(
             ListItem(
                 selected = false,
                 onClick = { onClick(s) },
-                headlineContent = { Text(label, fontSize = 15.sp, maxLines = 1) },
+                headlineContent = { Text(label, fontSize = BenflixType.body, maxLines = 1) },
                 // Words as well as the colour: OK, Check or Problem
                 supportingContent = {
                     Text(
@@ -939,7 +943,7 @@ private fun GlanceRow(
                                 Light.BAD -> "Problem"
                                 Light.UNKNOWN -> "Checking…"
                             },
-                        fontSize = 13.sp,
+                        fontSize = BenflixType.small,
                         maxLines = 1,
                     )
                 },
@@ -947,8 +951,9 @@ private fun GlanceRow(
                 modifier =
                     Modifier
                         .width(170.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(ServerCardColor),
+                scale = ListItemDefaults.scale(focusedScale = 1f),
             )
         }
     }
@@ -975,7 +980,7 @@ private fun SectionChip(
     ) {
         Text(
             text = section.title,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.SemiBold,
             color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
         )
@@ -1040,7 +1045,7 @@ private fun LazyListScope.watchingItems(
                             w.progress?.let { ProgressLine(it) }
                             // Phones: the long "how it plays" note goes under, so it never gets cut off
                             if (!isTv) StatusChip(text = w.howItPlays, color = if (w.converting) WarnGold else GoodGreen)
-                            w.why?.let { Text(text = "Why: $it", fontSize = 13.sp, color = WarnGold) }
+                            w.why?.let { Text(text = "Why: $it", fontSize = BenflixType.small, color = WarnGold) }
                         }
                     },
                     leading = {
@@ -1392,12 +1397,12 @@ internal fun LoadingBox(text: String) {
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
-                .background(ServerCardColor, RoundedCornerShape(12.dp))
+                .background(ServerCardColor, RoundedCornerShape(10.dp))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
             text = text,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.graphicsLayer { this.alpha = alpha },
         )
@@ -1413,7 +1418,7 @@ internal fun SectionTitle(text: String) {
     // Benflix: a small grey heading over each group of cards, like the Settings pages
     Text(
         text = text.uppercase(),
-        fontSize = 13.sp,
+        fontSize = BenflixType.small,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.2.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1429,7 +1434,7 @@ private fun StatusChip(
     Text(
         text = text,
         color = color,
-        fontSize = 13.sp,
+        fontSize = BenflixType.small,
         fontWeight = FontWeight.SemiBold,
         modifier =
             Modifier
@@ -1447,17 +1452,17 @@ private fun BigNumber(
     Column(
         modifier =
             modifier
-                .background(ServerCardColor, RoundedCornerShape(12.dp))
+                .background(ServerCardColor, RoundedCornerShape(10.dp))
                 .padding(12.dp),
     ) {
         // Benflix: a dash while the number is still loading
         Text(
             text = value ?: "–",
             fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
+            fontSize = BenflixType.rowName,
             color = if (value == null) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
         )
-        Text(text = label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = label, fontSize = BenflixType.small, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1470,14 +1475,20 @@ private fun DiskBar(disk: ServerDisk) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(ServerCardColor, RoundedCornerShape(12.dp))
+                .background(ServerCardColor, RoundedCornerShape(10.dp))
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(text = disk.name, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(
+                text = disk.name,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
             Text(
                 text = "${sizeText(disk.freeBytes)} free of ${sizeText(disk.totalBytes)}",
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1499,7 +1510,7 @@ private fun DiskBar(disk: ServerDisk) {
         if (disk.nearlyFull) {
             Text(
                 text = "Almost full! New downloads may stop soon. Delete a few things or add a disk.",
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 color = WarnGold,
             )
         }

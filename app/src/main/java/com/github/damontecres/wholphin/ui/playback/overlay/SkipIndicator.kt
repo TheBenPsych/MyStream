@@ -23,6 +23,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.ifElse
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlin.math.abs
 
 /**
@@ -63,7 +64,7 @@ fun SkipIndicator(
         Text(
             modifier = Modifier.align(Alignment.Center),
             color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             style = MaterialTheme.typography.bodySmall,
             text = abs(durationMs / 1000).toString(),
         )

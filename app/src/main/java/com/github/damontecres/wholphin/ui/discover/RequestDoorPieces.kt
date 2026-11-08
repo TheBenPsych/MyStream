@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlinx.coroutines.delay
 
 /*
@@ -152,8 +153,8 @@ fun RequestPreview(
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Text,
-                    fontSize = 30.sp,
-                    lineHeight = 32.sp,
+                    fontSize = BenflixType.pageTitle,
+                    lineHeight = BenflixType.pageTitle * 1.15f,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -173,7 +174,7 @@ fun RequestPreview(
                     Text(
                         text = meta,
                         color = BenflixColors.Soft,
-                        fontSize = 15.sp,
+                        fontSize = BenflixType.body,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -185,8 +186,8 @@ fun RequestPreview(
                     Text(
                         text = story,
                         color = BenflixColors.Soft,
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
+                        fontSize = BenflixType.small,
+                        lineHeight = BenflixType.small * 1.35f,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 8.dp),
@@ -215,7 +216,7 @@ fun RequestDoorRow(
         Text(
             text = title,
             color = BenflixColors.Text,
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -296,7 +297,7 @@ fun RequestPoster(
                     Text(
                         text = item.title.orEmpty(),
                         color = BenflixColors.Text,
-                        fontSize = 16.sp,
+                        fontSize = BenflixType.body,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center,
                         maxLines = 4,
@@ -319,14 +320,14 @@ fun RequestPoster(
                     Text(
                         text = cornerNote,
                         color = BenflixColors.Text,
-                        fontSize = 10.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(start = 6.dp, end = 6.dp, bottom = if (adult || cantFind) 26.dp else 6.dp)
-                                .background(Color.Black.copy(alpha = .75f), RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
@@ -344,13 +345,13 @@ fun RequestPoster(
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Text,
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 (subtitle ?: item.releaseDate?.year?.toString())?.let {
-                    Text(text = it, color = BenflixColors.Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = it, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -365,12 +366,12 @@ private fun Pill(
     Text(
         text = text,
         color = BenflixColors.Tray,
-        fontSize = 10.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.ExtraBold,
         maxLines = 1,
         modifier =
             modifier
-                .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
                 .padding(horizontal = 5.dp, vertical = 1.dp),
     )
 }
@@ -389,7 +390,7 @@ fun orderRequestRows(rows: List<FindRow>): List<FindRow> =
         }
     }
 
-private val POSTER_SHAPE = RoundedCornerShape(8.dp)
+private val POSTER_SHAPE = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
 private val SIDE_ROW = 16.dp
 private const val PICTURE_WIDTH = 0.62f
 private const val PICTURE_FADE_MS = 450

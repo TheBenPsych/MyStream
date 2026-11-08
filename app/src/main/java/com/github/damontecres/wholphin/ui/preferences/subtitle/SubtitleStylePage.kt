@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.toSubtitleStyle
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import timber.log.Timber
@@ -351,7 +352,7 @@ private fun SubtitlePillChip(
     ) {
         androidx.tv.material3.Text(
             text = label,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
         )

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
@@ -222,7 +223,7 @@ fun Tab(
         ) {
             Text(
                 text = title,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = contentColor,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )

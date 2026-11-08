@@ -97,6 +97,7 @@ import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -125,7 +126,9 @@ import com.github.damontecres.wholphin.ui.playback.overlay.rememberSeekBarState
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.applyTo
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.seasonEpisode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClosePlayer
@@ -836,7 +839,7 @@ fun PlaybackPageContent(
             ) {
                 Text(
                     text = "Guide",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
@@ -887,6 +890,7 @@ fun PlaybackPageContent(
                     ) {
                         Button(
                             onClick = { viewModel.alwaysSkipIntroForThisShow(segment.segment.id) },
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = "Always for this show")
                         }
@@ -901,6 +905,7 @@ fun PlaybackPageContent(
                     ) {
                         Button(
                             onClick = { viewModel.alwaysSkipOutroForThisShow(segment.segment.id) },
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = "Always for this show")
                         }
@@ -941,10 +946,10 @@ fun PlaybackPageContent(
             Text(
                 text = "Stay! There's a scene after the credits",
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = BenflixType.lead,
                 modifier =
                     Modifier
-                        .background(Color(0xE6202024), RoundedCornerShape(12.dp))
+                        .background(Color(0xE6202024), RoundedCornerShape(10.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             )
         }
@@ -1247,15 +1252,19 @@ private fun RecapCard(
                 .background(Color(0xF0141418), RoundedCornerShape(16.dp))
                 .padding(24.dp),
     ) {
-        Text(text = "It's been a while. Here's where you left off.", fontSize = 15.sp, color = Color.White.copy(alpha = .75f))
+        Text(text = "It's been a while. Here's where you left off.", fontSize = BenflixType.body, color = BenflixColors.Soft)
         if (recap.label.isNotBlank()) {
-            Text(text = recap.label.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BenflixRed)
+            Text(text = recap.label.uppercase(), fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = BenflixRed)
         }
-        recap.name?.let { Text(text = it, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+        recap.name?.let { Text(text = it, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White) }
         recap.overview?.let {
-            Text(text = it, fontSize = 16.sp, color = Color.White.copy(alpha = .9f), maxLines = 5, overflow = TextOverflow.Ellipsis)
+            Text(text = it, fontSize = BenflixType.body, color = BenflixColors.Text, maxLines = 5, overflow = TextOverflow.Ellipsis)
         }
-        Button(onClick = onStart, modifier = Modifier.padding(top = 6.dp).focusRequester(focusRequester)) {
+        Button(
+            onClick = onStart,
+            modifier = Modifier.padding(top = 6.dp).focusRequester(focusRequester),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+        ) {
             Text("Start next episode ($secondsLeft)")
         }
     }

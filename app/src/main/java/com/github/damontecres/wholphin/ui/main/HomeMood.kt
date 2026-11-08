@@ -31,6 +31,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 
 /**
@@ -131,15 +133,15 @@ private fun MoodTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
                 border = if (selected) Border(BorderStroke(2.dp, Color.White.copy(alpha = .7f)), shape = shape) else Border.None,
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         modifier = modifier.size(200.dp, 84.dp),
     ) {
@@ -153,7 +155,7 @@ private fun MoodTile(
             Text(
                 text = stringResource(mood.title),
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = BenflixType.lead,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 12.dp),

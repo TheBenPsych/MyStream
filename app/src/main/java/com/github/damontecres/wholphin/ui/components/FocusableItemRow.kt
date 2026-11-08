@@ -69,7 +69,7 @@ fun FocusableItemRow(
             modifier
                 .padding(start = 8.dp)
                 .focusable(interactionSource = interactionSource)
-                .background(background, shape = RoundedCornerShape(8.dp))
+                .background(background, shape = RoundedCornerShape(10.dp))
                 .padding(8.dp),
     ) {
         titleContent.invoke()

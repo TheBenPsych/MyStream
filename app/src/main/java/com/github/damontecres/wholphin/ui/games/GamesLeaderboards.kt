@@ -57,6 +57,8 @@ import com.github.damontecres.wholphin.services.GameConsole
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ServerGame
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /**
@@ -142,8 +144,8 @@ internal fun BoardPanel(
     Surface(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF16161A), focusedContainerColor = Color(0xFF1C1C22)),
         modifier = modifier,
     ) {
@@ -154,8 +156,8 @@ internal fun BoardPanel(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color.White)
-            Text(subtitle, fontSize = 12.sp, color = Color.White.copy(alpha = .7f), modifier = Modifier.padding(bottom = 4.dp))
+            Text(title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Black, color = Color.White)
+            Text(subtitle, fontSize = BenflixType.tag, color = BenflixColors.Soft, modifier = Modifier.padding(bottom = 4.dp))
             content()
         }
     }
@@ -181,9 +183,16 @@ internal fun BoardLine(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(Modifier.weight(0.42f)) {
-            Text(game, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                game,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (ranked != null) {
-                Text(ranked, fontSize = 11.sp, color = Color.White.copy(alpha = .55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(ranked, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         FlowRow(
@@ -193,7 +202,7 @@ internal fun BoardLine(
             right.forEachIndexed { i, text ->
                 Text(
                     text,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color =
                         when {
@@ -227,12 +236,12 @@ internal fun DeviceCard(
 ) {
     val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
     val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -242,12 +251,12 @@ internal fun DeviceCard(
         ) {
             Text(
                 text = (if (isTv) "This TV: " else "This phone: ") + power.summary,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
-            Text("Plays well: ${good.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
-            if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = 14.sp, color = Color.White.copy(alpha = .8f))
+            Text("Plays well: ${good.joinToString(", ")}", fontSize = BenflixType.small, color = BenflixColors.Soft)
+            if (slow.isNotEmpty()) Text("May be slow: ${slow.joinToString(", ")}", fontSize = BenflixType.small, color = BenflixColors.Soft)
         }
     }
 }
@@ -322,11 +331,11 @@ internal fun SortChip(
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, if (selected) Color.White else Color.Transparent), shape = shape),
-                focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -336,7 +345,12 @@ internal fun SortChip(
                 focusedContentColor = Color.Black,
             ),
     ) {
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text(
+            text,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
     }
 }
 
@@ -359,13 +373,13 @@ internal fun ConsoleGrid(
     ) {
         items(playable.size, key = { "console-${playable[it].first.slug}" }) { i ->
             val (console, local, fit) = playable[i]
-            val shape = RoundedCornerShape(12.dp)
+            val shape = RoundedCornerShape(10.dp)
             val count = "${console.games.size} ${if (console.games.size == 1) "game" else "games"}"
             Surface(
                 onClick = { onOpen(console.slug) },
                 shape = ClickableSurfaceDefaults.shape(shape),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+                border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
@@ -410,18 +424,18 @@ internal fun ConsoleGrid(
                     Box(
                         Modifier
                             .size(width = 28.dp, height = 4.dp)
-                            .background(consoleColour(console.slug), RoundedCornerShape(2.dp)),
+                            .background(consoleColour(console.slug), RoundedCornerShape(6.dp)),
                     )
                     Box(Modifier.weight(1f))
                     Text(
                         console.name,
-                        fontSize = if (isTv) 18.sp else 16.sp,
+                        fontSize = if (isTv) BenflixType.lead else BenflixType.body,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(count, fontSize = 12.sp, color = Color.White.copy(alpha = .65f), maxLines = 1)
+                    Text(count, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
                 }
             }
         }
@@ -452,17 +466,17 @@ internal fun StorageCard(
     val gamesBytes = games.sumOf { it.bytes }
     val barColor =
         when {
-            used > 0.9f -> Color(0xFFE5484D)
-            used > 0.75f -> Color(0xFFF5A524)
+            used > 0.9f -> BenflixColors.Problem
+            used > 0.75f -> BenflixColors.Check
             else -> Color(0xFF46A758)
         }
     var managing by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = { if (games.isNotEmpty() && onRemove != null) managing = true },
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -472,7 +486,7 @@ internal fun StorageCard(
         ) {
             Text(
                 text = (if (isTv) "TV storage: " else "Phone storage: ") + "${LocalGames.mb(free)} free of ${LocalGames.mb(total)}",
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
@@ -480,13 +494,13 @@ internal fun StorageCard(
                 Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .background(Color.White.copy(alpha = .15f), RoundedCornerShape(4.dp)),
+                    .background(Color.White.copy(alpha = .15f), RoundedCornerShape(6.dp)),
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth(used.coerceIn(0.02f, 1f))
                         .height(8.dp)
-                        .background(barColor, RoundedCornerShape(4.dp)),
+                        .background(barColor, RoundedCornerShape(6.dp)),
                 )
             }
             Text(
@@ -498,8 +512,8 @@ internal fun StorageCard(
                             (if (used > 0.9f) "Getting full! " else "") +
                             if (onRemove != null) "Select to delete some." else ""
                     },
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = .8f),
+                fontSize = BenflixType.small,
+                color = BenflixColors.Soft,
             )
         }
     }
@@ -517,12 +531,12 @@ internal fun StorageCard(
                         .verticalScroll(rememberScrollState())
                         .padding(24.dp),
             ) {
-                Text("Games on this device", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Games on this device", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
                 Text(
                     "Deleting a game only frees up space. Your saves and saved spots are kept, and the game " +
                         "downloads again next time you play it.",
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = .75f),
+                    fontSize = BenflixType.small,
+                    color = BenflixColors.Soft,
                 )
                 ChoiceButton("Done", "Close this list", Modifier.focusRequester(focus)) { managing = false }
                 games.forEach { g ->
@@ -546,18 +560,18 @@ internal fun ChoiceButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(subtitle, fontSize = 13.sp, color = Color.White.copy(alpha = .75f))
+            Text(title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(subtitle, fontSize = BenflixType.small, color = BenflixColors.Soft)
         }
     }
 }

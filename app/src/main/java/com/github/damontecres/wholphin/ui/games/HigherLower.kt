@@ -49,8 +49,10 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -308,9 +310,10 @@ private fun HigherLowerRound(
         modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
     ) {
         Text(
-            text = "HIGHER OR LOWER",
-            fontFamily = BenflixTitleFont,
-            fontSize = if (isTv) 34.sp else 26.sp,
+            text = "Higher or lower",
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
             color = Color.White,
         )
         Text(
@@ -322,7 +325,7 @@ private fun HigherLowerRound(
         Text(
             text = "Is the second movie rated higher or lower on IMDb?",
             fontSize = if (isTv) 20.sp else 16.sp,
-            color = Color.White.copy(alpha = .8f),
+            color = BenflixColors.Soft,
             textAlign = TextAlign.Center,
         )
         // On TV the posters are sized from the screen's height so the buttons and the answer always fit below
@@ -385,6 +388,7 @@ private fun HigherLowerRound(
                         Modifier
                             .weight(1f)
                             .then(if (i == 0) Modifier.focusRequester(first) else Modifier),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text(label, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
@@ -446,7 +450,7 @@ private fun PosterSide(
                                 false -> BenflixRed
                                 null -> Color.Black.copy(alpha = .7f)
                             },
-                            RoundedCornerShape(8.dp),
+                            RoundedCornerShape(10.dp),
                         ).padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
@@ -476,15 +480,22 @@ private fun HigherLowerEnd(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(top = 24.dp),
     ) {
-        Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White, textAlign = TextAlign.Center)
-        Text(body, fontSize = 20.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
-        Button(onClick = onClick, modifier = Modifier.focusRequester(focus)) {
+        Text(
+            title,
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+        )
+        Text(body, fontSize = 20.sp, color = BenflixColors.Soft, textAlign = TextAlign.Center)
+        Button(onClick = onClick, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(button)
         }
         Text(
             "Press Back to leave",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = .6f),
+            color = BenflixColors.Muted,
         )
     }
 }

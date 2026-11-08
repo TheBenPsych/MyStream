@@ -71,7 +71,7 @@ fun QuickConnectDialog(
                     // Benflix: plain graphite, not the reddish-brown elevation tint
                     .background(
                         color = Color(0xFF18181C),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             Column(

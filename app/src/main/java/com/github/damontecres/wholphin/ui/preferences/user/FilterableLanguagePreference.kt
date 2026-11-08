@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -137,6 +138,7 @@ fun FilterableLanguagePreference(
                                 }
                             },
                         modifier = Modifier.focusRequester(focusRequesters[index]),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

@@ -419,7 +419,7 @@ fun TvGuideGridContent(
                             .fillMaxSize()
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(6.dp),
                             ),
                 ) {
                     val guideTime = guideTimes[index]

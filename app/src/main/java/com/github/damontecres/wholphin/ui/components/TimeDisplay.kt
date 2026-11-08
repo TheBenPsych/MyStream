@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.LocalClock
 
 /**
@@ -20,7 +21,7 @@ fun BoxScope.TimeDisplay(modifier: Modifier = Modifier) {
     val timeString by LocalClock.current.timeString
     Text(
         text = timeString,
-        fontSize = 18.sp,
+        fontSize = BenflixType.lead,
         color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.bodyLarge,
         modifier =

@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.services.TowerDownload
 import com.github.damontecres.wholphin.services.TowerStatus
 import com.github.damontecres.wholphin.services.TrackTidy
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -529,8 +530,8 @@ internal fun LazyListScope.trackTidyItems(
                     Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                         Text(
                             text = state.lines.takeLast(OUTPUT_LINES).joinToString("\n"),
-                            fontSize = 12.sp,
-                            lineHeight = 15.sp,
+                            fontSize = BenflixType.tag,
+                            lineHeight = BenflixType.tag * 1.3f,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

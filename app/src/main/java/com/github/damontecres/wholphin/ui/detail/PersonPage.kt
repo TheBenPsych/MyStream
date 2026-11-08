@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
@@ -532,8 +533,8 @@ fun PersonHeader(
             Text(
                 text = name,
                 color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-                fontSize = 36.sp,
-                lineHeight = 40.sp,
+                fontSize = BenflixType.hero,
+                lineHeight = BenflixType.hero * 1.1f,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

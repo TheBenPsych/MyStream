@@ -161,7 +161,7 @@ fun ServerIconCard(
                             shape = CircleShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -289,7 +289,7 @@ fun AddServerCard(
                             shape = CircleShape,
                         ),
                 ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.2f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),

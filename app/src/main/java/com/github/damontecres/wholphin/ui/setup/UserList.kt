@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -62,6 +63,8 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -227,7 +230,7 @@ private fun WhoLink(
     ) {
         Text(
             text = text,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
@@ -253,7 +256,7 @@ private fun AvatarPickerDialog(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier =
                 Modifier
-                    .background(Color(0xFF181818), RoundedCornerShape(12.dp))
+                    .background(Color(0xFF181818), RoundedCornerShape(10.dp))
                     .padding(24.dp),
         ) {
             Text(
@@ -283,13 +286,14 @@ private fun AvatarPickerDialog(
                                         ),
                                     focusedBorder =
                                         androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                                         ),
                                 ),
                             modifier =
                                 Modifier
                                     .size(72.dp)
                                     .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         ) {
                             Image(
                                 painter = painterResource(res),
@@ -304,7 +308,7 @@ private fun AvatarPickerDialog(
             Button(onClick = {
                 onPick.invoke(null)
                 onDismissRequest.invoke()
-            }) {
+            }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text(stringResource(R.string.use_automatic_picture))
             }
         }

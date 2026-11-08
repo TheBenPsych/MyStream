@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.main.HowToPage
 import com.github.damontecres.wholphin.ui.nav.APP_PROBLEMS
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -73,7 +74,7 @@ fun HelpAndUpdatesPage(
             Text(
                 text = "Help and updates",
                 color = BenflixColors.Text,
-                fontSize = 24.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.padding(bottom = 10.dp),
             )
@@ -156,12 +157,12 @@ private fun HelpRow(
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row {
-                Text(section.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (alert) Text("Update ready", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                Text(section.title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (alert) Text("Update ready", fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
             }
             Text(
                 section.note,
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color =
                     androidx.tv.material3.LocalContentColor.current
                         .copy(alpha = .7f),

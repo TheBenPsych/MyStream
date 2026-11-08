@@ -54,13 +54,15 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import java.time.LocalDate
 import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val RED = Color(0xFFE5484D)
+private val RED = BenflixColors.Text
 private val PANEL = Color(0xFF18181C)
 private val CHIP = Color(0xFF2C2C33)
 private val MUTED = Color(0xFFA1A1AA)
@@ -170,8 +172,9 @@ fun RequestsChip(
                 focusedContentColor = Color.Black,
             ),
         modifier = modifier.height(40.dp),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text = label, fontSize = 15.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        Text(text = label, fontSize = BenflixType.body, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
     }
 }
 
@@ -194,8 +197,9 @@ fun ActiveFilterChip(
                 focusedContentColor = Color.Black,
             ),
         modifier = Modifier.height(36.dp),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text = "$label  ✕", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(text = "$label  ✕", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -224,7 +228,7 @@ fun FiltersDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
         ) {
-            Text("Filters", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Filters", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
 
             FilterGroup("Genre") {
                 RequestsChip("Any", draft.genre == null, { draft = draft.copy(genre = null) })
@@ -263,9 +267,9 @@ fun FiltersDialog(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 6.dp)) {
-                Button(onClick = { onApply(draft) }) { Text("Show") }
-                Button(onClick = { onApply(FindFilters()) }) { Text("Clear all") }
-                Button(onClick = onDismiss) { Text("Cancel") }
+                Button(onClick = { onApply(draft) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Show") }
+                Button(onClick = { onApply(FindFilters()) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Clear all") }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
             }
         }
     }
@@ -278,7 +282,7 @@ private fun FilterGroup(
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MUTED)
+        Text(title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, color = MUTED)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -330,7 +334,7 @@ fun RequestsSearchBox(
                 unfocusedContainerColor = PANEL,
                 cursorColor = RED,
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         modifier =
             modifier
                 .widthIn(max = 640.dp)
@@ -381,23 +385,23 @@ fun QuickMenuDialog(
                     Modifier
                         .width(96.dp)
                         .height(144.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(CHIP),
             )
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = item.title.orEmpty(),
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (canAsk) {
-                    Button(onClick = onAsk) { Text("Ask for it") }
+                    Button(onClick = onAsk, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Ask for it") }
                 }
-                Button(onClick = onInfo) { Text("More info") }
-                Button(onClick = onHide) { Text("Hide this") }
+                Button(onClick = onInfo, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("More info") }
+                Button(onClick = onHide, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Hide this") }
             }
         }
     }
@@ -448,7 +452,7 @@ fun RequestSteps(
                 )
                 Text(
                     text = label,
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
                     color = if (done) Color.White else MUTED,
                     maxLines = 1,
@@ -468,7 +472,7 @@ fun RequestGroupTitle(
 ) {
     Text(
         text = "$text  ($count)",
-        fontSize = 18.sp,
+        fontSize = BenflixType.lead,
         fontWeight = FontWeight.Bold,
         color = Color.White,
         modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
@@ -490,15 +494,15 @@ fun ApproveAllDialog(
                     .widthIn(max = 460.dp)
                     .padding(24.dp),
         ) {
-            Text("Approve all $count?", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Approve all $count?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
             Text(
                 "Everything waiting for you gets a yes and starts downloading.",
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = MUTED,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onConfirm) { Text("Approve all") }
-                Button(onClick = onDismiss) { Text("Cancel") }
+                Button(onClick = onConfirm, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Approve all") }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
             }
         }
     }
@@ -539,16 +543,16 @@ fun SeasonPickDialog(
         ) {
             Text(
                 text = pick.item.title.orEmpty(),
-                fontSize = 20.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text("Pick the seasons you want", fontSize = 15.sp, color = MUTED)
+            Text("Pick the seasons you want", fontSize = BenflixType.body, color = MUTED)
             if (open.size > 1) {
                 val all = chosen.containsAll(open)
-                Button(onClick = { chosen = if (all) emptySet() else open.toSet() }) {
+                Button(onClick = { chosen = if (all) emptySet() else open.toSet() }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                     Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1)
                 }
             }
@@ -565,6 +569,7 @@ fun SeasonPickDialog(
                         onClick = { chosen = if (picked) chosen - season.number else chosen + season.number },
                         enabled = !season.taken,
                         modifier = Modifier.fillMaxWidth(),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         val extra =
                             when {
@@ -585,6 +590,7 @@ fun SeasonPickDialog(
                 Button(
                     onClick = { onAsk(chosen.sorted()) },
                     enabled = chosen.isNotEmpty(),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text(
                         when (chosen.size) {
@@ -595,7 +601,7 @@ fun SeasonPickDialog(
                         maxLines = 1,
                     )
                 }
-                Button(onClick = onDismiss) { Text("Cancel", maxLines = 1) }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
             }
         }
     }

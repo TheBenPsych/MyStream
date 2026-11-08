@@ -35,6 +35,8 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -110,8 +112,8 @@ fun PauseAmbient(
             ) {
                 Text(
                     text = stringResource(R.string.ambient_paused),
-                    color = Color.White.copy(alpha = .7f),
-                    fontSize = 16.sp,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
@@ -126,7 +128,7 @@ fun PauseAmbient(
                     Text(
                         text = item.subtitle ?: "",
                         color = Color.White,
-                        fontSize = 20.sp,
+                        fontSize = BenflixType.rowName,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                     )
@@ -134,8 +136,8 @@ fun PauseAmbient(
                 item.data.overview?.let {
                     Text(
                         text = it,
-                        color = Color.White.copy(alpha = .85f),
-                        fontSize = 16.sp,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.body,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )

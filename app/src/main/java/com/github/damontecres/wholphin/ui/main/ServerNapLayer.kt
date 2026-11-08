@@ -28,12 +28,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.OutlinedButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ServerNap
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -168,21 +171,30 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
                     .BenflixLogo(height = 44.dp)
                 Text(
                     "The server is taking a nap, or being worked on",
-                    fontSize = 24.sp,
+                    fontSize = BenflixType.rowName,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     "Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.",
-                    fontSize = 17.sp,
+                    fontSize = BenflixType.lead,
                     color = Color(0xFFD8D8F0),
                     textAlign = TextAlign.Center,
                 )
-                Text("Checking again in $countdown seconds…", fontSize = 15.sp, color = Color(0xFFA19D99))
+                Text("Checking again in $countdown seconds…", fontSize = BenflixType.body, color = Color(0xFFA19D99))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    Button(onClick = viewModel::tryNow, modifier = Modifier.focusRequester(focus)) { Text("Try now") }
+                    Button(
+                        onClick = viewModel::tryNow,
+                        modifier = Modifier.focusRequester(focus),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                    ) {
+                        Text("Try now")
+                    }
                     if (!isTv) {
-                        OutlinedButton(onClick = viewModel::hideForAWhile) { Text("Watch my downloads") }
+                        OutlinedButton(
+                            onClick = viewModel::hideForAWhile,
+                            scale = OutlinedButtonDefaults.scale(focusedScale = 1f),
+                        ) { Text("Watch my downloads") }
                     }
                 }
             }

@@ -40,6 +40,7 @@ import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.services.MalScores
 import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -545,10 +546,11 @@ fun SeerrTagsBlock(
                         focusedContentColor = Color.Black,
                     ),
                 modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
                 Text(
                     text = if (expanded) "Show less" else "+$hiddenCount more",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                 )
             }
@@ -585,7 +587,7 @@ private fun FactLabel(
     Text(
         text = text.uppercase(),
         color = LABEL_GREY,
-        fontSize = 12.sp,
+        fontSize = BenflixType.tag,
         letterSpacing = 1.5.sp,
         modifier = modifier,
     )
@@ -611,10 +613,10 @@ private fun ScoresCard(
                     Text(
                         text = score.value,
                         color = score.color,
-                        fontSize = if (big) 28.sp else 22.sp,
+                        fontSize = if (big) BenflixType.pageTitle else BenflixType.rowName,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = 13.sp)
+                    Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = BenflixType.small)
                 }
             }
         }
@@ -642,12 +644,12 @@ private fun FactsCard(
                         Text(
                             text = fact.value,
                             color = Color.White,
-                            fontSize = if (big) 18.sp else 16.sp,
+                            fontSize = if (big) BenflixType.lead else BenflixType.body,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = 12.sp) }
+                        fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = BenflixType.tag) }
                     }
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -664,7 +666,7 @@ private fun TagPill(
     Text(
         text = text,
         color = Color.White,
-        fontSize = 14.sp,
+        fontSize = BenflixType.small,
         modifier =
             Modifier
                 .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), RoundedCornerShape(50))
@@ -681,7 +683,7 @@ private fun Pill(
     Text(
         text = text,
         color = textColor,
-        fontSize = 14.sp,
+        fontSize = BenflixType.small,
         fontWeight = FontWeight.Bold,
         modifier =
             Modifier

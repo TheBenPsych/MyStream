@@ -16,6 +16,8 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.skipStringRes
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.MediaSegmentType
 
 /**
@@ -39,7 +41,7 @@ fun SkipSegmentButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), inset = (-4).dp, shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), inset = (-4).dp, shape = shape),
             ),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -52,7 +54,7 @@ fun SkipSegmentButton(
     ) {
         Text(
             text = stringResource(type.skipStringRes),
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
         )

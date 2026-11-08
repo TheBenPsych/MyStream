@@ -21,6 +21,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -33,6 +34,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NoteKind
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -215,7 +217,7 @@ private fun KidsClock() {
     Text(
         text = "⏰ $words",
         color = Color.White,
-        fontSize = 16.sp,
+        fontSize = BenflixType.body,
         fontWeight = FontWeight.SemiBold,
         modifier =
             Modifier
@@ -248,7 +250,7 @@ private fun ServerHeadsUp(
         Text(
             text = "⚠ $text · Open the Server page ›",
             color = WarnGold,
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
         )
@@ -278,16 +280,16 @@ private fun NoteCard(
             Text(
                 text = if (kind == NoteKind.WELCOME) "Welcome from Ben" else "A note from Ben",
                 color = BenflixRed,
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = current.text,
-                fontSize = 17.sp,
+                fontSize = BenflixType.lead,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        Button(onClick = onDismiss) {
+        Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(if (kind == NoteKind.WELCOME) "Start watching" else "Got it")
         }
     }

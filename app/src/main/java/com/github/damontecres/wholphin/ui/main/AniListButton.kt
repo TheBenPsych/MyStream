@@ -25,6 +25,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -88,6 +89,7 @@ fun AniListButton(viewModel: AniListButtonViewModel = hiltViewModel()) {
         onClick = {
             if (name == null) viewModel.signIn(context) else showSignOut = true
         },
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(if (name == null) "AniList" else "AniList: $name")
     }
@@ -146,6 +148,7 @@ fun MalButton(viewModel: MalButtonViewModel = hiltViewModel()) {
         onClick = {
             if (name == null) viewModel.signIn(context) else showSignOut = true
         },
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(if (name == null) "MyAnimeList" else "MyAnimeList: $name")
     }
@@ -252,12 +255,13 @@ private fun AniListSignOutDialog(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onDismiss) { Text("Keep") }
+                    Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Keep") }
                     Button(
                         onClick = {
                             onSignOut()
                             onDismiss()
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) { Text("Sign out", color = Color.Unspecified) }
                 }
             }

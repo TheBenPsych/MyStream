@@ -33,6 +33,8 @@ import androidx.compose.ui.util.lerp
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Haptics
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -117,8 +119,8 @@ fun PhonePosterCarousel(
                             Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2f / 3f)
-                                .shadow(16.dp, RoundedCornerShape(14.dp))
-                                .clip(RoundedCornerShape(14.dp))
+                                .shadow(16.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFF1C1C22))
                                 .clickable {
                                     haptics.tap()
@@ -127,7 +129,7 @@ fun PhonePosterCarousel(
                     )
                     Text(
                         text = item.title.orEmpty(),
-                        fontSize = 16.sp,
+                        fontSize = BenflixType.body,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
@@ -139,8 +141,8 @@ fun PhonePosterCarousel(
                         item.subtitle?.takeIf { it.isNotBlank() }?.let { episodeLine ->
                             Text(
                                 text = episodeLine,
-                                fontSize = 13.sp,
-                                color = Color.White.copy(alpha = .7f),
+                                fontSize = BenflixType.small,
+                                color = BenflixColors.Soft,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

@@ -56,6 +56,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import timber.log.Timber
@@ -247,7 +249,7 @@ fun PlayGamePage(
         // Score at the top
         Text(
             text = "${game.score}",
-            fontSize = 40.sp,
+            fontSize = BenflixType.hero,
             fontWeight = FontWeight.Black,
             color = Color.White,
             modifier =
@@ -258,9 +260,9 @@ fun PlayGamePage(
         if (game.easy) {
             Text(
                 text = "Kids speed",
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = .7f),
+                color = BenflixColors.Soft,
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
@@ -336,14 +338,19 @@ internal fun GameCard(
                 .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(16.dp))
                 .padding(horizontal = 40.dp, vertical = 24.dp),
     ) {
-        Text(text = title, fontSize = 34.sp, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
+        Text(text = title, fontSize = BenflixType.hero, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
         lines.forEach {
-            Text(it, fontSize = 20.sp, color = if (highlight) Color(0xFFFFD54F) else Color.White, textAlign = TextAlign.Center)
+            Text(
+                it,
+                fontSize = BenflixType.rowName,
+                color = if (highlight) Color(0xFFFFD54F) else Color.White,
+                textAlign = TextAlign.Center,
+            )
         }
-        Text(howTo, fontSize = 15.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
+        Text(howTo, fontSize = BenflixType.body, color = BenflixColors.Soft, textAlign = TextAlign.Center)
         Text(
             text = prompt,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             textAlign = TextAlign.Center,

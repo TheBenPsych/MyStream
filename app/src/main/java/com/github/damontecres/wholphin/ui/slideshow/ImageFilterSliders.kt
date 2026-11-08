@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -169,6 +170,7 @@ fun ImageFilterSliders(
                     if (showSaveButton) {
                         Button(
                             onClick = onClickSave,
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = stringResource(R.string.save))
                         }
@@ -176,12 +178,14 @@ fun ImageFilterSliders(
                     if (showSaveGalleryButton) {
                         Button(
                             onClick = onClickSaveGallery,
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = stringResource(R.string.save_for_album))
                         }
                     }
                     Button(
                         onClick = { onChange(VideoFilter()) },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(text = stringResource(R.string.reset))
                     }

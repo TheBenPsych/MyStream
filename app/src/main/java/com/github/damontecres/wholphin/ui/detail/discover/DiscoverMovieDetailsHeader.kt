@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.roundMinutes
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -48,8 +49,8 @@ fun DiscoverMovieDetailsHeader(
         androidx.tv.material3.Text(
             text = movie.title.orEmpty(),
             color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-            fontSize = 40.sp,
-            lineHeight = 42.sp,
+            fontSize = BenflixType.hero,
+            lineHeight = BenflixType.hero * 1.1f,
             fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.services.finaleTagFor
 import com.github.damontecres.wholphin.services.subOnlyFor
 import com.github.damontecres.wholphin.ui.AspectRatios
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
 import kotlinx.coroutines.delay
@@ -183,6 +184,9 @@ fun SeasonCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
+            scale = CardDefaults.scale(focusedScale = 1f),
+            shape = CardDefaults.shape(Cards.focusShape),
+            border = Cards.focusBorder(),
         ) {
             Box(
                 modifier =

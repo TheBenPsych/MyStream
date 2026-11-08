@@ -200,7 +200,7 @@ fun SceneBySceneScreen(
                         modifier =
                             (if (isTv) Modifier.width(tvPictureHeight(0.46f) * (16f / 9f)) else Modifier.fillMaxWidth())
                                 .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(PuzzlePanel),
                     ) {
                         AsyncImage(

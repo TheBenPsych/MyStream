@@ -21,7 +21,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -202,6 +204,7 @@ private fun RequestMovieWithOptions(
                         onClick = {
                             onSubmit.invoke(MovieRequest(data, movie.id, is4k, profile?.id, folder?.path))
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.submit),
@@ -262,6 +265,7 @@ fun ChooseProfile(
         },
         onClick = { showProfileDialog = true },
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
     if (showProfileDialog) {
         val params =
@@ -325,6 +329,7 @@ fun ChooseFolder(
         },
         onClick = { showFolderDialog = true },
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
     if (showFolderDialog) {
         val params =

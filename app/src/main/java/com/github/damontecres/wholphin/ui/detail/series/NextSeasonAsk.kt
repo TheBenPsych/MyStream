@@ -19,6 +19,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.api.seerr.model.RequestPostRequest
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -26,6 +27,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -182,7 +184,7 @@ fun NextSeasonAsk(
         nextAir?.let { date ->
             Text(
                 text = "New episode ${airDayWords(date)}",
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF46D369),
             )
@@ -193,12 +195,12 @@ fun NextSeasonAsk(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(onClick = viewModel::ask) {
+                Button(onClick = viewModel::ask, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                     Text("Ask for $words")
                 }
                 Text(
                     text = if (seasons.size == 1) "$words is out, but not on Benflix yet" else "$words are out, but not on Benflix yet",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),

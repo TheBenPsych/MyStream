@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixMessage
@@ -34,6 +35,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -142,12 +144,12 @@ fun MessageLayer(
                 color = BenflixRed,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
             )
             Text(
                 text = message.text,
                 color = Color.White,
-                fontSize = if (isTv) 22.sp else 18.sp,
+                fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                 lineHeight = if (isTv) 30.sp else 25.sp,
                 maxLines = 10,
                 overflow = TextOverflow.Ellipsis,
@@ -156,12 +158,13 @@ fun MessageLayer(
                 Text(
                     text = "Sent while you were away",
                     color = Color(0xFF9A9AA3),
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                 )
             }
             Button(
                 onClick = { viewModel.done(message) },
                 modifier = Modifier.padding(top = 6.dp).focusRequester(focus),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Got it")
             }

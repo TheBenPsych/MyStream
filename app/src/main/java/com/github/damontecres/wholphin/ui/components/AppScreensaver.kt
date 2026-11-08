@@ -69,6 +69,7 @@ import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_ALPHA
 import com.github.damontecres.wholphin.ui.nav.TOP_SCRIM_END_FRACTION
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -306,7 +307,7 @@ fun AppScreensaverContent(
             Column(
                 modifier =
                     Modifier
-                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(10.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
                 Text(
@@ -314,11 +315,11 @@ fun AppScreensaverContent(
                     color = BenflixRed,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                 )
                 // The fact fades over to the next one together with the picture
                 Crossfade(targetState = fact.first.orEmpty(), animationSpec = tween(2_000)) { text ->
-                    Text(text = text, color = Color.White, fontSize = 16.sp, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                    Text(text = text, color = Color.White, fontSize = BenflixType.body, maxLines = 6, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

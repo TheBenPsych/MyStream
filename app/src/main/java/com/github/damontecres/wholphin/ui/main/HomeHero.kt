@@ -59,6 +59,8 @@ import com.github.damontecres.wholphin.ui.components.LocalFlatButtons
 import com.github.damontecres.wholphin.ui.components.MinButtonSize
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlin.time.Duration
 
@@ -204,8 +206,8 @@ fun HomeHero(
             )
             Text(
                 text = "${index + 1} / $count",
-                fontSize = 13.sp,
-                color = Color.White.copy(alpha = .6f),
+                fontSize = BenflixType.small,
+                color = BenflixColors.Muted,
                 modifier = Modifier.padding(start = 4.dp),
             )
         }
@@ -305,7 +307,7 @@ fun SlideDots(
 
                                     else -> Color.White.copy(alpha = .35f)
                                 },
-                                RoundedCornerShape(4.dp),
+                                RoundedCornerShape(6.dp),
                             ),
                 ) {
                     if (selected && !focused) {
@@ -318,7 +320,7 @@ fun SlideDots(
                                     .fillMaxWidth()
                                     .background(
                                         if (autoAdvanceMs != null) DOT_RED else Color.White,
-                                        RoundedCornerShape(4.dp),
+                                        RoundedCornerShape(6.dp),
                                     ),
                         )
                     }

@@ -37,6 +37,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -386,13 +387,13 @@ private fun GridBoard(
                 repeat(3) { c ->
                     val i = r * 3 + c
                     val t = s.filled[i]
-                    val shape = RoundedCornerShape(8.dp)
+                    val shape = RoundedCornerShape(10.dp)
                     Surface(
                         onClick = { onOpen(i) },
                         shape = ClickableSurfaceDefaults.shape(shape),
                         border =
                             ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White), shape = shape),
+                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text), shape = shape),
                             ),
                         colors =
                             ClickableSurfaceDefaults.colors(
@@ -403,6 +404,7 @@ private fun GridBoard(
                             Modifier
                                 .size(cell)
                                 .then(if (i == firstEmpty) Modifier.focusRequester(focus) else Modifier),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         if (t != null) {
                             AsyncImage(
@@ -430,7 +432,7 @@ private fun RuleLabel(
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.background(Color(0xFF26262B), RoundedCornerShape(8.dp)).padding(4.dp),
+        modifier = modifier.background(Color(0xFF26262B), RoundedCornerShape(10.dp)).padding(4.dp),
     ) {
         Text(
             text,

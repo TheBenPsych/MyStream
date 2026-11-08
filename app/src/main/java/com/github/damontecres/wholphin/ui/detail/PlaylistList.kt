@@ -49,6 +49,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
@@ -115,6 +116,7 @@ fun PlaylistList(
                     onClick.invoke(playlist)
                 },
                 modifier = Modifier,
+                scale = ListItemDefaults.scale(focusedScale = 1f),
             )
         }
         if (createEnabled) {
@@ -137,6 +139,7 @@ fun PlaylistList(
                         showCreateDialog = true
                     },
                     modifier = Modifier,
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }

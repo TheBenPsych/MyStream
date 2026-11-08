@@ -226,7 +226,7 @@ fun EmberButton(
         enabled = enabled,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
         // a small grow only: wide buttons that grow a lot spill past the screen edge
-        scale = ButtonDefaults.scale(focusedScale = 1.03f),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
         colors =
             ButtonDefaults.colors(
                 containerColor = tint,
@@ -366,7 +366,7 @@ fun ChangeChips(changes: List<String>) {
                 color = if (bad) EmberBad else EmberGood,
                 modifier =
                     Modifier
-                        .background((if (bad) EmberBad else EmberGood).copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                        .background((if (bad) EmberBad else EmberGood).copy(alpha = 0.12f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 3.dp),
             )
         }
@@ -480,7 +480,7 @@ private fun TimingGame(
             Modifier
                 .fillMaxWidth()
                 .height(if (isTv) 70.dp else 60.dp)
-                .background(Color(0xFF1C2A3A), RoundedCornerShape(8.dp)),
+                .background(Color(0xFF1C2A3A), RoundedCornerShape(10.dp)),
         ) {
             val w = size.width
             val h = size.height
@@ -598,8 +598,8 @@ private fun RocksGame(
             Modifier
                 .fillMaxWidth(if (isTv) 0.5f else 1f)
                 .height(if (isTv) 150.dp else 180.dp)
-                .background(Color(0xFF6C645A), RoundedCornerShape(8.dp))
-                .border(2.dp, Color(0xFF4A443C), RoundedCornerShape(8.dp)),
+                .background(Color(0xFF6C645A), RoundedCornerShape(10.dp))
+                .border(2.dp, Color(0xFF4A443C), RoundedCornerShape(10.dp)),
         ) {
             val lw = size.width / 3
             for (i in 1..2) drawRect(Color(0xFF8A8278), Offset(lw * i - 1f, 0f), Size(2f, size.height))

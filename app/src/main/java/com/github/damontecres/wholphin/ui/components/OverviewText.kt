@@ -47,7 +47,7 @@ fun OverviewText(
     Box(
         modifier =
             modifier
-                .background(bgColor, shape = RoundedCornerShape(8.dp))
+                .background(bgColor, shape = RoundedCornerShape(10.dp))
                 .playSoundOnFocus(true)
                 .clickable(
                     enabled = enabled,

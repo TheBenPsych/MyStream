@@ -40,6 +40,7 @@ import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.logCoilError
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.BlurHash
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -184,7 +185,7 @@ fun BoxScope.ItemCardImageFallback(
             Text(
                 text = name,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 modifier =
                     Modifier
                         .padding(8.dp)

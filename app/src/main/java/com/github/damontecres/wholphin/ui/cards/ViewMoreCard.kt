@@ -93,6 +93,7 @@ fun ViewMoreCard(
                 CardDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
                 ),
+            scale = CardDefaults.scale(focusedScale = 1f),
         ) {
             Box(
                 contentAlignment = Alignment.Center,

@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixWordLogo
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
@@ -84,7 +86,7 @@ fun FirstServerScreen(
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = if (isTv) 40.dp else 16.dp, top = if (isTv) 27.dp else 17.dp),
+                    .padding(start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -113,7 +115,7 @@ fun FirstServerScreen(
                             enabled = !connecting,
                             modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
                         ) { viewModel.addServer(server.url, showToast = false) }
-                        Text(text = server.url, color = BenflixColors.Muted, fontSize = 13.sp)
+                        Text(text = server.url, color = BenflixColors.Muted, fontSize = BenflixType.small)
                     }
                     SignInButton("No, type the address", enabled = !connecting) {
                         viewModel.clearAddServerState()
@@ -144,10 +146,10 @@ fun FirstServerScreen(
                 }
             }
             if (connecting) {
-                Text(text = "Connecting…", color = BenflixColors.Soft, fontSize = 15.sp)
+                Text(text = "Connecting…", color = BenflixColors.Soft, fontSize = BenflixType.body)
             }
             if (step == FirstServerStep.FOUND && error != null) {
-                Text(text = error, color = BenflixColors.Soft, fontSize = 14.sp)
+                Text(text = error, color = BenflixColors.Soft, fontSize = BenflixType.small)
             }
         }
     }

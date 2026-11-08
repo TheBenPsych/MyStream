@@ -30,6 +30,7 @@ import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import java.util.UUID
@@ -57,7 +58,7 @@ fun DoorBrowsePage(
     val lib = library
     if (lib == null) {
         if (looked) {
-            Text("Nothing here yet", color = BenflixColors.Muted, fontSize = 16.sp, modifier = modifier.padding(24.dp))
+            Text("Nothing here yet", color = BenflixColors.Muted, fontSize = BenflixType.body, modifier = modifier.padding(24.dp))
         } else {
             LoadingPage(modifier)
         }
@@ -172,7 +173,7 @@ private fun PageTitle(title: String) {
     Text(
         text = title,
         color = BenflixColors.Text,
-        fontSize = 24.sp,
+        fontSize = BenflixType.rowName,
         fontWeight = FontWeight.ExtraBold,
         modifier =
             Modifier

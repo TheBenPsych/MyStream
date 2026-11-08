@@ -116,7 +116,7 @@ fun EditTextBox(
                         Modifier
                             .background(
                                 containerColor,
-                                shape = if (maxLines > 1) RoundedCornerShape(8.dp) else CircleShape,
+                                shape = if (maxLines > 1) RoundedCornerShape(10.dp) else CircleShape,
                             ).padding(8.dp),
                 ) {
                     CompositionLocalProvider(

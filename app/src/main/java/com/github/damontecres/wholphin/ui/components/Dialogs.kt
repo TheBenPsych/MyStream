@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -331,6 +332,7 @@ fun DialogPopupContent(
                                         focusRequesters[0],
                                         focusRequesters[dialogItems.lastIndex],
                                     ),
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }
                 }
@@ -397,10 +399,10 @@ fun ScrollableDialog(
                     .fillMaxWidth()
                     .heightIn(max = maxHeight)
                     .focusable()
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(8.dp))
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(10.dp))
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ).onKeyEvent {
                         if (it.type == KeyEventType.KeyUp) {
                             return@onKeyEvent false
@@ -436,11 +438,11 @@ fun BasicDialog(
         Box(
             modifier =
                 Modifier
-                    .shadow(elevation = elevation, shape = RoundedCornerShape(8.dp))
+                    .shadow(elevation = elevation, shape = RoundedCornerShape(10.dp))
                     .background(
                         // Benflix Graphite (neutral dark grey) at the default 1dp
                         MaterialTheme.colorScheme.surfaceColorAtElevation(elevation.coerceAtLeast(2.dp)),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             content()

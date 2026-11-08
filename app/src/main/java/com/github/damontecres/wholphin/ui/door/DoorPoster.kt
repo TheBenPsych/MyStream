@@ -46,7 +46,9 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import java.time.LocalDateTime
@@ -54,7 +56,7 @@ import java.time.LocalDateTime
 /** Posters are 2:3 */
 const val POSTER_RATIO = 2f / 3f
 
-private val PosterShape = RoundedCornerShape(8.dp)
+private val PosterShape = BenflixShapes.Card
 
 /** The redesign's focus: a white outline only, no growing or dimming */
 @Composable
@@ -161,7 +163,7 @@ fun DoorPoster(
                     Text(
                         text = item.title.orEmpty(),
                         color = BenflixColors.Text,
-                        fontSize = if (width > 90.dp) 18.sp else 14.sp,
+                        fontSize = if (width > 90.dp) BenflixType.lead else BenflixType.small,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center,
                         maxLines = 4,
@@ -176,14 +178,14 @@ fun DoorPoster(
                     Text(
                         text = newLabel,
                         color = BenflixColors.Tray,
-                        fontSize = 10.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
@@ -207,7 +209,7 @@ fun DoorPoster(
                             .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(Color(0x99000000)),
                     ) {
                         Box(
@@ -232,13 +234,13 @@ fun DoorPoster(
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Text,
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 yearText(item)?.let {
-                    Text(text = it, color = BenflixColors.Muted, fontSize = 11.sp, maxLines = 1)
+                    Text(text = it, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1)
                 }
             }
         }
@@ -349,7 +351,7 @@ fun SeeAllTile(
             Text(
                 text = "See all",
                 color = BenflixColors.Text,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -384,7 +386,7 @@ fun BrowseTile(
             Text(
                 text = title,
                 color = BenflixColors.Text,
-                fontSize = if (big) 20.sp else 17.sp,
+                fontSize = if (big) BenflixType.rowName else BenflixType.lead,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
             )

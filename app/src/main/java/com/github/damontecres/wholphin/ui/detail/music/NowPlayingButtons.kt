@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackButton
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackButtons
 import com.github.damontecres.wholphin.ui.playback.overlay.buttonSpacing
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import kotlin.time.Duration.Companion.seconds
@@ -252,7 +253,7 @@ fun RepeatButton(
             if (repeatMode == Player.REPEAT_MODE_ONE) {
                 Text(
                     text = "1",
-                    fontSize = 10.sp,
+                    fontSize = BenflixType.tag,
                     color = MaterialTheme.colorScheme.surface,
                     modifier =
                         Modifier

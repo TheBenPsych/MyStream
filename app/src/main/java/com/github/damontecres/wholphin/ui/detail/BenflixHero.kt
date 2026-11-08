@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.ImageType
 
 /**
@@ -138,7 +139,7 @@ fun HeroButton(
             Text(
                 text = label,
                 color = content,
-                fontSize = if (big) 18.sp else 15.sp,
+                fontSize = if (big) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
@@ -159,11 +160,11 @@ fun HeroSideColumn(
     ) {
         lines.forEach { (label, value) ->
             Column {
-                Text(text = label, color = BenflixColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = label, color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold)
                 Text(
                     text = value,
                     color = BenflixColors.Soft,
-                    fontSize = 15.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -182,12 +183,12 @@ fun HeroTag(
     Text(
         text = text,
         color = BenflixColors.Tray,
-        fontSize = 11.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.ExtraBold,
         maxLines = 1,
         modifier =
             modifier
-                .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }

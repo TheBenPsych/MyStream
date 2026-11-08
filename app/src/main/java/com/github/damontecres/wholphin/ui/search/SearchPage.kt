@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.BuildConfig
@@ -528,6 +529,7 @@ fun SearchPage(
                                             headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
                                             supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
                                             modifier = Modifier.padding(top = 12.dp),
+                                            scale = ListItemDefaults.scale(focusedScale = 1f),
                                         )
                                     }
                                 }

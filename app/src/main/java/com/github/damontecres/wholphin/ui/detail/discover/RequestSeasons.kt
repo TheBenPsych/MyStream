@@ -29,8 +29,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Switch
@@ -173,6 +175,7 @@ fun RequestSeasons(
                     Button(
                         onClick = ::submit,
                         enabled = selectedSeasons.isNotEmpty(),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.submit),
@@ -254,6 +257,7 @@ fun RequestSeasons(
                         Button(
                             onClick = ::submit,
                             enabled = selectedSeasons.isNotEmpty(),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(
                                 text = stringResource(R.string.submit),
@@ -331,6 +335,7 @@ fun SeasonListItem(
         },
         onClick = onClick,
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }
 
@@ -353,6 +358,7 @@ private fun ClickSurface(
         onClick = onClick,
         content = content,
         modifier = modifier,
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     )
 }
 

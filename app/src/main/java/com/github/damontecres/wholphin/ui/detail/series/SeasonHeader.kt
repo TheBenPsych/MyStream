@@ -46,7 +46,9 @@ import com.github.damontecres.wholphin.services.fillerTagFor
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.formatSeasonNumber
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.extensions.ticks
 
@@ -150,7 +152,7 @@ fun SeasonInfoBlock(
                     val (main, arc) = seasonTitles(season)
                     Text(
                         text = main,
-                        fontSize = if (isTv) 34.sp else 30.sp,
+                        fontSize = if (isTv) BenflixType.hero else BenflixType.pageTitle,
                         lineHeight = if (isTv) 36.sp else 32.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -201,7 +203,7 @@ fun SeasonInfoBlock(
                         Modifier
                             .width(if (isTv) 200.dp else 160.dp)
                             .height(5.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(Color.White.copy(alpha = .2f)),
                 ) {
                     Box(
@@ -274,7 +276,7 @@ fun SeasonPills(
                     ),
                 border =
                     ClickableSurfaceDefaults.border(
-                        focusedBorder = Border(BorderStroke(2.dp, BenflixRed), shape = RoundedCornerShape(20.dp)),
+                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(20.dp)),
                     ),
             ) {
                 Text(
@@ -316,7 +318,7 @@ fun EpisodeListRow(
     val number = data?.indexNumber
     val anime = animeEpisodeLabel(episode)
     val filler = fillerTagFor(episode)
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     // Phones have no focus, so the picked episode gets the white ring instead
     val showRing = !isTv && selected
     Surface(
@@ -334,7 +336,7 @@ fun EpisodeListRow(
         border =
             ClickableSurfaceDefaults.border(
                 border = if (showRing) Border(BorderStroke(2.dp, Color.White), shape = shape) else Border.None,
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
             ),
         modifier =
             modifier
@@ -359,7 +361,7 @@ fun EpisodeListRow(
                     Modifier
                         .width(if (isTv) 150.dp else 128.dp)
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF2A2A35)),
             ) {
                 AsyncImage(
@@ -434,7 +436,7 @@ fun EpisodeListRow(
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = .75f),
+                            color = BenflixColors.Soft,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -443,7 +445,7 @@ fun EpisodeListRow(
                         Text(
                             text = "Hold OK: mark watched, mark up to here, more",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = .55f),
+                            color = BenflixColors.Muted,
                         )
                     }
                 }

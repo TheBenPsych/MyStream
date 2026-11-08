@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.ifElse
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -457,7 +458,7 @@ private fun whiteBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                 inset = (-4).dp,
                 shape = FlatButtonShape,
             ),
@@ -468,7 +469,7 @@ private fun primaryBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                 shape = FlatButtonShape,
             ),
     )
