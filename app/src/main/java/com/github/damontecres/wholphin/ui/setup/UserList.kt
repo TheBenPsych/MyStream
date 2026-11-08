@@ -241,7 +241,7 @@ private fun WhoLink(
  * Pick a Benflix profile picture. [onPick] saves it (null = automatic).
  */
 @Composable
-private fun AvatarPickerDialog(
+fun AvatarPickerDialog(
     userId: UUID,
     name: String?,
     onPick: (Int?) -> Unit,

@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -284,6 +285,21 @@ fun DialogPopupContent(
         val scope = rememberCoroutineScope()
         val listState = rememberLazyListState()
         val focusRequesters = remember { List(dialogItems.size) { FocusRequester() } }
+        // TV: a menu opened by holding OK has its rows off for a moment. Once they switch on, put the
+        // remote on the first one, so the menu is ready to use
+        val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+        var hadWait by remember { mutableStateOf(false) }
+        LaunchedEffect(waiting) {
+            if (waiting) {
+                hadWait = true
+            } else if (isTv && hadWait) {
+                val first = dialogItems.indexOfFirst { it is DialogItem }
+                if (first >= 0) {
+                    listState.scrollToItem(first)
+                    focusRequesters[first].tryRequestFocus()
+                }
+            }
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier,

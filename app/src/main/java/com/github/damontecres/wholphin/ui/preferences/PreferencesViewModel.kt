@@ -21,6 +21,7 @@ import com.github.damontecres.wholphin.preferences.updateSubtitlePreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.BirthdayService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.ProfilePictureSync
 import com.github.damontecres.wholphin.services.Release
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SeerrServerRepository
@@ -58,7 +59,16 @@ class PreferencesViewModel
         private val updateChecker: UpdateChecker,
         private val serverReportService: ServerReportService,
         private val birthdayService: BirthdayService,
+        private val profilePictureSync: ProfilePictureSync,
     ) : ViewModel() {
+        /** Settings > You > Profile picture: save their pick here and on their account (null = automatic) */
+        fun pickPicture(index: Int?) {
+            val current = serverRepository.current.value ?: return
+            viewModelScope.launchIO {
+                profilePictureSync.pick(current.server.url, current.user, index)
+            }
+        }
+
         val currentUser =
             serverRepository.currentUserFlow.stateIn(
                 viewModelScope,
