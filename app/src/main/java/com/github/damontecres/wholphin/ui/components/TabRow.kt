@@ -46,6 +46,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import timber.log.Timber
 import java.util.SortedMap
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun TabRow(
@@ -222,7 +223,7 @@ fun Tab(
         ) {
             Text(
                 text = title,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = contentColor,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )

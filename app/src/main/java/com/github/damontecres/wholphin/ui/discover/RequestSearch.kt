@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.search.SearchKeyboard
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** The three Requests search columns, in the main Search look */
 internal enum class RequestSearchDoor(
@@ -81,7 +82,7 @@ internal fun RequestSearchButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -102,7 +103,7 @@ internal fun RequestSearchButton(
     ) {
         Text(
             text = "Search any movie, show or anime to ask for",
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
         )
     }
@@ -166,7 +167,7 @@ internal fun RequestSearchScreen(
             Text(
                 text = query.ifBlank { "Type a name" },
                 color = if (query.isBlank()) BenflixColors.Muted else BenflixColors.Text,
-                fontSize = 26.sp,
+                fontSize = BenflixType.pageTitle,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -178,7 +179,7 @@ internal fun RequestSearchScreen(
             Text(
                 text = line,
                 color = BenflixColors.Soft,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
@@ -187,7 +188,7 @@ internal fun RequestSearchScreen(
                 query.trim().length < 2 -> {}
 
                 split == null -> {
-                    Text("Searching…", color = BenflixColors.Muted, fontSize = 16.sp)
+                    Text("Searching…", color = BenflixColors.Muted, fontSize = BenflixType.body)
                 }
 
                 seeAll != null -> {
@@ -262,15 +263,15 @@ private fun RequestDoorHeading(
         Box(
             Modifier
                 .size(width = 4.dp, height = 16.dp)
-                .background(if (count == 0) BenflixColors.Line else door.color, RoundedCornerShape(2.dp)),
+                .background(if (count == 0) BenflixColors.Line else door.color, RoundedCornerShape(6.dp)),
         )
         Text(
             text = door.title,
             color = if (count == 0) BenflixColors.Muted else BenflixColors.Text,
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.ExtraBold,
         )
-        if (count > 0) Text("$count", color = BenflixColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        if (count > 0) Text("$count", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -297,7 +298,7 @@ private fun RequestDoorColumn(
                         .height(cardWidth / POSTER_RATIO)
                         .background(BenflixColors.Raised.copy(alpha = .5f), RoundedCornerShape(10.dp)),
             ) {
-                Text("None", color = BenflixColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("None", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
             }
             return@Column
         }
@@ -318,7 +319,7 @@ private fun RequestDoorColumn(
             }
         }
         if (items.size > 4) {
-            val shape = RoundedCornerShape(8.dp)
+            val shape = RoundedCornerShape(10.dp)
             Surface(
                 onClick = onSeeAll,
                 shape = ClickableSurfaceDefaults.shape(shape),
@@ -334,7 +335,7 @@ private fun RequestDoorColumn(
             ) {
                 Text(
                     text = "See all ${items.size}",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )

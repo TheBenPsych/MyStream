@@ -67,6 +67,8 @@ import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class BedtimeViewModel
@@ -234,11 +236,11 @@ fun BedtimeLayer(
                     Modifier
                         .padding(24.dp)
                         .widthIn(max = 380.dp)
-                        .background(Color(0xEE141418), RoundedCornerShape(12.dp))
+                        .background(Color(0xEE141418), RoundedCornerShape(10.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
-                Text("15 minutes until bedtime", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Time to pick your last show!", fontSize = 15.sp, color = Color(0xFFD8D8F0))
+                Text("15 minutes until bedtime", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Time to pick your last show!", fontSize = BenflixType.body, color = Color(0xFFD8D8F0))
             }
         }
     }
@@ -269,15 +271,15 @@ fun BedtimeLayer(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
             ) {
-                Text(text = "Time for bed!", fontWeight = FontWeight.Bold, fontSize = 46.sp, color = Color.White)
+                Text(text = "Time for bed!", fontWeight = FontWeight.Bold, fontSize = BenflixType.hero, color = Color.White)
                 Text(
                     text = "Benflix is sleeping too. See you in the morning!",
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     color = Color(0xFFD8D8F0),
                     textAlign = TextAlign.Center,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 16.dp)) {
-                    Button(onClick = { askPin = true }, modifier = Modifier.focusRequester(focusRequester)) {
+                    Button(onClick = { askPin = true }, modifier = Modifier.focusRequester(focusRequester), scale = ButtonDefaults.scale(focusedScale = 1f)) {
                         Text("Grown-up: 30 more minutes", fontWeight = FontWeight.Medium)
                     }
                 }
@@ -338,19 +340,20 @@ private fun ScreenTimeUp(viewModel: BedtimeViewModel) {
                 Text(
                     text = "That's all for today!",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
+                    fontSize = BenflixType.hero,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = "You've watched your Benflix time for today. Time to go play! See you tomorrow.",
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     color = Color(0xFFD6F0E6),
                     textAlign = TextAlign.Center,
                 )
                 Button(
                     onClick = { askPin = true },
                     modifier = Modifier.padding(top = 16.dp).focusRequester(focusRequester),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text("Grown-up: 30 more minutes", fontWeight = FontWeight.Medium)
                 }
@@ -421,9 +424,9 @@ fun ParentPinDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.padding(24.dp),
                 ) {
-                    Text("Parent PIN", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("Parent PIN", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { step = ParentPinStep.NEW }) { Text("Change PIN") }
+                        Button(onClick = { step = ParentPinStep.NEW }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Change PIN") }
                         Button(onClick = {
                             scope.launch {
                                 if (setPin(null)) {
@@ -431,7 +434,7 @@ fun ParentPinDialog(
                                     onDone(false)
                                 }
                             }
-                        }) { Text("Turn off") }
+                        }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Turn off") }
                     }
                 }
             }

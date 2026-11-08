@@ -75,6 +75,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
 import org.jellyfin.sdk.model.ServerVersion
 import timber.log.Timber
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun SwitchServerContent(
@@ -403,6 +404,7 @@ private fun AddServerDialog(
                                     viewModel.addServer(server.url, showToast = true)
                                 },
                                 modifier = Modifier.focusRequester(focusRequester),
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                             )
                         }
                     }

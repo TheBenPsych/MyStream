@@ -80,6 +80,7 @@ import kotlinx.coroutines.flow.StateFlow
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.YearMonth
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /** Which door a page belongs to, so the top bar can show its name in the door's colour */
 fun Destination.door(): BenflixDoor? =
@@ -126,7 +127,7 @@ fun BenflixTopBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 40.dp, end = 40.dp, top = 18.dp, bottom = 6.dp)
+                .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 18.dp, bottom = 6.dp)
                 .height(TopNavBarHeight * scale)
                 .focusGroup()
                 .focusProperties {
@@ -484,7 +485,7 @@ fun ProfileMenu(
             delay(30)
             firstFocus.tryRequestFocus()
         }
-        val shape = RoundedCornerShape(14.dp)
+        val shape = RoundedCornerShape(16.dp)
         val card: @Composable (Modifier) -> Unit = { m ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -606,7 +607,7 @@ private fun MenuRow(
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(9.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = item.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

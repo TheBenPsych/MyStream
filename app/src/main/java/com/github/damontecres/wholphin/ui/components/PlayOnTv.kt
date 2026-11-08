@@ -47,6 +47,8 @@ import org.jellyfin.sdk.model.api.PlaystateCommand
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.time.Duration
+import androidx.tv.material3.ListItemDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Another Benflix (usually a TV) that's open right now and signed in as you */
 data class BenflixScreen(
@@ -213,7 +215,7 @@ fun PlayOnTvButton(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.widthIn(min = 280.dp, max = 420.dp).padding(20.dp),
             ) {
-                Text("Play on which TV?", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Play on which TV?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                 castScreens.forEach { screen ->
                     ListItem(
                         selected = false,
@@ -225,6 +227,7 @@ fun PlayOnTvButton(
                         },
                         headlineContent = { Text(screen.name) },
                         supportingContent = { Text("Chromecast") },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
                 when (val list = screens) {
@@ -254,6 +257,7 @@ fun PlayOnTvButton(
                                     }
                                 },
                                 headlineContent = { Text(screen.name) },
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                             )
                         }
                     }
@@ -283,7 +287,7 @@ fun PhoneRemoteDialog(
         ) {
             val tv = screen
             if (tv == null) {
-                Text("Which TV?", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Which TV?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                 when (val list = screens) {
                     null -> {
                         Text("Looking for TVs…")
@@ -298,7 +302,7 @@ fun PhoneRemoteDialog(
                     }
                 }
             } else {
-                Text(tv.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(tv.name, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold)
                 RemoteKey("▲") { viewModel.press(tv, GeneralCommandType.MOVE_UP) }
                 androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     RemoteKey("◀") { viewModel.press(tv, GeneralCommandType.MOVE_LEFT) }
@@ -322,7 +326,7 @@ fun PhoneRemoteDialog(
                     singleLine = true,
                     textStyle =
                         androidx.compose.ui.text
-                            .TextStyle(color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp),
+                            .TextStyle(color = androidx.compose.ui.graphics.Color.White, fontSize = BenflixType.lead),
                     cursorBrush =
                         androidx.compose.ui.graphics
                             .SolidColor(androidx.compose.ui.graphics.Color.White),
@@ -334,7 +338,7 @@ fun PhoneRemoteDialog(
                                     .background(
                                         androidx.compose.ui.graphics
                                             .Color(0xFF26262B),
-                                        RoundedCornerShape(8.dp),
+                                        RoundedCornerShape(10.dp),
                                     ).padding(12.dp),
                         ) {
                             if (text.isEmpty()) Text("Type for the TV's search box", color = androidx.compose.ui.graphics.Color.Gray)
@@ -376,7 +380,7 @@ private fun RemoteKey(
                         androidx.compose.ui.graphics
                             .Color(0xFF26262B)
                     },
-                    RoundedCornerShape(14.dp),
+                    RoundedCornerShape(16.dp),
                 ).clickable {
                     haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     onClick()
@@ -384,7 +388,7 @@ private fun RemoteKey(
     ) {
         Text(
             label,
-            fontSize = 18.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             color =
                 if (highlight) {

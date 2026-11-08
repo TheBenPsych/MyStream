@@ -54,6 +54,7 @@ import java.time.LocalDate
 import java.util.Locale
 import java.util.UUID
 import java.time.format.TextStyle as DateTextStyle
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** How the All movies / All shows grid is ordered */
 enum class TitleSort(
@@ -178,7 +179,7 @@ fun TitleGrid(
         Text(
             text = title,
             color = BenflixColors.Text,
-            fontSize = 24.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
         )
@@ -221,7 +222,7 @@ fun TitleGrid(
         Text(
             text = "%,d %s · %,d watched · %s".format(count, noun, watched, sort.label),
             color = BenflixColors.Muted,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
         )
@@ -244,7 +245,7 @@ fun TitleGrid(
             Text(
                 text = if (items.isEmpty()) "Nothing here yet" else "Nothing matches",
                 color = BenflixColors.Muted,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 modifier = Modifier.padding(top = 16.dp),
             )
             return@Column
@@ -268,7 +269,7 @@ fun TitleGrid(
                                 Text(
                                     text = entry.text,
                                     color = BenflixColors.Soft,
-                                    fontSize = 17.sp,
+                                    fontSize = BenflixType.lead,
                                     fontWeight = FontWeight.ExtraBold,
                                     modifier = Modifier.padding(top = 8.dp),
                                 )
@@ -451,7 +452,7 @@ private fun GridChip(
     ) {
         Text(
             text = label,
-            fontSize = if (small) 13.sp else 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 4.dp else 7.dp),
@@ -470,7 +471,7 @@ private fun SearchBox(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = TextStyle(color = BenflixColors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+        textStyle = TextStyle(color = BenflixColors.Text, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold),
         cursorBrush = SolidColor(BenflixColors.Text),
         modifier =
             Modifier
@@ -481,7 +482,7 @@ private fun SearchBox(
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp)) {
                 Box {
-                    if (value.isEmpty()) Text("Search this list", color = BenflixColors.Muted, fontSize = 14.sp, maxLines = 1)
+                    if (value.isEmpty()) Text("Search this list", color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
                     inner()
                 }
             }

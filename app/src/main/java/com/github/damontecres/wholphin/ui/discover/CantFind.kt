@@ -55,6 +55,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** The orange-red used for "Couldn't find it" everywhere */
 val CANT_FIND_COLOR = Color(0xFFF07A3E)
@@ -134,13 +136,13 @@ fun CantFindDialog(
                 color = CANT_FIND_COLOR,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
             )
             Text(
                 text = title ?: "This title",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (isTv) 22.sp else 19.sp,
+                fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -149,16 +151,16 @@ fun CantFindDialog(
                     "Whoever asked will be told, and the title's page will say so. " +
                         "It keeps searching, so if a copy turns up it still downloads. Pick a note:",
                 color = Color(0xFFCFCFD6),
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BenflixCantFind.QUICK_NOTES.forEach { note ->
-                    Button(onClick = { onMark(note) }) { Text(note, maxLines = 1) }
+                    Button(onClick = { onMark(note) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(note, maxLines = 1) }
                 }
-                Button(onClick = { onMark(null) }) { Text("No note", maxLines = 1) }
+                Button(onClick = { onMark(null) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("No note", maxLines = 1) }
             }
             OutlinedTextField(
                 value = typed,
@@ -174,9 +176,9 @@ fun CantFindDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (typed.isNotBlank()) {
-                    Button(onClick = { onMark(typed) }) { Text("Save my note", maxLines = 1) }
+                    Button(onClick = { onMark(typed) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Save my note", maxLines = 1) }
                 }
-                Button(onClick = onDismiss) { Text("Cancel", maxLines = 1) }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
             }
         }
     }
@@ -194,7 +196,7 @@ fun CantFindNoteLine(entry: CantFindEntry) {
         ).joinToString(" · ")
     Text(
         text = text,
-        fontSize = 13.sp,
+        fontSize = BenflixType.small,
         color = Color(0xFFE8B79C),
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -223,7 +225,7 @@ fun CantFindBlock(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier =
             modifier
-                .background(CANT_FIND_COLOR.copy(alpha = .16f), RoundedCornerShape(8.dp))
+                .background(CANT_FIND_COLOR.copy(alpha = .16f), RoundedCornerShape(10.dp))
                 .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         FlowRow(
@@ -238,13 +240,13 @@ fun CantFindBlock(
                         } else {
                             "Ben looked, but couldn't find this yet"
                         },
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color = CANT_FIND_COLOR,
                 )
             }
             if (viewModel.isAdmin) {
-                Button(onClick = { viewModel.undo(key) }) { Text("Try again", maxLines = 1) }
+                Button(onClick = { viewModel.undo(key) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1) }
             }
         }
         CantFindNoteLine(entry)
@@ -279,15 +281,15 @@ fun CantFindOnlyRow(
 ) {
     val isTv = rememberIsTv()
     val buttons: @Composable () -> Unit = {
-        Button(onClick = onOpen) { Text("Details", maxLines = 1, softWrap = false) }
-        onTryAgain?.let { Button(onClick = it) { Text("Try again", maxLines = 1, softWrap = false) } }
+        Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Details", maxLines = 1, softWrap = false) }
+        onTryAgain?.let { Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) } }
     }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(Color(0xFF18181C))
                 .padding(10.dp),
     ) {
@@ -316,7 +318,7 @@ fun CantFindOnlyRow(
             ) {
                 Text(
                     text = entry.title ?: "Unknown title",
-                    fontSize = 18.sp,
+                    fontSize = BenflixType.lead,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = if (isTv) 1 else 2,
@@ -331,7 +333,7 @@ fun CantFindOnlyRow(
                 ) {
                     Text(
                         text = "Couldn't find it",
-                        fontSize = 13.sp,
+                        fontSize = BenflixType.small,
                         fontWeight = FontWeight.Bold,
                         color = CANT_FIND_COLOR,
                         maxLines = 1,
@@ -356,7 +358,7 @@ fun CantFindOnlyRow(
 fun CantFindStrip(modifier: Modifier = Modifier) {
     Text(
         text = "COULDN'T FIND",
-        fontSize = 10.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.Bold,
         letterSpacing = .5.sp,
         color = Color.White,

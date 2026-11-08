@@ -65,6 +65,9 @@ import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import timber.log.Timber
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix: YouTube trailers play in a pop-up inside the app (no jumping out to the YouTube app,
@@ -349,14 +352,14 @@ private fun YouTubeTrailerPopup(
                 Text(
                     text = request.title,
                     color = Color.White,
-                    fontSize = if (isTv) 22.sp else 17.sp,
+                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 if (!isTv) {
-                    Button(onClick = onClose) { Text("Close") }
+                    Button(onClick = onClose, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Close") }
                 }
             }
             Box(
@@ -384,7 +387,7 @@ private fun YouTubeTrailerPopup(
                     )
                 }
                 if (!bridge.ready && !failed) {
-                    Text("Loading trailer…", color = Color(0xFFB8B8C0), fontSize = 15.sp)
+                    Text("Loading trailer…", color = Color(0xFFB8B8C0), fontSize = BenflixType.body)
                 }
                 if (failed) {
                     FailedMessage(
@@ -405,7 +408,7 @@ private fun YouTubeTrailerPopup(
                         Modifier
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(Color.White.copy(alpha = .2f)),
                 ) {
                     Box(
@@ -413,14 +416,14 @@ private fun YouTubeTrailerPopup(
                             Modifier
                                 .fillMaxWidth(fraction)
                                 .height(4.dp)
-                                .background(Color(0xFFE5484D)),
+                                .background(BenflixColors.Text),
                     )
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "${clock(bridge.position)} / ${clock(bridge.duration)}",
                         color = Color(0xFFB8B8C0),
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         modifier = Modifier.weight(1f),
                     )
                     Text(
@@ -428,7 +431,7 @@ private fun YouTubeTrailerPopup(
                             (if (bridge.playing) "OK  Pause" else "OK  Play") +
                                 "     ◀ ▶  10 seconds     ▼  Skip ad     Back  Close",
                         color = Color(0xFFB8B8C0),
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                     )
                 }
             }
@@ -463,7 +466,7 @@ private fun FailedMessage(
                     "This trailer can't play inside Benflix. YouTube only lets some videos play on YouTube itself."
                 },
             color = Color.White,
-            fontSize = if (isTv) 18.sp else 15.sp,
+            fontSize = if (isTv) BenflixType.lead else BenflixType.body,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 520.dp),
         )
@@ -474,10 +477,11 @@ private fun FailedMessage(
                         if (YouTubeTrailer.openOutside(context, request.url)) onClose() else nothingToOpen = true
                     },
                     modifier = Modifier.focusRequester(buttonFocus),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) { Text("Open in YouTube") }
-                Button(onClick = onClose) { Text("Close") }
+                Button(onClick = onClose, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Close") }
             } else {
-                Button(onClick = onClose, modifier = Modifier.focusRequester(buttonFocus)) { Text("Close") }
+                Button(onClick = onClose, modifier = Modifier.focusRequester(buttonFocus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Close") }
             }
         }
         Box(modifier = Modifier.weight(1f).size(1.dp))

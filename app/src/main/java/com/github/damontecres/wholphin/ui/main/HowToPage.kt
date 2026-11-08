@@ -24,6 +24,8 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixTips
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import androidx.tv.material3.ListItemDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 private data class HowToTip(
     val title: String,
@@ -81,7 +83,7 @@ fun HowToPage(modifier: Modifier = Modifier) {
             Text(
                 text = "How to use Benflix",
                 fontWeight = FontWeight.Bold,
-                fontSize = 32.sp,
+                fontSize = BenflixType.pageTitle,
                 letterSpacing = 1.sp,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
@@ -95,7 +97,7 @@ fun HowToPage(modifier: Modifier = Modifier) {
             item {
                 Text(
                     text = title,
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
@@ -108,14 +110,14 @@ fun HowToPage(modifier: Modifier = Modifier) {
                     headlineContent = {
                         Text(
                             text = tip.title,
-                            fontSize = 18.sp,
+                            fontSize = BenflixType.lead,
                             fontWeight = FontWeight.Medium,
                         )
                     },
                     supportingContent = {
                         Text(
                             text = tip.body,
-                            fontSize = 15.sp,
+                            fontSize = BenflixType.body,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -125,6 +127,7 @@ fun HowToPage(modifier: Modifier = Modifier) {
                             .then(
                                 if (sectionIndex == 0 && index == 0) Modifier.focusRequester(firstFocus) else Modifier,
                             ),
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }
@@ -136,15 +139,16 @@ fun HowToPage(modifier: Modifier = Modifier) {
                     BenflixTips.reset(context)
                     Toast.makeText(context, "Tips will show again", Toast.LENGTH_SHORT).show()
                 },
-                headlineContent = { Text("Show tips again", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+                headlineContent = { Text("Show tips again", fontSize = BenflixType.lead, fontWeight = FontWeight.Medium) },
                 supportingContent = {
                     Text(
                         "The small first-time tips on Home, Search and in episodes",
-                        fontSize = 15.sp,
+                        fontSize = BenflixType.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
                 modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                scale = ListItemDefaults.scale(focusedScale = 1f),
             )
         }
     }

@@ -45,6 +45,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Benflix: pop-up messages from Ben, live ones and ones saved for the next time you open Benflix */
 @HiltViewModel
@@ -142,12 +144,12 @@ fun MessageLayer(
                 color = BenflixRed,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
             )
             Text(
                 text = message.text,
                 color = Color.White,
-                fontSize = if (isTv) 22.sp else 18.sp,
+                fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
                 lineHeight = if (isTv) 30.sp else 25.sp,
                 maxLines = 10,
                 overflow = TextOverflow.Ellipsis,
@@ -156,12 +158,13 @@ fun MessageLayer(
                 Text(
                     text = "Sent while you were away",
                     color = Color(0xFF9A9AA3),
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                 )
             }
             Button(
                 onClick = { viewModel.done(message) },
                 modifier = Modifier.padding(top = 6.dp).focusRequester(focus),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Got it")
             }

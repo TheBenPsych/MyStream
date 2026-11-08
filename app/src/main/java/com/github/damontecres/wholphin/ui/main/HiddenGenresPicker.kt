@@ -54,6 +54,9 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetGenresRequest
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 @HiltViewModel
 class HiddenGenresViewModel
@@ -180,14 +183,14 @@ fun HiddenGenresPicker(
                     ),
                 border =
                     ClickableSurfaceDefaults.border(
-                        focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(50)),
+                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(50)),
                     ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
             ) {
                 Text(
                     text = if (off) "$genre · Hidden" else genre,
-                    fontSize = if (isTv) 16.sp else 15.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = if (off) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 )
@@ -209,14 +212,14 @@ fun HiddenGenresDialog(onDismiss: () -> Unit) {
                     .verticalScroll(rememberScrollState())
                     .padding(20.dp),
         ) {
-            Text("Hide genres", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("Hide genres", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
             Text(
                 "Pick genres you never want to see. They won't show on Home, the banner, Surprise me " +
                     "or library pages for this profile. Search still finds them.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             HiddenGenresPicker()
-            Button(onClick = onDismiss) { Text("Done") }
+            Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Done") }
         }
     }
 }
@@ -249,7 +252,7 @@ fun GenreRowsPicker(
             ) {
                 Text(
                     genre,
-                    fontSize = 17.sp,
+                    fontSize = BenflixType.lead,
                     fontWeight = FontWeight.Bold,
                     color = if (key in hidden) Color.White.copy(alpha = .45f) else Color.White,
                     modifier = Modifier.weight(1f),
@@ -284,13 +287,13 @@ private fun GenreChoice(
                 focusedContainerColor = if (on) Color.White else Color(0xFF45454F),
                 focusedContentColor = if (on) Color(0xFF0B0C10) else Color.White,
             ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), inset = (-3).dp, shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), inset = (-3).dp, shape = shape)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
     ) {
         Text(
             if (on) "✓ $text" else text,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }

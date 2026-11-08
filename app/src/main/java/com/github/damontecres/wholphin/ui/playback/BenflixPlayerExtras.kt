@@ -46,6 +46,9 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.util.UUID
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Benflix: what a button on a player heads-up does */
 enum class NoticeAction {
@@ -167,12 +170,12 @@ fun PlayerNoticeCard(
             modifier
                 .padding(if (isTv) 32.dp else 16.dp)
                 .widthIn(max = 520.dp)
-                .background(Color(0xF0141418), RoundedCornerShape(14.dp))
+                .background(Color(0xF0141418), RoundedCornerShape(16.dp))
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Text(text = notice.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(text = notice.title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
         notice.message?.let {
-            Text(text = it, fontSize = 14.sp, color = Color.White.copy(alpha = .8f), maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(text = it, fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
         if (notice.actions.isNotEmpty()) {
             FlowRow(
@@ -184,6 +187,7 @@ fun PlayerNoticeCard(
                     Button(
                         onClick = { onAction(action) },
                         modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(label)
                     }
@@ -220,13 +224,13 @@ fun ShowDoneCard(
         ) {
             Text(
                 text = if (done.caughtUp) "YOU'RE ALL CAUGHT UP ON" else "YOU FINISHED",
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
                 color = BenflixRed,
             )
             Text(
                 text = done.series.name ?: "the show",
-                fontSize = if (isTv) 32.sp else 24.sp,
+                fontSize = if (isTv) BenflixType.pageTitle else BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 2,
@@ -234,13 +238,13 @@ fun ShowDoneCard(
             )
             NextSeasonAsk(seriesId = done.series.id)
             if (done.similar.isNotEmpty()) {
-                Text(text = "Want something like it?", fontSize = 16.sp, color = Color.White.copy(alpha = .8f))
+                Text(text = "Want something like it?", fontSize = BenflixType.body, color = BenflixColors.Soft)
                 Row(horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp)) {
                     done.similar.forEachIndexed { index, item ->
                         Surface(
                             onClick = { onOpen(item) },
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             modifier =
                                 Modifier
                                     .width(if (isTv) 150.dp else 100.dp)
@@ -255,7 +259,7 @@ fun ShowDoneCard(
                                         Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(2f / 3f)
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(10.dp))
                                             .background(Color.DarkGray),
                                 )
                             }
@@ -266,6 +270,7 @@ fun ShowDoneCard(
             Button(
                 onClick = onClose,
                 modifier = if (done.similar.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier,
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Done")
             }

@@ -63,6 +63,8 @@ import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 data class PlayerEpisodesState(
     val seasons: List<BaseItem> = emptyList(),
@@ -185,7 +187,7 @@ fun EpisodesPanel(
         Text(
             text = current.data.seriesName ?: stringResource(R.string.player_episodes),
             color = Color.White,
-            fontSize = 22.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -212,10 +214,11 @@ fun EpisodesPanel(
                             ),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         modifier = Modifier.height(40.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = season.name ?: "",
-                            fontSize = 15.sp,
+                            fontSize = BenflixType.body,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                         )
@@ -262,7 +265,7 @@ private fun EpisodePanelCard(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .08f),
@@ -275,10 +278,10 @@ private fun EpisodePanelCard(
                         border =
                             androidx.compose.foundation
                                 .BorderStroke(2.dp, Color.White),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
             ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
                 .width(EPISODE_CARD_WIDTH)
@@ -302,13 +305,13 @@ private fun EpisodePanelCard(
                     Text(
                         text = stringResource(R.string.player_now_playing),
                         color = Color(0xFF0B0C10),
-                        fontSize = 12.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(8.dp)
-                                .background(Color.White, RoundedCornerShape(4.dp))
+                                .background(Color.White, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
@@ -347,7 +350,7 @@ private fun EpisodePanelCard(
             Text(
                 text = listOfNotNull(episode.data.indexNumber?.let { "$it." }, episode.name).joinToString(" "),
                 color = Color.White,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -355,9 +358,9 @@ private fun EpisodePanelCard(
             )
             Text(
                 text = episode.data.overview ?: "",
-                color = Color.White.copy(alpha = .7f),
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.tag,
+                lineHeight = BenflixType.tag * 1.3f,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),

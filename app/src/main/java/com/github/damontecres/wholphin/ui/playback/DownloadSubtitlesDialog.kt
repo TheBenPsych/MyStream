@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.RemoteSubtitleInfo
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun DownloadSubtitlesContent(
@@ -210,6 +211,7 @@ fun SubtitleInfo(
             }
         },
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }
 

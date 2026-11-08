@@ -71,7 +71,7 @@ fun RequestPhonePicture(
         modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
-            .clip(RoundedCornerShape(12.dp)),
+            .clip(RoundedCornerShape(10.dp)),
     ) {
         RequestHeroPicture(url = url, dim = { 0f }, side = false)
     }

@@ -38,6 +38,8 @@ import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun RequestMovieDialog(
@@ -202,6 +204,7 @@ private fun RequestMovieWithOptions(
                         onClick = {
                             onSubmit.invoke(MovieRequest(data, movie.id, is4k, profile?.id, folder?.path))
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.submit),
@@ -262,6 +265,7 @@ fun ChooseProfile(
         },
         onClick = { showProfileDialog = true },
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
     if (showProfileDialog) {
         val params =
@@ -325,6 +329,7 @@ fun ChooseFolder(
         },
         onClick = { showFolderDialog = true },
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
     if (showFolderDialog) {
         val params =

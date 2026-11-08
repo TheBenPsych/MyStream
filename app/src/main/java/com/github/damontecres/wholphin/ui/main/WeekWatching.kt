@@ -46,6 +46,7 @@ import timber.log.Timber
 import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One door's part of this week's watching */
 data class DoorTime(
@@ -126,19 +127,19 @@ fun WeekWatchingCard(
         modifier =
             modifier
                 .widthIn(max = 720.dp)
-                .background(BenflixColors.Panel, RoundedCornerShape(14.dp))
+                .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text(
             text = "THIS WEEK",
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.3.sp,
             color = BenflixColors.Muted,
         )
         Text(
             text = if (total < 60) "Nothing yet" else timeWords(total),
-            fontSize = 40.sp,
+            fontSize = BenflixType.hero,
             fontWeight = FontWeight.ExtraBold,
             color = BenflixColors.Text,
         )
@@ -172,7 +173,7 @@ fun WeekWatchingCard(
                                 .clip(CircleShape)
                                 .background(door.color),
                         )
-                        Text("${door.name} ${timeWords(door.seconds)}", fontSize = 14.sp, color = BenflixColors.Soft)
+                        Text("${door.name} ${timeWords(door.seconds)}", fontSize = BenflixType.small, color = BenflixColors.Soft)
                     }
                 }
             }

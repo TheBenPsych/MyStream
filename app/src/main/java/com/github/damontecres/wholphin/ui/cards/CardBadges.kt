@@ -27,6 +27,7 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
  * Benflix card badges, all in one place so every card looks the same.
@@ -92,14 +93,14 @@ fun CardAnimeTags(
     if (tags.isEmpty()) return
     Text(
         text = tags.joinToString(" · "),
-        fontSize = 10.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.Bold,
         color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
-                .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(3.dp))
+                .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
@@ -126,14 +127,14 @@ fun CardBadge(
     background: Color = Color.Black.copy(alpha = .78f),
 ) = Text(
     text = text,
-    fontSize = 10.sp,
+    fontSize = BenflixType.tag,
     fontWeight = FontWeight.Bold,
     letterSpacing = .5.sp,
     color = Color.White,
     maxLines = 1,
     modifier =
         modifier
-            .background(background, RoundedCornerShape(3.dp))
+            .background(background, RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
 )
 

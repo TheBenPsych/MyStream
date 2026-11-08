@@ -88,7 +88,7 @@ fun ViewOptionsDialog(
                     .heightIn(max = 380.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             Text(

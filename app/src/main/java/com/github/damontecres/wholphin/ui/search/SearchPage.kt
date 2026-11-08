@@ -89,6 +89,7 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.tv.material3.ListItemDefaults
 
 internal const val SEARCH_ROW = 0
 internal const val TAB_ROW = SEARCH_ROW + 1
@@ -528,6 +529,7 @@ fun SearchPage(
                                             headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
                                             supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
                                             modifier = Modifier.padding(top = 12.dp),
+                                            scale = ListItemDefaults.scale(focusedScale = 1f),
                                         )
                                     }
                                 }

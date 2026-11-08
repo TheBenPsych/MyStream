@@ -59,6 +59,8 @@ import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
 import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import kotlin.time.Duration
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * The overlay during playback showing controls, seek preview image, debug info, etc
@@ -282,7 +284,7 @@ fun PlaybackOverlay(
                     Text(
                         text = topTitle.orEmpty(),
                         color = Color.White,
-                        fontSize = 24.sp,
+                        fontSize = BenflixType.rowName,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -290,8 +292,8 @@ fun PlaybackOverlay(
                     topLine?.let {
                         Text(
                             text = it,
-                            color = Color.White.copy(alpha = .75f),
-                            fontSize = 13.sp,
+                            color = BenflixColors.Soft,
+                            fontSize = BenflixType.small,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                         )

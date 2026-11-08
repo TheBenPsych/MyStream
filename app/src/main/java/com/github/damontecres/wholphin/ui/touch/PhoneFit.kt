@@ -68,6 +68,12 @@ fun rememberIsTv(): Boolean {
 private var isTvCached: Boolean? = null
 
 /**
+ * The remembered TV answer for places that have no Android context (like the shared text sizes).
+ * False until something has asked [isTvDevice] once, which the app does as it starts.
+ */
+val isTvKnown: Boolean get() = isTvCached ?: false
+
+/**
  * True on Android TV / Google TV / Fire TV. Asked once and remembered: the answer never changes,
  * and asking Android every time each poster appears costs a little time on slower TVs.
  */

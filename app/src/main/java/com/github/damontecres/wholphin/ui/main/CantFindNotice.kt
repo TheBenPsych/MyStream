@@ -62,6 +62,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix: "Sorry, Ben couldn't find it." When Ben marks something you asked for as "Couldn't find it",
@@ -220,13 +222,13 @@ fun CantFindLayer(
                     color = CANT_FIND_COLOR,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                 )
                 Text(
                     text = notice.item?.title ?: notice.entry.title ?: "Something you asked for",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = if (isTv) 24.sp else 20.sp,
+                    fontSize = BenflixType.rowName,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -239,13 +241,13 @@ fun CantFindLayer(
                             "Ben looked for this one but couldn't find a copy yet. If one turns up, it'll come to Benflix by itself."
                         },
                     color = Color(0xFFCFCFD6),
-                    fontSize = 16.sp,
+                    fontSize = BenflixType.body,
                 )
                 notice.entry.note?.let { note ->
                     Text(
                         text = "Ben's note: “$note”",
                         color = Color(0xFFE8B79C),
-                        fontSize = 15.sp,
+                        fontSize = BenflixType.body,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -258,11 +260,12 @@ fun CantFindLayer(
                     Button(
                         onClick = { viewModel.done(notice, open = false) },
                         modifier = Modifier.focusRequester(focus),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text("OK")
                     }
                     if (notice.item != null) {
-                        Button(onClick = { viewModel.done(notice, open = true) }) {
+                        Button(onClick = { viewModel.done(notice, open = true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                             Text("See details")
                         }
                     }

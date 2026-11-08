@@ -63,6 +63,7 @@ import com.github.damontecres.wholphin.util.successValue
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import kotlin.math.roundToInt
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun DiscoverSeriesDetails(
@@ -442,8 +443,8 @@ fun DiscoverSeriesDetailsHeader(
         androidx.tv.material3.Text(
             text = series.name.orEmpty(),
             color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-            fontSize = 40.sp,
-            lineHeight = 42.sp,
+            fontSize = BenflixType.hero,
+            lineHeight = BenflixType.hero * 1.1f,
             fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

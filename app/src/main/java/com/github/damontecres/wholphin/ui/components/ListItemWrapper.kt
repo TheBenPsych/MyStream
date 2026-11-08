@@ -35,7 +35,7 @@ fun ListItemWrapper(
     tonalElevation: Dp = ListItemDefaults.TonalElevation,
     shape: ListItemShape = ListItemDefaults.shape(),
     colors: ListItemColors = ListItemDefaults.colors(),
-    scale: ListItemScale = ListItemDefaults.scale(),
+    scale: ListItemScale = ListItemDefaults.scale(focusedScale = 1f),
     border: ListItemBorder = ListItemDefaults.border(),
     glow: ListItemGlow = ListItemDefaults.glow(),
     interactionSource: MutableInteractionSource? = null,

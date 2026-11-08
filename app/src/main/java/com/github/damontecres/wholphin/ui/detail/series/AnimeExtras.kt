@@ -77,6 +77,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import androidx.tv.material3.ClickableSurfaceDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** A movie that goes with this show, and where it fits ("after Season 1") */
 data class WatchOrderMovie(
@@ -423,7 +425,7 @@ fun AnimeFacts(
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = .8f),
+                color = BenflixColors.Soft,
             )
         }
     }
@@ -539,6 +541,7 @@ private fun TagChip(
                 focusedContentColor = Color.Black,
             ),
         modifier = modifier,
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Text(
             text = tag,
@@ -560,6 +563,7 @@ private fun CharacterCard(
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),
         modifier = modifier.width(CHARACTER_WIDTH),
+        scale = CardDefaults.scale(focusedScale = 1f),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -610,7 +614,7 @@ private fun VoiceLine(
     Text(
         text = "$language  $name",
         style = MaterialTheme.typography.bodySmall,
-        color = Color.White.copy(alpha = .75f),
+        color = BenflixColors.Soft,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
@@ -628,6 +632,7 @@ private fun MovieOrderCard(
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),
         modifier = modifier.width(MOVIE_WIDTH),
+        scale = CardDefaults.scale(focusedScale = 1f),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

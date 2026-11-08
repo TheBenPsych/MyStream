@@ -81,6 +81,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class ScreensaverViewModel
@@ -306,7 +307,7 @@ fun AppScreensaverContent(
             Column(
                 modifier =
                     Modifier
-                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(10.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
                 Text(
@@ -314,11 +315,11 @@ fun AppScreensaverContent(
                     color = BenflixRed,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                 )
                 // The fact fades over to the next one together with the picture
                 Crossfade(targetState = fact.first.orEmpty(), animationSpec = tween(2_000)) { text ->
-                    Text(text = text, color = Color.White, fontSize = 16.sp, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                    Text(text = text, color = Color.White, fontSize = BenflixType.body, maxLines = 6, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

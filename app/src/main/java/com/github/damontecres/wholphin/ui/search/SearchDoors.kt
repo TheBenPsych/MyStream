@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One door column in search results */
 private enum class SearchDoor(
@@ -175,7 +176,7 @@ fun SearchDoorResults(
                 Text(
                     text = "Did you mean $didYouMean?",
                     color = BenflixColors.Soft,
-                    fontSize = 15.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 6.dp),
                 )
@@ -247,7 +248,7 @@ private fun FocusLine(
             Modifier
                 .fillMaxWidth()
                 .height(if (isTv) 150.dp else 96.dp)
-                .clip(RoundedCornerShape(12.dp)),
+                .clip(RoundedCornerShape(10.dp)),
     ) {
         val picture =
             when (focused) {
@@ -344,7 +345,7 @@ private fun FocusLine(
                 Text(
                     kind.uppercase(),
                     color = BenflixColors.Muted,
-                    fontSize = 11.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
                 )
@@ -352,17 +353,17 @@ private fun FocusLine(
             Text(
                 text = title,
                 color = BenflixColors.Text,
-                fontSize = if (isTv) 26.sp else 20.sp,
+                fontSize = if (isTv) BenflixType.pageTitle else BenflixType.rowName,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (meta.isNotEmpty()) Text(meta, color = BenflixColors.Soft, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (meta.isNotEmpty()) Text(meta, color = BenflixColors.Soft, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, maxLines = 1)
             if (story.isNotEmpty()) {
                 Text(
                     text = story,
                     color = BenflixColors.Soft,
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     maxLines = if (isTv) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -393,15 +394,15 @@ private fun DoorHeading(
         Box(
             Modifier
                 .size(width = 4.dp, height = 16.dp)
-                .background(if (count == 0) BenflixColors.Line else color, RoundedCornerShape(2.dp)),
+                .background(if (count == 0) BenflixColors.Line else color, RoundedCornerShape(6.dp)),
         )
         Text(
             text = title,
             color = if (count == 0) BenflixColors.Muted else BenflixColors.Text,
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.ExtraBold,
         )
-        if (count > 0) Text("$count", color = BenflixColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        if (count > 0) Text("$count", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -436,7 +437,7 @@ private fun DoorColumn(
                     if (askDoor &&
                         count > 0
                     ) {
-                        Modifier.background(BenflixColors.Text.copy(alpha = .06f), RoundedCornerShape(12.dp))
+                        Modifier.background(BenflixColors.Text.copy(alpha = .06f), RoundedCornerShape(10.dp))
                     } else {
                         Modifier
                     },
@@ -452,7 +453,7 @@ private fun DoorColumn(
                         .height(cardWidth / POSTER_RATIO)
                         .background(BenflixColors.Raised.copy(alpha = .5f), RoundedCornerShape(10.dp)),
             ) {
-                Text("None", color = BenflixColors.Muted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("None", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
             }
             return@Column
         }
@@ -523,7 +524,7 @@ private fun PhoneDoorRow(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DoorHeading(door.title, door.color, count)
         if (count == 0) {
-            Text("None", color = BenflixColors.Muted, fontSize = 13.sp)
+            Text("None", color = BenflixColors.Muted, fontSize = BenflixType.small)
             return@Column
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 16.dp)) {
@@ -584,7 +585,7 @@ private fun SeeAllChip(
     ) {
         Text(
             text = "See all $count",
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
         )
@@ -630,7 +631,7 @@ private fun AskCard(
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Soft,
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(8.dp),
                 )
@@ -643,13 +644,13 @@ private fun AskCard(
                 Text(
                     text = "Asked",
                     color = BenflixColors.Tray,
-                    fontSize = 10.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.ExtraBold,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
-                            .background(BenflixColors.Text, RoundedCornerShape(4.dp))
+                            .background(BenflixColors.Text, RoundedCornerShape(6.dp))
                             .padding(horizontal = 5.dp, vertical = 1.dp),
                 )
             }
@@ -676,7 +677,7 @@ private fun SeeAllGrid(
         Text(
             title,
             color = BenflixColors.Text,
-            fontSize = 22.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.padding(bottom = 10.dp),
         )
@@ -765,12 +766,12 @@ private fun SearchGameCard(
                 Text(
                     text = game.title,
                     color = BenflixColors.Text,
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(game.kind, color = BenflixColors.Muted, fontSize = 10.sp, maxLines = 1)
+                Text(game.kind, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1)
             }
             if (game.coverUrl != null) {
                 AsyncImage(

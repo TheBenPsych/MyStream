@@ -246,7 +246,7 @@ fun CollectionFolderListDetails(
             contentDescription = null,
             modifier =
                 Modifier
-                    .clip(shape = RoundedCornerShape(8.dp))
+                    .clip(shape = RoundedCornerShape(10.dp))
                     .weight(1f),
         )
 

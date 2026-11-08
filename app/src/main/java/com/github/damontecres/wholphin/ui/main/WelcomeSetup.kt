@@ -134,6 +134,9 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.OutlinedButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * The steps of the new-profile setup (approved redesign): Picture, Subtitles, Word size, Favourites,
@@ -667,9 +670,9 @@ private fun StepTitle(
     title: String,
     subtitle: String? = null,
 ) {
-    Text(title, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+    Text(title, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
     if (subtitle != null) {
-        Text(subtitle, fontSize = 18.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
+        Text(subtitle, fontSize = BenflixType.lead, color = BenflixColors.Soft, textAlign = TextAlign.Center)
     }
 }
 
@@ -691,12 +694,13 @@ private fun StepButtons(
         modifier = Modifier.padding(top = 8.dp),
     ) {
         if (step != WelcomeStep.PICTURE && step != WelcomeStep.BROUGHT_OVER) {
-            OutlinedButton(onClick = { viewModel.back() }) { Text("Back") }
+            OutlinedButton(onClick = { viewModel.back() }, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) { Text("Back") }
         }
         Button(
             onClick = onNext,
             enabled = enabled,
             modifier = if (focus != null) Modifier.focusRequester(focus) else Modifier,
+            scale = ButtonDefaults.scale(focusedScale = 1f),
         ) {
             Text(nextLabel)
         }
@@ -714,7 +718,7 @@ private fun StepButtons(
                     ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
-                Text("Skip for now", fontSize = 15.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                Text("Skip for now", fontSize = BenflixType.body, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
             }
         }
     }
@@ -795,7 +799,7 @@ private fun PictureStep(
     }
     val pickers: @Composable () -> Unit = {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Your picture", fontSize = 18.sp, color = Color.White)
+            Text("Your picture", fontSize = BenflixType.lead, color = Color.White)
             // A flowing row, so the pictures wrap on a phone instead of running off the edge
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
@@ -809,12 +813,13 @@ private fun PictureStep(
                         border =
                             ClickableSurfaceDefaults.border(
                                 border = Border(BorderStroke(3.dp, if (index == chosen) accent.toColor() else Color.Transparent)),
-                                focusedBorder = Border(BorderStroke(3.dp, Color.White)),
+                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
                             ),
                         modifier =
                             Modifier
                                 .size(60.dp)
                                 .then(if (index == 0) Modifier.focusRequester(focus) else Modifier),
+                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Image(
                             painter = painterResource(res),
@@ -825,7 +830,7 @@ private fun PictureStep(
                     }
                 }
             }
-            Text("Its background colour", fontSize = 18.sp, color = Color.White, modifier = Modifier.padding(top = 4.dp))
+            Text("Its background colour", fontSize = BenflixType.lead, color = Color.White, modifier = Modifier.padding(top = 4.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -838,9 +843,10 @@ private fun PictureStep(
                         border =
                             ClickableSurfaceDefaults.border(
                                 border = Border(BorderStroke(3.dp, if (color == accent) Color.White else Color.Transparent)),
-                                focusedBorder = Border(BorderStroke(3.dp, Color.White)),
+                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
                             ),
                         modifier = Modifier.size(44.dp),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {}
                 }
             }
@@ -886,6 +892,7 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
             Button(
                 onClick = { viewModel.setSubtitles(mode) },
                 modifier = if (i == 0) Modifier.focusRequester(focus) else Modifier,
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text(if (selected) "✓ $label" else label)
             }
@@ -893,8 +900,8 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
     }
     Text(
         "Only for other languages: subtitles turn on for things like a Japanese anime or a French film.",
-        fontSize = 15.sp,
-        color = Color.White.copy(alpha = .75f),
+        fontSize = BenflixType.body,
+        color = BenflixColors.Soft,
         textAlign = TextAlign.Center,
     )
     // A sample of how subtitles look, over a Benflix drawing (the same every time, approved)
@@ -904,7 +911,7 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
             Modifier
                 .fillMaxWidth(.7f)
                 .aspectRatio(16f / 7f)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(Brush.verticalGradient(listOf(Color(0xFF2B3A5C), Color(0xFF6B5A7A), Color(0xFFE0A070)))),
     ) {
         // A low sun and two hills
@@ -936,17 +943,17 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
             modifier =
                 Modifier
                     .padding(16.dp)
-                    .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
-    Text("Subtitle size", fontSize = 18.sp, color = Color.White)
+    Text("Subtitle size", fontSize = BenflixType.lead, color = Color.White)
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SubtitleSize.entries.forEach { option ->
-            OutlinedButton(onClick = { viewModel.setSubtitleSize(option.fontSize) }) {
+            OutlinedButton(onClick = { viewModel.setSubtitleSize(option.fontSize) }, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) {
                 Text(if (option == size) "✓ ${option.label}" else option.label)
             }
         }
@@ -981,7 +988,7 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
         modifier =
             Modifier
                 .fillMaxWidth(.8f)
-                .background(Color(0xE616161A), RoundedCornerShape(12.dp))
+                .background(Color(0xE616161A), RoundedCornerShape(10.dp))
                 .padding(16.dp),
     ) {
         Text("Continue watching", style = MaterialTheme.typography.titleMedium, color = Color.White)
@@ -993,7 +1000,7 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
                     modifier =
                         Modifier
                             .weight(1f)
-                            .background(Color(0xFF2A2A30), RoundedCornerShape(8.dp))
+                            .background(Color(0xFF2A2A30), RoundedCornerShape(10.dp))
                             .padding(8.dp),
                 ) {
                     if (image != null) {
@@ -1005,7 +1012,7 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
                                 Modifier
                                     .width(40.dp)
                                     .aspectRatio(2f / 3f)
-                                    .clip(RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(6.dp))
                                     .background(Color(0xFF1C1C22)),
                         )
                     }
@@ -1047,10 +1054,10 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(onClick = { viewModel.setEasyRead(false) }, modifier = Modifier.focusRequester(focus)) {
+        Button(onClick = { viewModel.setEasyRead(false) }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(if (!easyRead) "✓ Normal" else "Normal")
         }
-        Button(onClick = { viewModel.setEasyRead(true) }) {
+        Button(onClick = { viewModel.setEasyRead(true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(if (easyRead) "✓ Bigger" else "Bigger")
         }
     }
@@ -1091,7 +1098,7 @@ private fun FavoritesStep(
     if (!loaded) {
         Text("Loading posters…", color = Color.White)
     } else if (query.isNotBlank() && results.isEmpty()) {
-        Text("Nothing found yet. Try another title.", color = Color.White.copy(alpha = .8f))
+        Text("Nothing found yet. Try another title.", color = BenflixColors.Soft)
     }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(if (isTv) 120.dp else 96.dp),
@@ -1130,7 +1137,7 @@ private fun WelcomeSearchBox(
 ) {
     var active by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
-    Text("Or find a title you love", fontSize = 16.sp, color = Color.White.copy(alpha = .8f))
+    Text("Or find a title you love", fontSize = BenflixType.body, color = BenflixColors.Soft)
     SearchEditTextBox(
         value = query,
         onValueChange = {
@@ -1166,12 +1173,12 @@ private fun PosterTile(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(3.dp, if (selected) BenflixRed else Color.Transparent)),
-                focusedBorder = Border(BorderStroke(3.dp, Color.White)),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
             ),
         modifier =
             modifier
@@ -1181,7 +1188,7 @@ private fun PosterTile(
         Box(Modifier.fillMaxSize()) {
             Text(
                 poster.name,
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center).padding(6.dp),
@@ -1195,7 +1202,7 @@ private fun PosterTile(
             if (selected) {
                 Text(
                     "✓",
-                    fontSize = 22.sp,
+                    fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     color = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                     modifier =
@@ -1226,12 +1233,12 @@ private fun FinishStep(
     Spacer(Modifier.height(if (isTv) 120.dp else 80.dp))
     Text(
         "All set, ${viewModel.userName}",
-        fontSize = if (isTv) 44.sp else 34.sp,
+        fontSize = BenflixType.hero,
         fontWeight = FontWeight.ExtraBold,
         color = Color.White,
         textAlign = TextAlign.Center,
     )
-    Text("Opening Benflix…", fontSize = 18.sp, color = BenflixColors.Muted)
+    Text("Opening Benflix…", fontSize = BenflixType.lead, color = BenflixColors.Muted)
 }
 
 /** How long "All set" shows before Home opens */
@@ -1254,7 +1261,7 @@ private fun BroughtOverStep(viewModel: WelcomeViewModel) {
             Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .background(BenflixColors.Panel, RoundedCornerShape(14.dp))
+                .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
                 .padding(18.dp),
     ) {
         val subs =
@@ -1269,7 +1276,7 @@ private fun BroughtOverStep(viewModel: WelcomeViewModel) {
         BroughtLine("Favourites and hidden genres", "Kept")
     }
     StepButtons(viewModel, nextLabel = "Looks good", focus = focus, onNext = viewModel::finish) {
-        OutlinedButton(onClick = viewModel::next) { Text("Change them") }
+        OutlinedButton(onClick = viewModel::next, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) { Text("Change them") }
     }
 }
 
@@ -1279,8 +1286,8 @@ private fun BroughtLine(
     value: String,
 ) {
     Row(Modifier.fillMaxWidth()) {
-        Text(name, fontSize = 16.sp, color = BenflixColors.Muted, modifier = Modifier.weight(1f))
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(name, fontSize = BenflixType.body, color = BenflixColors.Muted, modifier = Modifier.weight(1f))
+        Text(value, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
 

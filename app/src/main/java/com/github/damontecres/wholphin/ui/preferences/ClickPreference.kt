@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun ClickPreference(
@@ -27,5 +28,6 @@ fun ClickPreference(
         },
         interactionSource = interactionSource,
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }

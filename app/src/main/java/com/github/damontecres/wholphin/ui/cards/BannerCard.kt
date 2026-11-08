@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * Displays an image as a card. If no image is available, the name will be shown instead
@@ -565,7 +566,7 @@ private fun GrownPreview(
                 Text(
                     text = details,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = .85f),
+                    color = BenflixColors.Soft,
                     maxLines = 1,
                 )
             }
@@ -588,7 +589,7 @@ private fun GrownPreview(
                     Text(
                         text = line,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = .85f),
+                        color = BenflixColors.Soft,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )

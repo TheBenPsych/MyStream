@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.jellyfin.sdk.model.api.BaseItemDto
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun SeriesName(
@@ -34,7 +35,7 @@ fun EpisodeName(
         text = episodeName ?: "",
         color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.headlineSmall,
-        fontSize = 20.sp,
+        fontSize = BenflixType.rowName,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,

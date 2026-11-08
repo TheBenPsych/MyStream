@@ -54,6 +54,8 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Whose downloads to show when there's no internet */
 data class OfflineProfile(
@@ -126,7 +128,7 @@ fun OfflineDownloadsButton(
         Text(text = stringResource(R.string.fa_download), fontFamily = FontAwesome, fontSize = 16.sp, color = Color.White)
         Text(
             text = stringResource(R.string.downloads_title),
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.Bold,
             color = Color.White,
         )
@@ -176,7 +178,7 @@ private fun OfflineDownloads(
         ) {
             Text(
                 text = stringResource(R.string.downloads_whos_watching),
-                fontSize = 24.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -185,7 +187,7 @@ private fun OfflineDownloads(
             if (all.isEmpty()) {
                 Text(
                     text = stringResource(R.string.downloads_none),
-                    fontSize = 15.sp,
+                    fontSize = BenflixType.body,
                     color = Color(0xFFB3B3B3),
                     textAlign = TextAlign.Center,
                 )
@@ -240,7 +242,7 @@ private fun ProfileTile(
         UserIconCardImage(id = id, name = name, imageUrl = null, modifier = Modifier.size(96.dp))
         Text(
             text = name,
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             color = Color.White,
             modifier = Modifier.padding(top = 8.dp),
         )
@@ -320,18 +322,18 @@ fun OfflineScreen(
                 text = stringResource(R.string.fa_wifi),
                 fontFamily = FontAwesome,
                 fontSize = 44.sp,
-                color = Color(0xFF6D6D6D),
+                color = BenflixColors.Muted,
             )
             Text(
                 text = stringResource(R.string.offline_title),
-                fontSize = 26.sp,
+                fontSize = BenflixType.pageTitle,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = stringResource(if (isTv) R.string.offline_body_tv else R.string.offline_body),
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = Color(0xFFB3B3B3),
                 textAlign = TextAlign.Center,
             )
@@ -353,7 +355,7 @@ fun OfflineScreen(
             )
             Text(
                 text = stringResource(if (showDetails) R.string.offline_hide_details else R.string.offline_details),
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = Color(0xFF808080),
                 modifier =
                     Modifier
@@ -368,7 +370,7 @@ fun OfflineScreen(
                             .mapNotNull { it.localizedMessage }
                             .distinct()
                             .joinToString("\n"),
-                    fontSize = 12.sp,
+                    fontSize = BenflixType.tag,
                     color = Color(0xFF808080),
                     textAlign = TextAlign.Center,
                 )
@@ -413,7 +415,7 @@ private fun OfflineButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = stringResource(icon), fontFamily = FontAwesome, fontSize = 16.sp)
-            Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = label, fontSize = BenflixType.body, fontWeight = FontWeight.Bold)
         }
     }
 }

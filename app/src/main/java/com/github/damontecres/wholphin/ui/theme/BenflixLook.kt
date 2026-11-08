@@ -39,7 +39,7 @@ object BenflixColors {
     val Dim = Color(0xB8050608)
 
     /** Not on Benflix (Ask for it) */
-    val NotHere = Color(0xFF5A5E6B)
+    val NotHere = Color(0xFF858896)
 
     /** Behind the scenes warning */
     val Warning = Color(0xFFE8D44D)

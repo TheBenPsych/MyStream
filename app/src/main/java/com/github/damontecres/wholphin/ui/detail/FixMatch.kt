@@ -58,6 +58,8 @@ import org.jellyfin.sdk.model.api.SeriesInfo
 import org.jellyfin.sdk.model.api.SeriesInfoRemoteSearchQuery
 import timber.log.Timber
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Benflix (admins): "Wrong match? Fix it" looks the movie or show up again and swaps in the right one */
 @HiltViewModel
@@ -164,13 +166,13 @@ fun FixMatchDialog(
         ) {
             Text(
                 text = if (item.type == BaseItemKind.SERIES) "Wrong show? Pick the right one" else "Wrong movie? Pick the right one",
-                fontSize = 20.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = "Benflix will swap in the right details and pictures from the internet.",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = .75f),
+                fontSize = BenflixType.small,
+                color = BenflixColors.Soft,
             )
             SearchEditTextBox(
                 value = query,
@@ -180,11 +182,11 @@ fun FixMatchDialog(
             )
             when (val list = results) {
                 null -> {
-                    Text("Searching...", fontSize = 14.sp)
+                    Text("Searching...", fontSize = BenflixType.small)
                 }
 
                 emptyList<RemoteSearchResult>() -> {
-                    Text("Nothing found. Try a different name.", fontSize = 14.sp)
+                    Text("Nothing found. Try a different name.", fontSize = BenflixType.small)
                 }
 
                 else -> {
@@ -196,8 +198,9 @@ fun FixMatchDialog(
                             Surface(
                                 onClick = { viewModel.apply(item, result, onFixed) },
                                 enabled = !working,
-                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                                 modifier = Modifier.fillMaxWidth(),
+                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             ) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -212,22 +215,22 @@ fun FixMatchDialog(
                                             Modifier
                                                 .width(48.dp)
                                                 .height(72.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .clip(RoundedCornerShape(6.dp))
                                                 .background(Color.DarkGray),
                                     )
                                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(
                                             text = listOfNotNull(result.name, result.productionYear?.let { "($it)" }).joinToString(" "),
-                                            fontSize = 16.sp,
+                                            fontSize = BenflixType.body,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                         result.overview?.let {
-                                            Text(text = it, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            Text(text = it, fontSize = BenflixType.tag, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
                                         result.searchProviderName?.let {
-                                            Text(text = it, fontSize = 11.sp, color = Color.White.copy(alpha = .6f))
+                                            Text(text = it, fontSize = BenflixType.tag, color = BenflixColors.Muted)
                                         }
                                     }
                                 }

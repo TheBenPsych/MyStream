@@ -51,11 +51,13 @@ import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** How a channel type is named on its tile and in the side guide */
 internal fun groupLabel(group: String): String =
@@ -102,7 +104,7 @@ private fun tileColors(container: Color) =
 @Composable
 private fun tileBorder() =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(8.dp)),
+        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
     )
 
 /** A channel's logo on white (live channels), or its coloured letter badge (Benflix channels) */
@@ -119,8 +121,8 @@ internal fun ChannelLogo(
             modifier =
                 Modifier
                     .size(size)
-                    .background(Color.White, RoundedCornerShape(4.dp))
-                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.White, RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .padding(2.dp),
         ) {
             AsyncImage(model = logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
@@ -129,11 +131,12 @@ internal fun ChannelLogo(
         val (from, to) = BadgeColors[(schedule.channel?.ordinal ?: 0) % BadgeColors.size]
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(size).background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(4.dp)),
+            modifier = Modifier.size(size).background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(6.dp)),
         ) {
             Text(
                 text = schedule.title.take(1).uppercase(),
-                fontFamily = BenflixTitleFont,
+                fontFamily = BenflixFont,
+                fontWeight = FontWeight.Bold,
                 fontSize = (size.value * .62f).sp,
                 color = Color.White,
             )
@@ -175,20 +178,20 @@ internal fun ChannelRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = "${schedule.number}  ${schedule.title}",
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = if (playing) "Playing now" else on?.name() ?: "",
-                    fontSize = 11.sp,
+                    fontSize = BenflixType.tag,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 1.dp),
                 )
             }
-            if (schedule.key in favourites) Text("★", fontSize = 14.sp, color = StarGold)
+            if (schedule.key in favourites) Text("★", fontSize = BenflixType.small, color = StarGold)
         }
     }
 }
@@ -209,10 +212,10 @@ internal fun RecentCard(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
         colors = tileColors(Color(0xFF1C1C21)),
         border = tileBorder(),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.width(width).height(64.dp),
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -225,14 +228,14 @@ internal fun RecentCard(
                 Column {
                     Text(
                         text = "${schedule.number}  ${schedule.title}",
-                        fontSize = 12.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = on?.name().orEmpty(),
-                        fontSize = 11.sp,
+                        fontSize = BenflixType.tag,
                         color = Muted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -265,11 +268,11 @@ internal fun HideTypesDialog(
             modifier =
                 Modifier
                     .widthIn(max = 420.dp)
-                    .background(Color(0xFF17171B), RoundedCornerShape(12.dp))
+                    .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
                     .padding(18.dp),
         ) {
-            Text("Channel types", fontFamily = BenflixTitleFont, fontSize = 26.sp, color = Color.White)
-            Text("Turn off the types you never watch.", fontSize = 13.sp, color = Muted)
+            Text("Channel types", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
+            Text("Turn off the types you never watch.", fontSize = BenflixType.small, color = Muted)
             val first = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 delay(80)
@@ -301,10 +304,10 @@ internal fun HideTypesDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         ) {
-                            Text(groupLabel(group), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text(groupLabel(group), fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             Text(
                                 text = if (shown) "Shown" else "Hidden",
-                                fontSize = 12.sp,
+                                fontSize = BenflixType.tag,
                                 fontWeight = FontWeight.Bold,
                                 color = if (shown) Color(0xFF3FBF7A) else Muted,
                             )

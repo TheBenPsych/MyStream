@@ -76,6 +76,8 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /**
  * Benflix redesign: the inside of the Movies and Shows doors (approved mv-preview + pv-fade).
@@ -243,7 +245,7 @@ private fun DoorRow(
         Text(
             text = row.title,
             color = BenflixColors.Text,
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -304,7 +306,7 @@ private fun BrowseRow(
         Text(
             text = "Browse by",
             color = BenflixColors.Text,
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp),
         )
@@ -422,7 +424,7 @@ private fun PreviewWords(
         Text(
             text = item.title.orEmpty(),
             color = BenflixColors.Text,
-            fontSize = if (easy) 38.sp else 32.sp,
+            fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
             lineHeight = if (easy) 40.sp else 34.sp,
             fontWeight = FontWeight.ExtraBold,
             // One line on the normal page so the shorter top area always fits the words
@@ -434,7 +436,7 @@ private fun PreviewWords(
             Text(
                 text = meta,
                 color = BenflixColors.Soft,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -447,8 +449,8 @@ private fun PreviewWords(
             Text(
                 text = story,
                 color = BenflixColors.Soft,
-                fontSize = 14.sp,
-                lineHeight = 19.sp,
+                fontSize = BenflixType.small,
+                lineHeight = BenflixType.small * 1.35f,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 8.dp),
@@ -476,18 +478,18 @@ private fun ResumeLine(
         Text(
             text = if (progress != null) "Resume" else "Play",
             color = BenflixColors.Text,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.Bold,
         )
         if (left != null && progress != null) {
-            Text(text = "· $left", color = BenflixColors.Muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = "· $left", color = BenflixColors.Muted, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
         }
         if (progress != null) {
             Box(
                 Modifier
                     .width(90.dp)
                     .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF2B2E37)),
             ) {
                 Box(
@@ -538,7 +540,7 @@ fun ScoreLine(
                 withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(" $site") }
             }
         }
-    Text(text = text, fontSize = 15.sp, maxLines = 1, modifier = modifier)
+    Text(text = text, fontSize = BenflixType.body, maxLines = 1, modifier = modifier)
 }
 
 /** "2023 · 1h 52m · PG-13 · Drama" (episodes: "S2 E5 · Episode name") */
@@ -665,14 +667,14 @@ private fun PickedCard(
                 Text(
                     text = "PICKED FOR YOU",
                     color = BenflixColors.Soft,
-                    fontSize = 11.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.6.sp,
                 )
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Text,
-                    fontSize = if (easy) 30.sp else 25.sp,
+                    fontSize = BenflixType.pageTitle,
                     lineHeight = if (easy) 32.sp else 27.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
@@ -680,7 +682,7 @@ private fun PickedCard(
                 )
                 val meta = remember(item) { metaLine(item) }
                 if (meta.isNotEmpty()) {
-                    Text(text = meta, color = BenflixColors.Soft, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                    Text(text = meta, color = BenflixColors.Soft, fontSize = BenflixType.tag, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
@@ -704,13 +706,13 @@ private fun EmptyDoor(
         Text(
             text = "Nothing in ${door.title} yet",
             color = BenflixColors.Text,
-            fontSize = 26.sp,
+            fontSize = BenflixType.pageTitle,
             fontWeight = FontWeight.ExtraBold,
         )
         Text(
             text = "Once the server has some, they show up here.",
             color = BenflixColors.Muted,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             modifier = Modifier.padding(top = 6.dp, bottom = 24.dp),
         )
         if (browse.isNotEmpty()) BrowseRow(browse, false, onBrowse)
@@ -718,8 +720,8 @@ private fun EmptyDoor(
 }
 
 /** TV side margin */
-private val SIDE = 40.dp
-private val PHONE_SIDE = 16.dp
+private val SIDE = BenflixSpace.tvEdge
+private val PHONE_SIDE = BenflixSpace.phoneEdge
 
 /** The picture takes the right 62% of the top area */
 private const val PICTURE_WIDTH = 0.62f

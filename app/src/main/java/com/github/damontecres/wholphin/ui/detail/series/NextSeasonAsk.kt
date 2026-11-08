@@ -46,6 +46,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Newer seasons of a show that are already out but not on Benflix (and not asked for yet) */
 data class NextSeasons(
@@ -182,7 +184,7 @@ fun NextSeasonAsk(
         nextAir?.let { date ->
             Text(
                 text = "New episode ${airDayWords(date)}",
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF46D369),
             )
@@ -193,12 +195,12 @@ fun NextSeasonAsk(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(onClick = viewModel::ask) {
+                Button(onClick = viewModel::ask, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                     Text("Ask for $words")
                 }
                 Text(
                     text = if (seasons.size == 1) "$words is out, but not on Benflix yet" else "$words are out, but not on Benflix yet",
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),

@@ -266,7 +266,7 @@ fun WhosThatActorScreen(
                         Modifier
                             .width(w)
                             .aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(PuzzlePanel),
                     ) {
                         val zoom = 1f + 3.5f * (1f - s.reveal)

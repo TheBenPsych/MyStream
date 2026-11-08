@@ -78,7 +78,7 @@ fun CollectionViewOptionsDialog(
                     .focusRequester(focusRequester)
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ).padding(16.dp),
         ) {
             Text(

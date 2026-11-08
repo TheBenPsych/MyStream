@@ -31,6 +31,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.formatSeasonEpisode
 import java.time.LocalDateTime
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 fun Program(
@@ -105,7 +106,7 @@ fun Program(
                 Text(
                     text = title,
                     color = LocalContentColor.current,
-                    fontSize = 16.sp,
+                    fontSize = BenflixType.body,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier,
@@ -126,7 +127,7 @@ fun Program(
                     Text(
                         text = it,
                         color = LocalContentColor.current,
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier,
                     )
@@ -152,7 +153,7 @@ fun Channel(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
         scale = ClickableSurfaceDefaults.scale(1f, 1f, .95f),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -203,7 +204,7 @@ fun Channel(
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            fontSize = if (showImage) 10.sp else 16.sp,
+                            fontSize = if (showImage) BenflixType.tag else BenflixType.body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier,

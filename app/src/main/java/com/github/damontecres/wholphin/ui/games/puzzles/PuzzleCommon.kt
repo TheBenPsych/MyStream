@@ -39,7 +39,6 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -48,6 +47,8 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 val PuzzleGreen = Color(0xFF46D37A)
 val PuzzleGold = Color(0xFFFFC94D)
@@ -102,7 +103,7 @@ fun PuzzleHeader(
     isTv: Boolean,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(title.uppercase(), fontFamily = BenflixTitleFont, fontSize = if (isTv) 34.sp else 26.sp, color = Color.White)
+        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
         Text(line, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = PuzzleGold, textAlign = TextAlign.Center)
     }
 }
@@ -177,6 +178,7 @@ fun ChoiceGrid(
                             Modifier
                                 .weight(1f)
                                 .then(if (takeFocus) Modifier.focusRequester(first) else Modifier),
+                                scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             c,
@@ -236,17 +238,18 @@ fun PuzzleOver(
             PuzzlePoster(answer.poster, answer.name, Modifier.width(if (isTv) 180.dp else 110.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.weight(1f)) {
-            Text(title, fontFamily = BenflixTitleFont, fontSize = if (isTv) 40.sp else 30.sp, color = Color.White)
+            Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
             Text(body, fontSize = 18.sp, lineHeight = 25.sp, color = Color.White.copy(alpha = .88f))
-            Button(onClick = onAgain, modifier = Modifier.focusRequester(focus)) { Text("Play again") }
+            Button(onClick = onAgain, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Play again") }
             if (answer != null) {
                 Text("The last answer: ${answer.label}", fontSize = 15.sp, color = Color.White.copy(alpha = .7f))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(onClick = { actions.open(answer) }) { Text(if (answer.isSeries) "Open show" else "Open movie") }
+                    Button(onClick = { actions.open(answer) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(if (answer.isSeries) "Open show" else "Open movie") }
                     Button(
                         onClick = {
                             if (!added) scope.launch { added = actions.addToMyList(answer) }
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) { Text(if (added) "✓ On My List" else "+ My List") }
                 }
             }

@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.ui.components.SliderBar
 import com.github.damontecres.wholphin.ui.components.SliderColors
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
+import androidx.tv.material3.ButtonDefaults
 
 const val DRAG_THROTTLE_DELAY = 50L
 
@@ -169,6 +170,7 @@ fun ImageFilterSliders(
                     if (showSaveButton) {
                         Button(
                             onClick = onClickSave,
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = stringResource(R.string.save))
                         }
@@ -176,12 +178,14 @@ fun ImageFilterSliders(
                     if (showSaveGalleryButton) {
                         Button(
                             onClick = onClickSaveGallery,
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(text = stringResource(R.string.save_for_album))
                         }
                     }
                     Button(
                         onClick = { onChange(VideoFilter()) },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(text = stringResource(R.string.reset))
                     }

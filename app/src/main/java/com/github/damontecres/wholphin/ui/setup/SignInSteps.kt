@@ -64,6 +64,8 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import timber.log.Timber
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /*
  * Benflix redesign (approved 2026-11-07, s2-kb-below): signing in is one question per screen, your
@@ -130,7 +132,7 @@ fun SignInScreens(
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)
-                        .padding(start = if (isTv) 40.dp else 16.dp, top = if (isTv) 27.dp else 17.dp),
+                        .padding(start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
             )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -200,7 +202,7 @@ fun SignInScreens(
                     Text(
                         text = "Trouble signing in?",
                         color = BenflixColors.Muted,
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         modifier = Modifier.padding(top = 20.dp, bottom = 6.dp),
                     )
                     SignInButton("Show details for Ben") { actions.openDebug() }
@@ -218,15 +220,15 @@ internal fun Question(
     Text(
         text = title,
         color = BenflixColors.Text,
-        fontSize = 30.sp,
-        lineHeight = 34.sp,
+        fontSize = BenflixType.pageTitle,
+        lineHeight = BenflixType.pageTitle * 1.15f,
         fontWeight = FontWeight.ExtraBold,
         textAlign = TextAlign.Center,
     )
     Text(
         text = hint,
         color = BenflixColors.Muted,
-        fontSize = 15.sp,
+        fontSize = BenflixType.body,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
     )
@@ -265,7 +267,7 @@ internal fun Answer(
             Text(
                 text = shown.ifEmpty { " " },
                 color = BenflixColors.Text,
-                fontSize = 26.sp,
+                fontSize = BenflixType.pageTitle,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
@@ -282,7 +284,7 @@ internal fun Answer(
                 onValueChange = onValue,
                 singleLine = true,
                 textStyle =
-                    TextStyle(color = BenflixColors.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+                    TextStyle(color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
                 cursorBrush = SolidColor(BenflixColors.Text),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions =
@@ -311,7 +313,7 @@ internal fun Answer(
             Text(
                 text = error,
                 color = ERROR_RED,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -345,7 +347,7 @@ private fun PhoneStep(
         if (isTv) {
             Box(
                 Modifier
-                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .background(Color.White, RoundedCornerShape(10.dp))
                     .padding(10.dp),
             ) {
                 QrCode(text = serverUrl.trimEnd('/') + "/web/#/quickconnect", modifier = Modifier.size(170.dp))
@@ -359,7 +361,7 @@ private fun PhoneStep(
             Text(
                 text = code?.chunked(3)?.joinToString(" ") ?: "Getting a code…",
                 color = BenflixColors.Text,
-                fontSize = if (code != null) 44.sp else 22.sp,
+                fontSize = if (code != null) BenflixType.hero else BenflixType.rowName,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 4.sp,
             )
@@ -374,7 +376,7 @@ private fun Line(
     text: String,
     color: Color = BenflixColors.Soft,
 ) {
-    Text(text = text, color = color, fontSize = 16.sp, lineHeight = 21.sp)
+    Text(text = text, color = color, fontSize = BenflixType.body, lineHeight = BenflixType.body * 1.35f)
 }
 
 @Composable
@@ -423,7 +425,7 @@ internal fun SignInButton(
             if (icon != null) {
                 BenflixIconImage(icon, color = if (white) BenflixColors.Tray else BenflixColors.Text, size = 26.dp)
             }
-            Text(text = label, fontSize = if (big) 19.sp else 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(text = label, fontSize = if (big) BenflixType.lead else BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -525,7 +527,7 @@ private fun Key(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     val lit = selected || white
     Surface(
         onClick = onClick,
@@ -545,7 +547,7 @@ private fun Key(
         modifier = modifier.width(width).height(40.dp),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = label, fontSize = if (label.length > 1) 13.sp else 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(text = label, fontSize = if (label.length > 1) BenflixType.small else BenflixType.lead, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }

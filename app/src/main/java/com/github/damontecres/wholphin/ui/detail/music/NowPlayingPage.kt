@@ -74,6 +74,7 @@ import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.extensions.ticks
 import java.util.Date
 import kotlin.time.Duration.Companion.seconds
+import androidx.tv.material3.ButtonDefaults
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -440,6 +441,7 @@ private fun RecordAudioRationaleDialog(
             Button(
                 onClick = onClick,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text(
                     text = stringResource(R.string.continue_string),

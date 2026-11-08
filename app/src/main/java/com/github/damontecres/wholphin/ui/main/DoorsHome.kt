@@ -95,6 +95,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One news pill under the greeting. [door] picks the dot colour (null = white, app news). */
 data class HomeNews(
@@ -403,7 +404,7 @@ fun DoorsHomePage(
                 Text(
                     text = greetingFor(viewModel.userName),
                     color = BenflixColors.Text,
-                    fontSize = if (easy) 36.sp else 31.sp,
+                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                 )
@@ -450,7 +451,7 @@ fun DoorsHomePage(
                 Text(
                     text = greetingFor(viewModel.userName),
                     color = BenflixColors.Text,
-                    fontSize = if (easy) 30.sp else 26.sp,
+                    fontSize = BenflixType.pageTitle,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 if (!easy && news.isNotEmpty()) {
@@ -609,7 +610,7 @@ private fun NewsPill(
                     .size(9.dp)
                     .background(news.door?.color ?: BenflixColors.Text, CircleShape),
             )
-            Text(text = news.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(text = news.text, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }

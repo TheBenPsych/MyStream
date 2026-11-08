@@ -108,6 +108,7 @@ fun ImageControlsOverlay(
                             Modifier
                                 .onFocusChanged(onFocused),
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Icon(
                             painter =

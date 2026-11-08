@@ -95,7 +95,7 @@ fun StringInputDialog(
                     .fillMaxWidth()
                     .background(
                         color = MaterialTheme.colorScheme.surfaceColorAtElevation(elevation),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             Column(

@@ -54,6 +54,8 @@ import timber.log.Timber
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One request for this title: who asked, when, and where it's at */
 data class AskedBy(
@@ -261,20 +263,20 @@ fun WhoAskedBlock(
                 }
             val boxModifier =
                 Modifier
-                    .background(Color(0x22FFFFFF), RoundedCornerShape(8.dp))
+                    .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             val label: @Composable () -> Unit = {
                 Text(
                     text = listOfNotNull("Asked by ${entry.who}", entry.whenAsked, state).joinToString(" · "),
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
             }
             val buttons: @Composable () -> Unit = {
                 if (entry.status == RequestStatus.PENDING) {
-                    Button(onClick = { viewModel.answer(entry, true) }) { Text("Approve") }
-                    Button(onClick = { viewModel.answer(entry, false) }) { Text("Decline") }
+                    Button(onClick = { viewModel.answer(entry, true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Approve") }
+                    Button(onClick = { viewModel.answer(entry, false) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Decline") }
                 }
             }
             if (isTv) {
@@ -305,7 +307,7 @@ fun WhoAskedBlock(
             }
         }
         if (canMarkCantFind) {
-            Button(onClick = { askCantFind = true }) { Text("Can't find it", maxLines = 1) }
+            Button(onClick = { askCantFind = true }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Can't find it", maxLines = 1) }
         }
     }
 }

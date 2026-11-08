@@ -270,6 +270,8 @@ class MainActivity : AppCompatActivity() {
         if (aniListSync.isSignInReturn(intent)) aniListSync.finishSignIn(intent)
         if (malSync.isSignInReturn(intent)) malSync.finishSignIn(intent)
         viewModel.appStart(intent, resume = if (checkResume) null else false)
+        // Benflix: learn TV or phone before anything draws, so the shared text sizes are right
+        com.github.damontecres.wholphin.ui.touch.isTvDevice(this)
         setContent {
             PhoneFit {
                 MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {

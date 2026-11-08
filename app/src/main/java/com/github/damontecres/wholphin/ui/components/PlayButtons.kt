@@ -72,6 +72,7 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * Standard row of [ExpandablePlayButton] including Play (or Resume & Restart), Mark played, & More
@@ -457,7 +458,7 @@ private fun whiteBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                 inset = (-4).dp,
                 shape = FlatButtonShape,
             ),
@@ -468,7 +469,7 @@ private fun primaryBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
                 shape = FlatButtonShape,
             ),
     )

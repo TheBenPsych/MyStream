@@ -50,6 +50,8 @@ import com.github.damontecres.wholphin.ui.formatSeasonNumber
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.LoadingState
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ListItemDefaults
 
 data class RequestSeason(
     val season: Season,
@@ -173,6 +175,7 @@ fun RequestSeasons(
                     Button(
                         onClick = ::submit,
                         enabled = selectedSeasons.isNotEmpty(),
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(
                             text = stringResource(R.string.submit),
@@ -254,6 +257,7 @@ fun RequestSeasons(
                         Button(
                             onClick = ::submit,
                             enabled = selectedSeasons.isNotEmpty(),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(
                                 text = stringResource(R.string.submit),
@@ -331,6 +335,7 @@ fun SeasonListItem(
         },
         onClick = onClick,
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }
 
@@ -353,6 +358,7 @@ private fun ClickSurface(
         onClick = onClick,
         content = content,
         modifier = modifier,
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     )
 }
 

@@ -187,7 +187,7 @@ fun NowPlayingOverlay(
                                 .fillMaxWidth()
                                 .background(
                                     color = MaterialTheme.colorScheme.surface.copy(alpha = .5f),
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(10.dp),
                                 ).padding(end = 8.dp)
                                 .onFocusChanged {
                                     if (it.hasFocus) showButtons = index < 3

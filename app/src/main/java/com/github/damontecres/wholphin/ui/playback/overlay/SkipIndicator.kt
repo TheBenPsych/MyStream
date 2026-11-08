@@ -24,6 +24,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.ifElse
 import kotlin.math.abs
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Shows a rotating indicator when seeking. Displays the amount of seconds in the [durationMs].
@@ -63,7 +64,7 @@ fun SkipIndicator(
         Text(
             modifier = Modifier.align(Alignment.Center),
             color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             style = MaterialTheme.typography.bodySmall,
             text = abs(durationMs / 1000).toString(),
         )

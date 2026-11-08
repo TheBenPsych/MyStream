@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.ui.components.Genre
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import java.util.UUID
+import com.github.damontecres.wholphin.ui.Cards
 
 @Composable
 fun GenreCard(
@@ -71,6 +72,9 @@ fun GenreCard(
             CardDefaults.colors(
                 containerColor = Color.Transparent,
             ),
+            scale = CardDefaults.scale(focusedScale = 1f),
+            shape = CardDefaults.shape(Cards.focusShape),
+            border = Cards.focusBorder(),
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -78,7 +82,7 @@ fun GenreCard(
                 Modifier
                     .aspectRatio(AspectRatios.WIDE)
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(10.dp)),
         ) {
             if (imageUrl != null) {
                 AsyncImage(

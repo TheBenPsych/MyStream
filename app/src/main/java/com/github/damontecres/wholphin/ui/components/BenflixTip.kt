@@ -30,6 +30,7 @@ import androidx.core.content.edit
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import kotlinx.coroutines.delay
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** The first-time tips Benflix shows, each only once on a device */
 enum class BenflixTipId(
@@ -97,13 +98,13 @@ fun BenflixTip(
                         }
                         append(tip.text)
                     },
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 color = Color.White,
                 modifier =
                     Modifier
                         .padding(24.dp)
                         .widthIn(max = 420.dp)
-                        .background(Color(0xE6202024), RoundedCornerShape(12.dp))
+                        .background(Color(0xE6202024), RoundedCornerShape(10.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp),
             )
         }

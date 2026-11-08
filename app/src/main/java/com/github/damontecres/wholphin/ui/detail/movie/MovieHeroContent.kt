@@ -71,6 +71,8 @@ import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 
 /** What the movie page can do, so the page itself stays simple */
 class MovieHeroActions(
@@ -126,7 +128,7 @@ fun MovieHeroContent(
             focusedOnce = true
         }
     }
-    val side = if (wide) 40.dp else 16.dp
+    val side = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
     val goToCollection: () -> Unit = {
         scope.launch {
             listState.animateScrollToItem(1)
@@ -196,7 +198,7 @@ fun MovieHeroContent(
                                     Text(
                                         text = "More like this, cast and details below",
                                         color = BenflixColors.Muted,
-                                        fontSize = 13.sp,
+                                        fontSize = BenflixType.small,
                                         modifier = Modifier.padding(top = 14.dp),
                                     )
                                 }
@@ -363,7 +365,7 @@ private fun HeroWords(
         Text(
             text = movie.title.orEmpty(),
             color = BenflixColors.Text,
-            fontSize = if (easy) 44.sp else 40.sp,
+            fontSize = BenflixType.hero,
             lineHeight = if (easy) 46.sp else 42.sp,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
@@ -377,7 +379,7 @@ private fun HeroWords(
             Text(
                 text = meta,
                 color = BenflixColors.Soft,
-                fontSize = 16.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -388,8 +390,8 @@ private fun HeroWords(
                 Text(
                     text = it,
                     color = BenflixColors.Soft,
-                    fontSize = 15.sp,
-                    lineHeight = 21.sp,
+                    fontSize = BenflixType.body,
+                    lineHeight = BenflixType.body * 1.35f,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 10.dp),
@@ -460,7 +462,7 @@ private fun HeroButtons(
                 Text(
                     text = "${lengthText(left)} left",
                     color = BenflixColors.Muted,
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -523,7 +525,7 @@ private fun PartLink(
         Text(
             text = text,
             color = BenflixColors.Text,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -547,7 +549,7 @@ private fun PosterShelf(
         Text(
             text = title,
             color = BenflixColors.Text,
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = side, end = side, bottom = 8.dp),
         )
@@ -607,14 +609,14 @@ private fun DetailsBlock(
         Text(
             text = "Details",
             color = BenflixColors.Text,
-            fontSize = 17.sp,
+            fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp),
         )
         facts.forEach { (label, value) ->
             Row(Modifier.padding(vertical = 3.dp)) {
-                Text(text = label, color = BenflixColors.Muted, fontSize = 14.sp, modifier = Modifier.width(120.dp))
-                Text(text = value, color = BenflixColors.Soft, fontSize = 14.sp)
+                Text(text = label, color = BenflixColors.Muted, fontSize = BenflixType.small, modifier = Modifier.width(120.dp))
+                Text(text = value, color = BenflixColors.Soft, fontSize = BenflixType.small)
             }
         }
         if (isAdmin) {
@@ -656,7 +658,7 @@ private fun LinksDialog(
                     .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
                     .padding(24.dp),
         ) {
-            Text("Scan with your phone", color = BenflixColors.Text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Scan with your phone", color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.ExtraBold)
             Row(horizontalArrangement = Arrangement.spacedBy(28.dp), modifier = Modifier.padding(vertical = 18.dp)) {
                 LinkCode("AniList", aniListUrl)
                 malUrl?.let { LinkCode("MyAnimeList", it) }
@@ -673,7 +675,7 @@ private fun LinkCode(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         QrCode(text = url, modifier = Modifier.width(150.dp).aspectRatio(1f))
-        Text(label, color = BenflixColors.Soft, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
+        Text(label, color = BenflixColors.Soft, fontSize = BenflixType.body, modifier = Modifier.padding(top = 8.dp))
     }
 }
 

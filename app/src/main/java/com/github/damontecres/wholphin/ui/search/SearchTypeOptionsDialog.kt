@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.ui.main.settings.TitleText
 import com.github.damontecres.wholphin.ui.preferences.SwitchColors
 import com.github.damontecres.wholphin.ui.titleStringRes
 import org.jellyfin.sdk.model.api.BaseItemKind
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun SearchTypeOptionsDialog(
@@ -74,6 +75,7 @@ fun SearchTypeOptionsDialogContent(
                             colors = SwitchColors(),
                         )
                     },
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
             if (discoverAvailable) {
@@ -92,6 +94,7 @@ fun SearchTypeOptionsDialogContent(
                                 colors = SwitchColors(),
                             )
                         },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

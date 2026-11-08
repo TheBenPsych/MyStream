@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class DownloadsViewModel
@@ -148,7 +149,7 @@ fun DownloadButton(
         Text(text = stringResource(icon), fontFamily = FontAwesome, fontSize = 16.sp, color = Color.White)
         Text(
             text = label,
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             modifier = Modifier.padding(start = 8.dp),
@@ -196,7 +197,7 @@ fun DownloadsPage(
     ) {
         Text(
             text = stringResource(R.string.downloads_title),
-            fontSize = 26.sp,
+            fontSize = BenflixType.pageTitle,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             modifier = Modifier.padding(16.dp),
@@ -204,7 +205,7 @@ fun DownloadsPage(
         if (items.isEmpty()) {
             Text(
                 text = stringResource(R.string.downloads_none),
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 color = Color(0xFFB3B3B3),
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
@@ -232,7 +233,7 @@ fun DownloadsPage(
                             Modifier
                                 .width(64.dp)
                                 .height(96.dp)
-                                .clip(RoundedCornerShape(4.dp))
+                                .clip(RoundedCornerShape(6.dp))
                                 .background(Color(0xFF2B2B2B)),
                     )
                     Column(
@@ -243,14 +244,14 @@ fun DownloadsPage(
                     ) {
                         Text(
                             text = item.title,
-                            fontSize = 16.sp,
+                            fontSize = BenflixType.body,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                         item.subtitle?.let {
-                            Text(text = it, fontSize = 13.sp, color = Color(0xFFB3B3B3), maxLines = 1)
+                            Text(text = it, fontSize = BenflixType.small, color = Color(0xFFB3B3B3), maxLines = 1)
                         }
                         Text(
                             text =
@@ -272,7 +273,7 @@ fun DownloadsPage(
                                         stringResource(R.string.download_failed_short)
                                     }
                                 },
-                            fontSize = 13.sp,
+                            fontSize = BenflixType.small,
                             color = if (status == DownloadStatus.Failed) Color(0xFFFF8A8A) else Color(0xFFB3B3B3),
                         )
                     }

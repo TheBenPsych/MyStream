@@ -113,7 +113,7 @@ fun PersonCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = MaterialTheme.colorScheme.border,
+                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
                                 ),
                             shape = CircleShape,
                         ),
@@ -122,6 +122,7 @@ fun PersonCard(
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
                 ),
+                scale = CardDefaults.scale(focusedScale = 1f),
         ) {
             ItemCardImage(
                 imageUrl = imageUrl,

@@ -390,6 +390,7 @@ private fun VoiceSearchOverlay(
                                 OutlinedButtonDefaults.colors(
                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                 ),
+                                scale = OutlinedButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Text(
                                 text = stringResource(R.string.retry),

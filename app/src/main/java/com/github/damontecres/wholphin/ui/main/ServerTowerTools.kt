@@ -36,6 +36,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import timber.log.Timber
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Benflix: something on the Tower tools that asks "are you sure?" first */
 sealed interface TowerAsk {
@@ -529,8 +530,8 @@ internal fun LazyListScope.trackTidyItems(
                     Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                         Text(
                             text = state.lines.takeLast(OUTPUT_LINES).joinToString("\n"),
-                            fontSize = 12.sp,
-                            lineHeight = 15.sp,
+                            fontSize = BenflixType.tag,
+                            lineHeight = BenflixType.tag * 1.3f,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

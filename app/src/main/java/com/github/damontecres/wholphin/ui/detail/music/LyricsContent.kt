@@ -113,7 +113,7 @@ fun LyricsContent(
                                 containerColor = Color.Transparent,
                                 focusedContainerColor = MaterialTheme.colorScheme.border.copy(alpha = .33f),
                             ),
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                         scale =
                             ClickableSurfaceDefaults.scale(
                                 focusedScale = 1f,

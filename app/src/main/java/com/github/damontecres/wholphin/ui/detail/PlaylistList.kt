@@ -65,6 +65,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.MediaType
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun PlaylistList(
@@ -115,6 +116,7 @@ fun PlaylistList(
                     onClick.invoke(playlist)
                 },
                 modifier = Modifier,
+                scale = ListItemDefaults.scale(focusedScale = 1f),
             )
         }
         if (createEnabled) {
@@ -137,6 +139,7 @@ fun PlaylistList(
                         showCreateDialog = true
                     },
                     modifier = Modifier,
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }

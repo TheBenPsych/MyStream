@@ -48,6 +48,8 @@ import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** What the game details page shows besides the buttons */
 data class GameInfo(
@@ -141,11 +143,11 @@ fun GameDetailsPage(
                 Box(
                     mod
                         .aspectRatio(3f / 4f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF242424)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(ref.name, color = Color.White, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
+                    Text(ref.name, color = Color.White, fontSize = BenflixType.small, modifier = Modifier.padding(8.dp))
                     ref.coverUrl?.let { url ->
                         AsyncImage(
                             model =
@@ -192,7 +194,7 @@ fun GameDetailsPage(
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState()),
                     ) {
-                        Text(ref.name, fontSize = if (isTv) 34.sp else 22.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Text(ref.name, fontSize = if (isTv) BenflixType.hero else BenflixType.rowName, fontWeight = FontWeight.Black, color = Color.White)
                         val facts =
                             listOfNotNull(
                                 ref.consoleName,
@@ -202,7 +204,7 @@ fun GameDetailsPage(
                                 playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
                                 if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download" else null,
                             )
-                        Text(facts.joinToString("  ·  "), fontSize = if (isTv) 15.sp else 12.sp, color = Color.White.copy(alpha = .8f))
+                        Text(facts.joinToString("  ·  "), fontSize = if (isTv) BenflixType.body else BenflixType.tag, color = BenflixColors.Soft)
                         // Buttons
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (choice.resume) {
@@ -223,31 +225,31 @@ fun GameDetailsPage(
                         if (choice.downloaded && !KidsMode.isActive) {
                             Text(
                                 "Removing frees up space. Your saves are kept on Tower.",
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = .6f),
+                                fontSize = BenflixType.tag,
+                                color = BenflixColors.Muted,
                             )
                         }
                         when {
                             info == null -> {
-                                Text("Loading the story…", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
+                                Text("Loading the story…", fontSize = BenflixType.small, color = BenflixColors.Muted)
                             }
 
                             info.summary.isNotBlank() -> {
                                 Text(
                                     info.summary,
-                                    fontSize = if (isTv) 16.sp else 13.sp,
-                                    color = Color.White.copy(alpha = .9f),
+                                    fontSize = if (isTv) BenflixType.body else BenflixType.small,
+                                    color = BenflixColors.Text,
                                     modifier = Modifier.widthIn(max = 760.dp),
                                 )
                             }
                         }
                         info?.companies?.takeIf { it.isNotEmpty() }?.let {
-                            Text("Made by ${it.joinToString(", ")}", fontSize = 13.sp, color = Color.White.copy(alpha = .6f))
+                            Text("Made by ${it.joinToString(", ")}", fontSize = BenflixType.small, color = BenflixColors.Muted)
                         }
                         if (saves.isNotEmpty()) {
                             Text(
                                 "Your saves",
-                                fontSize = if (isTv) 20.sp else 16.sp,
+                                fontSize = if (isTv) BenflixType.rowName else BenflixType.body,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                             )
@@ -259,8 +261,8 @@ fun GameDetailsPage(
                             }
                             Text(
                                 "Resume picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = .6f),
+                                fontSize = BenflixType.tag,
+                                color = BenflixColors.Muted,
                             )
                         }
                     }
@@ -282,7 +284,7 @@ private fun SaveTile(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 3f)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(Color.Black),
         ) {
             spot.picture?.let { pic ->
@@ -302,8 +304,8 @@ private fun SaveTile(
                 )
             }
         }
-        Text(spot.title, fontSize = if (isTv) 14.sp else 11.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-        Text(savedAgoText(spot.time), fontSize = if (isTv) 12.sp else 10.sp, color = Color.White.copy(alpha = .65f), maxLines = 1)
+        Text(spot.title, fontSize = if (isTv) BenflixType.small else BenflixType.tag, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        Text(savedAgoText(spot.time), fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
     }
 }
 
@@ -330,7 +332,7 @@ private fun DetailButton(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = if (primary) Color.White else Color(0xFF2A2A2A),
@@ -340,7 +342,7 @@ private fun DetailButton(
             ),
         modifier = modifier,
     ) {
-        Text(text, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+        Text(text, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
     }
 }
 
@@ -411,7 +413,7 @@ private fun TvGameHero(
                     .padding(start = 56.dp, end = 56.dp, top = 40.dp, bottom = 32.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth(0.5f)) {
-                Text(ref.name, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2)
+                Text(ref.name, fontSize = BenflixType.hero, lineHeight = BenflixType.hero * 1.1f, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2)
                 val facts =
                     listOfNotNull(
                         ref.consoleName,
@@ -424,18 +426,18 @@ private fun TvGameHero(
                             ?.joinToString(", "),
                         playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
                     )
-                Text(facts.joinToString("  ·  "), fontSize = 15.sp, color = Color.White.copy(alpha = .8f), maxLines = 2)
+                Text(facts.joinToString("  ·  "), fontSize = BenflixType.body, color = BenflixColors.Soft, maxLines = 2)
                 when {
                     info == null -> {
-                        Text("Loading the story…", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
+                        Text("Loading the story…", fontSize = BenflixType.small, color = BenflixColors.Muted)
                     }
 
                     info.summary.isNotBlank() -> {
                         Text(
                             info.summary,
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp,
-                            color = Color.White.copy(alpha = .9f),
+                            fontSize = BenflixType.body,
+                            lineHeight = BenflixType.body * 1.35f,
+                            color = BenflixColors.Text,
                             maxLines = 3,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
@@ -443,8 +445,8 @@ private fun TvGameHero(
                 }
                 Text(
                     "Hold Back (or the ☰ button) during the game for saves and the menu.",
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = .6f),
+                    fontSize = BenflixType.small,
+                    color = BenflixColors.Muted,
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (choice.resume) {
@@ -461,7 +463,7 @@ private fun TvGameHero(
             if (saves.isNotEmpty()) {
                 Text(
                     "Your saves",
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     modifier = Modifier.padding(top = 12.dp),

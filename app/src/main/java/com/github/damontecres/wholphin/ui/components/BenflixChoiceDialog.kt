@@ -33,6 +33,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One choice in a [BenflixChoiceDialog] */
 data class BenflixChoice(
@@ -75,7 +76,7 @@ fun BenflixChoiceDialog(
                 Text(
                     text = title,
                     color = BenflixColors.Text,
-                    fontSize = 20.sp,
+                    fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = if (subtitle == null) 8.dp else 2.dp),
                 )
@@ -84,7 +85,7 @@ fun BenflixChoiceDialog(
                 Text(
                     text = subtitle,
                     color = BenflixColors.Muted,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
                 )
             }
@@ -137,12 +138,12 @@ private fun ChoiceRow(
         ) {
             if (choice.icon != null) BenflixIconImage(choice.icon, color = content, size = 20.dp)
             Column(Modifier.weight(1f)) {
-                Text(text = choice.label, color = content, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(text = choice.label, color = content, fontSize = BenflixType.body, fontWeight = FontWeight.Bold)
                 if (choice.note != null) {
                     Text(
                         text = choice.note,
                         color = if (focused) BenflixColors.Tray.copy(alpha = .7f) else BenflixColors.Muted,
-                        fontSize = 13.sp,
+                        fontSize = BenflixType.small,
                     )
                 }
             }

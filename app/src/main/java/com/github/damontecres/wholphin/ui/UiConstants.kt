@@ -15,6 +15,7 @@ import androidx.tv.material3.CardDefaults
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.ImageUrlService
 import org.jellyfin.sdk.model.api.ItemFields
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 // This file is for constants used for the UI
 
@@ -114,7 +115,7 @@ object Cards {
     val serverUserCircle = height2x3 * .75f
 
     /** Benflix tiles: rounded corners, and a thin white outline on the one you're on */
-    val focusShape = RoundedCornerShape(8.dp)
+    val focusShape = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
 
     @Composable
     fun focusBorder() =
@@ -122,7 +123,7 @@ object Cards {
             border = Border.None,
             focusedBorder =
                 Border(
-                    border = BorderStroke(2.dp, Color.White),
+                    border = BorderStroke(3.dp, BenflixColors.Text),
                     inset = 0.dp,
                     shape = focusShape,
                 ),

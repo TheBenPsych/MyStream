@@ -51,6 +51,9 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.systemApi
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.OutlinedButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class ServerNapViewModel
@@ -168,21 +171,21 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
                     .BenflixLogo(height = 44.dp)
                 Text(
                     "The server is taking a nap, or being worked on",
-                    fontSize = 24.sp,
+                    fontSize = BenflixType.rowName,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     "Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.",
-                    fontSize = 17.sp,
+                    fontSize = BenflixType.lead,
                     color = Color(0xFFD8D8F0),
                     textAlign = TextAlign.Center,
                 )
-                Text("Checking again in $countdown seconds…", fontSize = 15.sp, color = Color(0xFFA19D99))
+                Text("Checking again in $countdown seconds…", fontSize = BenflixType.body, color = Color(0xFFA19D99))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    Button(onClick = viewModel::tryNow, modifier = Modifier.focusRequester(focus)) { Text("Try now") }
+                    Button(onClick = viewModel::tryNow, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try now") }
                     if (!isTv) {
-                        OutlinedButton(onClick = viewModel::hideForAWhile) { Text("Watch my downloads") }
+                        OutlinedButton(onClick = viewModel::hideForAWhile, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) { Text("Watch my downloads") }
                     }
                 }
             }

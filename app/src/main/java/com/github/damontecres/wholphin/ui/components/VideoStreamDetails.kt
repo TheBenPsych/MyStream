@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.ui.util.StreamFormatting.resolutionString
 import com.github.damontecres.wholphin.util.languageName
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStream
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @Composable
 @NonRestartableComposable
@@ -179,13 +180,13 @@ fun StreamLabel(
                 .background(
                     MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .5f),
 //                    MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(6.dp),
                 ).padding(vertical = 4.dp, horizontal = 6.dp),
     ) {
         ProvideTextStyle(
             TextStyle(
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 12.sp,
+                fontSize = BenflixType.tag,
                 fontWeight = FontWeight.SemiBold,
             ),
         ) {

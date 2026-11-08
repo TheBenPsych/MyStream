@@ -37,6 +37,7 @@ import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix recent searches, kept per account (Kids has its own list, Guest keeps none).
@@ -118,8 +119,9 @@ fun SearchStart(
                                         focusedContainerColor = Color.White,
                                         focusedContentColor = Color.Black,
                                     ),
+                                    scale = ButtonDefaults.scale(focusedScale = 1f),
                             ) {
-                                Text(text = text, fontSize = 15.sp)
+                                Text(text = text, fontSize = BenflixType.body)
                             }
                         }
                     }
@@ -239,7 +241,7 @@ fun SearchStart(
 private fun SectionLabel(text: String) =
     Text(
         text = text,
-        fontSize = 13.sp,
+        fontSize = BenflixType.small,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.3.sp,
         color = Color(0xFFA69C9D),
@@ -253,7 +255,7 @@ private fun StartButton(
 ) {
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors =
             ButtonDefaults.colors(
@@ -262,7 +264,8 @@ private fun StartButton(
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = text, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
     }
 }

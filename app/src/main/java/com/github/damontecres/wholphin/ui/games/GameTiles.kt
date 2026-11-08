@@ -28,6 +28,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** One spot on the Arcade wall */
 internal sealed interface WallItem {
@@ -101,7 +103,7 @@ internal fun Badge(
         }
         Text(
             text = text,
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 1,
@@ -137,7 +139,7 @@ internal fun WorksWith(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            Text("Works with", fontSize = 12.sp, color = Color.White.copy(alpha = .6f))
+            Text("Works with", fontSize = BenflixType.tag, color = BenflixColors.Muted)
             Chips()
         }
     } else {

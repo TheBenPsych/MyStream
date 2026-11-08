@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One line in the Settings menu: a section of settings, or a page it opens */
 private data class SettingsSection(
@@ -321,7 +322,7 @@ fun BenflixSettingsPage(
                 Text(
                     text = stringResource(R.string.settings),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 29.sp,
+                    fontSize = BenflixType.pageTitle,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Card {
@@ -394,12 +395,12 @@ private fun ProfileHeader(name: String) {
             modifier =
                 Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.primary),
         ) {
             Text(
                 text = name.take(1).uppercase(),
-                fontSize = 22.sp,
+                fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
@@ -408,13 +409,13 @@ private fun ProfileHeader(name: String) {
             Text(
                 text = stringResource(R.string.settings),
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
+                fontSize = BenflixType.rowName,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (name.isNotBlank()) {
                 Text(
                     text = name,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -428,7 +429,7 @@ private fun Card(content: @Composable () -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)),
     ) {
         content()
@@ -477,7 +478,7 @@ private fun MenuRow(
         headlineContent = {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                fontSize = BenflixType.lead,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
             )
@@ -485,7 +486,7 @@ private fun MenuRow(
         supportingContent =
             supporting?.let {
                 {
-                    Text(text = it, fontSize = 13.sp, maxLines = 1)
+                    Text(text = it, fontSize = BenflixType.small, maxLines = 1)
                 }
             },
         leadingContent = {
@@ -515,7 +516,7 @@ private fun MenuRow(
 
                 badge != null -> {
                     {
-                        Text(text = badge, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = badge, fontSize = BenflixType.tag, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 

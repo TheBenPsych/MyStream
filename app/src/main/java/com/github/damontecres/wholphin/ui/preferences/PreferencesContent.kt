@@ -99,6 +99,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun PreferencesContent(
@@ -323,6 +324,7 @@ fun PreferencesContent(
                                 PreferenceTitle(message, color = MaterialTheme.colorScheme.error)
                             },
                             modifier = Modifier,
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }
                 }

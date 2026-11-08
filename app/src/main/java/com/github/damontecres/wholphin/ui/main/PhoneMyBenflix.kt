@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.ui.nav.TopNavTab
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import java.util.UUID
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix on phones: what the My Benflix page needs from the bottom menu
@@ -92,7 +93,7 @@ fun PhoneMyBenflixHeader(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable(onClick = menu.onClickProfile),
             ) {
                 userId?.let {
@@ -101,14 +102,14 @@ fun PhoneMyBenflixHeader(
                 Column {
                     Text(
                         text = name,
-                        fontSize = 20.sp,
+                        fontSize = BenflixType.rowName,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = stringResource(R.string.phone_switch_profile), fontSize = 13.sp, color = MUTED)
+                        Text(text = stringResource(R.string.phone_switch_profile), fontSize = BenflixType.small, color = MUTED)
                         Spacer(Modifier.width(5.dp))
                         Text(text = stringResource(R.string.fa_chevron_down), fontFamily = FontAwesome, fontSize = 9.sp, color = MUTED)
                     }
@@ -170,7 +171,7 @@ private fun RowScope.RoundButton(
         modifier =
             Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
     ) {
@@ -180,7 +181,7 @@ private fun RowScope.RoundButton(
         ) {
             Text(text = stringResource(faIcon), fontFamily = FontAwesome, fontSize = 21.sp, color = Color.White)
         }
-        Text(text = label, fontSize = 12.sp, color = Color(0xFFDDDDDD), maxLines = 1)
+        Text(text = label, fontSize = BenflixType.tag, color = Color(0xFFDDDDDD), maxLines = 1)
     }
 }
 
@@ -193,7 +194,7 @@ private fun TileGrid(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = title.uppercase(),
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp,
             color = MUTED,
@@ -209,7 +210,7 @@ private fun TileGrid(
 
 @Composable
 private fun RowScope.IconTile(tab: TopNavTab) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     // "Requests (2)" shows as Requests with a red 2
     val count = Regex("""\s\((\d+)\)$""").find(tab.title)
     val label = if (count != null) tab.title.removeRange(count.range) else tab.title
@@ -235,8 +236,8 @@ private fun RowScope.IconTile(tab: TopNavTab) {
             )
             Text(
                 text = label,
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
+                fontSize = BenflixType.tag,
+                lineHeight = BenflixType.tag * 1.3f,
                 color = Color.White,
                 fontWeight = if (tab.selected) FontWeight.Bold else FontWeight.Normal,
                 textAlign = TextAlign.Center,
@@ -256,7 +257,7 @@ private fun RowScope.IconTile(tab: TopNavTab) {
             ) {
                 Text(
                     text = it.groupValues[1],
-                    fontSize = 10.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     color = com.github.damontecres.wholphin.ui.theme.OnBenflixRed,
                 )

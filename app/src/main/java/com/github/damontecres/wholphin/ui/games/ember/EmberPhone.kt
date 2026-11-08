@@ -22,7 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** A phone joining the TV's game: it shows the TV's words, and its buttons vote or play */
 @Composable
@@ -52,7 +53,7 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
     ) {
-        Text("EMBER ROAD", fontFamily = BenflixTitleFont, fontSize = 28.sp, color = EmberGold)
+        Text("Ember Road", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = EmberGold)
         val v = view
         if (v == null) {
             Text(

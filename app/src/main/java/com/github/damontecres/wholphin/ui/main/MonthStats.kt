@@ -46,6 +46,8 @@ import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** Benflix: this month so far, on My Benflix */
 data class MonthStats(
@@ -179,12 +181,12 @@ fun MonthStatsCard(
         modifier =
             modifier
                 .widthIn(max = 720.dp)
-                .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel, RoundedCornerShape(14.dp))
+                .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel, RoundedCornerShape(16.dp))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text(
             text = "YOUR ${s.month.uppercase()} SO FAR",
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.3.sp,
             color = Color(0xFF9A9AA3),
@@ -210,7 +212,7 @@ private fun Stat(
     label: String,
 ) {
     Column(modifier = Modifier.widthIn(max = 240.dp)) {
-        Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(text = label, fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
+        Text(text = value, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = label, fontSize = BenflixType.small, color = BenflixColors.Muted)
     }
 }

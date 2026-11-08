@@ -64,6 +64,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /**
  * "Mini Benflix": a full-screen picker for the show that plays next to the game.
@@ -384,7 +385,7 @@ private fun ProgressLine(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(progress)
-                .background(Color(0xFFE50914)),
+                .background(BenflixColors.Text),
         )
     }
 }

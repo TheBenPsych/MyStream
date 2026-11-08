@@ -61,6 +61,9 @@ import org.jellyfin.sdk.model.api.MessageCommand
 import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ListItemDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** What the Server page's tools show: the note, people and the library checkup */
 data class ServerToolsState(
@@ -641,6 +644,7 @@ fun ServerActionRow(
             leadingContent = leading,
             trailingContent = trailing,
             modifier = m,
+            scale = ListItemDefaults.scale(focusedScale = 1f),
         )
     }
     // Benflix: every row sits on its own dark rounded card, like the Settings pages, so the page
@@ -649,7 +653,7 @@ fun ServerActionRow(
         modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(ServerCardColor)
     if (actions.isEmpty()) {
         row(card)
@@ -661,7 +665,7 @@ fun ServerActionRow(
         ) {
             row(Modifier.weight(1f))
             actions.forEach { (label, action) ->
-                Button(onClick = action) { Text(label, fontSize = 14.sp) }
+                Button(onClick = action, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(label, fontSize = BenflixType.small) }
             }
         }
     } else {
@@ -674,7 +678,7 @@ fun ServerActionRow(
                 modifier = Modifier.padding(start = 16.dp, end = 12.dp, bottom = 12.dp),
             ) {
                 actions.forEach { (label, action) ->
-                    Button(onClick = action) { Text(label, fontSize = 14.sp) }
+                    Button(onClick = action, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(label, fontSize = BenflixType.small) }
                 }
             }
         }
@@ -779,7 +783,7 @@ fun LazyListScope.messageItems(
             Text(
                 text = "Pop-ups can't arrive instantly right now. They still arrive within about 2 minutes. $LIVE_BLOCKED_HELP",
                 color = Color(0xFFE5B567),
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
             )
         }

@@ -81,6 +81,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
  * Benflix: anime genres on a request's details page (Isekai, Slice of Life...), from AniList, and a page
@@ -234,7 +236,7 @@ fun AnimeGenresBlock(
         Text(
             text = "ANIME GENRES",
             color = LABEL_GREY,
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             letterSpacing = 1.5.sp,
             modifier = Modifier.padding(end = 4.dp),
         )
@@ -274,10 +276,11 @@ private fun GenrePill(
                 focusedContentColor = Color.Black,
             ),
         modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Text(
             text = text,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = if (quiet) FontWeight.Normal else FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
@@ -624,7 +627,7 @@ fun AnimeGenrePage(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.padding(24.dp),
             ) {
-                Text("Sort and type", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Sort and type", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AniListSort.entries.forEach { s ->
                         RequestsChip(s.label, sort == s, {
@@ -658,7 +661,7 @@ fun AnimeGenrePage(
                 Text(
                     text = if (picked.isEmpty()) "Anime deep search" else picked.joinToString(" + "),
                     color = Color.White,
-                    fontSize = if (isTv) 30.sp else 24.sp,
+                    fontSize = if (isTv) BenflixType.pageTitle else BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -674,13 +677,13 @@ fun AnimeGenrePage(
                             kind.label,
                         ).joinToString(" · "),
                     color = LABEL_GREY,
-                    fontSize = 14.sp,
+                    fontSize = BenflixType.small,
                 )
                 if (fromMal) {
                     Text(
                         text = "AniList didn't answer, so this list is from MyAnimeList.",
                         color = LABEL_GREY,
-                        fontSize = 13.sp,
+                        fontSize = BenflixType.small,
                     )
                 }
             }
@@ -702,7 +705,7 @@ fun AnimeGenrePage(
         when {
             list == null -> {
                 item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
-                    Text("Loading…", color = LABEL_GREY, fontSize = 16.sp, modifier = Modifier.padding(vertical = 24.dp))
+                    Text("Loading…", color = LABEL_GREY, fontSize = BenflixType.body, modifier = Modifier.padding(vertical = 24.dp))
                 }
             }
 
@@ -731,9 +734,9 @@ fun AnimeGenrePage(
                                     }
                                 },
                             color = Color.White,
-                            fontSize = 16.sp,
+                            fontSize = BenflixType.body,
                         )
-                        if (failed) Button(onClick = { viewModel.reload() }) { Text("Try again") }
+                        if (failed) Button(onClick = { viewModel.reload() }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again") }
                     }
                 }
             }
@@ -767,7 +770,7 @@ private fun AnimePoster(
         Surface(
             onClick = onClick,
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF26262C), focusedContainerColor = Color.White),
             modifier =
                 Modifier
@@ -785,13 +788,13 @@ private fun AnimePoster(
                     Text(
                         text = "MOVIE",
                         color = Color.White,
-                        fontSize = 11.sp,
+                        fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -799,7 +802,7 @@ private fun AnimePoster(
                     Text(
                         text = "Opening…",
                         color = Color.White,
-                        fontSize = 13.sp,
+                        fontSize = BenflixType.small,
                         modifier =
                             Modifier
                                 .align(Alignment.Center)
@@ -812,7 +815,7 @@ private fun AnimePoster(
         Text(
             text = anime.title,
             color = Color.White,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -824,7 +827,7 @@ private fun AnimePoster(
                     anime.score?.let { "AniList " + String.format(java.util.Locale.US, "%.1f", it / 10.0) },
                 ).joinToString(" · "),
             color = LABEL_GREY,
-            fontSize = 12.sp,
+            fontSize = BenflixType.tag,
             maxLines = 1,
         )
     }
@@ -886,7 +889,7 @@ private fun AddGenreDialog(
         ) {
             item(key = "head") {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Genres and tags", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Genres and tags", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
                     Text(
                         text =
                             if (leaving) {
@@ -894,11 +897,11 @@ private fun AddGenreDialog(
                             } else {
                                 "Must have: only anime with every one of these stay on the list."
                             },
-                        fontSize = 14.sp,
+                        fontSize = BenflixType.small,
                         color = LABEL_GREY,
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onApply(must, without) }) {
+                        Button(onClick = { onApply(must, without) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                             Text(if (must.isEmpty()) "Done" else "Show anime (${must.size + without.size})")
                         }
                         RequestsChip("Must have", !leaving, { leaving = false })
@@ -909,7 +912,7 @@ private fun AddGenreDialog(
                                 without = emptyList()
                             })
                         }
-                        Button(onClick = onDismiss) { Text("Cancel") }
+                        Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
                     }
                     RequestsSearchBox(
                         query = query,
@@ -920,7 +923,7 @@ private fun AddGenreDialog(
                     if (catalog.isEmpty()) {
                         Text(
                             text = "Loading every AniList tag… the popular ones are here already.",
-                            fontSize = 13.sp,
+                            fontSize = BenflixType.small,
                             color = LABEL_GREY,
                         )
                     }
@@ -930,7 +933,7 @@ private fun AddGenreDialog(
                 if (choices.isEmpty()) return@forEach
                 item(key = "s-$title") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = LABEL_GREY)
+                        Text(title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, color = LABEL_GREY)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             choices.forEach { choice ->
                                 val label =
@@ -946,7 +949,7 @@ private fun AddGenreDialog(
                 }
             }
             if (sections.all { it.second.isEmpty() }) {
-                item(key = "none") { Text("No tag has that name.", fontSize = 15.sp, color = Color.White) }
+                item(key = "none") { Text("No tag has that name.", fontSize = BenflixType.body, color = Color.White) }
             }
         }
     }

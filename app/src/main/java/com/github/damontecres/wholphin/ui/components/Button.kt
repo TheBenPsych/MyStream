@@ -46,7 +46,7 @@ fun Button(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     enabled: Boolean = true,
-    scale: ClickableSurfaceScale = ClickableSurfaceDefaults.scale(),
+    scale: ClickableSurfaceScale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     glow: ClickableSurfaceGlow = ClickableSurfaceDefaults.glow(),
     shape: ClickableSurfaceShape =
         ClickableSurfaceDefaults.shape(

@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.util.UUID
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * The guide that slides in while watching a channel, so you can look for something else and keep
@@ -148,7 +149,7 @@ private fun SideGuideContent(
                     ) {
                         Text(
                             text = groupLabel(name),
-                            fontSize = 12.sp,
+                            fontSize = BenflixType.tag,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
@@ -160,7 +161,7 @@ private fun SideGuideContent(
         if (shown.isEmpty()) {
             Text(
                 if (query.isBlank()) "No channels here." else "No channel called \"${query.trim()}\"",
-                fontSize = 13.sp,
+                fontSize = BenflixType.small,
                 color = Color(0xFF8B8B94),
             )
         }

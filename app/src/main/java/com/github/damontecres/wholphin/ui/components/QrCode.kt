@@ -36,7 +36,7 @@ fun QrCode(
     Canvas(
         modifier =
             modifier
-                .background(Color.White, RoundedCornerShape(8.dp))
+                .background(Color.White, RoundedCornerShape(10.dp))
                 .padding(8.dp),
     ) {
         val cell = minOf(size.width / matrix.width, size.height / matrix.height)

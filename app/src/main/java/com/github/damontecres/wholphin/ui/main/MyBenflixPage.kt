@@ -53,6 +53,8 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel
 class MyBenflixViewModel
@@ -270,7 +272,7 @@ fun MyBenflixPage(
                         rows?.isEmpty() == true -> {
                             Text(
                                 text = "Nothing here yet. Add things to My List or give them a thumbs up.",
-                                fontSize = 16.sp,
+                                fontSize = BenflixType.body,
                             )
                         }
                     }
@@ -307,7 +309,7 @@ fun MyBenflixPage(
                 Text(
                     text = "My watching",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 35.sp,
+                    fontSize = BenflixType.hero,
                     letterSpacing = 1.sp,
                 )
                 Text(
@@ -319,7 +321,7 @@ fun MyBenflixPage(
                         } else {
                             user?.name.orEmpty()
                         },
-                    fontSize = 16.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -334,6 +336,7 @@ fun MyBenflixPage(
             Button(
                 onClick = { BenflixWrappedButton.press() },
                 modifier = Modifier.padding(start = 8.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Your year so far")
             }
@@ -358,7 +361,7 @@ fun MyBenflixPage(
                 if (list.isEmpty()) {
                     Text(
                         text = "Nothing here yet. Add things to My List or give them a thumbs up.",
-                        fontSize = 18.sp,
+                        fontSize = BenflixType.lead,
                         modifier = Modifier.padding(top = 32.dp, start = 8.dp),
                     )
                 } else {

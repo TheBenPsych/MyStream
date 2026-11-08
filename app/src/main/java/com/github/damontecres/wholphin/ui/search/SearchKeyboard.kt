@@ -23,6 +23,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 private val Letters = ('A'..'Z').map { it.toString() } + ('1'..'9').map { it.toString() } + "0"
 
@@ -68,7 +69,7 @@ fun SearchKeyboard(
             Text(
                 text = "SUGGESTIONS",
                 color = BenflixColors.Muted,
-                fontSize = 11.sp,
+                fontSize = BenflixType.tag,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.sp,
                 modifier = Modifier.padding(top = 10.dp),
@@ -91,7 +92,7 @@ private fun Key(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,

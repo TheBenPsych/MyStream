@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.tv.material3.ListItemDefaults
 
 /**
  * A filterable list of language choices ([PreferredLanguageType])
@@ -137,6 +138,7 @@ fun FilterableLanguagePreference(
                                 }
                             },
                         modifier = Modifier.focusRequester(focusRequesters[index]),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

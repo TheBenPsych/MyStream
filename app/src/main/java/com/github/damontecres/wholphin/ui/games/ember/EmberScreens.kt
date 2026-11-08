@@ -49,9 +49,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix "Ember Road": an old-school pixel adventure. Carry a dragon egg across a wild magical
@@ -153,7 +154,7 @@ private fun EmberPage(
                 .let { if (scroll) it.fillMaxSize().verticalScroll(rememberScrollState()) else it.fillMaxWidth() }
                 .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 28.dp else 16.dp),
     ) {
-        Text(title, fontFamily = BenflixTitleFont, fontSize = if (isTv) 34.sp else 28.sp, color = EmberGold, textAlign = TextAlign.Center)
+        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = EmberGold, textAlign = TextAlign.Center)
         content()
     }
 }
@@ -258,7 +259,7 @@ private fun TitleArt(vm: EmberViewModel) {
     Box {
         PixelScene("title", SceneOpts(crt = vm.crt, cart = true, party = 4), Modifier.fillMaxWidth().border(2.dp, Color(0xFF3A2A30)))
         Column(Modifier.align(Alignment.TopCenter).padding(top = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("EMBER ROAD", fontFamily = BenflixTitleFont, fontSize = 40.sp, color = EmberGold, fontWeight = FontWeight.Bold)
+            Text("Ember Road", fontFamily = BenflixFont, fontSize = BenflixType.pageTitle, color = EmberGold, fontWeight = FontWeight.Bold)
             Text("Carry the dragon egg to Ember Peak", color = EmberText, fontSize = 15.sp)
         }
     }
@@ -340,7 +341,7 @@ private fun SetupScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(EmberPanel, RoundedCornerShape(8.dp))
+                                    .background(EmberPanel, RoundedCornerShape(10.dp))
                                     .padding(10.dp),
                         ) {
                             PixelPortrait(Member(d.name, d.folk, d.traits, face = d.face), size = if (isTv) 56.dp else 48.dp)
@@ -417,7 +418,7 @@ private fun SetupScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(EmberPanel, RoundedCornerShape(8.dp))
+                                    .background(EmberPanel, RoundedCornerShape(10.dp))
                                     .padding(10.dp),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -580,7 +581,7 @@ private fun GalleryScreen(
                     Modifier
                         .walkable(isTv)
                         .width(if (isTv) 250.dp else 165.dp)
-                        .background(EmberPanel, RoundedCornerShape(8.dp))
+                        .background(EmberPanel, RoundedCornerShape(10.dp))
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -591,7 +592,7 @@ private fun GalleryScreen(
                             Modifier.fillMaxWidth().height(if (isTv) 130.dp else 88.dp).background(Color(0xFF0C080E)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("?", color = EmberDim, fontSize = 32.sp, fontFamily = BenflixTitleFont)
+                            Text("?", color = EmberDim, fontSize = BenflixType.pageTitle, fontFamily = BenflixFont, fontWeight = FontWeight.Bold)
                         }
                     }
                     Text(
@@ -628,7 +629,7 @@ private fun BookScreen(
                     Modifier
                         .walkable(isTv)
                         .width(if (isTv) 200.dp else 160.dp)
-                        .background(EmberPanel, RoundedCornerShape(8.dp))
+                        .background(EmberPanel, RoundedCornerShape(10.dp))
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -683,7 +684,7 @@ private fun Modifier.walkable(isTv: Boolean): Modifier {
     return this
         .onFocusChanged { focused = it.isFocused }
         .focusable()
-        .border(2.dp, if (focused) EmberGold else Color.Transparent, RoundedCornerShape(8.dp))
+        .border(2.dp, if (focused) EmberGold else Color.Transparent, RoundedCornerShape(10.dp))
 }
 
 @Composable

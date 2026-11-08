@@ -38,6 +38,7 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
  * Benflix: the shared look for every settings page, so the pages you open from Settings
@@ -82,7 +83,7 @@ fun BenflixLookABadge(
 ) {
     Text(
         text = text.uppercase(),
-        fontSize = 12.sp,
+        fontSize = BenflixType.tag,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.5.sp,
         color = color,
@@ -108,7 +109,7 @@ fun BenflixSettingsTitle(
         BenflixLookABadge(stringResource(R.string.settings))
         Text(
             text = text,
-            fontSize = if (rememberIsTv()) 40.sp else 34.sp,
+            fontSize = BenflixType.hero,
             lineHeight = if (rememberIsTv()) 42.sp else 36.sp,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -124,7 +125,7 @@ fun BenflixSettingsHeading(
 ) {
     Text(
         text = text.uppercase(),
-        fontSize = 13.sp,
+        fontSize = BenflixType.small,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.2.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -266,7 +267,7 @@ private fun WhereYouArePanel(
                 modifier =
                     Modifier
                         .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.primary),
             ) {
                 Icon(
@@ -279,7 +280,7 @@ private fun WhereYouArePanel(
             Text(
                 text = stringResource(R.string.settings),
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
+                fontSize = BenflixType.rowName,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -290,7 +291,7 @@ private fun WhereYouArePanel(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
@@ -302,7 +303,7 @@ private fun WhereYouArePanel(
             )
             Text(
                 text = stringResource(info.title),
-                fontSize = 18.sp,
+                fontSize = BenflixType.lead,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -310,14 +311,14 @@ private fun WhereYouArePanel(
         }
         Text(
             text = stringResource(info.hint),
-            fontSize = 15.sp,
+            fontSize = BenflixType.body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
         )
         Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.benflix_settings_back_hint),
-            fontSize = 13.sp,
+            fontSize = BenflixType.small,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             modifier = Modifier.padding(start = 8.dp, end = 8.dp),
         )

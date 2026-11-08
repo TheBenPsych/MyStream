@@ -24,6 +24,7 @@ import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.preferences.SwitchColors
 import com.github.damontecres.wholphin.ui.touch.Dialog
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun SearchViewOptionsDialog(
@@ -80,6 +81,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = { onCombinedResultsChange(!combinedResults) },
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
 
                 ListItem(
@@ -105,6 +107,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = { onVoiceSearchButtonVisibleChange(!voiceSearchButtonVisible) },
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
 
                 ListItem(
@@ -114,6 +117,7 @@ fun SearchViewOptionsDialog(
                     },
                     onClick = onClickFilterTypes,
                     modifier = Modifier.fillMaxWidth(),
+                    scale = ListItemDefaults.scale(focusedScale = 1f),
                 )
             }
         }

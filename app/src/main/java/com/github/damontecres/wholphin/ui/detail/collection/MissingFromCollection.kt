@@ -41,6 +41,8 @@ import timber.log.Timber
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** A movie in the collection that isn't on Benflix yet */
 data class MissingPart(
@@ -144,12 +146,12 @@ fun MissingFromCollection(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,
     ) {
-        Button(onClick = viewModel::askForAll) {
+        Button(onClick = viewModel::askForAll, scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(if (missing.size == 1) "Ask for the missing movie" else "Ask for the ${missing.size} missing movies")
         }
         Text(
             text = "Not on Benflix yet: " + missing.joinToString(", ") { it.title },
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

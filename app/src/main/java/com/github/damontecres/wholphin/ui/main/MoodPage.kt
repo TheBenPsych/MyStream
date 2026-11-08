@@ -56,6 +56,8 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.tv.material3.ButtonDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Loads a fresh random set of titles for one [HomeMood]
@@ -158,7 +160,7 @@ fun MoodPage(
                 Modifier
                     .width(8.dp)
                     .height(40.dp)
-                    .background(Brush.verticalGradient(mood.colors), RoundedCornerShape(4.dp)),
+                    .background(Brush.verticalGradient(mood.colors), RoundedCornerShape(6.dp)),
             )
             // The title takes the space that's left, so the shuffle button always fits beside it
             Text(
@@ -169,13 +171,13 @@ fun MoodPage(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = { viewModel.load(mood) }) {
+            Button(onClick = { viewModel.load(mood) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text(stringResource(R.string.mood_shuffle))
             }
         }
         Text(
             text = stringResource(R.string.mood_page_subtitle),
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         when (val list = items) {
@@ -187,7 +189,7 @@ fun MoodPage(
                 if (list.isEmpty()) {
                     Text(
                         text = stringResource(R.string.mood_nothing_found),
-                        fontSize = 18.sp,
+                        fontSize = BenflixType.lead,
                         modifier = Modifier.padding(top = 32.dp),
                     )
                 } else {

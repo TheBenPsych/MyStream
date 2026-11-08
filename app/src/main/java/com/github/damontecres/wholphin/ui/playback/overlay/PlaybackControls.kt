@@ -107,6 +107,8 @@ import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import androidx.tv.material3.Button as TvButton
+import androidx.tv.material3.ListItemDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Possible actions the user can take during playback
@@ -432,7 +434,7 @@ fun PlayerCircleButton(
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
-        scale = ButtonDefaults.scale(focusedScale = 1.1f),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
                 .size(size)
@@ -452,7 +454,7 @@ fun PlayerCircleButton(
             label?.let {
                 Text(
                     text = it,
-                    fontSize = 10.sp,
+                    fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
@@ -489,7 +491,7 @@ fun PlayerPillButton(
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
-        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
                 .height(42.dp)
@@ -505,7 +507,7 @@ fun PlayerPillButton(
             Spacer(Modifier.width(8.dp))
             Text(
                 text = it,
-                fontSize = 15.sp,
+                fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 modifier = Modifier.align(Alignment.CenterVertically),
@@ -567,7 +569,7 @@ fun SeekBar(
             Text(
                 text = chapterName.orEmpty(),
                 color = BenflixColors.Soft,
-                fontSize = 14.sp,
+                fontSize = BenflixType.small,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -873,7 +875,7 @@ fun <T> BottomDialog(
                     .padding(8.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             LazyColumn(
@@ -915,6 +917,7 @@ fun <T> BottomDialog(
                             Modifier
                                 .bringIntoViewRequester(bringIntoViewRequesters[index])
                                 .focusRequester(focusRequesters[index]),
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

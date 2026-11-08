@@ -45,7 +45,6 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -68,6 +67,9 @@ import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 /** How a round gives its clue */
 enum class ClueKind { PICTURE, PLOT, CAST }
@@ -371,16 +373,17 @@ private fun RoundContent(
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "GUESS THE MOVIE",
-                fontFamily = BenflixTitleFont,
-                fontSize = if (isTv) 34.sp else 26.sp,
+                text = "Guess the movie",
+                fontFamily = BenflixFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = BenflixType.pageTitle,
                 color = Color.White,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = "Round ${round.number}/10  ·  ★ %,d".format(state.score),
                 fontSize = 18.sp,
-                color = Color.White.copy(alpha = .85f),
+                color = BenflixColors.Soft,
             )
         }
         when (round.kind) {
@@ -400,7 +403,7 @@ private fun RoundContent(
                     modifier =
                         (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF1C1C1F)),
                 ) { url ->
                     AsyncImage(
@@ -418,7 +421,7 @@ private fun RoundContent(
                     modifier =
                         (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 7f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF1C1C1F))
                             .padding(24.dp),
                 ) {
@@ -475,6 +478,7 @@ private fun RoundContent(
                             Modifier
                                 .weight(1f)
                                 .then(if (rowIndex == 0 && i == 0) Modifier.focusRequester(firstFocus) else Modifier),
+                                scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
                         Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     }
@@ -498,15 +502,15 @@ private fun EndCard(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(top = 24.dp),
     ) {
-        Text(title, fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White)
-        Text(body, fontSize = 20.sp, color = Color.White.copy(alpha = .85f), textAlign = TextAlign.Center)
-        Button(onClick = onClick, modifier = Modifier.focusRequester(focus)) {
+        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
+        Text(body, fontSize = 20.sp, color = BenflixColors.Soft, textAlign = TextAlign.Center)
+        Button(onClick = onClick, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(button)
         }
         Text(
             "Press Back to leave",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = .6f),
+            color = BenflixColors.Muted,
         )
     }
 }

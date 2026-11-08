@@ -60,6 +60,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.tv.material3.ListItemDefaults
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 private enum class ParentalStep { CHECK, MENU, PIN }
 
@@ -93,7 +96,7 @@ fun ParentalControlsDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.widthIn(max = 480.dp).padding(20.dp),
             ) {
-                Text("Parental controls", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Parental controls", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                 if (pinError) {
                     val retryFocus = remember { FocusRequester() }
                     LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
@@ -103,6 +106,7 @@ fun ParentalControlsDialog(
                         onClick = { pinTries++ },
                         headlineContent = { Text("Try again") },
                         modifier = Modifier.focusRequester(retryFocus),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 } else {
                     Text("Checking the parent PIN…")
@@ -157,7 +161,7 @@ fun ParentalControlsDialog(
                             .verticalScroll(rememberScrollState())
                             .padding(20.dp),
                 ) {
-                    Text("Parental controls", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("Parental controls", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                     ListItem(
                         selected = false,
                         onClick = { step = ParentalStep.PIN },
@@ -172,6 +176,7 @@ fun ParentalControlsDialog(
                             )
                         },
                         modifier = Modifier.focusRequester(focus),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                     ListItem(
                         selected = false,
@@ -182,6 +187,7 @@ fun ParentalControlsDialog(
                         headlineContent = { Text("Big kids tile") },
                         supportingContent = { Text("A second Kids tile on Who's watching that allows up to PG-13, for older children") },
                         trailingContent = { Switch(checked = bigKids, onCheckedChange = null) },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                     // Kids screen time: press to step through Off, 1, 2 and 3 hours a day
                     val dailyMinutes by viewModel.dailyMinutes.collectAsState()
@@ -215,6 +221,7 @@ fun ParentalControlsDialog(
                                 },
                             )
                         },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                     var guestTile by remember { mutableStateOf(GuestMode.tileOn(context)) }
                     ListItem(
@@ -226,6 +233,7 @@ fun ParentalControlsDialog(
                         headlineContent = { Text("Guest tile") },
                         supportingContent = { Text("For visitors: they can watch anything, and nothing is saved to your account") },
                         trailingContent = { Switch(checked = guestTile, onCheckedChange = null) },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                     KidsWatchedSection(posterUrl = viewModel::posterUrl)
                 }
@@ -250,7 +258,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(top = 12.dp),
     ) {
-        Text("What Kids watched", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("What Kids watched", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
         if (recent.isEmpty()) {
             Text(
                 "Nothing watched on Kids on this TV or phone yet.",
@@ -273,11 +281,11 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
                 val url = remember(watch.titleId) { posterUrl(watch.titleId) }
                 Surface(
                     onClick = { picked = watch },
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     border =
                         ClickableSurfaceDefaults.border(
-                            focusedBorder = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(8.dp)),
+                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
                         ),
                     modifier =
                         Modifier
@@ -287,7 +295,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
                     Box(Modifier.fillMaxSize().background(Color(0xFF24242A))) {
                         Text(
                             watch.title,
-                            fontSize = 12.sp,
+                            fontSize = BenflixType.tag,
                             color = Color.White,
                             maxLines = 3,
                             modifier = Modifier.padding(6.dp),
@@ -305,7 +313,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
         val shown = picked ?: recent.first()
         Text(
             text = "${shown.title} · ${watchedWhen(shown.time)}",
-            fontSize = 16.sp,
+            fontSize = BenflixType.body,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
         )

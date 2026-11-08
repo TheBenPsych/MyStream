@@ -40,7 +40,6 @@ import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LibraryKind
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -66,6 +65,9 @@ import org.jellyfin.sdk.model.api.PersonKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import javax.inject.Inject
+import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 
 sealed interface RiddleState {
     data object Loading : RiddleState
@@ -503,9 +505,10 @@ private fun RiddleContent(
         modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
     ) {
         Text(
-            text = "MOVIE RIDDLE",
-            fontFamily = BenflixTitleFont,
-            fontSize = if (isTv) 34.sp else 26.sp,
+            text = "Movie riddle",
+            fontFamily = BenflixFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.pageTitle,
             color = Color.White,
         )
         when (val s = state) {
@@ -525,8 +528,9 @@ private fun RiddleContent(
             is RiddleState.Over -> {
                 Text(
                     text = if (s.newBest) "New best score!" else "Run over: %,d points".format(s.score),
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 40.sp,
+                    fontFamily = BenflixFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = BenflixType.pageTitle,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
@@ -537,11 +541,11 @@ private fun RiddleContent(
                             (if (s.timedOut) "Time ran out. " else "") +
                             "It was ${s.answer}.\nYour best: %,d points".format(s.best),
                     fontSize = 20.sp,
-                    color = Color.White.copy(alpha = .85f),
+                    color = BenflixColors.Soft,
                     textAlign = TextAlign.Center,
                 )
                 FocusedButton("Play again", viewModel::load)
-                Text("Press Back to leave", fontSize = 14.sp, color = Color.White.copy(alpha = .6f))
+                Text("Press Back to leave", fontSize = 14.sp, color = BenflixColors.Muted)
             }
         }
     }
@@ -571,7 +575,7 @@ private fun RiddleRound(
             Modifier
                 .weight(1f)
                 .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .clip(RoundedCornerShape(6.dp))
                 .background(Color.White.copy(alpha = .12f)),
         ) {
             Box(
@@ -591,7 +595,7 @@ private fun RiddleRound(
     Text(
         "Which movie is it? One guess. Answer fast for more points, or wait for easier clues.",
         fontSize = 16.sp,
-        color = Color.White.copy(alpha = .75f),
+        color = BenflixColors.Soft,
         textAlign = TextAlign.Center,
     )
     s.clues.forEachIndexed { i, clue ->
@@ -600,7 +604,7 @@ private fun RiddleRound(
             modifier =
                 Modifier
                     .fillMaxWidth(if (isTv) 0.7f else 1f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFF1C1C1F))
                     .padding(horizontal = 20.dp, vertical = if (isTv) 12.dp else 16.dp),
         ) {
@@ -658,6 +662,7 @@ private fun RiddleRound(
                         Modifier
                             .weight(1f)
                             .then(if (r == 0 && c == 0) Modifier.focusRequester(firstFocus) else Modifier),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
@@ -673,5 +678,5 @@ private fun FocusedButton(
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    Button(onClick = onClick, modifier = Modifier.focusRequester(focus)) { Text(text) }
+    Button(onClick = onClick, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(text) }
 }

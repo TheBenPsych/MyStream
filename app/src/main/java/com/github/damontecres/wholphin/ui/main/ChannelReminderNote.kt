@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix redesign (rm-early): a minute before a show you asked to be reminded about, a small note
@@ -70,7 +71,7 @@ fun ChannelReminderNote(
         val reminder = due ?: return@AnimatedVisibility
         val first = remember(reminder) { FocusRequester() }
         LaunchedEffect(reminder) { first.tryRequestFocus() }
-        val shape = RoundedCornerShape(14.dp)
+        val shape = RoundedCornerShape(16.dp)
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier =
@@ -92,13 +93,13 @@ fun ChannelReminderNote(
                         "${reminder.title} is on now"
                     },
                 color = BenflixColors.Text,
-                fontSize = 17.sp,
+                fontSize = BenflixType.lead,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             val channel = ChannelSession.lineup.firstOrNull { it.key == reminder.key }
-            channel?.let { Text("${it.number}  ${it.title}", color = BenflixColors.Muted, fontSize = 13.sp) }
+            channel?.let { Text("${it.number}  ${it.title}", color = BenflixColors.Muted, fontSize = BenflixType.small) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 NoteButton("Go to channel", primary = true, modifier = Modifier.focusRequester(first)) {
                     ChannelPrefs.toggleReminder(reminder)
@@ -136,7 +137,7 @@ private fun NoteButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
     ) {
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text(label, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     }
 }
 

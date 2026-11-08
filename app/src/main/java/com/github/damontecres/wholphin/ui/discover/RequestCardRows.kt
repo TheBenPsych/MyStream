@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
  * Benflix redesign (Requests): the two rows at the top of Movies, Shows and Anime.
@@ -52,7 +53,7 @@ internal fun RequestCardRow(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "$title (${entries.size})",
-            fontSize = 20.sp,
+            fontSize = BenflixType.rowName,
             fontWeight = FontWeight.Bold,
             color = BenflixColors.Text,
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -87,7 +88,7 @@ private fun RequestCard(
         modifier =
             Modifier
                 .width(width.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(BenflixColors.Panel)
                 .padding(10.dp),
     ) {
@@ -108,7 +109,7 @@ private fun RequestCard(
             Column(verticalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.item?.title ?: "Unknown title",
-                    fontSize = 15.sp,
+                    fontSize = BenflixType.body,
                     fontWeight = FontWeight.Bold,
                     color = BenflixColors.Text,
                     maxLines = 2,
@@ -116,7 +117,7 @@ private fun RequestCard(
                 )
                 Text(
                     text = if (waiting) "${entry.who} asked" else statusWords(entry),
-                    fontSize = 13.sp,
+                    fontSize = BenflixType.small,
                     color = BenflixColors.Soft,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -173,7 +174,7 @@ private fun CardButton(
     ) {
         Text(
             text = label,
-            fontSize = 14.sp,
+            fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             modifier =

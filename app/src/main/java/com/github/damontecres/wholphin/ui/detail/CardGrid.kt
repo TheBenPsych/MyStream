@@ -523,6 +523,7 @@ fun JumpButton(
         onClick = {
             jumpClick.invoke(jumpAmount)
         },
+        scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = stringResource(stringRes), fontFamily = FontAwesome)
     }
@@ -627,6 +628,7 @@ fun AlphabetButtons(
                                 focusedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
                     // Use border color for selected letter when focused, tertiary for unfocused-selected
                     val color =

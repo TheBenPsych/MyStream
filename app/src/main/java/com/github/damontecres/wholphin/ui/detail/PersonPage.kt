@@ -93,6 +93,7 @@ import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
 import java.util.UUID
+import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 @HiltViewModel(assistedFactory = PersonViewModel.Factory::class)
 class PersonViewModel
@@ -532,8 +533,8 @@ fun PersonHeader(
             Text(
                 text = name,
                 color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-                fontSize = 36.sp,
-                lineHeight = 40.sp,
+                fontSize = BenflixType.hero,
+                lineHeight = BenflixType.hero * 1.1f,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

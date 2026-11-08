@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
+import androidx.tv.material3.ListItemDefaults
 
 enum class PlaybackDialogType {
     DEBUG,
@@ -439,7 +440,7 @@ fun SubtitleChoiceBottomDialog(
                     .padding(8.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             LazyColumn(
@@ -483,6 +484,7 @@ fun SubtitleChoiceBottomDialog(
                                     }
                                     false
                                 },
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
                 item {
@@ -500,6 +502,7 @@ fun SubtitleChoiceBottomDialog(
                             )
                         },
                         supportingContent = {},
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                     if (choices.isNotEmpty()) {
                         HorizontalDivider()
@@ -525,6 +528,7 @@ fun SubtitleChoiceBottomDialog(
                         },
                         interactionSource = interactionSource,
                         modifier = Modifier.focusRequester(choiceFocusRequesters[index]),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
                 item {
@@ -556,6 +560,7 @@ fun SubtitleChoiceBottomDialog(
                                     }
                                     false
                                 },
+                                scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }
@@ -597,7 +602,7 @@ fun StreamChoiceBottomDialog(
                     .padding(8.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                     ),
         ) {
             LazyColumn(
@@ -630,6 +635,7 @@ fun StreamChoiceBottomDialog(
                         },
                         interactionSource = interactionSource,
                         modifier = Modifier.focusRequester(focusRequesters[index]),
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
                 }
             }

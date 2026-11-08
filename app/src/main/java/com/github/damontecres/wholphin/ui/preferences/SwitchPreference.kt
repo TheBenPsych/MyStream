@@ -10,6 +10,7 @@ import androidx.tv.material3.SwitchColors
 import androidx.tv.material3.SwitchDefaults
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
+import androidx.tv.material3.ListItemDefaults
 
 @Composable
 fun SwitchPreference(
@@ -60,6 +61,7 @@ fun SwitchPreference(
         },
         interactionSource = interactionSource,
         modifier = modifier,
+        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }
 
