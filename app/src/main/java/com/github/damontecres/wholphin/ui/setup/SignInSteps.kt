@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -143,6 +144,8 @@ fun SignInScreens(
                     Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
+                        // Phones: the buttons stay above the keyboard instead of hiding behind it
+                        .imePadding()
                         .verticalScroll(rememberScrollState())
                         .padding(top = if (isTv) 72.dp else 64.dp, bottom = 24.dp, start = 16.dp, end = 16.dp),
             ) {

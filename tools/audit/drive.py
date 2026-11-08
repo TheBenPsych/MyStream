@@ -459,10 +459,14 @@ def sign_in():
             time.sleep(3)
             continue
         if find(root, r"What's your password\?$") is not None:
-            n = find(root, r"^Sign in$")
-            if n is not None:
-                tap(n)
-            time.sleep(5)
+            if MODE != "tv" and step % 2 == 0:
+                key("ENTER", wait=0.5)  # the phone keyboard's Go key signs in
+            else:
+                n = find(root, r"^Sign in$")
+                if n is not None:
+                    tap(n)
+            time.sleep(6)
+            log("password step: " + " | ".join(x for x in texts(dump()) if x)[:300])
             continue
         if find(root, r"Enter Server IP or URL") is not None and edit:
             if not typed_server or (edit[0].get("text") or "") != SERVER:
