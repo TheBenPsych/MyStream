@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -72,6 +73,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -86,7 +88,10 @@ fun GamesPage(
     viewModel: GamesViewModel = hiltViewModel(),
 ) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
+    val pageScroll = rememberScrollState()
+    // Ben: the Games door opens at the top, on the first card of the top row. Continue playing
+    // loads in after the rest, so until you press a button or touch the page, go back up to it.
+    var userMoved by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
     val context = LocalContext.current
     val config = LocalConfiguration.current
@@ -153,6 +158,17 @@ fun GamesPage(
                 ),
         )
     val recentTimes = remember(recent) { recent.associate { it.first.id to it.second } }
+    val hasRecent = recent.isNotEmpty()
+    // Ben: while your games are still loading, Continue playing shows as a grey row in its place
+    val waitingRecent = remember(library) { library is LibraryState.Loading && viewModel.recentPlayed().isNotEmpty() }
+    LaunchedEffect(hasRecent, waitingRecent) {
+        if (userMoved) return@LaunchedEffect
+        // Hold focus for the real Continue playing row (this wait stops as soon as it arrives)
+        if (waitingRecent && !hasRecent) delay(FIRST_FOCUS_WAIT_MS)
+        pageScroll.scrollTo(0)
+        delay(FIRST_FOCUS_SETTLE_MS)
+        if (isTv) focusRequester.tryRequestFocus()
+    }
     // A game picked in Search opens its page as soon as the game list is here
     LaunchedEffect(refs) {
         val id = PendingGameOpen.id ?: return@LaunchedEffect
@@ -203,7 +219,7 @@ fun GamesPage(
         )
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().onFirstUserMove { userMoved = true }) {
         if (wide) {
             val first =
                 recent.firstOrNull()?.let { refPreview(it.first, it.second) }
@@ -220,7 +236,7 @@ fun GamesPage(
                     .weight(1f)
                     // Opens on the first game tile (a group requester hands focus to its first child)
                     .focusRequester(focusRequester)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(pageScroll)
                     .padding(
                         start = if (isTv) 48.dp else 0.dp,
                         end = if (isTv) 48.dp else 8.dp,
@@ -247,6 +263,25 @@ fun GamesPage(
                     onOpen = { viewModel.choose(ref) },
                     modifier = Modifier.padding(start = 16.dp, end = 8.dp),
                 )
+            }
+            if (recent.isEmpty() && waitingRecent) {
+                Text(
+                    text = "Continue playing",
+                    fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                    modifier =
+                        Modifier
+                            .padding(vertical = 8.dp, horizontal = 8.dp)
+                            .wrapContentWidth(Alignment.Start, unbounded = true),
+                ) {
+                    repeat(8) {
+                        Box(cardSize.background(BenflixColors.Raised, RoundedCornerShape(10.dp)))
+                    }
+                }
             }
             val rowRecent = if (keep != null) recent.drop(1) else recent
             if (rowRecent.isNotEmpty()) {
@@ -802,3 +837,6 @@ internal fun playedAgo(time: Long): String {
         }
     }
 }
+
+private const val FIRST_FOCUS_SETTLE_MS = 80L
+private const val FIRST_FOCUS_WAIT_MS = 4_000L

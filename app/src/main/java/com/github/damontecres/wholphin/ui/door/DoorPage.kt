@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -72,6 +73,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -156,17 +158,19 @@ private fun WideDoor(
     val preview = shown ?: first
 
     val restore = remember { FocusRequester() }
-    val savedRow = viewModel.focusedRow
-    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: state.rows.firstOrNull()?.key
-    val targetIndex = if (targetRow == savedRow) viewModel.focusedIndex else 0
+    // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
+    // press a button the door keeps going back to the top row as rows arrive above it.
+    val firstKey = state.rows.firstOrNull()?.key
+    val savedRow = viewModel.focusedRow.takeIf { viewModel.userMoved }
+    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+    val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        // Wait for Keep watching (or everything) so focus starts on the first Keep watching poster
+        // Wait until the top row has really loaded (not a grey placeholder), so focus starts on its first card
         withTimeoutOrNull(FIRST_FOCUS_WAIT_MS) {
             snapshotFlow {
-                viewModel.state.value.loaded ||
-                    viewModel.state.value.rows
-                        .any { it.key == DoorViewModel.KEEP }
+                val st = viewModel.state.value
+                st.loaded || st.entries().firstOrNull() is DoorEntry.Real
             }.first { it }
         }
         snapshotFlow {
@@ -181,8 +185,17 @@ private fun WideDoor(
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
+    // A row that loads in above the top one: go back to the very top and onto its first card
+    LaunchedEffect(firstKey, restored) {
+        if (!restored || viewModel.userMoved || firstKey == null) return@LaunchedEffect
+        columnState.scrollToItem(0)
+        if (isTv) {
+            delay(FOCUS_SETTLE_MS)
+            restore.tryRequestFocus()
+        }
+    }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
         val topHeight = ((maxHeight - overlap) * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
@@ -198,14 +211,19 @@ private fun WideDoor(
                         .fillMaxWidth()
                         .weight(1f),
             ) {
-                state.rows.forEach { row ->
-                    item(key = row.key) {
+                state.entries().forEach { entry ->
+                    val row = (entry as? DoorEntry.Real)?.row
+                    item(key = entry.key) {
+                        if (row == null) {
+                            WaitingRow(posterWidth = posterWidth, showName = !isTv)
+                            return@item
+                        }
                         DoorRow(
                             row = row,
                             posterWidth = posterWidth,
                             showName = !isTv,
                             startIndex = if (row.key == targetRow) targetIndex else 0,
-                            focusRequester = if (row.key == targetRow && !restored) restore else null,
+                            focusRequester = if (row.key == targetRow) restore else null,
                             focusIndex = targetIndex,
                             onClick = onClick,
                             onSeeAll = { onSeeAll(row) },
@@ -220,6 +238,80 @@ private fun WideDoor(
                 if (state.browse.isNotEmpty()) {
                     item(key = "browse") {
                         BrowseRow(state.browse, easy, onBrowse, Modifier.padding(start = SIDE, end = SIDE))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A row on the page: one that has loaded, or a grey placeholder for one still loading */
+private sealed interface DoorEntry {
+    val key: String
+
+    data class Real(
+        val row: DoorRowData,
+    ) : DoorEntry {
+        override val key get() = row.key
+    }
+
+    data class Waiting(
+        override val key: String,
+    ) : DoorEntry
+}
+
+/**
+ * Ben: grey placeholder rows hold each row's place until it loads, so rows don't pop in above
+ * each other. A row that turns out empty just goes away. Same key as the real row, so it swaps in place.
+ */
+private fun DoorPageState.entries(): List<DoorEntry> {
+    if (order.isEmpty()) {
+        // Before the door knows its rows (it's still finding the libraries): a few grey rows
+        return if (!loaded && rows.isEmpty()) List(WAITING_ROWS) { DoorEntry.Waiting("waiting-$it") } else rows.map { DoorEntry.Real(it) }
+    }
+    val byKey = rows.associateBy { it.key }
+    return order.mapNotNull { key ->
+        byKey[key]?.let { DoorEntry.Real(it) } ?: if (key in pending) DoorEntry.Waiting(key) else null
+    }
+}
+
+/** A grey row shaped like a row of posters: a short bar for the name, then grey cards. Not focusable. */
+@Composable
+private fun WaitingRow(
+    posterWidth: Dp,
+    showName: Boolean,
+    side: Dp = SIDE,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .padding(start = side, bottom = 8.dp)
+                .width(140.dp)
+                .height(18.dp)
+                .background(BenflixColors.PanelHigh, RoundedCornerShape(4.dp)),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            // Wider than the screen on purpose, like a real row; the cards past the edge just aren't seen
+            modifier = Modifier.padding(start = side).wrapContentWidth(Alignment.Start, unbounded = true),
+        ) {
+            repeat(WAITING_CARDS) {
+                Column {
+                    Box(
+                        Modifier
+                            .width(posterWidth)
+                            .height(posterWidth / POSTER_RATIO)
+                            .background(BenflixColors.Raised, shape),
+                    )
+                    if (showName) {
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            Modifier
+                                .width(posterWidth * 0.7f)
+                                .height(12.dp)
+                                .background(BenflixColors.Raised, RoundedCornerShape(4.dp)),
+                        )
                     }
                 }
             }
@@ -586,10 +678,19 @@ private fun PhoneDoor(
     onBrowse: (DoorBrowseTile) -> Unit,
     modifier: Modifier,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Ben: open at the very top. The picked card and rows load in one by one; until you touch the
+    // page, go back to the top whenever something new arrives above what's showing.
+    val columnState = rememberLazyListState()
+    var touched by remember { mutableStateOf(false) }
+    val topKey = state.pick?.let { "pick" } ?: state.rows.firstOrNull()?.key
+    LaunchedEffect(topKey) {
+        if (!touched && topKey != null) columnState.scrollToItem(0)
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
         // About 3.5 posters across
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
         LazyColumn(
+            state = columnState,
             contentPadding = PaddingValues(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize(),
@@ -612,8 +713,13 @@ private fun PhoneDoor(
                     )
                 }
             }
-            state.rows.forEach { row ->
-                item(key = row.key) {
+            state.entries().forEach { entry ->
+                val row = (entry as? DoorEntry.Real)?.row
+                item(key = entry.key) {
+                    if (row == null) {
+                        WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
+                        return@item
+                    }
                     DoorRow(
                         row = row,
                         posterWidth = posterWidth,
@@ -763,5 +869,7 @@ private val PHONE_SIDE = BenflixSpace.phoneEdge
 private const val PICTURE_WIDTH = 0.62f
 private const val PICTURE_FADE_MS = 450
 private const val PREVIEW_DELAY_MS = 500L
-private const val FIRST_FOCUS_WAIT_MS = 2_000L
+private const val FIRST_FOCUS_WAIT_MS = 4_000L
+private const val WAITING_ROWS = 3
+private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
