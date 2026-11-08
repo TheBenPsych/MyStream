@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
-import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +63,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.HeroBackground
 import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.HeroSideColumn
+import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
