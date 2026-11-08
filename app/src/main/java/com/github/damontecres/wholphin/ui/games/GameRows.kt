@@ -194,7 +194,8 @@ private fun GameRow(
             val gap = if (isTv) 16.dp else 12.dp
             // Ben: tall cards like movie and show posters, with room for the whole name (up to three lines)
             val width: Dp = if (isTv) 150.dp else (maxWidth * 0.34f).coerceIn(104.dp, 150.dp)
-            val tileHeight = maxOf(width * 1.4f, posterTileHeight(isTv))
+            // TV: a little shorter than a poster so the whole row fits under the top area (Ben, 2026-11-08)
+            val tileHeight = maxOf(width * if (isTv) 1.12f else 1.4f, posterTileHeight(isTv))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -239,15 +240,16 @@ internal fun gameTileHeight(
 private fun posterTileHeight(isTv: Boolean): Dp {
     val density = LocalDensity.current
     return with(density) {
-        val name = (if (isTv) BenflixType.lead else BenflixType.body).toDp() * TILE_LINE * NAME_LINES
+        val name = (if (isTv) BenflixType.lead else BenflixType.body).toDp() * TILE_LINE * nameLines(isTv)
         val kind = BenflixType.tag.toDp() * TILE_LINE
-        (if (isTv) 14.dp else 12.dp) * 2 + posterIconSize(isTv) + name + kind + 12.dp
+        (if (isTv) 14.dp else 12.dp) * 2 + PosterIconSize + name + kind + 12.dp
     }
 }
 
-private fun posterIconSize(isTv: Boolean): Dp = if (isTv) 52.dp else 44.dp
+private val PosterIconSize = 44.dp
 
-private const val NAME_LINES = 3
+/** TV cards are wider for their height, so two lines hold any name; phones get three */
+private fun nameLines(isTv: Boolean): Int = if (isTv) 2 else 3
 
 /** Room for one line of text, as a share of its size (Outfit sits a little tall) */
 private const val TILE_LINE = 1.4f
@@ -275,14 +277,14 @@ private fun RowTile(
                     .fillMaxSize()
                     .padding(if (isTv) 14.dp else 12.dp),
         ) {
-            GameIconSquare(g.colors, g.icon, size = posterIconSize(isTv))
+            GameIconSquare(g.colors, g.icon, size = PosterIconSize)
             Box(Modifier.weight(1f))
             Text(
                 g.title,
                 fontSize = if (isTv) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 color = BenflixColors.Text,
-                maxLines = NAME_LINES,
+                maxLines = nameLines(isTv),
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
