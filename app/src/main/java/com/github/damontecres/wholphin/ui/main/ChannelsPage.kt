@@ -667,34 +667,37 @@ private fun GuideGrid(
                                                 .background(BenflixRed),
                                     )
                                 }
-                                Column(
-                                    verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                                ) {
-                                    val bell = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (bell) {
-                                            com.github.damontecres.wholphin.ui.components.BenflixIconImage(
-                                                com.github.damontecres.wholphin.ui.components.BenflixIcon.BELL,
-                                                color = LocalContentColor.current,
-                                                size = 13.dp,
-                                                modifier = Modifier.padding(end = 4.dp),
+                                // A show that's nearly over is only a sliver: no squashed "Ki…" and cut-off time in it
+                                if (widthFor(to - from) >= 52.dp) {
+                                    Column(
+                                        verticalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                    ) {
+                                        val bell = reminders.any { it.key == schedule.key && it.startMs == program.startMs }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (bell) {
+                                                com.github.damontecres.wholphin.ui.components.BenflixIconImage(
+                                                    com.github.damontecres.wholphin.ui.components.BenflixIcon.BELL,
+                                                    color = LocalContentColor.current,
+                                                    size = 13.dp,
+                                                    modifier = Modifier.padding(end = 4.dp),
+                                                )
+                                            }
+                                            Text(
+                                                text = program.name(),
+                                                fontSize = BenflixType.small,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                         }
-                                        Text(
-                                            text = program.name(),
-                                            fontSize = BenflixType.small,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    if (!program.noGuide) {
-                                        Text(
-                                            text = clock(program.startMs),
-                                            fontSize = BenflixType.tag,
-                                            maxLines = 1,
-                                        )
+                                        if (!program.noGuide) {
+                                            Text(
+                                                text = clock(program.startMs),
+                                                fontSize = BenflixType.tag,
+                                                maxLines = 1,
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -58,6 +58,7 @@ import com.github.damontecres.wholphin.ui.detail.HeroBackground
 import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.HeroSideColumn
 import com.github.damontecres.wholphin.ui.detail.HeroTag
+import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
@@ -117,6 +118,8 @@ fun MovieHeroContent(
     val collection = state.collection
     val part = collection?.partOf(movie.id)
     val listState = rememberLazyListState()
+    var heroFocused by remember { mutableStateOf(false) }
+    KeepHeroAtTop(listState, heroFocused)
     val scope = rememberCoroutineScope()
     val firstButton = remember { FocusRequester() }
     val collectionRow = remember { FocusRequester() }
@@ -186,13 +189,7 @@ fun MovieHeroContent(
                                         .weight(1f)
                                         .widthIn(max = 620.dp)
                                         // Coming back up to the buttons shows the whole top again (name included)
-                                        .onFocusChanged {
-                                            if (it.hasFocus &&
-                                                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
-                                            ) {
-                                                scope.launch { listState.animateScrollToItem(0) }
-                                            }
-                                        },
+                                        .onFocusChanged { heroFocused = it.hasFocus },
                             ) {
                                 HeroButtons(
                                     movie = movie,

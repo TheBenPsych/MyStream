@@ -67,7 +67,8 @@ fun doorFocusBorder(shape: androidx.compose.ui.graphics.Shape = PosterShape) =
 
 /** How far through it is, 0 to 1 (null when not started or finished) */
 fun BaseItem.progress(): Float? {
-    if (played) return null
+    // A watched film being watched again still shows how far through it is
+    if (played && (data.userData?.playbackPositionTicks ?: 0L) <= 0L) return null
     val pct = data.userData?.playedPercentage ?: return null
     return (pct / 100.0).toFloat().takeIf { it > 0.01f && it < 0.99f }
 }
@@ -189,7 +190,7 @@ fun DoorPoster(
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
-                if (item.played) {
+                if (item.played && progress == null) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier =

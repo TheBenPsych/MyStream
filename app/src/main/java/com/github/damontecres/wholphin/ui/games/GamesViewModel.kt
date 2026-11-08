@@ -325,7 +325,7 @@ class GamesViewModel
                     } catch (e: Exception) {
                         Timber.w(e, "Loading the game library failed")
                         LibraryState.Failed(
-                            "Couldn't load your games (${e.javaClass.simpleName}).",
+                            "Couldn't load your games right now.",
                             askAddress = false,
                             visibleDownloads(),
                         )
