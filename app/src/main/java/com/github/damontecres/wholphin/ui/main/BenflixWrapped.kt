@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +37,6 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -108,8 +106,29 @@ class BenflixWrappedViewModel
             }
         }
 
+        /** The "Your year so far" button on My watching: build this year's recap now, any month */
+        private var manual = false
+        private var handledPresses = 0
+
+        fun showNow(press: Int) {
+            if (press <= handledPresses) return
+            handledPresses = press
+            if (KidsMode.isActive || GuestMode.isActive) return
+            manual = true
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val year = build(LocalDate.now().year)
+                if (year != null && !KidsMode.isActive && !GuestMode.isActive) _wrapped.value = year
+            }
+        }
+
         fun done() {
             val year = _wrapped.value?.year ?: return
+            // Opened with the button: the December pop-up still comes once
+            if (manual) {
+                manual = false
+                _wrapped.value = null
+                return
+            }
             if (!KidsMode.isActive && !GuestMode.isActive) prefs().edit { putBoolean(key(year), true) }
             _wrapped.value = null
         }
@@ -225,6 +244,8 @@ fun BenflixWrappedLayer(
     currentDestination: Destination?,
     viewModel: BenflixWrappedViewModel = hiltViewModel(),
 ) {
+    val asked by BenflixWrappedButton.presses.collectAsState()
+    LaunchedEffect(asked) { if (asked > 0) viewModel.showNow(asked) }
     val wrapped by viewModel.wrapped.collectAsState()
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
     // Never on Kids or Guest (e.g. if the profile changed after the recap was built)
@@ -241,21 +262,21 @@ fun BenflixWrappedLayer(
                 Modifier
                     .widthIn(max = 640.dp)
                     .background(
-                        Brush.linearGradient(listOf(Color(0xFF7F1D1D), Color(0xFF1E1B4B))),
+                        com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel,
                         RoundedCornerShape(16.dp),
                     ).padding(28.dp),
         ) {
             Text(
                 text = "YOUR ${w.year} ON BENFLIX",
-                color = Color(0xFFFFD27A),
+                color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
                 fontSize = 14.sp,
             )
             Text(
                 text = "You're ${w.watcherKind}!",
-                fontFamily = BenflixTitleFont,
-                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )
@@ -296,5 +317,14 @@ private fun WrappedStat(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(number, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Text(label, fontSize = 14.sp, color = Color(0xFFE5E5EA))
+    }
+}
+
+/** Pressing "Your year so far" on My watching asks the Wrapped pop-up to open */
+object BenflixWrappedButton {
+    val presses = MutableStateFlow(0)
+
+    fun press() {
+        presses.value += 1
     }
 }

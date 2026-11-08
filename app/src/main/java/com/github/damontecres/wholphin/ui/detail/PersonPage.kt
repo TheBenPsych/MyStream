@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -32,12 +31,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -459,7 +458,9 @@ fun PersonPageContent(
                 DiscoverRow(
                     row =
                         DiscoverRowData(
-                            ResStringProvider(R.string.discover),
+                            // Approved: titles not on Benflix yet sit in "Ask for it"
+                            com.github.damontecres.wholphin.ui.util
+                                .StringStringProvider("Ask for it"),
                             DataLoadingState.Success(discovered),
                             DiscoverRequestType.UNKNOWN,
                         ),
@@ -525,16 +526,15 @@ fun PersonHeader(
                 Modifier
 //                    .fillMaxWidth(.7f)
                     .weight(3f)
-                    .padding(top = 16.dp, end = 32.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                        RoundedCornerShape(10),
-                    ).padding(16.dp),
+                    // Approved redesign (person page): words straight on the dark page, no raised card
+                    .padding(top = 16.dp, end = 32.dp),
         ) {
             Text(
                 text = name,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.displaySmall,
+                color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                fontSize = 36.sp,
+                lineHeight = 40.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -555,7 +555,7 @@ fun PersonHeader(
                     }
                 Text(
                     text = text,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -564,7 +564,7 @@ fun PersonHeader(
             if (birthPlace.isNotNullOrBlank()) {
                 Text(
                     text = stringResource(R.string.birthplace) + ": $birthPlace",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -586,7 +586,7 @@ fun PersonHeader(
                     }
                 Text(
                     text = text,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -617,7 +617,7 @@ fun PersonHeader(
                     title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
                     iconStringRes = R.string.fa_heart,
                     onClick = favoriteOnClick,
-                    iconColor = if (favorite) Color.Red else Color.Unspecified,
+                    iconColor = if (favorite) Color.White else Color.Unspecified,
                     interactionSource = buttonInteractionSource,
                     modifier = Modifier,
                 )

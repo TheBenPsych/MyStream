@@ -60,7 +60,6 @@ import com.github.damontecres.wholphin.ui.games.puzzles.AnimeMode
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -309,10 +308,10 @@ fun GameInfoPage(
                         modifier = Modifier.fillMaxWidth(0.5f),
                     ) {
                         Text(
-                            info.title.uppercase(),
-                            fontFamily = BenflixTitleFont,
-                            fontSize = 56.sp,
-                            lineHeight = 56.sp,
+                            info.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 40.sp,
+                            lineHeight = 45.sp,
                             color = Color.White,
                         )
                         Pills(info.pills)
@@ -352,7 +351,7 @@ fun GameInfoPage(
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to PuzzleBg)))
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(info.title.uppercase(), fontFamily = BenflixTitleFont, fontSize = 40.sp, color = Color.White)
+                Text(info.title, fontWeight = FontWeight.Bold, fontSize = 29.sp, color = Color.White)
                 Pills(info.pills)
                 Text(info.about, fontSize = 17.sp, lineHeight = 24.sp, color = Color.White.copy(alpha = .92f))
                 buttons()

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
@@ -338,92 +340,88 @@ internal fun SortChip(
     }
 }
 
-/** The console tiles at the top of "Your games" */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The Consoles row (approved redesign): dark tiles with a short colour line, the name and how many games.
+ * The console's picture, count and last game show in the top area when a tile is focused.
+ */
 @Composable
 internal fun ConsoleGrid(
     playable: List<Triple<GameConsole, LocalConsole, DevicePower.Fit>>,
     isTv: Boolean,
     onOpen: (String) -> Unit,
+    lastPlayed: (GameConsole) -> String? = { null },
+    onFocus: (GamePreview) -> Unit = {},
 ) {
-    val tileWidth = if (isTv) 220.dp else 160.dp
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-        verticalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+    val tileWidth = if (isTv) 168.dp else 140.dp
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
     ) {
-        playable.forEach { (console, local, fit) ->
-            val shape = RoundedCornerShape(14.dp)
+        items(playable.size, key = { "console-${playable[it].first.slug}" }) { i ->
+            val (console, local, fit) = playable[i]
+            val shape = RoundedCornerShape(12.dp)
+            val count = "${console.games.size} ${if (console.games.size == 1) "game" else "games"}"
             Surface(
                 onClick = { onOpen(console.slug) },
                 shape = ClickableSurfaceDefaults.shape(shape),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape)),
                 colors =
                     ClickableSurfaceDefaults.colors(
-                        containerColor = consoleColour(console.slug).copy(alpha = .35f),
-                        focusedContainerColor = consoleColour(console.slug).copy(alpha = .55f),
+                        containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
+                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
                     ),
-                modifier = Modifier.width(tileWidth),
-            ) {
-                Column {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(tileWidth * 0.62f)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(consoleColour(console.slug), consoleColour(console.slug).copy(alpha = .7f)),
+                modifier =
+                    Modifier
+                        .width(tileWidth)
+                        .height(if (isTv) 104.dp else 92.dp)
+                        .onFocusChanged {
+                            if (it.isFocused) {
+                                val last = lastPlayed(console)
+                                onFocus(
+                                    GamePreview(
+                                        key = "console-${console.slug}",
+                                        kicker = "Console",
+                                        title = console.name,
+                                        line =
+                                            listOfNotNull(
+                                                count,
+                                                last?.let { "Last played: $it" },
+                                                if (fit == DevicePower.Fit.MAY_BE_SLOW) "may be slow here" else null,
+                                            ).joinToString(" · "),
+                                        picture = consolePhoto(console.slug),
+                                        fitPicture = true,
+                                        colors = listOf(consoleColour(console.slug), Color.Black),
+                                        playWith =
+                                            listOfNotNull(
+                                                if (local.remoteFriendly) PlayWith.REMOTE else null,
+                                                PlayWith.CONTROLLER,
+                                                PlayWith.PHONE,
+                                            ),
                                     ),
-                                ),
-                    ) {
-                        // The name shows until (or if) the photo loads over it
-                        Text(local.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        consolePhoto(console.slug)?.let { photo ->
-                            AsyncImage(
-                                model = photo,
-                                contentDescription = console.name,
-                                contentScale = ContentScale.Fit,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                            )
-                        }
-                    }
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    ) {
-                        Text(
-                            console.name,
-                            fontSize = if (isTv) 17.sp else 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text =
-                                "${console.games.size} ${if (console.games.size == 1) "game" else "games"}" +
-                                    if (fit == DevicePower.Fit.MAY_BE_SLOW) " · may be slow" else "",
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = .75f),
-                            maxLines = 1,
-                        )
-                        // What it plays with, the same icons as the built-in games
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(top = 4.dp),
-                        ) {
-                            if (local.remoteFriendly) Badge(PlayWith.REMOTE, "Remote")
-                            Badge(PlayWith.CONTROLLER, "Controller")
-                            Badge(PlayWith.PHONE, "Android phone")
-                        }
-                    }
+                                )
+                            }
+                        },
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(width = 28.dp, height = 4.dp)
+                            .background(consoleColour(console.slug), RoundedCornerShape(2.dp)),
+                    )
+                    Box(Modifier.weight(1f))
+                    Text(
+                        console.name,
+                        fontSize = if (isTv) 18.sp else 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(count, fontSize = 12.sp, color = Color.White.copy(alpha = .65f), maxLines = 1)
                 }
             }
         }

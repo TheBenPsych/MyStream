@@ -35,7 +35,6 @@ import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -306,9 +305,9 @@ fun MyBenflixPage(
             }
             Column {
                 Text(
-                    text = "MY BENFLIX",
-                    fontFamily = BenflixTitleFont,
-                    fontSize = 48.sp,
+                    text = "My watching",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 35.sp,
                     letterSpacing = 1.sp,
                 )
                 Text(
@@ -329,25 +328,14 @@ fun MyBenflixPage(
         val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
         // Benflix: get the Server page ready in the background for the admin
         PreloadServerPage(isAdmin = GuestMode.isAdmin(userDto) && !kids)
+        // Approved redesign: My watching is only your own watching. Server lives in the profile menu,
+        // and Parental controls, AniList and MyAnimeList live in Settings. Wrapped = December pop-up + this button.
         if (!kids && !GuestMode.isActive) {
-            // Wraps onto a second line on narrow phones
-            androidx.compose.foundation.layout.FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            Button(
+                onClick = { BenflixWrappedButton.press() },
                 modifier = Modifier.padding(start = 8.dp),
             ) {
-                if (GuestMode.isAdmin(userDto)) {
-                    Button(onClick = { viewModel.navigationManager.navigateTo(Destination.ServerStatus) }) {
-                        Text("Server")
-                    }
-                }
-                // Benflix: parent PIN (Kids bedtime), Big kids tile, what Kids watched
-                Button(onClick = { showParentPin = true }) {
-                    Text("Parental controls")
-                }
-                // Benflix: tick off finished anime episodes on AniList and/or MyAnimeList
-                AniListButton()
-                MalButton()
+                Text("Your year so far")
             }
         }
         // Benflix: this month so far

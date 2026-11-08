@@ -535,6 +535,9 @@ class GamesViewModel
 
         fun best(game: BuiltInGame): Int = prefs.getInt(key(game), 0)
 
+        /** The name this profile shows on the leaderboards */
+        fun myBoardName(): String? = if (KidsMode.isActive || GuestMode.isActive) null else serverRepository.currentUser?.name
+
         /** This account's best in a movie game (Higher or Lower, Movie riddle, Guess the movie) */
         fun bestExtra(boardKey: String): Int {
             val owner = if (GuestMode.isActive) "guest" else serverRepository.currentUser?.id?.toString() ?: "guest"

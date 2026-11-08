@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.text.Cue
@@ -44,9 +45,11 @@ import com.github.damontecres.wholphin.preferences.SubtitlePreferences
 import com.github.damontecres.wholphin.preferences.resetSubtitles
 import com.github.damontecres.wholphin.preferences.updateInterfacePreferences
 import com.github.damontecres.wholphin.ui.findActivity
+import com.github.damontecres.wholphin.ui.preferences.PreferenceGroup
 import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.toSubtitleStyle
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import timber.log.Timber
@@ -193,53 +196,69 @@ fun SubtitleStylePage(
             }
         }
     }
+    // Approved redesign: Font / Colour / Outline / Box / Size pills pick which settings show
+    var pill by remember { mutableStateOf(SubtitlePill.SIZE) }
     val settings: @Composable (Modifier) -> Unit = { settingsModifier ->
         val display = LocalView.current.display
         val prefList =
-            remember(isPageForHdrSettings, display) {
-                if (!isPageForHdrSettings && SubtitleSettings.shouldShowHdr(display)) {
+            remember(isPageForHdrSettings, display, pill) {
+                val group = listOf(PreferenceGroup(title = pill.groupTitle, preferences = pill.prefs))
+                if (pill == SubtitlePill.MORE && !isPageForHdrSettings && SubtitleSettings.shouldShowHdr(display)) {
                     // If not on HDR page and display is HDR capable, then show the HDR button
-                    SubtitleSettings.preferences + SubtitleSettings.hdrPreferenceGroup
+                    group + SubtitleSettings.hdrPreferenceGroup
                 } else {
-                    SubtitleSettings.preferences
+                    group
                 }
             }
-        SubtitlePreferencesContent(
-            title =
-                if (isPageForHdrSettings) {
-                    stringResource(R.string.hdr_subtitle_style)
-                } else {
-                    stringResource(R.string.subtitle_style)
-                },
-            preferences =
-                if (isPageForHdrSettings) {
-                    preferences.interfacePreferences.hdrSubtitlesPreferences
-                } else {
-                    preferences.interfacePreferences.subtitlesPreferences
-                },
-            prefList = prefList,
-            onPreferenceChange = { newSubtitlePrefs ->
-                viewModel.preferenceDataStore.updateData {
-                    it.updateInterfacePreferences {
-                        if (isPageForHdrSettings) {
-                            hdrSubtitlesPreferences = newSubtitlePrefs
-                        } else {
-                            subtitlesPreferences = newSubtitlePrefs
-                        }
-                    }
+        Column(settingsModifier) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                SubtitlePill.entries.forEach { p ->
+                    SubtitlePillChip(p.label, selected = p == pill) { pill = p }
                 }
-            },
-            onFocus = { groupIndex, prefIndex ->
-                val focusedPref =
-                    SubtitleSettings.preferences
-                        .getOrNull(groupIndex)
-                        ?.preferences
-                        ?.getOrNull(prefIndex)
-                focusedOnMargin = focusedPref == SubtitleSettings.Margin
-                focusedOnImageOpacity = focusedPref == SubtitleSettings.ImageOpacity
-            },
-            modifier = settingsModifier,
-        )
+            }
+            androidx.compose.runtime.key(pill) {
+                SubtitlePreferencesContent(
+                    title =
+                        if (isPageForHdrSettings) {
+                            stringResource(R.string.hdr_subtitle_style)
+                        } else {
+                            stringResource(R.string.subtitle_style)
+                        },
+                    preferences =
+                        if (isPageForHdrSettings) {
+                            preferences.interfacePreferences.hdrSubtitlesPreferences
+                        } else {
+                            preferences.interfacePreferences.subtitlesPreferences
+                        },
+                    prefList = prefList,
+                    onPreferenceChange = { newSubtitlePrefs ->
+                        viewModel.preferenceDataStore.updateData {
+                            it.updateInterfacePreferences {
+                                if (isPageForHdrSettings) {
+                                    hdrSubtitlesPreferences = newSubtitlePrefs
+                                } else {
+                                    subtitlesPreferences = newSubtitlePrefs
+                                }
+                            }
+                        }
+                    },
+                    onFocus = { groupIndex, prefIndex ->
+                        val focusedPref =
+                            prefList
+                                .getOrNull(groupIndex)
+                                ?.preferences
+                                ?.getOrNull(prefIndex)
+                        focusedOnMargin = focusedPref == SubtitleSettings.Margin
+                        focusedOnImageOpacity = focusedPref == SubtitleSettings.ImageOpacity
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
     if (isTv) {
         Row(modifier = modifier) {
@@ -272,5 +291,69 @@ fun SubtitleStylePage(
                     .weight(1f),
             )
         }
+    }
+}
+
+/** The subtitle look pills (approved redesign) and which settings each one shows */
+private enum class SubtitlePill(
+    val label: String,
+    val groupTitle: Int,
+    val prefs: List<com.github.damontecres.wholphin.preferences.AppPreference<SubtitlePreferences, out Any?>>,
+) {
+    SIZE("Size", R.string.font_size, listOf(SubtitleSettings.FontSize, SubtitleSettings.Margin)),
+    FONT("Font", R.string.font, listOf(SubtitleSettings.FontBold, SubtitleSettings.FontItalic)),
+    COLOUR("Colour", R.string.font_color, listOf(SubtitleSettings.FontColor, SubtitleSettings.FontOpacity)),
+    OUTLINE(
+        "Outline",
+        R.string.edge_style,
+        listOf(SubtitleSettings.EdgeStylePref, SubtitleSettings.EdgeColor, SubtitleSettings.EdgeThickness),
+    ),
+    BOX(
+        "Box",
+        R.string.background,
+        listOf(SubtitleSettings.BackgroundStylePref, SubtitleSettings.BackgroundColor, SubtitleSettings.BackgroundOpacity),
+    ),
+    MORE("More", R.string.more, listOf(SubtitleSettings.ImageOpacity, SubtitleSettings.Reset)),
+}
+
+@Composable
+private fun SubtitlePillChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape =
+        androidx.compose.foundation.shape
+            .RoundedCornerShape(50)
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(shape),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f),
+        border =
+            androidx.tv.material3.ClickableSurfaceDefaults.border(
+                focusedBorder =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(2.dp, androidx.compose.ui.graphics.Color.White),
+                        shape = shape,
+                    ),
+            ),
+        colors =
+            androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = if (selected) BenflixColors.Text else BenflixColors.Raised,
+                contentColor = if (selected) BenflixColors.Tray else BenflixColors.Text,
+                focusedContainerColor = if (selected) BenflixColors.Text else BenflixColors.Raised,
+                focusedContentColor = if (selected) BenflixColors.Tray else BenflixColors.Text,
+            ),
+    ) {
+        androidx.tv.material3.Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        )
     }
 }

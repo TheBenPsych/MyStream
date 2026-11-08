@@ -37,7 +37,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /*
@@ -279,8 +278,8 @@ private fun WhereYouArePanel(
             }
             Text(
                 text = stringResource(R.string.settings),
-                fontFamily = BenflixTitleFont,
-                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }

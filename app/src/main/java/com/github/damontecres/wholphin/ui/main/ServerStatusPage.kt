@@ -80,7 +80,6 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -1454,8 +1453,8 @@ private fun BigNumber(
         // Benflix: a dash while the number is still loading
         Text(
             text = value ?: "–",
-            fontFamily = BenflixTitleFont,
-            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
             color = if (value == null) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
         )
         Text(text = label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

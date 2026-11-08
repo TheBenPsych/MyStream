@@ -107,6 +107,7 @@ fun SearchPage(
     val keyboardController = LocalSoftwareKeyboardController.current
     val state by viewModel.state.collectAsState()
     val popular by viewModel.popular.collectAsState()
+    val foundGames by viewModel.games.collectAsState()
     val programDialogState by viewModel.programDialogState.collectAsState()
 
     // Start with current preferences, but collect updates when view options change
@@ -433,6 +434,16 @@ fun SearchPage(
                                 result = state.combinedResults,
                                 askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
                                 didYouMean = state.didYouMean,
+                                games = foundGames,
+                                onClickGame = { game ->
+                                    val dest = game.destination
+                                    if (dest != null) {
+                                        viewModel.navigationManager.navigateTo(dest)
+                                    } else {
+                                        com.github.damontecres.wholphin.ui.games.PendingGameOpen.id = game.romId
+                                        viewModel.navigationManager.navigateTo(Destination.Games)
+                                    }
+                                },
                                 focusRequester = focusRequesters[COMBINED_ROW],
                                 onClickItem = onClickItem,
                                 onLongClickItem = { index, item ->
@@ -624,8 +635,13 @@ fun SearchCombinedResults(
     /** Benflix redesign: the library results show as door columns, with these titles in Ask for it */
     askFor: List<DiscoverItem>? = null,
     didYouMean: String? = null,
+    games: List<SearchGame> = emptyList(),
+    onClickGame: (SearchGame) -> Unit = {},
 ) {
-    if (askFor != null && result is SearchResult.Success && (result.items.isNotEmpty() || askFor.isNotEmpty())) {
+    if (askFor != null &&
+        result is SearchResult.Success &&
+        (result.items.isNotEmpty() || askFor.isNotEmpty() || games.isNotEmpty())
+    ) {
         val items = remember(result) { result.items.filterNotNull() }
         SearchDoorResults(
             items = items,
@@ -634,6 +650,8 @@ fun SearchCombinedResults(
             onClickItem = { onClickItem(items.indexOf(it), it) },
             onClickAsk = { onClickDiscover(0, it) },
             didYouMean = didYouMean,
+            games = games,
+            onClickGame = onClickGame,
             modifier = modifier,
         )
         return
