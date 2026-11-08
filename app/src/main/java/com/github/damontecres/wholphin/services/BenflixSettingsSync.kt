@@ -9,10 +9,12 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.preferences.BenflixPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
 import com.github.damontecres.wholphin.ui.playback.BenflixPlayerPrefs
+import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -68,6 +70,9 @@ class BenflixSettingsSync
         val ready: StateFlow<UUID?> = _ready
 
         @Volatile private var lastSynced: String? = null
+
+        /** The colour their picture was last drawn on, so a colour change re-sends the picture */
+        @Volatile private var pictureAccent: Pair<UUID, BenflixAccent>? = null
 
         /** Called when someone signs in or a profile is picked */
         suspend fun restoreFor(userId: UUID) {
@@ -228,8 +233,20 @@ class BenflixSettingsSync
             if (userId != readyUserId || KidsMode.isActive || GuestMode.isActive) return
             // Remember their colour on this device for the Who's watching tiles
             // (on the main thread: the Who's watching tiles read it while they draw)
+            val accent = prefs.benflixPreferences.accent
             withContext(WholphinDispatchers.Main) {
-                ProfileColours.set(context, userId, prefs.benflixPreferences.accent)
+                ProfileColours.set(context, userId, accent)
+            }
+            // Their colour is the background of their picture, so send the recoloured picture to
+            // their account too (only when the colour really changed, not on every settings save)
+            val lastAccent = pictureAccent
+            pictureAccent = userId to accent
+            if (lastAccent != null && lastAccent.first == userId && lastAccent.second != accent) {
+                val picture = withContext(WholphinDispatchers.Main) { AvatarChoices.get(userId) }
+                val current = serverRepository.current.value
+                if (picture != null && current != null && current.user.id == userId) {
+                    profilePictureSync.pick(current.server.url, current.user, picture)
+                }
             }
             val encoded = Base64.encodeToString(prefs.personalPart().toByteArray(), Base64.NO_WRAP)
             if (encoded == lastSynced) return

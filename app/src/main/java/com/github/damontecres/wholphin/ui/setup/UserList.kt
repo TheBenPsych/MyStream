@@ -38,6 +38,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -66,6 +67,7 @@ import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.time.LocalDate
@@ -295,10 +297,11 @@ private fun AvatarPickerDialog(
                                     .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         ) {
-                            Image(
-                                painter = painterResource(res),
+                            // Shown on their colour, so they see exactly what they will get
+                            BenflixAvatarImage(
+                                res = res,
+                                background = avatarBackgroundFor(userId, res),
                                 contentDescription = null,
-                                contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                             )
                         }
@@ -359,8 +362,13 @@ private fun UserIconCard(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    // Generate unique color for this user
-    val userColor = rememberIdColor(user.user.id)
+    // The tile is their colour (the one they picked, or their picture's starter colour)
+    AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
+    val userColor =
+        avatarBackgroundFor(
+            user.user.id,
+            AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) } ?: benflixAvatarFor(user.user.id, user.user.name),
+        )
 
     // Track image loading errors
     var imageError by remember { mutableStateOf(false) }
@@ -421,11 +429,12 @@ private fun UserIconCard(
                                 .clip(ProfileTileShape),
                     )
                 } else {
-                    // Benflix picture for profiles without their own image
-                    Image(
-                        painter = painterResource(chosen ?: benflixAvatarFor(user.user.id, user.user.name)),
+                    // Benflix picture for profiles without their own image, on their colour
+                    val res = chosen ?: benflixAvatarFor(user.user.id, user.user.name)
+                    BenflixAvatarImage(
+                        res = res,
+                        background = avatarBackgroundFor(user.user.id, res),
                         contentDescription = user.user.name,
-                        contentScale = ContentScale.Crop,
                         modifier =
                             Modifier
                                 .fillMaxSize()
@@ -461,10 +470,10 @@ fun UserIconCardImage(
     alpha: Float = 1f,
 ) {
     var imageError by remember { mutableStateOf(false) }
-    val userColor = rememberIdColor(id, alpha)
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     // A picture picked in Benflix wins over the automatic one and the Jellyfin one
     val chosen = AvatarChoices.get(id)?.let { BenflixAvatars.getOrNull(it) }
+    val userColor = avatarBackgroundFor(id, chosen ?: benflixAvatarFor(id, name)).let { it.copy(alpha = it.alpha * alpha) }
     Box(
         modifier =
             modifier
@@ -488,10 +497,11 @@ fun UserIconCardImage(
                         .clip(CircleShape),
             )
         } else {
-            Image(
-                painter = painterResource(chosen ?: benflixAvatarFor(id, name)),
+            val res = chosen ?: benflixAvatarFor(id, name)
+            BenflixAvatarImage(
+                res = res,
+                background = avatarBackgroundFor(id, res),
                 contentDescription = name,
-                contentScale = ContentScale.Crop,
                 alpha = alpha,
                 modifier =
                     Modifier
@@ -535,6 +545,86 @@ internal val BenflixAvatars =
         R.drawable.benflix_avatar_6,
         R.drawable.benflix_avatar_7,
     )
+
+/**
+ * The colour behind each picture for someone who has not picked a colour yet (the same colours
+ * the pictures used to come in, so nobody's tile changes until they pick one).
+ */
+private val AvatarStarterColours =
+    listOf(
+        Color(0xFFE50914),
+        Color(0xFF0071EB),
+        Color(0xFFE8A92B),
+        Color(0xFF1EAA5A),
+        Color(0xFF8C3CDC),
+        Color(0xFFE5488F),
+        Color(0xFF2A2A30),
+        Color(0xFF00A0AA),
+    )
+
+/**
+ * The colour behind someone's picture: the colour they picked ("Its background colour" in setup,
+ * or their colour in Settings), otherwise the picture's starter colour.
+ */
+fun avatarBackgroundFor(
+    id: UUID,
+    res: Int,
+): Color =
+    com.github.damontecres.wholphin.ui.theme.ProfileColours
+        .get(id)
+        ?.toColor()
+        ?: AvatarStarterColours.getOrElse(BenflixAvatars.indexOf(res)) { AvatarStarterColours[0] }
+
+/**
+ * White or near-black, whichever is easier to see on [background]. White wins unless it is too
+ * faint (light colours like gold, green and grey get a dark character instead).
+ */
+fun avatarInkFor(background: Color): Color = if (1.05f / (background.luminance() + 0.05f) >= 3f) Color.White else Color(0xFF141418)
+
+/**
+ * A Benflix profile picture: the character drawn on [background], with a soft shade at the bottom.
+ * The Kids rainbow keeps its own colours. Clip [modifier] to the shape you want.
+ */
+@Composable
+fun BenflixAvatarImage(
+    res: Int,
+    background: Color,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+) {
+    if (res == R.drawable.benflix_avatar_kids) {
+        Image(
+            painter = painterResource(res),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            alpha = alpha,
+            modifier = modifier,
+        )
+        return
+    }
+    Box(
+        modifier =
+            modifier
+                .background(background.copy(alpha = background.alpha * alpha))
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = .16f * alpha)),
+                    ),
+                ),
+    ) {
+        Image(
+            painter = painterResource(res),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            alpha = alpha,
+            colorFilter =
+                androidx.compose.ui.graphics.ColorFilter
+                    .tint(avatarInkFor(background)),
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
 
 /**
  * The Benflix profile picture for a user without their own image. Each user always gets the same one,
