@@ -49,18 +49,18 @@ object DoorWipe {
     private val _wipe = MutableStateFlow<Wipe?>(null)
     val wipe: StateFlow<Wipe?> = _wipe
 
-    private val _ready = MutableStateFlow(false)
+    private val pageReady = MutableStateFlow(false)
 
     /** True while the colour covers the screen: the page change underneath shouldn't animate */
     val covering: Boolean get() = _wipe.value != null
 
     /** Called by a door's page once its first rows (or its empty message) are on screen */
     fun ready() {
-        _ready.value = true
+        pageReady.value = true
     }
 
     internal suspend fun awaitReady() {
-        _ready.first { it }
+        pageReady.first { it }
     }
 
     /** Fills the screen with [color] from [from], runs [then] (open the page), then fades out */
@@ -70,7 +70,7 @@ object DoorWipe {
         then: () -> Unit,
     ) {
         if (_wipe.value != null) return
-        _ready.value = false
+        pageReady.value = false
         _wipe.value = Wipe(color, from, then)
     }
 
