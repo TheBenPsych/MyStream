@@ -192,6 +192,9 @@ class MainActivity : AppCompatActivity() {
         com.github.damontecres.wholphin.util.StartupTimer
             .mark(com.github.damontecres.wholphin.util.StartupTimer.SCREEN)
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")
+        // Benflix: load the intro's notes right away, so they're ready the moment the intro starts
+        com.github.damontecres.wholphin.ui.IntroSounds
+            .preload(this)
         lifecycle.addObserver(playbackLifecycleObserver)
         if (savedInstanceState == null) {
             // Delete the update file left in Downloads by the last update (once it's installed it isn't needed)
