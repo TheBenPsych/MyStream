@@ -125,7 +125,7 @@ data class LiveChannel(
 
 /**
  * The live channel types. The server numbers live channels in blocks of 100 by type
- * (keep in step with CATEGORIES in server/benflix_livetv.py).
+ * (keep in step with CATEGORIES in server/benflix_livetv.py). 1000 was Music, now left empty.
  */
 val LiveTvGroups =
     listOf(
@@ -138,10 +138,9 @@ val LiveTvGroups =
         700 to "Sports",
         800 to "Sci-Fi & Anime",
         900 to "Classic TV",
-        1000 to "Music",
         1100 to "Documentaries & Nature",
         1200 to "Food & Home",
-        1300 to "Other",
+        1300 to "Holiday",
     )
 
 /** The group heading a channel goes under on the Channels page */
@@ -173,11 +172,10 @@ val ChannelTileOrder =
         "Drama & Crime",
         "Food & Home",
         "Documentaries & Nature",
-        "Music",
         "Sci-Fi & Anime",
         "Movies",
+        "Holiday",
         BENFLIX_GROUP,
-        "Other",
     )
 
 /** A channel in the guide: one of Benflix's own ([channel]) or a free live one ([live]) */
