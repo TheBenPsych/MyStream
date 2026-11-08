@@ -27,6 +27,7 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.rememberInt
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 @Composable
 fun PersonRow(
@@ -40,7 +41,7 @@ fun PersonRow(
     var position by rememberInt()
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
+        modifier = modifier.scrollAsOneBlock(),
     ) {
         Text(
             text = stringResource(title),
@@ -90,7 +91,7 @@ fun DiscoverPersonRow(
     val firstFocus = remember { FocusRequester() }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
+        modifier = modifier.scrollAsOneBlock(),
     ) {
         Text(
             text = stringResource(title),

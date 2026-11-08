@@ -53,20 +53,20 @@ internal fun PlayIcon(kind: PlayWith) {
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(24.dp)
-                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(50)),
+                .size(30.dp)
+                .background(Color(0xFF33363F), RoundedCornerShape(50)),
     ) {
         when (kind) {
             PlayWith.REMOTE -> {
-                RemoteIcon(Modifier.size(width = 6.dp, height = 12.dp))
+                RemoteIcon(Modifier.size(width = 8.dp, height = 16.dp))
             }
 
             PlayWith.CONTROLLER -> {
-                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+                Text(stringResource(R.string.fa_gamepad), fontFamily = FontAwesome, fontSize = 15.sp, color = Color.White)
             }
 
             PlayWith.PHONE -> {
-                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 11.sp, color = Color.White)
+                Text(stringResource(R.string.fa_mobile_screen), fontFamily = FontAwesome, fontSize = 15.sp, color = Color.White)
             }
         }
     }

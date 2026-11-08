@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -241,7 +242,8 @@ private fun DoorRow(
     side: Dp = SIDE,
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
-    Column(modifier = modifier.fillMaxWidth()) {
+    // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
+    Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
             text = row.title,
             color = BenflixColors.Text,
