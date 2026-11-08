@@ -59,6 +59,7 @@ enum class BenflixIcon(
     BACK("M15 6l-6 6 6 6"),
     CHECK("M5 12.5l4.5 4.5L19 7"),
     PLAY("M8 5.5v13l10.5-6.5z"),
+
     // A screen with a play arrow: the film strip was too busy at button size
     TRAILER(
         "M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
