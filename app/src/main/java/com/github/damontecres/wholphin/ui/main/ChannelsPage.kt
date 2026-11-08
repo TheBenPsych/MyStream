@@ -283,6 +283,12 @@ private fun GuideGrid(
         list.firstOrNull { it.number == number }?.let(viewModel::watch)
     }
     val rowFocus = remember { FocusRequester() }
+    var declinedNow by remember { mutableStateOf(emptySet<String>()) }
+    val recentKeys by ChannelPrefs.recent.collectAsState()
+    val suggested =
+        remember(recentKeys, favourites, byKey, declinedNow) {
+            ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
+        }
     val hasRows = favouriteChannels.isNotEmpty() || benflixChannels.isNotEmpty() || recentChannels.isNotEmpty()
     LaunchedEffect(Unit) {
         delay(80)
@@ -322,6 +328,19 @@ private fun GuideGrid(
                                     .then(if (schedule == favouriteChannels.first()) Modifier.focusRequester(rowFocus) else Modifier)
                                     .onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
                         )
+                    }
+                    // Watched a channel 3 times and it isn't a favourite yet: offer to add it
+                    suggested?.let { schedule ->
+                        item(key = "suggest-${schedule.key}") {
+                            SuggestFavouriteTile(
+                                name = schedule.title,
+                                onAdd = { ChannelPrefs.toggleFavourite(schedule.key) },
+                                onNo = {
+                                    ChannelPrefs.declineSuggestion(schedule.key)
+                                    declinedNow = declinedNow + schedule.key
+                                },
+                            )
+                        }
                     }
                     item(key = "add") {
                         AddChannelsTile(
@@ -746,6 +765,49 @@ private fun AddChannelsTile(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("+  Add channels", fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+/** "Add <channel>?" with Add and No thanks, after a channel was watched 3 times */
+@Composable
+private fun SuggestFavouriteTile(
+    name: String,
+    onAdd: () -> Unit,
+    onNo: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            Modifier
+                .height(64.dp)
+                .background(Color(0xFF17171B), RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp),
+    ) {
+        Text("Add $name?", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        SuggestButton("Add", onAdd)
+        SuggestButton("No thanks", onNo)
+    }
+}
+
+@Composable
+private fun SuggestButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color(0xFF26262C),
+                contentColor = Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
 

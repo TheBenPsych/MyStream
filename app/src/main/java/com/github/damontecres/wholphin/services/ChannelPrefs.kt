@@ -22,6 +22,9 @@ object ChannelPrefs {
     private const val REMINDERS = "reminders"
     private const val EVERY = "every"
     private const val RECENT_MAX = 10
+    private const val COUNT = "count_"
+    private const val DECLINED = "declined"
+    private const val SUGGEST_AFTER = 3
 
     @Volatile private var prefs: SharedPreferences? = null
 
@@ -137,6 +140,24 @@ object ChannelPrefs {
     fun addRecent(key: String) {
         _recent.value = (listOf(key) + _recent.value.filter { it != key }).take(RECENT_MAX)
         save(RECENT, _recent.value)
+        prefs?.let { p -> p.edit().putInt(COUNT + key, p.getInt(COUNT + key, 0) + 1).apply() }
+    }
+
+    /**
+     * Approved Live TV "suggest" tile: a channel watched 3 or more times that isn't a favourite yet
+     * (and the person didn't say "No thanks" to). Null when there's nothing to suggest.
+     */
+    fun suggestion(recent: List<String>): String? {
+        val p = prefs ?: return null
+        val declined = read(p, DECLINED).toSet()
+        return recent.firstOrNull { key ->
+            key !in _favourites.value && key !in declined && p.getInt(COUNT + key, 0) >= SUGGEST_AFTER
+        }
+    }
+
+    fun declineSuggestion(key: String) {
+        val p = prefs ?: return
+        save(DECLINED, (read(p, DECLINED) + key).distinct().takeLast(50))
     }
 
     fun setHidden(
