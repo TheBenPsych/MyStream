@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -154,9 +155,12 @@ private fun WideDoor(
     val preview = shown ?: first
 
     val restore = remember { FocusRequester() }
-    val savedRow = viewModel.focusedRow
-    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: state.rows.firstOrNull()?.key
-    val targetIndex = if (targetRow == savedRow) viewModel.focusedIndex else 0
+    // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
+    // press a button the door keeps going back to the top row as rows arrive above it.
+    val firstKey = state.rows.firstOrNull()?.key
+    val savedRow = viewModel.focusedRow.takeIf { viewModel.userMoved }
+    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+    val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         // Wait for Keep watching (or everything) so focus starts on the first Keep watching poster
@@ -179,8 +183,17 @@ private fun WideDoor(
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
+    // A row that loads in above the top one: go back to the very top and onto its first card
+    LaunchedEffect(firstKey, restored) {
+        if (!restored || viewModel.userMoved || firstKey == null) return@LaunchedEffect
+        columnState.scrollToItem(0)
+        if (isTv) {
+            delay(FOCUS_SETTLE_MS)
+            restore.tryRequestFocus()
+        }
+    }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
         val topHeight = ((maxHeight - overlap) * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
@@ -203,7 +216,7 @@ private fun WideDoor(
                             posterWidth = posterWidth,
                             showName = !isTv,
                             startIndex = if (row.key == targetRow) targetIndex else 0,
-                            focusRequester = if (row.key == targetRow && !restored) restore else null,
+                            focusRequester = if (row.key == targetRow) restore else null,
                             focusIndex = targetIndex,
                             onClick = onClick,
                             onSeeAll = { onSeeAll(row) },
@@ -590,10 +603,19 @@ private fun PhoneDoor(
     onBrowse: (DoorBrowseTile) -> Unit,
     modifier: Modifier,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Ben: open at the very top. The picked card and rows load in one by one; until you touch the
+    // page, go back to the top whenever something new arrives above what's showing.
+    val columnState = rememberLazyListState()
+    var touched by remember { mutableStateOf(false) }
+    val topKey = state.pick?.let { "pick" } ?: state.rows.firstOrNull()?.key
+    LaunchedEffect(topKey) {
+        if (!touched && topKey != null) columnState.scrollToItem(0)
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
         // About 3.5 posters across
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
         LazyColumn(
+            state = columnState,
             contentPadding = PaddingValues(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize(),

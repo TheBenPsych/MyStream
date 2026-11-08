@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -83,7 +84,10 @@ fun GamesPage(
     viewModel: GamesViewModel = hiltViewModel(),
 ) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
+    val pageScroll = rememberScrollState()
+    // Ben: the Games door opens at the top, on the first card of the top row. Continue playing
+    // loads in after the rest, so until you press a button or touch the page, go back up to it.
+    var userMoved by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
     val context = LocalContext.current
     val config = LocalConfiguration.current
@@ -150,6 +154,13 @@ fun GamesPage(
                 ),
         )
     val recentTimes = remember(recent) { recent.associate { it.first.id to it.second } }
+    val hasRecent = recent.isNotEmpty()
+    LaunchedEffect(hasRecent) {
+        if (userMoved) return@LaunchedEffect
+        pageScroll.scrollTo(0)
+        delay(FIRST_FOCUS_SETTLE_MS)
+        if (isTv) focusRequester.tryRequestFocus()
+    }
     // A game picked in Search opens its page as soon as the game list is here
     LaunchedEffect(refs) {
         val id = PendingGameOpen.id ?: return@LaunchedEffect
@@ -200,7 +211,7 @@ fun GamesPage(
         )
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().onFirstUserMove { userMoved = true }) {
         if (wide) {
             val first =
                 recent.firstOrNull()?.let { refPreview(it.first, it.second) }
@@ -217,7 +228,7 @@ fun GamesPage(
                     .weight(1f)
                     // Opens on the first game tile (a group requester hands focus to its first child)
                     .focusRequester(focusRequester)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(pageScroll)
                     .padding(
                         start = if (isTv) 48.dp else 0.dp,
                         end = if (isTv) 48.dp else 8.dp,
@@ -671,3 +682,5 @@ internal fun playedAgo(time: Long): String {
         }
     }
 }
+
+private const val FIRST_FOCUS_SETTLE_MS = 80L

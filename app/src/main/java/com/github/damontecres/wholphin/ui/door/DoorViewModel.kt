@@ -82,6 +82,9 @@ class DoorViewModel
         var focusedRow: String? = null
         var focusedIndex: Int = 0
 
+        /** False until you press a button or touch the page; until then the door keeps you on the first card of the top row */
+        var userMoved = false
+
         private var door: BenflixDoor? = null
         private var loadJob: Job? = null
         private var loadedAt = 0L
@@ -97,6 +100,7 @@ class DoorViewModel
                 _state.value = DoorPageState()
                 focusedRow = null
                 focusedIndex = 0
+                userMoved = false
             }
             this.door = door
             loadedFor = key
