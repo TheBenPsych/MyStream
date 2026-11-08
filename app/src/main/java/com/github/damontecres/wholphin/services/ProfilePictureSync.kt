@@ -1,11 +1,23 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.Shader
 import android.util.Base64
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.ContextCompat
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
+import com.github.damontecres.wholphin.ui.setup.avatarBackgroundFor
+import com.github.damontecres.wholphin.ui.setup.avatarInkFor
+import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -24,6 +36,7 @@ import org.jellyfin.sdk.model.ClientInfo
 import org.jellyfin.sdk.model.DeviceInfo
 import org.jellyfin.sdk.model.UUID
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -82,6 +95,46 @@ class ProfilePictureSync
             }
         }
 
+        /**
+         * The picture as a PNG on the person's colour, the same way Benflix draws it, so Jellyfin
+         * (and Who's watching on a new device) shows it with the right background.
+         * Runs on the main thread because it reads the colours the tiles read.
+         */
+        private fun onTheirColour(
+            userId: UUID,
+            res: Int,
+        ): ByteArray {
+            ProfileColours.init(context)
+            val size = 256
+            val background = avatarBackgroundFor(userId, res)
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(background.toArgb())
+            val shade =
+                Paint().apply {
+                    shader =
+                        LinearGradient(
+                            0f,
+                            0f,
+                            0f,
+                            size.toFloat(),
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.argb(41, 0, 0, 0),
+                            Shader.TileMode.CLAMP,
+                        )
+                }
+            canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), shade)
+            ContextCompat.getDrawable(context, res)?.mutate()?.let { drawable ->
+                drawable.setBounds(0, 0, size, size)
+                drawable.colorFilter = PorterDuffColorFilter(avatarInkFor(background).toArgb(), PorterDuff.Mode.SRC_IN)
+                drawable.draw(canvas)
+            }
+            val out = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            bitmap.recycle()
+            return out.toByteArray()
+        }
+
         /** The picture tiles read this, so change it on the main thread */
         private suspend fun setHere(
             id: UUID,
@@ -119,7 +172,7 @@ class ProfilePictureSync
                     val request =
                         if (res != null) {
                             // Jellyfin wants the picture's bytes written out as base64 text
-                            val bytes = context.resources.openRawResource(res).use { it.readBytes() }
+                            val bytes = withContext(Dispatchers.Main) { onTheirColour(userId, res) }
                             val body =
                                 Base64
                                     .encodeToString(bytes, Base64.NO_WRAP)

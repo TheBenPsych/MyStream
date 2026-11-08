@@ -73,6 +73,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -113,7 +114,7 @@ fun DoorPage(
     val onBrowse: (DoorBrowseTile) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
 
     if (state.loaded && state.rows.isEmpty()) {
-        EmptyDoor(door, state.browse, onBrowse, modifier.padding(top = LocalTopBarOverlap.current))
+        EmptyDoor(door, state.browse, state.offline, onBrowse, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
     if (wide) {
@@ -333,7 +334,8 @@ private fun DoorRow(
     side: Dp = SIDE,
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
-    Column(modifier = modifier.fillMaxWidth()) {
+    // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
+    Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
             text = row.title,
             color = BenflixColors.Text,
@@ -699,9 +701,22 @@ private fun PhoneDoor(
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            state.pick?.let { pick ->
+            val pick = state.pick
+            if (pick != null) {
                 item(key = "pick") {
                     PickedCard(pick, easy, onClick = { onClick(pick) }, Modifier.padding(horizontal = PHONE_SIDE))
+                }
+            } else if (!state.loaded) {
+                // Keeps the card's room while it's being picked, so the rows don't jump down when it arrives
+                item(key = "pick") {
+                    Box(
+                        Modifier
+                            .padding(horizontal = PHONE_SIDE)
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 11f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(BenflixColors.Raised),
+                    )
                 }
             }
             state.entries().forEach { entry ->
@@ -806,9 +821,13 @@ private fun PickedCard(
 private fun EmptyDoor(
     door: BenflixDoor,
     browse: List<DoorBrowseTile>,
+    offline: Boolean,
     onBrowse: (DoorBrowseTile) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier,
 ) {
+    val retryFocus = remember { FocusRequester() }
+    LaunchedEffect(offline) { if (offline) retryFocus.tryRequestFocus() }
     Column(
         modifier =
             modifier
@@ -816,18 +835,35 @@ private fun EmptyDoor(
                 .padding(horizontal = SIDE, vertical = 32.dp),
     ) {
         Text(
-            text = "Nothing in ${door.title} yet",
+            text = if (offline) "Can't reach the server right now" else "Nothing in ${door.title} yet",
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight = FontWeight.ExtraBold,
         )
         Text(
-            text = "Once the server has some, they show up here.",
+            text =
+                if (offline) {
+                    "Check the internet or that the server is on, then try again."
+                } else {
+                    "Once the server has some, they show up here."
+                },
             color = BenflixColors.Muted,
             fontSize = BenflixType.body,
             modifier = Modifier.padding(top = 6.dp, bottom = 24.dp),
         )
-        if (browse.isNotEmpty()) BrowseRow(browse, false, onBrowse)
+        if (offline) {
+            BrowseTile(
+                title = "Try again",
+                onClick = onRetry,
+                modifier =
+                    Modifier
+                        .widthIn(max = 260.dp)
+                        .fillMaxWidth()
+                        .focusRequester(retryFocus),
+            )
+        } else if (browse.isNotEmpty()) {
+            BrowseRow(browse, false, onBrowse)
+        }
     }
 }
 

@@ -207,6 +207,7 @@ class WhoAskedViewModel
                         days < 1 -> "today"
                         days == 1L -> "yesterday"
                         days < 30 -> "$days days ago"
+                        days < 60 -> "a month ago"
                         else -> "${days / 30} months ago"
                     }
                 }

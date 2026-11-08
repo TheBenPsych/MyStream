@@ -181,7 +181,14 @@ fun SearchDoorResults(
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
-            FocusLine(focused = focused, isTv = isTv)
+            // Before anything has focus (and always on phones), describe the first thing found, wherever it is,
+            // so the top never says "Nothing found" above results that only came from Ask for it, Games or People
+            val described =
+                focused
+                    ?: ask.takeIf { !kids }?.firstOrNull()?.let { Focused.Ask(it) }
+                    ?: games.firstOrNull()?.let { Focused.Game(it) }
+                    ?: people.firstOrNull()?.let { Focused.Item(it) }
+            FocusLine(focused = described, isTv = isTv)
             val shownDoors = SearchDoor.entries.filter { it != SearchDoor.ASK || !kids }
             if (isTv) {
                 Row(horizontalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {

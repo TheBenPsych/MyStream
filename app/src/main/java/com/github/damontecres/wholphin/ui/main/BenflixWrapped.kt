@@ -57,7 +57,6 @@ import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.LocalDate
-import java.time.ZoneOffset
 import javax.inject.Inject
 
 /** One profile's year on Benflix */
@@ -180,7 +179,8 @@ class BenflixWrappedViewModel
                             (
                                 item.userData
                                     ?.lastPlayedDate
-                                    ?.toInstant(ZoneOffset.UTC)
+                                    ?.atZone(java.time.ZoneId.systemDefault())
+                                    ?.toInstant()
                                     ?.toEpochMilli() ?: 0L
                             ) < sinceMs
                     }.sumOf { (it.runTimeTicks ?: 0L) * (it.userData?.playCount?.coerceAtLeast(1) ?: 1) }

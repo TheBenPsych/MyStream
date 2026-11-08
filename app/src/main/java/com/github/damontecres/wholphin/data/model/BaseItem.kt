@@ -12,13 +12,14 @@ import com.github.damontecres.wholphin.ui.detail.CardGridItem
 import com.github.damontecres.wholphin.ui.detail.music.artistsString
 import com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds
 import com.github.damontecres.wholphin.ui.dot
-import com.github.damontecres.wholphin.ui.formatDateTime
+import com.github.damontecres.wholphin.ui.formatDate
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatEpisodeNumber
 import com.github.damontecres.wholphin.ui.getDateFormatter
 import com.github.damontecres.wholphin.ui.joinNotBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.playable
+import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.ui.seasonEpisode
 import com.github.damontecres.wholphin.ui.seasonEpisodePadded
@@ -78,7 +79,7 @@ data class BaseItem(
             buildList {
                 add(data.seasonEpisodePadded)
                 add(data.name)
-                add(data.premiereDate?.let { formatDateTime(it) })
+                add(data.premiereDay?.let { formatDate(it) })
             }.joinNotBlank(" - ")
         } else {
             data.productionYear?.toString()
@@ -115,7 +116,7 @@ data class BaseItem(
             episodeCornerText =
                 if (type == BaseItemKind.EPISODE) {
                     data.indexNumber?.let { formatEpisodeNumber(it) }
-                        ?: data.premiereDate?.let(::formatDateTime)
+                        ?: data.premiereDay?.let { formatDate(it) }
                 } else {
                     null
                 },
@@ -155,7 +156,7 @@ data class BaseItem(
                                     when (type) {
                                         BaseItemKind.EPISODE -> {
                                             data.seasonEpisode?.let(::add)
-                                            data.premiereDate?.let {
+                                            data.premiereDay?.let {
                                                 add(
                                                     getDateFormatter().format(
                                                         it,
@@ -199,7 +200,7 @@ data class BaseItem(
                                             if (data.isSeries == true) {
                                                 // TV episode
                                                 data.seasonEpisode?.let(::add)
-                                                data.premiereDate?.let {
+                                                data.premiereDay?.let {
                                                     add(getDateFormatter().format(it))
                                                 }
                                             } else {
@@ -266,7 +267,7 @@ data class BaseItem(
         )
 
     private fun dateAsIndex(): Int? =
-        data.premiereDate
+        data.premiereDay
             ?.let {
                 it.year.toString() +
                     it.monthValue.toString().padStart(2, '0') +

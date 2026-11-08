@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.DiscoverRequestType
 import java.util.UUID
@@ -122,7 +123,7 @@ fun DiscoverItemRow(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
-            modifier.focusProperties {
+            modifier.scrollAsOneBlock().focusProperties {
                 onEnter = {
                     focusRequester.tryRequestFocus()
                 }

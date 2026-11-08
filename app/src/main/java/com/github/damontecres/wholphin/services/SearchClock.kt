@@ -111,16 +111,33 @@ data class SearchClock(
                 val first = day(details.text("firstAirDate"))
                 return (first != null) to (day ?: first)
             }
-            val premiere =
+            // Benflix: TMDB often lists seasons with no air date (announced, specials, or old shows with patchy data),
+            // and "all seasons" requests include them. Only a wanted season that really hasn't aired yet holds the
+            // clock back; anything already aired can be searched for now.
+            val today = LocalDate.now()
+            val premieres =
                 (details["seasons"] as? JsonArray)
                     .orEmpty()
                     .mapNotNull { it as? JsonObject }
-                    .firstOrNull { (it["seasonNumber"] as? JsonPrimitive)?.intOrNull == wanted }
-                    ?.let { day(it.text("airDate")) }
-                    ?: return false to null
-            // That season is airing right now (or just finished): wait for its newest episode
-            val newest = if (lastSeason == wanted && lastAired != null) maxOf(premiere, lastAired) else premiere
-            return true to newest
+                    .filter { (it["seasonNumber"] as? JsonPrimitive)?.intOrNull in seasons }
+                    .mapNotNull { s ->
+                        val number = (s["seasonNumber"] as? JsonPrimitive)?.intOrNull ?: return@mapNotNull null
+                        day(s.text("airDate"))?.let { number to it }
+                    }
+            val aired = premieres.filter { !it.second.isAfter(today) }
+            if (aired.isNotEmpty()) {
+                val (season, premiere) = aired.maxBy { it.first }
+                // That season is airing right now (or just finished): wait for its newest episode
+                val newest = if (lastSeason == season && lastAired != null) maxOf(premiere, lastAired) else premiere
+                return true to newest
+            }
+            // Every dated wanted season is still to come
+            premieres.minByOrNull { it.second }?.let { return true to it.second }
+            // No season dates at all: go by the show itself, so a show that aired years ago isn't "not out yet"
+            val showFirst = day(details.text("firstAirDate"))
+            val showLast = day(details.text("lastAirDate")) ?: lastAired
+            if (showFirst != null) return true to (if (showFirst.isAfter(today)) showFirst else showLast ?: showFirst)
+            return (details.text("status").let { it == "Ended" || it == "Returning Series" || it == "Canceled" }) to null
         }
 
         private fun JsonObject.obj(name: String): JsonObject? = this[name] as? JsonObject
