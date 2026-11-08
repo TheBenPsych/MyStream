@@ -284,7 +284,6 @@ private fun GuideGrid(
     }
     val rowFocus = remember { FocusRequester() }
     var declinedNow by remember { mutableStateOf(emptySet<String>()) }
-    val recentKeys by ChannelPrefs.recent.collectAsState()
     val suggested =
         remember(recentKeys, favourites, byKey, declinedNow) {
             ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
