@@ -40,7 +40,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -72,6 +71,7 @@ import com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter
 import com.github.damontecres.wholphin.ui.playback.SimpleMediaStream
 import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.ui.touch.Dialog
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -287,7 +287,9 @@ fun DialogPopupContent(
         val focusRequesters = remember { List(dialogItems.size) { FocusRequester() } }
         // TV: a menu opened by holding OK has its rows off for a moment. Once they switch on, put the
         // remote on the first one, so the menu is ready to use
-        val isTv = com.github.damontecres.wholphin.ui.touch.rememberIsTv()
+        val isTv =
+            com.github.damontecres.wholphin.ui.touch
+                .rememberIsTv()
         var hadWait by remember { mutableStateOf(false) }
         LaunchedEffect(waiting) {
             if (waiting) {
