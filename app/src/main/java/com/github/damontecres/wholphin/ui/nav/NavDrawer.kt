@@ -408,6 +408,7 @@ fun NavDrawer(
     // Benflix: requests waiting for the main profile to say yes or no
     hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
     val requestsWaiting by RequestsWaiting.count.collectAsState()
+    val requestsUnseen by RequestsWaiting.unseen.collectAsState()
     val kids by KidsMode.active.collectAsState()
     val guest by com.github.damontecres.wholphin.services.GuestMode.active
         .collectAsState()
@@ -421,8 +422,12 @@ fun NavDrawer(
     val readyCount =
         com.github.damontecres.wholphin.ui.components
             .rememberRequestReadyCount()
-    // A bigger white dot on your picture when something needs you
-    val badge = !kids && !guest && (updateAlert || serverAlert || readyCount > 0 || requestsWaiting > 0)
+    val updateDot =
+        com.github.damontecres.wholphin.ui.components
+            .rememberUpdateDot()
+    // A bigger white dot on your picture when something new needs you. Waiting requests only count until
+    // you've seen them (opening Requests), and "Mark all as seen" in the menu clears the lot.
+    val badge = !kids && !guest && (updateDot || serverAlert || readyCount > 0 || requestsUnseen > 0)
 
     var showMenu by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -507,6 +512,18 @@ fun NavDrawer(
                     note = if (updateAlert) "Update ready" else null,
                 ),
             )
+            if (badge) {
+                add(
+                    ProfileMenuItem(
+                        icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.CHECK,
+                        title = "Mark all as seen",
+                        onClick = {
+                            showMenu = false
+                            menuViewModel.markAllSeen()
+                        },
+                    ),
+                )
+            }
             add(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.FLAG,

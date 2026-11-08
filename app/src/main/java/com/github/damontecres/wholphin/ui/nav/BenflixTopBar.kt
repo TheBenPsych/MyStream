@@ -418,7 +418,30 @@ class ProfileMenuViewModel
         private val serverRepository: ServerRepository,
         private val watchTime: BenflixWatchTime,
         private val setupNavigationManager: SetupNavigationManager,
+        @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+        private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
     ) : ViewModel() {
+        init {
+            com.github.damontecres.wholphin.ui.components.UpdateNotice
+                .loadDot(context)
+        }
+
+        /**
+         * Benflix: "Mark all as seen" clears the white dot on your picture: arrived requests, waiting
+         * requests, the Server check and the update all count as seen. Only something new brings it back.
+         */
+        fun markAllSeen() {
+            RequestsWaiting.markSeen()
+            com.github.damontecres.wholphin.ui.components.ServerAlertNotice
+                .clear()
+            com.github.damontecres.wholphin.ui.components.UpdateNotice
+                .hideDot(context)
+            viewModelScope.launchIO {
+                requestReady.refresh()
+                requestReady.markAllSeen()
+            }
+        }
+
         private val _minutes = MutableStateFlow<Long?>(null)
 
         /** Minutes watched this month, or null while loading */
