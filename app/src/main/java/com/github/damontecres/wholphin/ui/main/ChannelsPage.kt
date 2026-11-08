@@ -377,7 +377,12 @@ private fun GuideGrid(
                 },
     ) {
         // What the focused channel or program is. Read only inside, so moving around redraws just this part
-        GuideHeader(focused = { if (isTv) focused else selected ?: focused }, now = now)
+        // Before a channel has had focus (or on "+ Add channels"), show what's on the first
+        // favourite (or the first channel) instead of an empty grey box
+        val fallback = {
+            (favouriteChannels.firstOrNull() ?: list.firstOrNull())?.let { s -> s.programAt(now)?.let { s to it } }
+        }
+        GuideHeader(focused = { (if (isTv) focused else selected ?: focused) ?: fallback() }, now = now)
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(6.dp),

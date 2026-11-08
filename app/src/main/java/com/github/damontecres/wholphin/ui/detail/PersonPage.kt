@@ -38,6 +38,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -509,15 +513,30 @@ fun PersonHeader(
         horizontalArrangement = Arrangement.spacedBy(32.dp),
         modifier = modifier.scrollAsOneBlock().bringIntoViewRequester(bringIntoViewRequester),
     ) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = name,
+        // A picture-sized card with their initials underneath, so someone with no photo on the
+        // server still has something there (it used to be a big empty gap)
+        Box(
+            contentAlignment = Alignment.Center,
             modifier =
                 Modifier
-//                    .fillMaxWidth(.25f)
                     .weight(1f)
-                    .clip(RoundedCornerShape(10)),
-        )
+                    .aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(10))
+                    .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.PanelHigh),
+        ) {
+            Text(
+                text = remember(name) { initialsOf(name) },
+                color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
+                fontSize = BenflixType.hero,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+            )
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
@@ -642,3 +661,12 @@ private fun PersonPreview() {
         )
     }
 }
+
+/** "Humphrey Bogart" -> "HB" */
+private fun initialsOf(name: String): String =
+    name
+        .split(' ')
+        .filter { it.isNotBlank() }
+        .let { if (it.size > 1) listOf(it.first(), it.last()) else it }
+        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+        .joinToString("")
