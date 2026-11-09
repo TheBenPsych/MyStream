@@ -322,6 +322,7 @@ fun SearchEditTextBox(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     height: Dp = 40.dp,
+    placeholder: @Composable (() -> Unit)? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
     EditTextBox(
@@ -350,6 +351,7 @@ fun SearchEditTextBox(
         enabled = enabled,
         readOnly = readOnly,
         height = height,
+        placeholder = placeholder,
         interactionSource = interactionSource,
     )
 }

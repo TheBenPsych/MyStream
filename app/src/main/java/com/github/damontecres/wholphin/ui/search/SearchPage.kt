@@ -81,6 +81,7 @@ import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -279,20 +280,20 @@ fun SearchPage(
             }
         }
 
-    // Benflix (Ben, 2026-11-09): on a TV the A to Z keyboard pops out from the left only while typing, so the
-    // door rows get the whole width. OK on the search box brings it back; Back or moving into the results tucks it.
-    var keyboardOpen by remember { mutableStateOf(true) }
+    // Benflix (Ben, 2026-11-09): on a TV the A to Z keyboard stays tucked away, even before anything is typed,
+    // so the page is just the search box in the middle with the results under it. OK on the search box pops the
+    // keyboard out from the left; Back or moving into the results tucks it again.
+    var keyboardOpen by remember { mutableStateOf(false) }
     var keyboardHasFocus by remember { mutableStateOf(false) }
     var focusKeyboard by remember { mutableIntStateOf(0) }
     val keyboardFocus = remember { FocusRequester() }
-    LaunchedEffect(query.isBlank()) { if (query.isBlank()) keyboardOpen = true }
     LaunchedEffect(focusKeyboard) {
         if (focusKeyboard > 0) {
             delay(60)
             keyboardFocus.tryRequestFocus()
         }
     }
-    BackHandler(keyboardHasFocus && query.isNotBlank()) {
+    BackHandler(keyboardHasFocus) {
         keyboardOpen = false
         focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
@@ -357,6 +358,13 @@ fun SearchPage(
                         },
                         onSearchClick = { triggerImmediateSearch(query) },
                         readOnly = isTv && !isSearchActive,
+                        // TV: the keyboard is tucked away, so say how to get it
+                        placeholder =
+                            if (isTv) {
+                                { Text("Press OK to type", color = BenflixColors.Muted) }
+                            } else {
+                                null
+                            },
                         modifier =
                             Modifier
                                 .focusRequester(textFieldFocusRequester)
@@ -456,7 +464,7 @@ fun SearchPage(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .onFocusChanged { if (it.hasFocus && keyboardTv && query.isNotBlank()) keyboardOpen = false },
+                            .onFocusChanged { if (it.hasFocus && keyboardTv) keyboardOpen = false },
                 ) {
                     if (query.isBlank()) {
                         // Nothing typed yet: recent searches, moods and genres to browse
