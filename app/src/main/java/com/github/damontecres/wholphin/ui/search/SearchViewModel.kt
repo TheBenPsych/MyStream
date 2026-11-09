@@ -86,6 +86,7 @@ class SearchViewModel
         private val navDrawerService: NavDrawerService,
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
         private val gameLibrary: com.github.damontecres.wholphin.services.GameLibraryClient,
+        private val music: com.github.damontecres.wholphin.services.BenflixMusic,
     ) : ViewModel(),
         ContextMenuProvider {
         /** Benflix: recent searches are kept per account */
@@ -145,6 +146,73 @@ class SearchViewModel
                     }
             romGames = list
             return list
+        }
+
+        private val _musicAsk = MutableStateFlow<List<SearchMusicAsk>>(emptyList())
+
+        /** Benflix: songs and albums that aren't on Benflix yet, for the Ask for it door (only Ben, never Kids) */
+        val musicAsk: StateFlow<List<SearchMusicAsk>> = _musicAsk
+
+        /** A short line after asking for music, shown as a toast */
+        val musicNote = MutableStateFlow<String?>(null)
+
+        private fun canAskForMusic(): Boolean = serverRepository.currentUserDto?.policy?.isAdministrator == true && !KidsMode.isActive
+
+        private fun searchMusicAsk(query: String?) {
+            val q = query?.trim().orEmpty()
+            if (q.length < 2 || !canAskForMusic()) {
+                _musicAsk.value = emptyList()
+                return
+            }
+            searchJobs +=
+                viewModelScope.launchIO {
+                    val found =
+                        try {
+                            music.search(q)
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            // Music requests aren't set up on Tower (or Tower is away): just no music to ask for
+                            if (!ex.isCancellation()) Timber.w(ex, "Search: music catalogue")
+                            null
+                        }
+                    if (currentQuery?.trim() != q) return@launchIO
+                    _musicAsk.value =
+                        found
+                            ?.let { f ->
+                                f.songs.take(MUSIC_ASK_SONGS).map {
+                                    SearchMusicAsk("song", it.id, it.title, it.artist, it.cover, it.asked, it.albumId, it.album)
+                                } +
+                                    f.albums.take(MUSIC_ASK_ALBUMS).map {
+                                        SearchMusicAsk("album", it.id, it.title, it.artist, it.cover, it.asked, it.id, it.title)
+                                    }
+                            }.orEmpty()
+                            .filter { it.asked != "In your music" }
+                }
+        }
+
+        /** [kind] is "song" or "album" */
+        fun askForMusic(
+            item: SearchMusicAsk,
+            kind: String = item.kind,
+        ) {
+            viewModelScope.launchIO {
+                try {
+                    val id = if (kind == "album") item.albumId else item.id
+                    music.ask(kind, id)
+                    val name = if (kind == "album") item.albumTitle else item.title
+                    musicNote.value = "Asked for $name. Tower is getting it."
+                    _musicAsk.value =
+                        _musicAsk.value.map {
+                            if (it.key == item.key || (kind == "album" && it.albumId == item.albumId)) it.copy(asked = "Asked") else it
+                        }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Search: ask for music")
+                    musicNote.value = ex.message ?: "Couldn't ask Tower for it."
+                }
+            }
         }
 
         private fun searchGames(query: String?) {
@@ -366,7 +434,9 @@ class SearchViewModel
                     }
                 }
                 searchSeerr(query)
+                searchMusicAsk(query)
             } else {
+                _musicAsk.value = emptyList()
                 _state.update {
                     it.copy(
                         results =
@@ -878,6 +948,25 @@ private const val POPULAR_COUNT = 12
 
 /** Fewer than this many household picks and the Top 10 picks stay */
 private const val POPULAR_MIN = 4
+
+/** A song or album from the music catalogue that can be asked for from search */
+data class SearchMusicAsk(
+    /** song or album */
+    val kind: String,
+    val id: Long,
+    val title: String,
+    val artist: String,
+    val cover: String?,
+    /** Words when it's already been asked for, like "Downloading, 40%" */
+    val asked: String?,
+    val albumId: Long,
+    val albumTitle: String,
+) {
+    val key: String get() = "$kind-$id"
+}
+
+private const val MUSIC_ASK_SONGS = 12
+private const val MUSIC_ASK_ALBUMS = 6
 
 /** A game in the search results' Games door */
 data class SearchGame(

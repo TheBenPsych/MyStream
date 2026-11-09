@@ -415,6 +415,18 @@ textarea.field { min-height: 90px; resize: vertical; }
 .doorcol .g2 .poster, .doorcol .g2 .chcard { width: auto; }
 .doorcol.none { opacity: .4; }
 .doorcol .seeall { margin-top: 10px; }
+/* Search doors as lists (Ben, 2026-11-09): one line per thing, each door scrolls on its own */
+.doorcols.lists { gap: 14px; }
+.doorcol.askdoor { background: rgba(241, 242, 245, .06); border-radius: 12px; padding: 8px; }
+.doorcol .dlist { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 260px); overflow-y: auto; padding: 3px; }
+.sline { display: flex; align-items: center; gap: 10px; padding: 5px; border-radius: 10px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: none; width: 100%; }
+.sline:hover, .sline:focus-visible { background: var(--pg3); box-shadow: 0 0 0 2px #fff; outline: none; }
+.sline .pic { flex: none; width: 40px; height: 60px; border-radius: 6px; background: var(--pg3) center/cover no-repeat; }
+.sline .pic.sq { width: 52px; height: 52px; }
+.sline .txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sline .txt b { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sline .txt small { color: var(--ink2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sline .txt em { font-style: normal; align-self: flex-start; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
 .askcard .im { background: var(--pg2); }
 
 /* ---------- my watching ---------- */
@@ -472,6 +484,8 @@ textarea.field { min-height: 90px; resize: vertical; }
   .menu-card .left { width: auto; flex-direction: row; padding: 14px 16px; justify-content: flex-start; text-align: left; }
   .menu-card .left .pic { width: 54px; height: 54px; font-size: 22px; }
   .doorcols { grid-template-columns: 1fr; }
+  .doorcols.lists { grid-template-columns: 1fr !important; }
+  .doorcol .dlist { max-height: none; }
   .doorcol .g2 { display: flex; overflow-x: auto; }
   .doorcol .g2 .poster, .doorcol .g2 .chcard { width: 112px; flex: none; }
   .who .people { gap: 20px; }

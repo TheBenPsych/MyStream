@@ -110,6 +110,15 @@ fun SearchPage(
     val state by viewModel.state.collectAsState()
     val popular by viewModel.popular.collectAsState()
     val foundGames by viewModel.games.collectAsState()
+    val musicAsk by viewModel.musicAsk.collectAsState()
+    val musicNote by viewModel.musicNote.collectAsState()
+    val noteContext = LocalContext.current
+    LaunchedEffect(musicNote) {
+        musicNote?.let {
+            Toast.makeText(noteContext, it, Toast.LENGTH_LONG).show()
+            viewModel.musicNote.value = null
+        }
+    }
     val programDialogState by viewModel.programDialogState.collectAsState()
 
     // Start with current preferences, but collect updates when view options change
@@ -270,6 +279,23 @@ fun SearchPage(
             }
         }
 
+    // Benflix (Ben, 2026-11-09): on a TV the A to Z keyboard pops out from the left only while typing, so the
+    // door rows get the whole width. OK on the search box brings it back; Back or moving into the results tucks it.
+    var keyboardOpen by remember { mutableStateOf(true) }
+    var keyboardHasFocus by remember { mutableStateOf(false) }
+    var focusKeyboard by remember { mutableIntStateOf(0) }
+    val keyboardFocus = remember { FocusRequester() }
+    LaunchedEffect(query.isBlank()) { if (query.isBlank()) keyboardOpen = true }
+    LaunchedEffect(focusKeyboard) {
+        if (focusKeyboard > 0) {
+            delay(60)
+            keyboardFocus.tryRequestFocus()
+        }
+    }
+    BackHandler(keyboardHasFocus && query.isNotBlank()) {
+        keyboardOpen = false
+        focusRequesters[SEARCH_ROW].tryRequestFocus()
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -340,7 +366,12 @@ fun SearchPage(
                                 }.onPreviewKeyEvent { event ->
                                     val isActivationKey =
                                         event.key in listOf(Key.DirectionCenter, Key.Enter)
-                                    if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
+                                    if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive && isTv && !keyboardOpen) {
+                                        // TV: OK pops the Benflix keyboard out first
+                                        keyboardOpen = true
+                                        focusKeyboard++
+                                        true
+                                    } else if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
                                         isSearchActive = true
                                         keyboardController?.show()
                                         true
@@ -397,20 +428,35 @@ fun SearchPage(
                                 ?.take(5)
                                 .orEmpty()
                         }
-                    SearchKeyboard(
-                        query = query,
-                        onQueryChange = { query = it },
-                        suggestions = if (query.isBlank()) emptyList() else suggestions,
-                        onSuggestion = {
-                            query = it
-                            triggerImmediateSearch(it)
-                        },
-                        big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
-                        modifier = Modifier.fillMaxHeight(),
-                    )
+                    AnimatedVisibility(
+                        visible = keyboardOpen,
+                        enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.Start),
+                        exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.Start),
+                    ) {
+                        SearchKeyboard(
+                            query = query,
+                            onQueryChange = { query = it },
+                            suggestions = if (query.isBlank()) emptyList() else suggestions,
+                            onSuggestion = {
+                                query = it
+                                triggerImmediateSearch(it)
+                            },
+                            big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .onFocusChanged { keyboardHasFocus = it.hasFocus }
+                                    .focusGroup()
+                                    .focusRequester(keyboardFocus),
+                        )
+                    }
                 }
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .onFocusChanged { if (it.hasFocus && keyboardTv && query.isNotBlank()) keyboardOpen = false },
                 ) {
                     if (query.isBlank()) {
                         // Nothing typed yet: recent searches, moods and genres to browse
@@ -438,6 +484,9 @@ fun SearchPage(
                                 didYouMean = state.didYouMean,
                                 plainWords = state.plainWords,
                                 games = foundGames,
+                                musicAsk = musicAsk,
+                                onAskMusic = { item, kind -> viewModel.askForMusic(item, kind) },
+                                query = query,
                                 onClickGame = { game ->
                                     val dest = game.destination
                                     if (dest != null) {
@@ -642,10 +691,13 @@ fun SearchCombinedResults(
     games: List<SearchGame> = emptyList(),
     onClickGame: (SearchGame) -> Unit = {},
     plainWords: String? = null,
+    musicAsk: List<SearchMusicAsk> = emptyList(),
+    onAskMusic: (SearchMusicAsk, String) -> Unit = { _, _ -> },
+    query: String = "",
 ) {
     if (askFor != null &&
         result is SearchResult.Success &&
-        (result.items.isNotEmpty() || askFor.isNotEmpty() || games.isNotEmpty())
+        (result.items.isNotEmpty() || askFor.isNotEmpty() || games.isNotEmpty() || musicAsk.isNotEmpty())
     ) {
         val items = remember(result) { result.items.filterNotNull() }
         SearchDoorResults(
@@ -658,6 +710,9 @@ fun SearchCombinedResults(
             games = games,
             onClickGame = onClickGame,
             plainWords = plainWords,
+            musicAsk = musicAsk,
+            onAskMusic = onAskMusic,
+            query = query,
             modifier = modifier,
         )
         return
