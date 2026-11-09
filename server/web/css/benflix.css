@@ -241,6 +241,12 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .details .side-col { width: 300px; color: var(--ink2); font-size: 15px; display: flex; flex-direction: column; gap: 14px; }
 .details .side-col b { display: block; color: var(--ink3); font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 .details .side-col span { color: var(--ink); }
+.details .side-col .dyk { border-left: 2px solid; padding-left: 10px; margin-top: 4px; }
+.details .side-col .dyk b { font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.details .side-col .dyk p { margin: 2px 0 0; color: var(--ink); line-height: 1.4; min-height: 4.2em; }
+.details .side-col .dyk .dots { display: flex; gap: 4px; margin-top: 6px; }
+.details .side-col .dyk .dots i { width: 4px; height: 4px; border-radius: 2px; background: var(--line); }
+.details .side-col .dyk .dots i.on { width: 12px; background: var(--ink2); }
 .details .below { position: relative; padding-top: 12px; background: var(--tray); }
 .details .hint { color: var(--ink3); font-size: 14px; margin-top: 14px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0 var(--gutter); }

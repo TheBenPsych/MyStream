@@ -408,6 +408,32 @@ B.audioLine = (it) => {
 const langName = (code) => { try { return new Intl.DisplayNames(["en"], { type: "language" }).of(code); } catch (e) { return code; } };
 B.langName = langName;
 
+// ---------- "Did you know" on movie and show pages ----------
+// One fact about this title at a time from Tower (hand-checked first, then Wikipedia), fading to the next
+// every 10 seconds, with small dots. Nothing shows when the title has no facts.
+B.didYouKnow = async (it, color, nav) => {
+  const box = $("#dyk");
+  if (!box) return;
+  const got = await B.call("GET", `/api/facts/${it.Id}`).catch(() => null);
+  const facts = ((got && got.facts) || []).map((f) => f.text).filter(Boolean);
+  if (!facts.length || !B.alive(nav)) return;
+  let i = 0;
+  const dots = Math.min(facts.length, 8);
+  const draw = () => {
+    box.innerHTML = `<b style="color:${color}">DID YOU KNOW</b><p class="fade-in">${esc(facts[i])}</p>` +
+      (facts.length > 1 ? `<div class="dots">${Array.from({ length: dots }, (_, d) => `<i class="${d === i % dots ? "on" : ""}"></i>`).join("")}</div>` : "");
+  };
+  box.style.borderColor = color;
+  box.hidden = false;
+  draw();
+  if (facts.length < 2) return;
+  const timer = setInterval(() => {
+    if (!B.alive(nav) || !document.body.contains(box)) return clearInterval(timer);
+    i = (i + 1) % facts.length;
+    draw();
+  }, 10000);
+};
+
 // ---------- movie page ----------
 B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   const it = await B.get(`/Users/${B.uid()}/Items/${m[1]}?Fields=${B.FIELDS},People,Studios,MediaSources,ProductionLocations,RemoteTrailers,LocalTrailerCount,Chapters`).catch(() => B.get(`/Items/${m[1]}?userId=${B.uid()}&Fields=${B.FIELDS},People,MediaSources,RemoteTrailers`));
@@ -440,6 +466,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
         ${stars.length ? `<div><b>Starring</b><span>${esc(stars.join(", "))}</span></div>` : ""}
         ${B.audioLine(it) ? `<div><b>Audio</b><span>${esc(B.audioLine(it))}</span></div>` : ""}
         ${(it.Genres || []).length ? `<div><b>Genres</b><span>${esc(it.Genres.slice(0, 3).join(", "))}</span></div>` : ""}
+        <div class="dyk" id="dyk" hidden></div>
       </div>
     </div></div>
     <div class="below" id="below">${B.spinner()}</div>
@@ -450,6 +477,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   if ($("#bRate")) $("#bRate").onclick = () => B.rate(it);
   if ($("#bTrailer")) $("#bTrailer").onclick = () => B.trailer(it);
   $("#bMore").onclick = () => movieMore(it);
+  B.didYouKnow(it, DOORS.movies.color, nav);
   const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
   if (!B.alive(nav)) return;
   $("#below").innerHTML = B.row("More like this", similar.map((x) => B.posterCard(x))) + B.peopleRow(it) + (await B.facts(it));
@@ -532,6 +560,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
         ${it.Studios && it.Studios.length ? `<div><b>Network</b><span>${esc(it.Studios[0].Name)}</span></div>` : ""}
         ${stars.length ? `<div><b>Starring</b><span>${esc(stars.join(", "))}</span></div>` : ""}
         ${(it.Genres || []).length ? `<div><b>Genres</b><span>${esc(it.Genres.slice(0, 3).join(", "))}</span></div>` : ""}
+        <div class="dyk" id="dyk" hidden></div>
       </div>
     </div></div>
     <div class="below">
@@ -543,6 +572,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   </div>`;
   B.wireTop();
   $(".btns .btn").focus({ preventScroll: true });
+  B.didYouKnow(it, DOORS.shows.color, nav);
   $("#bList").onclick = (e) => B.toggleList(it, e.currentTarget);
   if ($("#bRate")) $("#bRate").onclick = () => B.rate(it);
   if ($("#bTrailer")) $("#bTrailer").onclick = () => B.trailer(it);

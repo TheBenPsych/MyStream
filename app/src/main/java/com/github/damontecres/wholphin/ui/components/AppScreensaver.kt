@@ -111,8 +111,8 @@ class ScreensaverViewModel
                     if (item == null || userId == null) {
                         null to false
                     } else {
-                        // A fact about the movie or show on screen, otherwise a normal "Did you know?"
-                        val picked = funFacts.aboutItem(item) ?: funFacts.pick(api, userId)
+                        // A fact about the movie or show on screen, otherwise a random "Did you know?"
+                        val picked = funFacts.forItem(item).randomOrNull() ?: funFacts.pick(api, userId)
                         picked to (picked != null)
                     }
                 }

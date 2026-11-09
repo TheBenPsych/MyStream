@@ -213,10 +213,15 @@ fun MovieHeroContent(
                                 }
                             }
                             if (!easy) {
-                                HeroSideColumn(
-                                    lines = remember(movie, state.chosenStreams) { sideLines(movie, state) },
-                                    modifier = Modifier.padding(start = 32.dp, bottom = 4.dp),
-                                )
+                                Column(Modifier.padding(start = 32.dp, bottom = 4.dp).widthIn(max = 280.dp)) {
+                                    HeroSideColumn(lines = remember(movie, state.chosenStreams) { sideLines(movie, state) })
+                                    DidYouKnow(
+                                        facts = state.facts,
+                                        accent = BenflixColors.Movies,
+                                        card = false,
+                                        modifier = Modifier.padding(top = 16.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -232,6 +237,12 @@ fun MovieHeroContent(
                             actions = actions,
                             onMore = { showMore = true },
                             onRate = { showRate = true },
+                        )
+                        DidYouKnow(
+                            facts = state.facts,
+                            accent = BenflixColors.Movies,
+                            card = true,
+                            modifier = Modifier.padding(top = 14.dp),
                         )
                     }
                 }
