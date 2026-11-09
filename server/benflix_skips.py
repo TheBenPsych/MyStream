@@ -732,7 +732,15 @@ def pick(cands, length, kind="Intro"):
     kind_check.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
     best = kind_check[0]
     s, e, source, _ = best[3]
-    return {"start": round(s, 2), "end": round(min(e, length) if length else e, 2), "source": source, "sure": bool(best[1] or best[0])}
+    sure = bool(best[1] or best[0])
+    if kind == "Outro" and not best[0]:
+        # The finders disagree on when the credits start (like Tower hearing 19:16 and Intro Skipper
+        # 20:02): take the later time and don't skip by itself. Skipping too late only shows a few
+        # seconds of credits; too early cuts off the end of the story.
+        later = max((c for c in cands if PRIORITY[c[2]] < 90), key=lambda c: c[0])
+        if later[0] - s > AGREE:
+            s, e, source, sure = later[0], max(e, later[1]), later[2], False
+    return {"start": round(s, 2), "end": round(min(e, length) if length else e, 2), "source": source, "sure": sure}
 
 
 def _fix_segment(kind, fix, found, auto, length):
