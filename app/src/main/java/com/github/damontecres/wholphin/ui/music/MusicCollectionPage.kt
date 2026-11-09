@@ -295,6 +295,14 @@ fun MusicCollectionPage(
                         )
                     }
                 }
+                if (songs.isNotEmpty() && !isTv) {
+                    add(
+                        DialogItem(headlineContent = { Text("Download all to this phone") }, onClick = {
+                            pageMenu = false
+                            actions.download(songs)
+                        }),
+                    )
+                }
                 if (songs.isNotEmpty()) {
                     add(
                         DialogItem(headlineContent = { Text("Add all to Up next") }, onClick = {

@@ -25,7 +25,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** A movie or episode saved on this phone */
+/** A movie, episode or song saved on this phone */
 data class DownloadedItem(
     val itemId: UUID,
     val title: String,
@@ -35,6 +35,10 @@ data class DownloadedItem(
     val downloadId: Long,
     val fileName: String,
     val addedAt: Long,
+    /** A song (shown under Music in Downloads and played by the music player) */
+    val music: Boolean = false,
+    val albumId: UUID? = null,
+    val runtimeMs: Long = 0L,
 )
 
 sealed interface DownloadStatus {
@@ -93,7 +97,20 @@ class DownloadService
                 all.filter { it.userId == null || it.userId == userId }
             }
 
-        fun canDownload(item: BaseItem): Boolean = item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.EPISODE
+        fun canDownload(item: BaseItem): Boolean =
+            item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.EPISODE || item.type == BaseItemKind.AUDIO
+
+        /** The saved copy of a song (or video), once it has finished downloading */
+        fun localFile(itemId: UUID): File? {
+            val item = find(itemId) ?: return null
+            val f = file(item)
+            return if (f.exists() && f.length() > 0 && status(item) == DownloadStatus.Done) f else null
+        }
+
+        /** Benflix music: save every song of an album or playlist that isn't saved yet */
+        suspend fun startAll(items: List<BaseItem>) {
+            items.filter { it.type == BaseItemKind.AUDIO }.forEach { start(it) }
+        }
 
         fun find(itemId: UUID): DownloadedItem? = _items.value.firstOrNull { it.itemId == itemId }
 
@@ -104,11 +121,23 @@ class DownloadService
                     ?.firstOrNull()
                     ?.container
                     ?.substringBefore(",")
-                    ?.ifBlank { null } ?: "mkv"
+                    ?.ifBlank { null } ?: item.data.container
+                    ?.substringBefore(",")
+                    ?.ifBlank { null }
+                    ?: if (item.type == BaseItemKind.AUDIO) "mp3" else "mkv"
+            val music = item.type == BaseItemKind.AUDIO
             val fileName = "${item.id}.$container"
             val title = item.title ?: item.name ?: ""
             val subtitle =
-                if (item.type == BaseItemKind.EPISODE) {
+                if (music) {
+                    listOfNotNull(
+                        item.data.artists
+                            ?.joinToString(", ")
+                            ?.ifBlank { null },
+                        item.data.album,
+                    ).joinToString(" · ")
+                        .ifBlank { null }
+                } else if (item.type == BaseItemKind.EPISODE) {
                     listOfNotNull(
                         item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s:E$e" } },
                         item.name,
@@ -138,13 +167,20 @@ class DownloadService
                     downloadId = downloadId,
                     fileName = fileName,
                     addedAt = System.currentTimeMillis(),
+                    music = music,
+                    albumId = item.data.albumId,
+                    runtimeMs = (item.data.runTimeTicks ?: 0L) / 10_000L,
                 )
             save(listOf(downloaded) + _items.value)
             // Keep a picture to show in the list, even without internet
             withContext(WholphinDispatchers.IO) {
                 try {
                     val imageItemId =
-                        if (item.type == BaseItemKind.EPISODE) item.data.seriesId ?: item.id else item.id
+                        when {
+                            item.type == BaseItemKind.EPISODE -> item.data.seriesId ?: item.id
+                            music -> item.data.albumId ?: item.id
+                            else -> item.id
+                        }
                     val url = api.imageApi.getItemImageUrl(imageItemId, ImageType.PRIMARY, maxHeight = 450)
                     URL(url).openStream().use { input ->
                         posterFile(item.id).outputStream().use { input.copyTo(it) }
@@ -228,6 +264,9 @@ class DownloadService
                                     .put("downloadId", it.downloadId)
                                     .put("fileName", it.fileName)
                                     .put("addedAt", it.addedAt)
+                                    .put("music", it.music)
+                                    .put("albumId", it.albumId?.toString() ?: "")
+                                    .put("runtimeMs", it.runtimeMs)
                             },
                         ).toString(),
                 )
@@ -248,6 +287,9 @@ class DownloadService
                         downloadId = o.getLong("downloadId"),
                         fileName = o.getString("fileName"),
                         addedAt = o.optLong("addedAt"),
+                        music = o.optBoolean("music"),
+                        albumId = o.optString("albumId").ifBlank { null }?.let(UUID::fromString),
+                        runtimeMs = o.optLong("runtimeMs"),
                     )
                 }
             } catch (ex: Exception) {

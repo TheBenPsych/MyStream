@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.DownloadService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.components.DialogItem
@@ -21,6 +22,7 @@ import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.jellyfin.sdk.model.api.BaseItemKind
 import javax.inject.Inject
@@ -33,7 +35,13 @@ class MusicActionsViewModel
         val musicService: MusicService,
         val navigationManager: NavigationManager,
         private val serverRepository: ServerRepository,
+        val downloads: DownloadService,
     ) : ViewModel() {
+        /** Benflix on phones: save songs for listening with no internet (Wi-Fi only, like movies) */
+        fun download(songs: List<BaseItem>) = viewModelScope.launchIO { downloads.startAll(songs) }
+
+        fun removeDownload(song: BaseItem) = downloads.delete(song.id)
+
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
         fun playList(
@@ -92,6 +100,7 @@ fun SongMenu(
     playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
 ) {
     var pickPlaylist by remember { mutableStateOf(false) }
+    val isTv = rememberIsTv()
     if (pickPlaylist) {
         val playlistState by playlistViewModel.playlistState.collectAsState()
         PlaylistDialog(
@@ -148,6 +157,15 @@ fun SongMenu(
                     },
                 ),
             )
+            if (!isTv) {
+                val saved = actions.downloads.find(song.id) != null
+                add(
+                    DialogItem(headlineContent = { Text(if (saved) "Remove from this phone" else "Download to this phone") }, onClick = {
+                        if (saved) actions.removeDownload(song) else actions.download(listOf(song))
+                        onDismiss()
+                    }),
+                )
+            }
             if (onRemoveFromPlaylist != null) {
                 add(
                     DialogItem(headlineContent = { Text("Remove from this playlist") }, onClick = {
