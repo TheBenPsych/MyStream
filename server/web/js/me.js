@@ -195,8 +195,10 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   if (sec.id === "updates") {
     const s = await B.call("GET", "api/web/version").catch(() => ({}));
     hp.innerHTML = `<p class="dim">Benflix in a browser updates itself: Tower checks for a new version when it starts and then every hour. Reload the page to use the newest one.</p>
-      <div class="list"><div class="item"><div class="grow"><div class="t">Last checked</div><div class="s">${s.checked ? esc(B.when(new Date(s.checked * 1000).toISOString())) : "Not yet"}</div></div><div class="acts"><button class="btn small white" onclick="location.reload()">Reload now</button></div></div></div>
+      <div class="list"><div class="item"><div class="grow"><div class="t">Last checked</div><div class="s">${s.checked ? esc(B.when(new Date(s.checked * 1000).toISOString())) : "Not yet"}</div></div><div class="acts"><button class="btn small white" onclick="location.reload()">Reload now</button></div></div>
+      <div class="item"><div class="grow"><div class="t">Install Benflix on this computer</div><div class="s">${esc(B.installLine())}</div></div><div class="acts"><button class="btn small white" id="hpInstall">${B.installed() ? "Installed" : "Install"}</button></div></div></div>
       <p class="dim">The TV and phone app update from Settings > Help and updates on each device.</p>`;
+    $("#hpInstall").onclick = () => B.install();
   }
   if (sec.id === "new") {
     hp.innerHTML = B.spinner();
