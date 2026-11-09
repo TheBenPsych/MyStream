@@ -80,11 +80,12 @@ B.route(/^\/requests/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   const tab = B.q("tab") || "movies";
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:6px"><div class="h1">Ask for something new</div>
-    <p class="sub">Movies and shows that aren't on Benflix yet. Ask, and Ben's server finds them.</p>
-    <div class="row" style="margin-bottom:10px">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
+    <p class="sub">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : "Movies and shows that aren't on Benflix yet. Ask, and Ben's server finds them."}</p>
+    <div class="row" style="margin-bottom:10px">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}"></div></div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
+  if (tab === "music" && B.me.admin) return B.musicTab(nav);
   const me = await B.seerrMe();
   if (!B.alive(nav)) return;
   if (!me || !me.active || !me.userFound) {
@@ -150,3 +151,129 @@ B.route(/^\/requests/, async (m, nav) => {
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 350); };
   if (B.q("q")) search(B.q("q")); else drawRows();
 });
+
+// ---------- Music (only Ben): ask for songs and albums, playlists, the Music Drop folder, tidy-up ----------
+// Talks to the helper's /api/music (benflix_music.py), which hands the downloading to Lidarr on Tower.
+const music = (method, path, body) => B.call(method, "/api/music" + path, body);
+const songLine = (s) => `<div class="item"><div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(s.cover || "")}')"></div>
+  <div class="grow"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)}${s.album ? " · " + esc(s.album) : ""}${s.seconds ? " · " + Math.floor(s.seconds / 60) + ":" + String(s.seconds % 60).padStart(2, "0") : ""}</div></div>
+  <div class="acts">${s.asked ? `<span class="dim">${esc(s.asked)}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
+const albumCard = (a) => `<button class="poster" data-mopen="album:${a.id}" title="${esc(a.title)}"><div class="im" style="aspect-ratio:1;${a.cover ? `background-image:url('${esc(a.cover)}')` : ""}"></div>
+  <div class="cap">${esc(a.title)}<small>${esc(a.asked || [a.year, a.type === "single" ? "Single" : a.type === "ep" ? "EP" : ""].filter(Boolean).join(" · "))}</small></div></button>`;
+const artistCard = (a) => `<button class="poster" data-mopen="artist:${a.id}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div></button>`;
+
+B.musicTab = async (nav) => {
+  $("#rq").placeholder = "Search any song, album or artist";
+  const rows = $("#rows");
+  rows.innerHTML = `<div id="mfound"></div><div class="wrap" id="mstatus">${B.spinner()}</div>`;
+  let searching = false, tidyFolder = null;
+  const drawStatus = async () => {
+    let st;
+    try { st = await music("GET", "/status"); } catch (e) { if (B.alive(nav)) $("#mstatus").innerHTML = `<div class="note">${esc(e.message)}</div>`; return; }
+    if (!B.alive(nav) || searching) return;
+    const t = st.tidy || { folders: [], lines: [], undo_files: [] };
+    if (!t.folders.includes(tidyFolder)) tidyFolder = t.folders[0] || null;
+    $("#mstatus").innerHTML = `${(st.problems || []).map((p) => `<div class="note yellow">${esc(p)}</div>`).join("")}
+      <h3 class="section-title">Your music requests${st.requests.length ? ` (${st.requests.length})` : ""}</h3>
+      ${st.requests.length ? `<div class="list">${st.requests.map((r) => `<div class="item"><div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(r.cover || "")}')"></div>
+        <div class="grow"><div class="t">${esc(r.title)}</div><div class="s">${esc(r.artist)}${r.kind === "album" ? " · Album" : ""} · <span class="${r.bad ? "word-bad" : r.state === "ready" ? "word-ok" : "word-check"}">${esc(r.words)}</span></div>
+        <div class="bar"><i class="${r.bad ? "bad" : ""}" style="width:${Math.round(r.bar * 100)}%"></i></div></div>
+        <div class="acts">${r.can_retry ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button></div></div>`).join("")}</div>`
+        : `<p class="dim">Nothing asked for yet. Search a song or album above.</p>`}
+      <h3 class="section-title">Playlists</h3>
+      <p class="dim">Paste a Spotify, YouTube Music or Deezer playlist link. Every song you don't have yet is asked for, and the same playlist is made in your music as they arrive.</p>
+      <p><button class="btn white" id="mplaylist">Bring in a playlist</button></p>
+      ${(st.playlists || []).length ? `<div class="list">${st.playlists.map((p) => `<div class="item"><div class="grow"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.words)}</div><div class="bar"><i style="width:${Math.round(p.bar * 100)}%"></i></div></div>
+        <div class="acts"><button class="btn small" data-mplremove="${p.id}">${p.done ? "Done" : "Remove"}</button></div></div>`).join("")}</div>` : ""}
+      <h3 class="section-title">Music Drop folder</h3>
+      <p class="dim">Put music files in <b>${esc(st.drop_folder)}</b>. Every few minutes they're sorted into Music by artist and album, with covers. Lossless files become 320 MP3s.</p>
+      ${(st.drop_lines || []).length ? `<pre class="log">${esc(st.drop_lines.slice(-8).join("\n"))}</pre>` : ""}
+      <h3 class="section-title" style="margin-top:22px">Tidy up old music</h3>
+      <p class="dim">Sorts a folder (like the music SoulSync got) into Music/Artist/Album/01 - Song, fixes names, adds covers and puts songs you have twice in Music Leftovers. Press Check first to see what would move.</p>
+      <div class="row" style="margin-bottom:10px">${t.folders.map((f) => `<button class="chip ${f === tidyFolder ? "on" : ""}" data-mfolder="${esc(f)}">${esc(f)}</button>`).join("")}</div>
+      ${t.running ? `<p class="dim">${t.mode === "preview" ? "Checking…" : "Tidying…"}</p>` : tidyFolder ? `<div class="acts" style="justify-content:flex-start;margin-bottom:10px"><button class="btn" data-mtidy="preview">Check first</button><button class="btn white" data-mtidy="apply">Tidy it</button>${t.undo_files.length ? `<button class="btn" data-mtidy="undo">Undo last tidy-up</button>` : ""}</div>` : ""}
+      ${t.result ? `<p>${esc(t.result)}</p>` : ""}${t.lines.length ? `<pre class="log">${esc(t.lines.slice(-200).join("\n"))}</pre>` : ""}`;
+    rows.dataset.undo = t.undo_files[t.undo_files.length - 1] || "";
+  };
+  const search = async (text) => {
+    const box = $("#mfound");
+    searching = text.trim().length >= 2;
+    $("#mstatus").style.display = searching ? "none" : "";
+    if (!searching) { box.innerHTML = ""; drawStatus(); return; }
+    box.innerHTML = `<div class="wrap">${B.spinner()}</div>`;
+    let r;
+    try { r = await music("GET", "/search?q=" + enc(text.trim())); } catch (e) { box.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`; return; }
+    if (!B.alive(nav) || $("#rq").value.trim() !== text.trim()) return;
+    const none = !r.songs.length && !r.albums.length && !r.artists.length;
+    box.innerHTML = (r.songs.length ? `<div class="wrap"><h3 class="section-title">Songs</h3><div class="list">${r.songs.slice(0, 12).map(songLine).join("")}</div></div>` : "")
+      + B.row("Albums", r.albums.map(albumCard)) + B.row("Artists", r.artists.map(artistCard))
+      + (none ? `<div class="wrap empty">Nothing found. Try fewer words, or the artist's name.</div>` : "");
+  };
+  const openPage = async (kind, id) => {
+    const p = B.side(B.spinner());
+    try {
+      if (kind === "album") {
+        const d = await music("GET", "/album?id=" + id);
+        p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>
+          <div style="width:180px;aspect-ratio:1;border-radius:12px;margin-bottom:14px;background:var(--pg3) center/cover url('${esc(d.album.cover || "")}')"></div>
+          <h3>${esc(d.album.title)}</h3><p class="dim">${esc([d.album.artist, d.album.year].filter(Boolean).join(" · "))}</p>
+          <div class="acts" style="justify-content:flex-start;margin:12px 0">${d.album.asked ? `<span class="dim">${esc(d.album.asked)}</span>` : `<button class="btn white" data-malbumonly="${d.album.id}" data-maname="${esc(d.album.title)}">Ask for the whole album</button>`}</div>
+          <p class="dim">Or pick a song to ask for just that one.</p><div class="list">${d.songs.map(songLine).join("")}</div>`;
+      } else {
+        const d = await music("GET", "/artist?id=" + id);
+        p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>${esc(d.artist.name)}</h3>
+          ${d.songs.length ? `<h4 class="dim" style="margin:12px 0 8px">Best songs</h4><div class="list">${d.songs.map(songLine).join("")}</div>` : ""}
+          <h4 class="dim" style="margin:12px 0 8px">Albums, EPs and singles</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.albums.map(albumCard).join("")}</div>`;
+      }
+    } catch (e) {
+      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
+    }
+  };
+  const ask = async (kind, id, name) => {
+    await music("POST", "/request", { kind, id: +id });
+    B.closeAll();
+    const q = $("#rq").value;
+    if (q.trim().length >= 2) search(q); else drawStatus();
+    return `Asked for ${name}. It shows under Your music requests.`;
+  };
+  // One click handler for the whole page and its side panels
+  const onClick = (e) => {
+    if (!B.alive(nav)) return document.removeEventListener("click", onClick);
+    const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mretry],[data-mremove],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
+    if (!b) return;
+    const d = b.dataset;
+    if (d.msong) {
+      const s = B.side(`<h3>${esc(d.mname)}</h3><p class="dim">${esc(d.maname)}</p>
+        <button class="opt" data-pick="song">Just this song</button><button class="opt" data-pick="album">The whole album</button>`);
+      s.addEventListener("click", (ev) => {
+        const pick = ev.target.closest("[data-pick]");
+        if (pick) B.busy(pick, () => (pick.dataset.pick === "song" ? ask("song", d.msong, d.mname) : ask("album", d.malbum, d.maname)));
+      });
+    } else if (d.malbumonly) B.busy(b, () => ask("album", d.malbumonly, d.maname));
+    else if (d.mopen) { const [k, id] = d.mopen.split(":"); openPage(k, id); }
+    else if (d.mretry) B.busy(b, async () => { await music("POST", `/request/${d.mretry}/retry`); drawStatus(); return "Looking again."; });
+    else if (d.mremove) B.busy(b, async () => { await music("POST", `/request/${d.mremove}/remove`); drawStatus(); });
+    else if (d.mplremove) B.busy(b, async () => { await music("POST", `/playlist/${d.mplremove}/remove`); drawStatus(); });
+    else if (d.mfolder) { tidyFolder = d.mfolder; drawStatus(); }
+    else if (d.mtidy) {
+      B.busy(b, async () => {
+        const mode = d.mtidy;
+        if (mode === "apply" && !(await B.ask(`Tidy ${tidyFolder}?`, "Everything is sorted into Music/Artist/Album. Songs you have twice go to Music Leftovers, and Undo puts it all back.", "Tidy it", "Not now"))) return;
+        if (mode === "undo" && !(await B.ask("Undo the last tidy-up?", "The files go back where they were.", "Undo", "Not now"))) return;
+        await music("POST", "/tidy", { mode, folder: tidyFolder || "", undo: mode === "undo" ? rows.dataset.undo : "" });
+        drawStatus();
+      });
+    } else if (b.id === "mplaylist") {
+      B.askText("Bring in a playlist", "Paste the playlist's link (Share > Copy link), or songs one per line like: Queen - Bohemian Rhapsody", "", { long: true, ok: "Bring it in" }).then((link) => {
+        if (!link || !link.trim()) return;
+        B.busy(null, async () => { const p = await music("POST", "/playlist", { link: link.trim() }); drawStatus(); return `Bringing in ${p.name}.`; });
+      });
+    }
+  };
+  document.addEventListener("click", onClick);
+  B.onLeave(() => document.removeEventListener("click", onClick));
+  let t;
+  $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 400); };
+  B.every(10000, () => { if (!searching) drawStatus(); });
+  if (B.q("q")) search(B.q("q")); else drawStatus();
+};

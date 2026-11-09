@@ -8,6 +8,8 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
   (/api/bios) and the person's saves (/api/save) from here, and sends the saves back when they quit.
   Saves are kept per Jellyfin account in /saves/<account id>/<game id>/.
 - Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
+- Music (admin only): ask for songs and albums (Lidarr does the downloading), playlists, the Music Drop
+  folder and the music tidy-up. See benflix_music.py.
 - Benflix in a web browser: open http://<server>:8097 and anyone signs in with their Benflix name.
   The app is in web/ next to this file (benflix_web.py serves it and keeps it up to date from GitHub).
   /api/web/login signs in through Jellyfin, /api/web/jf/... passes the browser's requests on to
@@ -43,6 +45,11 @@ try:  # Benflix in a web browser (the files, Quick Connect, video), in benflix_w
     import benflix_web as web
 except ImportError:
     web = None
+
+try:  # Music requests (Lidarr), the Music Drop folder and the music tidy-up, in benflix_music.py next to this file
+    import benflix_music as music
+except ImportError:
+    music = None
 
 try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next to this file
     import benflix_server_tools as tools
@@ -700,6 +707,7 @@ class Handler(BaseHTTPRequestHandler):
                         "live_tv": livetv is not None,
                         "web_app": web is not None,
                         "skips": skips is not None and skips.tools_ok(),
+                        "music": music is not None,
                     },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
@@ -753,6 +761,12 @@ class Handler(BaseHTTPRequestHandler):
                 if skips is None:
                     raise HelperError(503, "Skip times aren't on the server yet. Run the Benflix setup command again.")
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
+                return self.send(status, answer)
+            if path.startswith("/api/music/"):
+                # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
+                if music is None:
+                    raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
+                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json)
                 return self.send(status, answer)
             if path.startswith("/api/admin/"):
                 if not is_admin:
@@ -871,5 +885,7 @@ if __name__ == "__main__":
         skips.start(jellyfin_call)
     if web is not None:
         web.start()
+    if music is not None:
+        music.start(jellyfin_call)
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

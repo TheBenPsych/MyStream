@@ -18,18 +18,23 @@ MEDIA=/mnt/user/Homelab/Media
 TRACKS=/mnt/user/appdata/benflix-tracks
 LIVETV=/mnt/user/appdata/benflix-livetv
 SKIPS=/mnt/user/appdata/benflix-skips
+MUSICDATA=/mnt/user/appdata/benflix-music
 OLD=/mnt/user/appdata/wolf/benflix
 RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS"
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS" "$MUSICDATA"
+# Music: the Music folder Jellyfin reads, the drop folder that sorts itself, and a spot for leftovers
+mkdir -p "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers"
+chown nobody:users "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers" 2>/dev/null
+chmod 777 "$MEDIA/Music Drop"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -121,12 +126,52 @@ find_arr() { # $1 = sonarr or radarr, $2 = usual port
 find_arr sonarr 8989
 find_arr radarr 7878
 
+say "Connecting Lidarr (for music requests)"
+# Same idea as Sonarr and Radarr, plus where Lidarr sees the Music folder (like /data/Music)
+find_lidarr() {
+  local c cfg key port base ipaddr u where
+  c=$(docker ps -a --format '{{.Names}}' | grep -i lidarr | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Lidarr app found yet. Install it with the music setup steps, then run this again."; return; fi
+  cfg=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")/config.xml
+  if [ ! -f "$cfg" ]; then echo "  PROBLEM  Couldn't find Lidarr's settings file ($cfg). Open Lidarr once, then run this again."; return; fi
+  key=$(sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' "$cfg" | head -1)
+  port=$(sed -n 's:.*<Port>\(.*\)</Port>.*:\1:p' "$cfg" | head -1)
+  base=$(sed -n 's:.*<UrlBase>\(.*\)</UrlBase>.*:\1:p' "$cfg" | head -1)
+  [ -n "$port" ] || port=8686
+  # Lidarr's folder for Homelab/Media (or Homelab/Media/Music itself)
+  where=$(docker inspect -f '{{range .Mounts}}{{.Source}}={{.Destination}}{{"\n"}}{{end}}' "$c" | while IFS='=' read -r src dst; do
+    src=${src%/}
+    case "$src" in
+      "$MEDIA/Music") echo "$dst" ;;
+      "$MEDIA") echo "${dst%/}/Music" ;;
+    esac
+  done | head -1)
+  if [ -z "$where" ]; then
+    echo "  PROBLEM  Lidarr can't see Homelab/Media. In Lidarr's Docker settings add a path: Container /data, Host $MEDIA. Then run this again."
+    return
+  fi
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port$base" "http://$HOST_IP:$port$base" ${ipaddr:+"http://$ipaddr:$port$base"}; do
+    if curl -fs -m 5 -H "X-Api-Key: $key" "$u/api/v1/system/status" >/dev/null; then
+      printf 'LIDARR_URL=%s\nLIDARR_KEY=%s\nLIDARR_MUSIC=%s\n' "$u" "$key" "$where" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u, music in $where)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but couldn't reach it on port $port. Send this output to Claude."
+}
+find_lidarr
+# Optional: a Spotify app key reads Spotify playlists longer than 100 songs (see the music setup steps)
+MUSIC_ENV=$APP/music.env
+[ -f "$MUSIC_ENV" ] || : >"$MUSIC_ENV"
+chmod 600 "$MUSIC_ENV"
+
 say "Starting the helper (benflix-games on port 8097)"
 docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
-  --env-file "$ENV" --env-file "$TOOLS_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
+  --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" \
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" \
   python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5
 # The first start also installs ffmpeg for the skip times, which can take a minute or two
@@ -155,6 +200,18 @@ if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"skips": true'; then
   echo "      other season overnight. Progress: http://$HOST_IP:8097/api/skips/status (needs sign-in)"
 else
   echo "  PROBLEM  The skip times tools (ffmpeg and fpcalc) didn't install. Send this output to Claude."
+fi
+
+say "Music"
+if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"music": true'; then
+  if grep -q LIDARR_URL "$TOOLS_ENV"; then
+    echo "  ok  Ask for music in Benflix > Requests > Music (only you can)."
+  else
+    echo "  ok  Music is on, but Lidarr isn't connected yet (see above)."
+  fi
+  echo "      Drop music files in \\\\TOWER\\Homelab\\Media\\Music Drop and they sort themselves into Music."
+else
+  echo "  PROBLEM  Music didn't load in the helper. Send this output to Claude."
 fi
 
 say "Free Live TV"
