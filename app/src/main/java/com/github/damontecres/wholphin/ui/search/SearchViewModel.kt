@@ -498,8 +498,10 @@ class SearchViewModel
                         val combined =
                             when {
                                 understood.isEmpty() -> sorted
+
                                 // Few title matches: what the words describe comes first
                                 sorted.size < 3 -> (understood + sorted).distinctBy { it.id }
+
                                 else -> (sorted + understood).distinctBy { it.id }
                             }
                         val plainWords = words.label.takeIf { understood.isNotEmpty() && it.isNotBlank() }

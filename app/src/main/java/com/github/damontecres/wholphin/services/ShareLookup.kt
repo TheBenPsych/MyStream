@@ -113,13 +113,20 @@ class ShareLookup
                         .header("User-Agent", "Mozilla/5.0 (Linux; Android 12) Benflix")
                         .header("Accept-Language", "en")
                         .build()
-                http.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return null
-                    // The head is enough
-                    val head = response.body.source().let { src -> src.request(MAX_PAGE_BYTES); src.buffer.snapshot().utf8() }
-                    OG_TITLE.find(head)?.groupValues?.get(1)
-                        ?: TITLE_TAG.find(head)?.groupValues?.get(1)
-                }?.let { decodeHtml(it) }
+                http
+                    .newCall(request)
+                    .execute()
+                    .use { response ->
+                        if (!response.isSuccessful) return null
+                        // The head is enough
+                        val head =
+                            response.body.source().let { src ->
+                                src.request(MAX_PAGE_BYTES)
+                                src.buffer.snapshot().utf8()
+                            }
+                        OG_TITLE.find(head)?.groupValues?.get(1)
+                            ?: TITLE_TAG.find(head)?.groupValues?.get(1)
+                    }?.let { decodeHtml(it) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {

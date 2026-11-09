@@ -125,7 +125,11 @@ class BigEventViewModel
                             ),
                         ).content.items
                 hits.forEach { p ->
-                    val start = p.startDate?.atZone(zone)?.toInstant()?.toEpochMilli() ?: return@forEach
+                    val start =
+                        p.startDate
+                            ?.atZone(zone)
+                            ?.toInstant()
+                            ?.toEpochMilli() ?: return@forEach
                     val channel = p.channelName ?: return@forEach
                     val name = p.name ?: return@forEach
                     // Repeats and highlights shows aren't the event

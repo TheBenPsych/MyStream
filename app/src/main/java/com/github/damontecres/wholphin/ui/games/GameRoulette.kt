@@ -84,7 +84,14 @@ fun GameRouletteDialog(
             )
             Box(Modifier.size(width = 200.dp, height = 200.dp), contentAlignment = Alignment.Center) {
                 ServerGameCard(
-                    game = ServerGame(id = showing.id, name = showing.name, coverUrl = showing.coverUrl, playable = true, size = showing.size),
+                    game =
+                        ServerGame(
+                            id = showing.id,
+                            name = showing.name,
+                            coverUrl = showing.coverUrl,
+                            playable = true,
+                            size = showing.size,
+                        ),
                     token = token,
                     status = null,
                     onClick = { if (landed) onOpen(showing) },
