@@ -54,6 +54,7 @@ class ScreensaverService
         private val api: ApiClient,
         private val userPreferencesService: UserPreferencesService,
         private val imageUrlService: ImageUrlService,
+        private val funFacts: BenflixFunFacts,
     ) {
         private val _state = MutableStateFlow(ScreensaverState(false, false, false, false))
         val state: StateFlow<ScreensaverState> = _state
@@ -228,11 +229,22 @@ class ScreensaverService
                             .getCurrent()
                             .appPreferences
                             .interfacePreferences.screensaverPreference.duration.milliseconds
+                    // Benflix: only show movies and shows that have a "Did you know" fact to go with them.
+                    // After a full lap with none, show them anyway, so the screensaver never goes blank.
+                    var skippedInARow = 0
                     while (true) {
                         try {
                             val item = pager.getBlocking(index)
                             Timber.v("Next index=%s, item=%s", index, item?.id)
-                            if (item != null) {
+                            val noFacts =
+                                item != null &&
+                                    item.type != BaseItemKind.PHOTO &&
+                                    skippedInARow < pager.size &&
+                                    funFacts.forItem(item).isEmpty()
+                            if (noFacts) {
+                                skippedInARow++
+                            } else if (item != null) {
+                                skippedInARow = 0
                                 val backdropUrl =
                                     if (item.type == BaseItemKind.PHOTO) {
                                         api.libraryApi.getDownloadUrl(item.id)
