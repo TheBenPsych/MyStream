@@ -141,6 +141,7 @@ import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSegmentType
 import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
@@ -831,6 +832,17 @@ fun PlaybackPageContent(
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
             playing = channelPlaying,
             modifier = Modifier.align(Alignment.BottomStart),
+        )
+        // Benflix "Pause live TV" (Behind live tag, Jump to live) and "This channel is broken"
+        val liveItem = state.currentPlayback?.item
+        LiveExtras(
+            player = player,
+            isLiveChannel = liveItem?.type == BaseItemKind.TV_CHANNEL,
+            controlsVisible = controllerViewState.controlsVisible && !showSideGuide,
+            channelName = liveItem?.name,
+            channelNumber = liveItem?.data?.channelNumber ?: liveItem?.data?.number,
+            streamUrl = state.currentPlayback?.mediaSourceInfo?.path,
+            modifier = Modifier.align(Alignment.TopEnd),
         )
 
         if (watchingChannel && !isTv && controllerViewState.controlsVisible && !showSideGuide) {

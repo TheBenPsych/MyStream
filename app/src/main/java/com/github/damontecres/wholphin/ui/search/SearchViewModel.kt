@@ -487,7 +487,31 @@ class SearchViewModel
                                 .takeIf { list -> plain.length >= 3 && list.none { it.title?.lowercase()?.contains(plain) == true } }
                                 ?.firstOrNull { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.SERIES }
                                 ?.title
-                        _state.update { it.copy(combinedResults = SearchResult.Success(sorted), didYouMean = didYouMean) }
+                        // Benflix "Search in plain words": "funny 90s movie under 2 hours" becomes filters
+                        val words = PlainWordsQuery.parse(query)
+                        val understood =
+                            if (words.understood) {
+                                PlainWordsQuery.search(api, serverRepository.currentUser?.id, words)
+                            } else {
+                                emptyList()
+                            }
+                        val combined =
+                            when {
+                                understood.isEmpty() -> sorted
+
+                                // Few title matches: what the words describe comes first
+                                sorted.size < 3 -> (understood + sorted).distinctBy { it.id }
+
+                                else -> (sorted + understood).distinctBy { it.id }
+                            }
+                        val plainWords = words.label.takeIf { understood.isNotEmpty() && it.isNotBlank() }
+                        _state.update {
+                            it.copy(
+                                combinedResults = SearchResult.Success(combined),
+                                didYouMean = didYouMean.takeIf { plainWords == null },
+                                plainWords = plainWords,
+                            )
+                        }
                     } catch (ex: Exception) {
                         Timber.e(ex, "Exception in combined search")
                         _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
@@ -818,6 +842,8 @@ data class SearchState(
     val discoverEnabled: Boolean = true,
     /** Benflix: the closest name, when nothing matched what was typed exactly */
     val didYouMean: String? = null,
+    /** Benflix: what a plain-words search understood, like "Comedy · Movies · 1990s" */
+    val plainWords: String? = null,
 )
 
 private val allSearchableTypes =

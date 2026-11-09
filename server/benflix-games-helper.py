@@ -756,6 +756,11 @@ class Handler(BaseHTTPRequestHandler):
             if skips is not None and is_admin:
                 # Lets Tower check every season's skip times by itself, without waiting for someone to press play
                 skips.remember_admin(token, user_id)
+            if method == "POST" and path == "/api/livetv/broken":
+                # Benflix "This channel is broken" (anyone signed in)
+                if livetv is None:
+                    raise HelperError(503, "Live TV isn't on the server yet. Run the Benflix setup command again.")
+                return self.send(200, livetv.report_broken(self.read_json(), user_id))
             if path.startswith("/api/skips/"):
                 # Skip intro / credits times for the player (anyone signed in; fixes not from kids accounts)
                 if skips is None:

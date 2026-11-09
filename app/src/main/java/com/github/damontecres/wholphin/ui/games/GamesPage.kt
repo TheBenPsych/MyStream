@@ -415,6 +415,34 @@ fun GamesPage(
                             wasOpen = open != null
                         }
                         if (open == null) {
+                            // Benflix "Game roulette": can't decide? Spin and land on a random game
+                            var spinning by remember { mutableStateOf(false) }
+                            val spinGames =
+                                remember(refs) {
+                                    refs.values.filter { !KidsMode.isActive || it.kids }
+                                }
+                            if (spinGames.size > 1) {
+                                ActionTile(
+                                    title = "Game roulette",
+                                    subtitle = "Can't decide? Spin for a random game",
+                                    onClick = { spinning = true },
+                                )
+                            }
+                            if (spinning) {
+                                GameRouletteDialog(
+                                    games = spinGames,
+                                    token = viewModel.gamesToken,
+                                    onPlay = {
+                                        spinning = false
+                                        viewModel.playHere(context, it, resume = false)
+                                    },
+                                    onOpen = {
+                                        spinning = false
+                                        viewModel.choose(it)
+                                    },
+                                    onDismiss = { spinning = false },
+                                )
+                            }
                             // A grid of consoles: photo, name and how many games. Press one to see its games.
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
                                 if (playable.isNotEmpty()) {

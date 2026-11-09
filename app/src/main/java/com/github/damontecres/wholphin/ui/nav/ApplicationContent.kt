@@ -142,6 +142,13 @@ fun ApplicationContent(
             navigationManager = navigationManager,
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
         )
+        // Benflix "Type on your phone for the TV": the keyboard pop-up on phones
+        com.github.damontecres.wholphin.ui.search
+            .PhoneKeysPrompt()
+        // Benflix "Big event alerts": a one-tap reminder for the Super Bowl, the Oscars and the like
+        com.github.damontecres.wholphin.ui.main.BigEventOffer(
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
+        )
     }
 }
 
