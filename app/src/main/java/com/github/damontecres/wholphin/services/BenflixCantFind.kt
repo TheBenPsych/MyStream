@@ -99,6 +99,7 @@ class BenflixCantFind
         private val serverRepository: ServerRepository,
         private val displayPreferencesService: DisplayPreferencesService,
         private val seerrService: SeerrService,
+        private val showArrival: ShowArrival,
     ) {
         private val _entries = MutableStateFlow<Map<String, CantFindEntry>>(emptyMap())
 
@@ -294,6 +295,8 @@ class BenflixCantFind
                             ) {
                                 return@mapNotNull null
                             }
+                            // Benflix: every aired episode asked for is already here (Seerr waits on unaired ones)
+                            if (kind == "tv" && asks.any { showArrival.arrived(it, raw) }) return@mapNotNull null
                             // Benflix (Ben, 2026-11-08): two weeks of searching with nothing found, so he starts looking himself
                             if (looking >= lookDays) lookYourself += key!!
                             if (key in known) return@mapNotNull null
@@ -363,8 +366,15 @@ class BenflixCantFind
                                     true
                                 }
 
-                                request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status && tmdbId != null -> {
-                                    request.requestedArrived(seasonsOf(tmdbId))
+                                request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status &&
+                                    tmdbId != null &&
+                                    request.requestedArrived(seasonsOf(tmdbId)) -> {
+                                    true
+                                }
+
+                                // Benflix: every aired episode asked for is in, even if Seerr waits on unaired ones
+                                SeerrItemType.fromString(request.type) != SeerrItemType.MOVIE && tmdbId != null -> {
+                                    showArrival.arrived(request)
                                 }
 
                                 else -> {

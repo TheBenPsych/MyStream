@@ -197,6 +197,7 @@ class BenflixRequestsViewModel
         private val seerrLink: BenflixSeerrLink,
         private val cantFindList: BenflixCantFind,
         private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
+        private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
     ) : ViewModel() {
         val active = seerrService.active
 
@@ -1174,21 +1175,25 @@ class BenflixRequestsViewModel
                     item
                 }
             // Benflix: a show asked for by season is here once those seasons are, even if others are still missing
-            val available =
+            val isMovie = SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE
+            var details: JsonObject? = null
+            var available =
                 request.media?.status == SeerrAvailability.AVAILABLE.status ||
                     item?.availability == SeerrAvailability.AVAILABLE ||
                     request.requestedArrived(tvSeasons ?: request.media?.seasons)
+            // Benflix: a show is here once every asked-for episode that has aired is in, even when Seerr still
+            // waits on an unannounced season, unaired episodes or different season splits
+            if (!available && !isMovie && tmdbId != null && status != RequestStatus.DECLINED) {
+                details = rawDetails("tv", tmdbId)
+                available = showArrival.arrived(request, details)
+            }
             // Benflix: how far the download is, for the progress steps
             var percent: Int? = null
             var downloading = false
             var clock: SearchClock? = null
             if (!available && status == RequestStatus.APPROVED && tmdbId != null) {
                 try {
-                    val kind = if (SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE) "movie" else "tv"
-                    val details =
-                        seerrService.api
-                            .getRaw("/$kind/$tmdbId")
-                            ?.let { Json.parseToJsonElement(it).jsonObject }
+                    if (details == null) details = rawDetails(if (isMovie) "movie" else "tv", tmdbId)
                     clock = SearchClock.of(request, details)
                     val media = details?.get("mediaInfo") as? JsonObject
                     val downloads = (media?.get("downloadStatus") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
@@ -1215,6 +1220,19 @@ class BenflixRequestsViewModel
                 clock = clock,
             )
         }
+
+        private fun rawDetails(
+            kind: String,
+            tmdbId: Int,
+        ): JsonObject? =
+            try {
+                seerrService.api.getRaw("/$kind/$tmdbId")?.let { Json.parseToJsonElement(it).jsonObject }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Could not look up %s %s", kind, tmdbId)
+                null
+            }
 
         /** Admin: say yes or no to a request */
         fun answer(
