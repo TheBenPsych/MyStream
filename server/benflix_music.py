@@ -1515,6 +1515,64 @@ def _free_name(path):
 # ---------- Sorting files (drop folder and tidy-up) ----------
 
 
+# Band names with a comma or "&" in them that are one act, not several
+ONE_ACT = {
+    "tyler, the creator", "earth, wind & fire", "crosby, stills, nash & young", "crosby, stills & nash",
+    "emerson, lake & palmer", "blood, sweat & tears", "peter, paul and mary", "now, now", "black country, new road",
+    "panic! at the disco", "simon & garfunkel", "hall & oates", "daryl hall & john oates", "brooks & dunn",
+    "mumford & sons", "florence + the machine", "marina and the diamonds", "nico & vinz",
+}
+
+
+def main_artist(name):
+    """The first artist of 'Zedd, Maren Morris & Grey' or 'A feat. B', so a song goes under one artist folder"""
+    n = (name or "").strip()
+    if not n or n.lower() in ONE_ACT:
+        return n
+    n = re.split(r"\s+(?:feat\.?|ft\.?|featuring|with|x|vs\.?)\s+", n, maxsplit=1, flags=re.I)[0].strip()
+    if n.lower() in ONE_ACT:
+        return n
+    for act in ONE_ACT:
+        if n.lower().startswith(act + ",") or n.lower().startswith(act + " &"):
+            return n[: len(act)]
+    if "," in n:
+        n = n.split(",", 1)[0].strip()
+    elif re.search(r"\s+[&+]\s+", n) and n.count("&") + n.count("+") >= 2:
+        # "A & B & C" is several people; one "&" is usually a duo name ("gianni & kyle")
+        n = re.split(r"\s+[&+]\s+", n, maxsplit=1)[0].strip()
+    return n or (name or "").strip()
+
+
+def clean_title(title, artist=""):
+    """'Ke$ha - Die Young (Lyric Video)' -> 'Die Young' (bits left in names by video downloads)"""
+    t = (title or "").strip()
+    t = re.sub(
+        r"\s*[\(\[][^\)\]]*\b(official|lyrics?|audio|video|visuali[sz]er|hd|hq|4k|mv|m/v|music video)\b[^\)\]]*[\)\]]",
+        "", t, flags=re.I,
+    ).strip()
+    if artist and " - " in t:
+        first, rest = t.split(" - ", 1)
+        a, f = norm(artist.replace("$", "s")).replace(" ", ""), norm(first.replace("$", "s")).replace(" ", "")
+        if same(first, artist) or same(first, main_artist(artist)) or (f and f == a):
+            t = rest.strip()
+    return t or (title or "").strip()
+
+
+def _same_song_there(dest):
+    """Another copy of the same song in the album folder, maybe with or without a track number or another ending"""
+    folder = os.path.dirname(dest)
+    if not os.path.isdir(folder):
+        return None
+    want = norm(re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(os.path.basename(dest))[0]))
+    for n in os.listdir(folder):
+        if os.path.splitext(n)[1].lower() not in AUDIO:
+            continue
+        stem = norm(re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(n)[0]))
+        if stem and stem == want:
+            return os.path.join(folder, n)
+    return None
+
+
 def _guess_from_names(path, root):
     """Song info from the file and folder names, like 'Artist/Album/03 - Song.mp3' or 'Artist - Song.mp3'"""
     rel = os.path.relpath(path, root).replace("\\", "/").split("/")
@@ -1554,11 +1612,16 @@ def _plan_one(path, root, look_up=True):
     """Where one file should go. Returns (info, destination) or (info, None) when it can't be worked out."""
     tags = probe(path)
     names = _guess_from_names(path, root)
+    full_artist = tags.get("album_artist") or tags.get("artist") or names.get("artist") or ""
+    song_artist = tags.get("artist") or names.get("artist") or ""
+    raw_title = tags.get("title") or names.get("title") or ""
     info = {
-        "artist": tags.get("album_artist") or tags.get("artist") or names.get("artist") or "",
-        "song_artist": tags.get("artist") or names.get("artist") or "",
+        "artist": main_artist(full_artist),
+        "full_artist": full_artist,
+        "song_artist": song_artist,
         "album": tags.get("album") or names.get("album") or "",
-        "title": tags.get("title") or names.get("title") or "",
+        "title": clean_title(raw_title, song_artist or full_artist),
+        "title_changed": False,
         "track": tags.get("track") or names.get("track") or 0,
         "disc": tags.get("disc") or names.get("disc") or 0,
         "year": tags.get("year") or "",
@@ -1566,9 +1629,14 @@ def _plan_one(path, root, look_up=True):
         "bitrate": tags.get("bitrate") or 0,
         "had_tags": bool(tags.get("title") and tags.get("artist") and tags.get("album")),
     }
-    if info["artist"] and info["title"] and look_up and (not info["album"] or not tags.get("album")):
+    info["title_changed"] = bool(raw_title) and info["title"] != raw_title
+    # Video downloads often put the artist or channel name in as the album
+    odd_album = bool(info["album"]) and (same(info["album"], info["artist"]) or same(info["album"], info["full_artist"])) and info["title_changed"]
+    if odd_album:
+        info["album"] = ""
+    if info["artist"] and info["title"] and look_up and (not info["album"] or not tags.get("album") or odd_album):
         try:
-            found = deezer("/search", q=f'artist:"{info["song_artist"] or info["artist"]}" track:"{info["title"]}"', limit=5).get("data") or []
+            found = deezer("/search", q=f'artist:"{info["artist"]}" track:"{info["title"]}"', limit=5).get("data") or []
             hit = next((t for t in found if same(t.get("title"), info["title"])), None)
             if hit:
                 al = hit.get("album") or {}
@@ -1578,6 +1646,13 @@ def _plan_one(path, root, look_up=True):
                     info["track"] = hit.get("track_position") or 0
         except MusicError:
             pass
+    # The song info needs writing when the folder artist, title or album was fixed up
+    info["fix_tags"] = (
+        not info["had_tags"]
+        or info["title_changed"]
+        or odd_album
+        or (tags.get("album_artist") or "") != info["artist"] and info["artist"] != info["full_artist"]
+    )
     if not info["artist"] or not info["title"]:
         return info, None
     album = info["album"] or "Singles"
@@ -1609,7 +1684,7 @@ def sort_files(files, root, mode, say, convert=False, look_up=True):
             continue
         info, dest = _plan_one(path, root, look_up)
         rel = os.path.relpath(path, root)
-        if root == MUSIC and len(rel.split(os.sep)) == 3 and info.get("had_tags"):
+        if root == MUSIC and len(rel.split(os.sep)) == 3 and info.get("had_tags") and not info.get("fix_tags") and rel.split(os.sep)[0] == safe(info["artist"]):
             # Already in Music/Artist/Album/ with its song info (like Lidarr's own files): left alone
             counts["same"] += 1
             continue
@@ -1628,6 +1703,9 @@ def sort_files(files, root, mode, say, convert=False, look_up=True):
         if os.path.abspath(path) == os.path.abspath(dest):
             counts["same"] += 1
             continue
+        twin = dest if os.path.exists(dest) else _same_song_there(dest)
+        if twin and os.path.abspath(twin) != os.path.abspath(path):
+            dest = twin
         if os.path.exists(dest):
             # The same song twice: keep the bigger (better) copy, put the other one in Leftovers
             counts["dupes"] += 1
@@ -1653,7 +1731,7 @@ def sort_files(files, root, mode, say, convert=False, look_up=True):
         if mode == "preview":
             continue
         fix = {}
-        if not info["had_tags"]:
+        if info.get("fix_tags"):
             fix = {"artist": info["song_artist"] or info["artist"], "album_artist": info["artist"], "album": info["album"] or "Singles", "title": info["title"]}
             if info["track"]:
                 fix["track"] = str(info["track"])
