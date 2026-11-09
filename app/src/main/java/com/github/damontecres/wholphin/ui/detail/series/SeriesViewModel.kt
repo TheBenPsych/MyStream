@@ -116,6 +116,7 @@ class SeriesViewModel
         private val fillerService: FillerService,
         private val playbackPrep: PlaybackPrep,
         private val parentsGuide: ParentsGuide,
+        private val funFacts: com.github.damontecres.wholphin.services.BenflixFunFacts,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -167,6 +168,11 @@ class SeriesViewModel
                 viewModelScope.launchIO {
                     val guide = parentsGuide.guideFor(series.data)
                     if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
+                }
+                // Benflix "Did you know" facts that cycle on the page
+                viewModelScope.launchIO {
+                    val facts = funFacts.forItem(series)
+                    if (facts.isNotEmpty()) _state.update { it.copy(facts = facts) }
                 }
                 _state.update { it.copy(isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true) }
                 // Benflix: "Mark watched up to here" from a long-press menu, so refresh what's shown
@@ -1138,4 +1144,6 @@ data class SeriesState(
     val nextUpLabel: String? = null,
     /** Benflix "Parents' guide" (empty = none) */
     val parentsGuide: List<ParentsGuideLine> = emptyList(),
+    /** Benflix "Did you know" facts about this title (empty = none, so the spot isn't shown) */
+    val facts: List<String> = emptyList(),
 )

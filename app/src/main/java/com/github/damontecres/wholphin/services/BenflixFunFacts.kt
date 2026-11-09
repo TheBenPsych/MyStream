@@ -36,6 +36,7 @@ class BenflixFunFacts
     constructor(
         @param:ApplicationContext private val context: Context,
         @param:StandardOkHttpClient private val http: OkHttpClient,
+        private val helper: GameLibraryClient,
     ) {
         private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -133,6 +134,49 @@ class BenflixFunFacts
                         limit = limit,
                     ),
                 ).content.items
+
+        private val titleCache = java.util.concurrent.ConcurrentHashMap<UUID, List<String>>()
+
+        /**
+         * Benflix: every "Did you know" fact about this movie or show (an episode or season uses its show's),
+         * for the small cycling spot on its page and the screensaver. Hand-checked facts come first, then
+         * ones Tower found on Wikipedia, then built-in trivia that names the title. Empty when there are none.
+         * When Tower can't be reached, falls back to a Wikipedia fact looked up on this device.
+         */
+        suspend fun forItem(item: com.github.damontecres.wholphin.data.model.BaseItem): List<String> =
+            withContext(WholphinDispatchers.IO) {
+                val showId = if (item.type == BaseItemKind.EPISODE || item.type == BaseItemKind.SEASON) item.data.seriesId else null
+                val key = showId ?: item.id
+                titleCache[key]?.let { return@withContext it }
+                val name = if (showId != null) item.data.seriesName else item.name
+                val fromTower =
+                    safe {
+                        val json = helper.getJson("/api/facts/${key.toString().replace("-", "")}")
+                        val list = json.optJSONArray("facts")
+                        (0 until (list?.length() ?: 0)).mapNotNull { i ->
+                            list!!.optJSONObject(i)?.optString("text")?.takeIf { it.isNotBlank() }
+                        } to json.optBoolean("ready", true)
+                    }
+                val builtIn = name?.let { builtInAbout(it) }.orEmpty()
+                val found =
+                    if (fromTower != null) {
+                        (fromTower.first + builtIn).distinctBy { keyOf(it) }
+                    } else {
+                        val wiki = if (showId == null) aboutItem(item) else null
+                        listOfNotNull(wiki) + builtIn
+                    }
+                // Remember it for this session, unless Tower is still looking it up
+                if (fromTower == null || fromTower.second || found.isNotEmpty()) titleCache[key] = found
+                found
+            }
+
+        /** Built-in trivia lines that name this title (whole words, so "Up" doesn't match "set up") */
+        private fun builtInAbout(name: String): List<String> {
+            val clean = name.substringBefore(" (").trim()
+            if (clean.length < 4) return emptyList()
+            val pattern = Regex("(^|[^\\p{L}\\p{N}])" + Regex.escape(clean) + "($|[^\\p{L}\\p{N}])")
+            return BenflixTrivia.facts.filter { pattern.containsMatchIn(it) }
+        }
 
         private val aboutCache = java.util.concurrent.ConcurrentHashMap<UUID, String>()
 
