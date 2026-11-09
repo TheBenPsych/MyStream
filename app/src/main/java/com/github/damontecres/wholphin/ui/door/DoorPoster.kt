@@ -141,7 +141,7 @@ fun DoorPoster(
     Column(modifier = modifier.width(width)) {
         Surface(
             onClick = onClick,
-            onLongClick = onLongClick ?: { timesHeld++ },
+            onLongClick = onLongClick ?: { timesHeld += 1 },
             shape = ClickableSurfaceDefaults.shape(PosterShape),
             colors =
                 ClickableSurfaceDefaults.colors(
