@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.touch
 
-import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -23,6 +22,7 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.window.DialogProperties
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.window.Dialog as ComposeDialog
 
 /**
