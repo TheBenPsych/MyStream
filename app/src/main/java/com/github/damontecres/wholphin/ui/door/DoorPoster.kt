@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +46,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.components.PosterHoldMenu
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
@@ -133,10 +135,13 @@ fun DoorPoster(
     var failed by remember(url) { mutableStateOf(false) }
     val progress = remember(item) { item.progress() }
     val newLabel = remember(item) { item.newLabel() }
+    // Benflix: holding a poster (finger on phones, OK on TV) opens its menu, unless the page has its own
+    var timesHeld by remember(item.id) { mutableIntStateOf(0) }
+    if (onLongClick == null && timesHeld > 0) PosterHoldMenu(item, timesHeld)
     Column(modifier = modifier.width(width)) {
         Surface(
             onClick = onClick,
-            onLongClick = onLongClick,
+            onLongClick = onLongClick ?: { timesHeld += 1 },
             shape = ClickableSurfaceDefaults.shape(PosterShape),
             colors =
                 ClickableSurfaceDefaults.colors(

@@ -47,18 +47,44 @@ fun Modifier.touchTaps(): Modifier =
             }.pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                    val at = Offset(down.position.x + origin[0], down.position.y + origin[1])
                     var moved = false
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Final)
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if ((change.position - down.position).getDistance() > slop) moved = true
-                        if (!change.pressed) {
-                            if (!moved && !change.isConsumed) {
-                                val held = change.uptimeMillis - down.uptimeMillis
-                                val at = Offset(down.position.x + origin[0], down.position.y + origin[1])
-                                pressAt(view, at, held >= longPressMs)
+                    var tapped = false
+                    // Watch the finger until it lifts, moves (a scroll) or has been held long enough
+                    val ended =
+                        withTimeoutOrNull(longPressMs) {
+                            var up = false
+                            while (!up && !moved) {
+                                val change =
+                                    awaitPointerEvent(PointerEventPass.Final)
+                                        .changes
+                                        .firstOrNull { it.id == down.id }
+                                if (change == null) {
+                                    up = true
+                                } else {
+                                    if ((change.position - down.position).getDistance() > slop) moved = true
+                                    if (!change.pressed) {
+                                        up = true
+                                        tapped = !moved && !change.isConsumed
+                                    }
+                                }
                             }
-                            break
+                            up
+                        }
+                    if (tapped) {
+                        pressAt(view, at, long = false)
+                        return@awaitEachGesture
+                    }
+                    // Benflix: a hold opens the menu right away, while the finger is still down
+                    if (ended == null && !moved) pressAt(view, at, long = true)
+                    if (ended != true) {
+                        // Wait for the finger to lift so letting go doesn't press anything else
+                        while (true) {
+                            val change =
+                                awaitPointerEvent(PointerEventPass.Final)
+                                    .changes
+                                    .firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
                         }
                     }
                 }
@@ -72,17 +98,25 @@ private fun pressAt(
 ) {
     val root = (view as? RootForTest)?.semanticsOwner?.unmergedRootSemanticsNode ?: return
     val node = findTarget(root, at) ?: return
-    // Benflix: a light buzz, so a tap feels like it did something
-    Haptics.tap(view)
-    val config = node.config
     if (long) {
-        val longAction = config.getOrNull(SemanticsActions.OnLongClick)?.action
-        if (longAction != null) {
-            longAction.invoke()
-            return
+        // The poster's hold action can sit on the card around the part under the finger
+        var holder: SemanticsNode? = node
+        while (holder != null) {
+            val longAction = holder.config.getOrNull(SemanticsActions.OnLongClick)?.action
+            if (longAction != null) {
+                Haptics.hold(view)
+                longAction.invoke()
+                return
+            }
+            holder = holder.parent
         }
     }
-    config.getOrNull(SemanticsActions.OnClick)?.action?.invoke()
+    // Benflix: a light buzz, so a tap feels like it did something
+    Haptics.tap(view)
+    node.config
+        .getOrNull(SemanticsActions.OnClick)
+        ?.action
+        ?.invoke()
 }
 
 private fun findTarget(

@@ -18,6 +18,12 @@ object Haptics {
         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
     }
 
+    /** A firmer buzz when holding something opens its menu */
+    fun hold(view: View) {
+        if (!enabled || isTvDevice(view.context)) return
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+    }
+
     fun tick(view: View) {
         if (!enabled || isTvDevice(view.context)) return
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
