@@ -139,25 +139,26 @@ class GameLibraryClient
          * Benflix speed: whichever answered last time is tried first, so away from home the phone no
          * longer waits for the home address to time out (about 3 seconds) every time Games opens.
          */
-        suspend fun pickAddress() =
-            withContext(Dispatchers.IO) {
-                val home = homeAddress
-                val away = awayAddress
-                val awayFirst = lastWasAway && away != null
-                working =
-                    when {
-                        awayFirst && answers(away) -> away
-                        home.isNotBlank() && answers(home) -> null
-                        !awayFirst && away != null && answers(away) -> away
-                        else -> null
-                    }
-                val nowAway = working != null
-                if (nowAway != lastWasAway) {
-                    lastWasAway = nowAway
-                    prefs.edit().putBoolean(KEY_LAST_AWAY, nowAway).apply()
+        suspend fun pickAddress() = withContext(Dispatchers.IO) { pickNow() }
+
+        private fun pickNow() {
+            val home = homeAddress
+            val away = awayAddress
+            val awayFirst = lastWasAway && away != null
+            working =
+                when {
+                    awayFirst && answers(away) -> away
+                    home.isNotBlank() && answers(home) -> null
+                    !awayFirst && away != null && answers(away) -> away
+                    else -> null
                 }
-                if (working != null) Timber.i("Games helper reached through the internet address")
+            val nowAway = working != null
+            if (nowAway != lastWasAway) {
+                lastWasAway = nowAway
+                prefs.edit().putBoolean(KEY_LAST_AWAY, nowAway).apply()
             }
+            if (working != null) Timber.i("Games helper reached through the internet address")
+        }
 
         /** Every game in the library, grouped by console. Throws with a friendly message when it can't. */
         suspend fun loadLibrary(): List<GameConsole> =
@@ -336,7 +337,19 @@ class GameLibraryClient
                     .build()
             val response =
                 try {
-                    http.newCall(request).execute()
+                    try {
+                        http.newCall(request).execute()
+                    } catch (first: java.io.IOException) {
+                        // Benflix: music, requests and the Server page also use the helper, often before Games has
+                        // worked out home vs. away. Look again once and retry on the address that answers.
+                        val before = address
+                        pickNow()
+                        val now = address
+                        if (now == before || now.isBlank()) throw first
+                        val url = request.url.toString()
+                        if (!url.startsWith(before)) throw first
+                        http.newCall(request.newBuilder().url(now + url.removePrefix(before)).build()).execute()
+                    }
                 } catch (e: Exception) {
                     throw GameLibraryException(
                         "Couldn't reach the games helper at $address. Run the games setup command on the server " +
