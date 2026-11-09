@@ -196,6 +196,8 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .rowx .arrow.l { left: 0; } .rowx .arrow.r { right: 0; }
 .poster { position: relative; flex: none; width: var(--poster-w); border-radius: var(--r); background: var(--pg3); cursor: pointer; border: 0; padding: 0; color: var(--ink); text-align: left; }
 .poster .im { aspect-ratio: 2/3; border-radius: var(--r); background: var(--pg3) center/cover no-repeat; position: relative; overflow: hidden; }
+/* Posters load as they scroll into view (All movies / All shows grids) */
+.poster .im > img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .poster .noart { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-weight: 800; font-size: 19px; line-height: 1.15; }
 .poster:hover .im, .poster:focus-visible .im { box-shadow: 0 0 0 3px #fff; }
 .poster:focus-visible { outline: none; }
@@ -516,6 +518,8 @@ textarea.field { min-height: 90px; resize: vertical; }
 .mcard { flex: none; width: var(--poster-w); display: block; }
 .mcard .im { aspect-ratio: 1; border-radius: var(--r); background: var(--pg3) center/cover no-repeat; display: grid; place-items: center; overflow: hidden; position: relative; color: var(--ink3); }
 .mcard .im svg.i { width: 40%; height: 40%; }
+/* Covers load as they scroll into view (big Albums / Artists grids) */
+.mcard .im > img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .mcard.round .im { border-radius: 50%; }
 .mcard .cap { margin-top: 8px; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mcard .cap small { display: block; color: var(--ink2); font-weight: 400; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
@@ -544,7 +548,7 @@ textarea.field { min-height: 90px; resize: vertical; }
 .srow { display: flex; align-items: center; gap: 14px; padding: 7px 12px; border-radius: 10px; cursor: pointer; }
 .srow:hover { background: var(--pg2); }
 .srow .sn { width: 40px; flex: none; text-align: center; color: var(--ink2); font-variant-numeric: tabular-nums; display: grid; place-items: center; }
-.srow .sc { width: 40px; height: 40px; border-radius: 6px; background: var(--pg3) center/cover no-repeat; display: block; }
+.srow .sc { width: 40px; height: 40px; border-radius: 6px; background: var(--pg3) center/cover no-repeat; display: block; object-fit: cover; }
 .srow .st { flex: 1; min-width: 0; }
 .srow .st b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .srow .st small { display: block; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -393,7 +393,7 @@
   // ---------- pieces for the music pages ----------
   const card = (it, href, sub) => {
     const art = cover(it, 360);
-    return `<a class="mcard" href="${href}" title="${esc(it.Name)}"><div class="im" ${art ? `style="background-image:url('${art}')"` : ""}>${art ? "" : icon("note")}</div><div class="cap">${esc(it.Name)}<small>${esc(sub || "")}</small></div></a>`;
+    return `<a class="mcard" href="${href}" title="${esc(it.Name)}"><div class="im">${art ? `<img class="art" src="${art}" alt="" loading="lazy" decoding="async">` : icon("note")}</div><div class="cap">${esc(it.Name)}<small>${esc(sub || "")}</small></div></a>`;
   };
   const albumCard = (a) => card(a, `#/album/${a.Id}`, a.AlbumArtist || a.ProductionYear || "");
   const artistCard = (a) => card(a, `#/artist/${a.Id}`, "Artist").replace('class="mcard"', 'class="mcard round"');
@@ -411,7 +411,7 @@
     const now = M.current() && M.current().Id === s.Id;
     const fav = (s.UserData || {}).IsFavorite || M.liked.has(s.Id);
     return `<div class="srow ${now ? "now" : ""}" data-i="${i}">
-      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i></span>' : opts.cover ? `<span class="sc" style="background-image:url('${cover(s, 80)}')"></span>` : esc(opts.number != null ? opts.number : i + 1)}</span>
+      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i></span>' : opts.cover ? (cover(s, 80) ? `<img class="sc" src="${cover(s, 80)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`) : esc(opts.number != null ? opts.number : i + 1)}</span>
       <span class="st"><b>${esc(s.Name)}</b>${opts.artist ? `<small>${esc(artistOf(s))}</small>` : ""}</span>
       <button class="sh ${fav ? "on" : ""}" data-heart="${esc(s.Id)}" title="Like">${I("heart")}</button>
       <span class="sl">${len(s.RunTimeTicks)}</span>
@@ -589,8 +589,19 @@
   });
   // Browse by > Songs: every song, A to Z
   B.route(/^\/songs$/, async (m, nav) => {
-    const songs = await items(`IncludeItemTypes=Audio&SortBy=SortName&Limit=10000&${SONG_FIELDS}`);
+    const raw = await items(`IncludeItemTypes=Audio&SortBy=SortName&Limit=10000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
+    // The same song saved twice (same artist, same name ignoring spaces/punctuation, length within 3s) shows once
+    const seen = new Map();
+    const songs = raw.filter((s) => {
+      const name = (s.Name || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+      if (!name) return true;
+      const key = (s.AlbumArtist || (s.Artists || [])[0] || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") + "|" + name;
+      const secs = Math.round((s.RunTimeTicks || 0) / 1e7), known = seen.get(key) || [];
+      if (known.some((k) => Math.abs(k - secs) <= 3)) return false;
+      seen.set(key, known.concat(secs));
+      return true;
+    });
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].sort(() => Math.random() - 0.5).slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
     await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
   });

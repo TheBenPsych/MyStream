@@ -16,7 +16,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.enabled
 import com.github.damontecres.wholphin.preferences.get
 import com.github.damontecres.wholphin.services.hilt.DefaultCoroutineScope
-import com.github.damontecres.wholphin.ui.DetailItemFields
+import com.github.damontecres.wholphin.ui.SongListFields
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.main.settings.MoveDirection
 import com.github.damontecres.wholphin.ui.onMain
@@ -196,7 +196,7 @@ class MusicService
                                 userId = serverRepository.currentUser?.id,
                                 itemId = from,
                                 limit = 60,
-                                fields = DetailItemFields,
+                                fields = SongListFields,
                             ).content.items
                             .map { BaseItem(it, false) }
                             .filter { it.id !in queued }
@@ -467,7 +467,7 @@ class MusicService
                             userId = serverRepository.currentUser?.id,
                             itemId = itemId,
                             limit = 200,
-                            fields = DetailItemFields,
+                            fields = SongListFields,
                         ).content.items
                         .map { BaseItem(it, false) }
                 setQueue(items, false)
@@ -582,9 +582,8 @@ class MusicService
         ): MediaItem {
             val needsAc3Transcode =
                 preferAc3Surround &&
-                    audio.data.mediaSources
-                        ?.firstOrNull()
-                        ?.mediaStreams
+                    // Long song lists only ask for the streams (much faster), not the full media sources
+                    (audio.data.mediaSources?.firstOrNull()?.mediaStreams ?: audio.data.mediaStreams)
                         ?.any { stream ->
                             stream.type == MediaStreamType.AUDIO &&
                                 stream.channels.gt(2) &&
