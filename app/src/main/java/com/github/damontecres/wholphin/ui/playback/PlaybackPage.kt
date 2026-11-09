@@ -704,7 +704,16 @@ fun PlaybackPageContent(
                 remember(subtitleSettings) { subtitleSettings.imageSubtitleOpacity / 100f }
 
             // Subtitles
-            val subtitleMaxSize by animateFloatAsState(if (controllerViewState.controlsVisible) .7f else 1f)
+            // Benflix: subtitles slide up out of the way of the player bar, the Skip button and the
+            // Up next card, and slide back down when they go. Moved (not shrunk), so the words stay the same size.
+            val subtitleLift by animateFloatAsState(
+                when {
+                    controllerViewState.controlsVisible -> SUBTITLE_LIFT_CONTROLS
+                    showSegment || state.nextUp != null || state.movieNext != null -> SUBTITLE_LIFT_BUTTON
+                    else -> 0f
+                },
+                label = "subtitleLift",
+            )
             val isImageSubtitles =
                 remember(state.subtitleCues) { state.subtitleCues.firstOrNull()?.bitmap != null }
 
@@ -773,10 +782,11 @@ fun PlaybackPageContent(
                 },
                 modifier =
                     Modifier
-                        .fillMaxSize(subtitleMaxSize)
+                        .fillMaxSize()
                         .align(Alignment.TopCenter)
                         .background(Color.Transparent)
                         .graphicsLayer {
+                            translationY = -size.height * subtitleLift
                             alpha =
                                 if (!subtitleVisible) {
                                     0f
@@ -1279,3 +1289,9 @@ private const val DOUBLE_TAP_SEEK_MS = 10_000L
 
 /** Benflix redesign: seconds before the next movie starts by itself */
 private const val MOVIE_COUNTDOWN_SECONDS = 20L
+
+/** How far up (part of the screen height) subtitles move while the player bar shows */
+private const val SUBTITLE_LIFT_CONTROLS = .3f
+
+/** How far up subtitles move while a Skip button or Up next card shows */
+private const val SUBTITLE_LIFT_BUTTON = .16f

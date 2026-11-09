@@ -206,7 +206,7 @@ class AnimeExtrasViewModel
                                     seriesId = series.id,
                                     userId = userId,
                                     season = 0,
-                                    fields = SlimItemFields,
+                                    fields = SlimItemFields + ItemFields.SPECIAL_EPISODE_NUMBERS,
                                 ),
                             ).content.items
                     }.orEmpty()
