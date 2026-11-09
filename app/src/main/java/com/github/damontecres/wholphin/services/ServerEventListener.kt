@@ -189,6 +189,14 @@ class ServerEventListener
                                         GeneralCommandType.DISPLAY_MESSAGE,
                                         GeneralCommandType.SEND_STRING,
                                         -> {
+                                            // Benflix "Type on your phone for the TV"
+                                            if (RemoteKeys.onMessage(
+                                                    message.data?.arguments,
+                                                    com.github.damontecres.wholphin.ui.touch.isTvKnown,
+                                                )
+                                            ) {
+                                                return@onEach
+                                            }
                                             if (message.data?.arguments?.get(BENFLIX_TYPE) != null) {
                                                 // Benflix remote keyboard: type into whatever box is selected
                                                 typeText(

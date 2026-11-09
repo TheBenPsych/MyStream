@@ -41,6 +41,8 @@ fun SearchKeyboard(
     big: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // Benflix "Type on your phone for the TV": phones with Benflix open offer to type
+    PhoneKeysForTv(query = query, onQueryChange = onQueryChange)
     val across = if (big) 5 else 6
     val keySize = if (big) 54.dp else 42.dp
     Column(

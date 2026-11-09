@@ -40,6 +40,9 @@ DIR = "/livetv" if os.path.isdir("/livetv") else "/tmp/benflix-livetv"
 M3U_FILE = os.path.join(DIR, "channels.m3u")
 GUIDE_FILE = os.path.join(DIR, "guide.xml")
 STATUS_FILE = os.path.join(DIR, "status.json")
+# Benflix "This channel is broken": copies people reported from the app, kept out for a month
+BROKEN_FILE = os.path.join(DIR, "broken.json")
+BROKEN_DAYS = 30
 EVERY = 24 * 3600
 UA = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 
@@ -196,6 +199,12 @@ def build():
             seen_urls.add(c["url"])
             candidates.append(c)
 
+    # Copies someone pressed "This channel is broken" on are left out, so another copy (or the next
+    # channel of the same type) takes the place
+    broken = load_broken()
+    report["reported_broken"] = len(broken)
+    candidates = [c for c in candidates if c["url"] not in broken]
+
     with ThreadPoolExecutor(max_workers=24) as pool:
         results = list(pool.map(lambda c: alive(c["url"]), candidates))
     working = [c for c, ok in zip(candidates, results) if ok]
@@ -305,6 +314,46 @@ def write_guide(final, guide_data):
         out.write(b"</tv>\n")
     os.replace(tmp, GUIDE_FILE)
     return counts
+
+
+def load_broken():
+    """{stream address: report} for reports from the last BROKEN_DAYS days"""
+    try:
+        with open(BROKEN_FILE) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    cutoff = time.time() - BROKEN_DAYS * 86400
+    return {url: r for url, r in data.items() if isinstance(r, dict) and r.get("at", 0) >= cutoff}
+
+
+def report_broken(body, user_id):
+    """Benflix "This channel is broken" from the app: remembers the copy so tonight's check swaps it."""
+    url = str(body.get("url") or "").strip()
+    name = str(body.get("name") or "").strip()[:120]
+    number = str(body.get("number") or "").strip()[:10]
+    if not url and number:
+        # The app may only know the channel number: find its address in tonight's list
+        try:
+            with open(M3U_FILE, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+            for i, line in enumerate(lines):
+                if f'tvg-chno="{number}"' in line and i + 1 < len(lines):
+                    url = lines[i + 1].strip()
+                    break
+        except OSError:
+            pass
+    if not url.startswith("http"):
+        return {"ok": False, "message": "Couldn't tell which channel that was."}
+    with _lock:
+        data = load_broken()
+        data[url] = {"name": name, "number": number, "at": int(time.time()), "by": user_id or ""}
+        os.makedirs(DIR, exist_ok=True)
+        tmp = BROKEN_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(data, f, indent=1)
+        os.replace(tmp, BROKEN_FILE)
+    return {"ok": True, "message": "Thanks! Tonight's channel check swaps it for a working one."}
 
 
 def refresh():

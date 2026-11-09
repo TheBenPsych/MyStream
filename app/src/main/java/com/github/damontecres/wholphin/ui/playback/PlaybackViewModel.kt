@@ -2016,6 +2016,16 @@ class PlaybackViewModel
 
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error, "Playback error")
+            // Benflix "Pause live TV": paused longer than the channel keeps, so carry on from live
+            if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
+                    player.seekToDefaultPosition()
+                    player.prepare()
+                    player.play()
+                    showToast(context, "This channel only keeps a few minutes, so it went back to live")
+                }
+                return
+            }
             if (autoMpvActive) {
                 fallBackFromAutoMpv()
                 return
