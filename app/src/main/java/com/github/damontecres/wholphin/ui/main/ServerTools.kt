@@ -57,6 +57,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.devicesApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -89,6 +90,9 @@ data class ServerToolsState(
     val notesFailed: Boolean = false,
     /** Benflix: this device can't hold a live connection to the server, so live pop-ups can't get through */
     val liveBlocked: Boolean = false,
+    /** Benflix: which Benflix version each TV and phone had when it last connected (null until loaded) */
+    val versions: AppVersions? = null,
+    val versionsFailed: Boolean = false,
 )
 
 @HiltViewModel
@@ -105,6 +109,7 @@ class ServerToolsViewModel
         private val dashboard: ServerDashboardData,
         private val actions: BenflixServerActions,
         private val benflixMessages: BenflixMessages,
+        private val updateChecker: com.github.damontecres.wholphin.services.UpdateChecker,
     ) : ViewModel() {
         private val _state = MutableStateFlow(ServerToolsState())
         val state: StateFlow<ServerToolsState> = _state
@@ -174,10 +179,49 @@ class ServerToolsViewModel
                 null
             }
 
+        private var versionsJob: kotlinx.coroutines.Job? = null
+
+        /**
+         * Benflix: reads every device Jellyfin remembers (it keeps each one's app version and last connection,
+         * even after it disconnects) and compares them with the newest Benflix build.
+         */
+        fun loadVersions() {
+            if (versionsJob?.isActive == true) return
+            _state.update { it.copy(versionsFailed = false) }
+            versionsJob =
+                viewModelScope.launch {
+                    try {
+                        val latest =
+                            try {
+                                updateChecker.getLatestRelease(com.github.damontecres.wholphin.services.BENFLIX_UPDATE_URL)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Server tools: could not check the newest version")
+                                null
+                            }
+                        val devices =
+                            kotlinx.coroutines.withContext(com.github.damontecres.wholphin.util.WholphinDispatchers.IO) {
+                                api.devicesApi
+                                    .getDevices()
+                                    .content.items
+                            }
+                        val rows = appVersionRows(devices, latest)
+                        _state.update { it.copy(versions = AppVersions(latest?.version?.toString()?.removePrefix("v"), rows)) }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Server tools: could not read the devices")
+                        _state.update { it.copy(versionsFailed = true) }
+                    }
+                }
+        }
+
         /** Benflix: Refresh (and pull to refresh) tries again whatever couldn't be read the first time */
         fun retryFailed() {
             if (_state.value.peopleFailed) loadPeople()
             if (_state.value.notesFailed) loadNotes()
+            if (_state.value.versionsFailed) loadVersions()
         }
 
         /** Benflix: how many screens they can watch on at the same time (0 = no limit) */
@@ -547,6 +591,13 @@ sealed interface ServerToolsDialog {
     /** Benflix: a pop-up message for one person (from their People menu) */
     data class WritePopupTo(
         val user: UserDto,
+    ) : ServerToolsDialog
+
+    /** Benflix: a pop-up for some people, from the Benflix versions list (can start with some text) */
+    data class WritePopupToMany(
+        val ids: Set<java.util.UUID>,
+        val title: String,
+        val prefill: String = "",
     ) : ServerToolsDialog
 
     data object AddPerson : ServerToolsDialog
@@ -1022,6 +1073,28 @@ fun ServerToolsDialogs(
                 onSave = {
                     onDismiss()
                     if (it.isNotBlank()) viewModel.sendPopup(it, setOf(dialog.user.id))
+                },
+                onDismissRequest = onDismiss,
+            )
+        }
+
+        is ServerToolsDialog.WritePopupToMany -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title = dialog.title,
+                        value = dialog.prefill,
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Done,
+                            ),
+                        onSubmit = {},
+                        maxLines = 3,
+                    ),
+                onSave = {
+                    onDismiss()
+                    if (it.isNotBlank()) viewModel.sendPopup(it, dialog.ids)
                 },
                 onDismissRequest = onDismiss,
             )

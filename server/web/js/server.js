@@ -40,7 +40,7 @@ const SECTIONS = [
   { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"]] },
   { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
   { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["downloads", "Downloads"], ["find", "Find copies"], ["chores", "Chores"]] },
-  { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["messages", "Messages"], ["problems", "Problems"]] },
+  { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
   { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["webversion", "Web version"]] },
 ];
 const SUB_HOME = {};
@@ -678,6 +678,90 @@ PAGES.messages = (el) => {
         return n ? `Sent to ${n} screen${n === 1 ? "" : "s"}.` : "No Benflix screens are on right now.";
       });
     }
+  };
+  draw();
+};
+
+// ---------- Versions: which Benflix each TV and phone had when it last connected ----------
+const UPDATE_MESSAGE = "There's a new Benflix update! Go to Settings > Help > Install update to get it.";
+const verParts = (v) => { const m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || "")); return m ? [+m[1], +m[2], +m[3]] : null; };
+const verCmp = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return a[i] - b[i]; } return 0; };
+function seenAgo(iso) {
+  const t = new Date(iso).getTime(); if (!t) return "not known";
+  const min = Math.round((Date.now() - t) / 60000);
+  if (min < 2) return "just now"; if (min < 60) return `${min} min ago`; if (min < 120) return "1 hour ago";
+  if (min < 1440) return `${Math.floor(min / 60)} hours ago`; if (min < 2880) return "yesterday";
+  return `${Math.floor(min / 1440)} days ago`;
+}
+// Saves a message the same way the TV and phone app do, so it pops up the next time they open Benflix
+async function saveMessageFor(userId, header, text) {
+  await updatePrefs(userId, (c) => {
+    const list = String(c["benflix.messages"] || "").split("\u001E").filter((r) => r.split("\u001F").length >= 3);
+    list.push([Date.now(), header, text].join("\u001F"));
+    c["benflix.messages"] = list.slice(-5).join("\u001E");
+  });
+}
+async function messagePeople(ids, text) {
+  const header = "Message from " + B.me.name;
+  let saved = 0, live = 0;
+  for (const id of ids) { try { await saveMessageFor(id, header, text); saved++; } catch (err) {} }
+  const s = ((await jf("GET", "/Sessions?activeWithinSeconds=960").catch(() => [])) || [])
+    .filter((x) => x.SupportsRemoteControl && x.Id && ids.includes(x.UserId) && !String(x.DeviceId || "").startsWith("benflix-web-"));
+  for (const x of s) { try { await jf("POST", `/Sessions/${encodeURIComponent(x.Id)}/Message`, { Header: header, Text: text, TimeoutMs: 15000 }); live++; } catch (err) {} }
+  if (!saved && !live) throw new Error("The message couldn't be sent. Try again in a moment.");
+  return live ? `Popped up on ${live} screen${live === 1 ? "" : "s"} now. Anyone else sees it the next time they open Benflix.` : "Saved. They'll see it the next time they open Benflix.";
+}
+
+PAGES.versions = (el) => {
+  el.innerHTML = `<h2>Benflix versions</h2><p class="sub">The Benflix version on each TV and phone the last time it connected. Message anyone who's out of date, or everyone after a big change.</p><div id="vr">${loading()}</div>`;
+  let rows = [];
+  const draw = async () => {
+    try {
+      const [devs, rel] = await Promise.all([
+        jf("GET", "/Devices"),
+        fetch("https://api.github.com/repos/TheBenPsych/MyStream/releases/tags/latest-build").then((x) => x.json()).catch(() => null),
+      ]);
+      if (current !== "versions") return;
+      const latest = verParts(rel && rel.name);
+      const known = [];
+      String((rel && rel.body) || "").replace(/<!-- app-change:([^|]+)\|/g, (_, v) => { const p = verParts(v); if (p && !known.some((k) => !verCmp(k, p))) known.push(p); return ""; });
+      if (latest && !known.some((k) => !verCmp(k, latest))) known.push(latest);
+      const oldest = known.reduce((a, b) => (a && verCmp(a, b) < 0 ? a : b), null);
+      const seen = new Set();
+      rows = (((devs && devs.Items) || devs || []))
+        .filter((d) => { const id = String(d.Id || ""); return (id.startsWith("benflix-") || /^benflix$/i.test(d.AppName || "")) && !id.startsWith("benflix-web-"); })
+        .filter((d) => { const k = d.Id + "|" + d.LastUserId; if (seen.has(k)) return false; seen.add(k); return true; })
+        .map((d) => {
+          const v = verParts(d.AppVersion);
+          let behind = null, plus = false;
+          if (v && latest) {
+            behind = verCmp(latest, v) <= 0 ? 0 : Math.max(1, known.filter((k) => verCmp(k, v) > 0).length);
+            plus = behind > 0 && !!oldest && verCmp(v, oldest) < 0;
+          }
+          return { id: d.LastUserId, user: d.LastUserName || "Someone", device: d.CustomName || d.Name || "A device", version: d.AppVersion, seen: d.DateLastActivity, behind, plus };
+        })
+        .sort((a, b) => (b.behind || 0) - (a.behind || 0) || new Date(b.seen || 0) - new Date(a.seen || 0));
+      const old = rows.filter((r) => r.behind > 0);
+      const behindText = (r) => r.behind == null ? "Can't tell if it's up to date" : !r.behind ? "Up to date" : `${r.behind}${r.plus ? "+" : ""} update${r.behind === 1 && !r.plus ? "" : "s"} behind`;
+      const dot = (r) => r.behind == null ? "off" : !r.behind ? "" : (r.behind >= 10 || r.plus) ? "bad" : "warn";
+      $("#vr").innerHTML = `<div class="list"><div class="item"><span class="dot ${old.length ? "warn" : ""}"></span><div class="grow">
+          <div class="t">${!rows.length ? "No Benflix TVs or phones have connected yet" : !old.length ? "Everyone is up to date" : `${old.length} of ${rows.length} Benflix device${rows.length === 1 ? " is" : "s are"} out of date`}</div>
+          <div class="s">${latest ? `The newest version is ${esc(latest.join("."))}.` : "Couldn't check the newest version right now."} The web version is always the newest.</div></div>
+          <div class="acts">${old.length ? `<button class="btn small red" data-v="old">Message everyone out of date</button>` : ""}<button class="btn small" data-v="again">Check again</button></div></div>
+        ${rows.map((r, i) => `<div class="item"><span class="dot ${dot(r)}"></span><div class="grow"><div class="t">${esc(r.user)} · ${esc(r.device)}</div>
+          <div class="s">Version ${esc(r.version || "not known")} · ${esc(behindText(r))} · Last on ${esc(seenAgo(r.seen))}</div></div>
+          <div class="acts">${r.id ? `<button class="btn small" data-v="one" data-i="${i}">Message</button>` : ""}</div></div>`).join("")}</div>`;
+    } catch (err) { if (current === "versions") $("#vr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  el.onclick = async (e) => {
+    const b = e.target.closest("[data-v]"); if (!b) return;
+    if (b.dataset.v === "again") { $("#vr").innerHTML = loading(); return draw(); }
+    const old = rows.filter((r) => r.behind > 0);
+    const r = b.dataset.v === "one" ? rows[+b.dataset.i] : null;
+    const ids = r ? [r.id] : [...new Set(old.map((x) => x.id).filter(Boolean))];
+    const text = await B.askText(r ? `Message to ${r.user}` : "Message everyone out of date", "It pops up now if Benflix is open, or the next time they open it.", r && !r.behind ? "" : UPDATE_MESSAGE, { ok: "Send" });
+    if (!text || !text.trim()) return;
+    busy(b, () => messagePeople(ids, text.trim()));
   };
   draw();
 };
