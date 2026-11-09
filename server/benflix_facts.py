@@ -335,6 +335,9 @@ def _library():
         return None
     found = {}
     for it in (json.loads(data or b"{}").get("Items") or []):
+        # Jellyfin can send collections too; facts are only for movies and shows
+        if it.get("Type") not in ("Movie", "Series"):
+            continue
         ids = it.get("ProviderIds") or {}
         found[it["Id"].replace("-", "")] = {
             "name": it.get("Name") or "",
@@ -452,14 +455,23 @@ def _safe_look_up(item_id, t):
         log(f"couldn't look up {t.get('name')}: {e}")
 
 
-def titles_text():
-    """Every movie and show with its fact counts, for copying into a chat (at home only)"""
+def titles_text(few=False):
+    """
+    Every movie and show with its fact counts, for sending to a chat (at home only). With few=True, only
+    titles with fewer than 2 facts so far (the ones that need hand-checked facts most), in a short form.
+    """
     lines = ["# Benflix titles and their facts: name (year) | type | IMDb | hand-checked | found on Wikipedia", ""]
     for item_id, t in sorted(_titles.items(), key=lambda kv: (kv[1].get("type") or "", _norm(kv[1].get("name")))):
+        if t.get("type") not in ("Movie", "Series"):
+            continue
         auto = _auto.get(item_id)
+        checked = len(_checked_for(t))
+        found = len(auto["facts"]) if auto else None
+        if few and (auto is None or checked + found >= 2):
+            continue
         lines.append(
             f"{t['name']} ({t.get('year') or '?'}) | {t.get('type')} | {t.get('imdb') or '-'} | "
-            f"{len(_checked_for(t))} | {len(auto['facts']) if auto else 'not yet'}"
+            f"{checked} | {found if found is not None else 'not yet'}"
         )
     if not _titles:
         lines.append("Nothing yet. Tower gathers the list about 10 minutes after the helper starts, once Ben has signed in on Benflix.")
