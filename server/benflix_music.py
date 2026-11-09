@@ -8,7 +8,8 @@ How it works, in plain words:
   album the song is on, any edition. Lidarr finds a copy with the same download setup as the movies
   and shows. When it arrives:
     * lossless copies (FLAC and so on) are turned into 320 MP3s,
-    * for a single song, every other song from that album is deleted again,
+    * for a single song, every other song from that album is deleted again, including other takes of
+      the same song (live, a cappella, acoustic, instrumental, remix ...) unless that take was asked for,
     * the album gets its cover picture, and Jellyfin is told about the new files.
   If no copy turns up, Benflix tries again by itself (after 1 hour, 6 hours, 1 day and 2 days), then
   says "Couldn't find it" with a Try again button.
@@ -299,6 +300,47 @@ def norm(text):
 def same(a, b):
     a, b = norm(a), norm(b)
     return bool(a) and (a == b or (len(a) > 3 and len(b) > 3 and (a.startswith(b) or b.startswith(a))))
+
+
+# Other takes of a song: kept only when that exact take was asked for
+ALT_WORDS = (
+    "live", "remix", "mix", "instrumental", "karaoke", "cover", "acapella", "a cappella", "acoustic", "demo",
+    "8 bit", "nightcore", "slowed", "sped up", "reverb", "rehearsal", "melody pass", "stripped", "unplugged",
+    "orchestral", "piano version", "voice memo", "rough", "session", "sessions", "reprise", "commentary",
+    "rework", "edit", "vip", "dub", "bootleg", "mashup", "megamix", "medley", "snippet", "rehearsals", "a capella",
+)
+FINE_EDITS = ("radio edit", "single edit", "clean edit", "explicit edit", "album edit")
+
+
+def _alt_bits(title):
+    """The 'other take' words in a song title, like {'live'} for 'Song (Live from Rehearsal)'"""
+    t = unicodedata.normalize("NFKD", str(title or "")).encode("ascii", "ignore").decode().lower()
+    # Only the extra bits count: "(...)", "[...]" and anything after " - ", so "Jam Session" or "Live Your Life" stay plain
+    extra = re.findall(r"[\(\[]([^\)\]]*)[\)\]]", t) + [m for m in re.split(r"\s+[-\u2013\u2014]\s+", t)[1:]]
+    t = " " + re.sub(r"[^a-z0-9]+", " ", " | ".join(extra)) + " "
+    for fine in FINE_EDITS:
+        t = t.replace(" " + fine + " ", " ")
+    return {w for w in ALT_WORDS if " " + w + " " in t}
+
+
+def same_song(track_title, wanted_title):
+    """Same song AND the same take: the original never matches its live, acoustic, a cappella, remix ... takes"""
+    if not same(track_title, wanted_title):
+        return False
+    want, got = _alt_bits(wanted_title), _alt_bits(track_title)
+    return got <= want if not want else want <= got
+
+
+def _wanted_title(r):
+    """The full Deezer title (it keeps '(Live)' and so on), else the short one"""
+    return r.get("full_title") or r.get("title") or ""
+
+
+def _pick_tracks(tracks, wanted):
+    """Lidarr's tracks with a file that are this exact song, the closest first (one is kept)"""
+    hits = [t for t in tracks if t.get("hasFile") and same_song(t.get("title"), wanted)]
+    hits.sort(key=lambda t: (norm(t.get("title")) != norm(wanted), len(t.get("title") or ""), t.get("absoluteTrackNumber") or 0))
+    return hits
 
 
 def safe(name, fallback="Unknown"):
@@ -787,6 +829,15 @@ def _worker():
 def _tick():
     with _lock:
         todo = [r for r in _state["requests"] if r["state"] not in ("ready", "not_found", "problem")]
+        recheck = [r for r in _state["requests"] if r["state"] == "ready" and r["kind"] == "song" and r.get("album_id") and not r.get("takes_checked")]
+    if recheck and LIDARR_URL and _ensure_lidarr():
+        for r in recheck:
+            try:
+                _drop_other_takes(r)
+            except MusicError as e:
+                log(f"couldn't check other takes of {r['artist']} - {r['title']}: {e.message}")
+            with _lock:
+                _save()
     if not todo:
         return
     lidarr_ok = bool(LIDARR_URL) and _ensure_lidarr()
@@ -966,7 +1017,7 @@ def _pick_album(r):
     pick = pick or next((a for a in albums if same(a.get("title"), r["album"])), None)
     if not pick and r["kind"] == "song":
         tracks = lidarr("GET", "/track", artistId=r["artist_id"]) or []
-        having = {t.get("albumId") for t in tracks if same(t.get("title"), r["title"])}
+        having = {t.get("albumId") for t in tracks if same_song(t.get("title"), _wanted_title(r))}
         types = {"album": 0, "ep": 1, "single": 2}
         options = [a for a in albums if a["id"] in having]
         options.sort(key=lambda a: (types.get((a.get("albumType") or "").lower(), 3), a.get("releaseDate") or "9999"))
@@ -1009,7 +1060,7 @@ def _tracks(album_id):
 
 
 def _wanted_track_here(r):
-    return any(t.get("hasFile") and same(t.get("title"), r["title"]) for t in _tracks(r["album_id"]))
+    return bool(_pick_tracks(_tracks(r["album_id"]), _wanted_title(r)))
 
 
 def _unmonitor(r):
@@ -1022,6 +1073,34 @@ def _unmonitor(r):
             pass
 
 
+def _drop_other_takes(r):
+    """Songs that arrived before the 'other takes' fix: deletes the live / a cappella / remix ... takes
+    that were kept by mistake next to the asked-for song (only when every asked-for song is still there)"""
+    album_id = r["album_id"]
+    with _lock:
+        mates = [x for x in _state["requests"] if x.get("album_id") == album_id and x["state"] not in ("not_found", "problem")]
+    if any(x["kind"] == "album" for x in mates) or any(x["state"] != "ready" for x in mates):
+        if any(x["kind"] == "album" for x in mates):
+            for x in mates:
+                x["takes_checked"] = True
+        return
+    tracks, files = _tracks(album_id), _album_files(album_id)
+    keep = set()
+    for x in mates:
+        hits = _pick_tracks(tracks, _wanted_title(x))
+        if not hits:
+            r["takes_checked"] = True  # The song isn't in Lidarr's list any more: leave everything alone
+            return
+        keep.add(hits[0].get("trackFileId"))
+    drop = [f for f in files if f.get("id") not in keep]
+    if drop:
+        lidarr("DELETE", "/trackfile/bulk", {"trackFileIds": [f["id"] for f in drop]})
+        _tell_jellyfin([_to_helper_path(f.get("path")) for f in drop], kind="Deleted")
+        log(f"removed {len(drop)} other take(s) kept by mistake from {r['artist']} - {r['album']}")
+    for x in mates:
+        x["takes_checked"] = True
+
+
 def _finish(r, files):
     """The copy arrived: keep only the wanted songs, make 320 MP3s, add the cover, tell Jellyfin"""
     album_id = r["album_id"]
@@ -1031,9 +1110,12 @@ def _finish(r, files):
     whole = any(x["kind"] == "album" for x in mates)
     keep_ids = set()
     if not whole:
-        titles = [x["title"] for x in mates if x["kind"] == "song"]
-        keep_ids = {t.get("trackFileId") for t in tracks if t.get("hasFile") and any(same(t.get("title"), w) for w in titles)}
-        if r["kind"] == "song" and not any(t.get("hasFile") and same(t.get("title"), r["title"]) for t in tracks):
+        for x in mates:
+            if x["kind"] == "song":
+                hits = _pick_tracks(tracks, _wanted_title(x))
+                if hits:
+                    keep_ids.add(hits[0].get("trackFileId"))
+        if r["kind"] == "song" and not _pick_tracks(tracks, _wanted_title(r)):
             # The copy didn't have this song: try once more, then say so
             if len(r.get("tries") or []) >= 3:
                 r.update({"state": "not_found", "note": "The copies found didn't have this song"})
@@ -1066,12 +1148,14 @@ def _finish(r, files):
                 pass
     _tell_jellyfin(made)
     for x in mates:
-        if x["kind"] == "album" or any(same(t.get("title"), x["title"]) and t.get("hasFile") for t in tracks):
+        if x["kind"] == "album" or _pick_tracks(tracks, _wanted_title(x)):
             x["state"] = "ready"
             x["ready_at"] = time.time()
             x["note"] = None
     if r["state"] != "ready":
         r.update({"state": "ready", "ready_at": time.time()})
+    for x in mates:
+        x["takes_checked"] = True
     try:
         lidarr("PUT", "/album/monitor", {"albumIds": [album_id], "monitored": False})
     except MusicError:
@@ -1173,6 +1257,8 @@ def _slsk_search(text, r):
             if artist_words and not any(w in npath.split() for w in artist_words):
                 continue
             if any(w in nbase and w not in want_title for w in SLSK_WORDS):
+                continue
+            if _alt_bits(os.path.splitext(base)[0].replace("_", " ")) - _alt_bits(_wanted_title(r)):
                 continue
             length = f.get("length") or 0
             if length and r.get("seconds") and abs(length - r["seconds"]) > 6:
