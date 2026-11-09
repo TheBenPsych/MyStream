@@ -54,6 +54,7 @@ const GROUPS = [
   { id: "look", label: "Look", icon: "gear", line: "Only this browser" },
   { id: "family", label: "Family", icon: "heart", line: "Follows you", adminOnly: true },
   { id: "devices", label: "Phones and TVs", icon: "phone", line: "Sign in a TV or phone with a code" },
+  { id: "install", label: "Install Benflix", icon: "dl", line: "Only this computer" },
   { id: "help", label: "Help", icon: "help", line: "" },
   { id: "behind", label: "Behind the scenes", icon: "key", line: "Main profile only", adminOnly: true },
 ];
@@ -149,11 +150,11 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       <form id="qcf" class="row"><input class="field" id="qcCode" maxlength="6" placeholder="Code" style="max-width:240px;font-size:32px;letter-spacing:.3em;text-transform:uppercase;font-weight:800;text-align:center"><button class="btn white big">Sign it in</button></form>`;
     $("#qcf").onsubmit = (e) => { e.preventDefault(); const c = $("#qcCode").value.trim().toUpperCase(); if (!c) return; B.busy(null, async () => { await B.jf("POST", `/QuickConnect/Authorize?code=${enc(c)}&userId=${B.uid()}`); $("#qcCode").value = ""; return "Done. That TV or phone is signing in as " + B.me.name + "."; }); };
   }
-  if (g.id === "help") {
-    sp.innerHTML = setRow("Install Benflix on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`)
-      + setRow("Help and updates", "How to use Benflix, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
+  if (g.id === "install") {
+    sp.innerHTML = setRow("Install Benflix on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`);
     $("#installBtn").onclick = () => B.install();
   }
+  if (g.id === "help") sp.innerHTML = setRow("Help and updates", "How to use Benflix, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
   if (g.id === "behind") {
     sp.innerHTML = `<div class="warnbox">These are for fixing things. Changing them can make Benflix act oddly in this browser.</div>
       ${setRow("Get the newest web version now", "Normally Tower checks every hour by itself.", `<a class="valbtn" href="#/server/tools/webversion">Open</a>`)}
@@ -180,7 +181,7 @@ const HELP = [
 const QA = [
   ["Why won't a video play?", "Some files need the server to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
   ["Can I use this away from home?", "Yes, once Ben has set it up: open your Benflix internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
-  ["Can I install it like an app?", "Yes. Settings > Help > Install Benflix on this computer. It gets its own window and icon in the dock or Start menu."],
+  ["Can I install it like an app?", "Yes. Settings > Install Benflix. It gets its own window and icon in the dock or Start menu."],
   ["How do I add someone to Who's watching here?", "Press “Add someone” under the pictures on Who's watching and sign in with their name and password, or with a code from a TV or phone."],
   ["Where are Benflix's own channels and games?", "Benflix's own channels and the Benflix games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
   ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on the server, so they're the same on the TV, phone and here."],
