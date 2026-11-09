@@ -57,7 +57,6 @@ class BenflixLibraryCheckup
                 val noSubs = async { safe { animeWithoutSubtitles(userId) } }
                 val lowQuality = async { safe { lowQualityMovies(userId) } }
                 // Benflix: the bigger checkup
-                val pictures = async { safe { missingPictures(userId) } }
                 val doubles = async { safe { twoCopies(userId) } }
                 val unmatched = async { safe { notMatched(userId) } }
                 val unnumbered = async { safe { unnumberedEpisodes(userId) } }
@@ -66,7 +65,6 @@ class BenflixLibraryCheckup
                     CheckupSection("Movies with no trailer", noTrailer.await().orEmpty()),
                     CheckupSection("Anime with no subtitles", noSubs.await().orEmpty()),
                     CheckupSection("Low quality movies (below 720p)", lowQuality.await().orEmpty()),
-                    CheckupSection("Missing poster or logo", pictures.await().orEmpty()),
                     CheckupSection("Two copies of the same movie", doubles.await().orEmpty()),
                     CheckupSection("Not matched to anything online", unmatched.await().orEmpty()),
                     CheckupSection("Episodes Jellyfin couldn't number", unnumbered.await().orEmpty()),
@@ -204,22 +202,6 @@ class BenflixLibraryCheckup
                     limit = SCAN_LIMIT,
                 ),
             )
-
-        private suspend fun missingPictures(userId: UUID): List<CheckupItem> =
-            moviesAndShows(userId, emptyList())
-                .mapNotNull { item ->
-                    val tags = item.imageTags.orEmpty()
-                    val missing =
-                        listOfNotNull(
-                            if (tags[ImageType.PRIMARY] == null) "poster" else null,
-                            if (tags[ImageType.LOGO] == null) "logo" else null,
-                        )
-                    if (missing.isEmpty()) {
-                        null
-                    } else {
-                        item.toCheckup("pictures", "No " + missing.joinToString(" or ") + ". Try Refresh info and pictures.")
-                    }
-                }.take(LIST_LIMIT)
 
         private suspend fun twoCopies(userId: UUID): List<CheckupItem> =
             items(

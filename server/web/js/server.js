@@ -39,7 +39,7 @@ const PAGES = {};
 const SECTIONS = [
   { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"], ["week", "This week"]] },
   { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
-  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"]] },
+  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["posters", "Fix posters"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"]] },
   { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
   { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["webversion", "Web version"]] },
 ];
@@ -418,6 +418,93 @@ PAGES.now = (el) => {
     }
   };
   draw(); history(); every(10000, draw);
+};
+
+// ---------- Library: Fix posters, one title at a time ----------
+// No poster, seasons with no poster, blurry (Tower measures them), wrong shape, no title logo. Pictures come
+// from TMDB, TheTVDB and Fanart.tv through Jellyfin. Missing ones are also filled in by Tower every night.
+async function posterProblems() {
+  const [skip, kept, sizes, titles, seasons] = await Promise.all([
+    B.posters.skipped().catch(() => new Set()),
+    B.posters.kept().catch(() => new Set()),
+    call("GET", "api/admin/posters/status").catch(() => null),
+    jf("GET", `/Users/${B.uid()}/Items?IncludeItemTypes=Movie,Series,BoxSet&Recursive=true&Fields=PrimaryImageAspectRatio,ProductionYear&EnableImageTypes=Primary,Logo&SortBy=SortName&EnableUserData=false`),
+    jf("GET", `/Users/${B.uid()}/Items?IncludeItemTypes=Season&Recursive=true&EnableImageTypes=Primary&SortBy=SortName&EnableUserData=false`).catch(() => null),
+  ]);
+  const small = {};
+  ((sizes && sizes.small) || []).forEach((x) => { small[x.id] = x; });
+  const kind = (t) => (t === "Series" ? "Show" : t === "BoxSet" ? "Collection" : "Movie");
+  const noPoster = [], blurry = [], shape = [], noLogo = [];
+  ((titles && titles.Items) || []).filter((x) => !skip.has(x.Id)).forEach((x) => {
+    const tag = (x.ImageTags || {}).Primary;
+    const base = { id: x.Id, title: x.Name, sub: [kind(x.Type), x.ProductionYear].filter(Boolean).join(" · "), img: "Primary", tag };
+    if (!tag) noPoster.push(Object.assign(base, { problem: "No poster" }));
+    else if (kept.has(x.Id)) { /* you picked this one */ }
+    else if (small[x.Id]) blurry.push(Object.assign(base, { problem: `Blurry: only ${small[x.Id].w} × ${small[x.Id].h}` }));
+    else if ((x.PrimaryImageAspectRatio || 0.67) > 0.85) shape.push(Object.assign(base, { problem: "Wrong shape: a wide picture in a tall spot" }));
+    if (x.Type !== "BoxSet" && !(x.ImageTags || {}).Logo) noLogo.push({ id: x.Id, title: x.Name, sub: base.sub, img: "Logo", tag: null, problem: "No title logo" });
+  });
+  const seasonList = ((seasons && seasons.Items) || []).filter((x) => !(x.ImageTags || {}).Primary && !skip.has(x.Id) && !skip.has(x.SeriesId))
+    .map((x) => ({ id: x.Id, title: x.SeriesName || "", sub: x.Name || "Season " + x.IndexNumber, img: "Primary", tag: null, problem: `${x.Name || "This season"} has no poster` }));
+  return { list: [...noPoster, ...seasonList, ...blurry, ...shape, ...noLogo], night: sizes && sizes.night };
+}
+
+PAGES.posters = (el) => {
+  el.innerHTML = `<p class="sub">Posters that need a look, one at a time. Skip asks again next time; Leave it never asks about that one again.</p><div id="fp">${loading("Looking for posters that need a look…")}</div>`;
+  let list = null, done = 0, best = null, saving = false, night = null;
+  const box = () => $("#fp");
+  const tall = (pr) => pr.img === "Primary";
+  const pic = (url, pr, caption) => `<div class="fixer-pic ${tall(pr) ? "tall" : ""}">${url ? `<img src="${esc(url)}" alt="" style="object-fit:${pr.img === "Logo" ? "contain" : "cover"}">` : `<span class="dim">None</span>`}</div><div class="dim fixer-cap">${esc(caption)}</div>`;
+  const draw = () => {
+    if (current !== "posters" || !box()) return;
+    const nightLine = night && night.filled > 0 ? `<p class="dim">Last night Benflix filled in ${night.filled} missing picture${night.filled === 1 ? "" : "s"} by itself.</p>` : "";
+    const pr = list && list[0];
+    if (!pr) {
+      box().innerHTML = nightLine + `<div class="list"><div class="empty">${done ? `All done! You fixed ${done}.` : "Nothing needs a look. Every poster looks good."}</div></div><button class="btn white" id="fpAgain">Check again</button>`;
+      $("#fpAgain").onclick = start;
+      return;
+    }
+    const nowUrl = pr.tag ? B.img(pr.id, pr.img, { h: 600, tag: pr.tag }) : "";
+    box().innerHTML = nightLine + `<div class="fixer">
+      <div class="fixer-pics"><div>${pic(nowUrl, pr, pr.problem)}</div><div class="fixer-arrow">→</div><div>${pic(best && best.Url, pr, best ? B.posters.describe(best) : best === false ? "Nothing found online" : "Looking…")}</div></div>
+      <div class="fixer-acts"><div class="dim">${done + 1} of ${done + list.length}</div><h3>${esc(pr.title)}</h3><div class="dim">${esc(pr.sub)}</div><div class="word-bad">${esc(pr.problem)}</div>
+        <button class="btn white" data-f="use" ${best && !saving ? "" : "disabled"}>${saving ? "Saving…" : "Use this one"}</button>
+        <button class="btn" data-f="pick">Pick another</button><button class="btn" data-f="skip">Skip</button><button class="btn" data-f="leave">Leave it</button></div></div>`;
+    const u = box().querySelector('[data-f="use"]');
+    if (u && !u.disabled) u.focus();
+    box().querySelectorAll("[data-f]").forEach((b) => { b.onclick = () => act(b.dataset.f); });
+  };
+  const suggest = async () => {
+    best = null; draw();
+    const pr = list && list[0];
+    if (!pr) return;
+    const found = await B.posters.choices(pr.id, pr.img).catch(() => []);
+    if (list[0] !== pr) return;
+    best = found.find((x) => pr.img === "Backdrop" || !x.Language || String(x.Language).toLowerCase() === "en") || false;
+    draw();
+  };
+  const next = (fixed) => { list.shift(); if (fixed) done++; saving = false; suggest(); };
+  const act = async (what) => {
+    const pr = list[0];
+    if (what === "use" && best) {
+      saving = true; draw();
+      try { await B.posters.use(pr.id, pr.img, best); next(true); } catch (e) { saving = false; B.toast(e.message); draw(); }
+    } else if (what === "skip") {
+      if (list.length > 1) { list.push(list.shift()); suggest(); } else next(false);
+    } else if (what === "leave") {
+      B.posters.leave(pr.id).catch(() => null); next(false);
+    } else if (what === "pick") {
+      const item = await B.get(`/Users/${B.uid()}/Items/${pr.id}`).catch(() => null);
+      if (item) B.fixItem(Object.assign(item, { fixTab: pr.img === "Logo" ? "Logo" : "Primary" }));
+    }
+  };
+  const start = async () => {
+    list = null; done = 0;
+    if (box()) box().innerHTML = loading("Looking for posters that need a look…");
+    try { const r = await posterProblems(); list = r.list; night = r.night; } catch (err) { if (box()) box().innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    suggest();
+  };
+  start();
 };
 
 PAGES.library = (el) => {

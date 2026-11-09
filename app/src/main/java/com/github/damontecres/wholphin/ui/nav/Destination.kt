@@ -302,6 +302,17 @@ sealed class Destination(
     @Serializable
     data object HowTo : Destination(false)
 
+    /** Benflix "Change poster" (main profile only): [kind] is a PosterKind name to open on, like LOGO */
+    @Serializable
+    data class PosterPicker(
+        val itemId: UUID,
+        val kind: String? = null,
+    ) : Destination(false)
+
+    /** Benflix "Fix posters" (main profile only): one title at a time */
+    @Serializable
+    data object PosterFixer : Destination(false)
+
     /** Benflix: admin-only page showing who's watching and how the server is doing */
     @Serializable
     data object ServerStatus : Destination(false)
