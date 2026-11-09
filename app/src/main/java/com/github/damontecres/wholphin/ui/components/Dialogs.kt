@@ -220,11 +220,11 @@ fun DialogPopup(
     if (showDialog) {
         if (waitToLoad) {
             LaunchedEffect(Unit) {
-                // This is a hack because a long click will propagate here and click the first list item
-                // So this disables the list items assuming the user will stop pressing when the dialog appears
-                // This is also bypassed in the code below if the user releases the enter/d-pad center button
+                // A held OK can't press anything in here any more (the pop-up ignores it until OK is
+                // pressed fresh), so the rows only wait a moment for the panel to appear, then the
+                // first one is selected and ready
                 waiting = true
-                delay(1000)
+                delay(150)
                 waiting = false
             }
         } else {
