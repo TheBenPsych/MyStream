@@ -266,7 +266,10 @@ B.musicTab = async (nav) => {
     } else if (b.id === "mplaylist") {
       B.askText("Bring in a playlist", "Paste the playlist's link (Share > Copy link), or songs one per line like: Queen - Bohemian Rhapsody", "", { long: true, ok: "Bring it in" }).then((link) => {
         if (!link || !link.trim()) return;
-        B.busy(null, async () => { const p = await music("POST", "/playlist", { link: link.trim() }); drawStatus(); return `Bringing in ${p.name}.`; });
+        // Ben: someone else's playlist can bring in just the songs, without a Benflix playlist
+        B.ask("Make a Benflix playlist too?", "Songs you don't have yet are asked for either way. Pick Just the songs for someone else's playlist.", "Songs + playlist", "Just the songs").then((make) => {
+          B.busy(null, async () => { const p = await music("POST", "/playlist", { link: link.trim(), playlist: !!make }); drawStatus(); return `Bringing in ${p.name}.`; });
+        });
       });
     }
   };

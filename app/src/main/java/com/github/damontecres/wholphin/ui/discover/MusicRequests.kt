@@ -197,10 +197,18 @@ class MusicRequestsViewModel
             }
         }
 
-        fun importPlaylist(link: String) {
+        fun importPlaylist(
+            link: String,
+            makePlaylist: Boolean,
+        ) {
             viewModelScope.launch {
-                safely { music.importPlaylist(link) }?.let {
-                    note.value = "Bringing in ${it.name}. Songs you already have are kept, the rest are asked for."
+                safely { music.importPlaylist(link, makePlaylist) }?.let {
+                    note.value =
+                        if (makePlaylist) {
+                            "Bringing in ${it.name}. Songs you already have are kept, the rest are asked for."
+                        } else {
+                            "Getting the songs from ${it.name} (no playlist is made). Songs you already have are kept."
+                        }
                     refresh()
                 }
             }
@@ -299,9 +307,9 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
     if (playlistOpen) {
         PlaylistDialog(
             onDismiss = { playlistOpen = false },
-            onImport = {
+            onImport = { link, make ->
                 playlistOpen = false
-                viewModel.importPlaylist(it)
+                viewModel.importPlaylist(link, make)
             },
         )
     }
@@ -952,10 +960,11 @@ private fun AskSongDialog(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlaylistDialog(
     onDismiss: () -> Unit,
-    onImport: (String) -> Unit,
+    onImport: (link: String, makePlaylist: Boolean) -> Unit,
 ) {
     var link by remember { mutableStateOf("") }
     BasicDialog(onDismissRequest = onDismiss) {
@@ -985,8 +994,13 @@ private fun PlaylistDialog(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MusicButton("Bring it in", primary = true) { if (link.isNotBlank()) onImport(link.trim()) }
+            // Ben: someone else's playlist can bring in just the songs, without a Benflix playlist
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                MusicButton("Songs + playlist", primary = true) { if (link.isNotBlank()) onImport(link.trim(), true) }
+                MusicButton("Just the songs") { if (link.isNotBlank()) onImport(link.trim(), false) }
                 MusicButton("Cancel", onClick = onDismiss)
             }
         }
