@@ -64,7 +64,6 @@ class MusicLibrary
 
         private val songFields = DetailItemFields + ItemFields.DATE_CREATED
 
-
         /** Albums, newest first, most played first, or by name. [ids] keeps their order. */
         suspend fun albums(
             sort: ItemSortBy = ItemSortBy.SORT_NAME,

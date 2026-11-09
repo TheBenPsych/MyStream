@@ -583,12 +583,15 @@ class MusicService
             val needsAc3Transcode =
                 preferAc3Surround &&
                     // Long song lists only ask for the streams (much faster), not the full media sources
-                    (audio.data.mediaSources?.firstOrNull()?.mediaStreams ?: audio.data.mediaStreams)
-                        ?.any { stream ->
-                            stream.type == MediaStreamType.AUDIO &&
-                                stream.channels.gt(2) &&
-                                stream.codec != Codec.Audio.AC3
-                        } == true
+                    (
+                        audio.data.mediaSources
+                            ?.firstOrNull()
+                            ?.mediaStreams ?: audio.data.mediaStreams
+                    )?.any { stream ->
+                        stream.type == MediaStreamType.AUDIO &&
+                            stream.channels.gt(2) &&
+                            stream.codec != Codec.Audio.AC3
+                    } == true
             val url =
                 if (needsAc3Transcode) {
                     api.universalAudioApi.getUniversalAudioStreamUrl(
