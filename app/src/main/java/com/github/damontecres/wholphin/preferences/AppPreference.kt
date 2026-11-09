@@ -1313,6 +1313,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.disabled,
             )
 
+        val MusicBarsPref =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_music_bars,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.musicBarsOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { musicBarsOff = !value }
+                },
+                summaryOn = R.string.benflix_music_bars_on,
+                summaryOff = R.string.disabled,
+            )
+
         val MobileDataQualityPref =
             AppChoicePreference<AppPreferences, MobileDataQuality>(
                 title = R.string.benflix_mobile_data_quality,
@@ -1441,6 +1453,7 @@ val basicPreferences =
                     AppPreference.UserProfileSettings,
                     AppPreference.AutoMpvStyledSubs,
                     AppPreference.EnglishSubtitlesOnly,
+                    AppPreference.MusicBarsPref,
                 ),
         ),
         PreferenceGroup(

@@ -26,16 +26,12 @@ import com.github.damontecres.wholphin.ui.detail.DebugPage
 import com.github.damontecres.wholphin.ui.detail.FavoritesPage
 import com.github.damontecres.wholphin.ui.detail.HomeRowGrid
 import com.github.damontecres.wholphin.ui.detail.PersonPage
-import com.github.damontecres.wholphin.ui.detail.PlaylistDetails
 import com.github.damontecres.wholphin.ui.detail.collection.CollectionDetails
 import com.github.damontecres.wholphin.ui.detail.discover.DiscoverMovieDetails
 import com.github.damontecres.wholphin.ui.detail.discover.DiscoverPersonPage
 import com.github.damontecres.wholphin.ui.detail.discover.DiscoverSeriesDetails
 import com.github.damontecres.wholphin.ui.detail.episode.EpisodeDetails
 import com.github.damontecres.wholphin.ui.detail.movie.MovieDetails
-import com.github.damontecres.wholphin.ui.detail.music.AlbumDetailsPage
-import com.github.damontecres.wholphin.ui.detail.music.ArtistDetailsPage
-import com.github.damontecres.wholphin.ui.detail.music.NowPlayingPage
 import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
@@ -88,6 +84,52 @@ fun DestinationContent(
 
         Destination.ShowsDoor -> {
             DoorPage(BenflixDoor.SHOWS, preferences, onClearBackdrop, modifier)
+        }
+
+        Destination.MusicDoor -> {
+            // No music on Kids profiles
+            if (com.github.damontecres.wholphin.services.KidsMode.isActive) {
+                LaunchedEffect(Unit) { onClearBackdrop() }
+            } else {
+                com.github.damontecres.wholphin.ui.music
+                    .MusicDoorPage(preferences, onClearBackdrop, modifier)
+            }
+        }
+
+        is Destination.MusicList -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            when (destination.kind) {
+                "liked" -> {
+                    com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
+                        kind = com.github.damontecres.wholphin.ui.music.CollectionKind.LIKED,
+                        id = null,
+                        title = destination.title,
+                        preferences = preferences,
+                        modifier = modifier,
+                    )
+                }
+
+                "mix" -> {
+                    com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
+                        kind = com.github.damontecres.wholphin.ui.music.CollectionKind.MIX,
+                        id = destination.id,
+                        title = destination.title,
+                        preferences = preferences,
+                        modifier = modifier,
+                    )
+                }
+
+                else -> {
+                    com.github.damontecres.wholphin.ui.music
+                        .MusicListPage(destination, modifier)
+                }
+            }
+        }
+
+        Destination.MusicUpNext -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.music
+                .MusicUpNextPage(modifier)
         }
 
         is Destination.DoorBrowse -> {
@@ -209,9 +251,12 @@ fun DestinationContent(
 
                 BaseItemKind.PLAYLIST -> {
                     LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    PlaylistDetails(
+                    // Benflix music: music playlists get the album-style page (movie playlists keep the old one)
+                    com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
+                        kind = com.github.damontecres.wholphin.ui.music.CollectionKind.PLAYLIST,
+                        id = destination.itemId.toString(),
+                        title = "",
                         preferences = preferences,
-                        destination = destination,
                         modifier = modifier,
                     )
                 }
@@ -273,19 +318,20 @@ fun DestinationContent(
 
                 BaseItemKind.MUSIC_ALBUM -> {
                     LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    AlbumDetailsPage(
+                    com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
+                        kind = com.github.damontecres.wholphin.ui.music.CollectionKind.ALBUM,
+                        id = destination.itemId.toString(),
+                        title = "",
                         preferences = preferences,
-                        itemId = destination.itemId,
-                        initialSongId = destination.initialSongId,
                         modifier = modifier,
                     )
                 }
 
                 BaseItemKind.MUSIC_ARTIST -> {
                     LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    ArtistDetailsPage(
+                    com.github.damontecres.wholphin.ui.music.MusicArtistPage(
+                        id = destination.itemId,
                         preferences = preferences,
-                        itemId = destination.itemId,
                         modifier = modifier,
                     )
                 }
@@ -369,7 +415,8 @@ fun DestinationContent(
         }
 
         Destination.NowPlaying -> {
-            NowPlayingPage(modifier)
+            com.github.damontecres.wholphin.ui.music
+                .MusicNowPlayingPage(preferences, modifier)
         }
 
         Destination.Channels -> {

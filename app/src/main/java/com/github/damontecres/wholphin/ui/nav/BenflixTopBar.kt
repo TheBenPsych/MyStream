@@ -89,6 +89,9 @@ fun Destination.door(): BenflixDoor? =
         is Destination.ShowsDoor -> BenflixDoor.SHOWS
         is Destination.Channels -> BenflixDoor.LIVE_TV
         is Destination.Games -> BenflixDoor.GAMES
+        is Destination.MusicDoor -> BenflixDoor.MUSIC
+        is Destination.MusicList -> BenflixDoor.MUSIC
+        is Destination.MusicUpNext -> BenflixDoor.MUSIC
         is Destination.DoorBrowse -> BenflixDoor.entries.firstOrNull { it.name == door }
         is Destination.DoorRowGrid -> BenflixDoor.entries.firstOrNull { it.name == door }
         else -> null
@@ -114,6 +117,7 @@ fun Destination.drawsOwnPicture(): Boolean =
 fun Destination.fullBleed(): Boolean =
     this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
+        underTopBar() ||
         (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES))
 
 /**
@@ -171,6 +175,9 @@ fun BenflixTopBar(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = if (overPicture) Modifier.softShadow() else Modifier,
         ) {
+            // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
+            com.github.damontecres.wholphin.ui.music
+                .MusicNowPill(scale = scale)
             if (showClock) BigClock(scale = scale)
             TopBarIconButton(
                 icon = BenflixIcon.SEARCH,

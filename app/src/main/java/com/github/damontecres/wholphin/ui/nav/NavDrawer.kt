@@ -626,6 +626,11 @@ fun NavDrawer(
                                 end = if (destination.fullBleed()) 0.dp else 8.dp,
                             ),
                 )
+                // Benflix music: a slim bar along the bottom while music plays
+                if (destination !is Destination.NowPlaying) {
+                    com.github.damontecres.wholphin.ui.music
+                        .MusicMiniBar()
+                }
             }
         }
         return

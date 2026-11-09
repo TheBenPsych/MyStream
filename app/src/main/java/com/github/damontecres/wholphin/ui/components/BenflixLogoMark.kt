@@ -27,7 +27,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 
 /** The four logo squares in door order: top left Movies, top right Shows, bottom left Live TV, bottom right Games */
-val LogoSquareColors = BenflixDoor.entries.map { it.color }
+val LogoSquareColors = BenflixDoor.entries.take(4).map { it.color }
 
 /** Gap between the squares, as a part of the mark's width */
 const val LOGO_GAP = 0.1f

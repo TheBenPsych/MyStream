@@ -135,6 +135,7 @@ def start(jellyfin_call):
                 pass
     threading.Thread(target=_worker, name="music-worker", daemon=True).start()
     threading.Thread(target=_drop_worker, name="music-drop", daemon=True).start()
+    threading.Thread(target=_lyrics_worker, name="music-lyrics", daemon=True).start()
     log(f"ready (Lidarr {'set up' if LIDARR_URL else 'NOT set up yet'}, ffmpeg {'found' if _has_ffmpeg() else 'missing'})")
 
 
@@ -341,8 +342,17 @@ def _artist(a):
 # ---------- What the app and web page can ask ----------
 
 
-def route(method, path, query, token, user_id, is_admin, read_json):
-    """The helper sends /api/music/... here. Returns (status, answer). Only for the admin (Ben)."""
+def route(method, path, query, token, user_id, is_admin, read_json, is_kids=False):
+    """The helper sends /api/music/... here. Returns (status, answer). Made for you is for everyone but Kids;
+    the rest is only for the admin (Ben)."""
+    if method == "GET" and path == "/api/music/mixes":
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        try:
+            return 200, mixes_for(token, user_id)
+        except Exception as e:
+            log(f"Made for you problem: {e!r}")
+            return 200, {"mixes": []}
     if not is_admin:
         return 403, {"error": "Only Ben can ask for music."}
     if not _dir:
@@ -2288,3 +2298,190 @@ def playlist_remove(pid):
         _state["playlists"].remove(p)
         _save()
     return {"ok": True}
+
+
+# ---------- Made for you (about 6 mixes per person, new every morning) ----------
+
+_mixes = {}  # user id -> (day, answer)
+_mix_lock = threading.Lock()
+SONG_FIELDS = "Fields=Genres,DateCreated&EnableImages=false&EnableUserData=true"
+
+
+def _as_user(token, path):
+    """A Jellyfin call made with the person's own sign-in, so their plays and likes are theirs"""
+    if not _jf:
+        return None
+    try:
+        status, data, _ = _jf("GET", path, token=token, device_id="benflix-music")
+    except Exception:
+        return None
+    if status >= 300:
+        return None
+    try:
+        return json.loads(data) if data and data.strip() else {}
+    except ValueError:
+        return None
+
+
+def _songs(token, user_id, extra):
+    j = _as_user(token, f"/Users/{user_id}/Items?IncludeItemTypes=Audio&Recursive=true&{SONG_FIELDS}&{extra}") or {}
+    return [s for s in (j.get("Items") or []) if s.get("Id")]
+
+
+def _artist(song):
+    a = song.get("AlbumArtists") or song.get("ArtistItems") or []
+    return (a[0].get("Name"), a[0].get("Id")) if a else (song.get("AlbumArtist"), None)
+
+
+def _mix(key, name, line, songs, limit=30):
+    seen, ids, covers = set(), [], []
+    for s in songs:
+        if s["Id"] in seen:
+            continue
+        seen.add(s["Id"])
+        ids.append(s["Id"])
+        album = s.get("AlbumId")
+        if album and album not in covers:
+            covers.append(album)
+        if len(ids) >= limit:
+            break
+    if len(ids) < 8:
+        return None
+    return {"key": key, "name": name, "line": line, "songs": ids, "covers": covers[:4]}
+
+
+def mixes_for(token, user_id):
+    day = time.strftime("%Y-%m-%d")
+    with _mix_lock:
+        cached = _mixes.get(user_id)
+        if cached and cached[0] == day:
+            return cached[1]
+    import random
+
+    rnd = random.Random(f"{user_id}-{day}")
+    played = _songs(token, user_id, "Filters=IsPlayed&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Limit=400")
+    liked = _songs(token, user_id, "Filters=IsFavorite&Limit=300")
+    fresh = _songs(token, user_id, "SortBy=Random&Limit=200")
+    pool = {s["Id"]: s for s in played + liked + fresh}
+    count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
+    # The artists each person plays most (likes count a little too)
+    weight = {}
+    for s in played:
+        name, aid = _artist(s)
+        if name:
+            weight[(name, aid)] = weight.get((name, aid), 0) + count(s)
+    for s in liked:
+        name, aid = _artist(s)
+        if name:
+            weight[(name, aid)] = weight.get((name, aid), 0) + 3
+    top = [a for a, _ in sorted(weight.items(), key=lambda x: -x[1])]
+    mixes = []
+
+    def daily(n, artists):
+        names = {a[0] for a in artists}
+        mine = [s for s in pool.values() if _artist(s)[0] in names]
+        rnd.shuffle(mine)
+        # Mostly songs they know, plus a few they've barely played
+        known = [s for s in mine if count(s) > 0][:22]
+        rare = [s for s in mine if count(s) == 0][:8]
+        songs = known + rare
+        rnd.shuffle(songs)
+        who = ", ".join(a[0] for a in artists[:3])
+        return _mix(f"daily-{n}", f"Daily mix {n}", who or "A bit of everything", songs)
+
+    if top:
+        half = max(1, min(len(top), 8) // 2)
+        mixes.append(daily(1, top[:half]))
+        mixes.append(daily(2, top[half : half * 2] or top[:half]))
+    else:
+        songs = list(fresh)
+        rnd.shuffle(songs)
+        mixes.append(_mix("daily-1", "Daily mix 1", "A bit of everything", songs))
+    repeat = [s for s in played if count(s) >= 2][:30]
+    mixes.append(_mix("repeat", "On repeat", "The songs you play most", repeat, limit=30))
+    for i, (name, aid) in enumerate([a for a in top if a[1]][:2]):
+        j = _as_user(token, f"/Items/{aid}/InstantMix?UserId={user_id}&Limit=30&{SONG_FIELDS}") or {}
+        mixes.append(_mix(f"radio-{i + 1}", f"{name} radio", f"{name} and music like it", j.get("Items") or []))
+    # The decade they play most
+    decades = {}
+    for s in played:
+        y = s.get("ProductionYear")
+        if y:
+            decades[y // 10 * 10] = decades.get(y // 10 * 10, 0) + count(s)
+    if decades:
+        d = max(decades, key=decades.get)
+        years = ",".join(str(y) for y in range(d, d + 10))
+        songs = _songs(token, user_id, f"Years={years}&SortBy=Random&Limit=40")
+        mixes.append(_mix(f"decade-{d}", f"Your {d}s", f"Songs from the {d}s", songs))
+    else:
+        songs = list(fresh)
+        rnd.shuffle(songs)
+        mixes.append(_mix("discover", "Something new", "Songs you haven't played yet", [s for s in songs if count(s) == 0]))
+    answer = {"mixes": [m for m in mixes if m][:6]}
+    with _mix_lock:
+        _mixes[user_id] = (day, answer)
+    return answer
+
+
+# ---------- Lyrics: Tower fetches missing ones from LRCLIB each night ----------
+
+LRCLIB = "https://lrclib.net/api/get"
+LYRICS_PER_NIGHT = 400
+
+
+def _lyrics_worker():
+    time.sleep(300)
+    while True:
+        # Once a night, around 3am
+        now = time.localtime()
+        wait = ((27 - now.tm_hour) % 24) * 3600 - now.tm_min * 60
+        time.sleep(max(600, wait))
+        try:
+            _lyrics_tick()
+        except Exception as e:
+            log(f"lyrics problem: {e!r}")
+
+
+def _lyrics_tick():
+    if not _dir or not os.path.isdir(MUSIC):
+        return
+    tried = _read("lyrics-tried.json") or {}
+    j = _jellyfin("GET", "/Items?IncludeItemTypes=Audio&Recursive=true&Fields=Path&EnableImages=false&Limit=20000")
+    if not j:
+        return
+    now, found, asked = time.time(), [], 0
+    for s in j.get("Items") or []:
+        path = s.get("Path") or ""
+        if not path.startswith(MEDIA) or not os.path.isfile(path):
+            continue
+        lrc = os.path.splitext(path)[0] + ".lrc"
+        if os.path.exists(lrc) or now - tried.get(path, 0) < 30 * 86400:
+            continue
+        if asked >= LYRICS_PER_NIGHT:
+            break
+        asked += 1
+        tried[path] = now
+        artist = (s.get("AlbumArtist") or ", ".join(s.get("Artists") or [])).strip()
+        args = {"artist_name": artist, "track_name": s.get("Name") or "", "album_name": s.get("Album") or ""}
+        ticks = s.get("RunTimeTicks") or 0
+        if ticks:
+            args["duration"] = int(round(ticks / 10_000_000))
+        try:
+            got = _http(LRCLIB + "?" + urllib.parse.urlencode(args), headers={"User-Agent": "Benflix (https://github.com/TheBenPsych/MyStream)"}, timeout=20)
+        except (urllib.error.URLError, OSError, ValueError):
+            got = None
+        text = (got or {}).get("syncedLyrics") or (got or {}).get("plainLyrics") if isinstance(got, dict) else None
+        if text and not (got or {}).get("instrumental"):
+            try:
+                with open(lrc, "w", encoding="utf-8") as f:
+                    f.write(text)
+                _own(lrc)
+                found.append(s["Id"])
+            except OSError:
+                pass
+        time.sleep(1)
+    _write("lyrics-tried.json", tried)
+    for item in found:
+        _jellyfin("POST", f"/Items/{item}/Refresh?MetadataRefreshMode=Default&ReplaceAllMetadata=false")
+    if asked:
+        log(f"lyrics: looked for {asked} songs, saved {len(found)} new lyrics")
