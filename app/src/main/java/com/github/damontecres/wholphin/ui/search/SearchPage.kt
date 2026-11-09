@@ -676,7 +676,7 @@ fun SearchCombinedResults(
         is SearchResult.Error -> {
             SearchResultPlaceholder(
                 title = stringResource(R.string.results),
-                message = result.ex.localizedMessage ?: "Error occurred during search",
+                message = stringResource(R.string.search_failed),
                 messageColor = MaterialTheme.colorScheme.error,
                 modifier = modifier.padding(16.dp),
             )
@@ -807,7 +807,7 @@ fun SearchRowResult(
         is SearchResult.Error -> {
             SearchResultPlaceholder(
                 title = stringResource(title),
-                message = r.ex.localizedMessage ?: "Error occurred during search",
+                message = stringResource(R.string.search_failed),
                 messageColor = MaterialTheme.colorScheme.error,
                 modifier = Modifier,
             )
