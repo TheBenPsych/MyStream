@@ -297,6 +297,7 @@ class BenflixPosters
                         val id = item.id.toString()
                         val tag = item.imageTags?.get(ImageType.PRIMARY)
                         val isShow = item.type == BaseItemKind.SERIES
+
                         fun problem(
                             kind: PosterKind,
                             text: String,
@@ -417,9 +418,21 @@ class BenflixPosters
             ): Int {
                 val lang = language.orEmpty().lowercase()
                 return if (kind == PosterKind.BACKGROUND) {
-                    if (lang.isEmpty()) 0 else if (lang == "en") 1 else 2
+                    if (lang.isEmpty()) {
+                        0
+                    } else if (lang == "en") {
+                        1
+                    } else {
+                        2
+                    }
                 } else {
-                    if (lang == "en") 0 else if (lang.isEmpty()) 1 else 2
+                    if (lang == "en") {
+                        0
+                    } else if (lang.isEmpty()) {
+                        1
+                    } else {
+                        2
+                    }
                 }
             }
 
@@ -437,7 +450,18 @@ class BenflixPosters
 
 private fun languageName(code: String?): String? =
     when (code?.lowercase()) {
-        null, "" -> "No words"
-        "en" -> "English"
-        else -> java.util.Locale.forLanguageTag(code).displayLanguage.takeIf { it.isNotBlank() } ?: code
+        null, "" -> {
+            "No words"
+        }
+
+        "en" -> {
+            "English"
+        }
+
+        else -> {
+            java.util.Locale
+                .forLanguageTag(code)
+                .displayLanguage
+                .takeIf { it.isNotBlank() } ?: code
+        }
     }
