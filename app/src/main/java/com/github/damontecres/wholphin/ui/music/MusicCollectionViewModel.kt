@@ -56,6 +56,8 @@ data class MusicCollectionState(
     val notMusic: Boolean = false,
     /** All songs: how many songs there are while the rest of the list is still coming in (null once it's all here) */
     val stillLoadingTotal: Int? = null,
+    /** Album pages: how many songs the whole album has, when Benflix only has some of them ("3 of 12 songs") */
+    val albumTotal: Int? = null,
 )
 
 @HiltViewModel
@@ -66,6 +68,7 @@ class MusicCollectionViewModel
         private val library: MusicLibrary,
         private val serverRepository: ServerRepository,
         private val favoriteWatchManager: FavoriteWatchManager,
+        private val benflixMusic: com.github.damontecres.wholphin.services.BenflixMusic,
     ) : ViewModel() {
         private val _state = MutableStateFlow(MusicCollectionState())
         val state: StateFlow<MusicCollectionState> = _state
@@ -121,6 +124,18 @@ class MusicCollectionViewModel
             val songs = library.albumSongs(id)
             _state.update {
                 it.copy(item = album, title = album.title.orEmpty(), songs = songs, liked = likedOf(songs), loaded = true)
+            }
+            // Only some songs of the album (asked for one by one): "3 of 12 songs"
+            val albumArtist = album.data.albumArtist ?: album.data.artists?.firstOrNull()
+            if (!albumArtist.isNullOrBlank() && !album.title.isNullOrBlank() && songs.isNotEmpty()) {
+                try {
+                    val total = benflixMusic.albumSize(albumArtist, album.title.orEmpty())
+                    if (total > songs.size) _state.update { it.copy(albumTotal = total) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.d(ex, "Album size")
+                }
             }
             val artistId =
                 album.data.albumArtists

@@ -396,6 +396,12 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         except Exception as e:
             log(f"Made for you problem: {e!r}")
             return 200, {"mixes": []}
+    if method == "GET" and path == "/api/music/albumsize":
+        # How many songs the whole album has, for the "3 of 12 songs" note (everyone but Kids)
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        one = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
+        return 200, {"songs": album_size(one("artist"), one("album"))}
     if not is_admin:
         return 403, {"error": "Only Ben can ask for music."}
     if not _dir:
@@ -616,6 +622,32 @@ def genre_page(genre_id):
     out["genre"] = g
     _mark_asked(out)
     return out
+
+
+def album_size(artist, album):
+    """How many songs this album has in the music catalogue (0 when it can't be found). Kept for 30 days."""
+    if not artist or not album:
+        return 0
+
+    def load():
+        try:
+            found = deezer("/search/album", q=f'artist:"{artist}" album:"{album}"', limit=10).get("data") or []
+            if not found:
+                found = deezer("/search/album", q=f"{artist} {album}", limit=10).get("data") or []
+        except MusicError:
+            return None
+        for a in found:
+            if same(a.get("title"), album) and same((a.get("artist") or {}).get("name"), artist):
+                return int(a.get("nb_tracks") or 0)
+        return 0
+
+    key = f"size-{norm(artist)}-{norm(album)}"
+    n = _cached(key, load, keep=30 * 24 * 3600)
+    if n is None:
+        with _lock:
+            _found_cache.pop(key, None)  # The catalogue was out of reach: ask again next time
+        return 0
+    return n
 
 
 _have = {"at": 0, "songs": set()}

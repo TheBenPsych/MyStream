@@ -128,6 +128,12 @@ class BenflixMusic
     ) {
         suspend fun status(): MusicStatus = parseStatus(helper.getJson("/api/music/status"))
 
+        /** How many songs the whole album has in the music catalogue (0 when unknown). Anyone but Kids. */
+        suspend fun albumSize(
+            artist: String,
+            album: String,
+        ): Int = helper.getJson("/api/music/albumsize?artist=" + Uri.encode(artist) + "&album=" + Uri.encode(album)).optInt("songs")
+
         suspend fun search(text: String): MusicSearch {
             val j = helper.getJson("/api/music/search?q=" + Uri.encode(text))
             return MusicSearch(

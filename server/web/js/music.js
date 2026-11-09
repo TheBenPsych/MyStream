@@ -540,7 +540,7 @@
       if (discs.size > 1 && o.album && s.ParentIndexNumber !== lastDisc) { lastDisc = s.ParentIndexNumber; body += `<div class="mdisc">Disc ${esc(lastDisc || 1)}</div>`; }
       body += songRow(s, i, { number: o.album ? s.IndexNumber || i + 1 : null, cover: !o.album, artist: !o.album });
     });
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage">${hero(Object.assign({}, o, { line: `${o.line ? esc(o.line) + " · " : ""}${songs.length} songs · ${B.len(mins)}` }))}
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage">${hero(Object.assign({}, o, { line: `${o.line ? esc(o.line) + " · " : ""}${o.total > songs.length ? `${songs.length} of ${o.total}` : songs.length} songs · ${B.len(mins)}` }))}
       <div class="msongs" id="ms">${body || `<p class="dim">No songs here yet.</p>`}</div><div id="mbelow"></div></div>`;
     B.wireTop();
     const root = $("#ms");
@@ -567,8 +567,14 @@
     const [al, songs] = await Promise.all([B.get(`/Users/${u}/Items/${m[1]}`), items(`ParentId=${enc(m[1])}&IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName&${SONG_FIELDS}`)]);
     if (!B.alive(nav)) return;
     const artist = (al.AlbumArtists || [])[0];
+    // Only some songs of the album (asked for one by one): "3 of 12 songs" (waits at most 1.5 s)
+    const total = await Promise.race([
+      B.call("GET", `api/music/albumsize?artist=${enc(al.AlbumArtist || "")}&album=${enc(al.Name || "")}`).then((j) => (j && j.songs) || 0).catch(() => 0),
+      new Promise((r) => setTimeout(() => r(0), 1500)),
+    ]);
+    if (!B.alive(nav)) return;
     await collection(nav, {
-      kick: "ALBUM", title: al.Name, line: [al.AlbumArtist, al.ProductionYear].filter(Boolean).join(" · "), art: cover(al, 900), songs, album: true, sourceId: al.Id,
+      kick: "ALBUM", title: al.Name, line: [al.AlbumArtist, al.ProductionYear].filter(Boolean).join(" · "), art: cover(al, 900), songs, album: true, sourceId: al.Id, total,
       heart: !!(al.UserData || {}).IsFavorite,
       menu: artist ? [{ label: `Go to ${artist.Name}`, value: "artist", run: () => B.go(`#/artist/${artist.Id}`) }] : [],
     });

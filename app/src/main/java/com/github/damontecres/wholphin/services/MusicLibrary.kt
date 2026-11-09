@@ -4,6 +4,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.DetailItemFields
 import com.github.damontecres.wholphin.ui.SongListFields
+import kotlinx.coroutines.CancellationException
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -224,6 +225,28 @@ class MusicLibrary
                     limit = limit,
                 ),
             )
+
+        /** How many songs this artist has on Benflix (every one, not just the first page) */
+        suspend fun artistSongCount(artistId: UUID): Int =
+            try {
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = serverRepository.currentUser?.id,
+                            includeItemTypes = listOf(BaseItemKind.AUDIO),
+                            recursive = true,
+                            artistIds = listOf(artistId),
+                            limit = 1,
+                            enableTotalRecordCount = true,
+                            enableImages = false,
+                        ),
+                    ).content.totalRecordCount
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Artist song count")
+                0
+            }
 
         /** Songs by id, kept in the order given */
         suspend fun songs(ids: List<UUID>): List<BaseItem> {
