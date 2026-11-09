@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -21,6 +22,7 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.window.DialogProperties
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.window.Dialog as ComposeDialog
 
 /**
@@ -96,12 +98,64 @@ private fun findTarget(
     return if (clickable && !disabled) node else null
 }
 
-/** Same as Compose's Dialog, plus finger taps work on phones. */
+/**
+ * Same as Compose's Dialog, plus finger taps work on phones, and on TV a held OK can't press
+ * anything inside it (see [ignoreOkHeldFromBefore]).
+ */
 @Composable
 fun Dialog(
     onDismissRequest: () -> Unit,
     properties: DialogProperties = DialogProperties(),
     content: @Composable () -> Unit,
 ) = ComposeDialog(onDismissRequest = onDismissRequest, properties = properties) {
-    Box(Modifier.touchTaps()) { content() }
+    Box(
+        Modifier
+            .ignoreOkHeldFromBefore()
+            .touchTaps(),
+    ) { content() }
 }
+
+/**
+ * Benflix: holding OK on a card opens its menu, but the remote keeps sending "OK still held" and
+ * then "OK let go" to whatever is now selected, which is the menu's first row (often Play). So
+ * letting go pressed Play instead of leaving the menu open.
+ *
+ * This ignores every OK (and Enter) signal inside a pop-up until OK is pressed fresh in it, so the
+ * press that opened the menu can never press something in it. Used by every pop-up in the app.
+ */
+fun Modifier.ignoreOkHeldFromBefore(): Modifier =
+    composed {
+        val pressStartedHere = remember { BooleanArray(1) }
+        onPreviewKeyEvent { event ->
+            val native = event.nativeKeyEvent
+            if (native.keyCode !in OK_KEYS) return@onPreviewKeyEvent false
+            when (native.action) {
+                AndroidKeyEvent.ACTION_DOWN -> {
+                    if (native.repeatCount == 0) {
+                        pressStartedHere[0] = true
+                        false
+                    } else {
+                        !pressStartedHere[0]
+                    }
+                }
+
+                AndroidKeyEvent.ACTION_UP -> {
+                    val ignore = !pressStartedHere[0]
+                    pressStartedHere[0] = false
+                    ignore
+                }
+
+                else -> {
+                    false
+                }
+            }
+        }
+    }
+
+private val OK_KEYS =
+    setOf(
+        AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+        AndroidKeyEvent.KEYCODE_ENTER,
+        AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+        AndroidKeyEvent.KEYCODE_BUTTON_A,
+    )
