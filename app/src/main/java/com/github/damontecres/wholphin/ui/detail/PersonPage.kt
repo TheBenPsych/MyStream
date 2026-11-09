@@ -319,6 +319,7 @@ fun PersonPage(
                 },
                 enableViewMoreDiscover = state.discovered.size > discovered.size,
                 modifier = modifier,
+                askForRest = { m -> AskForTheRest(person, m) },
             )
             AnimatedVisibility(showOverviewDialog) {
                 ItemDetailsDialog(
@@ -362,6 +363,7 @@ fun PersonPageContent(
     onClickViewMoreDiscover: () -> Unit,
     enableViewMoreDiscover: Boolean,
     modifier: Modifier = Modifier,
+    askForRest: @Composable (Modifier) -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
     val headerFocusRequester = remember { FocusRequester() }
@@ -480,6 +482,10 @@ fun PersonPageContent(
                     )
                 }
             }
+        }
+        // Benflix "Ask for everything by someone": tick what's missing and ask for it all at once
+        item(key = "ask-rest") {
+            askForRest(Modifier.padding(horizontal = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge))
         }
     }
 }

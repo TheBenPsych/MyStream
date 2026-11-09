@@ -100,6 +100,13 @@
                     android:host="mal-signin"
                     android:scheme="benflix" />
             </intent-filter>
+            <!-- Benflix "Share a link to Benflix": links and names shared from other apps -->
+            <intent-filter android:label="Find on Benflix">
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Benflix game player: its own process, so an emulator can never crash Benflix -->

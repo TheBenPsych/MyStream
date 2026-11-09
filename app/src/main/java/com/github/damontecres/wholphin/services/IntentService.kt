@@ -25,11 +25,16 @@ class IntentService
         private val serverRepository: ServerRepository,
         private val userPreferencesService: UserPreferencesService,
     ) {
+        /** Benflix "Share a link to Benflix" (set by Hilt) */
+        @Inject
+        lateinit var shareLookup: ShareLookup
+
         suspend fun parseIntent(intent: Intent): IntentResult {
             Timber.v("Parsing intent %s", intent)
             Timber.v("Intent extras: %s", intent.extras)
             Timber.v("Intent data: %s", intent.data)
             val action = intent.action ?: intent.data?.host
+            if (action == Intent.ACTION_SEND) return parseShare(intent)
             if (
                 intent.getStringParam(INTENT_ITEM_TYPE) == null &&
                 (action == Intent.ACTION_MAIN || action.isNullOrBlank())
@@ -114,6 +119,20 @@ class IntentService
                 }
 
             return IntentResult.Target(destinations, true)
+        }
+
+        /** A link or name shared from another app: open the title, or Search for it */
+        private suspend fun parseShare(intent: Intent): IntentResult {
+            // Already signed in (the app was open): stay on this profile
+            if (serverRepository.currentUser == null) {
+                prepare(intent)?.let { return it }
+            }
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+            val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)
+            val destination =
+                shareLookup.destinationFor(text, subject)
+                    ?: return IntentResult.Target(listOf(Destination.Search("")))
+            return IntentResult.Target(listOf(destination))
         }
 
         @VisibleForTesting

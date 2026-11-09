@@ -436,6 +436,7 @@ fun SearchPage(
                                 result = state.combinedResults,
                                 askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
                                 didYouMean = state.didYouMean,
+                                plainWords = state.plainWords,
                                 games = foundGames,
                                 onClickGame = { game ->
                                     val dest = game.destination
@@ -640,6 +641,7 @@ fun SearchCombinedResults(
     didYouMean: String? = null,
     games: List<SearchGame> = emptyList(),
     onClickGame: (SearchGame) -> Unit = {},
+    plainWords: String? = null,
 ) {
     if (askFor != null &&
         result is SearchResult.Success &&
@@ -655,6 +657,7 @@ fun SearchCombinedResults(
             didYouMean = didYouMean,
             games = games,
             onClickGame = onClickGame,
+            plainWords = plainWords,
             modifier = modifier,
         )
         return

@@ -110,6 +110,7 @@ fun SearchDoorResults(
     didYouMean: String? = null,
     games: List<SearchGame> = emptyList(),
     onClickGame: (SearchGame) -> Unit = {},
+    plainWords: String? = null,
 ) {
     val isTv = rememberIsTv()
     val kids = KidsMode.isActive
@@ -175,6 +176,16 @@ fun SearchDoorResults(
             if (didYouMean != null) {
                 Text(
                     text = "Did you mean $didYouMean?",
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            // Benflix "Search in plain words": what Benflix understood from the words
+            if (plainWords != null) {
+                Text(
+                    text = "Showing: $plainWords",
                     color = BenflixColors.Soft,
                     fontSize = BenflixType.body,
                     fontWeight = FontWeight.Bold,
