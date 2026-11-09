@@ -295,7 +295,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
       <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
-      <h4>Something wrong?</h4><button class="opt" data-report>${I("flag")} Report a problem</button>
+      <h4>Something wrong?</h4>${subIndex !== -1 && !B.me.kids ? `<button class="opt" data-subsync>${I("sub")} Subtitles are early or late</button>` : ""}<button class="opt" data-report>${I("flag")} Report a problem</button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
     pl.classList.add("ui");
@@ -303,6 +303,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
+      if (e.target.closest("[data-subsync]")) { p.remove(); return fixSubs(); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);
@@ -319,6 +320,27 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         B.savePrefs((c) => { const key = k === "intro" ? "benflix.autoSkipIntro" : "benflix.autoSkipOutro"; c[key] = [...set].map(dashed).join("|") || null; }).catch(() => {});
       }
     };
+  };
+
+  // ---------- "Subtitles are early or late": Tower lines them up with the voices ----------
+  const fixSubs = async () => {
+    const was = ((source && source.MediaStreams) || []).find((x) => x.Index === subIndex) || {};
+    let job;
+    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex }); } catch (err) { return B.toast(err.message); }
+    B.toast(job.message || "Tower is lining the subtitles up. It takes a minute or two.");
+    for (let i = 0; i < 90 && B.alive(nav); i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try { job = await B.call("GET", `api/subsync/${enc(it.Id)}`); } catch (e) { continue; }
+      if (job.state === "done" || job.state === "failed") break;
+    }
+    if (!B.alive(nav)) return;
+    B.toast(job.message || "Done.");
+    if (job.state !== "done" || !job.changed) return;
+    const before = new Set(((source && source.MediaStreams) || []).map((x) => x.Index));
+    await load(v.currentTime).catch((err) => msg(err.message));
+    // Subtitles that were inside the video come back as a new choice: switch to it
+    const fresh = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle" && x.IsExternal && !before.has(x.Index) && (x.Language || "") === (was.Language || ""));
+    if (fresh.length) { subIndex = fresh[fresh.length - 1].Index; await load(v.currentTime).catch(() => {}); }
   };
 
   // ---------- episodes row in the player ----------

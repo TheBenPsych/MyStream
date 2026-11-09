@@ -145,6 +145,10 @@ fun PlaybackDialog(
                     onDismissRequest.invoke()
                     onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
                 },
+                onSelectFixTiming = {
+                    onDismissRequest.invoke()
+                    onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming)
+                },
                 gravity = rightGravity,
             )
         }
@@ -403,6 +407,7 @@ fun SubtitleChoiceBottomDialog(
     gravity: Int,
     hasDownloadPermission: Boolean,
     currentChoice: Int? = null,
+    onSelectFixTiming: (() -> Unit)? = null,
 ) {
     val numberBefore = 2
     val initialChoice =
@@ -530,6 +535,19 @@ fun SubtitleChoiceBottomDialog(
                         modifier = Modifier.focusRequester(choiceFocusRequesters[index]),
                         scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
+                }
+                if (onSelectFixTiming != null && currentChoice != null && currentChoice >= 0) {
+                    item {
+                        HorizontalDivider()
+                        ListItem(
+                            selected = false,
+                            onClick = onSelectFixTiming,
+                            leadingContent = {},
+                            headlineContent = { Text(text = "Subtitles are early or late") },
+                            supportingContent = { Text(text = "Tower lines them up with the voices") },
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
+                        )
+                    }
                 }
                 item {
                     HorizontalDivider()
