@@ -656,8 +656,9 @@ fun NavDrawer(
     ) {
         if (underBar) {
             // Door pages: the picture goes up behind the bar, so the bar sits on top of the page
+            val topBarDown = remember(destination) { TopBarDown() }
             Box(Modifier.fillMaxSize()) {
-                CompositionLocalProvider(LocalTopBarOverlap provides barHeight) {
+                CompositionLocalProvider(LocalTopBarOverlap provides barHeight, LocalTopBarDown provides topBarDown) {
                     DestinationContent(
                         destination = destination,
                         preferences = preferences,
@@ -683,6 +684,7 @@ fun NavDrawer(
                     profileFocusRequester = focusRequester,
                     big = easy,
                     overPicture = underBar,
+                    downTarget = topBarDown,
                     modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
                 )
             }

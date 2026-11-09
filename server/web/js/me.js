@@ -126,11 +126,13 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (g.id === "picture") {
     const q = [["auto", "Best (no limit)"], ["1080", "1080p"], ["720", "720p"], ["480", "480p (slow internet)"]];
     sp.innerHTML = setRow("Quality", "Lower it if videos keep stopping to load.", valBtn("quality", (q.find((x) => x[0] === (ws.quality || "auto")) || q[0])[1]))
-      + setRow("Sounds", "The soft notes when Benflix opens and the doors appear.", valBtn("sounds", ws.sounds === false ? "Off" : "On"));
+      + setRow("Sounds", "The soft notes when Benflix opens and the doors appear.", valBtn("sounds", ws.sounds === false ? "Off" : "On"))
+      + setRow("Music bars", "The towers of coloured squares that move with the music on Now playing.", valBtn("musicBars", ws.musicBarsOff ? "Off" : "On"));
     sp.onclick = (e) => {
       const b = e.target.closest("[data-pick]"); if (!b) return;
       if (b.dataset.pick === "quality") B.dropdown(b, q.map(([value, label]) => ({ value, label })), ws.quality || "auto", (v) => { B.setWebSetting("quality", v); B.render(); });
       if (b.dataset.pick === "sounds") { B.setWebSetting("sounds", ws.sounds === false); B.render(); }
+      if (b.dataset.pick === "musicBars") { B.setWebSetting("musicBarsOff", !ws.musicBarsOff); B.render(); }
     };
   }
   if (g.id === "look") {

@@ -139,8 +139,14 @@ fun BenflixTopBar(
     modifier: Modifier = Modifier,
     big: Boolean = false,
     overPicture: Boolean = false,
+    /** Pages under the bar can name where Down goes (see [TopBarDown]) */
+    downTarget: TopBarDown? = null,
 ) {
     val scale = if (big) 1.2f else 1f
+    val down =
+        Modifier.focusProperties {
+            downTarget?.target?.let { down = it }
+        }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -177,7 +183,7 @@ fun BenflixTopBar(
         ) {
             // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
             com.github.damontecres.wholphin.ui.music
-                .MusicNowPill(scale = scale)
+                .MusicNowPill(scale = scale, modifier = down)
             if (showClock) BigClock(scale = scale)
             TopBarIconButton(
                 icon = BenflixIcon.SEARCH,
@@ -185,6 +191,7 @@ fun BenflixTopBar(
                 selected = searchSelected,
                 onClick = onClickSearch,
                 size = 40.dp * scale,
+                modifier = down,
             )
             ProfileButton(
                 user = user,
@@ -192,7 +199,7 @@ fun BenflixTopBar(
                 badge = badge,
                 onClick = onClickProfile,
                 pictureSize = 40.dp * scale,
-                modifier = Modifier.focusRequester(profileFocusRequester),
+                modifier = down.focusRequester(profileFocusRequester),
             )
         }
     }
@@ -318,6 +325,7 @@ private fun TopBarIconButton(
     selected: Boolean,
     onClick: () -> Unit,
     size: Dp,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClick,
@@ -331,7 +339,7 @@ private fun TopBarIconButton(
             ),
         border = focusRing(CircleShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = Modifier.size(size),
+        modifier = modifier.size(size),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
             BenflixIconImage(

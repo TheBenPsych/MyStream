@@ -692,12 +692,17 @@ private fun DoorTile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
     ) {
-        Box(
+        androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
                 .padding(pad),
         ) {
+            // Every door uses the same name size, small enough that the longest name ("Live TV") fits in full,
+            // so five doors on a TV never cut a name short ("Movie", "Game") and all names stay level
+            val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+            val fitSize = ((if (sideways) maxWidth - iconSize - 16.dp else maxWidth).value / 4.5f / fontScale).sp
+            val nameFits = if (fitSize < nameSize) fitSize else nameSize
             BenflixIconImage(
                 icon = icon,
                 color = door.onColor,
@@ -715,10 +720,11 @@ private fun DoorTile(
                 Text(
                     text = door.title,
                     color = door.onColor,
-                    fontSize = nameSize,
-                    lineHeight = nameSize,
+                    fontSize = nameFits,
+                    lineHeight = nameFits,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    softWrap = false,
                 )
                 if (!easy) {
                     Text(
@@ -726,6 +732,8 @@ private fun DoorTile(
                         color = door.onColor.copy(alpha = .85f),
                         fontSize = descSize,
                         fontWeight = FontWeight.SemiBold,
+                        // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
+                        minLines = if (sideways) 1 else 2,
                         maxLines = 2,
                         modifier = Modifier.padding(top = 6.dp),
                     )

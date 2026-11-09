@@ -49,6 +49,8 @@ const WT = {
 };
 
 B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
+  // Starting a movie, show, channel or game stops the music
+  if (B.music) B.music.stop();
   const u = B.uid();
   const it = await B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},Chapters,MediaSources,People`);
   if (!B.alive(nav)) return;

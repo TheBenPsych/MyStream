@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,7 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.Key
@@ -35,6 +38,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,7 +134,12 @@ class MusicNowPlayingViewModel
             viewModelScope.launch { musicService.setLiked(audio.id, !musicService.state.value.liked) }
         }
 
+        /** Stop was pressed here: this page leaves by itself, so the "nothing playing" check mustn't leave too */
+        @Volatile
+        var stopping = false
+
         fun stop() {
+            stopping = true
             viewModelScope.launch {
                 musicService.stop()
                 onMain { navigationManager.goBack() }
@@ -182,7 +191,7 @@ fun MusicNowPlayingPage(
     LaunchedEffect(music.status, music.queueSize) {
         if (music.status == NowPlayingStatus.IDLE && music.queueSize == 0) {
             delay(400)
-            if (viewModel.musicService.state.value.queueSize == 0) viewModel.navigationManager.goBack()
+            if (viewModel.musicService.state.value.queueSize == 0 && !viewModel.stopping) viewModel.navigationManager.goBack()
         }
     }
     val next = remember(music.queueVersion, music.currentIndex) { nextSong(viewModel) }
@@ -201,7 +210,7 @@ fun MusicNowPlayingPage(
     ) {
         val boxWidth = maxWidth
         val boxHeight = maxHeight
-        val towersHeight = boxHeight * (if (wide) 0.34f else 0.22f)
+        val towersHeight = boxHeight * (if (wide) 0.34f else 0.13f)
         if (barsOn) {
             MusicTowers(
                 playing = playing,
@@ -224,14 +233,14 @@ fun MusicNowPlayingPage(
         }
         if (wide) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(36.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 56.dp, end = 56.dp, top = 40.dp)
+                        .padding(start = 48.dp, end = 48.dp, top = 40.dp)
                         .height(boxHeight - towersHeight - 40.dp),
             ) {
-                val coverSize = (boxWidth * 0.24f).coerceAtMost(boxHeight - towersHeight - 60.dp)
+                val coverSize = (boxWidth * 0.22f).coerceAtMost(boxHeight - towersHeight - 60.dp)
                 CoverImage(audio?.imageUrl, Modifier.size(coverSize))
                 Column(modifier = Modifier.weight(1f)) {
                     SongWords(audio, music.thenTitle, easy, big = true)
@@ -243,31 +252,26 @@ fun MusicNowPlayingPage(
                     UpNextLine(next)
                 }
                 if (lyrics != null) {
-                    LyricsColumn(lyrics, lyricIndex, Modifier.width(boxWidth * 0.28f).fillMaxHeight(), fontSize = if (easy) 24f else 20f)
+                    LyricsColumn(lyrics, lyricIndex, Modifier.width(boxWidth * 0.27f).fillMaxHeight(), fontSize = if (easy) 24f else 20f)
                 }
             }
         } else {
-            Column(
-                horizontalAlignment = Alignment.Start,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CoverImage(audio?.imageUrl, Modifier.size(boxWidth * 0.36f))
-                    Column(Modifier.weight(1f)) { SongWords(audio, music.thenTitle, easy, big = false) }
-                }
-                Spacer(Modifier.height(10.dp))
-                UpNextLine(next)
-                Spacer(Modifier.height(14.dp))
-                if (lyrics != null) {
-                    LyricsColumn(lyrics, lyricIndex, Modifier.fillMaxWidth().weight(1f), fontSize = 18f)
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                ProgressLine(position, duration)
-                Spacer(Modifier.height(12.dp))
-                Controls(viewModel, playing, music.liked, easy, isTv, playFocus)
-                Spacer(Modifier.height(towersHeight + 8.dp))
-            }
+            PhoneNowPlaying(
+                viewModel = viewModel,
+                audio = audio,
+                from = music.thenTitle,
+                lyrics = lyrics,
+                lyricIndex = lyricIndex,
+                next = next,
+                position = position,
+                duration = duration,
+                playing = playing,
+                liked = music.liked,
+                easy = easy,
+                towersHeight = towersHeight,
+                boxHeight = boxHeight,
+                boxWidth = boxWidth,
+            )
         }
     }
 }
@@ -358,6 +362,7 @@ private fun ProgressLine(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun Controls(
     viewModel: MusicNowPlayingViewModel,
@@ -369,8 +374,13 @@ private fun Controls(
 ) {
     // True while Left or Right is held down (rewinding or fast forwarding)
     var held by remember { mutableStateOf(false) }
+
+    // Only a press that started on Play counts (moving onto Play from Previous/Next must not change the song)
+    var downOnPlay by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        MusicButton(if (easy) "Previous" else null, BenflixIcon.PREVIOUS, onClick = viewModel::previous, big = easy)
+        // TV: Left/Right on Play already change the song, so these two are just there to see (and tap on phones)
+        val tvSkip = Modifier.focusProperties { canFocus = !isTv }
+        MusicButton(if (easy) "Previous" else null, BenflixIcon.PREVIOUS, onClick = viewModel::previous, big = easy, modifier = tvSkip)
         MusicButton(
             label = if (easy) (if (playing) "Pause" else "Play") else null,
             icon = if (playing) BenflixIcon.PAUSE else null,
@@ -387,19 +397,24 @@ private fun Controls(
                         val left = e.key == Key.DirectionLeft
                         val right = e.key == Key.DirectionRight
                         if (!left && !right) return@onPreviewKeyEvent false
-                        if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount > 0) {
-                            held = true
-                            viewModel.seekBy(if (left) -SEEK_STEP_MS else SEEK_STEP_MS)
+                        if (e.type == KeyEventType.KeyDown) {
+                            if (e.nativeKeyEvent.repeatCount == 0) {
+                                downOnPlay = true
+                            } else if (downOnPlay) {
+                                held = true
+                                viewModel.seekBy(if (left) -SEEK_STEP_MS else SEEK_STEP_MS)
+                            }
                         } else if (e.type == KeyEventType.KeyUp) {
-                            if (!held) {
+                            if (downOnPlay && !held) {
                                 if (left) viewModel.previous() else viewModel.next()
                             }
                             held = false
+                            downOnPlay = false
                         }
                         true
                     },
         )
-        MusicButton(if (easy) "Next song" else null, BenflixIcon.NEXT, onClick = viewModel::next, big = easy)
+        MusicButton(if (easy) "Next song" else null, BenflixIcon.NEXT, onClick = viewModel::next, big = easy, modifier = tvSkip)
         if (!isTv) {
             Spacer(Modifier.width(4.dp))
             ExtraButtons(viewModel, liked, easy)
@@ -407,7 +422,12 @@ private fun Controls(
     }
     if (isTv) {
         // TV: Left/Right on Play change the song, so the heart, Up next and Stop sit one row down
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
+        // Wraps onto a second line when the middle is narrow, so no button is ever cut off
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = 12.dp),
+        ) {
             ExtraButtons(viewModel, liked, easy, labels = true)
         }
     }
@@ -435,7 +455,7 @@ private const val SEEK_STEP_MS = 5_000L
 
 /** "UP NEXT" with the next song's small cover, name and artist (always there) */
 @Composable
-private fun UpNextLine(next: AudioItem?) {
+internal fun UpNextLine(next: AudioItem?) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MusicKicker("Up next", color = BenflixColors.Muted)
         if (next != null) {
@@ -456,30 +476,41 @@ private fun UpNextLine(next: AudioItem?) {
 
 /** The song's words: 5 lines, the one being sung in white and a little bigger, the rest grey */
 @Composable
-private fun LyricsColumn(
+internal fun LyricsColumn(
     lyrics: LyricDto,
     index: Int?,
     modifier: Modifier = Modifier,
     fontSize: Float,
+    center: Boolean = false,
 ) {
     val lines = lyrics.lyrics
     val at = (index ?: 0).coerceIn(0, (lines.size - 1).coerceAtLeast(0))
-    // The line being sung is the second of the five, so the next lines show ahead
-    val from = (at - 1).coerceAtLeast(0)
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = modifier.padding(top = 8.dp)) {
-        lines.drop(from).take(LYRIC_LINES).forEachIndexed { k, line ->
-            val current = from + k == at
+    // Every line shows in full (long lines wrap). The list glides so the line being sung stays second from the
+    // top, with the next lines ahead of it; whatever doesn't fit is simply further down, not cut off.
+    val listState =
+        androidx.compose.foundation.lazy
+            .rememberLazyListState()
+    LaunchedEffect(at, lines.size) {
+        if (lines.isNotEmpty()) listState.animateScrollToItem((at - 1).coerceAtLeast(0))
+    }
+    androidx.compose.foundation.lazy.LazyColumn(
+        state = listState,
+        userScrollEnabled = false,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 200.dp),
+        modifier = modifier.padding(top = 8.dp).clipToBounds(),
+    ) {
+        items(lines.size) { i ->
+            val current = i == at
             Text(
-                text = line.text.ifBlank { "♪" },
+                text = lines[i].text.ifBlank { "♪" },
                 color = if (current) BenflixColors.Text else BenflixColors.Muted,
                 fontSize = if (current) (fontSize * 1.15f).sp else fontSize.sp,
                 lineHeight = (fontSize * 1.3f).sp,
                 fontWeight = if (current) FontWeight.ExtraBold else FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                textAlign = if (center) TextAlign.Center else TextAlign.Start,
+                modifier = if (center) Modifier.fillMaxWidth() else Modifier,
             )
         }
     }
 }
-
-private const val LYRIC_LINES = 5

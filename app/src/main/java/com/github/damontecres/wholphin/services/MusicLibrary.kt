@@ -154,6 +154,19 @@ class MusicLibrary
                 ),
             )
 
+        /** Every song on Benflix, A to Z (Browse by > Songs) */
+        suspend fun allSongs(): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    includeItemTypes = listOf(BaseItemKind.AUDIO),
+                    recursive = true,
+                    sortBy = listOf(ItemSortBy.SORT_NAME),
+                    sortOrder = listOf(SortOrder.ASCENDING),
+                    fields = songFields,
+                    limit = 10_000,
+                ),
+            )
+
         suspend fun likedCount(): Int =
             api.itemsApi
                 .getItems(

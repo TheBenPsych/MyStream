@@ -163,6 +163,8 @@ B.remind = (c, p) => {
 
 // ---------- watching a channel ----------
 B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
+  // Starting a movie, show, channel or game stops the music
+  if (B.music) B.music.stop();
   const [list, prefs] = await Promise.all([B.channels(), chPrefs.read().catch(() => ({ favourites: [], recent: [], hidden: [] }))]);
   if (!B.alive(nav)) return;
   const hidden = new Set(prefs.hidden);

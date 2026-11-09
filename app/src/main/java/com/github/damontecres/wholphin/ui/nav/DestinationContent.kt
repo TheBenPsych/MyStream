@@ -109,6 +109,16 @@ fun DestinationContent(
                     )
                 }
 
+                "songs" -> {
+                    com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
+                        kind = com.github.damontecres.wholphin.ui.music.CollectionKind.SONGS,
+                        id = null,
+                        title = destination.title,
+                        preferences = preferences,
+                        modifier = modifier,
+                    )
+                }
+
                 "mix" -> {
                     com.github.damontecres.wholphin.ui.music.MusicCollectionPage(
                         kind = com.github.damontecres.wholphin.ui.music.CollectionKind.MIX,

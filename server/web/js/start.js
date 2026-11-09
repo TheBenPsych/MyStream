@@ -25,6 +25,8 @@ B.intro = () => new Promise((done) => {
 
 // ---------- Who's watching ----------
 B.route(/^\/who$/, async () => {
+  // Switching profile stops the last person's music and forgets their hearts
+  if (B.music) { B.music.stop(); B.music.liked.clear(); }
   B.me = null;
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
@@ -135,11 +137,12 @@ B.route(/^\/signin/, async () => {
 B.route(/^\/home$/, async (m, nav) => {
   const grow = B.doorsGrow; B.doorsGrow = false;
   const kids = B.me.kids;
-  const doors = ["movies", "shows", "live", "games"].map((k) => DOORS[k]);
+  // Benflix music: the violet fifth door (not on Kids)
+  const doors = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).map((k) => DOORS[k]);
   B.page().innerHTML = B.top("") + `<div class="home">
     <div class="greet">${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}</div>
     <div class="news" id="news"></div>
-    <div class="doors ${grow ? "grow" : ""}" id="doors">${doors.map((d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`).join("")}</div>
+    <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : ""}" id="doors">${doors.map((d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`).join("")}</div>
   </div>`;
   B.wireTop();
   if (grow) {

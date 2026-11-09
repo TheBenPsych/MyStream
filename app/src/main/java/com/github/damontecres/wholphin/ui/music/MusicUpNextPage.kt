@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -62,6 +64,15 @@ fun MusicUpNextPage(
     val then = upcoming.filterNot { service.isAdded(it.second) }
     val current = queue.getOrNull(now)
     var focusGiven = false
+    // Playing or taking out a song removes the row that had focus: put focus back on the first row after
+    var refocus by remember { mutableStateOf(false) }
+    LaunchedEffect(music.queueVersion, music.queueSize, now) {
+        if (refocus && isTv) {
+            delay(60)
+            first.tryRequestFocus()
+        }
+        refocus = false
+    }
     val act: (suspend () -> Unit) -> () -> Unit = { block -> { viewModel.viewModelScope.launchIO { block() } } }
     LazyColumn(
         contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp),
@@ -96,14 +107,16 @@ fun MusicUpNextPage(
                         audio,
                         isCurrent = false,
                         playing = false,
-                        onPlay = act { service.playIndex(index) },
-                        onUp = act { service.moveQueue(index, index - 1) }.takeIf { index > now + 1 },
-                        onDown =
-                            act { service.moveQueue(index, index + 1) }.takeIf {
-                                index <
-                                    queue.size - 1
-                            },
-                        onRemove = act { service.removeFromQueue(index) },
+                        onPlay = {
+                            refocus = true
+                            act { service.playIndex(index) }()
+                        },
+                        onUp = act { if (index > now + 1) service.moveQueue(index, index - 1) },
+                        onDown = act { if (index < queue.size - 1) service.moveQueue(index, index + 1) },
+                        onRemove = {
+                            refocus = true
+                            act { service.removeFromQueue(index) }()
+                        },
                         modifier = if (focus) Modifier.focusRequester(first) else Modifier,
                     )
                 }
@@ -125,10 +138,16 @@ fun MusicUpNextPage(
                         audio,
                         isCurrent = false,
                         playing = false,
-                        onPlay = act { service.playIndex(index) },
+                        onPlay = {
+                            refocus = true
+                            act { service.playIndex(index) }()
+                        },
                         onUp = null,
                         onDown = null,
-                        onRemove = act { service.removeFromQueue(index) },
+                        onRemove = {
+                            refocus = true
+                            act { service.removeFromQueue(index) }()
+                        },
                         modifier = if (focus) Modifier.focusRequester(first) else Modifier,
                     )
                 }
