@@ -263,6 +263,8 @@ fun MyBenflixPage(
                     if (!GuestMode.isActive && !KidsMode.isActive) {
                         WeekWatchingCard()
                         MonthStatsCard()
+                        com.github.damontecres.wholphin.ui.music
+                            .MusicStatsCard()
                     }
                     when {
                         rows == null -> {
@@ -348,6 +350,9 @@ fun MyBenflixPage(
                     WeekWatchingCard(Modifier.weight(1f, fill = false))
                     MonthStatsCard(Modifier.weight(1f, fill = false))
                 }
+                // Benflix music: minutes per week, top artists and top songs
+                com.github.damontecres.wholphin.ui.music
+                    .MusicStatsCard(Modifier.padding(start = 8.dp))
             }
             if (showParentPin) {
                 ParentalControlsDialog(onDismiss = { showParentPin = false }, viewModel = bedtimeViewModel)

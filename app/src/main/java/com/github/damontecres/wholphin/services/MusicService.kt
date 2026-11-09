@@ -116,7 +116,13 @@ class MusicService
 
         /** Benflix: what the queue came from, so it can keep going with a matching mix when it ends */
         private var sourceId: UUID? = null
+
+        @Volatile
         private var extending = false
+
+        /** Goes up whenever a new list starts or music stops, so a slow "keep going" mix can't land in the wrong queue */
+        @Volatile
+        private var generation = 0
 
         private inner class BenflixMusicListener : Player.Listener {
             override fun onMediaItemTransition(
@@ -180,6 +186,7 @@ class MusicService
             if (extending) return
             val from = sourceId ?: last?.id ?: return
             extending = true
+            val gen = generation
             defaultScope.launch(WholphinDispatchers.IO) {
                 try {
                     val queued = state.value.queuedIds
@@ -197,12 +204,13 @@ class MusicService
                     if (items.isNotEmpty()) {
                         val ac3 = preferAc3Surround()
                         val mediaItems = items.filter { it.type == BaseItemKind.AUDIO }.map { convert(it, ac3) }
-                        onMain { player.addMediaItems(mediaItems) }
+                        if (gen != generation) return@launch
+                        onMain { if (gen == generation) player.addMediaItems(mediaItems) }
                         updateQueueSize()
-                        _state.update { it.copy(thenTitle = "More like ${it.thenTitle ?: "this"}") }
+                        _state.update { it.copy(thenTitle = "More like ${last?.title ?: "this"}") }
                     }
                     // The mix itself keeps going from its own last song next time
-                    sourceId = null
+                    if (gen == generation) sourceId = null
                 } catch (ex: Exception) {
                     Timber.w(ex, "Couldn't keep the music going")
                 } finally {
@@ -234,6 +242,7 @@ class MusicService
                     songs.drop(start)
                 }
             val mediaItems = ordered.map { convert(it, ac3) }
+            generation++
             this.sourceId = sourceId
             withContext(WholphinDispatchers.Main) {
                 // The person's own Up next songs that haven't played yet
@@ -290,6 +299,7 @@ class MusicService
                         ).build()
                 }
             if (mediaItems.isEmpty()) return
+            generation++
             sourceId = null
             withContext(WholphinDispatchers.Main) {
                 added.clear()
@@ -302,13 +312,17 @@ class MusicService
         }
 
         /** Add to Up next: after the songs you already added, before the rest of the list */
-        suspend fun addToUpNext(song: BaseItem) {
-            if (song.type != BaseItemKind.AUDIO) return
-            val mediaItem = convert(song, preferAc3Surround())
-            (mediaItem.localConfiguration?.tag as? AudioItem)?.let { added.add(it.key) }
+        suspend fun addToUpNext(song: BaseItem) = addAllToUpNext(listOf(song))
+
+        /** Several songs to Up next at once, in their own order (a whole album or playlist) */
+        suspend fun addAllToUpNext(songs: List<BaseItem>) {
+            val ac3 = preferAc3Surround()
+            val mediaItems = songs.filter { it.type == BaseItemKind.AUDIO }.map { convert(it, ac3) }
+            if (mediaItems.isEmpty()) return
+            mediaItems.forEach { m -> (m.localConfiguration?.tag as? AudioItem)?.let { added.add(it.key) } }
             onMain {
                 if (player.mediaItemCount == 0) {
-                    player.setMediaItems(listOf(mediaItem))
+                    player.setMediaItems(mediaItems)
                     start()
                 } else {
                     var at = player.currentMediaItemIndex + 1
@@ -317,7 +331,7 @@ class MusicService
                     ) {
                         at++
                     }
-                    player.addMediaItem(at, mediaItem)
+                    player.addMediaItems(at, mediaItems)
                 }
             }
             updateQueueSize()
@@ -379,7 +393,8 @@ class MusicService
                         // The lock screen controls, and music that keeps going with the screen off
                         onMain { BenflixMusicPlaybackService.start(context) }
                         activityTracker =
-                            TrackActivityPlaybackListener(api, player) {
+                            // Music time counts for My watching (this week's bar and the Music card), not the movie hours
+                            TrackActivityPlaybackListener(api, player, watchDoor = "music") {
                                 state.value.currentItemId?.let { itemId ->
                                     PlaybackItemState(
                                         itemId = itemId,
@@ -395,6 +410,8 @@ class MusicService
             onMain {
                 player.prepare()
                 player.play()
+                // The lock screen controls come back too if Android stopped the service while paused
+                BenflixMusicPlaybackService.start(context)
             }
         }
 
@@ -402,6 +419,16 @@ class MusicService
          * Stop music playback
          */
         suspend fun stop() {
+            generation++
+            // Clear what shows on screen first: a Stop from the server runs inside the socket job that this cancels
+            added.clear()
+            sourceId = null
+            _state.update { MusicServiceState.EMPTY }
+            likedIds.clear()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { stopNow() }
+        }
+
+        private suspend fun stopNow() {
             mutex.withLock {
                 Timber.i("Stopping music")
                 if (mediaSession == null) {
@@ -560,8 +587,8 @@ class MusicService
                         ?.mediaStreams
                         ?.any { stream ->
                             stream.type == MediaStreamType.AUDIO &&
-                                stream.channels.gt(2)
-                            stream.codec != Codec.Audio.AC3
+                                stream.channels.gt(2) &&
+                                stream.codec != Codec.Audio.AC3
                         } == true
             val url =
                 if (needsAc3Transcode) {

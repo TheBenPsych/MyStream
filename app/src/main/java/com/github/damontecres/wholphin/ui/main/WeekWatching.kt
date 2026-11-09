@@ -79,6 +79,7 @@ class WeekWatchingViewModel
                             DoorTime("Shows", BenflixColors.Shows, week["shows"] ?: 0L),
                             DoorTime("Live TV", BenflixColors.LiveTv, week["livetv"] ?: 0L),
                             DoorTime("Games", BenflixColors.Games, gamesThisWeekMs() / 1000L),
+                            DoorTime("Music", BenflixColors.Music, week["music"] ?: 0L),
                         )
                 } catch (ex: CancellationException) {
                     throw ex
@@ -109,7 +110,7 @@ private val PLAYED = Regex("""name="played_(\d{4}-\d{2}-\d{2})_[^"]*" value="(\d
 
 /**
  * Benflix redesign (My watching): the big number for this week, and a bar in the four door colours
- * showing how it splits between Movies, Shows, Live TV and Games. Only your own numbers.
+ * showing how it splits between Movies, Shows, Live TV, Games and Music. Only your own numbers.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

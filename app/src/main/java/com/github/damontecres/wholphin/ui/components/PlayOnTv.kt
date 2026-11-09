@@ -54,6 +54,8 @@ import kotlin.time.Duration
 data class BenflixScreen(
     val sessionId: String,
     val name: String,
+    /** Benflix music: the song this TV is playing right now ("Song · Artist"), or null */
+    val music: String? = null,
 )
 
 /**
@@ -72,8 +74,8 @@ class PlayOnTvViewModel
         private val _screens = MutableStateFlow<List<BenflixScreen>?>(null)
         val screens: StateFlow<List<BenflixScreen>?> = _screens
 
-        fun look() {
-            _screens.value = null
+        fun look(quiet: Boolean = false) {
+            if (!quiet) _screens.value = null
             viewModelScope.launch {
                 _screens.value =
                     try {
@@ -98,7 +100,11 @@ class PlayOnTvViewModel
                                     val device = s.deviceName ?: "Benflix"
                                     val name =
                                         if (s.userId != me && !s.userName.isNullOrBlank()) "$device (${s.userName})" else device
-                                    s.id?.let { BenflixScreen(it, name) }
+                                    val song =
+                                        s.nowPlayingItem?.takeIf { it.type == org.jellyfin.sdk.model.api.BaseItemKind.AUDIO }?.let { np ->
+                                            listOfNotNull(np.name, np.albumArtist ?: np.artists?.firstOrNull()).joinToString(" · ")
+                                        }
+                                    s.id?.let { BenflixScreen(it, name, song) }
                                 }
                         }
                     } catch (ex: CancellationException) {
@@ -303,6 +309,41 @@ fun PhoneRemoteDialog(
                 }
             } else {
                 Text(tv.name, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold)
+                // Benflix music: what the TV is playing, with previous, play/pause and next (checks every 5 seconds)
+                androidx.compose.runtime.LaunchedEffect(tv.sessionId) {
+                    while (true) {
+                        kotlinx.coroutines.delay(5_000)
+                        viewModel.look(quiet = true)
+                    }
+                }
+                val fresh = screens?.firstOrNull { it.sessionId == tv.sessionId }
+                val song = fresh?.music ?: tv.music
+                if (song != null) {
+                    Column(
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    com.github.damontecres.wholphin.ui.theme.BenflixColors.Music
+                                        .copy(alpha = 0.18f),
+                                    RoundedCornerShape(14.dp),
+                                ).padding(12.dp),
+                    ) {
+                        Text(
+                            "Playing on ${tv.name}",
+                            fontSize = BenflixType.small,
+                            color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Music,
+                        )
+                        Text(song, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 2)
+                        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            RemoteKey("⏮") { viewModel.playstate(tv, PlaystateCommand.PREVIOUS_TRACK) }
+                            RemoteKey("⏯", highlight = true) { viewModel.playstate(tv, PlaystateCommand.PLAY_PAUSE) }
+                            RemoteKey("⏭") { viewModel.playstate(tv, PlaystateCommand.NEXT_TRACK) }
+                        }
+                    }
+                }
                 RemoteKey("▲") { viewModel.press(tv, GeneralCommandType.MOVE_UP) }
                 androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     RemoteKey("◀") { viewModel.press(tv, GeneralCommandType.MOVE_LEFT) }

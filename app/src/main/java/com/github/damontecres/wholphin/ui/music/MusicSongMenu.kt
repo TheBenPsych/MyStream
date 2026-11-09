@@ -50,9 +50,12 @@ class MusicActionsViewModel
             shuffled: Boolean,
             source: BaseItem?,
             sourceName: String?,
+            openNow: Boolean = false,
         ) {
             viewModelScope.launchIO {
                 musicService.playList(songs, startIndex, shuffled, source?.id ?: songs.getOrNull(startIndex)?.id, sourceName)
+                // Ben: Play or Shuffle goes straight to Now playing (once the music has started)
+                if (openNow) onMain { navigationManager.navigateTo(Destination.NowPlaying) }
             }
         }
 
@@ -62,6 +65,8 @@ class MusicActionsViewModel
         fun playNext(song: BaseItem) = viewModelScope.launchIO { musicService.playNextSong(song) }
 
         fun addToUpNext(song: BaseItem) = viewModelScope.launchIO { musicService.addToUpNext(song) }
+
+        fun addAllToUpNext(songs: List<BaseItem>) = viewModelScope.launchIO { musicService.addAllToUpNext(songs) }
 
         fun setLiked(
             song: BaseItem,
@@ -81,6 +86,8 @@ class MusicActionsViewModel
             val album = song.data.albumId ?: return
             navigationManager.navigateTo(Destination.MediaItem(album, BaseItemKind.MUSIC_ALBUM))
         }
+
+        fun openNowPlaying() = navigationManager.navigateTo(Destination.NowPlaying)
 
         fun songInfo(song: BaseItem) = navigationManager.navigateTo(Destination.MediaItem(song.id, BaseItemKind.AUDIO))
     }

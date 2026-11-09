@@ -28,6 +28,9 @@ enum class CollectionKind {
     PLAYLIST,
     MIX,
     LIKED,
+
+    /** Browse by > Songs: every song on Benflix, A to Z */
+    SONGS,
 }
 
 data class MusicCollectionState(
@@ -70,7 +73,8 @@ class MusicCollectionViewModel
             title: String,
         ) {
             val key = "$kind-$id"
-            if (loadedFor == key) return
+            // Liked songs always loads again, so a song you just gave a heart is there straight away
+            if (loadedFor == key && kind != CollectionKind.LIKED) return
             loadedFor = key
             _state.value = MusicCollectionState(kind = kind, title = title)
             viewModelScope.launchIO {
@@ -80,6 +84,7 @@ class MusicCollectionViewModel
                         CollectionKind.PLAYLIST -> loadPlaylist(UUID.fromString(id))
                         CollectionKind.LIKED -> loadLiked()
                         CollectionKind.MIX -> loadMix(id.orEmpty(), title)
+                        CollectionKind.SONGS -> loadAllSongs()
                     }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Couldn't load music %s %s", kind, id)
@@ -181,6 +186,19 @@ class MusicCollectionViewModel
             val songs = library.likedSongs()
             _state.update {
                 it.copy(title = "Liked songs", songs = songs, liked = songs.map { s -> s.id }.toSet(), loaded = true)
+            }
+        }
+
+        private suspend fun loadAllSongs() {
+            val songs = library.allSongs()
+            val covers =
+                songs
+                    .mapNotNull { it.data.albumId }
+                    .distinct()
+                    .shuffled()
+                    .take(4)
+            _state.update {
+                it.copy(title = "All songs", songs = songs, liked = likedOf(songs), collage = covers, loaded = true)
             }
         }
 

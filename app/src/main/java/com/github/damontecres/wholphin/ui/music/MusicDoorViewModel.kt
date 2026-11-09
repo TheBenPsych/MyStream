@@ -85,11 +85,19 @@ class MusicDoorViewModel
         val state: StateFlow<MusicDoorState> = _state
         private var loadedAt = 0L
 
+        /** The card you were on, so coming Back to Music lands on it again (not the first mix) */
+        var lastRow = 0
+        var lastIndex = 0
+
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
         fun start() {
             // The mixes change each morning, the rest whenever something is added; a few minutes is fresh enough
-            if (_state.value.loaded && System.currentTimeMillis() - loadedAt < RELOAD_MS) return
+            if (_state.value.loaded && System.currentTimeMillis() - loadedAt < RELOAD_MS) {
+                // The Liked songs count changes as soon as you press a heart, so it is always fresh
+                viewModelScope.launchIO { refreshLiked() }
+                return
+            }
             viewModelScope.launchIO { load() }
         }
 
@@ -97,6 +105,18 @@ class MusicDoorViewModel
             loadedAt = 0L
             _state.update { MusicDoorState() }
             start()
+        }
+
+        private suspend fun refreshLiked() {
+            val count = safe { library.likedCount() } ?: return
+            _state.update { st ->
+                st.copy(
+                    rows =
+                        st.rows.map { row ->
+                            row.copy(tiles = row.tiles.map { if (it is MusicTile.Liked) MusicTile.Liked(count) else it })
+                        },
+                )
+            }
         }
 
         private suspend fun load() {

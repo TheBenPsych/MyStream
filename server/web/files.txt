@@ -12,6 +12,7 @@ js/games.js
 js/livetv.js
 js/me.js
 js/media.js
+js/music.js
 js/player.js
 js/requests.js
 js/search.js

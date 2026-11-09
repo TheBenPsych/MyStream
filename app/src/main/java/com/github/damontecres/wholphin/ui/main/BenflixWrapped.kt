@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -69,6 +71,15 @@ data class WrappedYear(
     val topMovie: String?,
     val topGenre: String?,
     val watcherKind: String,
+    /** Benflix music: the Wrapped music slide (null = not enough music this year) */
+    val music: WrappedMusic? = null,
+)
+
+data class WrappedMusic(
+    val minutes: Int,
+    val songs: Int,
+    val topArtists: List<String>,
+    val topSong: String?,
 )
 
 /**
@@ -154,11 +165,61 @@ class BenflixWrappedViewModel
                         .items
                         .filter { it.userData?.lastPlayedDate?.year == year }
                 val real = serverRepository.currentUser?.id?.let { watchTime.read(it) }
-                summarize(year, played, real)
+                val music = music(year)
+                summarize(year, played, real)?.copy(music = music)
+                    ?: music?.let { WrappedYear(year, 0, 0, 0, emptyList(), null, null, "a Music Lover", it) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not build Benflix Wrapped")
+                null
+            }
+
+        /** Songs played this year: minutes (length x plays), top artists and the most played song */
+        private suspend fun music(year: Int): WrappedMusic? =
+            try {
+                val songs =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                includeItemTypes = listOf(BaseItemKind.AUDIO),
+                                recursive = true,
+                                filters = listOf(org.jellyfin.sdk.model.api.ItemFilter.IS_PLAYED),
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                enableImages = false,
+                                limit = 5_000,
+                            ),
+                        ).content
+                        .items
+                        .filter { it.userData?.lastPlayedDate?.year == year }
+                if (songs.size < MIN_SONGS) {
+                    null
+                } else {
+                    val plays = { s: BaseItemDto -> s.userData?.playCount?.coerceAtLeast(1) ?: 1 }
+                    val minutes = (songs.sumOf { (it.runTimeTicks ?: 0L) * plays(it) } / TICKS_PER_MINUTE).toInt()
+                    val artists =
+                        songs
+                            .groupBy { it.albumArtist ?: it.artists?.firstOrNull() }
+                            .filterKeys { !it.isNullOrBlank() }
+                            .mapValues { (_, list) -> list.sumOf(plays) }
+                            .entries
+                            .sortedByDescending { it.value }
+                            .take(3)
+                            .mapNotNull { it.key }
+                    val top = songs.maxByOrNull(plays)
+                    WrappedMusic(
+                        minutes = minutes,
+                        songs = songs.size,
+                        topArtists = artists,
+                        topSong = top?.let { listOfNotNull(it.name, it.albumArtist).joinToString(" by ") },
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Wrapped music")
                 null
             }
 
@@ -237,6 +298,8 @@ class BenflixWrappedViewModel
             private const val PREFS = "benflix_wrapped"
             private const val MIN_WATCHED = 5
             private const val TICKS_PER_HOUR = 36_000_000_000L
+            private const val TICKS_PER_MINUTE = 600_000_000L
+            private const val MIN_SONGS = 10
         }
     }
 
@@ -256,6 +319,12 @@ fun BenflixWrappedLayer(
     if (!popupTurn("wrapped", BenflixPopups.WRAPPED, wrapped != null && !playing && !kids && !guest)) return
     val w = wrapped ?: return
     val focus = remember { FocusRequester() }
+    // Benflix music: a second slide for your year in music (or the only one, if you only listened)
+    var slide by remember(w) { mutableIntStateOf(if (w.movies + w.episodes == 0 && w.music != null) 1 else 0) }
+    if (slide == 1 && w.music != null) {
+        WrappedMusicSlide(w.year, w.music, onDone = viewModel::done)
+        return
+    }
     BasicDialog(onDismissRequest = viewModel::done) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -298,11 +367,11 @@ fun BenflixWrappedLayer(
             w.topMovie?.let { Text("Favourite movie: $it", color = Color.White, fontSize = BenflixType.lead, textAlign = TextAlign.Center) }
             w.topGenre?.let { Text("Most watched: $it", color = Color(0xFFE5E5EA), fontSize = BenflixType.body) }
             Button(
-                onClick = viewModel::done,
+                onClick = { if (w.music != null) slide = 1 else viewModel.done() },
                 modifier = Modifier.padding(top = 8.dp).focusRequester(focus),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
-                Text("Thanks, Benflix!")
+                Text(if (w.music != null) "Next: your music" else "Thanks, Benflix!")
             }
         }
     }
@@ -332,5 +401,63 @@ object BenflixWrappedButton {
 
     fun press() {
         presses.value += 1
+    }
+}
+
+/** Benflix Wrapped, the music slide (approved mw-wrapped): minutes listened, top artists and your song of the year */
+@Composable
+private fun WrappedMusicSlide(
+    year: Int,
+    m: WrappedMusic,
+    onDone: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    BasicDialog(onDismissRequest = onDone) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 640.dp)
+                    .background(
+                        com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel,
+                        RoundedCornerShape(16.dp),
+                    ).padding(28.dp),
+        ) {
+            Text(
+                text = "YOUR $year IN MUSIC",
+                color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Music,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                fontSize = BenflixType.small,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                WrappedStat("%,d".format(m.minutes), if (m.minutes == 1) "minute" else "minutes")
+                WrappedStat("${m.songs}", if (m.songs == 1) "song" else "songs")
+            }
+            if (m.topArtists.isNotEmpty()) {
+                Text(
+                    text = "Top artists: " + m.topArtists.joinToString(", "),
+                    color = Color.White,
+                    fontSize = BenflixType.lead,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            m.topSong?.let { Text("Song of the year: $it", color = Color.White, fontSize = BenflixType.lead, textAlign = TextAlign.Center) }
+            Button(
+                onClick = onDone,
+                modifier = Modifier.padding(top = 8.dp).focusRequester(focus),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+            ) {
+                Text("Thanks, Benflix!")
+            }
+        }
+    }
+    LaunchedEffect(year) {
+        delay(200)
+        try {
+            focus.requestFocus()
+        } catch (_: IllegalStateException) {
+        }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -113,6 +114,7 @@ fun MusicDoorPage(
     }
     val browse =
         listOf(
+            "Songs" to Destination.MusicList("songs", title = "All songs"),
             "Albums" to Destination.MusicList("albums", title = "Albums"),
             "Artists" to Destination.MusicList("artists", title = "Artists"),
             "Genres" to Destination.MusicList("genres", title = "Genres"),
@@ -145,7 +147,20 @@ fun MusicDoorPage(
                 color = BenflixColors.Soft,
                 fontSize = BenflixType.body,
             )
-            if (!state.noMusic) MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::retry, primary = true)
+            if (!state.noMusic) {
+                val retry = remember { FocusRequester() }
+                MusicButton(
+                    "Try again",
+                    BenflixIcon.REFRESH,
+                    onClick = viewModel::retry,
+                    primary = true,
+                    modifier = Modifier.focusRequester(retry),
+                )
+                LaunchedEffect(Unit) {
+                    delay(80)
+                    if (isTv) retry.tryRequestFocus()
+                }
+            }
         }
         return
     }
@@ -167,14 +182,13 @@ fun MusicDoorPage(
         shown = t
     }
     val firstFocus = remember { FocusRequester() }
-    var focusedOnce by remember { mutableStateOf(false) }
     val firstKey = rows.firstOrNull()?.key
     LaunchedEffect(firstKey) {
-        // Ben: start on the first made-for-you playlist (people start a song or playlist over)
-        if (isTv && firstKey != null && !focusedOnce) {
+        // Ben: start on the first made-for-you playlist (people start a song or playlist over); coming Back
+        // lands on the card you were on
+        if (isTv && firstKey != null) {
             delay(80)
             firstFocus.tryRequestFocus()
-            focusedOnce = true
         }
     }
 
@@ -208,8 +222,17 @@ fun MusicDoorPage(
                                         tile = tile,
                                         size = cardSize,
                                         onClick = { onTile(tile) },
-                                        onFocus = { focused = tile },
-                                        modifier = if (rowIndex == 0 && i == 0) Modifier.focusRequester(firstFocus) else Modifier,
+                                        onFocus = {
+                                            focused = tile
+                                            viewModel.lastRow = rowIndex
+                                            viewModel.lastIndex = i
+                                        },
+                                        modifier =
+                                            if (rowIndex == viewModel.lastRow.coerceAtMost(rows.size - 1) && i == viewModel.lastIndex) {
+                                                Modifier.focusRequester(firstFocus)
+                                            } else {
+                                                Modifier
+                                            },
                                     )
                                 }
                             }
@@ -319,11 +342,11 @@ private fun MusicTopArea(
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
     val px = with(density) { height.roundToPx() }
-    Box(Modifier.fillMaxWidth().height(height)) {
+    Box(Modifier.fillMaxWidth().heightIn(min = height)) {
         Box(
             Modifier
                 .align(Alignment.TopEnd)
-                .fillMaxHeight()
+                .height(height)
                 .aspectRatio(1f),
         ) {
             val key = tile?.key
@@ -376,8 +399,8 @@ private fun MusicTopArea(
         Column(
             modifier =
                 Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = overlap)
+                    .align(Alignment.BottomStart)
+                    .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = overlap + 16.dp, bottom = 8.dp)
                     .widthIn(max = 620.dp),
         ) {
             val (kicker, name, line) = topWords(tile)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -73,6 +74,8 @@ data class MusicArtistState(
     val singles: List<BaseItem> = emptyList(),
     val songTotal: Int = 0,
     val loaded: Boolean = false,
+    /** Top songs with a heart (changes as you press hearts here) */
+    val liked: Set<java.util.UUID> = emptySet(),
 )
 
 @HiltViewModel
@@ -99,7 +102,19 @@ class MusicArtistViewModel
                     // A "single" is an album with one or two songs
                     val (singles, albums) = all.partition { (it.data.childCount ?: 3) <= 2 }
                     _state.update {
-                        it.copy(topSongs = top.take(TOP), albums = albums, singles = singles, songTotal = top.size, loaded = true)
+                        it.copy(
+                            topSongs = top.take(TOP),
+                            albums = albums,
+                            singles = singles,
+                            songTotal = top.size,
+                            loaded = true,
+                            liked =
+                                top
+                                    .take(TOP)
+                                    .filter { s -> s.favorite }
+                                    .map { s -> s.id }
+                                    .toSet(),
+                        )
                     }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Artist page")
@@ -120,6 +135,11 @@ class MusicArtistViewModel
                 }
             }
         }
+
+        fun likedChanged(
+            id: java.util.UUID,
+            liked: Boolean,
+        ) = _state.update { if (liked) it.copy(liked = it.liked + id) else it.copy(liked = it.liked - id) }
 
         /** Everything by them, for Play top songs and Shuffle */
         suspend fun allSongs(id: UUID): List<BaseItem> = library.artistSongs(id, 500)
@@ -153,6 +173,9 @@ fun MusicArtistPage(
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
     val playFocus = remember { FocusRequester() }
+    // Down from the top bar comes back to Play (Ben got stuck in the top bar on a Daily mix)
+    com.github.damontecres.wholphin.ui.nav
+        .RegisterTopBarDown(playFocus)
     var menuFor by remember { mutableStateOf<Int?>(null) }
     val artist = state.artist
     LaunchedEffect(artist != null) {
@@ -167,7 +190,7 @@ fun MusicArtistPage(
         if (songs.isNotEmpty()) {
             actions.viewModelScopeLaunch {
                 val all = viewModel.allSongs(id)
-                actions.playList(all.ifEmpty { songs }, 0, shuffle, artist, name)
+                actions.playList(all.ifEmpty { songs }, 0, shuffle, artist, name, openNow = true)
             }
         }
     }
@@ -221,8 +244,9 @@ fun MusicArtistPage(
                                     ?: imageUrlService.getItemImageUrl(it, ImageType.PRIMARY, fillHeight = px)
                             }
                         }
-                    Box(Modifier.fillMaxWidth().height(heroHeight)) {
-                        Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(0.6f).fillMaxHeight()) {
+                    // Grows taller when the words need it, so they never go up under the top bar
+                    Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
+                        Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(0.6f).height(heroHeight)) {
                             CoverImage(photo, Modifier.fillMaxSize(), shape = RectangleShape)
                             Box(
                                 Modifier
@@ -248,7 +272,7 @@ fun MusicArtistPage(
                             Modifier
                                 .align(
                                     Alignment.BottomStart,
-                                ).padding(start = side, end = side, top = overlap, bottom = 12.dp)
+                                ).padding(start = side, end = side, top = overlap + 20.dp, bottom = 12.dp)
                                 .widthIn(max = 640.dp),
                         ) {
                             MusicKicker("Artist", color = BenflixColors.Soft)
@@ -303,7 +327,7 @@ fun MusicArtistPage(
                                 withCover = true,
                                 isCurrent = music.currentAudio?.id == song.id,
                                 isPlaying = music.status == NowPlayingStatus.PLAYING,
-                                liked = song.favorite || actions.musicService.isLikedNow(song.id),
+                                liked = song.id in state.liked,
                                 big = easy,
                                 onClick = { actions.playList(state.topSongs, index, false, artist, name) },
                                 onMore = { menuFor = index },
@@ -350,8 +374,9 @@ fun MusicArtistPage(
         state.topSongs.getOrNull(index)?.let { song ->
             SongMenu(
                 song = song,
-                liked = song.favorite || actions.musicService.isLikedNow(song.id),
+                liked = song.id in state.liked,
                 onDismiss = { menuFor = null },
+                onLikedChanged = { viewModel.likedChanged(song.id, it) },
                 actions = actions,
             )
         }

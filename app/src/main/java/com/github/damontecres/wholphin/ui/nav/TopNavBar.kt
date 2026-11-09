@@ -42,6 +42,26 @@ val TopNavBarHeight = 44.dp
  */
 val LocalTopBarOverlap = staticCompositionLocalOf { 0.dp }
 
+/**
+ * Where Down from the top bar goes on pages drawn under it. Compose's own guess sometimes finds nothing below
+ * the bar's buttons (Ben: stuck in the top bar on a Daily mix), so a page can name its first button here.
+ */
+class TopBarDown {
+    var target: androidx.compose.ui.focus.FocusRequester? = null
+}
+
+val LocalTopBarDown = staticCompositionLocalOf { TopBarDown() }
+
+/** A page's way to say "Down from the top bar lands here" (while it's on screen) */
+@androidx.compose.runtime.Composable
+fun RegisterTopBarDown(target: androidx.compose.ui.focus.FocusRequester) {
+    val holder = LocalTopBarDown.current
+    androidx.compose.runtime.DisposableEffect(holder, target) {
+        holder.target = target
+        onDispose { if (holder.target === target) holder.target = null }
+    }
+}
+
 /** Door pages draw their picture up behind the top bar (TV) */
 fun Destination.underTopBar(): Boolean =
     this is Destination.MoviesDoor ||
@@ -55,7 +75,7 @@ fun Destination.isMusicHero(): Boolean =
         this is Destination.MediaItem &&
             (type == BaseItemKind.MUSIC_ALBUM || type == BaseItemKind.MUSIC_ARTIST || type == BaseItemKind.PLAYLIST)
     ) ||
-        (this is Destination.MusicList && (kind == "liked" || kind == "mix"))
+        (this is Destination.MusicList && (kind == "liked" || kind == "mix" || kind == "songs"))
 
 /** The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids get a small "kids" word after it. */
 @Composable

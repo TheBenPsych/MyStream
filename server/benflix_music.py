@@ -2418,8 +2418,9 @@ def mixes_for(token, user_id):
         rnd.shuffle(songs)
         mixes.append(_mix("discover", "Something new", "Songs you haven't played yet", [s for s in songs if count(s) == 0]))
     answer = {"mixes": [m for m in mixes if m][:6]}
-    with _mix_lock:
-        _mixes[user_id] = (day, answer)
+    if answer["mixes"]:  # an empty answer (server busy, no plays yet) is tried again next time
+        with _mix_lock:
+            _mixes[user_id] = (day, answer)
     return answer
 
 
@@ -2433,9 +2434,13 @@ def _lyrics_worker():
     time.sleep(300)
     while True:
         # Once a night, around 3am
-        now = time.localtime()
-        wait = ((27 - now.tm_hour) % 24) * 3600 - now.tm_min * 60
-        time.sleep(max(600, wait))
+        import datetime
+
+        now = datetime.datetime.now()
+        nxt = now.replace(hour=3, minute=0, second=0, microsecond=0)
+        if nxt <= now:
+            nxt += datetime.timedelta(days=1)
+        time.sleep(max(600, (nxt - now).total_seconds()))
         try:
             _lyrics_tick()
         except Exception as e:

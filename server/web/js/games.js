@@ -107,6 +107,8 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
 
 // ---------- playing ----------
 B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
+  // Starting a movie, show, channel or game stops the music
+  if (B.music) B.music.stop();
   const id = +m[1];
   const [data, files, saves, bios] = await Promise.all([B.gamesList(), B.call("GET", `api/rom/${id}`), B.call("GET", `api/save/${id}`).catch(() => ({})), B.call("GET", "api/bios").catch(() => ({ files: [] }))]);
   if (!B.alive(nav)) return;

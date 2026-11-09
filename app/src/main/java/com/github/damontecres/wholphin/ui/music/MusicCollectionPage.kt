@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -121,7 +122,20 @@ fun MusicCollectionPage(
                 color = BenflixColors.Soft,
                 fontSize = BenflixType.body,
             )
-            MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::reload, primary = true)
+            val retry = remember { FocusRequester() }
+            com.github.damontecres.wholphin.ui.nav
+                .RegisterTopBarDown(retry)
+            MusicButton(
+                "Try again",
+                BenflixIcon.REFRESH,
+                onClick = viewModel::reload,
+                primary = true,
+                modifier = Modifier.focusRequester(retry),
+            )
+            LaunchedEffect(Unit) {
+                delay(80)
+                if (isTv) retry.tryRequestFocus()
+            }
         }
         return
     }
@@ -130,6 +144,9 @@ fun MusicCollectionPage(
     val withCover = kind != CollectionKind.ALBUM
     val discs = remember(songs) { songs.mapNotNull { it.data.parentIndexNumber }.distinct().size > 1 }
     val playFocus = remember { FocusRequester() }
+    // Down from the top bar comes back to Play (Ben got stuck in the top bar on a Daily mix)
+    com.github.damontecres.wholphin.ui.nav
+        .RegisterTopBarDown(playFocus)
     LaunchedEffect(state.loaded) {
         if (state.loaded && isTv) {
             delay(80)
@@ -162,8 +179,9 @@ fun MusicCollectionPage(
                     overlap = overlap,
                     side = side,
                     playFocus = playFocus,
-                    onPlay = { play(0, false) },
-                    onShuffle = { play(0, true) },
+                    // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
+                    onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
+                    onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
                     onHeart = viewModel::toggleAlbumFavourite,
                     onMore = { pageMenu = true },
                     editing = editing,
@@ -199,7 +217,8 @@ fun MusicCollectionPage(
                         )
                     }
                 }
-                item(key = "song-$index-${song.id}") {
+                // A playlist entry keeps its key when it moves, so focus stays on it while editing
+                item(key = "song-" + (song.data.playlistItemId ?: "$index-${song.id}")) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -307,7 +326,7 @@ fun MusicCollectionPage(
                     add(
                         DialogItem(headlineContent = { Text("Add all to Up next") }, onClick = {
                             pageMenu = false
-                            songs.forEach { actions.addToUpNext(it) }
+                            actions.addAllToUpNext(songs)
                         }),
                     )
                 }
@@ -364,6 +383,7 @@ private fun CollectionHero(
             CollectionKind.PLAYLIST -> "Playlist"
             CollectionKind.MIX -> "Made for you · new every morning"
             CollectionKind.LIKED -> "Your playlist"
+            CollectionKind.SONGS -> "Every song on Benflix"
         }
     val line =
         listOfNotNull(
@@ -457,8 +477,9 @@ private fun CollectionHero(
         }
     }
     if (wide) {
-        Box(Modifier.fillMaxWidth().height(height)) {
-            Box(Modifier.align(Alignment.TopEnd).fillMaxHeight().aspectRatio(1f)) {
+        // The words never go up under the top bar: the area grows taller when they need more room (Ben's photo)
+        Box(Modifier.fillMaxWidth().heightIn(min = height)) {
+            Box(Modifier.align(Alignment.TopEnd).height(height).aspectRatio(1f)) {
                 cover(Modifier.fillMaxSize())
                 Box(
                     Modifier
@@ -477,14 +498,15 @@ private fun CollectionHero(
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = side, end = side, top = overlap, bottom = 12.dp)
+                        .padding(start = side, end = side, top = overlap + 20.dp, bottom = 12.dp)
                         .widthIn(max = 640.dp),
             ) {
                 MusicKicker(
                     kicker,
                     color =
                         if (state.kind == CollectionKind.MIX ||
-                            state.kind == CollectionKind.LIKED
+                            state.kind == CollectionKind.LIKED ||
+                            state.kind == CollectionKind.SONGS
                         ) {
                             BenflixColors.Music
                         } else {
