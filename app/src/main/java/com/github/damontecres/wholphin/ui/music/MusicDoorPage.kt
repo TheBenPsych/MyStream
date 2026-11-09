@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -183,12 +184,23 @@ fun MusicDoorPage(
     }
     val firstFocus = remember { FocusRequester() }
     val firstKey = rows.firstOrNull()?.key
+    // True while focus is somewhere in the rows (not the top bar)
+    var rowsFocused by remember { mutableStateOf(false) }
     LaunchedEffect(firstKey) {
         // Ben: start on the first made-for-you playlist (people start a song or playlist over); coming Back
-        // lands on the card you were on
-        if (isTv && firstKey != null) {
-            delay(80)
-            firstFocus.tryRequestFocus()
+        // lands on the card you were on. The cards can take a moment to appear (and the top bar may grab focus
+        // first), so keep asking for a little while until the card really has it.
+        if (isTv && firstKey != null && !rowsFocused) {
+            var steady = 0
+            repeat(40) {
+                delay(60)
+                if (rowsFocused) {
+                    if (++steady >= 4) return@LaunchedEffect
+                } else {
+                    steady = 0
+                    firstFocus.tryRequestFocus()
+                }
+            }
         }
     }
 
@@ -207,7 +219,11 @@ fun MusicDoorPage(
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .onFocusChanged { rowsFocused = it.hasFocus },
             ) {
                 rows.forEachIndexed { rowIndex, row ->
                     item(key = row.key) {
@@ -228,7 +244,9 @@ fun MusicDoorPage(
                                             viewModel.lastIndex = i
                                         },
                                         modifier =
-                                            if (rowIndex == viewModel.lastRow.coerceAtMost(rows.size - 1) && i == viewModel.lastIndex) {
+                                            if (rowIndex == viewModel.lastRow.coerceIn(0, rows.size - 1) &&
+                                                i == viewModel.lastIndex.coerceIn(0, row.tiles.size - 1)
+                                            ) {
                                                 Modifier.focusRequester(firstFocus)
                                             } else {
                                                 Modifier
