@@ -418,7 +418,7 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, (retry(m.group(1)) if m.group(2) == "retry" else remove(m.group(1)))
         if method == "POST" and path == "/api/music/playlist":
             body = read_json()
-            return 200, playlist_import(str(body.get("link") or ""), str(body.get("name") or ""))
+            return 200, playlist_import(str(body.get("link") or ""), str(body.get("name") or ""), body.get("playlist", True) is not False)
         m = re.fullmatch(r"/api/music/playlist/([\w-]+)/remove", path)
         if method == "POST" and m:
             return 200, playlist_remove(m.group(1))
@@ -2304,7 +2304,8 @@ def _youtube(list_id):
     return name or "YouTube playlist", songs
 
 
-def playlist_import(link, name):
+def playlist_import(link, name, make=True):
+    """make=False (Ben): only get the songs, no playlist in Jellyfin (for someone else's playlist)"""
     if not link.strip():
         raise MusicError(400, "Paste a playlist link first.")
     found_name, songs = _read_playlist(link)
@@ -2315,6 +2316,7 @@ def playlist_import(link, name):
         "name": (name or found_name or "Imported playlist").strip()[:80],
         "created": time.time(),
         "state": "reading",
+        "make": bool(make),
         "songs": [{"artist": a, "title": s} if a != "deezer" else {"deezer": s} for a, s in songs[:1000]],
     }
     with _lock:
@@ -2392,11 +2394,15 @@ def _playlists_tick():
                         changed = True
             if s.get("state") == "here" and s.get("jf") and not s.get("added"):
                 new.append(s)
-        if new:
+        make = p.get("make", True)
+        if new and make:
             changed = True
             _playlist_add(p, new)
-        if all(s.get("state") in ("here", "not_found") for s in p["songs"]) and all(s.get("added") or s.get("state") != "here" for s in p["songs"]):
-            _playlist_order(p)
+        if all(s.get("state") in ("here", "not_found") for s in p["songs"]) and (
+            not make or all(s.get("added") or s.get("state") != "here" for s in p["songs"])
+        ):
+            if make:
+                _playlist_order(p)
             p["state"] = "done"
             changed = True
             log(f"playlist {p['name']} is done")
@@ -2443,7 +2449,7 @@ def _playlist_public(p):
     if p.get("state") == "reading":
         words = f"Reading the songs ({sum(1 for s in songs if s.get('state'))} of {len(songs)})"
     elif p.get("state") == "done":
-        words = f"Ready in Jellyfin: {here} songs" + (f", {missing} couldn't be found" if missing else "")
+        words = (f"Ready in Jellyfin: {here} songs" if p.get("make", True) else f"Songs are on Benflix: {here}") + (f", {missing} couldn't be found" if missing else "")
     else:
         words = f"{here} of {len(songs)} songs here" + (f", {missing} couldn't be found" if missing else "")
     return {"id": p["id"], "name": p.get("name") or "", "words": words, "bar": round(here / len(songs), 3) if songs else 0, "done": p.get("state") == "done", "songs": len(songs), "here": here, "missing": missing}

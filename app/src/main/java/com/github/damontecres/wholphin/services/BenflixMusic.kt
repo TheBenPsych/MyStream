@@ -141,8 +141,10 @@ class BenflixMusic
         }
 
         /** A Spotify, YouTube or Deezer playlist link, or lines like "Artist - Song" */
-        suspend fun importPlaylist(link: String): MusicPlaylist =
-            playlist(helper.postJson("/api/music/playlist", JSONObject().put("link", link)))
+        suspend fun importPlaylist(
+            link: String,
+            makePlaylist: Boolean = true,
+        ): MusicPlaylist = playlist(helper.postJson("/api/music/playlist", JSONObject().put("link", link).put("playlist", makePlaylist)))
 
         suspend fun removePlaylist(playlist: MusicPlaylist) {
             helper.postJson("/api/music/playlist/${playlist.id}/remove")
