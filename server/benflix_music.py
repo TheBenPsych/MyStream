@@ -2133,6 +2133,13 @@ def _read_playlist(link):
         return p.get("title") or "Deezer playlist", [("deezer", t["id"]) for t in tracks if t.get("id")]
     m = re.search(r"[?&]list=([\w-]+)", link)
     if m and ("youtube.com" in link or "youtu.be" in link):
+        # YouTube Music's own list first (real song and artist names, every song), then the normal YouTube page
+        try:
+            got = _youtube_music(m.group(1))
+            if got[1]:
+                return got
+        except Exception as e:
+            log(f"YouTube Music playlist read failed, trying the YouTube page: {e!r}")
         return _youtube(m.group(1))
     if re.match(r"https?://", link):
         raise MusicError(400, "That link isn't a Spotify, YouTube or Deezer playlist. You can also paste the songs as lines like 'Artist - Song'.")
@@ -2191,6 +2198,61 @@ def _spotify(pid):
     return entity.get("name") or entity.get("title") or "Spotify playlist", songs
 
 
+YTM_BROWSE = "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false"
+YTM_CLIENT = {"clientName": "WEB_REMIX", "clientVersion": "1.20241106.01.00", "hl": "en", "gl": "US"}
+
+
+def _runs(x):
+    return "".join(r.get("text", "") for r in ((x or {}).get("runs") or []))
+
+
+def _youtube_music(list_id):
+    """Reads a playlist the way music.youtube.com does: song name + artist per row, 100 rows a page"""
+    browse = list_id if list_id.startswith("VL") else "VL" + list_id
+    headers = {"User-Agent": UA, "Origin": "https://music.youtube.com", "Referer": "https://music.youtube.com/", "Cookie": "CONSENT=YES+1; SOCS=CAI"}
+    body = {"context": {"client": YTM_CLIENT}, "browseId": browse}
+    songs, name, seen_tokens = [], "", set()
+
+    for _ in range(40):  # up to about 4000 songs
+        data = _http(YTM_BROWSE, method="POST", body=body, headers=headers, timeout=30) or {}
+        token = None
+
+        def walk(x):
+            nonlocal name, token
+            if isinstance(x, dict):
+                row = x.get("musicResponsiveListItemRenderer")
+                if row:
+                    cols = [((c.get("musicResponsiveListItemFlexColumnRenderer") or {}).get("text")) for c in row.get("flexColumns") or []]
+                    title = _runs(cols[0]) if cols else ""
+                    artist = ""
+                    if len(cols) > 1:
+                        runs = (cols[1] or {}).get("runs") or []
+                        named = [r.get("text", "") for r in runs if r.get("navigationEndpoint")]
+                        artist = ", ".join(named) if named else _runs(cols[1]).split(" • ")[0]
+                    if title:
+                        a, t = _clean_youtube_title(title, artist)
+                        songs.append((a or artist, t))
+                    return
+                for key in ("musicResponsiveHeaderRenderer", "musicDetailHeaderRenderer", "musicEditablePlaylistDetailHeaderRenderer"):
+                    if not name and isinstance(x.get(key), dict) and x[key].get("title"):
+                        name = _runs(x[key]["title"])
+                c = (x.get("continuationCommand") or {}).get("token") or (x.get("nextContinuationData") or {}).get("continuation")
+                if c and not token:
+                    token = c
+                for v in x.values():
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+
+        walk(data)
+        if not token or token in seen_tokens:
+            break
+        seen_tokens.add(token)
+        body = {"context": {"client": YTM_CLIENT}, "continuation": token}
+    return name or "YouTube Music playlist", songs
+
+
 def _youtube(list_id):
     try:
         page = _http(
@@ -2210,6 +2272,17 @@ def _youtube(list_id):
     def walk(x):
         nonlocal name
         if isinstance(x, dict):
+            lk = x.get("lockupViewModel")
+            if isinstance(lk, dict):
+                meta = ((lk.get("metadata") or {}).get("lockupMetadataViewModel") or {})
+                title = ((meta.get("title") or {}).get("content")) or ""
+                ch = ""
+                for row in (((meta.get("metadata") or {}).get("contentMetadataViewModel") or {}).get("metadataRows") or []):
+                    for part in row.get("metadataParts") or []:
+                        ch = ch or ((part.get("text") or {}).get("content") or "")
+                if title:
+                    songs.append(_clean_youtube_title(title, ch))
+                return
             v = x.get("playlistVideoRenderer")
             if v:
                 title = "".join(r.get("text", "") for r in (v.get("title") or {}).get("runs") or [])
