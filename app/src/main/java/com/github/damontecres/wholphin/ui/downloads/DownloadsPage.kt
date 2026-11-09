@@ -41,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -51,7 +52,13 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.DownloadService
 import com.github.damontecres.wholphin.services.DownloadStatus
 import com.github.damontecres.wholphin.services.DownloadedItem
+import com.github.damontecres.wholphin.services.MusicService
+import com.github.damontecres.wholphin.services.NowPlayingStatus
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.music.MusicButton
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,7 +70,18 @@ class DownloadsViewModel
     @Inject
     constructor(
         val service: DownloadService,
-    ) : ViewModel()
+        val musicService: MusicService,
+    ) : ViewModel() {
+        fun playMusic(
+            songs: List<DownloadedItem>,
+            index: Int,
+        ) = viewModelScope.launchIO { musicService.playDownloaded(songs, index) }
+
+        fun playPause() {
+            val p = musicService.player
+            if (p.isPlaying) p.pause() else p.play()
+        }
+    }
 
 /**
  * Benflix on phones: the Download button under Play on a movie or episode page.
@@ -76,7 +94,8 @@ fun DownloadButton(
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val service = viewModel.service
-    if (!service.canDownload(item)) return
+    // Songs are saved from their More menu instead
+    if (!service.canDownload(item) || item.type == org.jellyfin.sdk.model.api.BaseItemKind.AUDIO) return
     val all by service.items.collectAsState()
     val downloaded = all.firstOrNull { it.itemId == item.id }
     var status by remember { mutableStateOf<DownloadStatus>(DownloadStatus.None) }
@@ -171,7 +190,7 @@ fun DownloadsPage(
     val service = viewModel.service
     BackHandler(onBack = onClose)
     val all by service.items.collectAsState()
-    val items =
+    val visible =
         remember(all, offlineProfile) {
             if (offlineProfile == null) {
                 service.visibleItems(all)
@@ -179,6 +198,9 @@ fun DownloadsPage(
                 service.visibleItems(all, offlineProfile.userId, offlineProfile.kids)
             }
         }
+    val items = remember(visible) { visible.filterNot { it.music } }
+    // Benflix music: saved songs, oldest first so an album plays in order
+    val songs = remember(visible) { visible.filter { it.music }.sortedBy { it.addedAt } }
     var playing by remember { mutableStateOf<DownloadedItem?>(null) }
     var confirmDelete by remember { mutableStateOf<DownloadedItem?>(null) }
     // Refresh progress once a second while anything is still downloading
@@ -202,7 +224,7 @@ fun DownloadsPage(
             color = Color.White,
             modifier = Modifier.padding(16.dp),
         )
-        if (items.isEmpty()) {
+        if (items.isEmpty() && songs.isEmpty()) {
             Text(
                 text = stringResource(R.string.downloads_none),
                 fontSize = BenflixType.body,
@@ -213,8 +235,115 @@ fun DownloadsPage(
         }
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
+            if (songs.isNotEmpty()) {
+                item(key = "music-title") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    ) {
+                        Text(
+                            "Music · ${songs.size} songs",
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.Bold,
+                            color = BenflixColors.Music,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            "Play all",
+                            fontSize = BenflixType.small,
+                            fontWeight = FontWeight.Bold,
+                            color = BenflixColors.OnMusic,
+                            modifier =
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(BenflixColors.Music)
+                                    .clickable { viewModel.playMusic(songs.filter { service.status(it) == DownloadStatus.Done }, 0) }
+                                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+                items(songs, key = { "song-${it.itemId}" }) { song ->
+                    val status = remember(song, tick) { service.status(song) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (status == DownloadStatus.Done) {
+                                        val ready = songs.filter { service.status(it) == DownloadStatus.Done }
+                                        viewModel.playMusic(ready, ready.indexOf(song).coerceAtLeast(0))
+                                    }
+                                }.padding(horizontal = 16.dp, vertical = 2.dp),
+                    ) {
+                        AsyncImage(
+                            model = service.posterFile(song.itemId),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF2B2B2B)),
+                        )
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(
+                                song.title,
+                                fontSize = BenflixType.body,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                when (status) {
+                                    DownloadStatus.Done -> {
+                                        song.subtitle.orEmpty()
+                                    }
+
+                                    is DownloadStatus.Downloading -> {
+                                        if (status.waitingForWifi) {
+                                            stringResource(
+                                                R.string.download_waiting_wifi,
+                                            )
+                                        } else {
+                                            stringResource(R.string.downloading_percent, status.percent)
+                                        }
+                                    }
+
+                                    else -> {
+                                        stringResource(R.string.download_failed_short)
+                                    }
+                                },
+                                fontSize = BenflixType.small,
+                                color = if (status == DownloadStatus.Failed) Color(0xFFFF8A8A) else Color(0xFFB3B3B3),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.fa_trash_can),
+                            fontFamily = FontAwesome,
+                            fontSize = 18.sp,
+                            color = Color(0xFFB3B3B3),
+                            modifier = Modifier.clickable { confirmDelete = song }.padding(12.dp),
+                        )
+                    }
+                }
+                if (items.isNotEmpty()) {
+                    item(key = "video-title") {
+                        Text(
+                            "Movies and shows",
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 16.dp, top = 12.dp),
+                        )
+                    }
+                }
+            }
             items(items, key = { it.itemId }) { item ->
                 val status = remember(item, tick) { service.status(item) }
                 Row(
@@ -290,6 +419,7 @@ fun DownloadsPage(
                 }
             }
         }
+        DownloadsMusicBar(viewModel)
     }
     confirmDelete?.let { item ->
         androidx.compose.material3.AlertDialog(
@@ -380,5 +510,55 @@ fun LocalPlayer(
                         .size(28.dp),
             )
         }
+    }
+}
+
+/**
+ * Benflix music in Downloads: what's playing from your saved songs, with previous, play/pause and next.
+ * Works with no internet (the normal Now playing needs Tower).
+ */
+@Composable
+private fun DownloadsMusicBar(viewModel: DownloadsViewModel) {
+    val music by viewModel.musicService.state.collectAsState()
+    val audio = music.currentAudio ?: return
+    if (music.queueSize == 0) return
+    val playing = music.status == NowPlayingStatus.PLAYING
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(BenflixColors.PanelHigh)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        AsyncImage(
+            model = audio.imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFF2B2B2B)),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                audio.title.orEmpty(),
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                audio.artistNames.orEmpty(),
+                fontSize = BenflixType.tag,
+                color = Color(0xFFB3B3B3),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        MusicButton(null, BenflixIcon.PREVIOUS, onClick = { viewModel.musicService.player.seekToPreviousMediaItem() })
+        MusicButton(null, if (playing) BenflixIcon.PAUSE else null, filledPlay = !playing, onClick = viewModel::playPause)
+        MusicButton(null, BenflixIcon.NEXT, onClick = { viewModel.musicService.player.seekToNextMediaItem() })
     }
 }

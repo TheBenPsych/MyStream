@@ -62,6 +62,7 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -81,6 +82,7 @@ class MusicService
         private val serverRepository: ServerRepository,
         private val imageUrlService: ImageUrlService,
         private val userPreferencesService: UserPreferencesService,
+        private val downloadService: DownloadService,
     ) {
         private val _state = MutableStateFlow(MusicServiceState.EMPTY)
         val state: StateFlow<MusicServiceState> = _state
@@ -243,6 +245,57 @@ class MusicService
                 player.shuffleModeEnabled = false
                 player.setMediaItems(listOf(mediaItems.first()) + keep + mediaItems.drop(1), 0, 0L)
                 _state.update { it.copy(thenTitle = sourceName) }
+                updateQueueSize()
+                start()
+            }
+        }
+
+        /**
+         * Benflix on phones: play songs saved in Downloads, even with no internet, starting at [startIndex].
+         * Replaces the whole queue (nothing is fetched from Tower).
+         */
+        suspend fun playDownloaded(
+            songs: List<DownloadedItem>,
+            startIndex: Int,
+        ) {
+            val mediaItems =
+                songs.drop(startIndex.coerceIn(0, (songs.size - 1).coerceAtLeast(0))).mapNotNull { d ->
+                    val f = downloadService.file(d)
+                    if (!f.exists()) return@mapNotNull null
+                    val poster = downloadService.posterFile(d.itemId)
+                    val artist = d.subtitle?.substringBefore(" · ")
+                    MediaItem
+                        .Builder()
+                        .setUri(android.net.Uri.fromFile(f))
+                        .setMediaId(d.itemId.toServerString())
+                        .setTag(
+                            AudioItem(
+                                id = d.itemId,
+                                albumId = d.albumId,
+                                artistId = null,
+                                title = d.title,
+                                albumTitle = d.subtitle?.substringAfter(" · ", "")?.ifBlank { null },
+                                artistNames = artist,
+                                runtime = d.runtimeMs.takeIf { it > 0 }?.milliseconds,
+                                imageUrl =
+                                    if (poster.exists()) {
+                                        android.net.Uri
+                                            .fromFile(poster)
+                                            .toString()
+                                    } else {
+                                        null
+                                    },
+                                hasLyrics = false,
+                            ),
+                        ).build()
+                }
+            if (mediaItems.isEmpty()) return
+            sourceId = null
+            withContext(WholphinDispatchers.Main) {
+                added.clear()
+                player.shuffleModeEnabled = false
+                player.setMediaItems(mediaItems, 0, 0L)
+                _state.update { it.copy(thenTitle = "Your downloads") }
                 updateQueueSize()
                 start()
             }
@@ -526,7 +579,9 @@ class MusicService
                         container = audioFormats,
                     )
                 }
-            Timber.i("url=%s", url)
+            // Benflix: a song saved on this phone plays from the saved copy (works with no internet)
+            val local = downloadService.localFile(audio.id)
+            Timber.i("url=%s local=%s", url, local != null)
             val imageUrl =
                 audio.data.albumId?.let { albumId ->
                     imageUrlService.getItemImageUrl(
@@ -537,7 +592,7 @@ class MusicService
                 }
             return MediaItem
                 .Builder()
-                .setUri(url)
+                .setUri(local?.let { android.net.Uri.fromFile(it) } ?: android.net.Uri.parse(url))
                 .setMediaId(audio.id.toServerString())
                 .setTag(AudioItem.from(audio, imageUrl))
                 .build()
