@@ -411,8 +411,8 @@ fun DoorsHomePage(
             // Each door starts growing a moment after the one before, with its own note on that frame
             val stagger = DOOR_STAGGER_MS * f
             val growMs = DOOR_GROW_MS * f
-            // Ben: the violet Music door grows out of the small gap in the middle of the logo, a moment
-            // after the four, with its own (slightly louder) note
+            // Ben: the violet Music door grows out of the small gap in the middle of the logo, one beat
+            // after Games, with its own (slightly louder) note
             val musicStart = MUSIC_DOOR_START_MS * f
             val musicGrow = MUSIC_DOOR_GROW_MS * f
             val starts = doors.map { if (it == BenflixDoor.MUSIC) musicStart else it.ordinal * stagger }
@@ -785,9 +785,12 @@ private const val PHONE_DOOR_RATIO = 0.8f
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f
 
-/** The Music door starts growing out of the middle of the logo a moment after the four (Ben) */
-private const val MUSIC_DOOR_START_MS = 330f
-private const val MUSIC_DOOR_GROW_MS = 800f
+/**
+ * The Music door grows out of the middle of the logo right on the next beat after Games (same spacing as the
+ * four, so its note keeps the rhythm; Ben heard a gap at 330 ms), and grows only a little slower than the others
+ */
+private const val MUSIC_DOOR_START_MS = 4 * DOOR_STAGGER_MS
+private const val MUSIC_DOOR_GROW_MS = 640f
 
 /** The Music door's note is a little louder than the other four */
 private const val MUSIC_NOTE_VOLUME = 0.46f

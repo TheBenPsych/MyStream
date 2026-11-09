@@ -183,6 +183,8 @@ fun MusicDoorPage(
         shown = t
     }
     val firstFocus = remember { FocusRequester() }
+    // Back from a "Browse by" tile lands on that tile (lastRow = -1 means "in Browse by", lastIndex = which tile)
+    val browseFocus = remember { FocusRequester() }
     val firstKey = rows.firstOrNull()?.key
     // True while focus is somewhere in the rows (not the top bar)
     var rowsFocused by remember { mutableStateOf(false) }
@@ -198,7 +200,7 @@ fun MusicDoorPage(
                     if (++steady >= 4) return@LaunchedEffect
                 } else {
                     steady = 0
-                    firstFocus.tryRequestFocus()
+                    if (viewModel.lastRow < 0) browseFocus.tryRequestFocus() else firstFocus.tryRequestFocus()
                 }
             }
         }
@@ -244,7 +246,8 @@ fun MusicDoorPage(
                                             viewModel.lastIndex = i
                                         },
                                         modifier =
-                                            if (rowIndex == viewModel.lastRow.coerceIn(0, rows.size - 1) &&
+                                            if (viewModel.lastRow >= 0 &&
+                                                rowIndex == viewModel.lastRow.coerceIn(0, rows.size - 1) &&
                                                 i == viewModel.lastIndex.coerceIn(0, row.tiles.size - 1)
                                             ) {
                                                 Modifier.focusRequester(firstFocus)
@@ -261,16 +264,32 @@ fun MusicDoorPage(
                     item(key = "browse") {
                         Column(Modifier.padding(horizontal = side(wide))) {
                             MusicRowName("Browse by", Modifier.padding(bottom = 8.dp))
-                            browse.chunked(if (wide) 4 else 2).forEach { line ->
+                            val perLine = if (wide) 4 else 2
+                            browse.chunked(perLine).forEachIndexed { lineIndex, line ->
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                                 ) {
-                                    line.forEach { (name, dest) ->
+                                    line.forEachIndexed { j, (name, dest) ->
+                                        val at = lineIndex * perLine + j
                                         BrowseTile(
                                             title = name,
                                             onClick = { viewModel.navigationManager.navigateTo(dest) },
-                                            modifier = Modifier.weight(1f),
+                                            modifier =
+                                                Modifier
+                                                    .weight(1f)
+                                                    .onFocusChanged {
+                                                        if (it.isFocused) {
+                                                            viewModel.lastRow = -1
+                                                            viewModel.lastIndex = at
+                                                        }
+                                                    }.then(
+                                                        if (viewModel.lastRow < 0 && at == viewModel.lastIndex) {
+                                                            Modifier.focusRequester(browseFocus)
+                                                        } else {
+                                                            Modifier
+                                                        },
+                                                    ),
                                         )
                                     }
                                 }

@@ -178,10 +178,13 @@ fun MusicArtistPage(
         .RegisterTopBarDown(playFocus)
     var menuFor by remember { mutableStateOf<Int?>(null) }
     val artist = state.artist
+    // Only the first time: coming Back keeps the spot you were on instead of jumping up to Play
+    var focusedOnce by androidx.compose.runtime.saveable
+        .rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(artist != null) {
-        if (artist != null && isTv) {
+        if (artist != null && isTv && !focusedOnce) {
             delay(80)
-            playFocus.tryRequestFocus()
+            focusedOnce = playFocus.tryRequestFocus()
         }
     }
     val name = artist?.title.orEmpty()

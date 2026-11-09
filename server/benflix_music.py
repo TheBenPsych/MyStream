@@ -2414,7 +2414,7 @@ def _songs(token, user_id, extra):
     return [s for s in (j.get("Items") or []) if s.get("Id")]
 
 
-def _artist(song):
+def _mix_artist(song):
     a = song.get("AlbumArtists") or song.get("ArtistItems") or []
     return (a[0].get("Name"), a[0].get("Id")) if a else (song.get("AlbumArtist"), None)
 
@@ -2453,11 +2453,11 @@ def mixes_for(token, user_id):
     # The artists each person plays most (likes count a little too)
     weight = {}
     for s in played:
-        name, aid = _artist(s)
+        name, aid = _mix_artist(s)
         if name:
             weight[(name, aid)] = weight.get((name, aid), 0) + count(s)
     for s in liked:
-        name, aid = _artist(s)
+        name, aid = _mix_artist(s)
         if name:
             weight[(name, aid)] = weight.get((name, aid), 0) + 3
     top = [a for a, _ in sorted(weight.items(), key=lambda x: -x[1])]
@@ -2465,7 +2465,7 @@ def mixes_for(token, user_id):
 
     def daily(n, artists):
         names = {a[0] for a in artists}
-        mine = [s for s in pool.values() if _artist(s)[0] in names]
+        mine = [s for s in pool.values() if _mix_artist(s)[0] in names]
         rnd.shuffle(mine)
         # Mostly songs they know, plus a few they've barely played
         known = [s for s in mine if count(s) > 0][:22]
@@ -2559,7 +2559,7 @@ def _lyrics_tick():
             args["duration"] = int(round(ticks / 10_000_000))
         try:
             got = _http(LRCLIB + "?" + urllib.parse.urlencode(args), headers={"User-Agent": "Benflix (https://github.com/TheBenPsych/MyStream)"}, timeout=20)
-        except (urllib.error.URLError, OSError, ValueError):
+        except Exception:  # any network hiccup only skips this song
             got = None
         text = (got or {}).get("syncedLyrics") or (got or {}).get("plainLyrics") if isinstance(got, dict) else None
         if text and not (got or {}).get("instrumental"):

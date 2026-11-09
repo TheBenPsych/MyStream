@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -80,7 +80,7 @@ internal fun PhoneNowPlaying(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).padding(top = 14.dp),
     ) {
-        val coverSize = minOf(boxWidth - 48.dp, boxHeight * (if (lyrics != null) 0.31f else 0.42f))
+        val coverSize = minOf(boxWidth - 48.dp, boxHeight * (if (lyrics != null) 0.26f else 0.4f))
         SwipeCover(audio, coverSize, onNext = viewModel::next, onPrevious = viewModel::previous)
         Spacer(Modifier.height(14.dp))
         Text(
@@ -137,28 +137,33 @@ internal fun PhoneNowPlaying(
             SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
         }
         // The bars sit along the bottom; the small buttons overlap their tops a little
-        Spacer(Modifier.height(towersHeight * 0.55f))
+        // Any spare room sits here, so the buttons stay up with the words and clear of the bars (Ben)
+        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(towersHeight + 8.dp))
     }
 }
 
 /** The lyrics (centred, the line being sung in white), or the next song when there are none */
 @Composable
-private fun ColumnScope.Words(
+private fun Words(
     lyrics: LyricDto?,
     lyricIndex: Int?,
     next: AudioItem?,
     easy: Boolean,
 ) {
     if (lyrics != null) {
+        // Three lines (Ben): the one before, the one being sung, and the next
+        val fontSize = if (easy) 19f else 16f
+        val threeLines = with(LocalDensity.current) { (fontSize * 1.3f * 3).sp.toDp() } + 36.dp
         LyricsColumn(
             lyrics,
             lyricIndex,
-            Modifier.fillMaxWidth().weight(1f).padding(top = 6.dp, bottom = 8.dp),
-            fontSize = if (easy) 19f else 16f,
+            Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(threeLines),
+            fontSize = fontSize,
             center = true,
         )
     } else {
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { UpNextLine(next) }
+        Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { UpNextLine(next) }
     }
 }
 
@@ -178,6 +183,7 @@ private fun SwipeCover(
     Box(
         Modifier
             .size(size)
+            .systemGestureExclusion()
             .graphicsLayer {
                 translationX = if (dragging) drag else shown
                 alpha = 1f - (abs(translationX) / (size.toPx() * 1.4f)).coerceIn(0f, 0.6f)
@@ -219,7 +225,8 @@ private fun SeekBar(
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
-                .height(28.dp)
+                .height(44.dp)
+                .systemGestureExclusion()
                 .pointerInput(duration) {
                     detectTapGestures { o ->
                         if (duration > 0) onSeek((o.x / size.width * duration).toLong().coerceIn(0L, duration))

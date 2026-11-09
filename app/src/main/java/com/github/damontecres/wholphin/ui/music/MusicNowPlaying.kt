@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -210,7 +211,7 @@ fun MusicNowPlayingPage(
     ) {
         val boxWidth = maxWidth
         val boxHeight = maxHeight
-        val towersHeight = boxHeight * (if (wide) 0.34f else 0.13f)
+        val towersHeight = boxHeight * (if (wide) 0.34f else 0.11f)
         if (barsOn) {
             MusicTowers(
                 playing = playing,
@@ -231,6 +232,8 @@ fun MusicNowPlayingPage(
                     .background(Brush.verticalGradient(0f to BenflixColors.Tray, 0.25f to BenflixColors.Tray.copy(alpha = .0f))),
             )
         }
+        // Room kept at the bottom for the bars (none when they're turned off)
+        val reserved = if (barsOn) towersHeight else 0.dp
         if (wide) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
@@ -238,11 +241,17 @@ fun MusicNowPlayingPage(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 48.dp, end = 48.dp, top = 40.dp)
-                        .height(boxHeight - towersHeight - 40.dp),
+                        .height(boxHeight - reserved - 40.dp),
             ) {
-                val coverSize = (boxWidth * 0.22f).coerceAtMost(boxHeight - towersHeight - 60.dp)
+                val coverSize = (boxWidth * 0.22f).coerceAtMost(boxHeight - reserved - 60.dp)
                 CoverImage(audio?.imageUrl, Modifier.size(coverSize))
-                Column(modifier = Modifier.weight(1f)) {
+                // Scrolls (focus brings the button into view) so Like / Up next / Stop are never squashed away
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                ) {
                     SongWords(audio, music.thenTitle, easy, big = true)
                     Spacer(Modifier.height(14.dp))
                     ProgressLine(position, duration)
