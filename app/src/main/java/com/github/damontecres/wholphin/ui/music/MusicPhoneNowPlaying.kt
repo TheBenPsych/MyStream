@@ -154,7 +154,7 @@ private fun Words(
     if (lyrics != null) {
         // Three lines (Ben): the one before, the one being sung, and the next
         val fontSize = if (easy) 19f else 16f
-        val threeLines = with(LocalDensity.current) { (fontSize * 1.3f * 3).sp.toDp() } + 2 * 14.dp + 8.dp
+        val threeLines = with(LocalDensity.current) { (fontSize * 1.3f * 3).sp.toDp() } + 36.dp
         LyricsColumn(
             lyrics,
             lyricIndex,
