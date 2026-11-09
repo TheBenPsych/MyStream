@@ -253,7 +253,7 @@ class MusicCollectionViewModel
             viewModelScope.launchIO {
                 try {
                     api.playlistsApi.removeItemFromPlaylist(playlist.id.toString(), listOf(entryId))
-                    _state.update { it.copy(songs = it.songs.filterIndexed { i, _ -> i != index }) }
+                    _state.update { it.copy(songs = it.songs.filterNot { s -> s.data.playlistItemId == entryId }) }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Remove from playlist")
                 }

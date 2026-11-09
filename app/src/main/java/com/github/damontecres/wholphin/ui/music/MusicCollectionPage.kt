@@ -147,10 +147,13 @@ fun MusicCollectionPage(
     // Down from the top bar comes back to Play (Ben got stuck in the top bar on a Daily mix)
     com.github.damontecres.wholphin.ui.nav
         .RegisterTopBarDown(playFocus)
+    // Only the first time: coming Back keeps the spot you were on instead of jumping up to Play
+    var focusedOnce by androidx.compose.runtime.saveable
+        .rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.loaded) {
-        if (state.loaded && isTv) {
+        if (state.loaded && isTv && !focusedOnce) {
             delay(80)
-            playFocus.tryRequestFocus()
+            focusedOnce = playFocus.tryRequestFocus()
         }
     }
     var menuFor by remember { mutableStateOf<Int?>(null) }

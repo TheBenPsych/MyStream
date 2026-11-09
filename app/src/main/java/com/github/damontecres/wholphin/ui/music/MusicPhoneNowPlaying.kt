@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -178,6 +179,7 @@ private fun SwipeCover(
     Box(
         Modifier
             .size(size)
+            .systemGestureExclusion()
             .graphicsLayer {
                 translationX = if (dragging) drag else shown
                 alpha = 1f - (abs(translationX) / (size.toPx() * 1.4f)).coerceIn(0f, 0.6f)
@@ -219,7 +221,8 @@ private fun SeekBar(
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
-                .height(28.dp)
+                .height(44.dp)
+                .systemGestureExclusion()
                 .pointerInput(duration) {
                     detectTapGestures { o ->
                         if (duration > 0) onSeek((o.x / size.width * duration).toLong().coerceIn(0L, duration))

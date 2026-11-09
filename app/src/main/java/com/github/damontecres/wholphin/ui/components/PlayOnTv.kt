@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -289,7 +290,12 @@ fun PhoneRemoteDialog(
         Column(
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.widthIn(max = 380.dp).fillMaxWidth().padding(20.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 380.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                    .padding(20.dp),
         ) {
             val tv = screen
             if (tv == null) {
@@ -317,7 +323,7 @@ fun PhoneRemoteDialog(
                     }
                 }
                 val fresh = screens?.firstOrNull { it.sessionId == tv.sessionId }
-                val song = fresh?.music ?: tv.music
+                val song = if (fresh != null) fresh.music else tv.music
                 if (song != null) {
                     Column(
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,

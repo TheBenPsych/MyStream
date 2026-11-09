@@ -153,7 +153,9 @@ class MusicService
                             ?.isFavorite == true
                     if (liked) likedIds.add(id) else likedIds.remove(id)
                     _state.update { if (it.currentAudio?.id == id) it.copy(liked = liked) else it }
-                    onMain { mediaSession?.setCustomLayout(MusicSessionButtons.buttons(liked)) }
+                    if (state.value.currentAudio?.id == id) {
+                        onMain { mediaSession?.setCustomLayout(MusicSessionButtons.buttons(liked)) }
+                    }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Couldn't check if %s is liked", id)
                 }
@@ -206,6 +208,7 @@ class MusicService
                         val mediaItems = items.filter { it.type == BaseItemKind.AUDIO }.map { convert(it, ac3) }
                         if (gen != generation) return@launch
                         onMain { if (gen == generation) player.addMediaItems(mediaItems) }
+                        if (gen != generation) return@launch
                         updateQueueSize()
                         _state.update { it.copy(thenTitle = "More like ${last?.title ?: "this"}") }
                     }

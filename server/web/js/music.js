@@ -64,7 +64,10 @@
     }
     draw();
   };
+  // Bumped by Stop and by starting a new list, so a mix that arrives late can't restart or change it
+  let gen = 0;
   M.playList = (songs, start, shuffle, title) => {
+    gen++;
     songs = (songs || []).filter((s) => s.Type === "Audio");
     if (!songs.length) return;
     start = Math.max(0, Math.min(start || 0, songs.length - 1));
@@ -109,6 +112,7 @@
     audio.pause();
     audio.removeAttribute("src");
     try { audio.load(); } catch (e) {}
+    gen++;
     M.queue = []; M.index = -1; M.added.clear();
     closeNow();
     draw();
@@ -121,10 +125,11 @@
     const last = M.queue[M.queue.length - 1];
     if (!last) return;
     extending = true;
+    const mine = gen;
     try {
       const have = new Set(M.queue.map((s) => s.Id));
       const mix = ((await B.get(`/Items/${enc(M.sourceId || last.Id)}/InstantMix?UserId=${B.uid()}&Limit=60&${SONG_FIELDS}`)).Items || []).filter((s) => !have.has(s.Id) && s.Type === "Audio").slice(0, 40);
-      if (mix.length) {
+      if (mix.length && mine === gen) {
         M.queue = M.queue.concat(mix.map((s) => Object.assign({}, s, { _key: Math.random() })));
         M.thenTitle = `More like ${last.Name}`;
         if (startNow) load(M.index + 1);
