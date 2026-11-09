@@ -137,8 +137,10 @@ class ShowArrival
                             if (lastSeason != null) {
                                 when {
                                     number < lastSeason -> listed
+
                                     // The newest episode out tells how far this season has got
                                     number == lastSeason -> lastEpisode ?: listed
+
                                     else -> 0
                                 }
                             } else {
@@ -154,7 +156,11 @@ class ShowArrival
                 request: MediaRequest,
                 aired: Map<Int, Int>,
             ): Map<Int, Int> {
-                val asked = request.seasons.orEmpty().mapNotNull { it.seasonNumber }.filter { it > 0 }
+                val asked =
+                    request.seasons
+                        .orEmpty()
+                        .mapNotNull { it.seasonNumber }
+                        .filter { it > 0 }
                 return if (asked.isEmpty()) aired else aired.filterKeys { it in asked }
             }
 
