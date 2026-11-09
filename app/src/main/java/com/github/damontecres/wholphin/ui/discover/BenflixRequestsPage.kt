@@ -1304,7 +1304,8 @@ fun BenflixRequestsPage(
     val tabs =
         remember(admin) {
             if (admin) {
-                listOf("Movies", "Shows", "Anime", "Requests")
+                // Benflix: Music is only for Ben (he picked "only me" for music requests)
+                listOf("Movies", "Shows", "Anime", "Music", "Requests")
             } else {
                 // Benflix: everyone gets the same browse tabs as Ben (Ben asked), plus their own requests
                 listOf("Movies", "Shows", "Anime", "My requests")
@@ -1320,6 +1321,7 @@ fun BenflixRequestsPage(
             0 -> FindShelf(FindSection.MOVIES, viewModel)
             1 -> FindShelf(FindSection.SHOWS, viewModel)
             2 -> FindShelf(FindSection.ANIME, viewModel)
+            3 -> if (admin) MusicShelf() else RequestList(viewModel, mineOnly = true, arrivedOnly = null)
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
     }
