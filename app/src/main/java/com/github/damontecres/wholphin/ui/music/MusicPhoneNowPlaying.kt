@@ -135,6 +135,7 @@ internal fun PhoneNowPlaying(
             SmallButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, easy, filledHeart = liked, onClick = viewModel::like)
             SmallButton("Up next", BenflixIcon.LIST, easy, onClick = viewModel::openUpNext)
             SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
+            SmallButton("More", BenflixIcon.MORE_VERT, easy, onClick = viewModel::openMenu)
         }
         // The bars sit along the bottom; the small buttons overlap their tops a little
         // Any spare room sits here, so the buttons stay up with the words and clear of the bars (Ben)
@@ -310,7 +311,7 @@ private fun RoundButton(
     }
 }
 
-/** Heart / Up next / Stop: 52dp circles (a comfy thumb target), with their names under them in Easy read */
+/** Heart / Up next / Stop / More: 52dp circles (a comfy thumb target), with their names under them in Easy read */
 @Composable
 private fun SmallButton(
     label: String,

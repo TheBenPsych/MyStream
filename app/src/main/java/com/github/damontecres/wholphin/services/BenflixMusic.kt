@@ -134,6 +134,15 @@ class BenflixMusic
             id: Long,
         ): MusicRequest = request(helper.postJson("/api/music/request", JSONObject().put("kind", kind).put("id", id)))
 
+        /**
+         * Ben's "Delete and find again" on a song: Tower deletes the file, makes sure the same copy is never taken
+         * again, and asks for the song again. Returns Tower's words, like "Deleted Song. Tower is finding a new copy."
+         */
+        suspend fun deleteAndFindAgain(itemId: java.util.UUID): String =
+            helper.postJson("/api/music/redo", JSONObject().put("id", itemId.toString())).optString("words").ifBlank {
+                "Deleted. Tower is finding a new copy."
+            }
+
         suspend fun retry(request: MusicRequest): MusicRequest = request(helper.postJson("/api/music/request/${request.id}/retry"))
 
         suspend fun remove(request: MusicRequest) {

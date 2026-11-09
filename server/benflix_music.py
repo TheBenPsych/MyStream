@@ -413,6 +413,9 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         if method == "POST" and path == "/api/music/request":
             body = read_json()
             return 200, ask(str(body.get("kind") or ""), body.get("id"))
+        if method == "POST" and path == "/api/music/redo":
+            body = read_json()
+            return 200, redo_song(str(body.get("id") or ""), token, user_id)
         m = re.fullmatch(r"/api/music/request/([\w-]+)/(retry|remove)", path)
         if method == "POST" and m:
             return 200, (retry(m.group(1)) if m.group(2) == "retry" else remove(m.group(1)))
@@ -1124,9 +1127,14 @@ def _finish(r, files):
                 r["state"] = "search_now"
             return
     paths, drop = [], []
+    # Songs that were already in the Music folder before these requests are never deleted (only the extra
+    # songs of the copy that just came in are), so "Delete and find again" can't take an old album with it
+    since = min((x.get("files_after") or x.get("created") or 0) for x in mates) if mates else 0
     for f in files:
         if whole or f.get("id") in keep_ids:
             paths.append(_to_helper_path(f.get("path")))
+        elif since and _added(f) and _added(f) < since - 60:
+            continue
         else:
             drop.append(f["id"])
     if drop:
@@ -1161,6 +1169,181 @@ def _finish(r, files):
     except MusicError:
         pass
     log(f"ready: {r['artist']} - {r['title']}")
+
+
+def _added(f):
+    """When Lidarr put a song file in (seconds), or 0 when it doesn't say"""
+    t = str(f.get("dateAdded") or "")
+    m = re.match(r"(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)", t)
+    if not m:
+        return 0
+    import calendar
+
+    return calendar.timegm(tuple(int(x) for x in m.groups()) + (0, 0, 0))
+
+
+# ---------- Delete and find again (a bad copy of a song) ----------
+
+
+def _to_lidarr_path(path):
+    """The helper's /media/Music/... is Lidarr's /data/Music/..."""
+    if path.startswith(MUSIC + "/"):
+        return _lidarr_music_path() + path[len(MUSIC):]
+    return None
+
+
+def _jf_song(item_id, token, user_id):
+    if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", item_id or ""):
+        raise MusicError(400, "Which song?")
+    j = _as_user(token, f"/Users/{user_id}/Items?Ids={item_id}&Fields=Path,MediaSources&EnableImages=false") or {}
+    items = [x for x in j.get("Items") or [] if x.get("Type") == "Audio"]
+    if not items:
+        raise MusicError(404, "That song isn't on the server any more.")
+    return items[0]
+
+
+def _deezer_match(title, artist, album, seconds):
+    """The same song in the music catalogue, so it can be asked for again"""
+    tries = [f'artist:"{artist}" track:"{title}"', f"{artist} {title}"]
+    best = None
+    for q in tries:
+        for t in deezer("/search", q=q, limit=25).get("data") or []:
+            if not same_song(t.get("title"), title) or not same((t.get("artist") or {}).get("name"), artist):
+                continue
+            score = 0
+            if seconds and t.get("duration") and abs(t["duration"] - seconds) > 8:
+                score += 2
+            if album and not same((t.get("album") or {}).get("title"), album):
+                score += 1
+            if best is None or score < best[0]:
+                best = (score, t)
+            if score == 0:
+                return t
+        if best:
+            return best[1]
+    return None
+
+
+def _lidarr_file(path):
+    """Lidarr's record of this file: (track file, artist) or (None, None)"""
+    if not LIDARR_URL or not _ensure_lidarr():
+        return None, None
+    stem = os.path.splitext(path)[0]
+    for a in lidarr("GET", "/artist") or []:
+        home = _to_helper_path(a.get("path"))
+        if not home or not path.startswith(home.rstrip("/") + "/"):
+            continue
+        for f in lidarr("GET", "/trackfile", artistId=a["id"]) or []:
+            # The MP3 Benflix made may not be rescanned yet, so the name without its ending is enough
+            hp = _to_helper_path(f.get("path")) or ""
+            if hp == path or os.path.splitext(hp)[0] == stem:
+                return f, a
+    return None, None
+
+
+def _blocklist(track_file, artist):
+    """Marks the download this file came from as bad, so Lidarr never picks that copy again. True when done."""
+    try:
+        hist = lidarr("GET", "/history/artist", artistId=artist["id"], albumId=track_file.get("albumId")) or []
+    except MusicError:
+        return False
+    if isinstance(hist, dict):
+        hist = hist.get("records") or []
+    hist.sort(key=lambda h: str(h.get("date") or ""), reverse=True)
+    lpath = track_file.get("path") or ""
+    stem = os.path.splitext(lpath)[0]
+    download = None
+    for h in hist:
+        if (h.get("eventType") or "").lower() not in ("trackfileimported", "downloadimported"):
+            continue
+        got = str((h.get("data") or {}).get("importedPath") or "")
+        if h.get("downloadId") and (not got or os.path.splitext(got)[0] == stem):
+            download = h["downloadId"]
+            break
+    grabs = [h for h in hist if (h.get("eventType") or "").lower() == "grabbed"]
+    grab = next((h for h in grabs if download and h.get("downloadId") == download), None) or (grabs[0] if grabs and not download else None)
+    if not grab:
+        return False
+    try:
+        lidarr("POST", f"/history/failed/{grab['id']}")
+        log(f"told Lidarr never to take {grab.get('sourceTitle') or 'that copy'} again")
+        return True
+    except MusicError as e:
+        log(f"couldn't block that copy in Lidarr: {e.message}")
+        return False
+
+
+def redo_song(item_id, token, user_id):
+    """Ben's "Delete and find again": deletes this song's file from Tower, makes sure the same copy is never
+    taken again (Lidarr's blocklist, or the Soulseek person and file), then asks for the song again"""
+    s = _jf_song(item_id, token, user_id)
+    path = s.get("Path") or ""
+    real = os.path.realpath(path) if path else ""
+    if not real.startswith(os.path.realpath(MUSIC) + os.sep):
+        raise MusicError(400, "Only songs in Tower's Music folder can be deleted from here.")
+    title = s.get("Name") or ""
+    artist = (s.get("AlbumArtist") or (s.get("Artists") or [""])[0] or "").strip()
+    album = s.get("Album") or ""
+    seconds = int(round((s.get("RunTimeTicks") or 0) / 10_000_000))
+    # The request this song came from, if Benflix got it
+    with _lock:
+        old = next(
+            (r for r in _state["requests"] if r["kind"] == "song" and same_song(title, _wanted_title(r)) and same(r.get("artist"), artist)),
+            None,
+        )
+    # Found in the catalogue BEFORE anything is deleted, so the song is never just lost
+    deezer_id = old.get("deezer") if old else None
+    if not deezer_id:
+        t = _deezer_match(title, artist, album, seconds)
+        if not t:
+            raise MusicError(404, "Couldn't find this song in the music catalogue, so it wasn't deleted.")
+        deezer_id = t["id"]
+    track_file, lartist = (None, None)
+    try:
+        track_file, lartist = _lidarr_file(real)
+    except MusicError as e:
+        log(f"couldn't look the song up in Lidarr: {e.message}")
+    blocked = False
+    if track_file:
+        blocked = _blocklist(track_file, lartist)
+        try:
+            lidarr("DELETE", f"/trackfile/{track_file['id']}")
+        except MusicError as e:
+            log(f"Lidarr couldn't delete the file, so Benflix will: {e.message}")
+    if os.path.exists(real):
+        try:
+            os.remove(real)
+        except OSError:
+            raise MusicError(500, "Tower wouldn't let Benflix delete the file. Check the Music folder's permissions.")
+    _quiet_remove(os.path.splitext(real)[0] + ".lrc")
+    _tell_jellyfin([path], kind="Deleted")
+    log(f"deleted a bad copy of {artist} - {title}")
+    # Ask for it again
+    now = time.time()
+    if old is None:
+        ask("song", deezer_id, quiet=True)
+        with _lock:
+            old = next((r for r in _state["requests"] if r["kind"] == "song" and r.get("deezer") == int(deezer_id)), None)
+    with _lock:
+        if old is not None:
+            if old.get("source") == "soulseek" and old.get("slsk_got"):
+                old.setdefault("slsk_bad", []).append(old["slsk_got"])
+                blocked = True
+            old.pop("slsk_got", None)
+            old.pop("source", None)
+            if track_file and track_file.get("albumId"):
+                old["album_id"] = track_file["albumId"]
+                old["artist_id"] = lartist["id"]
+            _retry(old)  # Straight to a new search when Lidarr already knows the album
+            old.update({"files_after": now, "redone": int(old.get("redone") or 0) + 1, "created": old.get("created") or now})
+            old.pop("takes_checked", None)
+            _state["requests"].remove(old)
+            _state["requests"].insert(0, old)
+        _save()
+    _kick.set()
+    words = f"Deleted {title}. Tower is finding a new copy"
+    words += " (that copy won't be picked again)." if blocked else "."
+    return {"ok": True, "words": words, "request": _public(old) if old else None}
 
 
 # ---------- Soulseek (single songs, through slskd) ----------
@@ -1243,6 +1426,8 @@ def _slsk_search(text, r):
     want_title, want_artist = norm(r["title"]), norm(r["artist"])
     artist_words = [w for w in want_artist.split() if len(w) > 1 and w not in ("the", "and")] or want_artist.split()
     out, seen = [], set()
+    # Copies Ben deleted with "Delete and find again" are never taken again
+    bad = {(b.get("user"), b.get("file")) for b in r.get("slsk_bad") or []}
     for resp in responses:
         user = resp.get("username")
         for f in resp.get("files") or []:
@@ -1276,7 +1461,7 @@ def _slsk_search(text, r):
             else:
                 continue
             key = (user, path)
-            if key in seen:
+            if key in bad or key in seen:
                 continue
             seen.add(key)
             out.append(
@@ -1417,7 +1602,7 @@ def _slsk_finish(r, c):
     _cover(os.path.dirname(dest), r.get("cover_big"))
     _tell_jellyfin([dest])
     _slsk_cancel(c)  # Takes the finished download off slskd's list
-    r.update({"state": "ready", "ready_at": time.time(), "note": None, "source": "soulseek"})
+    r.update({"state": "ready", "ready_at": time.time(), "note": None, "source": "soulseek", "slsk_got": {"user": c["user"], "file": c["file"]}})
     r.pop("slsk", None)
     if r.get("album_id"):
         _unmonitor(r)

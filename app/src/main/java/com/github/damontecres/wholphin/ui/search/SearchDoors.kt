@@ -223,6 +223,19 @@ fun SearchDoorResults(
     var focused by remember(items) { mutableStateOf(best) }
     var seeAll by remember { mutableStateOf<SearchDoor?>(null) }
     var asking by remember { mutableStateOf<SearchMusicAsk?>(null) }
+    // Holding OK (or a long press) on a song opens its More menu (Ben also gets "Delete and find again" there)
+    var songMenu by remember { mutableStateOf<BaseItem?>(null) }
+    // Only songs: everything else keeps its usual press, even when OK is held
+    val more: (ResultLine) -> (() -> Unit)? = { line ->
+        if (line is ResultLine.Item && line.item.type == BaseItemKind.AUDIO) ({ songMenu = line.item }) else null
+    }
+    songMenu?.let { song ->
+        com.github.damontecres.wholphin.ui.music.SongMenu(
+            song = song,
+            liked = song.data.userData?.isFavorite == true,
+            onDismiss = { songMenu = null },
+        )
+    }
     val open: (ResultLine) -> Unit = { line ->
         when (line) {
             is ResultLine.Item -> {
@@ -255,7 +268,7 @@ fun SearchDoorResults(
     val openAll = seeAll
     if (openAll != null) {
         BackHandler { seeAll = null }
-        SeeAllList(openAll, lines[openAll].orEmpty(), onClick = open, modifier = modifier)
+        SeeAllList(openAll, lines[openAll].orEmpty(), onClick = open, onLongClick = more, modifier = modifier)
         return
     }
 
@@ -337,6 +350,7 @@ fun SearchDoorResults(
                                     ResultLineCard(
                                         line = line,
                                         onClick = { open(line) },
+                                        onLongClick = more(line),
                                         onFocus = { focused = line },
                                         modifier = if (i == 0 && index == 0) Modifier.focusRequester(focusRequester) else Modifier,
                                     )
@@ -355,6 +369,7 @@ fun SearchDoorResults(
                         ResultLineCard(
                             line = line,
                             onClick = { open(line) },
+                            onLongClick = more(line),
                             onFocus = { focused = line },
                             modifier = if (i == 0 && index == 0) Modifier.focusRequester(focusRequester) else Modifier,
                         )
@@ -451,6 +466,7 @@ private fun ResultLineCard(
     onClick: () -> Unit,
     onFocus: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(10.dp)
     val imageUrlService = LocalImageUrlService.current
@@ -505,6 +521,7 @@ private fun ResultLineCard(
     }
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -612,6 +629,7 @@ private fun SeeAllList(
     lines: List<ResultLine>,
     onClick: (ResultLine) -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (ResultLine) -> (() -> Unit)? = { null },
 ) {
     val first = remember { FocusRequester() }
     androidx.compose.runtime.LaunchedEffect(Unit) { first.tryRequestFocus() }
@@ -625,6 +643,7 @@ private fun SeeAllList(
                 ResultLineCard(
                     line = line,
                     onClick = { onClick(line) },
+                    onLongClick = onLongClick(line),
                     onFocus = {},
                     modifier = if (index == 0) Modifier.focusRequester(first) else Modifier,
                 )
