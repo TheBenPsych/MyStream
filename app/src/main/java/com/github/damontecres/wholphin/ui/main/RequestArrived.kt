@@ -54,6 +54,7 @@ class RequestReadyService
         private val api: ApiClient,
         private val seerrService: SeerrService,
         private val serverRepository: ServerRepository,
+        private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
     ) {
         /** One arrived request, newest first */
         data class Ready(
@@ -145,7 +146,17 @@ class RequestReadyService
 
                                 // Once known to be here it stays here (no need to look up the seasons again)
                                 SeerrAvailability.PARTIALLY_AVAILABLE.status -> {
-                                    request.id.toString() in tipped || requestedSeasonsHere(request)
+                                    request.id.toString() in tipped || requestedSeasonsHere(request) ||
+                                        showArrival.arrived(request)
+                                }
+
+                                // Benflix: Seerr can lag behind Jellyfin, or wait on episodes that haven't aired
+                                SeerrAvailability.PROCESSING.status -> {
+                                    request.id.toString() in tipped ||
+                                        (
+                                            SeerrItemType.fromString(request.type) != SeerrItemType.MOVIE &&
+                                                showArrival.arrived(request)
+                                        )
                                 }
 
                                 else -> {
