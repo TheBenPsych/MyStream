@@ -744,7 +744,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Every movie and show with how many facts it has, to copy into a chat (at home only)
                 if via_internet:
                     raise HelperError(403, "This list only works at home.")
-                return self.send(200, facts.titles_text().encode("utf-8"), "text/plain; charset=utf-8")
+                return self.send(200, facts.titles_text(few="few" in query).encode("utf-8"), "text/plain; charset=utf-8")
             if web is not None and method in ("GET", "HEAD") and (
                 path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest") or path.startswith("/web/")
             ):
