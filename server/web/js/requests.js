@@ -154,7 +154,7 @@ B.route(/^\/requests/, async (m, nav) => {
 
 // ---------- Music (only Ben): ask for songs and albums, playlists, the Music Drop folder, tidy-up ----------
 // Talks to the helper's /api/music (benflix_music.py), which hands the downloading to Lidarr on Tower.
-const music = (method, path, body) => B.call(method, "/api/music" + path, body);
+const music = (method, path, body) => B.call(method, "api/music" + path, body);
 const songLine = (s) => `<div class="item"><div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(s.cover || "")}')"></div>
   <div class="grow"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)}${s.album ? " · " + esc(s.album) : ""}${s.seconds ? " · " + Math.floor(s.seconds / 60) + ":" + String(s.seconds % 60).padStart(2, "0") : ""}</div></div>
   <div class="acts">${s.asked ? `<span class="dim">${esc(s.asked)}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
