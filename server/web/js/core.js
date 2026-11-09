@@ -192,7 +192,11 @@ let timers = [], leaving = [];
 B.route = (re, fn) => ROUTES.push([re, fn]);
 B.every = (ms, fn) => timers.push(setInterval(fn, ms));
 B.onLeave = (fn) => leaving.push(fn);
-B.go = (hash) => { if (location.hash === hash) B.render(); else location.hash = hash; };
+B.go = (hash, opts) => {
+  if (location.hash === hash) B.render();
+  else if (opts && opts.replace) location.replace(hash);
+  else location.hash = hash;
+};
 B.back = () => (history.length > 1 ? history.back() : B.go("#/home"));
 B.page = () => $("#page");
 B.nav = 0;

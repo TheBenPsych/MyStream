@@ -226,20 +226,22 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   }).catch(() => {});
   B.get(`/MediaSegments/${it.Id}`).then((r) => { segments = (r.Items || []).map((s) => ({ type: s.Type, start: s.StartTicks / B.TICKS, end: s.EndTicks / B.TICKS })); }).catch(() => {});
   const words = { Intro: "Skip intro", Recap: "Skip recap", Outro: "Skip credits", Preview: "Skip preview", Commercial: "Skip" };
-  let nextItem;
-  const findNext = async () => {
-    if (nextItem !== undefined) return nextItem;
-    nextItem = null;
-    try {
+  // Keep the request itself, so a second ask while the first is still loading waits for the same
+  // answer (before, it got "nothing" and the player left, landing back on the episode before).
+  let nextAsk = null;
+  const findNext = () => {
+    if (!nextAsk) nextAsk = (async () => {
       if (isEp) {
         const r = await B.get(`/Shows/${it.SeriesId}/Episodes?userId=${u}&StartItemId=${it.Id}&Limit=2&Fields=Overview`);
-        nextItem = (r.Items || [])[1] || null;
-      } else if (!B.q("trailer")) {
-        const r = await B.get(`/Items/${it.Id}/Similar?userId=${u}&Limit=12`);
-        nextItem = (r.Items || []).find((x) => !(x.UserData || {}).Played) || null;
+        const list = r.Items || [];
+        const n = list[0] && list[0].Id === it.Id ? list[1] : list.find((x) => x.Id !== it.Id);
+        return n || null;
       }
-    } catch (e) {}
-    return nextItem;
+      if (B.q("trailer")) return null;
+      const r = await B.get(`/Items/${it.Id}/Similar?userId=${u}&Limit=12`);
+      return (r.Items || []).find((x) => !(x.UserData || {}).Played) || null;
+    })().catch(() => { nextAsk = null; return null; });
+    return nextAsk;
   };
   const autoNext = settings.autoplay !== false && (isEp || autoplayCount < 3);
   const showUpNext = async () => {
@@ -262,7 +264,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       B.onLeave(() => clearInterval(cd));
     }
   };
-  const goNext = (n) => { finish(); B.go(`#/play/${n.Id}`); };
+  // Swap this episode for the next one in the browser history, so Back never lands on the one before
+  const goNext = (n) => { finish(); B.go(`#/play/${n.Id}`, { replace: true }); };
   $("#pNx") && ($("#pNx").onclick = async () => { const n = await findNext(); if (n) goNext(n); else B.toast("That was the last episode."); });
 
   v.addEventListener("timeupdate", () => {
