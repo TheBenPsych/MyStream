@@ -360,7 +360,7 @@ B.posterCard = (it, opts) => {
   const newCount = it.Type === "Series" && ud.UnplayedItemCount && opts.newCount ? opts.newCount : 0;
   const year = it.ProductionYear ? String(it.ProductionYear) : "";
   return `<a class="poster" href="${opts.href || B.hrefOf(it)}" data-id="${esc(it.Id)}" title="${esc(it.Name)}">
-    <div class="im" ${src ? `style="background-image:url('${src}')"` : ""}>${src ? "" : `<div class="noart">${esc(it.SeriesName || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart">${esc(it.SeriesName || it.Name)}</div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}

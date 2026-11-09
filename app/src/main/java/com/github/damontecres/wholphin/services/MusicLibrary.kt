@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.services
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.DetailItemFields
+import com.github.damontecres.wholphin.ui.SongListFields
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -135,7 +136,7 @@ class MusicLibrary
         /** Songs in a playlist, in the playlist's order (order added, unless moved) */
         suspend fun playlistSongs(playlistId: UUID): List<BaseItem> =
             api.playlistsApi
-                .getPlaylistItems(playlistId = playlistId, userId = userId, fields = songFields)
+                .getPlaylistItems(playlistId = playlistId, userId = userId, fields = SongListFields)
                 .content.items
                 .filter { it.type == BaseItemKind.AUDIO }
                 .map { BaseItem(it, false) }
@@ -149,23 +150,36 @@ class MusicLibrary
                     filters = listOf(ItemFilter.IS_FAVORITE),
                     sortBy = listOf(ItemSortBy.DATE_CREATED),
                     sortOrder = listOf(SortOrder.DESCENDING),
-                    fields = songFields,
+                    fields = SongListFields,
                     limit = 2000,
                 ),
             )
 
-        /** Every song on Benflix, A to Z (Browse by > Songs) */
-        suspend fun allSongs(): List<BaseItem> =
-            items(
-                GetItemsRequest(
-                    includeItemTypes = listOf(BaseItemKind.AUDIO),
-                    recursive = true,
-                    sortBy = listOf(ItemSortBy.SORT_NAME),
-                    sortOrder = listOf(SortOrder.ASCENDING),
-                    fields = songFields,
-                    limit = 10_000,
-                ),
-            )
+        /**
+         * One page of every song on Benflix, A to Z (Browse by > Songs), plus how many songs there are
+         * in all. The page asks for the first few hundred so the list shows straight away, then the rest.
+         */
+        suspend fun allSongsPage(
+            start: Int,
+            limit: Int,
+        ): Pair<List<BaseItem>, Int> {
+            val result =
+                api.itemsApi
+                    .getItems(
+                        GetItemsRequest(
+                            userId = userId,
+                            includeItemTypes = listOf(BaseItemKind.AUDIO),
+                            recursive = true,
+                            sortBy = listOf(ItemSortBy.SORT_NAME),
+                            sortOrder = listOf(SortOrder.ASCENDING),
+                            fields = SongListFields,
+                            startIndex = start,
+                            limit = limit,
+                            enableTotalRecordCount = true,
+                        ),
+                    ).content
+            return result.items.map { BaseItem(it, false) } to result.totalRecordCount
+        }
 
         suspend fun likedCount(): Int =
             api.itemsApi
@@ -189,7 +203,7 @@ class MusicLibrary
                     filters = listOf(ItemFilter.IS_PLAYED),
                     sortBy = listOf(ItemSortBy.PLAY_COUNT, ItemSortBy.DATE_PLAYED),
                     sortOrder = listOf(SortOrder.DESCENDING, SortOrder.DESCENDING),
-                    fields = songFields,
+                    fields = SongListFields,
                     limit = limit,
                 ),
             )
@@ -206,7 +220,7 @@ class MusicLibrary
                     artistIds = listOf(artistId),
                     sortBy = listOf(ItemSortBy.PLAY_COUNT, ItemSortBy.COMMUNITY_RATING, ItemSortBy.SORT_NAME),
                     sortOrder = listOf(SortOrder.DESCENDING, SortOrder.DESCENDING, SortOrder.ASCENDING),
-                    fields = songFields,
+                    fields = SongListFields,
                     limit = limit,
                 ),
             )
@@ -216,7 +230,7 @@ class MusicLibrary
             if (ids.isEmpty()) return emptyList()
             val found =
                 ids.chunked(150).flatMap { chunk ->
-                    items(GetItemsRequest(ids = chunk, fields = songFields))
+                    items(GetItemsRequest(ids = chunk, fields = SongListFields))
                 }
             val byId = found.associateBy { it.id }
             return ids.mapNotNull { byId[it] }

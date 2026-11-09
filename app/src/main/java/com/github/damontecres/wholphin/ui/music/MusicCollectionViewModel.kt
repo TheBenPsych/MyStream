@@ -9,6 +9,8 @@ import com.github.damontecres.wholphin.services.MusicLibrary
 import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.launchIO
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -52,6 +54,8 @@ data class MusicCollectionState(
     val canEdit: Boolean = false,
     /** Not a music playlist after all (a movie playlist): the old playlist page shows instead */
     val notMusic: Boolean = false,
+    /** All songs: how many songs there are while the rest of the list is still coming in (null once it's all here) */
+    val stillLoadingTotal: Int? = null,
 )
 
 @HiltViewModel
@@ -66,6 +70,7 @@ class MusicCollectionViewModel
         private val _state = MutableStateFlow(MusicCollectionState())
         val state: StateFlow<MusicCollectionState> = _state
         private var loadedFor: String? = null
+        private var loadJob: Job? = null
 
         fun load(
             kind: CollectionKind,
@@ -77,20 +82,25 @@ class MusicCollectionViewModel
             if (loadedFor == key && kind != CollectionKind.LIKED) return
             loadedFor = key
             _state.value = MusicCollectionState(kind = kind, title = title)
-            viewModelScope.launchIO {
-                try {
-                    when (kind) {
-                        CollectionKind.ALBUM -> loadAlbum(UUID.fromString(id))
-                        CollectionKind.PLAYLIST -> loadPlaylist(UUID.fromString(id))
-                        CollectionKind.LIKED -> loadLiked()
-                        CollectionKind.MIX -> loadMix(id.orEmpty(), title)
-                        CollectionKind.SONGS -> loadAllSongs()
+            // A page still filling in (All songs) stops before the new one starts
+            loadJob?.cancel()
+            loadJob =
+                viewModelScope.launchIO {
+                    try {
+                        when (kind) {
+                            CollectionKind.ALBUM -> loadAlbum(UUID.fromString(id))
+                            CollectionKind.PLAYLIST -> loadPlaylist(UUID.fromString(id))
+                            CollectionKind.LIKED -> loadLiked()
+                            CollectionKind.MIX -> loadMix(id.orEmpty(), title)
+                            CollectionKind.SONGS -> loadAllSongs()
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Couldn't load music %s %s", kind, id)
+                        _state.update { it.copy(loaded = true, failed = true) }
                     }
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Couldn't load music %s %s", kind, id)
-                    _state.update { it.copy(loaded = true, failed = true) }
                 }
-            }
         }
 
         fun reload() {
@@ -190,16 +200,49 @@ class MusicCollectionViewModel
         }
 
         private suspend fun loadAllSongs() {
-            val songs = library.allSongs()
+            // The first songs show straight away; the rest come in behind them in big pages
+            // (before, all 1,235 songs and their full playback info came in one go: about 20 seconds)
+            val seen = SameSongFilter()
+            val (first, total) = library.allSongsPage(0, FIRST_PAGE)
+            val firstSongs = first.filter { seen.isNew(it) }
             val covers =
-                songs
+                firstSongs
                     .mapNotNull { it.data.albumId }
                     .distinct()
                     .shuffled()
                     .take(4)
+            var fetched = first.size
             _state.update {
-                it.copy(title = "All songs", songs = songs, liked = likedOf(songs), collage = covers, loaded = true)
+                it.copy(
+                    title = "All songs",
+                    songs = firstSongs,
+                    liked = likedOf(firstSongs),
+                    collage = covers,
+                    loaded = true,
+                    stillLoadingTotal = total.takeIf { fetched < total },
+                )
             }
+            try {
+                while (fetched < total) {
+                    val (page, _) = library.allSongsPage(fetched, NEXT_PAGE)
+                    if (page.isEmpty()) break
+                    fetched += page.size
+                    val more = page.filter { seen.isNew(it) }
+                    _state.update {
+                        it.copy(
+                            songs = it.songs + more,
+                            liked = it.liked + likedOf(more),
+                            stillLoadingTotal = total.takeIf { fetched < total },
+                        )
+                    }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                // Keep the songs that did come in rather than showing "Couldn't load this"
+                Timber.w(ex, "Couldn't load the rest of All songs")
+            }
+            _state.update { it.copy(stillLoadingTotal = null) }
         }
 
         private suspend fun loadMix(
@@ -221,6 +264,35 @@ class MusicCollectionViewModel
                     mixLine = mix.line,
                     loaded = true,
                 )
+            }
+        }
+
+        companion object {
+            private const val FIRST_PAGE = 150
+            private const val NEXT_PAGE = 500
+        }
+
+        /**
+         * The same song saved twice on the server (like "...Baby One More Time" and "... Baby One More Time"
+         * from two copies of the album) shows once in All songs: same artist, same name ignoring spaces
+         * and punctuation, and the same length to within 3 seconds. Two different songs called "Intro"
+         * by the same artist have different lengths, so both still show.
+         */
+        class SameSongFilter {
+            private val lengths = HashMap<String, MutableList<Long>>()
+
+            fun isNew(song: BaseItem): Boolean {
+                val name = (song.data.name ?: "").lowercase().filter { it.isLetterOrDigit() }
+                if (name.isEmpty()) return true
+                val artist =
+                    (song.data.albumArtist ?: song.data.artists?.firstOrNull() ?: "")
+                        .lowercase()
+                        .filter { it.isLetterOrDigit() }
+                val seconds = (song.data.runTimeTicks ?: 0L) / 10_000_000L
+                val known = lengths.getOrPut("$artist|$name") { mutableListOf() }
+                if (known.any { kotlin.math.abs(it - seconds) <= 3 }) return false
+                known.add(seconds)
+                return true
             }
         }
 

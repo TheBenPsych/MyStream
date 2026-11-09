@@ -6,8 +6,8 @@ import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.createStudioDestination
 import com.github.damontecres.wholphin.ui.AspectRatio
 import com.github.damontecres.wholphin.ui.Cards
-import com.github.damontecres.wholphin.ui.DetailItemFields
 import com.github.damontecres.wholphin.ui.SlimItemFields
+import com.github.damontecres.wholphin.ui.SongListFields
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.main.FeaturedItem
 import com.github.damontecres.wholphin.ui.main.FeaturedReason
@@ -260,7 +260,7 @@ class LibraryHomeService
                         artistIds = listOf(artist.id),
                         includeItemTypes = listOf(BaseItemKind.AUDIO),
                         recursive = true,
-                        fields = DetailItemFields,
+                        fields = SongListFields,
                         sortBy = listOf(ItemSortBy.RANDOM),
                         limit = SONGS,
                     ),
@@ -363,7 +363,7 @@ class LibraryHomeService
                         includeItemTypes = listOf(BaseItemKind.AUDIO),
                         recursive = true,
                         years = (start..start + 9).toList(),
-                        fields = DetailItemFields,
+                        fields = SongListFields,
                         sortBy = listOf(ItemSortBy.RANDOM),
                         limit = SONGS,
                     ),

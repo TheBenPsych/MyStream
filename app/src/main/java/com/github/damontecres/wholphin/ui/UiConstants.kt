@@ -66,6 +66,20 @@ val DetailItemFields =
     )
 
 /**
+ * Benflix: light [ItemFields] for long song lists (All songs, Liked songs, mixes, playlists, shuffles).
+ * [DetailItemFields] ask the server to build playback info and chapters for every song, which made
+ * All songs (1,235 songs) take about 20 seconds on a phone. Songs only need their name, length, album
+ * and cover; MEDIA_STREAMS still tells the player if a song is surround sound.
+ */
+val SongListFields =
+    listOf(
+        ItemFields.SORT_NAME,
+        ItemFields.DATE_CREATED,
+        ItemFields.MEDIA_STREAMS,
+        ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
+    )
+
+/**
  * [ItemFields] for higher level displays such as grids or rows
  */
 val SlimItemFields =

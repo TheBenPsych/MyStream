@@ -142,7 +142,11 @@ fun MusicCollectionPage(
 
     val songs = state.songs
     val withCover = kind != CollectionKind.ALBUM
-    val discs = remember(songs) { songs.mapNotNull { it.data.parentIndexNumber }.distinct().size > 1 }
+    // Disc 1 / Disc 2 headings only make sense on one album (All songs mixes every album's disc numbers)
+    val discs =
+        remember(songs, kind) {
+            kind == CollectionKind.ALBUM && songs.mapNotNull { it.data.parentIndexNumber }.distinct().size > 1
+        }
     val playFocus = remember { FocusRequester() }
     // Down from the top bar comes back to Play (Ben got stuck in the top bar on a Daily mix)
     com.github.damontecres.wholphin.ui.nav
@@ -393,8 +397,10 @@ private fun CollectionHero(
                 else -> null
             },
             if (state.kind == CollectionKind.ALBUM) item?.data?.productionYear?.toString() else null,
-            if (state.songs.isNotEmpty()) songCount(state.songs.size) else null,
-            if (state.songs.isNotEmpty()) totalLength(state.songs) else null,
+            // All songs: the full count shows straight away; the length once every song is in
+            state.stillLoadingTotal?.let { songCount(it) }
+                ?: if (state.songs.isNotEmpty()) songCount(state.songs.size) else null,
+            if (state.songs.isNotEmpty() && state.stillLoadingTotal == null) totalLength(state.songs) else null,
         ).joinToString(" · ")
     val quiet =
         if (state.kind == CollectionKind.ALBUM && item != null) {
