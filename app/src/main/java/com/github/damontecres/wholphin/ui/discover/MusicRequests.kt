@@ -542,7 +542,14 @@ private fun LazyListScope.discoverRows(
     found.because.forEachIndexed { i, b ->
         if (b.songs.isNotEmpty()) {
             item(key = "d-because-$i") {
-                SongTileRow(title = "Because you have ${b.artist}", songs = b.songs, onSong = onSong, allLabel = null, onAll = {}, numbered = false)
+                SongTileRow(
+                    title = "Because you have ${b.artist}",
+                    songs = b.songs,
+                    onSong = onSong,
+                    allLabel = null,
+                    onAll = {},
+                    numbered = false,
+                )
             }
         }
     }
