@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -530,22 +531,56 @@ class SearchViewModel
                 viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                     try {
                         Timber.v("Starting searchCombined")
-                        val request =
-                            GetItemsRequest(
-                                searchTerm = query,
-                                recursive = true,
-                                includeItemTypes = state.value.includedSearchableTypes,
-                                fields = SlimItemFields,
-                                limit = SEARCH_LIMIT,
-                            )
-
-                        val result = api.itemsApi.getItems(request).content
+                        // Benflix (Ben, 2026-11-09): music is looked up on its own, at the same time. In one
+                        // shared list of 50, a word like "star" filled every spot with movies, shows and episodes,
+                        // so the Music door always said "Nothing in Music".
+                        val types = state.value.includedSearchableTypes
+                        val musicTypes = types.filter { it in COMBINED_MUSIC_TYPES }
+                        val otherTypes = types.filter { it !in COMBINED_MUSIC_TYPES }
+                        val musicJob =
+                            async {
+                                if (musicTypes.isEmpty() || KidsMode.isActive) return@async emptyList()
+                                try {
+                                    api.itemsApi
+                                        .getItems(
+                                            GetItemsRequest(
+                                                searchTerm = query,
+                                                recursive = true,
+                                                includeItemTypes = musicTypes,
+                                                fields = SlimItemFields,
+                                                limit = SEARCH_LIMIT,
+                                            ),
+                                        ).content.items
+                                        .map { BaseItem(it, false) }
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    if (!ex.isCancellation()) Timber.w(ex, "Search: music")
+                                    emptyList()
+                                }
+                            }
+                        val result =
+                            if (otherTypes.isEmpty()) {
+                                emptyList()
+                            } else {
+                                api.itemsApi
+                                    .getItems(
+                                        GetItemsRequest(
+                                            searchTerm = query,
+                                            recursive = true,
+                                            includeItemTypes = otherTypes,
+                                            fields = SlimItemFields,
+                                            limit = SEARCH_LIMIT,
+                                        ),
+                                    ).content.items
+                                    .map { BaseItem(it, false) }
+                            }
                         val items =
                             withCloseMatches(
                                 query,
-                                state.value.includedSearchableTypes,
-                                result.items.map { BaseItem(it, false) },
-                            )
+                                otherTypes,
+                                result,
+                            ) + musicJob.await()
                         val sorted =
                             items.sortedWith(
                                 compareBy<BaseItem> { SearchRelevance.score(it, query) },
@@ -941,6 +976,10 @@ private val allSearchableTypes =
     )
 
 private const val SEARCH_LIMIT = 50
+
+/** Searched on their own in the combined search, so movies and shows can't crowd them out */
+private val COMBINED_MUSIC_TYPES =
+    setOf(BaseItemKind.AUDIO, BaseItemKind.MUSIC_ALBUM, BaseItemKind.MUSIC_ARTIST, BaseItemKind.PLAYLIST)
 private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.BOX_SET)
 
 /** How many titles the Popular row shows before you type */

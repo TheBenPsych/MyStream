@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,10 +20,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -301,23 +304,64 @@ fun SearchDoorResults(
             )
         }
         FocusLine(focused = (focused ?: best)?.toFocused(), isTv = isTv)
+        // TV: the doors that sit past the right edge, named so nobody misses them (Ben, 2026-11-09)
+        val doorsRow = rememberLazyListState()
+        val offRight by remember(shown) {
+            derivedStateOf {
+                val info = doorsRow.layoutInfo
+                val lastWhole =
+                    info.visibleItemsInfo
+                        .lastOrNull { it.offset + it.size <= info.viewportEndOffset + 1 }
+                        ?.index ?: -1
+                if (info.visibleItemsInfo.isEmpty()) emptyList() else shown.drop(lastWhole + 1)
+            }
+        }
         // Doors with nothing take one small line instead of a whole door
-        if (empty.isNotEmpty() && shown.isNotEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Nothing in", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
-                empty.forEach { door ->
-                    Box(Modifier.size(8.dp).background(BenflixColors.Line, RoundedCornerShape(2.dp)))
-                    Text(door.title, color = BenflixColors.Muted, fontSize = BenflixType.small)
+        val showEmpty = empty.isNotEmpty() && shown.isNotEmpty()
+        val showMore = isTv && offRight.isNotEmpty()
+        if (showEmpty || showMore) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (showEmpty) {
+                    Text("Nothing in", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+                    empty.forEach { door ->
+                        Box(Modifier.size(8.dp).background(BenflixColors.Line, RoundedCornerShape(2.dp)))
+                        Text(door.title, color = BenflixColors.Muted, fontSize = BenflixType.small)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (showMore) {
+                    Text("More to the right:", color = BenflixColors.Soft, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+                    offRight.forEach { door ->
+                        Box(Modifier.size(8.dp).background(door.color, RoundedCornerShape(2.dp)))
+                        Text(door.title, color = BenflixColors.Text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+                    }
+                    Text("›", color = BenflixColors.Text, fontSize = BenflixType.body, fontWeight = FontWeight.Bold)
                 }
             }
         }
         if (isTv) {
-            // Up to four doors share the width; with more, each door keeps a readable width and Right scrolls
-            // along to the next ones
+            // Doors share the width (narrower than before, now the keyboard is tucked away, so five fit). With
+            // more doors than fit, the next one peeks in at the right edge and the line above names the rest.
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-                val doorWidth = maxOf(MIN_DOOR_WIDTH, (maxWidth - 14.dp * (shown.size - 1)) / shown.size.coerceAtLeast(1))
+                val gap = 14.dp
+                val count = shown.size.coerceAtLeast(1)
+                val fits = ((maxWidth + gap) / (MIN_DOOR_WIDTH + gap)).toInt().coerceAtLeast(1)
+                val doorWidth =
+                    if (count <= fits) {
+                        (maxWidth - gap * (count - 1)) / count
+                    } else if (fits < 2) {
+                        maxWidth * 0.8f
+                    } else {
+                        // (fits - 1) whole doors and a good slice of the next one
+                        (maxWidth - gap * (fits - 1)) / (fits - 1 + DOOR_PEEK)
+                    }
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    state = doorsRow,
+                    horizontalArrangement = Arrangement.spacedBy(gap),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     itemsIndexed(shown, key = { _, d -> d.name }) { i, door ->
@@ -382,7 +426,10 @@ fun SearchDoorResults(
 }
 
 private const val PHONE_LINES = 5
-private val MIN_DOOR_WIDTH = 220.dp
+private val MIN_DOOR_WIDTH = 168.dp
+
+/** How much of the next door shows at the right edge when not all doors fit */
+private const val DOOR_PEEK = 0.45f
 
 /** One line in a door: something on Benflix, a game, or something to ask for */
 private sealed interface ResultLine {
