@@ -232,6 +232,9 @@ class BenflixTower
         /** Report card, tidy-up and play test on Tower (benflix_care.py): [path] after /api/admin/care/ */
         suspend fun care(path: String): JSONObject = atHome { helper.getJson("/api/admin/care/$path") }
 
+        /** Fix posters on Tower (benflix_posters.py): blurry poster sizes and last night's fill-in */
+        suspend fun posters(path: String): JSONObject = atHome { helper.getJson("/api/admin/posters/$path") }
+
         suspend fun carePost(
             path: String,
             body: JSONObject = JSONObject(),

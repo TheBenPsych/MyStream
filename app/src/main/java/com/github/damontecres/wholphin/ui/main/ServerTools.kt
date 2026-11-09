@@ -438,6 +438,9 @@ class ServerToolsViewModel
 
         fun open(item: CheckupItem) = navigationManager.navigateTo(Destination.MediaItem(item.itemId, item.type))
 
+        /** Benflix Fix posters: one title at a time */
+        fun openPosterFixer() = navigationManager.navigateTo(Destination.PosterFixer)
+
         /**
          * Benflix: pops a message up right now on every screen that has Benflix (or Jellyfin) open.
          * When Ben picked people, it's also saved for each of them first, so anyone whose Benflix isn't really open

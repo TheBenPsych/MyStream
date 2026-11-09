@@ -42,6 +42,8 @@ class AdminTitleViewModel
         @param:ApplicationContext private val context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
+        private val posters: com.github.damontecres.wholphin.services.BenflixPosters,
+        private val navigationManager: com.github.damontecres.wholphin.services.NavigationManager,
     ) : ViewModel() {
         val isAdmin: Boolean
             get() =
@@ -63,14 +65,24 @@ class AdminTitleViewModel
         ) {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
+                    // Benflix: pictures you picked in Change poster stay; missing ones still get filled in
+                    val keepPictures = posters.isKept(itemId)
                     api.itemRefreshApi.refreshItem(
                         itemId = itemId,
                         metadataRefreshMode = MetadataRefreshMode.FULL_REFRESH,
                         imageRefreshMode = MetadataRefreshMode.FULL_REFRESH,
                         replaceAllMetadata = true,
-                        replaceAllImages = true,
+                        replaceAllImages = !keepPictures,
                     )
-                    showToast(context, "Refreshing $name. The new info and pictures show up in a minute or two.", Toast.LENGTH_LONG)
+                    showToast(
+                        context,
+                        if (keepPictures) {
+                            "Refreshing $name. Your picked pictures stay. New info shows up in a minute or two."
+                        } else {
+                            "Refreshing $name. The new info and pictures show up in a minute or two."
+                        },
+                        Toast.LENGTH_LONG,
+                    )
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -79,6 +91,13 @@ class AdminTitleViewModel
                 }
             }
         }
+
+        /** Opens Change poster for a movie, show, season or collection */
+        fun changePoster(itemId: UUID) =
+            navigationManager.navigateTo(
+                com.github.damontecres.wholphin.ui.nav.Destination
+                    .PosterPicker(itemId),
+            )
 
         /** Reads the file's details. For a show, it shows the first episode's file. */
         fun fileDetails(itemId: UUID) {

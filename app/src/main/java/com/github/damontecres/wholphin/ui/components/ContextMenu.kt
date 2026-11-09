@@ -291,6 +291,15 @@ fun ContextMenu(
                     } else {
                         null
                     },
+                onChangePoster =
+                    if (markUpToViewModel.isAdmin && item.type in POSTER_TYPES) {
+                        {
+                            onDismissRequest.invoke()
+                            adminTitle.changePoster(item.id)
+                        }
+                    } else {
+                        null
+                    },
                 onFileDetails =
                     if (markUpToViewModel.isAdmin &&
                         (item.type in supportedPlayableTypes || item.type == BaseItemKind.SERIES || item.type == BaseItemKind.SEASON)
@@ -446,6 +455,7 @@ private fun buildContextMenuItems(
     onMarkUpTo: () -> Unit = {},
     onFixMatch: (() -> Unit)? = null,
     onRefreshInfo: (() -> Unit)? = null,
+    onChangePoster: (() -> Unit)? = null,
     onFileDetails: (() -> Unit)? = null,
 ): List<DialogItem> =
     buildList {
@@ -671,6 +681,17 @@ private fun buildContextMenuItems(
                     BenflixIcon.REFRESH.vector,
                     dismissOnClick = false,
                     onClick = onRefreshInfo,
+                ),
+            )
+        }
+        // Benflix (main profile): pick a different poster, season poster, background or title logo
+        if (onChangePoster != null) {
+            add(
+                DialogItem(
+                    "Change poster",
+                    BenflixIcon.IMAGE.vector,
+                    dismissOnClick = false,
+                    onClick = onChangePoster,
                 ),
             )
         }
@@ -1128,3 +1149,6 @@ fun buildContextForMusicQueue(
             )
         }
     }
+
+/** Benflix: titles whose poster the main profile can change */
+private val POSTER_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.SEASON, BaseItemKind.BOX_SET)
