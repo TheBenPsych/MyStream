@@ -496,6 +496,18 @@ fun DestinationContent(
                 .HowToPage(modifier)
         }
 
+        is Destination.PosterPicker -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .PosterPickerPage(destination.itemId, destination.kind, modifier)
+        }
+
+        Destination.PosterFixer -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.main
+                .PosterFixerPage(modifier)
+        }
+
         Destination.ServerStatus -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             if (com.github.damontecres.wholphin.services.GuestMode.isActive) {

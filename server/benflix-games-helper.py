@@ -61,6 +61,11 @@ try:  # Report card, tidy-up, night-time play test and subtitle fixer, in benfli
 except ImportError:
     care = None
 
+try:  # Fix posters: blurry poster finder and night-time fill of missing pictures, in benflix_posters.py
+    import benflix_posters as posters
+except ImportError:
+    posters = None
+
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
@@ -798,6 +803,11 @@ class Handler(BaseHTTPRequestHandler):
                     answer = care.admin_route(method, path, query, self.read_json)
                     if answer is not None:
                         return self.send(answer[0], answer[1])
+                if posters is not None and path.startswith("/api/admin/posters/"):
+                    posters.remember_admin(token, user_id)
+                    answer = posters.admin_route(method, path, query, self.read_json)
+                    if answer is not None:
+                        return self.send(answer[0], answer[1])
                 if self.admin_route(method, path, query) is not False:
                     return
                 return self.send(404, {"error": "Not found"})
@@ -919,6 +929,11 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
+        )
+    if posters is not None:
+        posters.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

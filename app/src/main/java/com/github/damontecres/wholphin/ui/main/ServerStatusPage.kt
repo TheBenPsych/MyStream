@@ -553,6 +553,13 @@ fun ServerStatusPage(
                 libraryNumberItems(library)
                 diskItems(disks)
                 towerDownloadItems(tower, towerProblem, towerViewModel)
+                item(key = "fix-posters") {
+                    ServerActionRow(
+                        headline = "Fix posters",
+                        supporting = "Missing, blurry or wrong-shaped posters, one at a time. Missing ones also get filled in every night.",
+                        onClick = toolsViewModel::openPosterFixer,
+                    )
+                }
                 checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
                     when {
                         tower == null -> emptyList()
