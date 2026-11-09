@@ -73,6 +73,7 @@ import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
+import com.github.damontecres.wholphin.ui.components.TabViewModel
 import com.github.damontecres.wholphin.ui.components.TabbedPage
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.detail.discover.AnimeTagCatalogViewModel
@@ -1284,12 +1285,19 @@ class BenflixRequestsViewModel
         }
     }
 
+/** Benflix: set before opening Requests to land on the Music tab (Ben's "Ask for music" tile) */
+object RequestsJump {
+    @Volatile
+    var music = false
+}
+
 /**
  * Benflix Requests tab.
  * Admins: Find new stuff (Movies, Shows, Anime with Trending, Popular, Coming soon and Top rated, plus genre
  * buttons and "Hide what's on Benflix"), and everyone's requests with Approve / Decline.
  * Everyone else: the same Movies, Shows and Anime tabs, and their own requests (no Approve / Decline).
  */
+
 @Composable
 fun BenflixRequestsPage(
     modifier: Modifier = Modifier,
@@ -1311,10 +1319,22 @@ fun BenflixRequestsPage(
                 listOf("Movies", "Shows", "Anime", "My requests")
             }.map { TabDetails(StringStringProvider(it)) }
         }
+    val tabsId = if (admin) "benflix-requests-admin" else "benflix-requests-family"
+    val tabViewModel =
+        hiltViewModel<TabViewModel, TabViewModel.Factory>(
+            key = "$tabsId-${tabs.size}",
+            creationCallback = { it.create(tabsId, tabs.size) },
+        )
+    // Benflix music: "Ask for music" on the Music page opens straight on the Music tab
+    LaunchedEffect(admin) {
+        if (admin && RequestsJump.music) tabViewModel.updateSelectedTabIndex(3)
+        RequestsJump.music = false
+    }
     TabbedPage(
-        itemId = if (admin) "benflix-requests-admin" else "benflix-requests-family",
+        itemId = tabsId,
         tabs = tabs,
         modifier = modifier,
+        viewModel = tabViewModel,
     ) { index, _ ->
         // Last tab: everyone's requests with Approve / Decline (admin), or what you asked for and what arrived
         when (index) {

@@ -101,6 +101,18 @@ enum class BenflixIcon(
     ),
     LOCK("M6.5 11h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z", "M8.5 11V8a3.5 3.5 0 0 1 7 0v3"),
     HOME("M4 11l8-7 8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5z"),
+
+    // Music (Nov 2026)
+    NOTE("M9 17V6l11-2.5V15", "M4 17a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0z", "M15 15a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0z"),
+    HEART("M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"),
+    SHUFFLE(
+        "M3 7h3c5 0 7 10 12 10h3M3 17h3c2 0 3.3-1.6 4.6-3.6M14 8.6C15 7.6 16.3 7 18 7h3",
+        "M18 4l3 3-3 3M18 14l3 3-3 3",
+    ),
+    PAUSE("M8 5.5v13M16 5.5v13"),
+    PREVIOUS("M6 5.5v13", "M18 5.5v13l-9-6.5z"),
+    NEXT("M18 5.5v13", "M6 5.5v13l9-6.5z"),
+    STOP("M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"),
     WRENCH("M14.5 4.5a4.5 4.5 0 0 0 5 5.9L11 19a2.1 2.1 0 0 1-3-3l8.6-8.5a4.5 4.5 0 0 0-2.1-3z"),
     ;
 
@@ -166,4 +178,23 @@ fun BenflixIconImage(
         colorFilter = filter,
         modifier = modifier.size(size),
     )
+}
+
+/** A filled heart, for "Liked" */
+val BenflixHeartFilled: ImageVector by lazy {
+    ImageVector
+        .Builder(
+            name = "HEART_FILLED",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).addPath(
+            pathData = addPathNodes("M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"),
+            fill = SolidColor(Color.White),
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ).build()
 }

@@ -287,6 +287,8 @@ message BenflixPreferences {
   bool haptics_off = 10;
   // Subtitle menus show only English (plus unlabelled and downloaded) tracks unless this is set
   bool all_subtitle_languages = 11;
+  // Benflix music: the bouncing towers on Now playing are on unless this is set
+  bool music_bars_off = 12;
 }
 
 enum BenflixAccent {

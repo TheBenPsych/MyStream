@@ -780,7 +780,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
                     raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
-                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json)
+                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json, is_kids=is_kids)
                 return self.send(status, answer)
             if path.startswith("/api/subsync/"):
                 # The player's "Subtitles are off" button: Tower lines them up with the voices

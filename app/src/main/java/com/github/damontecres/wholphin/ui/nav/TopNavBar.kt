@@ -9,6 +9,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.services.KidsMode
+import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
 
 /**
@@ -42,7 +43,19 @@ val TopNavBarHeight = 44.dp
 val LocalTopBarOverlap = staticCompositionLocalOf { 0.dp }
 
 /** Door pages draw their picture up behind the top bar (TV) */
-fun Destination.underTopBar(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor
+fun Destination.underTopBar(): Boolean =
+    this is Destination.MoviesDoor ||
+        this is Destination.ShowsDoor ||
+        this is Destination.MusicDoor ||
+        isMusicHero()
+
+/** Album, artist and playlist pages: the cover sits top right, up behind the bar (like a movie page) */
+fun Destination.isMusicHero(): Boolean =
+    (
+        this is Destination.MediaItem &&
+            (type == BaseItemKind.MUSIC_ALBUM || type == BaseItemKind.MUSIC_ARTIST || type == BaseItemKind.PLAYLIST)
+    ) ||
+        (this is Destination.MusicList && (kind == "liked" || kind == "mix"))
 
 /** The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids get a small "kids" word after it. */
 @Composable

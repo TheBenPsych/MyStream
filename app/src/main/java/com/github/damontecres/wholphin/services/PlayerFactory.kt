@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RenderersFactory
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -217,7 +218,7 @@ class PlayerFactory
                 }
             val extractorsFactory = createExtractorsFactory()
             val renderersFactory: RenderersFactory =
-                WholphinRenderersFactory(context, false)
+                WholphinRenderersFactory(context, false, musicTap = MusicSpectrum)
                     .setEnableDecoderFallback(true)
                     .setExtensionRendererMode(rendererMode)
             val mediaSourceFactory =
@@ -225,7 +226,9 @@ class PlayerFactory
                     OkHttpDataSource.Factory(authOkHttpClient),
                     extractorsFactory,
                 )
-            val trackSelector = createTrackSelector(disableAudioOffload = disableAudioOffload)
+            // Benflix: the music bars listen to the sound as it plays, which only works when Android isn't
+            // handed the song to play by itself (audio offload), so music always plays the normal way
+            val trackSelector = createTrackSelector(disableAudioOffload = true)
             return ExoPlayer
                 .Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
@@ -318,6 +321,7 @@ class WholphinRenderersFactory(
     private val av1Enabled: Boolean,
     private val preferDolbyVisionOverHdr10Plus: Boolean = false,
     private val convertDolbyVisionProfile7: Boolean = false,
+    private val musicTap: TeeAudioProcessor.AudioBufferSink? = null,
 ) : DefaultRenderersFactory(context) {
     /**
      * Benflix: with surround passthrough off (see SurroundPassthrough), the sound output is told
@@ -329,6 +333,23 @@ class WholphinRenderersFactory(
         enableFloatOutput: Boolean,
         enableAudioOutputPlaybackParams: Boolean,
     ): AudioSink? {
+        if (musicTap != null) {
+            // The music player: the same sound output, with the music bars listening along the way
+            val builder =
+                if (com.github.damontecres.wholphin.ui.playback.SurroundPassthrough
+                        .isOn(context)
+                ) {
+                    DefaultAudioSink.Builder(context)
+                } else {
+                    @Suppress("DEPRECATION")
+                    DefaultAudioSink.Builder()
+                }
+            return builder
+                .setEnableFloatOutput(enableFloatOutput)
+                .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
+                .setAudioProcessors(arrayOf(TeeAudioProcessor(musicTap)))
+                .build()
+        }
         if (com.github.damontecres.wholphin.ui.playback.SurroundPassthrough
                 .isOn(context)
         ) {

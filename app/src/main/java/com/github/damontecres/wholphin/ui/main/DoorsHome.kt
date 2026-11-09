@@ -88,6 +88,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.ItemFields
@@ -149,7 +150,7 @@ class HomeDoorsViewModel
             viewModelScope.launchIO {
                 try {
                     val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
-                    val items = (episodeNews() + requestNews() + updateNews()).filter { it.id !in opened }
+                    val items = (episodeNews() + musicNews() + requestNews() + updateNews()).filter { it.id !in opened }
                     _news.value = items.take(MAX_NEWS)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -210,6 +211,55 @@ class HomeDoorsViewModel
                         destination = BaseItem(ep).destination(),
                     )
                 }
+        }
+
+        /** Benflix music: a new album or single from an artist you follow (Follow on the artist page) */
+        private suspend fun musicNews(): List<HomeNews> {
+            val cutoff = LocalDateTime.now().minusDays(NEWS_DAYS)
+            return try {
+                val followed =
+                    api.itemsApi
+                        .getItems(
+                            org.jellyfin.sdk.model.api.request.GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                includeItemTypes = listOf(org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST),
+                                recursive = true,
+                                filters = listOf(org.jellyfin.sdk.model.api.ItemFilter.IS_FAVORITE),
+                                limit = 200,
+                            ),
+                        ).content.items
+                        .map { it.id }
+                if (followed.isEmpty()) return emptyList()
+                api.itemsApi
+                    .getItems(
+                        org.jellyfin.sdk.model.api.request.GetItemsRequest(
+                            userId = serverRepository.currentUser?.id,
+                            includeItemTypes = listOf(org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ALBUM),
+                            recursive = true,
+                            albumArtistIds = followed,
+                            sortBy = listOf(org.jellyfin.sdk.model.api.ItemSortBy.DATE_CREATED),
+                            sortOrder = listOf(org.jellyfin.sdk.model.api.SortOrder.DESCENDING),
+                            fields = listOf(ItemFields.DATE_CREATED),
+                            limit = 10,
+                        ),
+                    ).content.items
+                    .filter { it.dateCreated?.isAfter(cutoff) == true }
+                    .distinctBy { it.albumArtist }
+                    .take(2)
+                    .map { album ->
+                        HomeNews(
+                            id = "music-${album.id}",
+                            text = "New music from ${album.albumArtist ?: album.name}",
+                            door = BenflixDoor.MUSIC,
+                            destination = BaseItem(album).destination(),
+                        )
+                    }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Home news: music")
+                emptyList()
+            }
         }
 
         /** Something you asked for in Requests is here */
@@ -307,6 +357,13 @@ fun DoorsHomePage(
     }
     val kids by KidsMode.active.collectAsState()
     val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
+    // Music is the fifth door, but not on Kids profiles (no music on Kids)
+    val doors = remember(kids) { BenflixDoor.forHome(kids) }
+    val lite =
+        remember {
+            com.github.damontecres.wholphin.services.LiteMode
+                .isOn(context)
+        }
     val news by viewModel.news.collectAsState()
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
@@ -331,7 +388,7 @@ fun DoorsHomePage(
             IntroSounds.awaitReady(context)
             withTimeoutOrNull(WAIT_FOR_NEWS_MS) { viewModel.loaded.first { it } }
             waitForSettled(WAIT_FOR_DOORS_MS) {
-                val rects = doorRects.value
+                val rects = doors.map { doorRects.value[it.ordinal] }
                 val mark = BenflixIntroState.barMark
                 if (rects.any { it == null } || mark == null) {
                     null
@@ -351,15 +408,26 @@ fun DoorsHomePage(
             // Each door starts growing a moment after the one before, with its own note on that frame
             val stagger = DOOR_STAGGER_MS * f
             val growMs = DOOR_GROW_MS * f
+            // Ben: the violet Music door grows out of the small gap in the middle of the logo, a moment
+            // after the four, with its own (slightly louder) note
+            val musicStart = MUSIC_DOOR_START_MS * f
+            val musicGrow = MUSIC_DOOR_GROW_MS * f
+            val starts = doors.map { if (it == BenflixDoor.MUSIC) musicStart else it.ordinal * stagger }
+            val lengths = doors.map { if (it == BenflixDoor.MUSIC) musicGrow else growMs }
+            val total = doors.indices.maxOf { starts[it] + lengths[it] }
             var played = 0
-            runIntroTimeline(stagger * (progress.size - 1) + growMs, pace) { t ->
-                while (played < progress.size && t >= played * stagger) {
-                    IntroSounds.play(context, IntroSounds.DOORS[played], DOOR_NOTE_VOLUME)
+            runIntroTimeline(total, pace) { t ->
+                while (played < doors.size && t >= starts[played]) {
+                    if (doors[played] == BenflixDoor.MUSIC) {
+                        IntroSounds.play(context, IntroSounds.MUSIC_DOOR, MUSIC_NOTE_VOLUME)
+                    } else {
+                        IntroSounds.DOORS.getOrNull(played)?.let { IntroSounds.play(context, it, DOOR_NOTE_VOLUME) }
+                    }
                     played++
                 }
-                progress.forEachIndexed { i, state ->
-                    val p = ((t - i * stagger) / growMs).coerceIn(0f, 1f)
-                    state.floatValue = FastOutSlowInEasing.transform(p)
+                doors.forEachIndexed { i, door ->
+                    val p = ((t - starts[i]) / lengths[i]).coerceIn(0f, 1f)
+                    progress[door.ordinal].floatValue = FastOutSlowInEasing.transform(p)
                 }
             }
             animating = false
@@ -379,6 +447,7 @@ fun DoorsHomePage(
                     BenflixDoor.SHOWS -> Destination.ShowsDoor
                     BenflixDoor.LIVE_TV -> Destination.Channels
                     BenflixDoor.GAMES -> Destination.Games
+                    BenflixDoor.MUSIC -> Destination.MusicDoor
                 },
             )
         }
@@ -398,17 +467,33 @@ fun DoorsHomePage(
             }.graphicsLayer {
                 val p = progress[i].value
                 if (p >= 1f) return@graphicsLayer
+                if (lite) {
+                    // Lite mode: a simple fade, nothing moves
+                    alpha = p
+                    return@graphicsLayer
+                }
                 val door = doorRects.value[i]
                 val mark = BenflixIntroState.barMark
                 if (door == null || mark == null || door.width <= 0f) {
                     alpha = 0f
                     return@graphicsLayer
                 }
-                // The matching logo square: top left Movies, top right Shows, bottom left Live TV, bottom right Games
+                // The matching logo square: top left Movies, top right Shows, bottom left Live TV, bottom right
+                // Games. Music starts as a tiny square in the gap at the very middle of the logo.
                 val gap = mark.width * 0.1f
-                val sq = (mark.width - gap) / 2f
-                val sx = mark.left + if (i % 2 == 0) 0f else sq + gap
-                val sy = mark.top + if (i < 2) 0f else sq + gap
+                val sq = if (i == BenflixDoor.MUSIC.ordinal) gap else (mark.width - gap) / 2f
+                val sx =
+                    when {
+                        i == BenflixDoor.MUSIC.ordinal -> mark.left + (mark.width - gap) / 2f
+                        i % 2 == 0 -> mark.left
+                        else -> mark.left + sq + gap
+                    }
+                val sy =
+                    when {
+                        i == BenflixDoor.MUSIC.ordinal -> mark.top + (mark.height - gap) / 2f
+                        i < 2 -> mark.top
+                        else -> mark.top + sq + gap
+                    }
                 transformOrigin = TransformOrigin(0f, 0f)
                 scaleX = sq / door.width + (1f - sq / door.width) * p
                 scaleY = sq / door.height + (1f - sq / door.height) * p
@@ -462,7 +547,8 @@ fun DoorsHomePage(
                             .fillMaxWidth()
                             .weight(1f),
                 ) {
-                    BenflixDoor.entries.forEachIndexed { i, door ->
+                    doors.forEach { door ->
+                        val i = door.ordinal
                         DoorTile(
                             door = door,
                             easy = easy,
@@ -501,13 +587,13 @@ fun DoorsHomePage(
                     }
                 }
                 Spacer(Modifier.height(20.dp))
-                BenflixDoor.entries.chunked(2).forEachIndexed { rowIndex, pair ->
+                doors.filter { it != BenflixDoor.MUSIC }.chunked(2).forEach { pair ->
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     ) {
-                        pair.forEachIndexed { j, door ->
-                            val i = rowIndex * 2 + j
+                        pair.forEach { door ->
+                            val i = door.ordinal
                             DoorTile(
                                 door = door,
                                 easy = easy,
@@ -523,6 +609,22 @@ fun DoorsHomePage(
                         }
                     }
                 }
+                // Phones: Music is a wide fifth door under the four
+                if (BenflixDoor.MUSIC in doors) {
+                    val i = BenflixDoor.MUSIC.ordinal
+                    DoorTile(
+                        door = BenflixDoor.MUSIC,
+                        easy = easy,
+                        wide = false,
+                        labelAlpha = labelAlpha(i),
+                        onClick = { onDoor(BenflixDoor.MUSIC) },
+                        sideways = true,
+                        modifier =
+                            doorModifier(i)
+                                .fillMaxWidth()
+                                .height(if (easy) 112.dp else 96.dp),
+                    )
+                }
             }
         }
     }
@@ -537,6 +639,7 @@ private fun DoorTile(
     labelAlpha: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    sideways: Boolean = false,
 ) {
     val shape = RoundedCornerShape(if (wide) 14.dp else 18.dp)
     val icon =
@@ -545,6 +648,7 @@ private fun DoorTile(
             BenflixDoor.SHOWS -> BenflixIcon.TV
             BenflixDoor.LIVE_TV -> BenflixIcon.LIVE
             BenflixDoor.GAMES -> BenflixIcon.PAD
+            BenflixDoor.MUSIC -> BenflixIcon.NOTE
         }
     val nameSize: TextUnit
     val descSize: TextUnit
@@ -591,8 +695,20 @@ private fun DoorTile(
                 .graphicsLayer { alpha = labelAlpha }
                 .padding(pad),
         ) {
-            BenflixIconImage(icon = icon, color = door.onColor, size = iconSize, modifier = Modifier.align(Alignment.TopStart))
-            Column(modifier = Modifier.align(Alignment.BottomStart)) {
+            BenflixIconImage(
+                icon = icon,
+                color = door.onColor,
+                size = iconSize,
+                modifier = Modifier.align(if (sideways) Alignment.CenterStart else Alignment.TopStart),
+            )
+            Column(
+                modifier =
+                    if (sideways) {
+                        Modifier.align(Alignment.CenterStart).padding(start = iconSize + 16.dp)
+                    } else {
+                        Modifier.align(Alignment.BottomStart)
+                    },
+            ) {
                 Text(
                     text = door.title,
                     color = door.onColor,
@@ -657,6 +773,13 @@ private fun NewsPill(
 private const val PHONE_DOOR_RATIO = 0.8f
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f
+
+/** The Music door starts growing out of the middle of the logo a moment after the four (Ben) */
+private const val MUSIC_DOOR_START_MS = 330f
+private const val MUSIC_DOOR_GROW_MS = 800f
+
+/** The Music door's note is a little louder than the other four */
+private const val MUSIC_NOTE_VOLUME = 0.46f
 
 /** The longest Home waits for its news before the doors grow (a slow server goes on anyway) */
 private const val WAIT_FOR_NEWS_MS = 1500L

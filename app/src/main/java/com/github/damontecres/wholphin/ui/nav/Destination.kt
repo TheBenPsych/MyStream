@@ -171,6 +171,25 @@ sealed class Destination(
     @Serializable
     data object ShowsDoor : Destination(false)
 
+    /** Benflix music: the Music door (violet) */
+    @Serializable
+    data object MusicDoor : Destination(false)
+
+    /**
+     * Benflix music: a list of songs or a grid of albums, artists or genres. [kind] is one of
+     * liked, mix, albums, recent, played, artists, genres, genre, playlists
+     */
+    @Serializable
+    data class MusicList(
+        val kind: String,
+        val id: String? = null,
+        val title: String = "",
+    ) : Destination(false)
+
+    /** Benflix music: Up next, its own page (playing now, songs you added, then the mix) */
+    @Serializable
+    data object MusicUpNext : Destination(false)
+
     /** A "Browse by" tile inside a door: genres, collections, studios / networks, or everything */
     @Serializable
     data class DoorBrowse(

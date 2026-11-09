@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,6 +47,7 @@ import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.instantMixApi
 import org.jellyfin.sdk.api.client.extensions.universalAudioApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.sockets.subscribe
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -97,7 +99,191 @@ class MusicService
                 .createAudioPlayer(disableAudioOffload = disableAudioOffload)
                 .also {
                     it.addListener(MusicPlayerListener(it, _state))
+                    it.addListener(BenflixMusicListener())
                 }
+        }
+
+        /**
+         * Benflix: the songs waiting in Up next that the person added themselves (Play next / Add to Up next),
+         * by [AudioItem.key]. Everything else after the playing song is the list or mix it came from ("Then plays").
+         */
+        private val added = java.util.Collections.synchronizedSet(mutableSetOf<Long>())
+
+        /** True for a queued song the person added themselves */
+        fun isAdded(item: AudioItem): Boolean = item.key in added
+
+        /** Benflix: what the queue came from, so it can keep going with a matching mix when it ends */
+        private var sourceId: UUID? = null
+        private var extending = false
+
+        private inner class BenflixMusicListener : Player.Listener {
+            override fun onMediaItemTransition(
+                mediaItem: MediaItem?,
+                reason: Int,
+            ) {
+                val audio = mediaItem?.localConfiguration?.tag as? AudioItem
+                if (audio != null) added.remove(audio.key)
+                _state.update { it.copy(currentAudio = audio, liked = audio?.let { a -> a.id in likedIds } ?: false) }
+                audio?.let { checkLiked(it.id) }
+                // The last song has started: keep going with a matching mix (Ben: albums and playlists don't just stop)
+                if (player.mediaItemCount > 0 && player.currentMediaItemIndex == player.mediaItemCount - 1) {
+                    keepGoing(audio)
+                }
+            }
+        }
+
+        /** Songs liked this session, so the heart shows straight away */
+        private val likedIds = java.util.Collections.synchronizedSet(mutableSetOf<UUID>())
+
+        private fun checkLiked(id: UUID) {
+            defaultScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val liked =
+                        api.userLibraryApi
+                            .getItem(id)
+                            .content.userData
+                            ?.isFavorite == true
+                    if (liked) likedIds.add(id) else likedIds.remove(id)
+                    _state.update { if (it.currentAudio?.id == id) it.copy(liked = liked) else it }
+                    onMain { mediaSession?.setCustomLayout(MusicSessionButtons.buttons(liked)) }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't check if %s is liked", id)
+                }
+            }
+        }
+
+        /** The heart: like or unlike a song (liked songs go in Liked songs) */
+        suspend fun setLiked(
+            id: UUID,
+            liked: Boolean,
+        ) {
+            try {
+                if (liked) {
+                    api.userLibraryApi.markFavoriteItem(id)
+                    likedIds.add(id)
+                } else {
+                    api.userLibraryApi.unmarkFavoriteItem(id)
+                    likedIds.remove(id)
+                }
+                _state.update { if (it.currentAudio?.id == id) it.copy(liked = liked) else it }
+                onMain { mediaSession?.setCustomLayout(MusicSessionButtons.buttons(liked)) }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't change the like for %s", id)
+            }
+        }
+
+        fun isLikedNow(id: UUID): Boolean = id in likedIds
+
+        private fun keepGoing(last: AudioItem?) {
+            if (extending) return
+            val from = sourceId ?: last?.id ?: return
+            extending = true
+            defaultScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val queued = state.value.queuedIds
+                    val items =
+                        api.instantMixApi
+                            .getInstantMixFromItem(
+                                userId = serverRepository.currentUser?.id,
+                                itemId = from,
+                                limit = 60,
+                                fields = DetailItemFields,
+                            ).content.items
+                            .map { BaseItem(it, false) }
+                            .filter { it.id !in queued }
+                            .take(40)
+                    if (items.isNotEmpty()) {
+                        val ac3 = preferAc3Surround()
+                        val mediaItems = items.filter { it.type == BaseItemKind.AUDIO }.map { convert(it, ac3) }
+                        onMain { player.addMediaItems(mediaItems) }
+                        updateQueueSize()
+                        _state.update { it.copy(thenTitle = "More like ${it.thenTitle ?: "this"}") }
+                    }
+                    // The mix itself keeps going from its own last song next time
+                    sourceId = null
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't keep the music going")
+                } finally {
+                    extending = false
+                }
+            }
+        }
+
+        /**
+         * Benflix: play a list of songs (an album, playlist, mix or Liked songs) from [startIndex]. Songs the
+         * person added to Up next stay, right after the first song (Ben: a new album only replaces "Then plays").
+         */
+        suspend fun playList(
+            items: List<BaseItem>,
+            startIndex: Int,
+            shuffled: Boolean,
+            sourceId: UUID?,
+            sourceName: String?,
+        ) {
+            val songs = items.filter { it.type == BaseItemKind.AUDIO }
+            if (songs.isEmpty()) return
+            val ac3 = preferAc3Surround()
+            val start = startIndex.coerceIn(0, songs.size - 1)
+            val ordered =
+                if (shuffled) {
+                    val first = if (startIndex > 0) songs[start] else songs.random()
+                    listOf(first) + (songs - first).shuffled()
+                } else {
+                    songs.drop(start)
+                }
+            val mediaItems = ordered.map { convert(it, ac3) }
+            this.sourceId = sourceId
+            withContext(WholphinDispatchers.Main) {
+                // The person's own Up next songs that haven't played yet
+                val keep =
+                    (player.currentMediaItemIndex + 1 until player.mediaItemCount)
+                        .map { player.getMediaItemAt(it) }
+                        .filter { (it.localConfiguration?.tag as? AudioItem)?.key in added }
+                added.retainAll(keep.mapNotNull { (it.localConfiguration?.tag as? AudioItem)?.key }.toSet())
+                player.shuffleModeEnabled = false
+                player.setMediaItems(listOf(mediaItems.first()) + keep + mediaItems.drop(1), 0, 0L)
+                _state.update { it.copy(thenTitle = sourceName) }
+                updateQueueSize()
+                start()
+            }
+        }
+
+        /** Add to Up next: after the songs you already added, before the rest of the list */
+        suspend fun addToUpNext(song: BaseItem) {
+            if (song.type != BaseItemKind.AUDIO) return
+            val mediaItem = convert(song, preferAc3Surround())
+            (mediaItem.localConfiguration?.tag as? AudioItem)?.let { added.add(it.key) }
+            onMain {
+                if (player.mediaItemCount == 0) {
+                    player.setMediaItems(listOf(mediaItem))
+                    start()
+                } else {
+                    var at = player.currentMediaItemIndex + 1
+                    while (at < player.mediaItemCount &&
+                        (player.getMediaItemAt(at).localConfiguration?.tag as? AudioItem)?.key in added
+                    ) {
+                        at++
+                    }
+                    player.addMediaItem(at, mediaItem)
+                }
+            }
+            updateQueueSize()
+        }
+
+        /** Play next: straight after the playing song */
+        suspend fun playNextSong(song: BaseItem) {
+            if (song.type != BaseItemKind.AUDIO) return
+            val mediaItem = convert(song, preferAc3Surround())
+            (mediaItem.localConfiguration?.tag as? AudioItem)?.let { added.add(it.key) }
+            onMain {
+                if (player.mediaItemCount == 0) {
+                    player.setMediaItems(listOf(mediaItem))
+                    start()
+                } else {
+                    player.addMediaItem(player.currentMediaItemIndex + 1, mediaItem)
+                }
+            }
+            updateQueueSize()
         }
 
         private val mutex = Mutex()
@@ -125,8 +311,20 @@ class MusicService
                         mediaSession =
                             MediaSession
                                 .Builder(context, player)
-                                .setCallback(TrustAllControllersCallback)
+                                .setId("benflix-music")
+                                .setCallback(
+                                    MusicSessionCallback(
+                                        onLike = {
+                                            state.value.currentAudio?.let { audio ->
+                                                defaultScope.launch { setLiked(audio.id, !state.value.liked) }
+                                            }
+                                        },
+                                        onStop = { defaultScope.launch { stop() } },
+                                    ),
+                                ).setCustomLayout(MusicSessionButtons.buttons(false))
                                 .build()
+                        // The lock screen controls, and music that keeps going with the screen off
+                        onMain { BenflixMusicPlaybackService.start(context) }
                         activityTracker =
                             TrackActivityPlaybackListener(api, player) {
                                 state.value.currentItemId?.let { itemId ->
@@ -158,6 +356,7 @@ class MusicService
                 }
                 mediaSession?.release()
                 mediaSession = null
+                onMain { BenflixMusicPlaybackService.stop(context) }
                 onMain {
                     websocketJob?.cancel()
                     websocketJob = null
@@ -169,6 +368,8 @@ class MusicService
                     player.stop()
                     player.setMediaItems(emptyList())
                 }
+                added.clear()
+                sourceId = null
                 _state.update {
                     MusicServiceState.EMPTY
                 }
@@ -498,6 +699,12 @@ data class MusicServiceState(
     val currentItemTitle: String?,
     val loadingState: LoadingState = LoadingState.Pending,
     val queuedIds: Set<UUID>,
+    /** Benflix: the song playing now */
+    val currentAudio: AudioItem? = null,
+    /** Benflix: whether the playing song is in Liked songs */
+    val liked: Boolean = false,
+    /** Benflix: the name of what plays after your Up next songs, like "Night Drive" */
+    val thenTitle: String? = null,
 ) {
     companion object {
         val EMPTY =
