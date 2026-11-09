@@ -402,6 +402,7 @@ private fun CollectionHero(
             if (state.kind == CollectionKind.ALBUM) item?.data?.productionYear?.toString() else null,
             // All songs: the full count shows straight away; the length once every song is in
             state.stillLoadingTotal?.let { songCount(it) }
+                ?: state.albumTotal?.let { "${state.songs.size} of $it songs" }
                 ?: if (state.songs.isNotEmpty()) songCount(state.songs.size) else null,
             if (state.songs.isNotEmpty() && state.stillLoadingTotal == null) totalLength(state.songs) else null,
         ).joinToString(" · ")

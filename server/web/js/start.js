@@ -195,6 +195,23 @@ B.loadNews = async (nav) => {
       out.push({ text: e.IndexNumber === 1 ? `${e.SeriesName} season ${e.ParentIndexNumber} is here` : `${e.SeriesName} has a new episode`, color: DOORS.shows.color, href: `#/show/${e.SeriesId}?ep=${e.Id}` });
     });
   } catch (e) {}
+  // New albums from artists you follow (like the TV and phone app; not on Kids)
+  if (!B.me.kids) {
+    try {
+      const f = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicArtist&Recursive=true&Filters=IsFavorite&Limit=200&EnableImages=false`);
+      const ids = (f.Items || []).map((x) => x.Id);
+      if (ids.length) {
+        const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicAlbum&Recursive=true&AlbumArtistIds=${ids.join(",")}&SortBy=DateCreated&SortOrder=Descending&Fields=DateCreated&Limit=10&EnableImages=false`);
+        const seen = new Set();
+        (r.Items || []).filter((a) => Date.now() - new Date(a.DateCreated) < 3 * 86400000).forEach((a) => {
+          const who = a.AlbumArtist || a.Name;
+          if (seen.has(who) || seen.size >= 2) return;
+          seen.add(who);
+          out.push({ text: `New music from ${who}`, color: "#B69CFF", href: `#/album/${a.Id}` });
+        });
+      }
+    } catch (e) {}
+  }
   if (!B.alive(nav) || !$("#news")) return;
   $("#news").innerHTML = out.slice(0, 3).map((n) => `<${n.href ? `a href="${n.href}"` : "span"} class="pill"><span class="d" style="background:${n.color}"></span>${esc(n.text)}</${n.href ? "a" : "span"}>`).join("");
 };

@@ -50,7 +50,7 @@ B.route(/^\/search/, async (m, nav) => {
     // Songs and albums to ask for: not already in your music
     const have = new Set(mine.map((x) => plain(x.Name) + "|" + plain(x.AlbumArtist || (x.Artists || [])[0] || "")));
     const mAsk = cat ? [...(cat.songs || []).slice(0, 12).map((x) => Object.assign({ kind: "song" }, x)), ...(cat.albums || []).slice(0, 6).map((x) => Object.assign({ kind: "album", album_id: x.id, album: x.title }, x))]
-      .filter((x) => x.asked !== "In your music" && !have.has(plain(x.title) + "|" + plain(x.artist))) : [];
+      .filter((x) => !x.have && x.asked !== "In your music" && !have.has(plain(x.title) + "|" + plain(x.artist))) : [];
     if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
     if (my !== seq || !B.alive(nav)) return;
     const gl = games.filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));

@@ -180,7 +180,7 @@ class SearchViewModel
                     _musicAsk.value =
                         found
                             ?.let { f ->
-                                f.songs.take(MUSIC_ASK_SONGS).map {
+                                f.songs.filter { !it.have }.take(MUSIC_ASK_SONGS).map {
                                     SearchMusicAsk("song", it.id, it.title, it.artist, it.cover, it.asked, it.albumId, it.album)
                                 } +
                                     f.albums.take(MUSIC_ASK_ALBUMS).map {

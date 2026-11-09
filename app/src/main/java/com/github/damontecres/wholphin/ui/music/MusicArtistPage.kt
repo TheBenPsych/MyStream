@@ -97,7 +97,7 @@ class MusicArtistViewModel
                 try {
                     val artist = BaseItem(api.userLibraryApi.getItem(itemId = id).content, false)
                     _state.update { it.copy(artist = artist) }
-                    val top = library.artistSongs(id, 200)
+                    val top = library.artistSongs(id, TOP)
                     val all = library.albums(artistId = id, sort = ItemSortBy.PRODUCTION_YEAR, descending = true)
                     // A "single" is an album with one or two songs
                     val (singles, albums) = all.partition { (it.data.childCount ?: 3) <= 2 }
@@ -106,7 +106,7 @@ class MusicArtistViewModel
                             topSongs = top.take(TOP),
                             albums = albums,
                             singles = singles,
-                            songTotal = top.size,
+                            songTotal = library.artistSongCount(id).takeIf { n -> n > 0 } ?: top.size,
                             loaded = true,
                             liked =
                                 top

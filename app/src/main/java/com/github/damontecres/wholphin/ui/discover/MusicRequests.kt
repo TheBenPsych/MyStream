@@ -59,6 +59,8 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.services.BenflixMusic
 import com.github.damontecres.wholphin.services.MusicAlbum
 import com.github.damontecres.wholphin.services.MusicArtist
+import com.github.damontecres.wholphin.services.MusicDiscover
+import com.github.damontecres.wholphin.services.MusicGenre
 import com.github.damontecres.wholphin.services.MusicPlaylist
 import com.github.damontecres.wholphin.services.MusicRequest
 import com.github.damontecres.wholphin.services.MusicSearch
@@ -91,6 +93,18 @@ sealed interface MusicPage {
         val album: MusicAlbum,
         val songs: List<MusicSong>?,
     ) : MusicPage
+
+    /** One genre's top songs, new releases, albums and artists */
+    data class Genre(
+        val genre: MusicGenre,
+        val found: MusicDiscover?,
+    ) : MusicPage
+
+    /** A long list of songs, like the Top 100 */
+    data class Songs(
+        val title: String,
+        val songs: List<MusicSong>,
+    ) : MusicPage
 }
 
 @HiltViewModel
@@ -104,6 +118,10 @@ class MusicRequestsViewModel
         val query = MutableStateFlow("")
         val results = MutableStateFlow<MusicSearch?>(null)
         val page = MutableStateFlow<MusicPage?>(null)
+
+        /** Top songs, new releases, top albums and artists, genres (null while loading) */
+        val discover = MutableStateFlow<MusicDiscover?>(null)
+        val discoverProblem = MutableStateFlow(false)
 
         /** A short line after pressing something, like "Asked for Bohemian Rhapsody" */
         val note = MutableStateFlow<String?>(null)
@@ -136,6 +154,34 @@ class MusicRequestsViewModel
                     results.value = null
                     results.value = safely { music.search(text.trim()) } ?: MusicSearch(emptyList(), emptyList(), emptyList())
                 }
+        }
+
+        fun loadDiscover() {
+            viewModelScope.launch {
+                try {
+                    discover.value = music.discover()
+                    discoverProblem.value = false
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Music discover")
+                    if (discover.value == null) discoverProblem.value = true
+                }
+            }
+        }
+
+        fun openGenre(genre: MusicGenre) {
+            page.value = MusicPage.Genre(genre, null)
+            viewModelScope.launch {
+                safely { music.genre(genre.id) }?.let { (g, found) -> page.value = MusicPage.Genre(g, found) }
+            }
+        }
+
+        fun openSongs(
+            title: String,
+            songs: List<MusicSong>,
+        ) {
+            page.value = MusicPage.Songs(title, songs)
         }
 
         fun openArtist(artist: MusicArtist) {
@@ -176,8 +222,18 @@ class MusicRequestsViewModel
                             openArtist(p.artist)
                         }
 
+                        is MusicPage.Genre -> {
+                            safely { music.genre(p.genre.id) }?.let { (g, found) -> page.value = MusicPage.Genre(g, found) }
+                        }
+
+                        is MusicPage.Songs -> {
+                            val marked = p.songs.map { s -> if (s.id == id && kind == "song") s.copy(asked = "Asked for") else s }
+                            page.value = p.copy(songs = marked)
+                        }
+
                         null -> {}
                     }
+                    loadDiscover()
                     if (query.value.trim().length >= 2) results.value = safely { music.search(query.value.trim()) } ?: results.value
                 }
             }
@@ -257,7 +313,10 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
     val results by viewModel.results.collectAsState()
     val page by viewModel.page.collectAsState()
     val note by viewModel.note.collectAsState()
+    val discover by viewModel.discover.collectAsState()
+    val discoverProblem by viewModel.discoverProblem.collectAsState()
     val isTv = rememberIsTv()
+    LaunchedEffect(Unit) { if (viewModel.discover.value == null) viewModel.loadDiscover() }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var askSong by remember { mutableStateOf<MusicSong?>(null) }
     var playlistOpen by remember { mutableStateOf(false) }
@@ -323,7 +382,7 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
             },
         )
     }
-    val onSong: (MusicSong) -> Unit = { if (it.asked == null) askSong = it }
+    val onSong: (MusicSong) -> Unit = { if (it.asked == null && !it.have) askSong = it }
     page?.let { p ->
         BackHandler { viewModel.closePage() }
         MusicPageView(
@@ -331,6 +390,7 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
             note = note,
             onSong = onSong,
             onAlbum = viewModel::openAlbum,
+            onArtist = viewModel::openArtist,
             onAskAlbum = { viewModel.ask("album", it.id, it.title) },
             onBack = viewModel::closePage,
         )
@@ -388,6 +448,16 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
                 onRemove = { r -> confirm("Take ${r.title} off the list? Files already in Music stay.") { viewModel.remove(r) } },
             )
         }
+        discoverRows(
+            found = discover,
+            failed = discoverProblem,
+            onSong = onSong,
+            onAllSongs = { viewModel.openSongs("Top 100 songs", it) },
+            onAlbum = viewModel::openAlbum,
+            onArtist = viewModel::openArtist,
+            onGenre = viewModel::openGenre,
+            onRetry = viewModel::loadDiscover,
+        )
         item(key = "playlists") {
             PlaylistSection(
                 playlists = s.playlists,
@@ -412,6 +482,139 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
                     confirm("Put the files from the last tidy-up back where they were?") { viewModel.tidy("undo", undoFile = file) }
                 },
             )
+        }
+    }
+}
+
+/** Discover: Top songs, New releases, Top albums, Top artists and Genres (for everything, or one genre) */
+private fun LazyListScope.discoverRows(
+    found: MusicDiscover?,
+    failed: Boolean,
+    onSong: (MusicSong) -> Unit,
+    onAllSongs: (List<MusicSong>) -> Unit,
+    onAlbum: (MusicAlbum) -> Unit,
+    onArtist: (MusicArtist) -> Unit,
+    onGenre: ((MusicGenre) -> Unit)?,
+    onRetry: (() -> Unit)?,
+    songsTitle: String = "Top songs right now",
+    showAll: Boolean = true,
+) {
+    if (found == null) {
+        if (failed && onRetry != null) {
+            item(key = "d-failed") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
+                    MutedLine("Couldn't load what's popular right now.", pad = false)
+                    MusicButton("Try again", onClick = onRetry)
+                }
+            }
+        } else {
+            item(key = "d-loading") { MutedLine("Loading what's popular…") }
+        }
+        return
+    }
+    if (showAll && found.songs.size > 10) {
+        // The main page: Top 10, then the rest of the chart as Trending now (like Movies and Shows)
+        item(key = "d-top10") {
+            SongTileRow(title = "Top 10 songs right now", songs = found.songs.take(10), onSong = onSong, allLabel = null, onAll = {})
+        }
+        item(key = "d-trending") {
+            SongTileRow(
+                title = "Trending now",
+                songs = found.songs.drop(10).take(30),
+                onSong = onSong,
+                allLabel = "See all ${found.songs.size}",
+                onAll = { onAllSongs(found.songs) },
+                firstNumber = 11,
+            )
+        }
+    } else if (found.songs.isNotEmpty()) {
+        item(key = "d-songs") {
+            SongTileRow(
+                title = songsTitle,
+                songs = found.songs.take(30),
+                onSong = onSong,
+                allLabel = if (showAll && found.songs.size > 30) "See all ${found.songs.size}" else null,
+                onAll = { onAllSongs(found.songs) },
+            )
+        }
+    }
+    if (found.newReleases.isNotEmpty()) item(key = "d-new") { AlbumRow("New releases", found.newReleases, onAlbum) }
+    found.because.forEachIndexed { i, b ->
+        if (b.songs.isNotEmpty()) {
+            item(key = "d-because-$i") {
+                SongTileRow(
+                    title = "Because you have ${b.artist}",
+                    songs = b.songs,
+                    onSong = onSong,
+                    allLabel = null,
+                    onAll = {},
+                    numbered = false,
+                )
+            }
+        }
+    }
+    if (found.picks.isNotEmpty()) item(key = "d-picks") { AlbumRow("Editors' picks", found.picks, onAlbum) }
+    if (found.albums.isNotEmpty()) item(key = "d-albums") { AlbumRow("Top albums", found.albums, onAlbum) }
+    if (found.artists.isNotEmpty()) item(key = "d-artists") { ArtistRow(found.artists, onArtist, title = "Top artists") }
+    if (onGenre != null && found.genres.isNotEmpty()) item(key = "d-genres") { GenreRow(found.genres, onGenre) }
+}
+
+/** Songs as square tiles with their chart number; the last tile opens the whole list */
+@Composable
+private fun SongTileRow(
+    title: String,
+    songs: List<MusicSong>,
+    onSong: (MusicSong) -> Unit,
+    allLabel: String?,
+    onAll: () -> Unit,
+    firstNumber: Int = 1,
+    numbered: Boolean = true,
+) {
+    val isTv = rememberIsTv()
+    val size = if (isTv) 150 else 120
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RowTitle(title)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+            items(songs.withIndex().toList(), key = { "ts-${it.value.id}" }) { (i, song) ->
+                Tile(
+                    picture = song.cover,
+                    size = size,
+                    shape = RoundedCornerShape(10.dp),
+                    name = if (numbered) "${i + firstNumber}. ${song.title}" else song.title,
+                    line = song.asked ?: if (song.have) "In your music" else song.artist,
+                    onClick = { onSong(song) },
+                )
+            }
+            if (allLabel != null) {
+                item(key = "ts-all") {
+                    Column(Modifier.width(size.dp).height(size.dp), verticalArrangement = Arrangement.Center) {
+                        MusicButton(allLabel, primary = true, modifier = Modifier.fillMaxWidth(), onClick = onAll)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenreRow(
+    genres: List<MusicGenre>,
+    onGenre: (MusicGenre) -> Unit,
+) {
+    val isTv = rememberIsTv()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RowTitle("Genres")
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+            items(genres, key = { "g-${it.id}" }) { g ->
+                Tile(
+                    picture = g.picture,
+                    size = if (isTv) 130 else 104,
+                    shape = RoundedCornerShape(10.dp),
+                    name = g.name,
+                    line = null,
+                    onClick = { onGenre(g) },
+                )
+            }
         }
     }
 }
@@ -504,6 +707,7 @@ private fun MusicPageView(
     note: String?,
     onSong: (MusicSong) -> Unit,
     onAlbum: (MusicAlbum) -> Unit,
+    onArtist: (MusicArtist) -> Unit,
     onAskAlbum: (MusicAlbum) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -525,6 +729,8 @@ private fun MusicPageView(
                     when (page) {
                         is MusicPage.Artist -> page.artist.picture to CircleShape
                         is MusicPage.Album -> page.album.cover to RoundedCornerShape(10.dp)
+                        is MusicPage.Genre -> page.genre.picture to RoundedCornerShape(10.dp)
+                        is MusicPage.Songs -> page.songs.firstOrNull()?.cover to RoundedCornerShape(10.dp)
                     }
                 Cover(picture, if (isTv) 120 else 96, shape)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
@@ -533,6 +739,8 @@ private fun MusicPageView(
                             when (page) {
                                 is MusicPage.Artist -> page.artist.name
                                 is MusicPage.Album -> page.album.title
+                                is MusicPage.Genre -> page.genre.name
+                                is MusicPage.Songs -> page.title
                             },
                         fontSize = BenflixType.pageTitle,
                         fontWeight = FontWeight.ExtraBold,
@@ -590,6 +798,32 @@ private fun MusicPageView(
                     items(songs, key = { "s-${it.id}" }) { SongRow(it, showAlbum = false, onClick = { onSong(it) }) }
                 }
             }
+
+            is MusicPage.Genre -> {
+                discoverRows(
+                    found = page.found,
+                    failed = false,
+                    onSong = onSong,
+                    onAllSongs = {},
+                    onAlbum = onAlbum,
+                    onArtist = onArtist,
+                    onGenre = null,
+                    onRetry = null,
+                    songsTitle = "Top ${page.genre.name} songs",
+                    showAll = false,
+                )
+                page.found?.songs?.takeIf { it.size > 30 }?.let { songs ->
+                    item(key = "more-title") { RowTitle("More ${page.genre.name} songs") }
+                    items(songs.drop(30), key = { "gs-${it.id}" }) { SongRow(it, onClick = { onSong(it) }) }
+                }
+            }
+
+            is MusicPage.Songs -> {
+                item(key = "hint") { MutedLine("Pick a song to ask for it.") }
+                items(page.songs.withIndex().toList(), key = { "s-${it.value.id}" }) { (i, song) ->
+                    SongRow(song, number = i + 1, onClick = { onSong(song) })
+                }
+            }
         }
     }
 }
@@ -605,6 +839,7 @@ private fun albumType(album: MusicAlbum) =
 private fun SongRow(
     song: MusicSong,
     showAlbum: Boolean = true,
+    number: Int? = null,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -631,6 +866,15 @@ private fun SongRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(8.dp),
         ) {
+            if (number != null) {
+                Text(
+                    text = "$number",
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = BenflixColors.Muted,
+                    modifier = Modifier.widthIn(min = 32.dp),
+                )
+            }
             Cover(song.cover, 48, RoundedCornerShape(6.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -652,10 +896,10 @@ private fun SongRow(
                 Text("%d:%02d".format(song.seconds / 60, song.seconds % 60), fontSize = BenflixType.small, color = BenflixColors.Muted)
             }
             Text(
-                text = song.asked ?: "Ask for it",
+                text = song.asked ?: if (song.have) "In your music" else "Ask for it",
                 fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
-                color = if (song.asked == null) BenflixColors.Text else BenflixColors.Muted,
+                color = if (song.asked == null && !song.have) BenflixColors.Text else BenflixColors.Muted,
                 maxLines = 1,
                 modifier = Modifier.widthIn(max = 220.dp),
             )
@@ -692,10 +936,11 @@ private fun AlbumRow(
 private fun ArtistRow(
     artists: List<MusicArtist>,
     onArtist: (MusicArtist) -> Unit,
+    title: String = "Artists",
 ) {
     val isTv = rememberIsTv()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        RowTitle("Artists")
+        RowTitle(title)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
             items(artists, key = { "ar-${it.id}" }) { artist ->
                 Tile(

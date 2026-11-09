@@ -155,18 +155,38 @@ B.route(/^\/requests/, async (m, nav) => {
 // ---------- Music (only Ben): ask for songs and albums, playlists, the Music Drop folder, tidy-up ----------
 // Talks to the helper's /api/music (benflix_music.py), which hands the downloading to Lidarr on Tower.
 const music = (method, path, body) => B.call(method, "api/music" + path, body);
-const songLine = (s) => `<div class="item"><div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(s.cover || "")}')"></div>
+const songLine = (s, n) => `<div class="item">${n ? `<b class="dim" style="min-width:28px">${n}</b>` : ""}<div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(s.cover || "")}')"></div>
   <div class="grow"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)}${s.album ? " · " + esc(s.album) : ""}${s.seconds ? " · " + Math.floor(s.seconds / 60) + ":" + String(s.seconds % 60).padStart(2, "0") : ""}</div></div>
-  <div class="acts">${s.asked ? `<span class="dim">${esc(s.asked)}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
+  <div class="acts">${s.asked || s.have ? `<span class="dim">${esc(s.asked || "In your music")}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
 const albumCard = (a) => `<button class="poster" data-mopen="album:${a.id}" title="${esc(a.title)}"><div class="im" style="aspect-ratio:1;${a.cover ? `background-image:url('${esc(a.cover)}')` : ""}"></div>
   <div class="cap">${esc(a.title)}<small>${esc(a.asked || [a.year, a.type === "single" ? "Single" : a.type === "ep" ? "EP" : ""].filter(Boolean).join(" · "))}</small></div></button>`;
+const genreCard = (g) => `<button class="poster" data-mgenre="${g.id}" title="${esc(g.name)}"><div class="im" style="aspect-ratio:1;${g.picture ? `background-image:url('${esc(g.picture)}')` : ""}"></div><div class="cap">${esc(g.name)}</div></button>`;
+// Top songs, New releases, Top albums, Top artists (and Genres on the main page)
+const songCard = (s, n) => `<button class="poster" ${s.asked || s.have ? "" : `data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}"`} title="${esc(s.title)}"><div class="im" style="aspect-ratio:1;${s.cover ? `background-image:url('${esc(s.cover)}')` : ""}"></div>
+  <div class="cap">${n ? n + ". " : ""}${esc(s.title)}<small>${esc(s.asked || (s.have ? "In your music" : s.artist))}</small></div></button>`;
+const discoverHtml = (d, title, allSongs) => {
+  const songs = allSongs ? d.songs : d.songs.slice(0, 10);
+  return (d.songs.length ? `<div class="wrap"><h3 class="section-title">${esc(allSongs ? title : "Top 10 songs right now")}</h3><div class="list">${songs.map((x, i) => songLine(x, i + 1)).join("")}</div>
+      ${!allSongs && d.songs.length > 10 ? `<p><button class="btn" data-mallsongs>See all ${d.songs.length}</button></p>` : ""}</div>` : "")
+    + (allSongs ? "" : B.row("Trending now", d.songs.slice(10, 40).map((x, i) => songCard(x, i + 11))))
+    + B.row("New releases", (d.new || []).map(albumCard))
+    + (d.because || []).map((b) => B.row("Because you have " + b.artist, b.songs.map((x) => songCard(x)))).join("")
+    + B.row("Editors' picks", (d.picks || []).map(albumCard)) + B.row("Top albums", (d.albums || []).map(albumCard))
+    + B.row("Top artists", (d.artists || []).map(artistCard)) + (d.genres ? B.row("Genres", d.genres.map(genreCard)) : "");
+};
 const artistCard = (a) => `<button class="poster" data-mopen="artist:${a.id}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div></button>`;
 
 B.musicTab = async (nav) => {
   $("#rq").placeholder = "Search any song, album or artist";
   const rows = $("#rows");
-  rows.innerHTML = `<div id="mfound"></div><div class="wrap" id="mstatus">${B.spinner()}</div>`;
-  let searching = false, tidyFolder = null;
+  rows.innerHTML = `<div id="mfound"></div><div id="mdisc"></div><div class="wrap" id="mstatus">${B.spinner()}</div>`;
+  let searching = false, tidyFolder = null, disc = null, allSongs = false;
+  const drawDiscover = async (again) => {
+    if (!disc || again) {
+      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mdisc").innerHTML = `<div class="wrap"><p class="dim">Couldn't load what's popular right now. ${esc(e.message)}</p></div>`; return; }
+    }
+    if (B.alive(nav)) $("#mdisc").innerHTML = discoverHtml(disc, "Top songs right now", allSongs);
+  };
   const drawStatus = async () => {
     let st;
     try { st = await music("GET", "/status"); } catch (e) { if (B.alive(nav)) $("#mstatus").innerHTML = `<div class="note">${esc(e.message)}</div>`; return; }
@@ -199,13 +219,14 @@ B.musicTab = async (nav) => {
     const box = $("#mfound");
     searching = text.trim().length >= 2;
     $("#mstatus").style.display = searching ? "none" : "";
+    $("#mdisc").style.display = searching ? "none" : "";
     if (!searching) { box.innerHTML = ""; drawStatus(); return; }
     box.innerHTML = `<div class="wrap">${B.spinner()}</div>`;
     let r;
     try { r = await music("GET", "/search?q=" + enc(text.trim())); } catch (e) { box.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`; return; }
     if (!B.alive(nav) || $("#rq").value.trim() !== text.trim()) return;
     const none = !r.songs.length && !r.albums.length && !r.artists.length;
-    box.innerHTML = (r.songs.length ? `<div class="wrap"><h3 class="section-title">Songs</h3><div class="list">${r.songs.slice(0, 12).map(songLine).join("")}</div></div>` : "")
+    box.innerHTML = (r.songs.length ? `<div class="wrap"><h3 class="section-title">Songs</h3><div class="list">${r.songs.slice(0, 12).map((x) => songLine(x)).join("")}</div></div>` : "")
       + B.row("Albums", r.albums.map(albumCard)) + B.row("Artists", r.artists.map(artistCard))
       + (none ? `<div class="wrap empty">Nothing found. Try fewer words, or the artist's name.</div>` : "");
   };
@@ -218,13 +239,25 @@ B.musicTab = async (nav) => {
           <div style="width:180px;aspect-ratio:1;border-radius:12px;margin-bottom:14px;background:var(--pg3) center/cover url('${esc(d.album.cover || "")}')"></div>
           <h3>${esc(d.album.title)}</h3><p class="dim">${esc([d.album.artist, d.album.year].filter(Boolean).join(" · "))}</p>
           <div class="acts" style="justify-content:flex-start;margin:12px 0">${d.album.asked ? `<span class="dim">${esc(d.album.asked)}</span>` : `<button class="btn white" data-malbumonly="${d.album.id}" data-maname="${esc(d.album.title)}">Ask for the whole album</button>`}</div>
-          <p class="dim">Or pick a song to ask for just that one.</p><div class="list">${d.songs.map(songLine).join("")}</div>`;
+          <p class="dim">Or pick a song to ask for just that one.</p><div class="list">${d.songs.map((x) => songLine(x)).join("")}</div>`;
       } else {
         const d = await music("GET", "/artist?id=" + id);
         p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>${esc(d.artist.name)}</h3>
-          ${d.songs.length ? `<h4 class="dim" style="margin:12px 0 8px">Best songs</h4><div class="list">${d.songs.map(songLine).join("")}</div>` : ""}
+          ${d.songs.length ? `<h4 class="dim" style="margin:12px 0 8px">Best songs</h4><div class="list">${d.songs.map((x) => songLine(x)).join("")}</div>` : ""}
           <h4 class="dim" style="margin:12px 0 8px">Albums, EPs and singles</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.albums.map(albumCard).join("")}</div>`;
       }
+    } catch (e) {
+      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
+    }
+  };
+  const openGenre = async (id) => {
+    const p = B.side(B.spinner());
+    try {
+      const d = await music("GET", "/genre?id=" + id);
+      p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>${esc(d.genre.name)}</h3>
+        ${d.songs.length ? `<h4 class="dim" style="margin:12px 0 8px">Top ${esc(d.genre.name)} songs</h4><div class="list">${d.songs.map((x, i) => songLine(x, i + 1)).join("")}</div>` : ""}
+        ${[["New releases", d.new], ["Top albums", d.albums]].filter(([, l]) => l && l.length).map(([t, l]) => `<h4 class="dim" style="margin:12px 0 8px">${t}</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${l.map(albumCard).join("")}</div>`).join("")}
+        ${d.artists.length ? `<h4 class="dim" style="margin:12px 0 8px">Artists</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.artists.map(artistCard).join("")}</div>` : ""}`;
     } catch (e) {
       p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
     }
@@ -234,12 +267,13 @@ B.musicTab = async (nav) => {
     B.closeAll();
     const q = $("#rq").value;
     if (q.trim().length >= 2) search(q); else drawStatus();
+    drawDiscover(true);
     return `Asked for ${name}. It shows under Your music requests.`;
   };
   // One click handler for the whole page and its side panels
   const onClick = (e) => {
     if (!B.alive(nav)) return document.removeEventListener("click", onClick);
-    const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mretry],[data-mremove],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
+    const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mgenre],[data-mallsongs],[data-mretry],[data-mremove],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
     if (!b) return;
     const d = b.dataset;
     if (d.msong) {
@@ -251,6 +285,8 @@ B.musicTab = async (nav) => {
       });
     } else if (d.malbumonly) B.busy(b, () => ask("album", d.malbumonly, d.maname));
     else if (d.mopen) { const [k, id] = d.mopen.split(":"); openPage(k, id); }
+    else if (d.mgenre) openGenre(d.mgenre);
+    else if (b.hasAttribute("data-mallsongs")) { allSongs = true; drawDiscover(); }
     else if (d.mretry) B.busy(b, async () => { await music("POST", `/request/${d.mretry}/retry`); drawStatus(); return "Looking again."; });
     else if (d.mremove) B.busy(b, async () => { await music("POST", `/request/${d.mremove}/remove`); drawStatus(); });
     else if (d.mplremove) B.busy(b, async () => { await music("POST", `/playlist/${d.mplremove}/remove`); drawStatus(); });
@@ -278,5 +314,6 @@ B.musicTab = async (nav) => {
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 400); };
   B.every(10000, () => { if (!searching) drawStatus(); });
+  drawDiscover();
   if (B.q("q")) search(B.q("q")); else drawStatus();
 };
