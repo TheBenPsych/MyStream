@@ -122,6 +122,9 @@ sealed interface PlaybackAction {
 
     data object SearchCaptions : PlaybackAction
 
+    /** Benflix: "Subtitles are early or late" (Tower lines them up with the voices) */
+    data object FixSubtitleTiming : PlaybackAction
+
     data class ToggleCaptions(
         val index: Int,
     ) : PlaybackAction

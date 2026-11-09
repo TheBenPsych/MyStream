@@ -42,7 +42,7 @@ B.route(/^\/search/, async (m, nav) => {
       })).catch(() => []),
       kids ? [] : B.seerr(`/search?query=${enc(t)}&page=1`).then((r) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
     ]);
-    if (games === null) games = await B.call("GET", "/api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
+    if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
     if (my !== seq || !B.alive(nav)) return;
     const gl = games.filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));
     // Closest name first

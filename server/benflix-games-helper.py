@@ -56,6 +56,11 @@ try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next 
 except ImportError:
     tools = None
 
+try:  # Report card, tidy-up, night-time play test and subtitle fixer, in benflix_care.py next to this file
+    import benflix_care as care
+except ImportError:
+    care = None
+
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
@@ -691,10 +696,10 @@ class Handler(BaseHTTPRequestHandler):
             path = path[len(AWAY_PATH):] or "/"
             via_internet = True
         try:
-            if via_internet and (
-                path.startswith("/api/admin/") or path.startswith("/api/web") or path.startswith("/web/") or path in ("/", "/web", "/index.html")
-            ):
-                # Tower's tools (restarting apps, fixing files) only work from home, never through the internet
+            if via_internet and (path.startswith("/api/admin/") or (web is None and path in ("/", "/web", "/index.html"))):
+                # Tower's tools (restarting apps, fixing files) only work from home, never through the internet.
+                # Benflix in a browser does work away from home (https://<internet address>/benflix-games/):
+                # it signs in through Jellyfin like the apps do, and Jellyfin checks every request.
                 raise HelperError(403, "Tower's tools only work at home.")
             if method == "GET" and path == "/health":
                 return self.send(
@@ -708,6 +713,7 @@ class Handler(BaseHTTPRequestHandler):
                         "web_app": web is not None,
                         "skips": skips is not None and skips.tools_ok(),
                         "music": music is not None,
+                        "care": care is not None and care.ffmpeg_ok(),
                     },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
@@ -723,9 +729,12 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
                 with open(found[0], "rb") as f:
                     return self.send(200, f.read(), found[1])
-            if web is not None and method in ("GET", "HEAD") and (path in ("/", "/web", "/index.html") or path.startswith("/web/")):
-                # Benflix in a web browser (server/web in the repo)
-                rel = path[len("/web/"):] if path.startswith("/web/") else "index.html"
+            if web is not None and method in ("GET", "HEAD") and (
+                path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest") or path.startswith("/web/")
+            ):
+                # Benflix in a web browser (server/web in the repo). The install helper (sw.js) and the
+                # app description sit at the top so "Install Benflix" covers the whole site.
+                rel = path[len("/web/"):] if path.startswith("/web/") else path.lstrip("/") if path in ("/sw.js", "/manifest.webmanifest") else "index.html"
                 found = web.file_for(rel)
                 if found:
                     with open(found[0], "rb") as f:
@@ -773,9 +782,22 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
                 status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json)
                 return self.send(status, answer)
+            if path.startswith("/api/subsync/"):
+                # The player's "Subtitles are off" button: Tower lines them up with the voices
+                if care is None:
+                    raise HelperError(503, "The subtitle fixer isn't on the server yet. Run the Benflix setup command again.")
+                if is_kids:
+                    raise HelperError(403, "Ask a grown-up to fix these subtitles.")
+                status, answer = care.user_route(method, path, self.read_json)
+                return self.send(status, answer)
             if path.startswith("/api/admin/"):
                 if not is_admin:
                     raise HelperError(403, "Only the server admin can use the Server page tools.")
+                if care is not None and path.startswith("/api/admin/care/"):
+                    care.remember_admin(token, user_id)
+                    answer = care.admin_route(method, path, query, self.read_json)
+                    if answer is not None:
+                        return self.send(answer[0], answer[1])
                 if self.admin_route(method, path, query) is not False:
                     return
                 return self.send(404, {"error": "Not found"})
@@ -892,5 +914,11 @@ if __name__ == "__main__":
         web.start()
     if music is not None:
         music.start(jellyfin_call)
+    if care is not None:
+        care.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            tools,
+        )
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

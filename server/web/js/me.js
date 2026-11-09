@@ -86,7 +86,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       r.onload = () => B.busy(null, async () => {
         // Jellyfin takes the picture as base64 text
         const b64 = String(r.result).split(",")[1];
-        const res = await fetch(`/api/web/jf/Users/${B.uid()}/Images/Primary`, { method: "POST", headers: { "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device, "Content-Type": f.type || "image/png" }, body: b64 });
+        const res = await fetch(`api/web/jf/Users/${B.uid()}/Images/Primary`, { method: "POST", headers: { "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device, "Content-Type": f.type || "image/png" }, body: b64 });
         if (!res.ok) throw new Error("Couldn't save that picture (it may be too big; try one under 700 KB).");
         const me = await B.get(`/Users/${B.uid()}`);
         B.me.image = me.PrimaryImageTag; B.addProfile(B.me); B.render();
@@ -147,7 +147,11 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       <form id="qcf" class="row"><input class="field" id="qcCode" maxlength="6" placeholder="Code" style="max-width:240px;font-size:32px;letter-spacing:.3em;text-transform:uppercase;font-weight:800;text-align:center"><button class="btn white big">Sign it in</button></form>`;
     $("#qcf").onsubmit = (e) => { e.preventDefault(); const c = $("#qcCode").value.trim().toUpperCase(); if (!c) return; B.busy(null, async () => { await B.jf("POST", `/QuickConnect/Authorize?code=${enc(c)}&userId=${B.uid()}`); $("#qcCode").value = ""; return "Done. That TV or phone is signing in as " + B.me.name + "."; }); };
   }
-  if (g.id === "help") sp.innerHTML = setRow("Help and updates", "How to use Benflix, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
+  if (g.id === "help") {
+    sp.innerHTML = setRow("Install Benflix on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`)
+      + setRow("Help and updates", "How to use Benflix, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
+    $("#installBtn").onclick = () => B.install();
+  }
   if (g.id === "behind") {
     sp.innerHTML = `<div class="warnbox">These are for fixing things. Changing them can make Benflix act oddly in this browser.</div>
       ${setRow("Get the newest web version now", "Normally Tower checks every hour by itself.", `<a class="valbtn" href="#/server/tools/webversion">Open</a>`)}
@@ -173,12 +177,13 @@ const HELP = [
 ];
 const QA = [
   ["Why won't a video play?", "Some files need the server to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
-  ["Can I use this away from home?", "Not yet. Benflix in a browser only works on your home Wi-Fi."],
+  ["Can I use this away from home?", "Yes, once Ben has set it up: open your Benflix internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
+  ["Can I install it like an app?", "Yes. Settings > Help > Install Benflix on this computer. It gets its own window and icon in the dock or Start menu."],
   ["How do I add someone to Who's watching here?", "Press “Add someone” under the pictures on Who's watching and sign in with their name and password, or with a code from a TV or phone."],
   ["Where are Benflix's own channels and games?", "Benflix's own channels and the Benflix games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
   ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on the server, so they're the same on the TV, phone and here."],
   ["How do I skip intros by themselves?", "Settings > Watching > Skip intros and credits by themselves. Or open the player's Audio and subtitles panel and pick Always skip the intro for that show."],
-  ["Keyboard keys in the player?", "Space pauses, the left and right arrows jump 10 seconds, up and down change the sound, F is full screen, M mutes, S skips the intro, Esc goes back."],
+  ["Keyboard keys in the player?", "Space pauses, the left and right arrows jump 10 seconds, up and down change the sound, F is full screen, M mutes, S turns subtitles on and off, Enter skips the intro, N is the next episode, Esc goes back. Press ? in the player to see them all."],
 ];
 B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   const sec = HELP.find((h) => h.id === m[1]) || HELP[0];
@@ -188,7 +193,7 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   B.wireTop();
   const hp = $("#hp");
   if (sec.id === "updates") {
-    const s = await B.call("GET", "/api/web/version").catch(() => ({}));
+    const s = await B.call("GET", "api/web/version").catch(() => ({}));
     hp.innerHTML = `<p class="dim">Benflix in a browser updates itself: Tower checks for a new version when it starts and then every hour. Reload the page to use the newest one.</p>
       <div class="list"><div class="item"><div class="grow"><div class="t">Last checked</div><div class="s">${s.checked ? esc(B.when(new Date(s.checked * 1000).toISOString())) : "Not yet"}</div></div><div class="acts"><button class="btn small white" onclick="location.reload()">Reload now</button></div></div></div>
       <p class="dim">The TV and phone app update from Settings > Help and updates on each device.</p>`;

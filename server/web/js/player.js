@@ -27,7 +27,7 @@ B.deviceProfile = (maxBitrate) => {
 };
 const QUALITY = { auto: 120000000, "1080": 20000000, "720": 8000000, "480": 3000000 };
 const withKey = (url) => url + (url.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token);
-const streamUrl = (url) => "/api/web/stream" + (url.startsWith("/") ? url : "/" + url);
+const streamUrl = (url) => "api/web/stream" + (url.startsWith("/") ? url : "/" + url);
 
 // Watch time: adds this browser's playing time to the person's total (like the TV and phone do)
 const WT = {
@@ -86,7 +86,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         <span class="grow"></span>
         <span class="time" id="pEnds"></span>
         ${isEp ? `<button class="pbtn" id="pList" title="Episodes">${I("list")}</button>` : ""}
-        <button class="pbtn" id="pSub" title="Audio and subtitles">${I("sub")}</button>
+        <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
+        <button class="pbtn" id="pSub" title="Audio and subtitles (S turns them on and off)">${I("sub")}</button>
         <button class="pbtn" id="pVol" title="Sound on / off (M)">${I("vol")}</button>
         <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
       </div>
@@ -201,6 +202,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pVol").onclick = () => { v.muted = !v.muted; $("#pVol").innerHTML = I(v.muted ? "mute" : "vol"); };
   $("#pBack").onclick = () => leave();
   $("#pSub").onclick = () => openPanel();
+  $("#pKeys").onclick = () => showKeys();
   v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(); report("/Progress"); });
   v.addEventListener("pause", () => {
     $("#pPlay").innerHTML = I("play"); pl.classList.add("ui"); report("/Progress");
@@ -293,7 +295,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
       <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
-      <h4>Something wrong?</h4><button class="opt" data-report>${I("flag")} Report a problem</button>
+      <h4>Something wrong?</h4>${subIndex !== -1 && !B.me.kids ? `<button class="opt" data-subsync>${I("sub")} Subtitles are early or late</button>` : ""}<button class="opt" data-report>${I("flag")} Report a problem</button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
     pl.classList.add("ui");
@@ -301,6 +303,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
+      if (e.target.closest("[data-subsync]")) { p.remove(); return fixSubs(); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);
@@ -317,6 +320,27 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         B.savePrefs((c) => { const key = k === "intro" ? "benflix.autoSkipIntro" : "benflix.autoSkipOutro"; c[key] = [...set].map(dashed).join("|") || null; }).catch(() => {});
       }
     };
+  };
+
+  // ---------- "Subtitles are early or late": Tower lines them up with the voices ----------
+  const fixSubs = async () => {
+    const was = ((source && source.MediaStreams) || []).find((x) => x.Index === subIndex) || {};
+    let job;
+    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex }); } catch (err) { return B.toast(err.message); }
+    B.toast(job.message || "Tower is lining the subtitles up. It takes a minute or two.");
+    for (let i = 0; i < 90 && B.alive(nav); i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try { job = await B.call("GET", `api/subsync/${enc(it.Id)}`); } catch (e) { continue; }
+      if (job.state === "done" || job.state === "failed") break;
+    }
+    if (!B.alive(nav)) return;
+    B.toast(job.message || "Done.");
+    if (job.state !== "done" || !job.changed) return;
+    const before = new Set(((source && source.MediaStreams) || []).map((x) => x.Index));
+    await load(v.currentTime).catch((err) => msg(err.message));
+    // Subtitles that were inside the video come back as a new choice: switch to it
+    const fresh = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle" && x.IsExternal && !before.has(x.Index) && (x.Language || "") === (was.Language || ""));
+    if (fresh.length) { subIndex = fresh[fresh.length - 1].Index; await load(v.currentTime).catch(() => {}); }
   };
 
   // ---------- episodes row in the player ----------
@@ -338,12 +362,48 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if (k === "ArrowRight") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "ArrowUp") { e.preventDefault(); v.volume = Math.min(1, v.volume + 0.1); B.setWebSetting("volume", v.volume); }
     else if (k === "ArrowDown") { e.preventDefault(); v.volume = Math.max(0, v.volume - 0.1); B.setWebSetting("volume", v.volume); }
-    else if (k === "f") full();
-    else if (k === "m") $("#pVol").click();
-    else if (k === "s") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); }
+    else if (k === "j") { v.currentTime = Math.max(0, v.currentTime - 10); }
+    else if (k === "l") { v.currentTime = Math.min(total(), v.currentTime + 10); }
+    else if (k === "f" || k === "F") full();
+    else if (k === "m" || k === "M") $("#pVol").click();
+    else if (k === "s" || k === "S") toggleSubs();
+    else if (k === "Enter") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); else return; }
+    else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
+    else if (k === "e" && $("#pList")) $("#pList").click();
+    else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) { v.currentTime = (total() * +k) / 10; }
+    else if (k === "?" || (k === "/" && e.shiftKey)) { e.preventDefault(); showKeys(); return; }
+    else if (k === "Escape" && $(".player .keys-help")) { $(".player .keys-help").remove(); return; }
     else if (k === "Escape" && !document.fullscreenElement) leave();
     else return;
     poke();
+  };
+  // Benflix "Keyboard shortcuts": S turns subtitles on and off (back to the last ones you had on)
+  let lastSub = null;
+  const toggleSubs = () => {
+    const subs = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle");
+    if (!subs.length) return B.toast("No subtitles for this one.");
+    if (subIndex !== -1) { lastSub = subIndex; subIndex = -1; showSubs(); return B.toast("Subtitles off"); }
+    const pick = subs.find((x) => x.Index === lastSub) || subs.find((x) => /^(en|eng)$/i.test(x.Language || "")) || subs[0];
+    subIndex = pick.Index;
+    B.toast("Subtitles: " + (pick.DisplayTitle || pick.Language || "on"));
+    if (pick.DeliveryMethod === "External") showSubs();
+    else load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
+  };
+  const KEYS = [
+    ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
+    ["F", "Full screen"], ["M", "Sound on / off"], ["S", "Subtitles on / off"], ["Enter", "Skip intro or credits"],
+    ["N", "Next episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
+  ];
+  const showKeys = () => {
+    const old = $(".player .keys-help");
+    if (old) return old.remove();
+    const box = document.createElement("div");
+    box.className = "panel keys-help";
+    box.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 12px">Keyboard shortcuts</h3>
+      ${KEYS.map(([key, what]) => `<div class="keyrow"><kbd>${esc(key)}</kbd><span>${esc(what)}</span></div>`).join("")}`;
+    box.onclick = (e) => { if (e.target.closest("[data-x]")) box.remove(); };
+    pl.appendChild(box);
+    pl.classList.add("ui");
   };
   document.addEventListener("keydown", keys);
 
@@ -361,7 +421,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const leave = () => { finish(); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
   const unload = () => {
     if (stopped || !B.me) return;
-    fetch("/api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },
+    fetch("api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },
       body: JSON.stringify({ ItemId: it.Id, MediaSourceId: source && source.Id, PlaySessionId: playSession, PositionTicks: Math.round(v.currentTime * B.TICKS) }) }).catch(() => {});
   };
   window.addEventListener("pagehide", unload);

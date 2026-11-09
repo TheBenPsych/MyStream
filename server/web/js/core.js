@@ -90,7 +90,7 @@ B.initials = (n) => String(n || "?").trim().charAt(0).toUpperCase();
 B.picOf = (p, size) => {
   const colors = ["#FFB547", "#7AA7FF", "#3DD6C6", "#FF6F91"];
   const c = colors[(String(p.name || "").charCodeAt(0) || 0) % 4];
-  const url = p.image ? `/api/web/jf/Users/${enc(p.id)}/Images/Primary?tag=${enc(p.image)}&fillHeight=${size || 200}&quality=90&api_key=${enc(p.token)}` : "";
+  const url = p.image ? `api/web/jf/Users/${enc(p.id)}/Images/Primary?tag=${enc(p.image)}&fillHeight=${size || 200}&quality=90&api_key=${enc(p.token)}` : "";
   return { url, color: c };
 };
 B.picHtml = (p, cls, size) => {
@@ -123,7 +123,7 @@ B.call = async (method, path, body, opts) => {
   if (!r.ok) throw new Error((data && (data.error || data.message || data.Message)) || `Something went wrong (${r.status}).`);
   return data;
 };
-B.jf = (method, path, body, opts) => B.call(method, "/api/web/jf" + path, body, opts);
+B.jf = (method, path, body, opts) => B.call(method, "api/web/jf" + path, body, opts);
 B.get = (path) => B.jf("GET", path);
 B.uid = () => enc(B.me.id);
 B.cache = {};
@@ -143,7 +143,7 @@ B.img = (id, type, o) => {
   if (o.h) q += `&fillHeight=${o.h}`;
   if (o.w) q += `&fillWidth=${o.w}`;
   if (o.tag) q += `&tag=${enc(o.tag)}`;
-  return `/api/web/jf/Items/${enc(id)}/Images/${type || "Primary"}${o.index != null ? "/" + o.index : ""}?${q}&api_key=${enc(B.me.token)}`;
+  return `api/web/jf/Items/${enc(id)}/Images/${type || "Primary"}${o.index != null ? "/" + o.index : ""}?${q}&api_key=${enc(B.me.token)}`;
 };
 B.poster = (it, h) => {
   const tags = it.ImageTags || {};
@@ -447,3 +447,32 @@ B.watchTime = async () => {
   return { month: byMonth[month] || 0, byMonth };
 };
 B.hm = (sec) => { const m = Math.round(sec / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+
+// ---------- Benflix "Install it like an app" ----------
+// Browsers only offer to install a site that comes over a secure (https) address, so at home
+// (http://10.0.0.58:8097) the button explains the browser's own "open as window" shortcut instead.
+B.installPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); B.installPrompt = e; });
+window.addEventListener("appinstalled", () => { B.installPrompt = null; B.toast && B.toast("Benflix is installed. Look for it in your dock or Start menu."); });
+B.installed = () => { try { return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (e) { return false; } };
+B.installLine = () => B.installed() ? "Benflix is open in its own window." : "Its own window and icon in the dock or Start menu, no browser tabs.";
+B.install = async () => {
+  if (B.installed()) return B.toast("Benflix is already installed here.");
+  if (B.installPrompt) {
+    const p = B.installPrompt;
+    B.installPrompt = null;
+    p.prompt();
+    try { await p.userChoice; } catch (e) {}
+    return;
+  }
+  const edge = /Edg\//.test(navigator.userAgent), safari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
+  const steps = safari
+    ? "In Safari on a Mac: File menu > Add to Dock."
+    : edge
+      ? "In Edge: the ⋯ menu (top right) > Apps > Install this site as an app."
+      : "In Chrome: the ⋮ menu (top right) > Cast, save and share > Install page as app. If you only see Create shortcut, pick it and tick Open as window.";
+  B.ask("Install Benflix", steps, "OK").catch(() => {});
+};
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}

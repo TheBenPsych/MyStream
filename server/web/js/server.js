@@ -4,7 +4,7 @@
 
 const call = (m, p, b) => B.call(m, p, b);
 const jf = (m, p, b) => B.jf(m, p, b);
-const tower = (fresh) => call("GET", "/api/admin/tower" + (fresh ? "?fresh=1" : ""));
+const tower = (fresh) => call("GET", "api/admin/tower" + (fresh ? "?fresh=1" : ""));
 const every = (ms, fn) => B.every(ms, fn);
 let current = null; // which tool page is showing (pages stop drawing when you move on)
 
@@ -37,9 +37,9 @@ function statusBox(name, level, word) {
 
 const PAGES = {};
 const SECTIONS = [
-  { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"]] },
+  { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"], ["week", "This week"]] },
   { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
-  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["downloads", "Downloads"], ["find", "Find copies"], ["chores", "Chores"]] },
+  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"]] },
   { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
   { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["webversion", "Web version"]] },
 ];
@@ -124,7 +124,7 @@ PAGES.livetv = (el) => {
     </div><div id="lt">${loading()}</div>`;
   const draw = async () => {
     try {
-      const s = await fetch("/livetv/status").then((r) => r.json());
+      const s = await fetch("livetv/status").then((r) => r.json());
       if (current !== "livetv") return;
       const ago = (t) => t ? B.when(new Date(t * 1000).toISOString()) : "never";
       const types = Object.entries(s.types || {}).filter(([, n]) => n).map(([k, n]) => `${esc(k)} ${n}`).join(" · ");
@@ -137,7 +137,7 @@ PAGES.livetv = (el) => {
         types ? line("By type", types) : "",
       ].join("") + src;
       $("#lt").innerHTML = `<div class="list">${rows || '<div class="empty">No status yet.</div>'}</div><button class="btn white" id="ltRefresh">Rebuild the list now</button>`;
-      $("#ltRefresh").onclick = (e) => B.busy(e.target, async () => { await call("POST", "/api/admin/livetv/refresh"); setTimeout(draw, 1000); return "Rebuilding. It checks every channel, so it takes about 15 minutes."; });
+      $("#ltRefresh").onclick = (e) => B.busy(e.target, async () => { await call("POST", "api/admin/livetv/refresh"); setTimeout(draw, 1000); return "Rebuilding. It checks every channel, so it takes about 15 minutes."; });
     } catch (err) { if (current === "livetv") $("#lt").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   draw(); every(10000, draw);
@@ -146,7 +146,7 @@ PAGES.livetv = (el) => {
 // ---------- Web version: where these files came from ----------
 PAGES.webversion = (el) => {
   el.innerHTML = `<p class="sub">Benflix in a browser gets its newest version from GitHub by itself, when Tower's helper starts and then every hour.</p><div id="wv">${loading()}</div>`;
-  call("GET", "/api/web/version").then((s) => {
+  call("GET", "api/web/version").then((s) => {
     if (current !== "webversion") return;
     $("#wv").innerHTML = `<div class="list">
       <div class="item"><div class="grow"><div class="t">Using</div><div class="s">${s.source === "github" ? "The newest version from GitHub" : "The copy from the setup command"}</div></div></div>
@@ -177,7 +177,7 @@ PAGES.apps = (el) => {
     const b = e.target.closest("[data-restart]"); if (!b) return;
     if (!await B.ask(`Restart ${b.dataset.nice}? Anyone using it will be cut off for about a minute.`)) return;
     b.disabled = true; b.textContent = "Restarting…";
-    try { B.toast((await call("POST", `/api/admin/apps/${encodeURIComponent(b.dataset.restart)}/restart`)).message); }
+    try { B.toast((await call("POST", `api/admin/apps/${encodeURIComponent(b.dataset.restart)}/restart`)).message); }
     catch (err) { B.toast(err.message); }
     draw(true);
   };
@@ -215,7 +215,7 @@ PAGES.downloads = (el) => {
       : `Remove this download of ${b.dataset.title} and look for a different copy?`;
     if (b.dataset.act === "replace" && !await B.ask(ask)) return;
     b.disabled = true;
-    try { B.toast((await call("POST", `/api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
+    try { B.toast((await call("POST", `api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
     catch (err) { B.toast(err.message); }
     draw(true);
   };
@@ -248,7 +248,7 @@ PAGES.find = (el) => {
         const it = items[+b.dataset.i], ids = it.ProviderIds || {};
         const info = { name: it.Name, tmdb: ids.Tmdb || ids.tmdb, tvdb: ids.Tvdb || ids.tvdb, imdb: ids.Imdb || ids.imdb };
         b.disabled = true;
-        try { B.toast((await call("POST", it.Type === "Series" ? "/api/admin/search/missing" : "/api/admin/search/better", info)).message); }
+        try { B.toast((await call("POST", it.Type === "Series" ? "api/admin/search/missing" : "api/admin/search/better", info)).message); }
         catch (err) { B.toast(err.message); }
         b.disabled = false;
       };
@@ -263,7 +263,7 @@ PAGES.tracks = (el) => {
   let picked = load("benflix_web_folder") || "";
   const draw = async () => {
     try {
-      const s = await call("GET", "/api/admin/tracks");
+      const s = await call("GET", "api/admin/tracks");
       if (current !== "tracks") return;
       if (!s.ready) { $("#tr").innerHTML = `<div class="note">${esc(s.problem)}</div>`; return; }
       if (!s.folders.includes(picked)) picked = s.folders[0] || "";
@@ -300,7 +300,7 @@ PAGES.tracks = (el) => {
       if (b.dataset.mode === "apply" && !await B.ask(`Fix the track names in ${picked}? You can undo it afterwards.`)) return;
       body = { mode: b.dataset.mode, folder: picked };
     }
-    try { await call("POST", "/api/admin/tracks", body); } catch (err) { B.toast(err.message); }
+    try { await call("POST", "api/admin/tracks", body); } catch (err) { B.toast(err.message); }
     draw();
   };
   draw(); every(2000, () => { if (document.activeElement?.id !== "trFolder") draw(); });
@@ -309,7 +309,7 @@ PAGES.tracks = (el) => {
 // ---------- Jellyfin tools (part 2) ----------
 const TICKS_PER_MIN = 600000000;
 const PREFS_CLIENT = "Wholphin"; // where the Benflix app keeps notes and problem reports
-const imgUrl = (id, h) => `/api/web/jf/Items/${encodeURIComponent(id)}/Images/Primary?maxHeight=${h || 180}&api_key=${encodeURIComponent(B.me.token)}`;
+const imgUrl = (id, h) => `api/web/jf/Items/${encodeURIComponent(id)}/Images/Primary?maxHeight=${h || 180}&api_key=${encodeURIComponent(B.me.token)}`;
 function when(iso) {
   const d = new Date(iso); if (isNaN(d)) return "";
   const today = new Date(); const sameDay = d.toDateString() === today.toDateString();
@@ -466,7 +466,7 @@ PAGES.people = (el) => {
           p.MaxActiveSessions ? `${p.MaxActiveSessions} screen${p.MaxActiveSessions === 1 ? "" : "s"} at once` : "Any number of screens",
           p.EnableAllFolders ? "All libraries" : `${(p.EnabledFolders || []).length} of ${libs.length} libraries`].filter(Boolean);
         return `<div class="item">
-          <img src="/api/web/jf/Users/${encodeURIComponent(u.Id)}/Images/Primary?maxHeight=96&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">
+          <img src="api/web/jf/Users/${encodeURIComponent(u.Id)}/Images/Primary?maxHeight=96&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">
           <div class="grow"><div class="t">${esc(u.Name)}</div><div class="s">${esc(seen)} · ${esc(bits.join(" · "))}</div></div>
           <div class="acts">
             <button class="btn small" data-a="screens" data-i="${i}">Screens</button>
@@ -794,4 +794,101 @@ PAGES.chores = (el) => {
     }
   };
   draw(); every(5000, draw);
+};
+
+
+// ---------- This week: the Sunday report card ----------
+const dayName = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+PAGES.week = (el) => {
+  el.innerHTML = `<p class="sub">A short look back at the last 7 days. It's ready fresh every Sunday morning.</p><div id="wk">${loading()}</div>`;
+  const draw = async (fresh) => {
+    let r;
+    try { r = await call("GET", "api/admin/care/report" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "week") $("#wk").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    if (current !== "week") return;
+    const sundayNote = new Date().getDay() === 0 ? `<div class="note">It's Sunday: here's your report card.</div>` : "";
+    const watchers = (r.watchers || []).map((w, i) => `<div class="item"><div class="grow"><div class="t">${i === 0 ? "🏆 " : ""}${esc(w.name)}</div><div class="s">${w.plays} thing${w.plays === 1 ? "" : "s"} played</div></div></div>`).join("");
+    $("#wk").innerHTML = sundayNote + `<p class="sub">${esc(dayName(r.from))} to ${esc(dayName(r.to))}</p>
+      <div class="tiles">
+        ${tile("Movies added", String(r.added_movies))}${tile("Episodes added", String(r.added_episodes))}
+        ${tile("Files play-tested", String(r.checked))}${tile("Subtitles fixed", String(r.subtitles_fixed))}
+        ${(r.disks || []).map((d) => tile("Space left", bytes(d.free), Math.round(100 * d.used / (d.used + d.free)))).join("")}
+      </div>
+      <h3 class="section-title">Needs you</h3><div class="list">${(r.needs || []).map((n) => `<div class="item needs"><div class="grow"><div class="t">${esc(n)}</div></div></div>`).join("") || `<div class="empty">Nothing needs you. Nice week.</div>`}</div>
+      <h3 class="section-title">Who watched the most</h3><div class="list">${watchers || `<div class="empty">Nobody watched anything this week.</div>`}</div>
+      <h3 class="section-title">New this week</h3><div class="list">
+        ${(r.movie_names || []).length ? `<div class="item"><div class="grow"><div class="t">Movies</div><div class="s">${esc(r.movie_names.join(", "))}${r.added_movies > r.movie_names.length ? ` and ${r.added_movies - r.movie_names.length} more` : ""}</div></div></div>` : ""}
+        ${(r.show_names || []).length ? `<div class="item"><div class="grow"><div class="t">Shows</div><div class="s">${esc(r.show_names.join(", "))}</div></div></div>` : ""}
+        ${!(r.movie_names || []).length && !(r.show_names || []).length ? `<div class="empty">Nothing new this week.</div>` : ""}
+      </div>
+      <h3 class="section-title">Fixed by itself</h3><div class="list"><div class="item"><div class="grow"><div class="t">${r.subtitles_fixed} subtitle file${r.subtitles_fixed === 1 ? "" : "s"} lined up, ${r.broken} file${r.broken === 1 ? "" : "s"} flagged by the play test, ${r.removed} thing${r.removed === 1 ? "" : "s"} tidied away</div></div></div></div>
+      <div class="acts" style="margin-top:14px"><button class="btn small" id="wkFresh">${B.I("restart")} Check again now</button></div>`;
+    $("#wkFresh").onclick = (e) => B.busy(e.target, async () => { await draw(true); });
+  };
+  draw(false);
+};
+
+// ---------- Tidy-up: things nobody watched in a year, and the biggest ----------
+PAGES.tidy = (el) => {
+  el.innerHTML = `<p class="sub">Things nobody has watched in over a year, and the biggest files. Nothing is removed unless you tick it and press Remove. Removing goes through Radarr or Sonarr, so they won't download it again.</p><div id="td">${loading("Looking through the whole library… this can take a minute.")}</div>`;
+  const ticked = new Map();
+  let data = null, view = "old";
+  const row = (r) => {
+    const key = r.app + ":" + r.id;
+    const seen = r.watched > 1 ? `last watched ${new Date(r.watched * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" })}` : r.watched === 1 ? "watched once, a long time ago" : "never watched";
+    return `<label class="item" style="cursor:pointer"><input type="checkbox" data-k="${esc(key)}" ${ticked.has(key) ? "checked" : ""} style="width:20px;height:20px;flex:none">
+      ${r.jellyfin_id ? `<img src="api/web/jf/Items/${encodeURIComponent(r.jellyfin_id)}/Images/Primary?maxHeight=90&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:60px;border-radius:4px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">` : ""}
+      <div class="grow"><div class="t">${esc(r.title)}${r.year ? ` (${r.year})` : ""}</div><div class="s">${esc(r.kind)} · ${bytes(r.size)} · ${esc(seen)} · added ${new Date(r.added * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</div></div></label>`;
+  };
+  const draw = () => {
+    if (current !== "tidy") return;
+    const list = view === "old" ? data.old : data.big;
+    const all = new Map([...data.old, ...data.big].map((r) => [r.app + ":" + r.id, r]));
+    const total = [...ticked.keys()].reduce((n, k) => n + ((all.get(k) || {}).size || 0), 0);
+    $("#td").innerHTML = `${!data.radarr && !data.sonarr ? `<div class="note">Radarr and Sonarr aren't connected to Tower's helper. Run the Benflix setup command again.</div>` : ""}
+      <div class="tabs" style="margin-bottom:12px"><button class="chip ${view === "old" ? "on" : ""}" data-v="old">Not watched in a year (${data.old_count}, ${bytes(data.old_total)})</button><button class="chip ${view === "big" ? "on" : ""}" data-v="big">Biggest</button></div>
+      <div class="list">${list.map(row).join("") || `<div class="empty">${view === "old" ? "Everything has been watched in the last year." : "Nothing found."}</div>`}</div>
+      <div class="acts" style="margin-top:14px;position:sticky;bottom:12px"><button class="btn white" id="tdGo" ${ticked.size ? "" : "disabled"}>Remove ${ticked.size || ""} ticked${ticked.size ? " (frees " + bytes(total) + ")" : ""}</button></div>`;
+    el.querySelectorAll("[data-v]").forEach((b) => { b.onclick = () => { view = b.dataset.v; draw(); }; });
+    el.querySelectorAll("[data-k]").forEach((c) => { c.onchange = () => { if (c.checked) ticked.set(c.dataset.k, all.get(c.dataset.k)); else ticked.delete(c.dataset.k); draw(); }; });
+    $("#tdGo").onclick = async (e) => {
+      const picks = [...ticked.values()];
+      const names = picks.slice(0, 6).map((r) => r.title).join(", ") + (picks.length > 6 ? ` and ${picks.length - 6} more` : "");
+      if (!(await B.ask(`Remove ${picks.length} for good?`, `${names}. The files are deleted from Tower and Radarr/Sonarr forget them. This can't be undone.`, "Remove", "Cancel").catch(() => false))) return;
+      B.busy(e.target, async () => {
+        const res = await call("POST", "api/admin/care/tidy/remove", { sure: true, items: picks.map((r) => ({ app: r.app, id: r.id, title: r.title })) });
+        ticked.clear();
+        $("#td").innerHTML = loading("Updating the lists…");
+        fetchLists(true);
+        return res.message;
+      });
+    };
+  };
+  const fetchLists = async (fresh) => {
+    try {
+      for (let i = 0; i < 60; i++) {
+        const d = await call("GET", "api/admin/care/tidy" + (fresh && i === 0 ? "?fresh=1" : ""));
+        if (current !== "tidy") return;
+        if (!d.working) { data = d; if (d.problem) $("#td").innerHTML = `<div class="note">${esc(d.problem)}</div>`; else draw(); return; }
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    } catch (err) { if (current === "tidy") $("#td").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  fetchLists(false);
+};
+
+// ---------- Night-time play test ----------
+PAGES.playtest = (el) => {
+  el.innerHTML = `<p class="sub">Every night Tower opens each new file for a few seconds to check it plays, has sound and is in the right language.</p><div id="pt">${loading()}</div>`;
+  const item = (r, kind) => `<div class="item ${kind === "bad" ? "needs" : ""}"><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc((kind === "bad" ? r.problems : r.notes).join(" · "))} · checked ${esc(B.when ? B.when(new Date(r.at * 1000).toISOString()) : "")}</div></div>
+    <div class="acts"><button class="btn small" data-again="${esc(r.id)}">Check again</button><button class="btn small" data-ok="${esc(r.id)}">It's fine</button></div></div>`;
+  const draw = (s) => {
+    if (current !== "playtest") return;
+    $("#pt").innerHTML = `${s.on ? "" : `<div class="note">The play test isn't on Tower yet. Run the Benflix setup command again.</div>`}
+      <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? dayName(s.last) : "Not yet")}</div>
+      <h3 class="section-title">Broken</h3><div class="list">${s.broken.map((r) => item(r, "bad")).join("") || `<div class="empty">Every new file played fine.</div>`}</div>
+      <h3 class="section-title">Worth a look</h3><div class="list">${s.look.map((r) => item(r, "look")).join("") || `<div class="empty">Nothing odd.</div>`}</div>`;
+    el.querySelectorAll("[data-ok]").forEach((b) => { b.onclick = () => B.busy(b, async () => { draw(await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.ok)}/ok`)); }); });
+    el.querySelectorAll("[data-again]").forEach((b) => { b.onclick = () => B.busy(b, async () => (await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.again)}/again`)).message); });
+  };
+  call("GET", "api/admin/care/playtest").then(draw).catch((err) => { if (current === "playtest") $("#pt").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
 };

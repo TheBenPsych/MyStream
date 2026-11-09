@@ -293,6 +293,7 @@ fun ServerStatusPage(
     requestsViewModel: com.github.damontecres.wholphin.ui.discover.BenflixRequestsViewModel = hiltViewModel(),
     towerViewModel: ServerTowerViewModel = hiltViewModel(),
     speedCheck: ServerSpeedCheckViewModel = hiltViewModel(),
+    care: ServerCareViewModel = hiltViewModel(),
 ) {
     val isTv = rememberIsTv()
     val data = viewModel.data
@@ -314,6 +315,7 @@ fun ServerStatusPage(
         when (section) {
             ServerSection.OVERVIEW -> {
                 requestsViewModel.loadRequests(mineOnly = false)
+                care.loadReport()
             }
 
             ServerSection.PEOPLE -> {
@@ -334,6 +336,7 @@ fun ServerStatusPage(
 
             ServerSection.LIBRARY -> {
                 data.refreshTower()
+                care.loadLibrary()
             }
         }
     }
@@ -353,6 +356,13 @@ fun ServerStatusPage(
     var messaging by remember { mutableStateOf<WatchingNow?>(null) }
     var askRestart by remember { mutableStateOf(false) }
     val history by data.history.collectAsState()
+    val careReport by care.report.collectAsState()
+    val careReportProblem by care.reportProblem.collectAsState()
+    val carePlaytest by care.playtest.collectAsState()
+    val careTidy by care.tidy.collectAsState()
+    val careTicked by care.ticked.collectAsState()
+    val careBiggest by care.showBiggest.collectAsState()
+    val careProblem by care.libraryProblem.collectAsState()
     val chores by viewModel.chores.collectAsState()
     val libraries by viewModel.libraries.collectAsState()
     val plannedRestart by viewModel.plannedRestart.collectAsState()
@@ -522,6 +532,7 @@ fun ServerStatusPage(
                 )
                 serverProblemItems(problems)
                 towerOverviewItems(tower, towerProblem) { section = ServerSection.LIBRARY }
+                careReportItems(careReport, careReportProblem, care)
                 startupSpeedItem(sectionTitle)
             }
 
@@ -551,6 +562,7 @@ fun ServerStatusPage(
                     }
                 }
                 spaceItems(toolsState, toolsViewModel, sectionTitle)
+                careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
             }
 
             ServerSection.PEOPLE -> {
@@ -797,6 +809,7 @@ fun ServerStatusPage(
         )
     }
     ServerTowerDialogs(towerViewModel)
+    ServerCareDialogs(care)
     stopping?.let { w ->
         ConfirmDialog(
             title = "Stop ${w.who}'s stream?",

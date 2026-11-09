@@ -11,20 +11,29 @@
   fetches the newest copy from GitHub by itself every hour.
 -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='9' height='9' rx='1.6' fill='%23FFB547'/%3E%3Crect x='11' width='9' height='9' rx='1.6' fill='%237AA7FF'/%3E%3Crect y='11' width='9' height='9' rx='1.6' fill='%233DD6C6'/%3E%3Crect x='11' y='11' width='9' height='9' rx='1.6' fill='%23FF6F91'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/web/css/benflix.css">
+<script>
+  // Away from home Benflix lives at https://<internet address>/benflix-games/ : make sure the address ends
+  // in "/" so every file below is found next to it.
+  if (/\/benflix-games$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
+</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="web/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="web/css/benflix.css">
 </head>
 <body>
 <div id="page"></div>
-<script src="/web/vendor/hls.min.js" defer></script>
-<script src="/web/js/core.js" defer></script>
-<script src="/web/js/start.js" defer></script>
-<script src="/web/js/media.js" defer></script>
-<script src="/web/js/player.js" defer></script>
-<script src="/web/js/livetv.js" defer></script>
-<script src="/web/js/requests.js" defer></script>
-<script src="/web/js/search.js" defer></script>
-<script src="/web/js/me.js" defer></script>
-<script src="/web/js/games.js" defer></script>
-<script src="/web/js/server.js" defer></script>
+<script src="web/vendor/hls.min.js" defer></script>
+<script src="web/js/core.js" defer></script>
+<script src="web/js/start.js" defer></script>
+<script src="web/js/media.js" defer></script>
+<script src="web/js/player.js" defer></script>
+<script src="web/js/livetv.js" defer></script>
+<script src="web/js/requests.js" defer></script>
+<script src="web/js/search.js" defer></script>
+<script src="web/js/me.js" defer></script>
+<script src="web/js/games.js" defer></script>
+<script src="web/js/server.js" defer></script>
+<script src="web/js/fix.js" defer></script>
 </body>
 </html>
