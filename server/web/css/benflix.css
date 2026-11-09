@@ -128,6 +128,11 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .home { padding: 6px var(--gutter) 40px; display: flex; flex-direction: column; min-height: calc(100vh - var(--bar)); }
 .greet { font-size: 40px; font-weight: 700; margin: 8px 0 14px; letter-spacing: -.01em; }
 .news { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; min-height: 8px; }
+.news-pill { cursor: default; padding-right: 6px; }
+.news-pill.go { cursor: pointer; }
+.news-pill .x { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 2px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); opacity: .6; cursor: pointer; padding: 0; }
+.news-pill .x:hover, .news-pill .x:focus-visible { opacity: 1; background: var(--pg4); }
+.news-pill .x .i { width: 14px; height: 14px; }
 .doors { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; min-height: 420px; max-height: 640px; }
 .door { position: relative; border: 0; border-radius: var(--r2); padding: 30px 28px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; cursor: pointer; color: var(--dark); background: var(--c); text-decoration: none; }
 .door svg.i { width: 46px; height: 46px; stroke-width: 1.7; }

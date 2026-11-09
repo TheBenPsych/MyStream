@@ -179,11 +179,18 @@ B.loadNews = async (nav) => {
     const i = note.indexOf("\n");
     if (i > 0) {
       const exp = +(note.slice(0, i).split("~")[1] || 0);
-      if (!exp || exp > Date.now()) out.push({ text: note.slice(i + 1).split("\n")[0], color: "#F1F2F5", href: "" });
+      if (!exp || exp > Date.now()) {
+        // The tab is called Live TV now, so old notes that say "Channels" read right
+        // ("We now have live TV under Channels" becomes "We now have live TV", and opens Live TV)
+        let text = note.slice(i + 1).split("\n")[0];
+        const where = /\s*\b(under|in|on|to) (the )?Channels\b( (tab|page|door|section))?/gi;
+        text = /live ?tv/i.test(text.replace(where, "")) ? text.replace(where, "") : text.replace(where, " $1 Live TV");
+        out.push({ id: "note-" + note.slice(0, i), text, color: "#F1F2F5", href: B.noteLink(text) });
+      }
     }
     String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
       const [ts, title] = l.split("|");
-      if (Date.now() - +ts < 3 * 86400000) out.push({ text: `Ben fixed ${title}`, color: "#F1F2F5", href: "" });
+      if (Date.now() - +ts < 3 * 86400000) out.push({ id: "fixed-" + ts, text: `Ben fixed ${title}`, color: "#F1F2F5", href: "" });
     });
   } catch (e) {}
   try {
@@ -192,7 +199,7 @@ B.loadNews = async (nav) => {
     (r.Items || []).filter((e) => B.isNew(e) && Date.now() - new Date(e.DateCreated) < 3 * 86400000).forEach((e) => {
       if (seen.has(e.SeriesId)) return;
       seen.add(e.SeriesId);
-      out.push({ text: e.IndexNumber === 1 ? `${e.SeriesName} season ${e.ParentIndexNumber} is here` : `${e.SeriesName} has a new episode`, color: DOORS.shows.color, href: `#/show/${e.SeriesId}?ep=${e.Id}` });
+      out.push({ id: "ep-" + e.Id, text: e.IndexNumber === 1 ? `${e.SeriesName} season ${e.ParentIndexNumber} is here` : `${e.SeriesName} has a new episode`, color: DOORS.shows.color, href: `#/show/${e.SeriesId}?ep=${e.Id}` });
     });
   } catch (e) {}
   // New albums from artists you follow (like the TV and phone app; not on Kids)
@@ -207,13 +214,41 @@ B.loadNews = async (nav) => {
           const who = a.AlbumArtist || a.Name;
           if (seen.has(who) || seen.size >= 2) return;
           seen.add(who);
-          out.push({ text: `New music from ${who}`, color: "#B69CFF", href: `#/album/${a.Id}` });
+          out.push({ id: "album-" + a.Id, text: `New music from ${who}`, color: "#B69CFF", href: `#/album/${a.Id}` });
         });
       }
     } catch (e) {}
   }
   if (!B.alive(nav) || !$("#news")) return;
-  $("#news").innerHTML = out.slice(0, 3).map((n) => `<${n.href ? `a href="${n.href}"` : "span"} class="pill"><span class="d" style="background:${n.color}"></span>${esc(n.text)}</${n.href ? "a" : "span"}>`).join("");
+  // Each pill can be closed with its X, and stays closed on this browser
+  const key = "benflix.newsGone." + B.uid();
+  const gone = loadJson(key, []);
+  const box = $("#news");
+  box.innerHTML = out.filter((n) => !gone.includes(n.id)).slice(0, 3).map((n) => `<span class="pill news-pill${n.href ? " go" : ""}" data-id="${esc(n.id)}"${n.href ? ` data-href="${esc(n.href)}" role="link" tabindex="0"` : ""}><span class="d" style="background:${n.color}"></span>${esc(n.text)}<button class="x" aria-label="Close" title="Close">${I("x")}</button></span>`).join("");
+  box.onclick = (e) => {
+    const pill = e.target.closest(".news-pill");
+    if (!pill) return;
+    if (e.target.closest(".x")) {
+      store(key, JSON.stringify(loadJson(key, []).concat(pill.dataset.id).slice(-60)));
+      pill.remove();
+    } else if (pill.dataset.href) B.go(pill.dataset.href);
+  };
+  box.onkeydown = (e) => {
+    const pill = e.target.closest(".news-pill.go");
+    if (pill && e.target === pill && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); B.go(pill.dataset.href); }
+  };
+};
+
+// Notes from the server owner open the part of Benflix they talk about
+B.noteLink = (text) => {
+  const t = text.toLowerCase();
+  if (/live ?tv|channels?\b/.test(t)) return "#/live";
+  if (/\bmusic|songs?\b|albums?\b/.test(t) && DOORS.music && !B.me.kids) return "#/music";
+  if (/\bgames?\b/.test(t)) return "#/games";
+  if (/\brequests?\b/.test(t)) return "#/requests";
+  if (/\bshows?\b|episodes?\b|series\b/.test(t)) return "#/shows";
+  if (/\bmovies?\b|films?\b/.test(t)) return "#/movies";
+  return "";
 };
 
 // ---------- profile menu: corner card, picture + name on the left, list on the right ----------
