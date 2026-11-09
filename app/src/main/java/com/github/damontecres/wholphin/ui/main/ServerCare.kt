@@ -355,8 +355,20 @@ internal fun LazyListScope.careReportItems(
     item(key = "care-watchers") {
         val top = report.watchers.firstOrNull()
         ServerActionRow(
-            headline = if (top == null) "Nobody watched anything this week" else "${top.first} watched the most (${plural(top.second, "thing")})",
-            supporting = report.watchers.drop(1).take(4).joinToString(", ") { "${it.first} ${it.second}" }.ifBlank { null },
+            headline =
+                if (top ==
+                    null
+                ) {
+                    "Nobody watched anything this week"
+                } else {
+                    "${top.first} watched the most (${plural(top.second, "thing")})"
+                },
+            supporting =
+                report.watchers
+                    .drop(1)
+                    .take(4)
+                    .joinToString(", ") { "${it.first} ${it.second}" }
+                    .ifBlank { null },
             leading = { Dot(Light.GOOD) },
         )
     }
@@ -414,7 +426,17 @@ internal fun LazyListScope.careLibraryItems(
                         "${plural(playtest.checkedThisWeek, "new file")} checked this week" +
                             (playtest.last?.let { " · last check ${day(it)}" } ?: "")
                     },
-                leading = { Dot(if (!playtest.on) Light.UNKNOWN else if (playtest.broken.isEmpty()) Light.GOOD else Light.BAD) },
+                leading = {
+                    Dot(
+                        if (!playtest.on) {
+                            Light.UNKNOWN
+                        } else if (playtest.broken.isEmpty()) {
+                            Light.GOOD
+                        } else {
+                            Light.BAD
+                        },
+                    )
+                },
             )
         }
         items(playtest.broken, key = { "pt-bad-${it.id}" }) { row ->
@@ -436,7 +458,7 @@ internal fun LazyListScope.careLibraryItems(
     }
 
     item(key = "tidy-title") { SectionTitle("Tidy-up") }
-    if (tidy == null || tidy.working && tidy.old.isEmpty() && tidy.big.isEmpty()) {
+    if (tidy == null || (tidy.working && tidy.old.isEmpty() && tidy.big.isEmpty())) {
         item(key = "tidy-loading") {
             if (problem != null && tidy == null) {
                 ServerActionRow(headline = "Tidy-up isn't set up yet", supporting = problem, leading = { Dot(Light.UNKNOWN) })
@@ -460,7 +482,8 @@ internal fun LazyListScope.careLibraryItems(
                 },
             supporting = "Nothing is removed unless you tick it. Removing goes through Radarr or Sonarr, so they won't download it again.",
             leading = { Dot(Light.GOOD) },
-            actions = listOf((if (showBiggest) "Show not watched in a year" else "Show the biggest") to { viewModel.showBiggest(!showBiggest) }),
+            actions =
+                listOf((if (showBiggest) "Show not watched in a year" else "Show the biggest") to { viewModel.showBiggest(!showBiggest) }),
         )
     }
     val rows = if (showBiggest) tidy.big else tidy.old
