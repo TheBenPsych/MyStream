@@ -448,6 +448,7 @@ class SearchViewModel
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
+                        if (ex.isCancellation()) return@launchIO
                         Timber.e(ex, "Exception searching for $type")
                         _state.value.results[type] = SearchResult.Error(ex)
                     }
@@ -512,7 +513,11 @@ class SearchViewModel
                                 plainWords = plainWords,
                             )
                         }
+                    } catch (ex: CancellationException) {
+                        // A newer search (the next letter typed) replaced this one: stay quiet
+                        throw ex
                     } catch (ex: Exception) {
+                        if (ex.isCancellation()) return@launch
                         Timber.e(ex, "Exception in combined search")
                         _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
                     }
@@ -889,3 +894,15 @@ data class SearchGame(
     /** Your own game on Tower */
     val romId: Int? = null,
 )
+
+/** True when this failure only happened because the search was stopped (often wrapped by the network library) */
+internal fun Throwable.isCancellation(): Boolean {
+    var e: Throwable? = this
+    var depth = 0
+    while (e != null && depth < 8) {
+        if (e is CancellationException) return true
+        e = e.cause
+        depth++
+    }
+    return false
+}
