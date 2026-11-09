@@ -462,6 +462,7 @@ const movieMore = (it) => {
     <button class="opt" data-a="tracks">${I("sub")} Audio, subtitles and version</button>
     <button class="opt" data-a="watched">${I("check")} ${ud.Played ? "Mark as not watched" : "Mark as watched"}</button>
     <button class="opt" data-a="report">${I("flag")} Report a problem</button>
+    ${B.me.admin ? `<button class="opt" data-a="fix">${I("swap")} Fix poster and details</button>` : ""}
     ${ids.Imdb ? `<a class="opt" href="https://www.imdb.com/title/${esc(ids.Imdb)}" target="_blank" rel="noopener">${I("info")} Open on IMDb</a>` : ""}`);
   p.onclick = async (e) => {
     const b = e.target.closest("[data-a]"); if (!b) return;
@@ -470,6 +471,7 @@ const movieMore = (it) => {
     if (b.dataset.a === "tracks") B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`));
     if (b.dataset.a === "watched") B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; });
     if (b.dataset.a === "report") B.report({ id: it.Id, title: it.Name });
+    if (b.dataset.a === "fix") B.fixItem(it);
   };
 };
 // Audio + subtitles panel before playing
@@ -547,12 +549,14 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   $("#bMore").onclick = () => {
     const p = B.side(`<h3>${esc(it.Name)}</h3><p class="dim">More choices</p>
       <button class="opt" data-a="all">${I("check")} ${ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched"}</button>
-      <button class="opt" data-a="report">${I("flag")} Report a problem</button>`);
+      <button class="opt" data-a="report">${I("flag")} Report a problem</button>
+      ${B.me.admin ? `<button class="opt" data-a="fix">${I("swap")} Fix poster and details</button>` : ""}`);
     p.onclick = (e) => {
       const b = e.target.closest("[data-a]"); if (!b) return;
       B.closeAll();
       if (b.dataset.a === "all") B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; });
       if (b.dataset.a === "report") B.report({ id: it.Id, title: it.Name });
+      if (b.dataset.a === "fix") B.fixItem(it);
     };
   };
   let episodes = [], group = 0;

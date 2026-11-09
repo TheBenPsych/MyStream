@@ -27,7 +27,7 @@ B.deviceProfile = (maxBitrate) => {
 };
 const QUALITY = { auto: 120000000, "1080": 20000000, "720": 8000000, "480": 3000000 };
 const withKey = (url) => url + (url.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token);
-const streamUrl = (url) => "/api/web/stream" + (url.startsWith("/") ? url : "/" + url);
+const streamUrl = (url) => "api/web/stream" + (url.startsWith("/") ? url : "/" + url);
 
 // Watch time: adds this browser's playing time to the person's total (like the TV and phone do)
 const WT = {
@@ -86,7 +86,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         <span class="grow"></span>
         <span class="time" id="pEnds"></span>
         ${isEp ? `<button class="pbtn" id="pList" title="Episodes">${I("list")}</button>` : ""}
-        <button class="pbtn" id="pSub" title="Audio and subtitles">${I("sub")}</button>
+        <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
+        <button class="pbtn" id="pSub" title="Audio and subtitles (S turns them on and off)">${I("sub")}</button>
         <button class="pbtn" id="pVol" title="Sound on / off (M)">${I("vol")}</button>
         <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
       </div>
@@ -201,6 +202,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pVol").onclick = () => { v.muted = !v.muted; $("#pVol").innerHTML = I(v.muted ? "mute" : "vol"); };
   $("#pBack").onclick = () => leave();
   $("#pSub").onclick = () => openPanel();
+  $("#pKeys").onclick = () => showKeys();
   v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(); report("/Progress"); });
   v.addEventListener("pause", () => {
     $("#pPlay").innerHTML = I("play"); pl.classList.add("ui"); report("/Progress");
@@ -338,12 +340,48 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if (k === "ArrowRight") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "ArrowUp") { e.preventDefault(); v.volume = Math.min(1, v.volume + 0.1); B.setWebSetting("volume", v.volume); }
     else if (k === "ArrowDown") { e.preventDefault(); v.volume = Math.max(0, v.volume - 0.1); B.setWebSetting("volume", v.volume); }
-    else if (k === "f") full();
-    else if (k === "m") $("#pVol").click();
-    else if (k === "s") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); }
+    else if (k === "j") { v.currentTime = Math.max(0, v.currentTime - 10); }
+    else if (k === "l") { v.currentTime = Math.min(total(), v.currentTime + 10); }
+    else if (k === "f" || k === "F") full();
+    else if (k === "m" || k === "M") $("#pVol").click();
+    else if (k === "s" || k === "S") toggleSubs();
+    else if (k === "Enter") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); else return; }
+    else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
+    else if (k === "e" && $("#pList")) $("#pList").click();
+    else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) { v.currentTime = (total() * +k) / 10; }
+    else if (k === "?" || (k === "/" && e.shiftKey)) { e.preventDefault(); showKeys(); return; }
+    else if (k === "Escape" && $(".player .keys-help")) { $(".player .keys-help").remove(); return; }
     else if (k === "Escape" && !document.fullscreenElement) leave();
     else return;
     poke();
+  };
+  // Benflix "Keyboard shortcuts": S turns subtitles on and off (back to the last ones you had on)
+  let lastSub = null;
+  const toggleSubs = () => {
+    const subs = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle");
+    if (!subs.length) return B.toast("No subtitles for this one.");
+    if (subIndex !== -1) { lastSub = subIndex; subIndex = -1; showSubs(); return B.toast("Subtitles off"); }
+    const pick = subs.find((x) => x.Index === lastSub) || subs.find((x) => /^(en|eng)$/i.test(x.Language || "")) || subs[0];
+    subIndex = pick.Index;
+    B.toast("Subtitles: " + (pick.DisplayTitle || pick.Language || "on"));
+    if (pick.DeliveryMethod === "External") showSubs();
+    else load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
+  };
+  const KEYS = [
+    ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
+    ["F", "Full screen"], ["M", "Sound on / off"], ["S", "Subtitles on / off"], ["Enter", "Skip intro or credits"],
+    ["N", "Next episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
+  ];
+  const showKeys = () => {
+    const old = $(".player .keys-help");
+    if (old) return old.remove();
+    const box = document.createElement("div");
+    box.className = "panel keys-help";
+    box.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 12px">Keyboard shortcuts</h3>
+      ${KEYS.map(([key, what]) => `<div class="keyrow"><kbd>${esc(key)}</kbd><span>${esc(what)}</span></div>`).join("")}`;
+    box.onclick = (e) => { if (e.target.closest("[data-x]")) box.remove(); };
+    pl.appendChild(box);
+    pl.classList.add("ui");
   };
   document.addEventListener("keydown", keys);
 
@@ -361,7 +399,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const leave = () => { finish(); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
   const unload = () => {
     if (stopped || !B.me) return;
-    fetch("/api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },
+    fetch("api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },
       body: JSON.stringify({ ItemId: it.Id, MediaSourceId: source && source.Id, PlaySessionId: playSession, PositionTicks: Math.round(v.currentTime * B.TICKS) }) }).catch(() => {});
   };
   window.addEventListener("pagehide", unload);

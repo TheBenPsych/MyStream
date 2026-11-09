@@ -691,10 +691,10 @@ class Handler(BaseHTTPRequestHandler):
             path = path[len(AWAY_PATH):] or "/"
             via_internet = True
         try:
-            if via_internet and (
-                path.startswith("/api/admin/") or path.startswith("/api/web") or path.startswith("/web/") or path in ("/", "/web", "/index.html")
-            ):
-                # Tower's tools (restarting apps, fixing files) only work from home, never through the internet
+            if via_internet and (path.startswith("/api/admin/") or (web is None and path in ("/", "/web", "/index.html"))):
+                # Tower's tools (restarting apps, fixing files) only work from home, never through the internet.
+                # Benflix in a browser does work away from home (https://<internet address>/benflix-games/):
+                # it signs in through Jellyfin like the apps do, and Jellyfin checks every request.
                 raise HelperError(403, "Tower's tools only work at home.")
             if method == "GET" and path == "/health":
                 return self.send(
@@ -723,9 +723,12 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
                 with open(found[0], "rb") as f:
                     return self.send(200, f.read(), found[1])
-            if web is not None and method in ("GET", "HEAD") and (path in ("/", "/web", "/index.html") or path.startswith("/web/")):
-                # Benflix in a web browser (server/web in the repo)
-                rel = path[len("/web/"):] if path.startswith("/web/") else "index.html"
+            if web is not None and method in ("GET", "HEAD") and (
+                path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest") or path.startswith("/web/")
+            ):
+                # Benflix in a web browser (server/web in the repo). The install helper (sw.js) and the
+                # app description sit at the top so "Install Benflix" covers the whole site.
+                rel = path[len("/web/"):] if path.startswith("/web/") else path.lstrip("/") if path in ("/sw.js", "/manifest.webmanifest") else "index.html"
                 found = web.file_for(rel)
                 if found:
                     with open(found[0], "rb") as f:

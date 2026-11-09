@@ -4,7 +4,7 @@
 
 const call = (m, p, b) => B.call(m, p, b);
 const jf = (m, p, b) => B.jf(m, p, b);
-const tower = (fresh) => call("GET", "/api/admin/tower" + (fresh ? "?fresh=1" : ""));
+const tower = (fresh) => call("GET", "api/admin/tower" + (fresh ? "?fresh=1" : ""));
 const every = (ms, fn) => B.every(ms, fn);
 let current = null; // which tool page is showing (pages stop drawing when you move on)
 
@@ -124,7 +124,7 @@ PAGES.livetv = (el) => {
     </div><div id="lt">${loading()}</div>`;
   const draw = async () => {
     try {
-      const s = await fetch("/livetv/status").then((r) => r.json());
+      const s = await fetch("livetv/status").then((r) => r.json());
       if (current !== "livetv") return;
       const ago = (t) => t ? B.when(new Date(t * 1000).toISOString()) : "never";
       const types = Object.entries(s.types || {}).filter(([, n]) => n).map(([k, n]) => `${esc(k)} ${n}`).join(" · ");
@@ -137,7 +137,7 @@ PAGES.livetv = (el) => {
         types ? line("By type", types) : "",
       ].join("") + src;
       $("#lt").innerHTML = `<div class="list">${rows || '<div class="empty">No status yet.</div>'}</div><button class="btn white" id="ltRefresh">Rebuild the list now</button>`;
-      $("#ltRefresh").onclick = (e) => B.busy(e.target, async () => { await call("POST", "/api/admin/livetv/refresh"); setTimeout(draw, 1000); return "Rebuilding. It checks every channel, so it takes about 15 minutes."; });
+      $("#ltRefresh").onclick = (e) => B.busy(e.target, async () => { await call("POST", "api/admin/livetv/refresh"); setTimeout(draw, 1000); return "Rebuilding. It checks every channel, so it takes about 15 minutes."; });
     } catch (err) { if (current === "livetv") $("#lt").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   draw(); every(10000, draw);
@@ -146,7 +146,7 @@ PAGES.livetv = (el) => {
 // ---------- Web version: where these files came from ----------
 PAGES.webversion = (el) => {
   el.innerHTML = `<p class="sub">Benflix in a browser gets its newest version from GitHub by itself, when Tower's helper starts and then every hour.</p><div id="wv">${loading()}</div>`;
-  call("GET", "/api/web/version").then((s) => {
+  call("GET", "api/web/version").then((s) => {
     if (current !== "webversion") return;
     $("#wv").innerHTML = `<div class="list">
       <div class="item"><div class="grow"><div class="t">Using</div><div class="s">${s.source === "github" ? "The newest version from GitHub" : "The copy from the setup command"}</div></div></div>
@@ -177,7 +177,7 @@ PAGES.apps = (el) => {
     const b = e.target.closest("[data-restart]"); if (!b) return;
     if (!await B.ask(`Restart ${b.dataset.nice}? Anyone using it will be cut off for about a minute.`)) return;
     b.disabled = true; b.textContent = "Restarting…";
-    try { B.toast((await call("POST", `/api/admin/apps/${encodeURIComponent(b.dataset.restart)}/restart`)).message); }
+    try { B.toast((await call("POST", `api/admin/apps/${encodeURIComponent(b.dataset.restart)}/restart`)).message); }
     catch (err) { B.toast(err.message); }
     draw(true);
   };
@@ -215,7 +215,7 @@ PAGES.downloads = (el) => {
       : `Remove this download of ${b.dataset.title} and look for a different copy?`;
     if (b.dataset.act === "replace" && !await B.ask(ask)) return;
     b.disabled = true;
-    try { B.toast((await call("POST", `/api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
+    try { B.toast((await call("POST", `api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
     catch (err) { B.toast(err.message); }
     draw(true);
   };
@@ -248,7 +248,7 @@ PAGES.find = (el) => {
         const it = items[+b.dataset.i], ids = it.ProviderIds || {};
         const info = { name: it.Name, tmdb: ids.Tmdb || ids.tmdb, tvdb: ids.Tvdb || ids.tvdb, imdb: ids.Imdb || ids.imdb };
         b.disabled = true;
-        try { B.toast((await call("POST", it.Type === "Series" ? "/api/admin/search/missing" : "/api/admin/search/better", info)).message); }
+        try { B.toast((await call("POST", it.Type === "Series" ? "api/admin/search/missing" : "api/admin/search/better", info)).message); }
         catch (err) { B.toast(err.message); }
         b.disabled = false;
       };
@@ -263,7 +263,7 @@ PAGES.tracks = (el) => {
   let picked = load("benflix_web_folder") || "";
   const draw = async () => {
     try {
-      const s = await call("GET", "/api/admin/tracks");
+      const s = await call("GET", "api/admin/tracks");
       if (current !== "tracks") return;
       if (!s.ready) { $("#tr").innerHTML = `<div class="note">${esc(s.problem)}</div>`; return; }
       if (!s.folders.includes(picked)) picked = s.folders[0] || "";
@@ -300,7 +300,7 @@ PAGES.tracks = (el) => {
       if (b.dataset.mode === "apply" && !await B.ask(`Fix the track names in ${picked}? You can undo it afterwards.`)) return;
       body = { mode: b.dataset.mode, folder: picked };
     }
-    try { await call("POST", "/api/admin/tracks", body); } catch (err) { B.toast(err.message); }
+    try { await call("POST", "api/admin/tracks", body); } catch (err) { B.toast(err.message); }
     draw();
   };
   draw(); every(2000, () => { if (document.activeElement?.id !== "trFolder") draw(); });
@@ -309,7 +309,7 @@ PAGES.tracks = (el) => {
 // ---------- Jellyfin tools (part 2) ----------
 const TICKS_PER_MIN = 600000000;
 const PREFS_CLIENT = "Wholphin"; // where the Benflix app keeps notes and problem reports
-const imgUrl = (id, h) => `/api/web/jf/Items/${encodeURIComponent(id)}/Images/Primary?maxHeight=${h || 180}&api_key=${encodeURIComponent(B.me.token)}`;
+const imgUrl = (id, h) => `api/web/jf/Items/${encodeURIComponent(id)}/Images/Primary?maxHeight=${h || 180}&api_key=${encodeURIComponent(B.me.token)}`;
 function when(iso) {
   const d = new Date(iso); if (isNaN(d)) return "";
   const today = new Date(); const sameDay = d.toDateString() === today.toDateString();
@@ -466,7 +466,7 @@ PAGES.people = (el) => {
           p.MaxActiveSessions ? `${p.MaxActiveSessions} screen${p.MaxActiveSessions === 1 ? "" : "s"} at once` : "Any number of screens",
           p.EnableAllFolders ? "All libraries" : `${(p.EnabledFolders || []).length} of ${libs.length} libraries`].filter(Boolean);
         return `<div class="item">
-          <img src="/api/web/jf/Users/${encodeURIComponent(u.Id)}/Images/Primary?maxHeight=96&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">
+          <img src="api/web/jf/Users/${encodeURIComponent(u.Id)}/Images/Primary?maxHeight=96&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">
           <div class="grow"><div class="t">${esc(u.Name)}</div><div class="s">${esc(seen)} · ${esc(bits.join(" · "))}</div></div>
           <div class="acts">
             <button class="btn small" data-a="screens" data-i="${i}">Screens</button>
