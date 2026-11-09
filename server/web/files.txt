@@ -3,8 +3,11 @@ fonts/outfit_bold.ttf
 fonts/outfit_medium.ttf
 fonts/outfit_regular.ttf
 fonts/outfit_semibold.ttf
+icons/icon-192.png
+icons/icon-512.png
 index.html
 js/core.js
+js/fix.js
 js/games.js
 js/livetv.js
 js/me.js
@@ -14,7 +17,9 @@ js/requests.js
 js/search.js
 js/server.js
 js/start.js
+manifest.webmanifest
 sounds/doors.wav
 sounds/opening.wav
+sw.js
 vendor/hls.LICENSE.txt
 vendor/hls.min.js

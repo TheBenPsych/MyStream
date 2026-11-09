@@ -206,7 +206,7 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     info = await B.jf("POST", `/Items/${c.Id}/PlaybackInfo?userId=${B.uid()}`, { DeviceProfile: B.deviceProfile(20000000), AutoOpenLiveStream: true, EnableDirectPlay: true, EnableDirectStream: true, EnableTranscoding: true });
     const src = (info.MediaSources || [])[0] || {};
     const viaJellyfin = () => {
-      if (src.TranscodingUrl) tryUrl("/api/web/stream" + src.TranscodingUrl + (src.TranscodingUrl.includes("api_key") ? "" : `&api_key=${enc(B.me.token)}`));
+      if (src.TranscodingUrl) tryUrl("api/web/stream" + src.TranscodingUrl + (src.TranscodingUrl.includes("api_key") ? "" : `&api_key=${enc(B.me.token)}`));
       else msg("This channel isn't working right now. Try another one.");
     };
     // The channel's own stream first (quick, like the TV app), then through Jellyfin if the browser can't reach it

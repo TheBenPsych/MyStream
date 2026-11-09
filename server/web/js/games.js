@@ -13,7 +13,7 @@ const EJS_CORES = {
   coleco: "coleco", colecovision: "coleco", "3do": "3do",
 };
 const EJS_DATA = "https://cdn.emulatorjs.org/stable/data/";
-B.gamesList = () => B.cached("games", 300000, () => B.call("GET", "/api/games"));
+B.gamesList = () => B.cached("games", 300000, () => B.call("GET", "api/games"));
 const cover = (g) => (g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "");
 const playableHere = (c) => !!EJS_CORES[c.slug];
 const gameCard = (g, sub) => {
@@ -29,7 +29,7 @@ B.route(/^\/games$/, async (m, nav) => {
   B.page().innerHTML = B.top("Games", DOORS.games.color) + `<section class="door-top" id="gTop" style="height:auto;min-height:250px;padding-bottom:16px"><div class="art"></div><div class="info" id="gInfo"></div></section><div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   let data, recent;
-  try { [data, recent] = await Promise.all([B.gamesList(), B.call("GET", "/api/saves/recent").catch(() => ({ games: [] }))]); }
+  try { [data, recent] = await Promise.all([B.gamesList(), B.call("GET", "api/saves/recent").catch(() => ({ games: [] }))]); }
   catch (e) { $("#gTop").remove(); $("#rows").innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>`; return; }
   if (!B.alive(nav)) return;
   const consoles = data.consoles.filter(playableHere).map((c) => Object.assign({}, c, { games: c.games.map((g) => Object.assign({ console: c.name, slug: c.slug }, g)) }));
@@ -81,7 +81,7 @@ B.route(/^\/console\/([^?]+)/, async (m, nav) => {
 // ---------- a game's own page ----------
 B.route(/^\/game\/(\d+)/, async (m, nav) => {
   const id = +m[1];
-  const [data, info, saves] = await Promise.all([B.gamesList(), B.call("GET", `/api/info/${id}`).catch(() => ({})), B.call("GET", `/api/save/${id}`).catch(() => ({}))]);
+  const [data, info, saves] = await Promise.all([B.gamesList(), B.call("GET", `api/info/${id}`).catch(() => ({})), B.call("GET", `api/save/${id}`).catch(() => ({}))]);
   if (!B.alive(nav)) return;
   let g = null, c = null;
   data.consoles.forEach((x) => { const f = x.games.find((y) => y.id === id); if (f) { g = f; c = x; } });
@@ -108,7 +108,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
 // ---------- playing ----------
 B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
   const id = +m[1];
-  const [data, files, saves, bios] = await Promise.all([B.gamesList(), B.call("GET", `/api/rom/${id}`), B.call("GET", `/api/save/${id}`).catch(() => ({})), B.call("GET", "/api/bios").catch(() => ({ files: [] }))]);
+  const [data, files, saves, bios] = await Promise.all([B.gamesList(), B.call("GET", `api/rom/${id}`), B.call("GET", `api/save/${id}`).catch(() => ({})), B.call("GET", "api/bios").catch(() => ({ files: [] }))]);
   if (!B.alive(nav)) return;
   let g = null, c = null;
   data.consoles.forEach((x) => { const f = x.games.find((y) => y.id === id); if (f) { g = f; c = x; } });
@@ -123,15 +123,15 @@ B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
   B.page().innerHTML = `<div class="emu"><div id="game"></div><button class="btn quit" id="quit">${I("x")} Quit and save</button></div>`;
   Object.assign(window, {
     EJS_player: "#game", EJS_core: core, EJS_gameName: g.name, EJS_color: "#FF6F91", EJS_startOnLoaded: true, EJS_pathtodata: EJS_DATA,
-    EJS_gameUrl: `/api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
-    EJS_biosUrl: biosFile ? `/api/bios/file?path=${enc(biosFile.path)}&api_key=${key}` : "",
+    EJS_gameUrl: `api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
+    EJS_biosUrl: biosFile ? `api/bios/file?path=${enc(biosFile.path)}&api_key=${key}` : "",
     EJS_defaultOptions: { "save-state-location": "browser" },
   });
   // Put the shared in-game save in place once the game has started
   window.EJS_onGameStart = async () => {
     if (!saves.srm) return;
     try {
-      const buf = new Uint8Array(await (await fetch(`/api/save/${id}/srm`, { headers: { "X-Benflix-Token": B.me.token } })).arrayBuffer());
+      const buf = new Uint8Array(await (await fetch(`api/save/${id}/srm`, { headers: { "X-Benflix-Token": B.me.token } })).arrayBuffer());
       const gm = window.EJS_emulator.gameManager, path = gm.getSaveFilePath();
       const dir = path.split("/").slice(0, -1).join("/");
       try { gm.FS.mkdirTree ? gm.FS.mkdirTree(dir) : gm.FS.mkdir(dir); } catch (e) {}
@@ -152,7 +152,7 @@ B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
       if (!gm) return;
       const data2 = gm.getSaveFile();
       if (data2 && data2.length) {
-        await fetch(`/api/save/${id}/srm?time=${Date.now()}`, { method: "PUT", headers: { "X-Benflix-Token": B.me.token, "Content-Type": "application/octet-stream" }, body: data2 });
+        await fetch(`api/save/${id}/srm?time=${Date.now()}`, { method: "PUT", headers: { "X-Benflix-Token": B.me.token, "Content-Type": "application/octet-stream" }, body: data2 });
         B.toast("Saved to Tower.");
       }
     } catch (e) { console.warn("Couldn't save", e); }

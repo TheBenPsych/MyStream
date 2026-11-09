@@ -202,6 +202,7 @@ fun PlaybackPageContent(
     destination: Destination,
     modifier: Modifier = Modifier,
     viewModel: PlaybackViewModel,
+    subtitleTiming: SubtitleTimingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val subtitleSearchState by viewModel.subtitleSearchState.collectAsState()
@@ -354,6 +355,14 @@ fun PlaybackPageContent(
             PlaybackAction.SearchCaptions -> {
                 controllerViewState.hideControls()
                 viewModel.searchForSubtitles()
+            }
+
+            PlaybackAction.FixSubtitleTiming -> {
+                controllerViewState.hideControls()
+                val playing = viewModel.state.value.currentPlayback
+                if (playing != null && playing.subtitleIndex >= 0) {
+                    subtitleTiming.fix(playing.itemId, playing.subtitleIndex) { viewModel.afterSubtitleFix() }
+                }
             }
 
             PlaybackAction.Next -> {

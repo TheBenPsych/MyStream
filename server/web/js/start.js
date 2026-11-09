@@ -5,7 +5,7 @@
 // ---------- sounds (soft mallets: two notes when Benflix opens, four as the doors grow) ----------
 B.sound = (name) => {
   if (B.webSettings().sounds === false) return;
-  try { const a = new Audio(`/web/sounds/${name}.wav`); a.volume = name === "doors" ? 0.55 : 0.45; a.play().catch(() => {}); } catch (e) {}
+  try { const a = new Audio(`web/sounds/${name}.wav`); a.volume = name === "doors" ? 0.55 : 0.45; a.play().catch(() => {}); } catch (e) {}
 };
 
 // ---------- intro: logo fades in, holds, then glides up into Who's watching ----------
@@ -86,7 +86,7 @@ B.route(/^\/signin/, async () => {
       const go = $("#go"); go.disabled = true; go.textContent = "Signing in…"; $("#err").textContent = "";
       const device = B.newDevice();
       try {
-        const s = await B.call("POST", "/api/web/login", { username: name, password: $("#v").value, device }, { device });
+        const s = await B.call("POST", "api/web/login", { username: name, password: $("#v").value, device }, { device });
         finish(s, device);
       } catch (err) {
         $("#v").classList.add("bad"); $("#err").textContent = err.message;
@@ -101,13 +101,13 @@ B.route(/^\/signin/, async () => {
     $("#bk").onclick = () => { stop = true; askName(); };
     let stop = false;
     try {
-      const s = await B.call("POST", "/api/web/qc/start", {}, { device });
+      const s = await B.call("POST", "api/web/qc/start", {}, { device });
       $("#code").innerHTML = `<div class="code">${String(s.code || "").split("").map((c) => `<b>${esc(c)}</b>`).join("")}</div><p style="text-align:center" class="dim">Waiting for the code…</p>`;
       const tick = async () => {
         if (stop || !$("#code")) return;
         try {
-          const c = await B.call("POST", "/api/web/qc/check", { secret: s.secret }, { device });
-          if (c.ok) return finish(await B.call("POST", "/api/web/qc/finish", { secret: s.secret }, { device }), device);
+          const c = await B.call("POST", "api/web/qc/check", { secret: s.secret }, { device });
+          if (c.ok) return finish(await B.call("POST", "api/web/qc/finish", { secret: s.secret }, { device }), device);
           if (c.gone) { $("#err").textContent = "That code ran out. Press back and try again."; return; }
         } catch (err) { $("#err").textContent = err.message; }
         setTimeout(tick, 3000);
@@ -120,7 +120,7 @@ B.route(/^\/signin/, async () => {
     const old = B.profiles().find((x) => x.id === p.id);
     if (old && old.token !== p.token) {
       // Signed in again: the old sign-in isn't needed any more
-      B.call("POST", "/api/web/jf/Sessions/Logout", undefined, { profile: old, quiet401: true }).catch(() => {});
+      B.call("POST", "api/web/jf/Sessions/Logout", undefined, { profile: old, quiet401: true }).catch(() => {});
     }
     B.addProfile(p);
     B.pick(p.id);

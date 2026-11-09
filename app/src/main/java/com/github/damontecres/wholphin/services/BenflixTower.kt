@@ -228,6 +228,14 @@ class BenflixTower
             )
 
         private fun message(j: JSONObject) = j.optString("message", "Done.")
+
+        /** Report card, tidy-up and play test on Tower (benflix_care.py): [path] after /api/admin/care/ */
+        suspend fun care(path: String): JSONObject = atHome { helper.getJson("/api/admin/care/$path") }
+
+        suspend fun carePost(
+            path: String,
+            body: JSONObject = JSONObject(),
+        ): JSONObject = atHome { helper.postJson("/api/admin/care/$path", body) }
     }
 
 private fun JSONObject.textOrNull(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
