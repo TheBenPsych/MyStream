@@ -166,12 +166,62 @@ MUSIC_ENV=$APP/music.env
 [ -f "$MUSIC_ENV" ] || : >"$MUSIC_ENV"
 chmod 600 "$MUSIC_ENV"
 
+say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
+SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
+find_slskd() {
+  local c app yml key port dl src dst u ipaddr typed
+  c=$(docker ps -a --format '{{.Names}}' | grep -i slskd | head -1)
+  if [ -z "$c" ]; then echo "  skip  No slskd app found. That's fine: music then only comes through Lidarr."; return; fi
+  app=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}' "$c")
+  yml="$app/slskd.yml"
+  # The first API key in slskd's settings (SoulSync usually made one), or the one typed here last time
+  key=$(sed -n '/api_keys:/,/^[^ ]/p' "$yml" 2>/dev/null | sed -n 's/^ *key: *["'\'']*\([^"'\'' ]*\).*/\1/p' | head -1)
+  [ -n "$key" ] || key=$(sed -n 's/^SLSKD_KEY=//p' "$MUSIC_ENV" | head -1)
+  if [ -z "$key" ]; then
+    printf "  slskd's API key (in SoulSync's settings, or slskd.yml), or just press Enter to skip: "
+    read -r typed </dev/tty
+    key=$typed
+  fi
+  if [ -z "$key" ]; then echo "  skip  No slskd API key, so Soulseek stays off. See the music setup steps."; return; fi
+  port=$(sed -n '/^web:/,/^[^ ]/p' "$yml" 2>/dev/null | sed -n 's/^ *port: *\([0-9]*\).*/\1/p' | head -1)
+  [ -n "$port" ] || port=5030
+  # slskd's download folder, as a folder on Tower
+  dl=$(sed -n '/^directories:/,/^[^ ]/p' "$yml" 2>/dev/null | sed -n 's/^ *downloads: *["'\'']*\([^"'\'']*\).*/\1/p' | head -1)
+  [ -n "$dl" ] || dl=/app/downloads
+  SLSK_DL=""
+  local best=0
+  while IFS='=' read -r src dst; do
+    [ -n "$dst" ] || continue
+    # The most exact folder wins (like /app/downloads over /app)
+    case "$dl/" in "${dst%/}/"*) if [ ${#dst} -gt "$best" ]; then best=${#dst}; SLSK_DL="${src%/}${dl#"${dst%/}"}"; fi ;; esac
+  done < <(docker inspect -f '{{range .Mounts}}{{.Source}}={{.Destination}}{{"\n"}}{{end}}' "$c")
+  if [ -z "$SLSK_DL" ] || [ ! -d "$SLSK_DL" ]; then
+    echo "  PROBLEM  Couldn't find slskd's download folder on Tower ($dl). Send this output to Claude."
+    SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
+    return
+  fi
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port" "http://$HOST_IP:$port" ${ipaddr:+"http://$ipaddr:$port"}; do
+    if curl -fs -m 5 -H "X-API-Key: $key" "$u/api/v0/application" >/dev/null; then
+      sed -i '/^SLSKD_/d' "$MUSIC_ENV"
+      printf 'SLSKD_URL=%s\nSLSKD_KEY=%s\n' "$u" "$key" >>"$MUSIC_ENV"
+      echo "  ok  $c ($u, downloads in $SLSK_DL)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but it didn't answer on port $port with that key. Check the key, then run this again."
+  sed -i '/^SLSKD_KEY=/d' "$MUSIC_ENV"
+  [ -n "$typed" ] && printf 'SLSKD_KEY=%s\n' "$typed" >>"$MUSIC_ENV"
+}
+find_slskd
+mkdir -p "$SLSK_DL"
+
 say "Starting the helper (benflix-games on port 8097)"
 docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
   --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" \
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$SLSK_DL:/slskd:rw" \
   python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5
 # The first start also installs ffmpeg for the skip times, which can take a minute or two
@@ -209,6 +259,7 @@ if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"music": true'; then
   else
     echo "  ok  Music is on, but Lidarr isn't connected yet (see above)."
   fi
+  if grep -q SLSKD_URL "$MUSIC_ENV"; then echo "  ok  Soulseek finds single songs Lidarr can't."; fi
   echo "      Drop music files in \\\\TOWER\\Homelab\\Media\\Music Drop and they sort themselves into Music."
 else
   echo "  PROBLEM  Music didn't load in the helper. Send this output to Claude."

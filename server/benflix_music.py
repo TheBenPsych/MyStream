@@ -12,6 +12,10 @@ How it works, in plain words:
     * the album gets its cover picture, and Jellyfin is told about the new files.
   If no copy turns up, Benflix tries again by itself (after 1 hour, 6 hours, 1 day and 2 days), then
   says "Couldn't find it" with a Try again button.
+- Soulseek (optional, through the slskd app): a single song Lidarr hasn't found after 20 minutes (or that
+  Lidarr can't do at all) is looked for on Soulseek, where people share single songs. Only 320 MP3s,
+  lossless files (turned into 320 MP3) or near-320 MP3s of about the right length are taken, then tagged and
+  filed exactly like Lidarr's.
 - Playlists: paste a Spotify, YouTube (Music) or Deezer playlist link, or a list of "Artist - Song"
   lines. Only the names are read. Every song is asked for, songs already on Benflix are kept, and the
   playlist is made again in Jellyfin as the songs arrive.
@@ -51,6 +55,12 @@ DATA_DIRS = ("/musicdata", "/skips/music")
 LIDARR_URL = os.environ.get("LIDARR_URL", "").rstrip("/")
 LIDARR_KEY = os.environ.get("LIDARR_KEY", "")
 LIDARR_MUSIC = os.environ.get("LIDARR_MUSIC", "").rstrip("/")
+# Soulseek (through the slskd app): single songs Lidarr can't find. SLSKD_DIR is slskd's download folder in the helper.
+SLSKD_URL = os.environ.get("SLSKD_URL", "").rstrip("/")
+SLSKD_KEY = os.environ.get("SLSKD_KEY", "")
+SLSKD_DIR = os.environ.get("SLSKD_DIR", "/slskd")
+SLSK_AFTER = 20 * 60  # A song Lidarr hasn't found in this long is looked for on Soulseek too
+SLSK_WORDS = ("live", "remix", "instrumental", "karaoke", "cover", "acapella", "a cappella", "acoustic", "demo", "8 bit", "nightcore", "slowed", "sped up", "reverb")
 DEEZER = "https://api.deezer.com"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 AUDIO = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".wav", ".wma", ".aiff", ".aif", ".alac", ".ape", ".wv"}
@@ -453,6 +463,7 @@ def ask(kind, deezer_id, playlist=None, quiet=False):
             "cover_big": al.get("cover_xl") or al.get("cover_big") or "",
             "disc": t.get("disk_number") or 1,
             "number": t.get("track_position") or 0,
+            "seconds": t.get("duration") or 0,
         }
     else:
         a = deezer(f"/album/{deezer_id}")
@@ -485,7 +496,9 @@ def _find(rid):
 
 
 def _retry(r):
-    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time()})
+    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time(), "slsk_tried": False})
+    if not LIDARR_URL and _slsk_on() and r["kind"] == "song":
+        r["state"] = "slsk_search"
 
 
 def retry(rid):
@@ -501,6 +514,11 @@ def remove(rid):
     with _lock:
         r = _find(rid)
         _state["requests"].remove(r)
+        if r["state"] == "slsk_downloading" and (r.get("slsk") or {}).get("cands"):
+            try:
+                _slsk_cancel(r["slsk"]["cands"][r["slsk"]["i"]])
+            except (IndexError, MusicError):
+                pass
         still = [x for x in _state["requests"] if x.get("album_id") == r.get("album_id") and x["state"] != "ready"]
         _save()
     if r.get("album_id") and r["state"] != "ready" and not still:
@@ -525,6 +543,13 @@ def _words(r):
         return f"Downloading, {pct}%", 0.4 + 0.55 * pct / 100, False
     if s == "tidying":
         return "Putting it in your Music folder", 0.97, False
+    if s == "slsk_search":
+        return "Looking on Soulseek", 0.3, False
+    if s == "slsk_downloading":
+        pct = int(r.get("pct") or 0)
+        if not pct and r.get("queued"):
+            return "Waiting in someone's Soulseek queue", 0.35, False
+        return f"Downloading, {pct}%", 0.4 + 0.55 * pct / 100, False
     if s in ("searching", "search_now"):
         if len(r.get("tries") or []) > 1:
             return "Still looking (tries again by itself)", 0.3, False
@@ -554,10 +579,12 @@ def _public(r):
 
 def status():
     problems = []
-    if not LIDARR_URL:
+    if not LIDARR_URL and not SLSKD_URL:
         problems.append("Lidarr isn't connected yet. Follow the music setup steps, then run the Benflix setup command again.")
     elif _ready_lidarr.get("problem"):
         problems.append(_ready_lidarr["problem"])
+    if SLSKD_URL and _slsk_problem[0]:
+        problems.append(_slsk_problem[0])
     if not _has_ffmpeg():
         problems.append("ffmpeg is missing on Tower, so lossless files can't become MP3s. Run the Benflix setup command again.")
     if not os.path.isdir(MUSIC):
@@ -570,6 +597,7 @@ def status():
         drop = list(_drop["lines"][-12:])
     return {
         "lidarr": bool(LIDARR_URL) and _ready_lidarr.get("ok", False),
+        "soulseek": _slsk_on(),
         "problems": problems,
         "requests": reqs,
         "playlists": pls,
@@ -749,12 +777,20 @@ def _worker():
 def _tick():
     with _lock:
         todo = [r for r in _state["requests"] if r["state"] not in ("ready", "not_found", "problem")]
-    if not todo or not LIDARR_URL or not _ensure_lidarr():
+    if not todo:
         return
-    queue = _queue()
+    lidarr_ok = bool(LIDARR_URL) and _ensure_lidarr()
+    queue = _queue() if lidarr_ok else {}
     for r in todo:
         try:
-            _step(r, queue)
+            if r["state"].startswith("slsk_"):
+                _slsk_step(r)
+            elif lidarr_ok:
+                _step(r, queue)
+                _maybe_soulseek(r)
+            elif r["kind"] == "song" and _slsk_on() and not r.get("slsk_tried"):
+                r["state"] = "slsk_search"
+                _slsk_step(r)
         except MusicError as e:
             r["fails"] = r.get("fails", 0) + 1
             if r["fails"] >= 5:
@@ -1031,6 +1067,265 @@ def _finish(r, files):
     except MusicError:
         pass
     log(f"ready: {r['artist']} - {r['title']}")
+
+
+# ---------- Soulseek (single songs, through slskd) ----------
+
+_slsk_problem = [None]
+
+
+def _slsk_on():
+    return bool(SLSKD_URL and SLSKD_KEY)
+
+
+def slskd(method, path, body=None):
+    try:
+        return _http(SLSKD_URL + "/api/v0" + path, method, body, {"X-API-Key": SLSKD_KEY}, timeout=30)
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Benflix setup command again."
+        raise MusicError(502, f"slskd (Soulseek) answered with an error ({e.code}).")
+    except (urllib.error.URLError, OSError, ValueError):
+        _slsk_problem[0] = "Couldn't reach slskd (Soulseek). Check it's running on Tower."
+        raise MusicError(502, "Couldn't reach slskd (Soulseek).")
+
+
+def _maybe_soulseek(r):
+    """A song Lidarr couldn't do, or hasn't found in 20 minutes, is looked for on Soulseek (once per try)"""
+    if r["kind"] != "song" or not _slsk_on() or r.get("slsk_tried"):
+        return
+    stuck = r["state"] == "searching" and r.get("tries") and time.time() - r["tries"][0] > SLSK_AFTER
+    if stuck or r["state"] in ("not_found", "problem"):
+        r["lidarr_state"] = r["state"]
+        r.update({"state": "slsk_search", "note": None})
+        log(f"looking on Soulseek for {r['artist']} - {r['title']}")
+
+
+def _slsk_step(r):
+    if r["state"] == "slsk_search":
+        r["slsk"] = {"cands": _slsk_find(r), "i": 0}
+        _slsk_problem[0] = None
+        if not r["slsk"]["cands"]:
+            _slsk_gave_up(r)
+            return
+        _slsk_start(r)
+    elif r["state"] == "slsk_downloading":
+        _slsk_watch(r)
+
+
+def _slsk_gave_up(r):
+    """Soulseek had nothing good: back to Lidarr (which keeps trying), or Couldn't find it"""
+    r["slsk_tried"] = True
+    r.pop("slsk", None)
+    back = r.pop("lidarr_state", None)
+    if LIDARR_URL and r.get("album_id") and back == "searching":
+        r["state"] = "searching"
+    else:
+        r.update({"state": "not_found", "note": "Couldn't find it (Lidarr and Soulseek)" if LIDARR_URL else "Couldn't find it on Soulseek"})
+        log(f"couldn't find {r['artist']} - {r['title']} on Soulseek either")
+
+
+def _slsk_find(r):
+    """Searches Soulseek and returns the best files to try, best first"""
+    cands = _slsk_search(f"{norm(r['artist'])} {norm(r['title'])}", r)
+    if not cands and len(norm(r["title"]).split()) >= 2:
+        cands = _slsk_search(norm(r["title"]), r)
+    return cands[:6]
+
+
+def _slsk_search(text, r):
+    sid = str(uuid.uuid4())
+    slskd("POST", "/searches", {"id": sid, "searchText": text, "searchTimeout": 15000, "responseLimit": 100, "fileLimit": 10000})
+    for _ in range(20):
+        time.sleep(2)
+        st = slskd("GET", f"/searches/{sid}") or {}
+        if st.get("isComplete"):
+            break
+    responses = slskd("GET", f"/searches/{sid}/responses") or []
+    try:
+        slskd("DELETE", f"/searches/{sid}")
+    except MusicError:
+        pass
+    want_title, want_artist = norm(r["title"]), norm(r["artist"])
+    artist_words = [w for w in want_artist.split() if len(w) > 1 and w not in ("the", "and")] or want_artist.split()
+    out, seen = [], set()
+    for resp in responses:
+        user = resp.get("username")
+        for f in resp.get("files") or []:
+            if f.get("isLocked"):
+                continue
+            path = str(f.get("filename") or "")
+            base = re.split(r"[\\/]", path)[-1]
+            ext = os.path.splitext(base)[1].lower()
+            nbase, npath = norm(os.path.splitext(base)[0]), norm(path.replace("\\", " ").replace("/", " "))
+            if not want_title or not all(w in nbase.split() for w in want_title.split()):
+                continue
+            if artist_words and not any(w in npath.split() for w in artist_words):
+                continue
+            if any(w in nbase and w not in want_title for w in SLSK_WORDS):
+                continue
+            length = f.get("length") or 0
+            if length and r.get("seconds") and abs(length - r["seconds"]) > 6:
+                continue
+            rate = f.get("bitRate") or 0
+            if ext == ".mp3":
+                if rate >= 320:
+                    q = 3
+                elif rate == 0 or rate >= 256:
+                    q = 1
+                else:
+                    continue
+            elif ext in LOSSLESS or ext == ".m4a" and (f.get("bitDepth") or 0) >= 16:
+                q = 2
+            else:
+                continue
+            key = (user, path)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(
+                {
+                    "user": user,
+                    "file": path,
+                    "size": f.get("size") or 0,
+                    "q": q,
+                    "free": bool(resp.get("hasFreeUploadSlot")),
+                    "queue": resp.get("queueLength") or 0,
+                    "speed": resp.get("uploadSpeed") or 0,
+                }
+            )
+    out.sort(key=lambda c: (-c["q"], not c["free"], c["queue"], -c["speed"]))
+    # Different people first, so one slow person doesn't hold everything up
+    firsts, rest, users = [], [], set()
+    for c in out:
+        (rest if c["user"] in users else firsts).append(c)
+        users.add(c["user"])
+    return firsts + rest
+
+
+def _slsk_start(r):
+    sl = r["slsk"]
+    while sl["i"] < len(sl["cands"]):
+        c = sl["cands"][sl["i"]]
+        try:
+            slskd("POST", "/transfers/downloads/" + urllib.parse.quote(c["user"], safe=""), [{"filename": c["file"], "size": c["size"]}])
+            sl["since"] = time.time()
+            sl["moved"] = time.time()
+            sl["bytes"] = 0
+            r.update({"state": "slsk_downloading", "pct": 0, "queued": True})
+            return
+        except MusicError:
+            sl["i"] += 1
+    _slsk_gave_up(r)
+
+
+def _slsk_next(r, why):
+    sl = r["slsk"]
+    c = sl["cands"][sl["i"]]
+    log(f"Soulseek: {why} ({c['user']}), trying the next copy")
+    _slsk_cancel(c)
+    sl["i"] += 1
+    _slsk_start(r)
+
+
+def _slsk_cancel(c):
+    try:
+        mine = slskd("GET", "/transfers/downloads/" + urllib.parse.quote(c["user"], safe="")) or {}
+        for d in mine.get("directories") or []:
+            for f in d.get("files") or []:
+                if f.get("filename") == c["file"] and f.get("id"):
+                    slskd("DELETE", f"/transfers/downloads/{urllib.parse.quote(c['user'], safe='')}/{f['id']}?remove=true")
+    except MusicError:
+        pass
+
+
+def _slsk_watch(r):
+    sl = r.get("slsk") or {}
+    if not sl.get("cands") or sl.get("i", 0) >= len(sl["cands"]):
+        r["state"] = "slsk_search"
+        return
+    c = sl["cands"][sl["i"]]
+    mine = slskd("GET", "/transfers/downloads/" + urllib.parse.quote(c["user"], safe="")) or {}
+    t = next((f for d in mine.get("directories") or [] for f in d.get("files") or [] if f.get("filename") == c["file"]), None)
+    if not t:
+        _slsk_next(r, "the download disappeared")
+        return
+    state = str(t.get("state") or "")
+    done = int(t.get("bytesTransferred") or 0)
+    if done > sl.get("bytes", 0):
+        sl["bytes"], sl["moved"] = done, time.time()
+    r["pct"] = int(t.get("percentComplete") or 0)
+    r["queued"] = "Queued" in state or state in ("Requested", "Initializing")
+    if "Succeeded" in state:
+        _slsk_finish(r, c)
+    elif "Completed" in state:
+        _slsk_next(r, f"the download stopped ({state})")
+    elif r["queued"] and time.time() - sl["since"] > 15 * 60:
+        _slsk_next(r, "waited 15 minutes in their queue")
+    elif not r["queued"] and time.time() - sl["moved"] > 5 * 60:
+        _slsk_next(r, "the download stalled")
+
+
+def _slsk_file(c):
+    """Where slskd saved it: its download folder / the shared folder's name / the file"""
+    parts = re.split(r"[\\/]", c["file"])
+    base = parts[-1]
+    guess = os.path.join(SLSKD_DIR, parts[-2] if len(parts) > 1 else "", base)
+    if os.path.isfile(guess):
+        return guess
+    found = []
+    for root, dirs, files in os.walk(SLSKD_DIR):
+        if root.count(os.sep) - SLSKD_DIR.count(os.sep) > 3:
+            dirs[:] = []
+        if base in files:
+            found.append(os.path.join(root, base))
+    return max(found, key=os.path.getmtime) if found else None
+
+
+def _slsk_finish(r, c):
+    path = _slsk_file(c)
+    if not path:
+        if time.time() - r["slsk"].get("since", 0) > 3600:
+            _slsk_next(r, "the finished file couldn't be found in slskd's download folder")
+        else:
+            _slsk_problem[0] = "A Soulseek download finished but Benflix can't see slskd's download folder. Run the Benflix setup command again."
+        return
+    r["state"] = "tidying"
+    tags = {"artist": r["artist"], "album_artist": r["artist"], "album": r.get("album") or "Singles", "title": r["title"]}
+    if r.get("number"):
+        tags["track"] = str(r["number"])
+    if r.get("disc"):
+        tags["disc"] = str(r["disc"])
+    folder = os.path.dirname(path)
+    made = _make_mp3(path, delete_original=True, tags=tags)
+    if made:
+        path = made
+    else:
+        _retag(path, tags)
+    name = safe(r["title"])
+    if r.get("number"):
+        num = f"{int(r['number']):02d}"
+        if r.get("disc") and int(r["disc"]) > 1:
+            num = f"{int(r['disc'])}-{num}"
+        name = f"{num} - {name}"
+    dest = os.path.join(MUSIC, safe(r["artist"]), safe(r.get("album") or "Singles"), name + os.path.splitext(path)[1].lower())
+    if os.path.exists(dest):
+        _quiet_remove(path)
+    else:
+        _move(path, dest)
+    if os.path.abspath(folder) != os.path.abspath(SLSKD_DIR):
+        try:
+            os.rmdir(folder)  # Only when it's empty now
+        except OSError:
+            pass
+    _cover(os.path.dirname(dest), r.get("cover_big"))
+    _tell_jellyfin([dest])
+    _slsk_cancel(c)  # Takes the finished download off slskd's list
+    r.update({"state": "ready", "ready_at": time.time(), "note": None, "source": "soulseek"})
+    r.pop("slsk", None)
+    if r.get("album_id"):
+        _unmonitor(r)
+    log(f"ready from Soulseek: {r['artist']} - {r['title']}")
 
 
 # ---------- Files: MP3s, covers, song info ----------
