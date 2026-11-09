@@ -35,6 +35,7 @@ library, plus ffmpeg/ffprobe (installed by the setup command) for song info and 
 """
 
 import base64
+import copy
 import json
 import os
 import re
@@ -406,6 +407,10 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, status()
         if method == "GET" and path == "/api/music/search":
             return 200, search(q("q"))
+        if method == "GET" and path == "/api/music/discover":
+            return 200, discover()
+        if method == "GET" and path == "/api/music/genre":
+            return 200, genre_page(q("id"))
         if method == "GET" and path == "/api/music/artist":
             return 200, artist_page(q("id"))
         if method == "GET" and path == "/api/music/album":
@@ -446,7 +451,7 @@ def search(text):
         "albums": [_album(a) for a in albums],
         "artists": [_artist(a) for a in artists],
     }
-    _mark_asked(out)
+    _mark_asked(out, _jellyfin_have(text))
     return out
 
 
@@ -477,15 +482,219 @@ def album_page(album_id):
     return out
 
 
-def _mark_asked(out):
+# ---------- Discover: what's popular right now (Deezer's charts, looked at every few hours) ----------
+
+_found_cache = {}
+
+
+def _cached(key, load, keep=4 * 3600):
+    with _lock:
+        hit = _found_cache.get(key)
+    if hit and time.time() - hit[0] < keep:
+        return copy.deepcopy(hit[1])
+    value = load()
+    with _lock:
+        _found_cache[key] = (time.time(), value)
+    return copy.deepcopy(value)
+
+
+def _genres():
+    def load():
+        out = []
+        for g in deezer("/genre").get("data") or []:
+            if g.get("id") and g.get("name") and g["id"] != 0:
+                out.append({"id": g["id"], "name": g["name"], "picture": g.get("picture_medium") or ""})
+        return out
+
+    return _cached("genres", load, keep=7 * 24 * 3600)
+
+
+def _chart(genre_id, songs=100):
+    """Top songs, albums and artists, and new releases, for everything (0) or one genre"""
+
+    def load():
+        def part(path, **k):
+            try:
+                return deezer(path, **k).get("data") or []
+            except MusicError:
+                return []
+
+        tracks = part(f"/chart/{genre_id}/tracks", limit=songs)
+        albums = part(f"/chart/{genre_id}/albums", limit=30)
+        artists = part(f"/chart/{genre_id}/artists", limit=30) if genre_id == 0 else part(f"/genre/{genre_id}/artists", limit=30)
+        new = part(f"/editorial/{genre_id}/releases", limit=30)
+        if not tracks and not albums and not new:
+            raise MusicError(502, "Couldn't reach the music catalogue. Check Tower has internet.")
+        return {
+            "songs": [_song(t) for t in tracks if t.get("id")],
+            "albums": [_album(a) for a in albums if a.get("id")],
+            "artists": [_artist(a) for a in artists if a.get("id")],
+            "new": [_album(a) for a in new if a.get("id")],
+        }
+
+    return _cached(f"chart-{genre_id}", load)
+
+
+def _picks():
+    """Albums Deezer's editors are picking right now"""
+
+    def load():
+        try:
+            return [_album(a) for a in deezer("/editorial/0/selection", limit=30).get("data") or [] if a.get("id")]
+        except MusicError:
+            return []
+
+    return _cached("picks", load)
+
+
+def _your_artists():
+    """Artist folder names in Music, the ones with the most songs first"""
+    counts = {}
+    if os.path.isdir(MUSIC):
+        for n in os.listdir(MUSIC):
+            p = os.path.join(MUSIC, n)
+            if n.startswith(".") or not os.path.isdir(p) or n.lower() in ("various artists", "unknown", "singles"):
+                continue
+            counts[n] = sum(1 for _b, _d, files in os.walk(p) for f in files if os.path.splitext(f)[1].lower() in AUDIO)
+    return [n for n, c in sorted(counts.items(), key=lambda x: -x[1]) if c]
+
+
+def _because():
+    """'Because you have <artist>': songs like two artists already in Music (new picks every day)"""
+
+    def load():
+        try:
+            names = _your_artists()[:30]
+        except OSError:
+            return []
+        if not names:
+            return []
+        day = int(time.time() // 86400)
+        picked = [names[(day * 7 + i * 13) % len(names)] for i in range(min(3, len(names)))]
+        out = []
+        for name in dict.fromkeys(picked):
+            try:
+                found = deezer("/search/artist", q=name, limit=5).get("data") or []
+                a = next((x for x in found if same(x.get("name"), name)), None)
+                if not a:
+                    continue
+                radio = deezer(f"/artist/{a['id']}/radio", limit=40).get("data") or []
+            except MusicError:
+                continue
+            # Other artists' songs first, so it's something new
+            songs = [_song(t) for t in radio if t.get("id") and not same((t.get("artist") or {}).get("name"), name)]
+            if len(songs) >= 6:
+                out.append({"artist": a.get("name") or name, "songs": songs[:25]})
+            if len(out) >= 2:
+                break
+        return out
+
+    return _cached(f"because-{int(time.time() // 86400)}", load, keep=12 * 3600)
+
+
+def discover():
+    out = _chart(0)
+    out["genres"] = _genres()
+    out["picks"] = _picks()
+    out["because"] = _because()
+    _mark_asked(out)
+    for b in out["because"]:
+        _mark_asked(b)
+        # Songs you already have aren't much of a find
+        b["songs"] = [x for x in b["songs"] if not x.get("have")][:20]
+    out["because"] = [b for b in out["because"] if len(b["songs"]) >= 5]
+    return out
+
+
+def genre_page(genre_id):
+    if not str(genre_id).isdigit():
+        raise MusicError(400, "Which genre?")
+    g = next((x for x in _genres() if str(x["id"]) == str(genre_id)), None)
+    if not g:
+        raise MusicError(404, "That genre isn't in the music catalogue.")
+    out = _chart(int(genre_id), songs=50)
+    out["genre"] = g
+    _mark_asked(out)
+    return out
+
+
+_have = {"at": 0, "songs": set()}
+
+
+def _have_reset():
+    """Music changed (a song came in or was deleted): look at the folder again next time"""
+    _have["at"] = 0
+
+
+def _have_songs():
+    """(artist, song) pairs already in Music, from the folder and file names (looked at every 10 minutes)"""
+    if time.time() - _have["at"] < 600:
+        return _have["songs"]
+    found = set()
+    if os.path.isdir(MUSIC):
+        for base, dirs, files in os.walk(MUSIC):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            rel = os.path.relpath(base, MUSIC)
+            if rel == ".":
+                continue
+            who = norm(main_artist(rel.split(os.sep)[0]))
+            for f in files:
+                if os.path.splitext(f)[1].lower() in AUDIO:
+                    stem = re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(f)[0])
+                    found.add((who, norm(stem)))
+    _have.update({"at": time.time(), "songs": found})
+    return found
+
+
+def _jellyfin_have(text):
+    """(artist, song) pairs Jellyfin finds for these search words, so songs already on Benflix say so"""
+    user = _state["admin"].get("user")
+    if not user or len(text or "") < 2:
+        return set()
+    q = urllib.parse.urlencode({"searchTerm": text, "IncludeItemTypes": "Audio", "Recursive": "true", "Limit": 60, "userId": user, "Fields": "ArtistItems"})
+    try:
+        j = _jellyfin("GET", f"/Items?{q}") or {}
+    except Exception:
+        return set()
+    out = set()
+    for it in j.get("Items") or []:
+        names = [it.get("AlbumArtist") or ""] + [a.get("Name", "") for a in it.get("ArtistItems") or []] + list(it.get("Artists") or [])
+        for n in names:
+            if n:
+                out.add((norm(main_artist(n)), norm(it.get("Name"))))
+    return out
+
+
+def _owned(song, have):
+    """Is this catalogue song already in Music? Same artist and the same take of the song"""
+    title = norm(song.get("title"))
+    if not title:
+        return False
+    for who in {norm(main_artist(song.get("artist"))), norm(song.get("artist"))}:
+        if (who, title) in have:
+            return True
+    return False
+
+
+def _mark_asked(out, extra_have=None):
     """Adds 'asked' (the words for its request) to anything already asked for"""
     with _lock:
         by = {(r["kind"], r.get("deezer")): r for r in _state["requests"]}
-    for kind, key in (("song", "songs"), ("album", "albums")):
+    for kind, key in (("song", "songs"), ("album", "albums"), ("album", "new"), ("album", "picks")):
         for x in out.get(key) or []:
             r = by.get((kind, x.get("id")))
             if r:
                 x["asked"] = _words(r)[0]
+    try:
+        have = set(_have_songs())
+    except OSError:
+        have = set()
+    have |= extra_have or set()
+    for x in out.get("songs") or []:
+        if _owned(x, have):
+            # Already in Music: never asked for again, whatever the old request says
+            x["have"] = True
+            x.pop("asked", None)
     if out.get("album"):
         r = by.get(("album", out["album"].get("id")))
         if r:
@@ -508,6 +717,14 @@ def ask(kind, deezer_id, playlist=None, quiet=False):
     if kind == "song":
         t = deezer(f"/track/{deezer_id}")
         al = t.get("album") or {}
+        if not quiet:
+            one = _song(t)
+            try:
+                have = set(_have_songs()) | _jellyfin_have(one["title"])
+            except OSError:
+                have = set()
+            if _owned(one, have):
+                raise MusicError(409, f"{one['title']} is already in your music.")
         r = {
             "title": t.get("title_short") or t.get("title") or "",
             "full_title": t.get("title") or "",
@@ -827,6 +1044,10 @@ def _worker():
             _playlists_tick()
         except Exception as e:
             log(f"playlist problem: {e!r}")
+        try:
+            _doubles_daily()
+        except Exception as e:
+            log(f"doubles check problem: {e!r}")
 
 
 def _tick():
@@ -1155,6 +1376,7 @@ def _finish(r, files):
             except MusicError:
                 pass
     _tell_jellyfin(made)
+    _have_reset()
     for x in mates:
         if x["kind"] == "album" or _pick_tracks(tracks, _wanted_title(x)):
             x["state"] = "ready"
@@ -1317,6 +1539,7 @@ def redo_song(item_id, token, user_id):
             raise MusicError(500, "Tower wouldn't let Benflix delete the file. Check the Music folder's permissions.")
     _quiet_remove(os.path.splitext(real)[0] + ".lrc")
     _tell_jellyfin([path], kind="Deleted")
+    _have_reset()
     log(f"deleted a bad copy of {artist} - {title}")
     # Ask for it again
     now = time.time()
@@ -1640,6 +1863,10 @@ def probe(path):
     tags.update({k.lower(): v for k, v in ((j.get("format") or {}).get("tags") or {}).items()})
     if not out.get("bitrate"):
         out["bitrate"] = int((j.get("format") or {}).get("bit_rate") or 0)
+    try:
+        out["seconds"] = float((j.get("format") or {}).get("duration") or 0)
+    except (TypeError, ValueError):
+        out["seconds"] = 0
 
     def num(v):
         m = re.match(r"\s*(\d+)", str(v or ""))
@@ -2191,6 +2418,105 @@ def _drop_tick():
     log(f"drop folder: sorted {counts['moved']}, {counts['dupes']} twice, {counts['cant']} couldn't work out")
 
 
+# ---------- The same song twice in different albums of one artist ----------
+
+
+GENERIC_TITLES = {"intro", "outro", "interlude", "skit", "prelude", "untitled", "bonus track", "hidden track", "reprise"}
+
+
+def _song_key(path):
+    """'Music/Kid Cudi/Some Album/05 - Tequila Shots.mp3' -> 'tequila shots' (other takes like '(Live)' stay different)"""
+    stem = re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(os.path.basename(path))[0])
+    return norm(clean_title(stem))
+
+
+def _artist_doubles(mode, say, undo):
+    """Finds songs that are in Music twice under the same artist (say an album copy from SoulSync and another
+    from a request, in folders named a little differently) and puts the spare copies in Music Leftovers/Duplicates.
+    Keeps the better copy: the better sound first, then the one in the fuller album. Returns how many."""
+    if not os.path.isdir(MUSIC):
+        return 0
+    count, gone = 0, []
+    for artist in sorted(os.listdir(MUSIC)):
+        top = os.path.join(MUSIC, artist)
+        if artist.startswith(".") or not os.path.isdir(top) or artist.lower() in ("various artists", "va", "soundtrack", "soundtracks"):
+            continue
+        groups = {}
+        for f in _audio_files(top):
+            k = _song_key(f)
+            if k:
+                groups.setdefault(k, []).append(f)
+        for k, files in groups.items():
+            if len(files) < 2 or len({os.path.dirname(f) for f in files}) < 2:
+                continue  # Two copies in one album folder are left to the tidy-up's own check
+            if k in GENERIC_TITLES or re.fullmatch(r"(intro|outro|interlude|skit|untitled|track)( \d+)?", k):
+                continue  # Different songs often share these names
+            info = {f: probe(f) for f in files}
+            # Only the same length counts, so an album version and a shorter radio edit are both kept, and
+            # nothing is moved when the length can't be read
+            if not all(info[f].get("seconds") for f in files):
+                continue
+            base = max(files, key=lambda f: sum(abs(info[f]["seconds"] - info[g]["seconds"]) <= 3 for g in files))
+            files = [f for f in files if abs(info[f]["seconds"] - info[base]["seconds"]) <= 3]
+            if len(files) < 2 or len({os.path.dirname(f) for f in files}) < 2:
+                continue
+            in_folder = {f: len([n for n in os.listdir(os.path.dirname(f)) if os.path.splitext(n)[1].lower() in AUDIO]) for f in files}
+
+            def worth(f):
+                return (min(info[f].get("bitrate") or 0, 256000), in_folder[f], os.path.getsize(f))
+
+            keep = max(files, key=worth)
+            for f in files:
+                if f == keep:
+                    continue
+                count += 1
+                say(f"Same song twice: {os.path.relpath(f, MUSIC)} (keeping {os.path.relpath(keep, MUSIC)})")
+                if mode == "preview":
+                    continue
+                to = _free_name(os.path.join(LEFT, "Duplicates", os.path.relpath(f, MUSIC)))
+                try:
+                    _move(f, to)
+                except OSError as e:
+                    say(f"Couldn't move {os.path.relpath(f, MUSIC)}: {e}")
+                    continue
+                undo.append(["move", f, to])
+                gone.append(f)
+                lrc = os.path.splitext(f)[0] + ".lrc"
+                if os.path.exists(lrc):
+                    lto = os.path.splitext(to)[0] + ".lrc"
+                    _move(lrc, lto)
+                    undo.append(["move", lrc, lto])
+    if gone:
+        try:
+            _tell_jellyfin(gone, kind="Deleted")
+        except Exception as e:
+            log(f"couldn't tell Jellyfin about the doubles: {e!r}")
+        _have_reset()
+    return count
+
+
+def _doubles_daily():
+    """Once a day (and soon after Benflix's helper starts) the spare copies of songs go to Music Leftovers"""
+    last = (_read("doubles.json") or {}).get("at", 0)
+    if time.time() - last < 24 * 3600:
+        return
+    with _lock:
+        if _tidy["running"]:
+            return
+        _tidy["running"] = True
+    try:
+        undo = []
+        n = _artist_doubles("apply", lambda t: log(t), undo)
+        if undo:
+            _write(f"tidy-{time.strftime('%Y%m%d-%H%M%S')}.json", undo)
+            _remove_empty(MUSIC)
+        if n:
+            log(f"put {n} spare copies of songs in Music Leftovers/Duplicates")
+        _write("doubles.json", {"at": time.time(), "moved": n})
+    finally:
+        _tidy["running"] = False
+
+
 # ---------- Tidy-up (a whole folder, like SoulSync's music) ----------
 
 
@@ -2269,6 +2595,9 @@ def _tidy_run(mode, folder, undo_file):
         files = _audio_files(root)
         _tidy_say(f"Found {len(files)} music files in {folder}.")
         undo, counts = sort_files(files, root, mode, _tidy_say, convert=False)
+        if os.path.abspath(root) == os.path.abspath(MUSIC) or mode == "apply":
+            # The same song in two albums of one artist (looked at across all of Music)
+            counts["dupes"] += _artist_doubles(mode, _tidy_say, undo)
         if mode == "apply":
             _clear_loose(undo, _tidy_say)
             if root != MUSIC:
