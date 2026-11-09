@@ -1524,6 +1524,19 @@ ONE_ACT = {
 }
 
 
+# YouTube channels of record labels, which video downloads give as the artist
+LABEL_CHANNELS = {
+    "hybe labels", "jyp entertainment", "smtown", "yg entertainment", "1thek", "1thek (원더케이)", "stone music entertainment",
+    "mnet k-pop", "kq entertainment", "starshiptv", "the black label", "big hit labels", "ibighit", "bangtantv",
+    "vevo", "trap nation", "proximity", "monstercat", "ukf dubstep", "mrsuicidesheep", "majestic casual", "trap city",
+}
+
+
+def _is_label(name):
+    n = (name or "").strip().lower()
+    return n in LABEL_CHANNELS or n.endswith("vevo") or n.endswith(" - topic")
+
+
 def main_artist(name):
     """The first artist of 'Zedd, Maren Morris & Grey' or 'A feat. B', so a song goes under one artist folder"""
     n = (name or "").strip()
@@ -1536,7 +1549,8 @@ def main_artist(name):
         if n.lower().startswith(act + ",") or n.lower().startswith(act + " &"):
             return n[: len(act)]
     if "," in n:
-        n = n.split(",", 1)[0].strip()
+        parts = [x.strip() for x in n.split(",") if x.strip() and not _is_label(x)]
+        n = parts[0] if parts else n.split(",", 1)[0].strip()
     elif re.search(r"\s+[&+]\s+", n) and n.count("&") + n.count("+") >= 2:
         # "A & B & C" is several people; one "&" is usually a duo name ("gianni & kyle")
         n = re.split(r"\s+[&+]\s+", n, maxsplit=1)[0].strip()
@@ -1550,11 +1564,19 @@ def clean_title(title, artist=""):
         r"\s*[\(\[][^\)\]]*\b(official|lyrics?|audio|video|visuali[sz]er|hd|hq|4k|mv|m/v|music video)\b[^\)\]]*[\)\]]",
         "", t, flags=re.I,
     ).strip()
+    t = re.sub(r"\s+(official\s+)?(mv|m/v)$", "", t, flags=re.I).strip()
+    t = re.sub(r"\s+(official\s+(music\s+)?video|official\s+audio|official\s+visuali[sz]er|music\s+video|lyric\s+video)$", "", t, flags=re.I).strip()
     if artist and " - " in t:
         first, rest = t.split(" - ", 1)
         a, f = norm(artist.replace("$", "s")).replace(" ", ""), norm(first.replace("$", "s")).replace(" ", "")
         if same(first, artist) or same(first, main_artist(artist)) or (f and f == a):
             t = rest.strip()
+    # K-pop video names: "CORTIS (코르티스) 'FaSHioN'" or "'DRIP'"
+    m = re.match(r"^(.*?)\s*['‘’\"“]([^'‘’\"“”]+?(?:\([^)]*\))?[^'‘’\"“”]*)['‘’\"”]\s*$", t)
+    if m:
+        before = norm(m.group(1).replace("$", "s"))
+        if not before or (artist and (before.startswith(norm(main_artist(artist)).strip() or "\0") or before.startswith(norm(artist).strip() or "\0"))):
+            t = m.group(2).strip()
     return t or (title or "").strip()
 
 
@@ -1630,14 +1652,30 @@ def _plan_one(path, root, look_up=True):
         "had_tags": bool(tags.get("title") and tags.get("artist") and tags.get("album")),
     }
     info["title_changed"] = bool(raw_title) and info["title"] != raw_title
-    # Video downloads often put the artist or channel name in as the album
-    odd_album = bool(info["album"]) and (same(info["album"], info["artist"]) or same(info["album"], info["full_artist"])) and info["title_changed"]
-    if odd_album:
-        info["album"] = ""
+    if _is_label(info["artist"]) and look_up and info["title"]:
+        # "Stray Kids CEREMONY" from the JYP channel: the catalogue says who it really is
+        try:
+            text = norm(info["title"])
+            for t in deezer("/search", q=info["title"], limit=8).get("data") or []:
+                who = (t.get("artist") or {}).get("name") or ""
+                if who and norm(who) in text and norm(t.get("title")) in text:
+                    info.update({"artist": who, "full_artist": who, "song_artist": who, "title": t.get("title"), "album": "", "title_changed": True})
+                    break
+        except MusicError:
+            pass
+    # Video downloads often put the artist or channel name in as the album (a self-titled album stays if the catalogue agrees)
+    odd_album = bool(info["album"]) and (same(info["album"], info["artist"]) or same(info["album"], info["full_artist"]) or _is_label(info["album"]))
     if info["artist"] and info["title"] and look_up and (not info["album"] or not tags.get("album") or odd_album):
         try:
             found = deezer("/search", q=f'artist:"{info["artist"]}" track:"{info["title"]}"', limit=5).get("data") or []
             hit = next((t for t in found if same(t.get("title"), info["title"])), None)
+            if odd_album and hit and (hit.get("album") or {}).get("title") and not same((hit.get("album") or {}).get("title"), info["album"]):
+                info["album"] = ""
+            elif odd_album and not hit and (info["title_changed"] or any(_is_label(x) for x in info["album"].split(","))):
+                # A video download with no album: it goes in Singles
+                info["album"] = ""
+            else:
+                odd_album = False
             if hit:
                 al = hit.get("album") or {}
                 info["album"] = info["album"] or al.get("title") or ""
@@ -1671,7 +1709,7 @@ def _audio_files(folder):
     for base, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         for f in files:
-            if os.path.splitext(f)[1].lower() in AUDIO and not f.startswith("."):
+            if os.path.splitext(f)[1].lower() in AUDIO and (not f.startswith(".") or f.startswith("..")):
                 out.append(os.path.join(base, f))
     return sorted(out)
 
@@ -1722,7 +1760,7 @@ def sort_files(files, root, mode, say, convert=False, look_up=True):
                     undo.append(["move", path, dest])
                     told.append(dest)
                 else:
-                    to = _free_name(spare)
+                    to = _free_name(os.path.join(os.path.dirname(spare), os.path.basename(path)))
                     _move(path, to)
                     undo.append(["move", path, to])
             continue
@@ -1761,6 +1799,30 @@ def sort_files(files, root, mode, say, convert=False, look_up=True):
     if told:
         _tell_jellyfin(told)
     return undo, counts
+
+
+def _clear_loose(undo, say):
+    """Lyrics and info files whose song moved away, SoulSync's half-finished files, and covers left in an artist
+    folder that now has album folders: all go to Music Leftovers/Old extras (nothing is deleted)"""
+    count = 0
+    for base, dirs, files in os.walk(MUSIC):
+        audio = {os.path.splitext(f)[0].lower() for f in files if os.path.splitext(f)[1].lower() in AUDIO}
+        top = os.path.dirname(base) == MUSIC
+        for f in files:
+            low, stem = f.lower(), os.path.splitext(f)[0].lower()
+            loose = (
+                low.endswith(".ssync-tmp")
+                or (low.endswith((".nfo", ".lrc")) and stem not in audio)
+                or (top and dirs and not audio and low in ("cover.jpg", "folder.jpg", "cover.png", "folder.png"))
+            )
+            if loose:
+                src = os.path.join(base, f)
+                to = _free_name(os.path.join(LEFT, "Old extras", os.path.relpath(src, MUSIC)))
+                _move(src, to)
+                undo.append(["move", src, to])
+                count += 1
+    if count:
+        say(f"Put {count} leftover lyrics, info and half-downloaded files in Music Leftovers/Old extras.")
 
 
 def _bring_extras(src, dest, undo):
@@ -1927,6 +1989,7 @@ def _tidy_run(mode, folder, undo_file):
         _tidy_say(f"Found {len(files)} music files in {folder}.")
         undo, counts = sort_files(files, root, mode, _tidy_say, convert=False)
         if mode == "apply":
+            _clear_loose(undo, _tidy_say)
             if root != MUSIC:
                 _remove_empty(root)
             _remove_empty(MUSIC)
