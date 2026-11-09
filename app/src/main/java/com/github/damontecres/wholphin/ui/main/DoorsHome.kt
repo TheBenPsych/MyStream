@@ -108,7 +108,7 @@ data class HomeNews(
 
 /**
  * Home's greeting and news (approved h2-pills): up to 3 pills about new episodes of shows you watch,
- * a new season of a show you watched, a request that's ready, and an app update (main profile).
+ * a new season of a show you watched, a request that's ready, and an app update (everyone, see updateNews).
  * Nothing from Live TV or Games. A pill goes away once opened, after 3 days, or when newer news of
  * the same kind pushes it out. Each profile only sees its own news.
  */
@@ -284,11 +284,14 @@ class HomeDoorsViewModel
                     }
                 }
 
-        /** A new Benflix version, only for the main profile */
+        /**
+         * A new Benflix version. The main profile sees it right away; everyone else once this TV or phone
+         * has been a day behind (Kids and Guest never get news). After 3 days the update screen asks too.
+         */
         private fun updateNews(): List<HomeNews> {
             val admin = serverRepository.currentUserDto?.policy?.isAdministrator == true
             val version = UpdateNotice.version.value ?: return emptyList()
-            if (!admin) return emptyList()
+            if (!admin && UpdateNotice.daysBehind.value < 1) return emptyList()
             return listOf(
                 HomeNews(
                     id = "update-$version",
