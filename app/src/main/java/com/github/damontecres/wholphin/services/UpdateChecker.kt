@@ -27,6 +27,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -51,6 +53,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -92,7 +95,24 @@ class UpdateChecker
             /** The version the "New update ready" tip last showed for, and when */
             private const val KEY_SNOOZE_VERSION = "benflix_update_snoozed_version"
             private const val KEY_SNOOZE_AT = "benflix_update_snoozed_at"
+
+            /** The update that was downloaded quietly ahead of time: its version, where it is, and when */
+            private const val KEY_READY_VERSION = "benflix_update_ready_version"
+            private const val KEY_READY_URI = "benflix_update_ready_uri"
+            private const val KEY_READY_AT = "benflix_update_ready_at"
+
+            /** When this TV or phone first saw an update for the version it has (used when the build history is missing) */
+            private const val KEY_FIRST_SEEN_FOR = "benflix_update_first_seen_for"
+            private const val KEY_FIRST_SEEN_AT = "benflix_update_first_seen_at"
+
+            /** A quiet download is replaced by a newer build at most this often, so it isn't downloading all day */
+            private val READY_REFRESH = 1.days
         }
+
+        private val prefs get() = PreferenceManager.getDefaultSharedPreferences(context)
+
+        /** Only one download at a time (the quiet one and the one from the update page share the same file) */
+        private val downloadLock = Mutex()
 
         private val _prompt = MutableStateFlow<Release?>(null)
 
@@ -110,6 +130,7 @@ class UpdateChecker
         suspend fun maybeShowUpdateToast(
             updateUrl: String,
             showNegativeToast: Boolean = false,
+            isPlaying: () -> Boolean = { false },
         ) {
             val pref = PreferenceManager.getDefaultSharedPreferences(context)
             val now = Date()
@@ -141,11 +162,19 @@ class UpdateChecker
                 }
                 _prompt.value = latestRelease
                 com.github.damontecres.wholphin.ui.components.UpdateNotice
-                    .set(version, showTip)
+                    .set(version, showTip, daysBehind(latestRelease, installedVersion))
+                // Benflix: get the update ready ahead of time, so updating later is one press
+                try {
+                    downloadQuietly(latestRelease, isPlaying)
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Quiet update download didn't finish, it will try again next time")
+                }
             } else {
                 Timber.v("No update available for $installedVersion")
                 com.github.damontecres.wholphin.ui.components.UpdateNotice
-                    .set(null, false)
+                    .set(null, false, 0)
                 if (showNegativeToast) {
                     showToast(
                         context,
@@ -241,13 +270,140 @@ class UpdateChecker
             callback: DownloadCallback,
         ): Uri =
             withContext(WholphinDispatchers.IO) {
-                downloading = true
-                try {
-                    downloadReleaseFile(release, callback)
-                } finally {
-                    downloading = false
+                downloadLock.withLock {
+                    // Already downloaded quietly ahead of time, so there's nothing to wait for
+                    readyDownload(release.version)?.let { return@withLock it }
+                    downloading = true
+                    try {
+                        downloadReleaseFile(release, callback).also { saveReady(release.version, it) }
+                    } finally {
+                        downloading = false
+                    }
                 }
             }
+
+        /**
+         * Benflix: download the update in the background so it's ready in one press. Only on Wi-Fi or a cable
+         * (not mobile data), never while something is playing (it stops if a show starts), and a waiting
+         * download is swapped for a newer build at most once a day.
+         */
+        private suspend fun downloadQuietly(
+            release: Release,
+            isPlaying: () -> Boolean,
+        ) {
+            if (release.downloadUrl == null) return
+            // Older Android needs a permission to save the file, which is only asked for on the update page
+            if (!hasPermissions()) return
+            if (isPlaying() || isMeteredNetwork()) return
+            if (readyDownload(release.version) != null) return
+            val readyVersion = prefs.getString(KEY_READY_VERSION, null)?.let { Version.tryFromString(it) }
+            val readyAgo = (System.currentTimeMillis() - prefs.getLong(KEY_READY_AT, 0)).milliseconds
+            if (readyVersion != null && readyVersion.isGreaterThan(getInstalledVersion()) &&
+                readyAgo < READY_REFRESH && readyDownload(readyVersion) != null
+            ) {
+                return
+            }
+            withContext(WholphinDispatchers.IO) {
+                downloadLock.withLock {
+                    if (readyDownload(release.version) != null) return@withLock
+                    downloading = true
+                    try {
+                        Timber.i("Downloading update %s quietly", release.version)
+                        val uri =
+                            downloadReleaseFile(
+                                release,
+                                object : DownloadCallback {
+                                    override fun contentLength(contentLength: Long) = Unit
+
+                                    override fun bytesDownloaded(bytes: Long) {
+                                        // A show started: stop, so the download doesn't get in its way
+                                        if (isPlaying()) throw IOException("Stopped the quiet download for playback")
+                                    }
+                                },
+                            )
+                        saveReady(release.version, uri)
+                        Timber.i("Update %s is downloaded and ready", release.version)
+                    } catch (ex: Exception) {
+                        // Don't leave half a file behind
+                        clearReady()
+                        cleanup()
+                        throw ex
+                    } finally {
+                        downloading = false
+                    }
+                }
+            }
+        }
+
+        private fun isMeteredNetwork(): Boolean =
+            try {
+                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                cm.isActiveNetworkMetered
+            } catch (ex: Exception) {
+                true
+            }
+
+        private fun saveReady(
+            version: Version,
+            uri: Uri,
+        ) {
+            prefs.edit {
+                putString(KEY_READY_VERSION, version.toString())
+                putString(KEY_READY_URI, uri.toString())
+                putLong(KEY_READY_AT, System.currentTimeMillis())
+            }
+        }
+
+        private fun clearReady() {
+            prefs.edit {
+                remove(KEY_READY_VERSION)
+                remove(KEY_READY_URI)
+                remove(KEY_READY_AT)
+            }
+        }
+
+        /** The finished download of [version], if it's still there and can be read, otherwise null */
+        fun readyDownload(version: Version): Uri? {
+            if (prefs.getString(KEY_READY_VERSION, null) != version.toString()) return null
+            val uri = prefs.getString(KEY_READY_URI, null)?.let { Uri.parse(it) } ?: return null
+            return try {
+                val ok = context.contentResolver.openInputStream(uri)?.use { it.read() >= 0 } == true
+                if (ok) uri else null
+            } catch (ex: Exception) {
+                Timber.w(ex, "The ready update file is gone")
+                null
+            }
+        }
+
+        /**
+         * How many days this TV or phone has been missing updates: since the first build newer than the one
+         * installed came out (from the build history), or since an update was first seen here.
+         */
+        fun daysBehind(
+            release: Release,
+            installed: Version,
+        ): Int {
+            val now = System.currentTimeMillis()
+            val firstNewer =
+                release.changes
+                    .filter { it.version.isGreaterThan(installed) }
+                    .mapNotNull { c ->
+                        try {
+                            c.publishedAt?.let { Instant.parse(it).toEpochMilli() }
+                        } catch (ex: Exception) {
+                            null
+                        }
+                    }.minOrNull()
+            val seenFor = prefs.getString(KEY_FIRST_SEEN_FOR, null)
+            if (seenFor != installed.toString()) {
+                prefs.edit {
+                    putString(KEY_FIRST_SEEN_FOR, installed.toString())
+                    putLong(KEY_FIRST_SEEN_AT, now)
+                }
+            }
+            val since = firstNewer ?: prefs.getLong(KEY_FIRST_SEEN_AT, now)
+            return ((now - since).coerceAtLeast(0L) / 1.days.inWholeMilliseconds).toInt()
+        }
 
         /** True while an update is downloading, so the leftover-file cleanup doesn't delete it */
         @Volatile
@@ -255,7 +411,12 @@ class UpdateChecker
 
         /** Delete the update file from the last update, unless an update is downloading right now */
         fun cleanupLeftoverDownload() {
-            if (!downloading) cleanup()
+            if (downloading) return
+            // Keep an update that was downloaded ahead of time and isn't installed yet
+            val ready = prefs.getString(KEY_READY_VERSION, null)?.let { Version.tryFromString(it) }
+            if (ready != null && ready.isGreaterThan(getInstalledVersion())) return
+            clearReady()
+            cleanup()
         }
 
         private suspend fun downloadReleaseFile(

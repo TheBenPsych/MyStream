@@ -48,12 +48,19 @@ object UpdateNotice {
     /** Show the "New update ready" tip bubble right now */
     val tip: StateFlow<Boolean> = _tip
 
+    private val _daysBehind = MutableStateFlow(0)
+
+    /** How many days this TV or phone has been missing updates (0 when up to date) */
+    val daysBehind: StateFlow<Int> = _daysBehind
+
     fun set(
         newVersion: String?,
         showTip: Boolean,
+        daysBehind: Int,
     ) {
         _version.value = newVersion
         _tip.value = newVersion != null && showTip
+        _daysBehind.value = if (newVersion == null) 0 else daysBehind
     }
 
     fun hideTip() {

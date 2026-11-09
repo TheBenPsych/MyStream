@@ -362,6 +362,10 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.MessageLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix: "Benflix got better" once this TV or phone is a few days behind
+                                                com.github.damontecres.wholphin.ui.main.UpdateReadyLayer(
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
                                                 // Benflix: "Your request is here!"
                                                 com.github.damontecres.wholphin.ui.main.RequestArrivedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
@@ -489,6 +493,19 @@ class MainActivity : AppCompatActivity() {
                 try {
                     updateChecker.maybeShowUpdateToast(
                         appPreferences.updateUrl,
+                        isPlaying = {
+                            // The quiet update download waits while a show, Live TV or a game is on
+                            when (navigationManager.backStack.lastOrNull()) {
+                                is Destination.Playback,
+                                is Destination.PlaybackList,
+                                is Destination.PlayGame,
+                                is Destination.MovieGamePlay,
+                                Destination.Channels,
+                                -> true
+
+                                else -> false
+                            }
+                        },
                     )
                 } catch (ex: Exception) {
                     Timber.w(
