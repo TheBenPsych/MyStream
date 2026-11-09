@@ -320,6 +320,7 @@ fun ServerStatusPage(
                 toolsViewModel.loadPeople()
                 data.loadHistory()
                 toolsViewModel.loadNotes()
+                toolsViewModel.loadVersions()
             }
 
             ServerSection.NOW -> {
@@ -554,6 +555,13 @@ fun ServerStatusPage(
 
             ServerSection.PEOPLE -> {
                 peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
+                versionItems(
+                    versions = toolsState.versions,
+                    failed = toolsState.versionsFailed,
+                    onLoad = toolsViewModel::loadVersions,
+                    onMessage = { ids, title, prefill -> toolsDialog = ServerToolsDialog.WritePopupToMany(ids, title, prefill) },
+                    sectionTitle = sectionTitle,
+                )
                 messageItems(toolsState, { toolsDialog = it }, sectionTitle)
             }
 
