@@ -199,7 +199,9 @@ fun MusicNowPlayingPage(
                 .fillMaxSize()
                 .background(BenflixColors.Tray),
     ) {
-        val towersHeight = maxHeight * (if (wide) 0.34f else 0.22f)
+        val boxWidth = maxWidth
+        val boxHeight = maxHeight
+        val towersHeight = boxHeight * (if (wide) 0.34f else 0.22f)
         if (barsOn) {
             MusicTowers(
                 playing = playing,
@@ -227,9 +229,9 @@ fun MusicNowPlayingPage(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 56.dp, end = 56.dp, top = 40.dp)
-                        .height(maxHeight - towersHeight - 40.dp),
+                        .height(boxHeight - towersHeight - 40.dp),
             ) {
-                val coverSize = (maxWidth * 0.24f).coerceAtMost(maxHeight - towersHeight - 60.dp)
+                val coverSize = (boxWidth * 0.24f).coerceAtMost(boxHeight - towersHeight - 60.dp)
                 CoverImage(audio?.imageUrl, Modifier.size(coverSize))
                 Column(modifier = Modifier.weight(1f)) {
                     SongWords(audio, music.thenTitle, easy, big = true)
@@ -241,7 +243,7 @@ fun MusicNowPlayingPage(
                     UpNextLine(next)
                 }
                 if (lyrics != null) {
-                    LyricsColumn(lyrics, lyricIndex, Modifier.width(maxWidth * 0.28f).fillMaxHeight(), fontSize = if (easy) 24f else 20f)
+                    LyricsColumn(lyrics, lyricIndex, Modifier.width(boxWidth * 0.28f).fillMaxHeight(), fontSize = if (easy) 24f else 20f)
                 }
             }
         } else {
@@ -250,7 +252,7 @@ fun MusicNowPlayingPage(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CoverImage(audio?.imageUrl, Modifier.size(maxWidth * 0.36f))
+                    CoverImage(audio?.imageUrl, Modifier.size(boxWidth * 0.36f))
                     Column(Modifier.weight(1f)) { SongWords(audio, music.thenTitle, easy, big = false) }
                 }
                 Spacer(Modifier.height(10.dp))

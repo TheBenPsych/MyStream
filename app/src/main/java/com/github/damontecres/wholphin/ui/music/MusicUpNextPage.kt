@@ -62,6 +62,7 @@ fun MusicUpNextPage(
     val then = upcoming.filterNot { service.isAdded(it.second) }
     val current = queue.getOrNull(now)
     var focusGiven = false
+    val act: (suspend () -> Unit) -> () -> Unit = { block -> { viewModel.viewModelScope.launchIO { block() } } }
     LazyColumn(
         contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -95,14 +96,14 @@ fun MusicUpNextPage(
                         audio,
                         isCurrent = false,
                         playing = false,
-                        onPlay = { viewModel.viewModelScope.launchIO { service.playIndex(index) } },
-                        onUp = { viewModel.viewModelScope.launchIO { service.moveQueue(index, index - 1) } }.takeIf { index > now + 1 },
+                        onPlay = act { service.playIndex(index) },
+                        onUp = act { service.moveQueue(index, index - 1) }.takeIf { index > now + 1 },
                         onDown =
-                            { viewModel.viewModelScope.launchIO { service.moveQueue(index, index + 1) } }.takeIf {
+                            act { service.moveQueue(index, index + 1) }.takeIf {
                                 index <
                                     queue.size - 1
                             },
-                        onRemove = { viewModel.viewModelScope.launchIO { service.removeFromQueue(index) } },
+                        onRemove = act { service.removeFromQueue(index) },
                         modifier = if (focus) Modifier.focusRequester(first) else Modifier,
                     )
                 }
@@ -124,10 +125,10 @@ fun MusicUpNextPage(
                         audio,
                         isCurrent = false,
                         playing = false,
-                        onPlay = { viewModel.viewModelScope.launchIO { service.playIndex(index) } },
+                        onPlay = act { service.playIndex(index) },
                         onUp = null,
                         onDown = null,
-                        onRemove = { viewModel.viewModelScope.launchIO { service.removeFromQueue(index) } },
+                        onRemove = act { service.removeFromQueue(index) },
                         modifier = if (focus) Modifier.focusRequester(first) else Modifier,
                     )
                 }
