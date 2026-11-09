@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.detail.DidYouKnow
 import com.github.damontecres.wholphin.ui.detail.HeroBackground
 import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.HeroSideColumn
@@ -226,7 +227,11 @@ fun SeriesHeroContent(
                                 }
                             }
                             if (!easy) {
-                                Column(Modifier.padding(start = 32.dp, bottom = 4.dp).widthIn(max = 280.dp)) {
+                                Column(
+                                    Modifier
+                                        .padding(start = 32.dp, bottom = 4.dp)
+                                        .widthIn(max = 280.dp),
+                                ) {
                                     HeroSideColumn(lines = remember(series) { showSideLines(series) })
                                     DidYouKnow(
                                         facts = state.facts,
