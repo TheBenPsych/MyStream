@@ -114,25 +114,29 @@ class ParentsGuide
 
             internal fun parse(root: JsonObject?): List<ParentsGuideLine> {
                 val categories =
-                    ((((root?.get("data") as? JsonObject)?.get("title") as? JsonObject)?.get("parentsGuide") as? JsonObject)
-                        ?.get("categories") as? JsonArray)
+                    (
+                        (((root?.get("data") as? JsonObject)?.get("title") as? JsonObject)?.get("parentsGuide") as? JsonObject)
+                            ?.get("categories") as? JsonArray
+                    )
                         ?: return emptyList()
                 val found =
-                    categories.mapNotNull { el ->
-                        val obj = el as? JsonObject ?: return@mapNotNull null
-                        val id = ((obj["category"] as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
-                        val severity = ((obj["severity"] as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNull
-                        val name = NAMES[id.uppercase()] ?: return@mapNotNull null
-                        val rank =
-                            when (severity?.lowercase()) {
-                                "none" -> 0
-                                "mild" -> 1
-                                "moderate" -> 2
-                                "severe" -> 3
-                                else -> return@mapNotNull null
-                            }
-                        id.uppercase() to ParentsGuideLine(name, LEVELS[rank], rank)
-                    }.toMap()
+                    categories
+                        .mapNotNull { el ->
+                            val obj = el as? JsonObject ?: return@mapNotNull null
+                            val id =
+                                ((obj["category"] as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+                            val severity = ((obj["severity"] as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNull
+                            val name = NAMES[id.uppercase()] ?: return@mapNotNull null
+                            val rank =
+                                when (severity?.lowercase()) {
+                                    "none" -> 0
+                                    "mild" -> 1
+                                    "moderate" -> 2
+                                    "severe" -> 3
+                                    else -> return@mapNotNull null
+                                }
+                            id.uppercase() to ParentsGuideLine(name, LEVELS[rank], rank)
+                        }.toMap()
                 return NAMES.keys.mapNotNull { found[it] }
             }
 
