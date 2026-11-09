@@ -48,6 +48,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.AudioItem
+import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -67,6 +68,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.lyricsApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.LyricDto
 import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
@@ -148,6 +150,28 @@ class MusicNowPlayingViewModel
         }
 
         fun openUpNext() = navigationManager.navigateTo(Destination.MusicUpNext)
+
+        /** The playing song as a full item, for its More menu (null while the menu is closed) */
+        private val _menuSong = MutableStateFlow<BaseItem?>(null)
+        val menuSong: StateFlow<BaseItem?> = _menuSong
+
+        fun openMenu() {
+            val audio = musicService.state.value.currentAudio ?: return
+            viewModelScope.launchIO {
+                val item =
+                    try {
+                        BaseItem(api.userLibraryApi.getItem(audio.id).content, false)
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Song for the More menu")
+                        null
+                    }
+                _menuSong.value = item
+            }
+        }
+
+        fun closeMenu() {
+            _menuSong.value = null
+        }
     }
 
 /**
@@ -202,6 +226,10 @@ fun MusicNowPlayingPage(
         playFocus.tryRequestFocus()
     }
     val lyricIndex = lyrics?.let { currentLine(it, position, duration) }
+    val menuSong by viewModel.menuSong.collectAsState()
+    menuSong?.let { song ->
+        SongMenu(song = song, liked = music.liked, onDismiss = viewModel::closeMenu)
+    }
 
     BoxWithConstraints(
         modifier =
@@ -458,6 +486,8 @@ private fun ExtraButtons(
     )
     MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy)
     MusicButton(if (labels) "Stop" else null, BenflixIcon.STOP, onClick = viewModel::stop, big = easy)
+    // Play next, Add to a playlist, Go to album ... and, on Ben's profile, Delete and find again
+    MusicButton(if (labels) "More" else null, BenflixIcon.MORE_VERT, onClick = viewModel::openMenu, big = easy)
 }
 
 private const val SEEK_STEP_MS = 5_000L

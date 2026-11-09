@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.music
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -10,11 +11,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.BenflixMusic
 import com.github.damontecres.wholphin.services.DownloadService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
@@ -22,9 +26,12 @@ import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
+import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import org.jellyfin.sdk.model.api.BaseItemKind
+import timber.log.Timber
 import javax.inject.Inject
 
 /** What the music pages can do with a song (the More menu, the heart, playing lists) */
@@ -36,7 +43,27 @@ class MusicActionsViewModel
         val navigationManager: NavigationManager,
         private val serverRepository: ServerRepository,
         val downloads: DownloadService,
+        private val benflixMusic: BenflixMusic,
+        @param:ApplicationContext private val context: Context,
     ) : ViewModel() {
+        /**
+         * Ben only: deletes this song's file on Tower and has Lidarr (or Soulseek) find a better copy. The bad
+         * copy is never picked again. Shows Tower's answer as a short message; [then] runs once it's deleted.
+         */
+        fun deleteAndFindAgain(
+            song: BaseItem,
+            then: () -> Unit = {},
+        ) = viewModelScope.launchIO {
+            try {
+                val words = benflixMusic.deleteAndFindAgain(song.id)
+                showToast(context, words)
+                onMain { then() }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Delete and find again")
+                showToast(context, ex.message ?: "Couldn't delete that song. Try again in a minute.")
+            }
+        }
+
         /** Benflix on phones: save songs for listening with no internet (Wi-Fi only, like movies) */
         fun download(songs: List<BaseItem>) = viewModelScope.launchIO { downloads.startAll(songs) }
 
@@ -94,7 +121,8 @@ class MusicActionsViewModel
 
 /**
  * A song's More menu (approved m3-more): Play next, Add to Up next, Add to a playlist, Like, Go to artist,
- * Go to album, and Song info (only on Ben's profile). Own playlists also get "Remove from this playlist".
+ * Go to album, and Song info and "Delete and find again" (only on Ben's profile). Own playlists also get
+ * "Remove from this playlist". [onDeleted] runs once Tower has deleted a bad copy (so the page can drop the song).
  */
 @Composable
 fun SongMenu(
@@ -103,11 +131,32 @@ fun SongMenu(
     onDismiss: () -> Unit,
     onLikedChanged: (Boolean) -> Unit = {},
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onDeleted: () -> Unit = {},
     actions: MusicActionsViewModel = hiltViewModel(),
     playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
 ) {
     var pickPlaylist by remember { mutableStateOf(false) }
+    var confirmRedo by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
+    if (confirmRedo) {
+        ConfirmDialog(
+            title = "Delete and find again?",
+            body =
+                "This deletes \"${song.title.orEmpty()}\" from Tower and finds a new copy. The bad copy won't be " +
+                    "picked again. It shows up again in a few minutes (Requests > Music shows how it's going).",
+            onCancel = {
+                confirmRedo = false
+                onDismiss()
+            },
+            onConfirm = {
+                actions.deleteAndFindAgain(song, onDeleted)
+                confirmRedo = false
+                onDismiss()
+            },
+            confirmStringRes = R.string.delete,
+        )
+        return
+    }
     if (pickPlaylist) {
         val playlistState by playlistViewModel.playlistState.collectAsState()
         PlaylistDialog(
@@ -204,6 +253,8 @@ fun SongMenu(
                         onDismiss()
                     }),
                 )
+                // A bad copy (wrong song, cut off, bad sound): Tower deletes it and finds another one
+                add(DialogItem(headlineContent = { Text("Delete and find again") }, onClick = { confirmRedo = true }))
             }
         }
     DialogPopup(

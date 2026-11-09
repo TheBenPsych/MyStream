@@ -255,13 +255,14 @@
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
             <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button></div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="stop">${icon("stop")} Stop</button></div>
+            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
           <div class="np-words"></div>
         </div>`;
       np.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
+        if (a && a.dataset.a === "more") return M.current() && songMenu(a, M.current());
         if (a) return act(a.dataset.a);
         if (e.target.closest("[data-x]")) return closeNow();
         const tr = e.target.closest(".np-track");
@@ -428,6 +429,8 @@
     if (s.AlbumArtists && s.AlbumArtists[0]) opts.push({ label: "Go to artist", value: "artist" });
     if (s.AlbumId) opts.push({ label: "Go to album", value: "album" });
     (extra || []).forEach((o) => opts.push(o));
+    // Ben only: a bad copy (wrong song, cut off, bad sound) is deleted on Tower and a new copy is found
+    if (B.me.admin) opts.push({ label: "Delete and find again", value: "redo" });
     B.dropdown(anchor, opts, null, async (v) => {
       if (v === "next") M.playNext(s);
       else if (v === "add") M.addToUpNext(s);
@@ -435,8 +438,17 @@
       else if (v === "artist") B.go(`#/artist/${s.AlbumArtists[0].Id}`);
       else if (v === "album") B.go(`#/album/${s.AlbumId}`);
       else if (v === "pl") addToPlaylist(anchor, [s]);
+      else if (v === "redo") redoSong(s);
       else (extra || []).forEach((o) => { if (o.value === v && o.run) o.run(); });
     });
+  };
+  const redoSong = async (s) => {
+    const yes = await B.ask("Delete and find again?", `This deletes "${s.Name}" from Tower and finds a new copy. The bad copy won't be picked again. It shows up again in a few minutes (Requests > Music shows how it's going).`, "Delete", "Cancel");
+    if (!yes) return;
+    try {
+      const r = await B.call("POST", "api/music/redo", { id: s.Id });
+      B.toast((r && r.words) || "Deleted. Tower is finding a new copy.");
+    } catch (e) { B.toast(e.message); }
   };
   const addToPlaylist = async (anchor, songs) => {
     try {
