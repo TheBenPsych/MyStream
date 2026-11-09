@@ -38,6 +38,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -209,7 +210,7 @@ fun MusicNowPlayingPage(
     ) {
         val boxWidth = maxWidth
         val boxHeight = maxHeight
-        val towersHeight = boxHeight * (if (wide) 0.34f else 0.22f)
+        val towersHeight = boxHeight * (if (wide) 0.34f else 0.13f)
         if (barsOn) {
             MusicTowers(
                 playing = playing,
@@ -255,27 +256,22 @@ fun MusicNowPlayingPage(
                 }
             }
         } else {
-            Column(
-                horizontalAlignment = Alignment.Start,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CoverImage(audio?.imageUrl, Modifier.size(boxWidth * 0.36f))
-                    Column(Modifier.weight(1f)) { SongWords(audio, music.thenTitle, easy, big = false) }
-                }
-                Spacer(Modifier.height(10.dp))
-                UpNextLine(next)
-                Spacer(Modifier.height(14.dp))
-                if (lyrics != null) {
-                    LyricsColumn(lyrics, lyricIndex, Modifier.fillMaxWidth().weight(1f), fontSize = 18f)
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                ProgressLine(position, duration)
-                Spacer(Modifier.height(12.dp))
-                Controls(viewModel, playing, music.liked, easy, isTv, playFocus)
-                Spacer(Modifier.height(towersHeight + 8.dp))
-            }
+            PhoneNowPlaying(
+                viewModel = viewModel,
+                audio = audio,
+                from = music.thenTitle,
+                lyrics = lyrics,
+                lyricIndex = lyricIndex,
+                next = next,
+                position = position,
+                duration = duration,
+                playing = playing,
+                liked = music.liked,
+                easy = easy,
+                towersHeight = towersHeight,
+                boxHeight = boxHeight,
+                boxWidth = boxWidth,
+            )
         }
     }
 }
@@ -459,7 +455,7 @@ private const val SEEK_STEP_MS = 5_000L
 
 /** "UP NEXT" with the next song's small cover, name and artist (always there) */
 @Composable
-private fun UpNextLine(next: AudioItem?) {
+internal fun UpNextLine(next: AudioItem?) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MusicKicker("Up next", color = BenflixColors.Muted)
         if (next != null) {
@@ -480,11 +476,12 @@ private fun UpNextLine(next: AudioItem?) {
 
 /** The song's words: 5 lines, the one being sung in white and a little bigger, the rest grey */
 @Composable
-private fun LyricsColumn(
+internal fun LyricsColumn(
     lyrics: LyricDto,
     index: Int?,
     modifier: Modifier = Modifier,
     fontSize: Float,
+    center: Boolean = false,
 ) {
     val lines = lyrics.lyrics
     val at = (index ?: 0).coerceIn(0, (lines.size - 1).coerceAtLeast(0))
@@ -511,6 +508,8 @@ private fun LyricsColumn(
                 fontSize = if (current) (fontSize * 1.15f).sp else fontSize.sp,
                 lineHeight = (fontSize * 1.3f).sp,
                 fontWeight = if (current) FontWeight.ExtraBold else FontWeight.SemiBold,
+                textAlign = if (center) TextAlign.Center else TextAlign.Start,
+                modifier = if (center) Modifier.fillMaxWidth() else Modifier,
             )
         }
     }
