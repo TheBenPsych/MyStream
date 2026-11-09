@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.ui.playback.playable
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
+import com.github.damontecres.wholphin.util.SpecialsOrder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import org.jellyfin.sdk.api.client.ApiClient
@@ -76,11 +77,20 @@ class PlaylistCreator
                     sortBy = if (shuffled) ItemSortBy.RANDOM else null,
                     limit = Playlist.MAX_SIZE,
                 )
-            val episodes =
+            val fromServer =
                 GetEpisodesRequestHandler
                     .execute(api, request)
                     .content.items
-                    .convertAndAddParts(false)
+            // Benflix: specials slotted in where they aired, so Watch next plays them at the right point
+            val ordered =
+                if (!shuffled && seasonId == null) {
+                    SpecialsOrder
+                        .withSpecials(api, seriesId, fromServer, DetailItemFields + listOf(ItemFields.PATH, ItemFields.GENRES))
+                        .take(Playlist.MAX_SIZE)
+                } else {
+                    fromServer
+                }
+            val episodes = ordered.convertAndAddParts(false)
             val startIndex =
                 episodeId?.let { episodes.indexOfFirstOrNull { it.id == episodeId } } ?: 0
             return Playlist(episodes.subList(startIndex, episodes.size))

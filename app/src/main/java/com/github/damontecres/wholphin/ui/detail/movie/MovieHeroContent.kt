@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.HeroSideColumn
 import com.github.damontecres.wholphin.ui.detail.HeroTag
 import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
+import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.ScoreLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
@@ -270,6 +271,11 @@ fun MovieHeroContent(
                         showName = !isTv,
                         onClick = actions.openItem,
                     )
+                }
+            }
+            if (state.parentsGuide.isNotEmpty()) {
+                item(key = "parents") {
+                    ParentsGuideBlock(state.parentsGuide, Modifier.padding(start = side, end = side))
                 }
             }
             if (state.people.isNotEmpty()) {

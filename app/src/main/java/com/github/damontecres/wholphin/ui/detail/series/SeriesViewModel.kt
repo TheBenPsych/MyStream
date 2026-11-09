@@ -23,6 +23,8 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.ParentsGuide
+import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.services.PeopleFavorites
 import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
@@ -49,6 +51,7 @@ import com.github.damontecres.wholphin.util.DataLoadingState
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
+import com.github.damontecres.wholphin.util.SpecialsOrder
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import com.github.damontecres.wholphin.util.successValue
 import com.google.common.cache.CacheBuilder
@@ -112,6 +115,7 @@ class SeriesViewModel
         private val detailsPrefetch: DetailsPrefetch,
         private val fillerService: FillerService,
         private val playbackPrep: PlaybackPrep,
+        private val parentsGuide: ParentsGuide,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -159,6 +163,11 @@ class SeriesViewModel
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
                 // Benflix: finale tags, time left and the first episode
                 viewModelScope.launchIO { loadProgress(series) }
+                // Benflix "Parents' guide"
+                viewModelScope.launchIO {
+                    val guide = parentsGuide.guideFor(series.data)
+                    if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
+                }
                 _state.update { it.copy(isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true) }
                 // Benflix: "Mark watched up to here" from a long-press menu, so refresh what's shown
                 viewModelScope.launchIO {
@@ -525,22 +534,28 @@ class SeriesViewModel
             val season = state.value.seasons.getOrNull(index) ?: return
             _state.update { it.copy(inlineSeasonIndex = index) }
             viewModelScope.launchIO(ExceptionHandler()) {
+                val fields =
+                    listOf(
+                        ItemFields.OVERVIEW,
+                        ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
+                    )
+                // Benflix: no sort here, so Jellyfin keeps specials where they aired inside the season
                 val request =
                     GetEpisodesRequest(
                         seriesId = seriesId,
                         seasonId = season.id,
-                        sortBy = ItemSortBy.INDEX_NUMBER,
-                        fields =
-                            listOf(
-                                ItemFields.OVERVIEW,
-                                ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
-                            ),
+                        fields = fields,
                     )
+                val placed =
+                    season.indexNumber?.let { number ->
+                        SpecialsOrder.seasonWithSpecials(api, seriesId, number, fields)
+                    }
                 val episodes =
-                    api.tvShowsApi
-                        .getEpisodes(request)
-                        .content.items
-                        .map { BaseItem(it) }
+                    (
+                        placed ?: api.tvShowsApi
+                            .getEpisodes(request)
+                            .content.items
+                    ).map { BaseItem(it) }
                 _state.update {
                     if (it.inlineSeasonIndex == index) it.copy(inlineEpisodes = episodes) else it
                 }
@@ -1121,4 +1136,6 @@ data class SeriesState(
     val isAdmin: Boolean = false,
     /** Benflix look A: "Resume S2 · E4" on the show page's Play button */
     val nextUpLabel: String? = null,
+    /** Benflix "Parents' guide" (empty = none) */
+    val parentsGuide: List<ParentsGuideLine> = emptyList(),
 )
