@@ -54,7 +54,7 @@ object RemoteKeys {
 
     /** Called for every SEND_STRING with [ARG]; true when it was one of these */
     fun onMessage(
-        args: Map<String, String>?,
+        args: Map<String, String?>?,
         isTv: Boolean,
     ): Boolean {
         val kind = args?.get(ARG) ?: return false
