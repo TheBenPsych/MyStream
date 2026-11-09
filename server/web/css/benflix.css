@@ -38,9 +38,10 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 .top { position: sticky; top: 0; z-index: 30; height: var(--bar); display: flex; align-items: center; gap: 20px; padding: 0 var(--gutter);
   background: linear-gradient(var(--tray) 55%, rgba(11,12,16,0)); }
 .top.solid { background: var(--tray); border-bottom: 1px solid var(--line); }
-.top .logo { font-size: 26px; cursor: default; }
+.top .logo { font-size: 26px; cursor: pointer; }
 .top .place { font-size: 26px; font-weight: 700; padding-left: 18px; border-left: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.top .homelink { display: flex; align-items: center; }
+.top .homelink { display: flex; align-items: center; border-radius: 8px; padding: 4px 6px; margin: -4px -6px; transition: background .15s; }
+.top .homelink:hover, .top .homelink:focus-visible { background: var(--pg3); }
 .top .right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
 .clock { font-size: 30px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; white-space: nowrap; }
 .clock small { font-size: 13px; font-weight: 600; color: var(--ink3); margin-left: 4px; }
