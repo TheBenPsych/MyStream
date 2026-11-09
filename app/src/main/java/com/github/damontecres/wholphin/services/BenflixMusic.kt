@@ -17,6 +17,8 @@ data class MusicSong(
     val seconds: Int,
     /** The words of its request when it's already been asked for, like "Downloading, 40%" */
     val asked: String?,
+    /** Already in the Music folder */
+    val have: Boolean = false,
 )
 
 data class MusicAlbum(
@@ -35,6 +37,21 @@ data class MusicArtist(
     val id: Long,
     val name: String,
     val picture: String?,
+)
+
+data class MusicGenre(
+    val id: Long,
+    val name: String,
+    val picture: String?,
+)
+
+/** What's popular now: for everything, or for one genre */
+data class MusicDiscover(
+    val songs: List<MusicSong>,
+    val newReleases: List<MusicAlbum>,
+    val albums: List<MusicAlbum>,
+    val artists: List<MusicArtist>,
+    val genres: List<MusicGenre>,
 )
 
 data class MusicSearch(
@@ -111,6 +128,26 @@ class BenflixMusic
             )
         }
 
+        /** Top 100 songs, new releases, top albums and artists, and the genres */
+        suspend fun discover(): MusicDiscover = discover(helper.getJson("/api/music/discover"))
+
+        /** The same for one genre */
+        suspend fun genre(id: Long): Pair<MusicGenre, MusicDiscover> {
+            val j = helper.getJson("/api/music/genre?id=$id")
+            return genre(j.optJSONObject("genre") ?: JSONObject()) to discover(j)
+        }
+
+        private fun discover(j: JSONObject) =
+            MusicDiscover(
+                songs = j.optJSONArray("songs").objects().map(::song),
+                newReleases = j.optJSONArray("new").objects().map(::album),
+                albums = j.optJSONArray("albums").objects().map(::album),
+                artists = j.optJSONArray("artists").objects().map(::artist),
+                genres = j.optJSONArray("genres").objects().map(::genre),
+            )
+
+        private fun genre(j: JSONObject) = MusicGenre(id = j.optLong("id"), name = j.optString("name"), picture = j.text("picture"))
+
         /** An artist's best songs and their albums */
         suspend fun artist(id: Long): Pair<MusicArtist, MusicSearch> {
             val j = helper.getJson("/api/music/artist?id=$id")
@@ -183,6 +220,7 @@ class BenflixMusic
                 cover = j.text("cover"),
                 seconds = j.optInt("seconds"),
                 asked = j.text("asked"),
+                have = j.optBoolean("have"),
             )
 
         private fun album(j: JSONObject) =

@@ -34,6 +34,7 @@ library, plus ffmpeg/ffprobe (installed by the setup command) for song info and 
 """
 
 import base64
+import copy
 import json
 import os
 import re
@@ -354,6 +355,10 @@ def route(method, path, query, token, user_id, is_admin, read_json):
             return 200, status()
         if method == "GET" and path == "/api/music/search":
             return 200, search(q("q"))
+        if method == "GET" and path == "/api/music/discover":
+            return 200, discover()
+        if method == "GET" and path == "/api/music/genre":
+            return 200, genre_page(q("id"))
         if method == "GET" and path == "/api/music/artist":
             return 200, artist_page(q("id"))
         if method == "GET" and path == "/api/music/album":
@@ -422,15 +427,117 @@ def album_page(album_id):
     return out
 
 
+# ---------- Discover: what's popular right now (Deezer's charts, looked at every few hours) ----------
+
+_found_cache = {}
+
+
+def _cached(key, load, keep=4 * 3600):
+    with _lock:
+        hit = _found_cache.get(key)
+    if hit and time.time() - hit[0] < keep:
+        return copy.deepcopy(hit[1])
+    value = load()
+    with _lock:
+        _found_cache[key] = (time.time(), value)
+    return copy.deepcopy(value)
+
+
+def _genres():
+    def load():
+        out = []
+        for g in deezer("/genre").get("data") or []:
+            if g.get("id") and g.get("name") and g["id"] != 0:
+                out.append({"id": g["id"], "name": g["name"], "picture": g.get("picture_medium") or ""})
+        return out
+
+    return _cached("genres", load, keep=7 * 24 * 3600)
+
+
+def _chart(genre_id, songs=100):
+    """Top songs, albums and artists, and new releases, for everything (0) or one genre"""
+
+    def load():
+        def part(path, **k):
+            try:
+                return deezer(path, **k).get("data") or []
+            except MusicError:
+                return []
+
+        tracks = part(f"/chart/{genre_id}/tracks", limit=songs)
+        albums = part(f"/chart/{genre_id}/albums", limit=30)
+        artists = part(f"/chart/{genre_id}/artists", limit=30) if genre_id == 0 else part(f"/genre/{genre_id}/artists", limit=30)
+        new = part(f"/editorial/{genre_id}/releases", limit=30)
+        if not tracks and not albums and not new:
+            raise MusicError(502, "Couldn't reach the music catalogue. Check Tower has internet.")
+        return {
+            "songs": [_song(t) for t in tracks if t.get("id")],
+            "albums": [_album(a) for a in albums if a.get("id")],
+            "artists": [_artist(a) for a in artists if a.get("id")],
+            "new": [_album(a) for a in new if a.get("id")],
+        }
+
+    return _cached(f"chart-{genre_id}", load)
+
+
+def discover():
+    out = _chart(0)
+    out["genres"] = _genres()
+    _mark_asked(out)
+    return out
+
+
+def genre_page(genre_id):
+    if not str(genre_id).isdigit():
+        raise MusicError(400, "Which genre?")
+    g = next((x for x in _genres() if str(x["id"]) == str(genre_id)), None)
+    if not g:
+        raise MusicError(404, "That genre isn't in the music catalogue.")
+    out = _chart(int(genre_id), songs=50)
+    out["genre"] = g
+    _mark_asked(out)
+    return out
+
+
+_have = {"at": 0, "songs": set()}
+
+
+def _have_songs():
+    """(artist, song) pairs already in Music, from the folder and file names (looked at every 10 minutes)"""
+    if time.time() - _have["at"] < 600:
+        return _have["songs"]
+    found = set()
+    if os.path.isdir(MUSIC):
+        for base, dirs, files in os.walk(MUSIC):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            rel = os.path.relpath(base, MUSIC)
+            if rel == ".":
+                continue
+            who = norm(main_artist(rel.split(os.sep)[0]))
+            for f in files:
+                if os.path.splitext(f)[1].lower() in AUDIO:
+                    stem = re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(f)[0])
+                    found.add((who, norm(stem)))
+    _have.update({"at": time.time(), "songs": found})
+    return found
+
+
 def _mark_asked(out):
     """Adds 'asked' (the words for its request) to anything already asked for"""
     with _lock:
         by = {(r["kind"], r.get("deezer")): r for r in _state["requests"]}
-    for kind, key in (("song", "songs"), ("album", "albums")):
+    for kind, key in (("song", "songs"), ("album", "albums"), ("album", "new")):
         for x in out.get(key) or []:
             r = by.get((kind, x.get("id")))
             if r:
                 x["asked"] = _words(r)[0]
+    try:
+        have = _have_songs()
+    except OSError:
+        have = set()
+    for x in out.get("songs") or []:
+        if not x.get("asked") and (norm(main_artist(x.get("artist"))), norm(x.get("title"))) in have:
+            x["have"] = True
     if out.get("album"):
         r = by.get(("album", out["album"].get("id")))
         if r:
