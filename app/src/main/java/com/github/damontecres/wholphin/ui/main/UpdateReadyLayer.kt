@@ -80,8 +80,7 @@ class UpdateReadyViewModel
         /** "Not now" presses since this version was installed */
         fun notNowCount(): Int = if (prefs.getString(KEY_FOR, null) == installed) prefs.getInt(KEY_COUNT, 0) else 0
 
-        fun snoozed(): Boolean =
-            prefs.getString(KEY_FOR, null) == installed && System.currentTimeMillis() < prefs.getLong(KEY_UNTIL, 0)
+        fun snoozed(): Boolean = prefs.getString(KEY_FOR, null) == installed && System.currentTimeMillis() < prefs.getLong(KEY_UNTIL, 0)
 
         /** A short "what's new" list: the newest changes since the installed version */
         fun whatsNew(): List<String> {
