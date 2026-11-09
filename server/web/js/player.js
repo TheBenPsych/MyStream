@@ -26,6 +26,13 @@ B.deviceProfile = (maxBitrate) => {
   };
 };
 const QUALITY = { auto: 120000000, "1080": 20000000, "720": 8000000, "480": 3000000 };
+// "Skip came at the wrong time?" choices in the player panel (Tower's benflix_skips.py FIX_KINDS)
+const FIXES = [
+  ["intro_start", "Intro starts here"], ["intro_end", "Intro ends here"],
+  ["credits_start", "Credits start here"], ["credits_end", "Credits end here", "if a scene comes after"],
+  ["no_intro", "No intro in this episode"], ["no_intro_show", "No intro in this whole show"],
+  ["undo", "Undo my fixes for this episode"],
+];
 const withKey = (url) => url + (url.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token);
 const streamUrl = (url) => "api/web/stream" + (url.startsWith("/") ? url : "/" + url);
 
@@ -224,7 +231,22 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const c = p.CustomPrefs || {};
     ["intro", "outro"].forEach((k) => { alwaysSkip[k] = new Set(String(c[k === "intro" ? "benflix.autoSkipIntro" : "benflix.autoSkipOutro"] || "").split("|").map(plain).filter(Boolean)); });
   }).catch(() => {});
-  B.get(`/MediaSegments/${it.Id}`).then((r) => { segments = (r.Items || []).map((s) => ({ type: s.Type, start: s.StartTicks / B.TICKS, end: s.EndTicks / B.TICKS })); }).catch(() => {});
+  // Skip times: Tower's first (it compares every episode's sound, reads chapters, asks TheIntroDB and
+  // uses fixes people made), else the server's own. Only times Tower is sure of skip by themselves.
+  const fromServer = () => B.get(`/MediaSegments/${it.Id}`).then((r) => { if (!segments.tower) segments = (r.Items || []).map((s) => ({ type: s.Type, start: s.StartTicks / B.TICKS, end: s.EndTicks / B.TICKS })); }).catch(() => {});
+  const useTower = (r) => {
+    const list = ((r && r.segments) || []).filter((s) => s.end > s.start).map((s) => ({ type: s.type, start: s.start, end: s.end, sure: !!s.sure, fixed: s.source === "you" || s.source === "fix" }));
+    segments = list;
+    segments.tower = true;
+  };
+  let towerTries = 0;
+  const fromTower = () => B.call("GET", `api/skips/${plain(it.Id)}`).then((r) => {
+    useTower(r);
+    // Tower is still checking this season: ask again in a minute (for up to 10 minutes)
+    if (r && r.ready === false && ++towerTries <= 10) setTimeout(() => { if (B.alive(nav)) fromTower(); }, 60000);
+  }).catch(() => { if (!segments.tower) fromServer(); });
+  fromServer();
+  fromTower();
   const words = { Intro: "Skip intro", Recap: "Skip recap", Outro: "Skip credits", Preview: "Skip preview", Commercial: "Skip" };
   // Keep the request itself, so a second ask while the first is still loading waits for the same
   // answer (before, it got "nothing" and the player left, landing back on the episode before).
@@ -278,8 +300,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const sk = $("#pSkip");
     if (seg) {
       const auto = (seg.type === "Intro" || seg.type === "Recap") && series && alwaysSkip.intro.has(plain(series)) || seg.type === "Outro" && series && alwaysSkip.outro.has(plain(series));
-      if ((auto || settings.autoskip) && !skipped.has(seg)) { skipped.add(seg); v.currentTime = seg.end; B.toast(words[seg.type].replace("Skip", "Skipped")); return; }
-      sk.textContent = words[seg.type]; sk.classList.remove("hidden"); sk.onclick = () => { skipped.add(seg); v.currentTime = seg.end; sk.classList.add("hidden"); };
+      // One skip per kind, so a refreshed time (after a fix) doesn't jump again
+      if ((auto || settings.autoskip) && seg.sure !== false && !skipped.has(seg.type)) { skipped.add(seg.type); v.currentTime = seg.end; B.toast(words[seg.type].replace("Skip", "Skipped")); return; }
+      sk.textContent = words[seg.type]; sk.classList.remove("hidden"); sk.onclick = () => { skipped.add(seg.type); v.currentTime = seg.end; sk.classList.add("hidden"); };
     } else sk.classList.add("hidden");
     const outro = segments.find((s) => s.type === "Outro");
     const T = total();
@@ -300,6 +323,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
       <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
+      ${segments.tower && !B.me.kids ? `<h4>Skip came at the wrong time?</h4><p class="dim" style="font-size:13px;margin:-4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}` : ""}
       <h4>Something wrong?</h4>${subIndex !== -1 && !B.me.kids ? `<button class="opt" data-subsync>${I("sub")} Subtitles are early or late</button>` : ""}<button class="opt" data-report>${I("flag")} Report a problem</button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
@@ -307,6 +331,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
+      const fx = e.target.closest("[data-fix]");
+      if (fx) { p.remove(); return fixSkip(fx.dataset.fix); }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
       if (e.target.closest("[data-subsync]")) { p.remove(); return fixSubs(); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
@@ -325,6 +351,19 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         B.savePrefs((c) => { const key = k === "intro" ? "benflix.autoSkipIntro" : "benflix.autoSkipOutro"; c[key] = [...set].map(dashed).join("|") || null; }).catch(() => {});
       }
     };
+  };
+
+  // ---------- "Skip came at the wrong time?": saved on Tower at the spot the video is at now ----------
+  const fixSkip = async (kind) => {
+    const at = Math.round(v.currentTime * 100) / 100;
+    let r;
+    try { r = await B.call("POST", `api/skips/${plain(it.Id)}/fix`, { kind, at }); } catch (err) { return B.toast(err.message); }
+    useTower(r);
+    // Don't jump away straight after marking where something starts (you may want to mark its end too)
+    if (kind === "intro_start") skipped.add("Intro");
+    if (kind === "credits_start") skipped.add("Outro");
+    if (kind === "undo") skipped.clear();
+    B.toast(`Saved: ${(r && r.saved) || "your fix"}. ${kind.startsWith("no_intro") || kind === "undo" ? "" : "Tower is fixing the other episodes of this show too."}`.trim());
   };
 
   // ---------- "Subtitles are early or late": Tower lines them up with the voices ----------
