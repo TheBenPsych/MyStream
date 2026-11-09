@@ -113,7 +113,10 @@ private fun pressAt(
     }
     // Benflix: a light buzz, so a tap feels like it did something
     Haptics.tap(view)
-    node.config.getOrNull(SemanticsActions.OnClick)?.action?.invoke()
+    node.config
+        .getOrNull(SemanticsActions.OnClick)
+        ?.action
+        ?.invoke()
 }
 
 private fun findTarget(
