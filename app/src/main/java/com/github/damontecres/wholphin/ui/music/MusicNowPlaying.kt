@@ -211,7 +211,7 @@ fun MusicNowPlayingPage(
     ) {
         val boxWidth = maxWidth
         val boxHeight = maxHeight
-        val towersHeight = boxHeight * (if (wide) 0.34f else 0.13f)
+        val towersHeight = boxHeight * (if (wide) 0.34f else 0.11f)
         if (barsOn) {
             MusicTowers(
                 playing = playing,
