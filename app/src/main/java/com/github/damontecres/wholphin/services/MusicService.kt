@@ -299,10 +299,7 @@ class MusicService
                         ).build()
                 }
             if (mediaItems.isEmpty()) return
-<<<<<<< HEAD
             generation++
-=======
->>>>>>> origin/main
             sourceId = null
             withContext(WholphinDispatchers.Main) {
                 added.clear()
