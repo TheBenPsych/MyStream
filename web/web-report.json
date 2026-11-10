@@ -1,0 +1,1884 @@
+{
+ "started": "2026-11-10T17:27:44.277Z",
+ "viewports": {
+  "computer": {
+   "pages": 61,
+   "presses": 234,
+   "nothing": 6,
+   "errors": 0
+  },
+  "phone": {
+   "pages": 61,
+   "presses": 231,
+   "nothing": 4,
+   "errors": 0
+  }
+ },
+ "problems": [
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Home",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Switch profile",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Requests",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → My watching",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Settings",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Help and updates",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "computer",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Scroll right",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "computer",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Scroll right",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "computer",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Try again",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/requests",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/server",
+   "button": "Reload now",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": " → Add all to Up next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "More → Play next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "More → Add to Up next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/liked",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/liked",
+   "button": "More → Add to Up next",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/movie/c002f0f88ee970cce7f138bbc925de64",
+   "button": "More → Start over",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "button": "Play top songs",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "#/requests?tab=movies",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Report a problem → Something else",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Report a problem → Something else",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Back",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Play / pause (space)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Back 10 seconds (left arrow)",
+   "shot": "095-computer-nothing-Back-10-seconds-left-arrow-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Back 10 seconds (left arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Forward 10 seconds (right arrow)",
+   "shot": "096-computer-nothing-Forward-10-seconds-right-arrow-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Forward 10 seconds (right arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Keyboard shortcuts (?)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Audio and subtitles (S turns them on and off)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Sound on / off (M)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "button": "Full screen (F)",
+   "shot": "097-computer-nothing-Full-screen-F-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Scroll right",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Scroll right",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Play / pause (space)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back 10 seconds (left arrow)",
+   "shot": "101-computer-nothing-Back-10-seconds-left-arrow-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back 10 seconds (left arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Forward 10 seconds (right arrow)",
+   "shot": "102-computer-nothing-Forward-10-seconds-right-arrow-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Forward 10 seconds (right arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Keyboard shortcuts (?)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Audio and subtitles (S turns them on and off)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Sound on / off (M)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "computer",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Full screen (F)",
+   "shot": "103-computer-nothing-Full-screen-F-.jpg"
+  },
+  {
+   "size": "computer",
+   "type": "server said 404",
+   "where": "",
+   "button": "demo",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "computer",
+   "type": "press sent us back to sign-in",
+   "where": "",
+   "button": "Add someone",
+   "shot": "107-computer-signed-out-Add-someone.jpg"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Home",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "Search",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Switch profile",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Requests",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → My watching",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Settings",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/home",
+   "button": "demo → Help and updates",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/search",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "demo → Report a problem",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/movies",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/movies?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=1&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=2&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/shows",
+   "button": "Scroll left",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/discover/tv?page=3&sortBy=popularity.desc"
+  },
+  {
+   "size": "phone",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Scroll right",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "phone",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Scroll right",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "phone",
+   "type": "server said 502",
+   "where": "#/games",
+   "button": "Try again",
+   "text": "GET /api/games"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/requests",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/server",
+   "button": "Reload now",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/933e3a903b3ea327b4acfbeb46445b92/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": " → Add all to Up next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "More → Play next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/songs",
+   "button": "More → Add to Up next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/liked",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/liked",
+   "button": "More → Add to Up next",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/movie/c002f0f88ee970cce7f138bbc925de64",
+   "button": "More → Start over",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/3f5cc1daea4e59e9204d939ba3e5345e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/a794b7c125d436df8dc2d870ad7b7e1e/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "button": "Play",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "button": "Play top songs",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "button": "Shuffle",
+   "text": "GET /api/web/jf/Audio/90b750a2cec4eb338c0dab3b40b8bb13/Lyrics"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "#/requests?tab=movies",
+   "button": "Scroll right",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Report a problem → Something else",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Report a problem → Something else",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Play / pause (space)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back 10 seconds (left arrow)",
+   "shot": "202-phone-nothing-Back-10-seconds-left-arrow-.jpg"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Back 10 seconds (left arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Forward 10 seconds (right arrow)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Keyboard shortcuts (?)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Audio and subtitles (S turns them on and off)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Sound on / off (M)",
+   "text": "GET /api/skips/c002f0f88ee970cce7f138bbc925de64"
+  },
+  {
+   "size": "phone",
+   "type": "press did nothing",
+   "where": "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "button": "Full screen (F)",
+   "shot": "203-phone-nothing-Full-screen-F-.jpg"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Scroll right",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Scroll right",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Back",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Play / pause (space)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "press did nothing",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Back 10 seconds (left arrow)",
+   "shot": "207-phone-nothing-Back-10-seconds-left-arrow-.jpg"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Back 10 seconds (left arrow)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Forward 10 seconds (right arrow)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Keyboard shortcuts (?)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Audio and subtitles (S turns them on and off)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "server said 503",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Sound on / off (M)",
+   "text": "GET /api/skips/70853c7dde5e5759b151cd76876ab6c2"
+  },
+  {
+   "size": "phone",
+   "type": "press did nothing",
+   "where": "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "button": "Full screen (F)",
+   "shot": "208-phone-nothing-Full-screen-F-.jpg"
+  },
+  {
+   "size": "phone",
+   "type": "server said 404",
+   "where": "",
+   "button": "demo",
+   "text": "GET /api/web/jf/JellyfinEnhanced/jellyseerr/user-status"
+  },
+  {
+   "size": "phone",
+   "type": "press sent us back to sign-in",
+   "where": "",
+   "button": "Add someone",
+   "shot": "212-phone-signed-out-Add-someone.jpg"
+  }
+ ],
+ "popups": {
+  "computer #/home → demo": [
+   "Switch profile",
+   "Requests",
+   "My watching",
+   "Settings",
+   "Help and updates",
+   "Report a problem",
+   "Sign out"
+  ],
+  "computer #/settings → Change": [
+   "Next",
+   "Cancel"
+  ],
+  "computer #/songs → button": [
+   "Add all to Up next",
+   "Add all to a playlist"
+  ],
+  "computer #/songs → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/liked → button": [
+   "Add all to Up next",
+   "Add all to a playlist"
+  ],
+  "computer #/liked → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/grid/movies → Sort: Newest added": [
+   "Newest added",
+   "A to Z",
+   "Release year",
+   "Score",
+   "Length"
+  ],
+  "computer #/grid/movies → Genre": [
+   "Every genre",
+   "Action",
+   "Adventure",
+   "Animation",
+   "Comedy",
+   "Crime",
+   "Drama",
+   "Family",
+   "Fantasy",
+   "History",
+   "Horror",
+   "TV Movie",
+   "Thriller",
+   "War",
+   "Western"
+  ],
+  "computer #/grid/shows → Sort: Newest episode": [
+   "Newest episode",
+   "Newest show",
+   "A to Z",
+   "Year",
+   "Score"
+  ],
+  "computer #/grid/shows → Genre": [
+   "Every genre",
+   "Drama",
+   "Sci-Fi & Fantasy",
+   "War & Politics"
+  ],
+  "computer #/movie/c002f0f88ee970cce7f138bbc925de64 → Trailer": [],
+  "computer #/movie/c002f0f88ee970cce7f138bbc925de64 → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it"
+  ],
+  "computer #/movie/c002f0f88ee970cce7f138bbc925de64 → More": [
+   "Close",
+   "Start over",
+   "Audio, subtitles and version",
+   "Mark as not watched",
+   "Report a problem",
+   "Open on IMDb"
+  ],
+  "computer #/movie/70853c7dde5e5759b151cd76876ab6c2 → Trailer": [],
+  "computer #/movie/70853c7dde5e5759b151cd76876ab6c2 → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it"
+  ],
+  "computer #/movie/70853c7dde5e5759b151cd76876ab6c2 → More": [
+   "Close",
+   "Start over",
+   "Audio, subtitles and version",
+   "Mark as watched",
+   "Report a problem",
+   "Open on IMDb"
+  ],
+  "computer #/grid/movies?title=New%20on%20Benflix → Sort: Newest added": [
+   "Newest added",
+   "A to Z",
+   "Release year",
+   "Score",
+   "Length"
+  ],
+  "computer #/grid/movies?title=New%20on%20Benflix → Genre": [
+   "Every genre",
+   "Action",
+   "Adventure",
+   "Animation",
+   "Comedy",
+   "Crime",
+   "Drama",
+   "Family",
+   "Fantasy",
+   "History",
+   "Horror",
+   "TV Movie",
+   "Thriller",
+   "War",
+   "Western"
+  ],
+  "computer #/show/9bd5926326d651153928e0d11c6ee7cb → Trailer": [],
+  "computer #/show/9bd5926326d651153928e0d11c6ee7cb → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it",
+   "Take my rating off"
+  ],
+  "computer #/show/9bd5926326d651153928e0d11c6ee7cb → More": [
+   "Close",
+   "Mark the whole show as watched",
+   "Report a problem"
+  ],
+  "computer #/grid/shows?mine=1&title=My%20List → Sort: Newest episode": [
+   "Newest episode",
+   "Newest show",
+   "A to Z",
+   "Year",
+   "Score"
+  ],
+  "computer #/grid/shows?mine=1&title=My%20List → Genre": [
+   "Every genre"
+  ],
+  "computer #/playlist/85b3a2fa70fa51ac3a63f434800dd3a7 → button": [
+   "Add all to Up next",
+   "Add all to a playlist",
+   "Rename"
+  ],
+  "computer #/playlist/85b3a2fa70fa51ac3a63f434800dd3a7 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album",
+   "Move up",
+   "Move down",
+   "Remove from this playlist"
+  ],
+  "computer #/playlist/d970eee82134b487f1df37d753fab1f9 → button": [
+   "Add all to Up next",
+   "Add all to a playlist",
+   "Rename"
+  ],
+  "computer #/playlist/d970eee82134b487f1df37d753fab1f9 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album",
+   "Move up",
+   "Move down",
+   "Remove from this playlist"
+  ],
+  "computer #/album/9f4119bdf8257b3f75141745432d0171 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/album/f7e6d83954e06a0d46724a6068fa21ff → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/artist/78e6763b3d9b58c349a58ce5eb7877c1 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/artist/6330eeddf969d120c0c4c054770f0ee0 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "computer #/settings/you → Change": [
+   "Next",
+   "Cancel"
+  ],
+  "computer #/settings/watching → Only for other languages": [
+   "Only for other languages",
+   "Always",
+   "Only signs and songs",
+   "Off"
+  ],
+  "computer #/settings/watching → English": [
+   "The film's own language",
+   "English",
+   "Japanese",
+   "Spanish",
+   "French",
+   "German",
+   "Korean"
+  ],
+  "computer #/settings/watching → The film's own language": [
+   "The film's own language",
+   "English",
+   "Japanese",
+   "Spanish",
+   "French",
+   "German",
+   "Korean"
+  ],
+  "computer #/settings/picture → Best (no limit)": [
+   "Best (no limit)",
+   "1080p",
+   "720p",
+   "480p (slow internet)"
+  ],
+  "computer #/settings/install → Install": [
+   "Stay",
+   "OK"
+  ],
+  "computer #/help/report → Report a problem": [
+   "Close",
+   "No sound",
+   "Keeps stopping to load",
+   "Subtitles are wrong",
+   "Will not play",
+   "Something else"
+  ],
+  "phone #/home → demo": [
+   "Switch profile",
+   "Requests",
+   "My watching",
+   "Settings",
+   "Help and updates",
+   "Report a problem",
+   "Sign out"
+  ],
+  "phone #/settings → Change": [
+   "Next",
+   "Cancel"
+  ],
+  "phone #/songs → button": [
+   "Add all to Up next",
+   "Add all to a playlist"
+  ],
+  "phone #/songs → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/liked → button": [
+   "Add all to Up next",
+   "Add all to a playlist"
+  ],
+  "phone #/liked → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/grid/movies → Sort: Newest added": [
+   "Newest added",
+   "A to Z",
+   "Release year",
+   "Score",
+   "Length"
+  ],
+  "phone #/grid/movies → Genre": [
+   "Every genre",
+   "Action",
+   "Adventure",
+   "Animation",
+   "Comedy",
+   "Crime",
+   "Drama",
+   "Family",
+   "Fantasy",
+   "History",
+   "Horror",
+   "TV Movie",
+   "Thriller",
+   "War",
+   "Western"
+  ],
+  "phone #/grid/shows → Sort: Newest episode": [
+   "Newest episode",
+   "Newest show",
+   "A to Z",
+   "Year",
+   "Score"
+  ],
+  "phone #/grid/shows → Genre": [
+   "Every genre",
+   "Drama",
+   "Sci-Fi & Fantasy",
+   "War & Politics"
+  ],
+  "phone #/movie/c002f0f88ee970cce7f138bbc925de64 → Trailer": [],
+  "phone #/movie/c002f0f88ee970cce7f138bbc925de64 → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it",
+   "Take my rating off"
+  ],
+  "phone #/movie/c002f0f88ee970cce7f138bbc925de64 → More": [
+   "Close",
+   "Start over",
+   "Audio, subtitles and version",
+   "Mark as watched",
+   "Report a problem",
+   "Open on IMDb"
+  ],
+  "phone #/movie/70853c7dde5e5759b151cd76876ab6c2 → Trailer": [],
+  "phone #/movie/70853c7dde5e5759b151cd76876ab6c2 → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it",
+   "Take my rating off"
+  ],
+  "phone #/movie/70853c7dde5e5759b151cd76876ab6c2 → More": [
+   "Close",
+   "Start over",
+   "Audio, subtitles and version",
+   "Mark as not watched",
+   "Report a problem",
+   "Open on IMDb"
+  ],
+  "phone #/grid/movies?mine=1&title=My%20List → Sort: Newest added": [
+   "Newest added",
+   "A to Z",
+   "Release year",
+   "Score",
+   "Length"
+  ],
+  "phone #/grid/movies?mine=1&title=My%20List → Genre": [
+   "Every genre"
+  ],
+  "phone #/show/9bd5926326d651153928e0d11c6ee7cb → Trailer": [],
+  "phone #/show/9bd5926326d651153928e0d11c6ee7cb → Rate": [
+   "Close",
+   "Not for me",
+   "I like it",
+   "Love it"
+  ],
+  "phone #/show/9bd5926326d651153928e0d11c6ee7cb → More": [
+   "Close",
+   "Mark the whole show as not watched",
+   "Report a problem"
+  ],
+  "phone #/grid/shows?sort=newshow&title=New%20shows → Sort: Newest show": [
+   "Newest episode",
+   "Newest show",
+   "A to Z",
+   "Year",
+   "Score"
+  ],
+  "phone #/grid/shows?sort=newshow&title=New%20shows → Genre": [
+   "Every genre",
+   "Drama",
+   "Sci-Fi & Fantasy",
+   "War & Politics"
+  ],
+  "phone #/playlist/85b3a2fa70fa51ac3a63f434800dd3a7 → button": [
+   "Add all to Up next",
+   "Add all to a playlist",
+   "Rename"
+  ],
+  "phone #/playlist/85b3a2fa70fa51ac3a63f434800dd3a7 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album",
+   "Move up",
+   "Move down",
+   "Remove from this playlist"
+  ],
+  "phone #/playlist/d970eee82134b487f1df37d753fab1f9 → button": [
+   "Add all to Up next",
+   "Add all to a playlist",
+   "Rename"
+  ],
+  "phone #/playlist/d970eee82134b487f1df37d753fab1f9 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album",
+   "Move up",
+   "Move down",
+   "Remove from this playlist"
+  ],
+  "phone #/album/9f4119bdf8257b3f75141745432d0171 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/album/f7e6d83954e06a0d46724a6068fa21ff → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/artist/78e6763b3d9b58c349a58ce5eb7877c1 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Unlike",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/artist/6330eeddf969d120c0c4c054770f0ee0 → More": [
+   "Play next",
+   "Add to Up next",
+   "Add to a playlist",
+   "Like",
+   "Go to artist",
+   "Go to album"
+  ],
+  "phone #/settings/you → Change": [
+   "Next",
+   "Cancel"
+  ],
+  "phone #/settings/watching → Only for other languages": [
+   "Only for other languages",
+   "Always",
+   "Only signs and songs",
+   "Off"
+  ],
+  "phone #/settings/watching → English": [
+   "The film's own language",
+   "English",
+   "Japanese",
+   "Spanish",
+   "French",
+   "German",
+   "Korean"
+  ],
+  "phone #/settings/watching → The film's own language": [
+   "The film's own language",
+   "English",
+   "Japanese",
+   "Spanish",
+   "French",
+   "German",
+   "Korean"
+  ],
+  "phone #/settings/picture → Best (no limit)": [
+   "Best (no limit)",
+   "1080p",
+   "720p",
+   "480p (slow internet)"
+  ],
+  "phone #/settings/install → Install": [
+   "Stay",
+   "OK"
+  ],
+  "phone #/help/report → Report a problem": [
+   "Close",
+   "No sound",
+   "Keeps stopping to load",
+   "Subtitles are wrong",
+   "Will not play",
+   "Something else"
+  ]
+ },
+ "visited": {
+  "computer": [
+   "#/home",
+   "#/search",
+   "#/movies",
+   "#/shows",
+   "#/live",
+   "#/games",
+   "#/music",
+   "#/books",
+   "#/requests",
+   "#/mine",
+   "#/settings",
+   "#/help",
+   "#/server",
+   "#/songs",
+   "#/liked",
+   "#/upnext",
+   "#/browse/movies/genres",
+   "#/browse/shows/genres",
+   "#/browse/movies/studios",
+   "#/grid/movies",
+   "#/grid/shows",
+   "#/browse/shows/studios",
+   "#/movie/c002f0f88ee970cce7f138bbc925de64",
+   "#/movie/70853c7dde5e5759b151cd76876ab6c2",
+   "#/grid/movies?title=New%20on%20Benflix",
+   "#/show/9bd5926326d651153928e0d11c6ee7cb",
+   "#/grid/shows?mine=1&title=My%20List",
+   "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "#/album/9f4119bdf8257b3f75141745432d0171",
+   "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "#/artist/6330eeddf969d120c0c4c054770f0ee0",
+   "#/mgrid/recent",
+   "#/mgrid/artists",
+   "#/mgrid/albums",
+   "#/mgrid/genres",
+   "#/mgrid/playlists",
+   "#/books?p=home&c=all&s=added",
+   "#/requests?tab=movies",
+   "#/mine?range=month",
+   "#/settings/you",
+   "#/settings/watching",
+   "#/settings/picture",
+   "#/settings/look",
+   "#/settings/devices",
+   "#/settings/install",
+   "#/settings/help",
+   "#/help/updates",
+   "#/help/new",
+   "#/help/how",
+   "#/help/qa",
+   "#/help/report",
+   "#/help/about",
+   "#/play/c002f0f88ee970cce7f138bbc925de64?resume=1",
+   "#/person/5e35154b8255d7b03f9a259bb359362f",
+   "#/person/793baaf433de8538becd91654dd28589",
+   "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "#/mgrid/genre/6ca4fc40460773bb0ac0cd7c74ca4807?name=Electronic",
+   "#/mgrid/genre/bef9e2e89c007f0fc015d75a1626f97c?name=Progressive%20Rock",
+   ""
+  ],
+  "phone": [
+   "#/home",
+   "#/search",
+   "#/movies",
+   "#/shows",
+   "#/live",
+   "#/games",
+   "#/music",
+   "#/books",
+   "#/requests",
+   "#/mine",
+   "#/settings",
+   "#/help",
+   "#/server",
+   "#/songs",
+   "#/liked",
+   "#/upnext",
+   "#/browse/movies/genres",
+   "#/browse/shows/genres",
+   "#/browse/movies/studios",
+   "#/grid/movies",
+   "#/grid/shows",
+   "#/browse/shows/studios",
+   "#/movie/c002f0f88ee970cce7f138bbc925de64",
+   "#/movie/70853c7dde5e5759b151cd76876ab6c2",
+   "#/grid/movies?mine=1&title=My%20List",
+   "#/show/9bd5926326d651153928e0d11c6ee7cb",
+   "#/grid/shows?sort=newshow&title=New%20shows",
+   "#/playlist/85b3a2fa70fa51ac3a63f434800dd3a7",
+   "#/playlist/d970eee82134b487f1df37d753fab1f9",
+   "#/album/9f4119bdf8257b3f75141745432d0171",
+   "#/album/f7e6d83954e06a0d46724a6068fa21ff",
+   "#/artist/78e6763b3d9b58c349a58ce5eb7877c1",
+   "#/artist/6330eeddf969d120c0c4c054770f0ee0",
+   "#/mgrid/recent",
+   "#/mgrid/artists",
+   "#/mgrid/albums",
+   "#/mgrid/genres",
+   "#/mgrid/playlists",
+   "#/books?p=home&c=all&s=added",
+   "#/requests?tab=movies",
+   "#/mine?range=month",
+   "#/settings/you",
+   "#/settings/watching",
+   "#/settings/picture",
+   "#/settings/look",
+   "#/settings/devices",
+   "#/settings/install",
+   "#/settings/help",
+   "#/help/updates",
+   "#/help/new",
+   "#/help/how",
+   "#/help/qa",
+   "#/help/report",
+   "#/help/about",
+   "#/play/c002f0f88ee970cce7f138bbc925de64",
+   "#/person/5e35154b8255d7b03f9a259bb359362f",
+   "#/person/793baaf433de8538becd91654dd28589",
+   "#/play/70853c7dde5e5759b151cd76876ab6c2",
+   "#/mgrid/genre/6ca4fc40460773bb0ac0cd7c74ca4807?name=Electronic",
+   "#/mgrid/genre/bef9e2e89c007f0fc015d75a1626f97c?name=Progressive%20Rock",
+   ""
+  ]
+ },
+ "left": {
+  "computer": [],
+  "phone": []
+ },
+ "finished": "2026-11-10T18:06:17.814Z"
+}
