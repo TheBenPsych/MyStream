@@ -1093,11 +1093,12 @@ def set_keys(body):
         _keys["hardcover"] = k
         if k:
             try:
-                d = hc("query { me { id username } }") or {}
-                me = d.get("me")
-                me = me[0] if isinstance(me, list) and me else me or {}
+                # A book lookup, not "who am I": a key with only read:catalog can still do this
+                d = hc("query { books(limit: 1, order_by: {users_count: desc}) { id title } }") or {}
+                if not d.get("books"):
+                    raise RuntimeError("Hardcover answered but sent no books")
                 _set_health("hardcover", True, None)
-                words.append("Hardcover token works" + (f" (signed in as {me.get('username')})." if me.get("username") else "."))
+                words.append("Hardcover token works.")
             except Exception as e:
                 _set_health("hardcover", False, _hc_problem(e))
                 words.append(_hc_problem(e))
