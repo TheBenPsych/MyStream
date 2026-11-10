@@ -250,7 +250,11 @@ class RequestReadyService
                 val json =
                     seerrService.api
                         .getRaw("/${if (movie) "movie" else "tv"}/$tmdbId")
-                        ?.let { kotlinx.serialization.json.Json.parseToJsonElement(it).jsonObject }
+                        ?.let {
+                            kotlinx.serialization.json.Json
+                                .parseToJsonElement(it)
+                                .jsonObject
+                        }
                         ?: return null
                 val title = (json["title"] ?: json["name"])?.jsonPrimitive?.contentOrNull ?: return null
                 val poster = json["posterPath"]?.jsonPrimitive?.contentOrNull?.let { "https://image.tmdb.org/t/p/w185$it" }
@@ -332,7 +336,10 @@ internal fun onTheWayLine(
         }
     val last = ends.maxOrNull()
     if (last != null) {
-        val minutes = java.time.Duration.between(now, last).toMinutes()
+        val minutes =
+            java.time.Duration
+                .between(now, last)
+                .toMinutes()
         return when {
             minutes < 2 -> "On the way, almost here"
             minutes < 60 -> "On the way, about $minutes minutes left"

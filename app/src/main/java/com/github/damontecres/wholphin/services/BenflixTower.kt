@@ -182,7 +182,6 @@ class BenflixTower
             )
         }
 
-        /** Each of these returns the helper's message in plain words, like "Sonarr restarted." */
         /** Home's weather: the town Ben typed (at home only, admin) */
         suspend fun homeTown(): HomeTown = atHome { homeTownOf(helper.getJson("/api/admin/home/town")) }
 
@@ -208,6 +207,7 @@ class BenflixTower
                 now = j.optJSONObject("weather")?.takeIf { it.optBoolean("ready") }?.optString("line"),
             )
 
+        /** Each of these returns the helper's message in plain words, like "Sonarr restarted." */
         suspend fun restartApp(name: String): String = message(helper.postJson("/api/admin/apps/$name/restart"))
 
         suspend fun checkAgain(download: TowerDownload): String =
