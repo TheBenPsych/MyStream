@@ -580,6 +580,7 @@
     wireSongs(root, songs, o.title, o.sourceId, o.extra);
     $(".mhero-btns").addEventListener("click", (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
+      if ((b.dataset.h === "play" || b.dataset.h === "shuffle") && !songs.length) return B.toast(o.title === "Liked songs" ? "No liked songs yet. Press the heart on a song to add it here." : "There are no songs here yet.");
       // Ben: Play or Shuffle goes straight to Now playing
       if (b.dataset.h === "play") { M.playList(songs, 0, false, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
       if (b.dataset.h === "shuffle") { M.playList(songs, 0, true, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
