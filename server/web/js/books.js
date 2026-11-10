@@ -13,6 +13,8 @@
     f30: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">30</text>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
   };
+  // The shared title page (title.js) draws icons with the main set, so lend it the headphones
+  if (typeof P === "object" && !P.ears) P.ears = ICON.ears;
   const I = (name, cls) => (ICON[name] ? `<svg class="i ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : B.I(name, cls));
   B.DOORS.books = { key: "books", name: "Books", desc: "Read and listen", color: LIME, icon: "book" };
   B.bookIcon = I;
@@ -112,51 +114,60 @@
     if (!B.alive(nav)) return;
     const manga = t.kind === "manga" || t.kind === "comic", audio = t.kind === "audiobook";
     const place = t.place || {};
-    const bits = [t.author, t.narrator ? "Read by " + t.narrator : "", t.year || "",
-      audio && t.seconds ? (t.secondsLeft && t.secondsLeft < t.seconds ? hm(t.secondsLeft) + " left" : hm(t.seconds)) : "",
-      !audio && !manga && t.minutes ? "About " + hm(t.minutes * 60) + " to read" : ""].filter(Boolean);
-    let main = "";
+    // Redesign 2: the shared title page. Cover where the picture goes; Read / Listen, the other way you have
+    // it, Want to read, In this series, More. Tabs: Overview, In this series, More by the author, More like this.
+    let main = null;
     if (manga) {
       const nv = (t.volumes || []).find((v) => v.id === t.next);
-      if (nv) main = `<a class="btn white big" href="#/books/pages/${enc(nv.id)}">${I("book")} ${nv.progress > 0 && !nv.done ? "Keep reading" : "Read"} ${esc(nv.name)}</a>`;
+      if (nv) main = { label: `${nv.progress > 0 && !nv.done ? "Keep reading" : "Read"} ${nv.name}`, icon: "book", href: `#/books/pages/${enc(nv.id)}` };
     } else if (audio) {
-      main = `<button class="btn white big" data-a="listen">${I("ears")} ${place.pos ? "Keep listening" : "Listen"}</button>`;
+      main = { label: place.pos ? "Keep listening" : "Listen", icon: "ears", onClick: () => BK.play(t), note: t.secondsLeft && t.secondsLeft < t.seconds ? hm(t.secondsLeft) + " left" : "" };
     } else if (t.readable) {
       main = t.file === ".pdf"
-        ? `<a class="btn white big" href="api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}" target="_blank" rel="noopener">${I("book")} Open the PDF</a>`
-        : `<a class="btn white big" href="#/books/read/${enc(t.id)}">${I("book")} ${place.pct > 0.005 && t.status !== "done" ? "Keep reading " + Math.round(place.pct * 100) + "%" : "Read"}</a>`;
+        ? { label: "Open the PDF", icon: "book", onClick: () => window.open(`api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}`, "_blank", "noopener") }
+        : { label: place.pct > 0.005 && t.status !== "done" ? "Keep reading " + Math.round(place.pct * 100) + "%" : "Read", icon: "book", href: `#/books/read/${enc(t.id)}` };
     }
-    const other = t.other ? (t.other.kind === "audiobook" ? `<button class="btn big" data-a="other">${I("ears")} Listen</button>` : `<a class="btn big" href="#/books/read/${enc(t.other.id)}">${I("book")} Read</a>`) : "";
-    $("#bk").innerHTML = `<div class="details"><div class="hero bk-hero"><div class="hero-in"><div class="main">
-        <div class="kick" style="color:${LIME}">${kindWord(t.kind).toUpperCase()}</div>
-        <div class="t">${esc(t.name)}</div>
-        <div class="meta">${bits.map(esc).join(" · ")}</div>
-        ${(t.scores || []).length ? `<div class="scores">${t.scores.map((s) => `<span><b>${(+s.score).toFixed(1)}</b>${esc(s.site)}</span>`).join("")}</div>` : ""}
-        ${t.desc ? `<p class="ov bk-desc">${esc(t.desc)}</p>` : ""}
-        ${t.missing ? `<p class="sub" style="color:#E8D44D">Tower is missing ${t.missing} part${t.missing === 1 ? "" : "s"} of this audiobook.</p>` : ""}
-        ${t.placeLine ? `<p class="sub">${esc(t.placeLine)}</p>` : ""}
-        ${!t.readable && !audio && !manga ? `<p class="sub" style="color:#E8D44D">This kind of file can't be opened in Benflix. EPUB and PDF can.</p>` : ""}
-        <div class="btns">${main}${other}
-          <button class="btn big" data-a="want">${B.I(t.want ? "check" : "plus")} ${t.want ? "On Want to read" : "Want to read"}</button>
-          ${manga ? "" : `<button class="btn big" data-a="done">${B.I("check")} ${t.status === "done" ? "Finished" : "Mark finished"}</button>`}
-          ${t.kind === "book" && t.readable && t.file === ".epub" ? `<a class="btn big" href="api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}" download>${B.I("dl")} Download</a>` : ""}</div>
-      </div><div class="bk-cover" style="${t.cover ? `background-image:url('${pic(t.cover.replace("w=320", "w=640"))}')` : ""}"></div></div></div>
-      ${manga && (t.volumes || []).length ? `<section class="rowx"><h3>${t.volumes.length} volume${t.volumes.length === 1 ? "" : "s"}${t.totalVols > t.volumes.length ? " of " + t.totalVols : ""} <small class="dim">· right-click a volume to mark it read</small></h3><div class="strip">${t.volumes.map((v) => card({ id: v.id, name: v.name, cover: v.cover || t.cover, status: v.done ? "done" : v.progress > 0 ? "reading" : "not", progress: v.progress, line: v.current && !v.done ? "Reading now" : "", new: v.new }, "#/books/pages/" + enc(v.id)).replace('<a class="poster bk"', `<a class="poster bk" data-vol="${esc(v.id)}"`)).join("")}</div></section>` : ""}
-      ${audio && (t.chapters || []).length > 1 ? `<section class="rowx"><h3>${t.chapters.length} chapters</h3><div class="wrap" style="padding-bottom:0"><div class="row" style="flex-wrap:wrap;gap:8px">${t.chapters.slice(0, 80).map((c, i) => `<button class="chip" data-ch="${i}">${i + 1}. ${esc(c.title)}${c.seconds ? " · " + hm(c.seconds) : ""}</button>`).join("")}</div></div></section>` : ""}
-      ${B.row("More by " + (t.author || "this author"), (t.moreBy || []).map((x) => card(x)))}
-      ${B.row("More like this", (t.moreLike || []).map((x) => card(x)))}
-    </div>`;
-    $("#bk").onclick = async (e) => {
-      const a = e.target.closest("[data-a]"), ch = e.target.closest("[data-ch]");
-      if (ch) return BK.play(t, +ch.dataset.ch);
-      if (!a) return;
-      const act = a.dataset.a;
-      if (act === "listen") return BK.play(t);
-      if (act === "other") return BK.play(await api("GET", "title/" + enc(t.other.id)));
-      if (act === "want") { await api("POST", "want", { id: t.id, want: !t.want }); B.cache = {}; return B.render(); }
-      if (act === "done") { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; return B.render(); }
-    };
-    $("#bk").oncontextmenu = async (e) => {
+    if (!main) main = { label: "Read", icon: "book", off: !t.readable && !audio && !manga ? "This kind of file can't be opened in Benflix. EPUB and PDF can." : "Nothing to open yet" };
+    const series = t.series && !manga ? [...(t.moreBy || []), ...(t.moreLike || [])].filter((x, i, all) => x.series === t.series && x.id !== t.id && all.findIndex((y) => y.id === x.id) === i) : [];
+    const vols = manga ? t.volumes || [] : [];
+    const hasSeries = vols.length || series.length;
+    const grid = (list, f) => (list.length ? `<div class="grid tp-grid">${list.map(f || ((x) => card(x))).join("")}</div>` : "");
+    const strip = B.tpStrip([...(t.scores || []).map((s) => [s.site, (+s.score).toFixed(1)]), t.narrator ? ["Read by", t.narrator, true] : null]);
+    const notes = [t.missing ? `<p class="sub" style="color:#E8D44D">Tower is missing ${t.missing} part${t.missing === 1 ? "" : "s"} of this audiobook.</p>` : "",
+      t.placeLine ? `<p class="sub">${esc(t.placeLine)}</p>` : "",
+      audio && (t.chapters || []).length > 1 ? `<h4 style="margin:12px 0 8px">${t.chapters.length} chapters</h4><div class="row" style="flex-wrap:wrap;gap:8px">${t.chapters.slice(0, 80).map((c, i) => `<button class="chip" data-ch="${i}">${i + 1}. ${esc(c.title)}${c.seconds ? " · " + hm(c.seconds) : ""}</button>`).join("")}</div>` : ""].join("");
+    const tp = B.titlePage({
+      title: t.name,
+      color: LIME,
+      cover: { url: t.cover ? pic(t.cover.replace("w=320", "w=640")) : "", ratio: 2 / 3 },
+      info: [kindWord(t.kind), t.author, t.year || "", audio && t.seconds ? hm(t.seconds) : "", !audio && !manga && t.minutes ? "About " + hm(t.minutes * 60) + " to read" : "", t.series && !manga ? t.series + (t.seriesIndex ? " #" + t.seriesIndex : "") : ""],
+      buttons: [
+        main,
+        t.other ? (t.other.kind === "audiobook" ? { label: "Listen", icon: "ears", onClick: async () => BK.play(await api("GET", "title/" + enc(t.other.id))) } : { label: "Read", icon: "book", href: `#/books/read/${enc(t.other.id)}` }) : null,
+        { label: t.want ? "On Want to read" : "Want to read", icon: t.want ? "check" : "plus", onClick: async () => { await api("POST", "want", { id: t.id, want: !t.want }); B.cache = {}; B.render(); } },
+        { label: "In this series", icon: "list", off: hasSeries ? "" : "This one isn't part of a series", onClick: () => tp.open("In this series") },
+        { label: "More", icon: "more", onClick: () => B.tpMore(t.name, [
+          manga ? null : { label: t.status === "done" ? "Mark not finished" : "Mark finished", icon: "check", onClick: async () => { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; B.render(); } },
+          t.kind === "book" && t.readable && t.file === ".epub" ? { label: "Download", icon: "dl", href: `api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}` } : null,
+        ]) },
+      ].filter(Boolean),
+      story: t.desc || "",
+      strip,
+      overviewExtra: notes ? `<div class="wrap0" style="max-width:760px;margin-top:10px">${notes}</div>` : "",
+      tabs: [
+        { name: "In this series", id: "tpSeries", html: vols.length
+          ? `<p class="dim wrap0" style="margin-bottom:10px">${vols.length} volume${vols.length === 1 ? "" : "s"}${t.totalVols > vols.length ? " of " + t.totalVols : ""} · right-click a volume to mark it read</p>` +
+            grid(vols, (v) => card({ id: v.id, name: v.name, cover: v.cover || t.cover, status: v.done ? "done" : v.progress > 0 ? "reading" : "not", progress: v.progress, line: v.current && !v.done ? "Reading now" : "", new: v.new }, "#/books/pages/" + enc(v.id)).replace('<a class="poster bk"', `<a class="poster bk" data-vol="${esc(v.id)}"`))
+          : grid(series) },
+        { name: "More by " + (t.author || "this author"), id: "tpBy", html: grid(t.moreBy || []) },
+        { name: "More like this", id: "tpLike", html: grid(t.moreLike || []) },
+      ],
+    });
+    tp.root.addEventListener("click", (e) => {
+      const ch = e.target.closest("[data-ch]");
+      if (ch) BK.play(t, +ch.dataset.ch);
+    });
+    tp.root.addEventListener("contextmenu", async (e) => {
       const v = e.target.closest("[data-vol]");
       if (!v) return;
       e.preventDefault();
@@ -164,7 +175,7 @@
       await api("POST", "mark", { id: v.dataset.vol, done: true, before });
       B.cache = {};
       B.render();
-    };
+    });
     api("POST", "opened/" + enc(t.id)).catch(() => {});
   });
 

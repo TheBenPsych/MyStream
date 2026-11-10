@@ -121,21 +121,32 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
   if (!g) return B.go("#/games");
   const isFav = favs().includes(id);
   const ok = !!EJS_CORES[c.slug];
-  B.page().innerHTML = B.top("Games", DOORS.games.color) + `<div class="details"><div class="hero" style="min-height:76vh;background:linear-gradient(90deg,var(--tray) 40%,rgba(11,12,16,.6)),url('${cover(g)}') right center/contain no-repeat"><div class="hero-in"><div class="main">
-    <h1 class="t">${esc(g.name)}</h1><div class="meta">${[c.name, info.year || g.year || "", (info.genres || g.genres || []).join(", "), info.players ? `${info.players} players` : ""].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div>
-    <div class="ov">${esc(info.summary || "")}</div>
-    <div class="dim" style="font-size:15px;margin-top:6px">Arrow keys move. Z and X are the main buttons, Enter is Start. A plugged-in controller works too.</div>
-    <div class="btns">${ok ? `<a class="btn white big" href="#/playgame/${id}">${I("play")} ${saves.srm || saves.state ? "Keep playing" : "Play"}</a>` : `<span class="note">This console doesn't play in a browser. Play it on the TV or phone.</span>`}
-      <button class="btn big" id="gFav">${I(isFav ? "check" : "star")} Favourite</button></div></div>
-    <div class="side-col">${(info.companies || []).length ? `<div><b>Made by</b><span>${esc(info.companies.join(", "))}</span></div>` : ""}<div><b>Saves</b><span>${saves.srm ? "In-game save on Tower" : "No save yet"}</span></div>${g.size ? `<div><b>Size</b><span>${(g.size / 1048576).toFixed(1)} MB</span></div>` : ""}</div>
-  </div></div></div>`;
-  B.wireTop();
-  $("#gFav").onclick = () => {
-    const l = favs(), i = l.indexOf(id);
-    i >= 0 ? l.splice(i, 1) : l.unshift(id);
-    store(favKey(), JSON.stringify(l));
-    $("#gFav").innerHTML = `${I(i >= 0 ? "star" : "check")} Favourite`;
-  };
+  // Redesign 2: the shared title page, the box art where the picture goes
+  const kept = saves.srm || saves.state;
+  const tp = B.titlePage({
+    title: g.name,
+    color: DOORS.games.color,
+    cover: { url: cover(g), ratio: 3 / 4 },
+    info: [c.name, info.year || g.year || "", info.players ? `${info.players} players` : ""],
+    buttons: [
+      { label: kept ? "Keep playing" : "Play", icon: "play", href: ok ? `#/playgame/${id}` : "", off: ok ? "" : "This console doesn't play in a browser. Play it on the TV or phone.", note: "Arrow keys move. Z and X are the main buttons, Enter is Start. A controller works too." },
+      { id: "gFav", label: isFav ? "Favourite" : "Add to favourites", icon: isFav ? "check" : "star", onClick: (e, el) => {
+        const l = favs(), i = l.indexOf(id);
+        i >= 0 ? l.splice(i, 1) : l.unshift(id);
+        store(favKey(), JSON.stringify(l));
+        el.innerHTML = `${I(i >= 0 ? "star" : "check")} <span>${i >= 0 ? "Add to favourites" : "Favourite"}</span>`;
+      } },
+    ],
+    story: info.summary || "",
+    strip: B.tpStrip([
+      (info.companies || []).length ? ["Made by", info.companies.slice(0, 2).join(", "), true] : null,
+      (info.genres || g.genres || []).length ? [(info.genres || g.genres).slice(0, 3).join(", "), ""] : null,
+      g.size ? ["MB", (g.size / 1048576).toFixed(1)] : null,
+    ]),
+    tabs: [
+      { name: "Your saves", id: "tpSaves", html: kept ? `<div class="wrap0"><p>${saves.srm ? "You have an in-game save on Tower." : "Benflix kept where you stopped."} Keep playing picks it up on any TV, phone or here.</p></div>` : "" },
+    ],
+  });
 });
 
 // ---------- playing ----------
