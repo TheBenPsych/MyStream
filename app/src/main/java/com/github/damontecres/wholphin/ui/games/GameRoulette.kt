@@ -5,9 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,13 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 
@@ -72,7 +73,8 @@ fun GameRouletteDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier =
                 Modifier
-                    .width(420.dp)
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
                     .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
                     .padding(24.dp),
         ) {
