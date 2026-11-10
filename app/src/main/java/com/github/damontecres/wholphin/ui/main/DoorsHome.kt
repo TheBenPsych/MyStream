@@ -86,6 +86,8 @@ import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -154,7 +156,16 @@ class HomeDoorsViewModel
             viewModelScope.launchIO {
                 try {
                     val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
-                    val items = (episodeNews() + musicNews() + bookNews() + requestNews() + updateNews()).filter { it.id !in opened }
+                    // Benflix speed: the news sources are asked at the same time (they used to go one after
+                    // another, so a slow Tower kept the doors waiting and the pills popped in mid-animation)
+                    val items =
+                        coroutineScope {
+                            val episodes = async { episodeNews() }
+                            val music = async { musicNews() }
+                            val books = async { bookNews() }
+                            val requests = async { requestNews() }
+                            episodes.await() + music.await() + books.await() + requests.await() + updateNews()
+                        }.filter { it.id !in opened }
                     _news.value = items.take(MAX_NEWS)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -328,7 +339,7 @@ class HomeDoorsViewModel
         companion object {
             private const val PREFS = "benflix_home_news"
             private const val NEWS_DAYS = 3L
-            private const val BOOK_NEWS_WAIT_MS = 2_500L
+            private const val BOOK_NEWS_WAIT_MS = 1_200L
             const val MAX_NEWS = 3
         }
     }
@@ -391,7 +402,7 @@ fun DoorsHomePage(
             com.github.damontecres.wholphin.services.LiteMode
                 .isOn(context)
         }
-    val news by viewModel.news.collectAsState()
+    val liveNews by viewModel.news.collectAsState()
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     // Phones turned sideways and tablets use the TV layout
@@ -404,6 +415,8 @@ fun DoorsHomePage(
     var animating by remember { mutableStateOf(grow) }
     // The doors' spots are only locked in once they've settled and the growing starts
     var started by remember { mutableStateOf(!grow) }
+    // The news pills as they were when the doors started growing (null = show the live list)
+    var frozenNews by remember { mutableStateOf<List<HomeNews>?>(null) }
     val moviesFocus = remember { FocusRequester() }
     var focusedOnce by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -429,8 +442,12 @@ fun DoorsHomePage(
                     )
                 }
             }
+            // Wake the speaker just before the first note (while the pace is measured): some TVs put the sound
+            // output to sleep a few seconds after the notes loaded, and the first notes then came out late
+            IntroSounds.warmUp(context)
             val pace = IntroPace.measure(context, frames = 6)
             val f = pace.stretch
+            frozenNews = viewModel.news.value
             started = true
             // Each door starts growing a moment after the one before, with its own note on that frame
             val stagger = DOOR_STAGGER_MS * f
@@ -469,6 +486,7 @@ fun DoorsHomePage(
                 }
             }
             animating = false
+            frozenNews = null
         }
         if (!focusedOnce || grow) {
             focusedOnce = true
@@ -542,6 +560,9 @@ fun DoorsHomePage(
                 translationY = (sy - door.top) * (1f - p)
             }
     }
+    // News that arrives while the doors are growing waits until they've landed, so nothing shifts under
+    // the animation (a jump mid-grow was the stutter Ben saw)
+    val news = frozenNews ?: liveNews
     val labelAlpha: (Int) -> Float = { i -> ((progress[i].value - 0.75f) / 0.25f).coerceIn(0f, 1f) }
 
     Box(

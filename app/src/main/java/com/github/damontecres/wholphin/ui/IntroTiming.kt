@@ -91,6 +91,22 @@ object IntroSounds {
         withTimeoutOrNull(timeoutMs) { ready.first { it } }
     }
 
+    /** Plays a silent note, so the sound output is awake for the real ones that follow */
+    fun warmUp(context: Context) {
+        if (!soundAllowed(context)) return
+        val p = pool ?: return
+        val id = synchronized(this) { loadedIds.firstOrNull() } ?: return
+        try {
+            p.play(id, 0f, 0f, 0, 0, 1f)
+        } catch (ex: Exception) {
+            Timber.w(ex, "Intro sound warm up")
+        }
+    }
+
+    /** Whether this is a TV, looked up once (it was asked of the system on every note, mid-animation) */
+    @Volatile
+    private var isTv: Boolean? = null
+
     /** Plays one note now. Phones on silent or vibrate stay quiet (TVs always play). */
     fun play(
         context: Context,
@@ -108,9 +124,10 @@ object IntroSounds {
     }
 
     private fun soundAllowed(context: Context): Boolean {
+        val tv = isTv ?: context.packageManager.hasSystemFeature("android.software.leanback").also { isTv = it }
+        if (tv) return true
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        val isTv = context.packageManager.hasSystemFeature("android.software.leanback")
-        return isTv || audio == null || audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
+        return audio == null || audio.ringerMode == AudioManager.RINGER_MODE_NORMAL
     }
 }
 
