@@ -107,6 +107,7 @@ import com.github.damontecres.wholphin.preferences.DpadSeekMode
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.skipBackOnResume
+import com.github.damontecres.wholphin.services.SubtitleTiming
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -233,9 +234,15 @@ fun PlaybackPageContent(
     LaunchedEffect(playbackSpeed) { player.setPlaybackSpeed(playbackSpeed) }
 
     LaunchedEffect(state.currentPlayback?.subtitleDelay) {
-        (player as? MpvPlayer)?.subtitleDelay =
-            state.currentPlayback?.subtitleDelay ?: Duration.ZERO
+        val subtitleDelay = state.currentPlayback?.subtitleDelay ?: Duration.ZERO
+        if (player is MpvPlayer) {
+            player.subtitleDelay = subtitleDelay
+        } else {
+            // Benflix: the normal player moves the words too (see SubtitleTiming)
+            SubtitleTiming.delayUs = subtitleDelay.inWholeMicroseconds
+        }
     }
+    DisposableEffect(Unit) { onDispose { SubtitleTiming.delayUs = 0L } }
 
     val presentationState = rememberPresentationState(player, false)
     val playbackState by rememberPlayerState(player)
@@ -1251,7 +1258,7 @@ fun PlaybackPageContent(
             },
             onPlaybackActionClick = onPlaybackActionClick,
             onChangeSubtitleDelay = { viewModel.updateSubtitleDelay(it) },
-            enableSubtitleDelay = player is MpvPlayer,
+            enableSubtitleDelay = true,
             enableVideoScale = player !is MpvPlayer,
         )
     }

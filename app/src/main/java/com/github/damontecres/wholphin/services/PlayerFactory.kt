@@ -5,6 +5,7 @@ package com.github.damontecres.wholphin.services
 import android.content.Context
 import android.os.Build
 import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -23,6 +24,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
@@ -323,6 +325,19 @@ class WholphinRenderersFactory(
     private val convertDolbyVisionProfile7: Boolean = false,
     private val musicTap: TeeAudioProcessor.AudioBufferSink? = null,
 ) : DefaultRenderersFactory(context) {
+    /** Benflix: the words can be moved earlier or later by hand (see [SubtitleTiming]) */
+    override fun buildTextRenderers(
+        context: Context,
+        output: TextOutput,
+        outputLooper: Looper,
+        extensionRendererMode: Int,
+        out: ArrayList<Renderer>,
+    ) {
+        val start = out.size
+        super.buildTextRenderers(context, output, outputLooper, extensionRendererMode, out)
+        for (i in start until out.size) out[i] = DelayedTextRenderer(out[i])
+    }
+
     /**
      * Benflix: with surround passthrough off (see SurroundPassthrough), the sound output is told
      * it can only play plain sound, so Dolby/DTS is turned into plain sound by the TV's decoder
