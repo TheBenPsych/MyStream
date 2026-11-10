@@ -495,7 +495,7 @@ def _score_at(bits, speech, k, mask):
     return (speech & moved).bit_count()
 
 
-def line_up_parts(cues, speech, frames, scale, shift, reach=20.0, part=120.0):
+def line_up_parts(cues, speech, frames, scale, shift, reach=60.0, part=120.0):
     """After the whole-video fix, checks the subtitles a couple of minutes at a time. Subtitles
     made for a different cut of a show (other ad breaks, a longer recap) are right in some parts
     and seconds off in others, and one shift for the whole video can't see that. Returns the

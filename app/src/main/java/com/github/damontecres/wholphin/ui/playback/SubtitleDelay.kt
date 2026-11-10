@@ -28,8 +28,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-// Benflix: half a second and two seconds, so five buttons fit across a phone too
-private val delayIncrements = listOf(500.milliseconds, 2.seconds)
+// Benflix: half a second and five seconds, so five buttons fit across a phone too
+private val delayIncrements = listOf(500.milliseconds, 5.seconds)
 
 /**
  * Shows buttons for adding to or subtracting from the given [Duration], ie subtitle delay
