@@ -175,6 +175,39 @@ sealed class Destination(
     @Serializable
     data object MusicDoor : Destination(false)
 
+    /** Benflix Books: the lime Books door (manga, comics, ebooks and audiobooks) */
+    @Serializable
+    data object BooksDoor : Destination(false)
+
+    /** Benflix Books: one book's (or manga series') own page */
+    @Serializable
+    data class BookTitle(
+        val id: String,
+    ) : Destination(false)
+
+    /** Benflix Books: the ebook reader (EPUB), full screen */
+    @Serializable
+    data class BookReader(
+        val id: String,
+        val chapter: Int? = null,
+    ) : Destination(true)
+
+    /** Benflix Books: the page reader for a manga or comic volume, or a PDF book, full screen */
+    @Serializable
+    data class PageReader(
+        val id: String,
+        /** True for a PDF book (not a manga volume) */
+        val book: Boolean = false,
+    ) : Destination(true)
+
+    /** Benflix Books: the audiobook player (Now playing, with chapters) */
+    @Serializable
+    data object AudiobookPlayer : Destination(false)
+
+    /** Benflix Books: Ben's Kids list (which books a Kids profile may see) */
+    @Serializable
+    data object BooksKids : Destination(false)
+
     /**
      * Benflix music: a list of songs or a grid of albums, artists or genres. [kind] is one of
      * liked, mix, albums, recent, played, artists, genres, genre, playlists

@@ -80,12 +80,13 @@ B.route(/^\/requests/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   const tab = B.q("tab") || "movies";
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:6px"><div class="h1">Ask for something new</div>
-    <p class="sub">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : "Movies and shows that aren't on Benflix yet. Ask, and Ben's server finds them."}</p>
-    <div class="row" style="margin-bottom:10px">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
+    <p class="sub">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : tab === "books" ? "Books, audiobooks and manga. Ask, and Tower finds them." : "Movies and shows that aren't on Benflix yet. Ask, and Ben's server finds them."}</p>
+    <div class="row" style="margin-bottom:10px">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).concat(B.booksTab ? [["books", "Books"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}"></div></div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   if (tab === "music" && B.me.admin) return B.musicTab(nav);
+  if (tab === "books" && B.booksTab) return B.booksTab(nav);
   const me = await B.seerrMe();
   if (!B.alive(nav)) return;
   if (!me || !me.active || !me.userFound) {

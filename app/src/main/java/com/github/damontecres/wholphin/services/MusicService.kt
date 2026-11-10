@@ -374,6 +374,8 @@ class MusicService
          * Sets up the media session, activity tracking, and actual playback
          */
         suspend fun start() {
+            // Benflix Books: music stops the audiobook (its place is saved)
+            AudiobookService.stopForOther()
             if (mediaSession == null) {
                 mutex.withLock {
                     if (mediaSession == null) {

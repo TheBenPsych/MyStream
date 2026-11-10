@@ -1,0 +1,45 @@
+/* Benflix Books: the ebook reader (js/reader.js), in the browser and inside the TV and phone apps */
+.rd { position: fixed; inset: 0; z-index: 60; background: var(--rd-bg, #121318); color: var(--rd-ink, #D9DBE1); font-family: Outfit, system-ui, sans-serif; outline: none; display: flex; flex-direction: column; }
+.rd-head { height: 46px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--rd-dim); font-size: 14px; padding: 0 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-head span { overflow: hidden; text-overflow: ellipsis; }
+.rd-stage { position: relative; flex: 1; margin: 6px 7% 0; min-height: 0; }
+.rd-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+.rd-tap { position: absolute; top: 0; bottom: 0; z-index: 2; -webkit-tap-highlight-color: transparent; }
+.rd-l { left: -7vw; width: calc(28% + 7vw); } .rd-r { right: -7vw; width: calc(28% + 7vw); } .rd-m { left: 28%; right: 28%; }
+@media (hover: hover) and (pointer: fine) { .rd-tap { display: none; } .rd-stage:hover ~ .rd-hint { opacity: 1; } }
+.rd-foot { height: 48px; flex: none; position: relative; margin: 0 7%; }
+.rd-line { position: absolute; left: 0; right: 0; bottom: 22px; height: 3px; border-radius: 3px; background: var(--rd-line); overflow: hidden; }
+.rd-line i { display: block; height: 100%; width: 0; background: var(--rd-lime); transition: width .2s; }
+.rd-left { position: absolute; right: 0; bottom: 30px; font-size: 13px; color: var(--rd-dim); }
+.rd-bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 999px; background: #16181E; box-shadow: 0 8px 30px rgba(0,0,0,.45); z-index: 5; }
+.rd-bar button, .rd-panel button { font: inherit; font-size: 15px; font-weight: 600; color: #F1F2F5; background: #262932; border: 0; border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.rd-bar button:focus-visible, .rd-panel button:focus-visible, .rd-bar button:hover, .rd-panel button:hover { outline: 3px solid #fff; outline-offset: 2px; }
+.rd-pct { color: #9497A3; font-size: 14px; padding: 0 10px 0 4px; }
+.rd-panel { position: absolute; right: 24px; top: 70px; width: min(420px, calc(100% - 32px)); max-height: calc(100% - 100px); overflow: auto; padding: 18px; border-radius: 16px; background: #16181E; color: #F1F2F5; z-index: 6; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+.rd-panel h3 { margin: 0 0 12px; font-size: 18px; }
+.rd-list { display: flex; flex-direction: column; gap: 6px; }
+.rd-list button { text-align: left; border-radius: 10px; background: transparent; }
+.rd-list button.on { color: #141C05; background: #B9E36A; }
+.rd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.rd-row span { width: 100%; color: #9497A3; font-size: 13px; }
+.rd-row b { min-width: 52px; text-align: center; }
+.rd-row button.on { background: #B9E36A; color: #141C05; }
+.rd-end { left: 50%; right: auto; top: 50%; transform: translate(-50%, -50%); width: min(760px, calc(100% - 32px)); text-align: center; padding: 28px; }
+.rd-end h2 { margin: 0 0 4px; font-size: 26px; }
+.rd-sub { color: #9497A3; margin: 0 0 18px; }
+.rd-picks { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; }
+.rd-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 170px; background: transparent !important; border-radius: 12px !important; padding: 6px !important; text-align: left; }
+.rd-pick b { font-size: 15px; } .rd-pick small { color: #9497A3; font-size: 13px; font-weight: 500; }
+.rd-cv { width: 100%; aspect-ratio: 2 / 3; border-radius: 10px; background: #262932 center/cover no-repeat; }
+.rd-white { background: #F1F2F5 !important; color: #0B0C10 !important; }
+.rd-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; z-index: 4; background: var(--rd-bg); }
+.rd-msg b { font-size: 22px; } .rd-msg p { color: var(--rd-dim); }
+.rd-toast { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); background: #F1F2F5; color: #0B0C10; padding: 10px 18px; border-radius: 999px; font-weight: 600; z-index: 7; }
+.hidden { display: none !important; }
+@media (max-width: 640px) {
+  .rd-stage { margin: 4px 22px 0; } .rd-foot { margin: 0 22px; }
+  .rd-head { height: 36px; font-size: 12px; padding: 0 16px; }
+  .rd-bar { top: auto; bottom: 56px; flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); border-radius: 18px; }
+  .rd-panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 120px; }
+  .rd-end { bottom: auto; }
+}

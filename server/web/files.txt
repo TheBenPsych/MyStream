@@ -1,4 +1,7 @@
 css/benflix.css
+css/reader.css
+fonts/opendyslexic.LICENSE.txt
+fonts/opendyslexic_regular.woff2
 fonts/outfit_bold.ttf
 fonts/outfit_medium.ttf
 fonts/outfit_regular.ttf
@@ -6,6 +9,7 @@ fonts/outfit_semibold.ttf
 icons/icon-192.png
 icons/icon-512.png
 index.html
+js/books.js
 js/core.js
 js/fix.js
 js/games.js
@@ -14,11 +18,13 @@ js/me.js
 js/media.js
 js/music.js
 js/player.js
+js/reader.js
 js/requests.js
 js/search.js
 js/server.js
 js/start.js
 manifest.webmanifest
+reader.html
 sounds/doors.wav
 sounds/opening.wav
 sw.js

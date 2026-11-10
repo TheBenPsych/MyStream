@@ -137,12 +137,12 @@ B.route(/^\/signin/, async () => {
 B.route(/^\/home$/, async (m, nav) => {
   const grow = B.doorsGrow; B.doorsGrow = false;
   const kids = B.me.kids;
-  // Benflix music: the violet fifth door (not on Kids)
-  const doors = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).map((k) => DOORS[k]);
+  // Benflix music: the violet fifth door (not on Kids); Books: the lime sixth door (Kids too, instead of Music)
+  const doors = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).concat(DOORS.books ? ["books"] : []).map((k) => DOORS[k]);
   B.page().innerHTML = B.top("") + `<div class="home">
     <div class="greet">${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}</div>
     <div class="news" id="news"></div>
-    <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : ""}" id="doors">${doors.map((d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`).join("")}</div>
+    <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : doors.length === 6 ? "six" : ""}" id="doors">${doors.map((d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`).join("")}</div>
   </div>`;
   B.wireTop();
   if (grow) {

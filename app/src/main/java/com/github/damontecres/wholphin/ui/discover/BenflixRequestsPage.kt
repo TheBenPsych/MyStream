@@ -1307,6 +1307,10 @@ class BenflixRequestsViewModel
 object RequestsJump {
     @Volatile
     var music = false
+
+    /** Benflix Books: "Ask for a book" on the Books door lands on the Books tab */
+    @Volatile
+    var books = false
 }
 
 /**
@@ -1331,10 +1335,10 @@ fun BenflixRequestsPage(
         remember(admin) {
             if (admin) {
                 // Benflix: Music is only for Ben (he picked "only me" for music requests)
-                listOf("Movies", "Shows", "Anime", "Music", "Requests")
+                listOf("Movies", "Shows", "Anime", "Music", "Books", "Requests")
             } else {
                 // Benflix: everyone gets the same browse tabs as Ben (Ben asked), plus their own requests
-                listOf("Movies", "Shows", "Anime", "My requests")
+                listOf("Movies", "Shows", "Anime", "Books", "My requests")
             }.map { TabDetails(StringStringProvider(it)) }
         }
     val tabsId = if (admin) "benflix-requests-admin" else "benflix-requests-family"
@@ -1346,7 +1350,9 @@ fun BenflixRequestsPage(
     // Benflix music: "Ask for music" on the Music page opens straight on the Music tab
     LaunchedEffect(admin) {
         if (admin && RequestsJump.music) tabViewModel.updateSelectedTabIndex(3)
+        if (RequestsJump.books) tabViewModel.updateSelectedTabIndex(if (admin) 4 else 3)
         RequestsJump.music = false
+        RequestsJump.books = false
     }
     TabbedPage(
         itemId = tabsId,
@@ -1359,7 +1365,8 @@ fun BenflixRequestsPage(
             0 -> FindShelf(FindSection.MOVIES, viewModel)
             1 -> FindShelf(FindSection.SHOWS, viewModel)
             2 -> FindShelf(FindSection.ANIME, viewModel)
-            3 -> if (admin) MusicShelf() else RequestList(viewModel, mineOnly = true, arrivedOnly = null)
+            3 -> if (admin) MusicShelf() else BooksShelf()
+            4 -> if (admin) BooksShelf() else RequestList(viewModel, mineOnly = true, arrivedOnly = null)
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
     }

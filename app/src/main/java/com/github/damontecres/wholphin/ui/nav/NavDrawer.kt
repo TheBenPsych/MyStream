@@ -631,6 +631,11 @@ fun NavDrawer(
                     com.github.damontecres.wholphin.ui.music
                         .MusicMiniBar()
                 }
+                // Benflix Books: the same slim bar while an audiobook plays
+                if (destination !is Destination.AudiobookPlayer) {
+                    com.github.damontecres.wholphin.ui.books
+                        .AudiobookMiniBar()
+                }
             }
         }
         return
