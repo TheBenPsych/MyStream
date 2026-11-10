@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.setup
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,7 +94,8 @@ fun SwitchUserContent(
         scope.launch {
             when (val r = result.await()) {
                 is SwitchUserResult.Error -> {
-                    Toast.makeText(context, r.errorMessage, Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(r.errorMessage)
                     if (r.showLogin) {
                         showAddUserDialog(user)
                     }
@@ -113,7 +113,8 @@ fun SwitchUserContent(
             when (val s = state.switchUserState) {
                 is LoadingState.Error -> {
                     val msg = s.message ?: s.exception?.localizedMessage
-                    Toast.makeText(context, "Error: $msg", Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Error: $msg")
                 }
 
                 else -> {}

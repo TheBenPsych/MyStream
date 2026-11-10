@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.games
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -415,10 +414,12 @@ class GamesViewModel
                     val game = localGames.prepare(ref, pin)
                     localGames.launch(context, game, resume)
                 } catch (e: GameLibraryException) {
-                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(e.message)
                 } catch (e: Exception) {
                     Timber.w(e, "Starting a game failed")
-                    Toast.makeText(context, "Couldn't start ${ref.name}.", Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Couldn't start ${ref.name}.")
                 } finally {
                     _starting.value = null
                 }
@@ -434,7 +435,9 @@ class GamesViewModel
             _choice.value = null
             if (!keep) {
                 localGames.setPinned(ref.id, false)
-                Toast.makeText(context, "${ref.name} can be cleared out again when space runs low.", Toast.LENGTH_LONG).show()
+                com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                    "${ref.name} can be cleared out again when space runs low.",
+                )
                 return
             }
             if (_starting.value != null) return
@@ -442,12 +445,16 @@ class GamesViewModel
             viewModelScope.launch {
                 try {
                     localGames.prepare(ref, pinned = true)
-                    Toast.makeText(context, "${ref.name} is saved on this device. It plays without internet.", Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                        "${ref.name} is saved on this device. It plays without internet.",
+                    )
                 } catch (e: GameLibraryException) {
-                    Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(e.message)
                 } catch (e: Exception) {
                     Timber.w(e, "Downloading a game failed")
-                    Toast.makeText(context, "Couldn't download ${ref.name}.", Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Couldn't download ${ref.name}.")
                 } finally {
                     _starting.value = null
                 }
@@ -460,7 +467,8 @@ class GamesViewModel
         ) {
             _choice.value = null
             localGames.remove(ref.id)
-            Toast.makeText(context, "Removed ${ref.name} from this device. Your saves are kept.", Toast.LENGTH_LONG).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                .pill("Removed ${ref.name} from this device. Your saves are kept.")
             reload()
         }
 

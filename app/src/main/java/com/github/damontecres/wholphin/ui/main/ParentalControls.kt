@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.main
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -140,7 +139,8 @@ fun ParentalControlsDialog(
                             if (viewModel.checkPin(pin)) {
                                 checked = true
                             } else {
-                                Toast.makeText(context, context.getString(R.string.incorrect), Toast.LENGTH_SHORT).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(context.getString(R.string.incorrect))
                             }
                         }
                     },
@@ -198,7 +198,8 @@ fun ParentalControlsDialog(
                             val next = choices[(choices.indexOf(dailyMinutes) + 1).mod(choices.size)]
                             scope.launch {
                                 if (!viewModel.setDailyMinutes(next)) {
-                                    Toast.makeText(context, "Couldn't save that. Try again.", Toast.LENGTH_SHORT).show()
+                                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                        .pill("Couldn't save that. Try again.")
                                 }
                             }
                         },

@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.media.AudioManager
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.runtime.Composable
@@ -331,22 +330,23 @@ fun rememberPosition(
 fun rememberInt(initial: Int = 0) = rememberSaveable { mutableIntStateOf(initial) }
 
 /**
- * Show a [Toast]. Ensures it runs on the main thread.
+ * Benflix notices: a quick "done" message, shown as the white Benflix pill at the bottom for 3 seconds
+ * (instead of Android's toast). Safe to call from any thread.
  */
+@Suppress("UNUSED_PARAMETER")
 suspend fun showToast(
     context: Context,
     text: CharSequence,
     duration: Int,
-) = withContext(WholphinDispatchers.Main) {
-    Toast.makeText(context, text, duration).show()
-}
+) = com.github.damontecres.wholphin.ui.components.BenflixNotices
+    .pill(text)
 
+@Suppress("UNUSED_PARAMETER")
 suspend fun showToast(
     context: Context,
     text: CharSequence,
-) = withContext(WholphinDispatchers.Main) {
-    Toast.makeText(context, text, Toast.LENGTH_LONG).show()
-}
+) = com.github.damontecres.wholphin.ui.components.BenflixNotices
+    .pill(text)
 
 /**
  * Launches a coroutine with [WholphinDispatchers.IO] plus the provided [CoroutineContext] defaulting to using [ExceptionHandler]

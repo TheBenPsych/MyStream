@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.slideshow
 
 import android.annotation.SuppressLint
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -229,23 +228,15 @@ fun SlideshowPage(
 
             fun goToPrevious() {
                 if (!viewModel.previousImage()) {
-                    Toast
-                        .makeText(
-                            context,
-                            R.string.slideshow_at_beginning,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(R.string.slideshow_at_beginning)
                 }
             }
 
             fun goToNext() {
                 if (!viewModel.nextImage()) {
-                    Toast
-                        .makeText(
-                            context,
-                            R.string.no_more_images,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(R.string.no_more_images)
                 }
             }
 
@@ -492,12 +483,9 @@ fun SlideshowPage(
                                         it.result.throwable,
                                         "Error loading image ${imageState.id}",
                                     )
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "Error loading image: ${it.result.throwable.localizedMessage}",
-                                            Toast.LENGTH_LONG,
-                                        ).show()
+                                    com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                                        "Error loading image: ${it.result.throwable.localizedMessage}",
+                                    )
                                     viewModel.pulseSlideshow()
                                 },
                             )

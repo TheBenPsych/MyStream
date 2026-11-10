@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.livetv
 
 import android.text.format.DateUtils
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -183,12 +182,8 @@ fun TvGuideGrid(
                                         ),
                                     )
                                 } else {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "No guide data found!",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                        .pill("No guide data found!")
                                 }
                             } else {
                                 viewModel.fetchProgramForDialog(program.id)
@@ -220,9 +215,8 @@ fun TvGuideGrid(
                                 ),
                             )
                         } else {
-                            Toast
-                                .makeText(context, "Program has no channel ID", Toast.LENGTH_LONG)
-                                .show()
+                            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                .pill("Program has no channel ID")
                         }
                     },
                     onRecord = { program, series ->

@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.search
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -116,7 +115,8 @@ fun SearchPage(
     val noteContext = LocalContext.current
     LaunchedEffect(musicNote) {
         musicNote?.let {
-            Toast.makeText(noteContext, it, Toast.LENGTH_LONG).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                .pill(it)
             viewModel.musicNote.value = null
         }
     }
@@ -661,7 +661,8 @@ fun SearchPage(
                         ),
                     )
                 } else {
-                    Toast.makeText(context, "Program has no channel ID", Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Program has no channel ID")
                 }
             },
             onRecord = { program, series ->

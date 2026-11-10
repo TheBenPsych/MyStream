@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.preferences
 
-import android.widget.Toast
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -86,7 +85,8 @@ fun OmdbKeySetting(
                     val message =
                         problem
                             ?: if (typed.isBlank()) "OMDb key removed" else "Key works! Scores will fill in on the Requests pages."
-                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(message)
                 }
             },
             onDismissRequest = { showDialog = false },

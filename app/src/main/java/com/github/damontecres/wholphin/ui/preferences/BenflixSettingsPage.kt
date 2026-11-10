@@ -189,7 +189,7 @@ fun BenflixSettingsPage(
     val sections =
         remember(isTv, isAdmin, guest) { buildSections(isTv, guest).filter { isAdmin || !it.adminOnly } }
     val groupSections = sections.filter { it.group != null }
-    // Benflix: an update is ready, so Help shows a red "!" (the update is inside Help)
+    // Benflix: an update is ready, so Help says "Update ready" (the update is inside Help)
     val updateAlert =
         com.github.damontecres.wholphin.ui.components
             .rememberUpdateAlert()
@@ -490,8 +490,8 @@ private fun MenuRow(
                 alert -> {
                     {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            com.github.damontecres.wholphin.ui.components
-                                .UpdateBang(size = 18.dp)
+                            // Notices redesign: words instead of a red "!"
+                            Text(text = "Update ready", fontSize = BenflixType.tag, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (chevron) {
                                 Icon(
                                     imageVector = BenflixIcon.CHEVRON.vector,

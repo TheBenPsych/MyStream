@@ -1,12 +1,10 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
@@ -18,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -41,7 +38,6 @@ import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -161,28 +157,22 @@ fun UpdateReadyLayer(
     val lines = remember(release) { viewModel.whatsNew() }
     val ready = remember(release) { viewModel.isReady() }
     val canWait = remember { viewModel.notNowCount() < NOT_NOW_LIMIT }
-    Dialog(
+    // Notices redesign: a Needs-you side panel (bottom sheet on phones) instead of a full screen
+    com.github.damontecres.wholphin.ui.components.BasicDialog(
         onDismissRequest = viewModel::close,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false, usePlatformDefaultWidth = false),
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(BenflixColors.Tray),
-        ) {
+        Box {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.widthIn(max = 620.dp).padding(24.dp),
+                modifier = Modifier.widthIn(max = 620.dp).padding(if (isTv) 8.dp else 4.dp),
             ) {
-                BenflixMark(size = if (isTv) 64.dp else 56.dp)
+                BenflixMark(size = if (isTv) 44.dp else 40.dp)
                 Text(
                     "Benflix got better",
-                    fontSize = BenflixType.hero,
+                    fontSize = BenflixType.pageTitle,
                     color = BenflixColors.Text,
-                    textAlign = TextAlign.Center,
                 )
                 Text(
                     if (ready) {
@@ -192,7 +182,6 @@ fun UpdateReadyLayer(
                     },
                     fontSize = BenflixType.lead,
                     color = BenflixColors.Soft,
-                    textAlign = TextAlign.Center,
                 )
                 if (lines.isNotEmpty()) {
                     Column(
