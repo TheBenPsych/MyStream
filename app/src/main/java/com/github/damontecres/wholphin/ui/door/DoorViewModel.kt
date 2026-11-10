@@ -117,7 +117,9 @@ class DoorViewModel
         private var fromSnapshot = false
 
         /** Rows that came back empty while last time's rows are on screen, and whether anything came back */
-        private val emptied = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        private val emptied =
+            java.util.concurrent.ConcurrentHashMap
+                .newKeySet<String>()
 
         @Volatile
         private var gotFresh = false
