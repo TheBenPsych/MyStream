@@ -73,6 +73,11 @@ try:  # "Did you know" facts for every movie and show, gathered nightly, in benf
 except ImportError:
     facts = None
 
+try:  # Home's weather line (a town typed once on the Server page), in benflix_home.py
+    import benflix_home as home
+except ImportError:
+    home = None
+
 try:  # Fix posters: blurry poster finder and night-time fill of missing pictures, in benflix_posters.py
     import benflix_posters as posters
 except ImportError:
@@ -776,6 +781,7 @@ class Handler(BaseHTTPRequestHandler):
                         "care": care is not None and care.ffmpeg_ok(),
                         "facts": facts is not None,
                         "books": books is not None,
+                        "home": home is not None,
                     },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
@@ -856,6 +862,14 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Facts aren't on the server yet. Run the Benflix setup command again.")
                 status, answer = facts.route(method, path, query, token, user_id, is_admin)
                 return self.send(status, answer)
+            if path.startswith("/api/home/") or path.startswith("/api/admin/home/"):
+                # Home's weather line (everyone signed in); setting the town is admin only (and at home only, above)
+                if home is None:
+                    raise HelperError(503, "Home's weather isn't on the server yet. Run the Benflix setup command again.")
+                answer = home.route(method, path, self.read_json, is_admin)
+                if answer is None:
+                    raise HelperError(404, "Not found")
+                return self.send(answer[0], answer[1])
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
@@ -1022,6 +1036,8 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
+    if home is not None:
+        home.start()
     if facts is not None:
         facts.start(
             jellyfin_call,

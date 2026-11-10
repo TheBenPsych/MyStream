@@ -1710,13 +1710,16 @@ def news(user_id, is_kids):
             fresh = [v for v in t["vols"] if _lib["vols"][v]["added"] > cutoff and v not in u["done"]]
             if fresh:
                 v = _lib["vols"][fresh[-1]]
-                out.append({"id": "bk-" + fresh[-1], "text": f"{t['name']} {v['name']} arrived", "title": t["id"], "at": v["added"]})
+                out.append({"id": "bk-" + fresh[-1], "text": f"{t['name']} {v['name']} arrived", "title": t["id"], "at": v["added"],
+                            "name": t["name"], "line": f"New: {v['name']} is here", "cover": cover_url(t["id"], 160)})
     for r in _state["requests"]:
         if r.get("user") == user_id and r.get("readyAt", 0) > cutoff and r.get("title"):
-            out.append({"id": "bkr-" + r["id"], "text": f"{r['name']} is ready", "title": r["title"], "at": r["readyAt"]})
+            out.append({"id": "bkr-" + r["id"], "text": f"{r['name']} is ready", "title": r["title"], "at": r["readyAt"],
+                        "name": r["name"], "line": "The book you asked for is ready", "cover": cover_url(r["title"], 160)})
     for tid, at in u["sent"].items():
         if at > cutoff and tid in _lib["titles"]:
-            out.append({"id": f"bks-{tid}-{at}", "text": f"{_lib['titles'][tid]['name']} is ready on your phone", "title": tid, "at": at})
+            out.append({"id": f"bks-{tid}-{at}", "text": f"{_lib['titles'][tid]['name']} is ready on your phone", "title": tid, "at": at,
+                        "name": _lib["titles"][tid]["name"], "line": "Ready on your phone", "cover": cover_url(tid, 160)})
     out.sort(key=lambda n: -n["at"])
     return {"news": out[:3]}
 

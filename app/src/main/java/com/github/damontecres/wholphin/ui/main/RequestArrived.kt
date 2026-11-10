@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.api.seerr.model.MediaRequest
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.data.model.RequestStatus
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.GuestMode
@@ -30,6 +31,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.model.api.ImageType
@@ -64,7 +70,21 @@ class RequestReadyService
             val isMovie: Boolean,
         )
 
+        /** One of your requests that isn't here yet, for Home's "On the way" row */
+        data class OnTheWay(
+            val requestId: Int,
+            val title: String,
+            /** Plain words, like "On the way, about 20 minutes left" or "Waiting for a yes" */
+            val line: String,
+            val posterUrl: String?,
+        )
+
         private val _ready = MutableStateFlow<List<Ready>>(emptyList())
+
+        private val _onTheWay = MutableStateFlow<List<OnTheWay>>(emptyList())
+
+        /** Your requests still on the way, newest first (empty for Kids and Guest) */
+        val onTheWay: StateFlow<List<OnTheWay>> = _onTheWay
 
         /** Your arrived requests, newest first (empty for Kids and Guest) */
         val ready: StateFlow<List<Ready>> = _ready
@@ -92,6 +112,7 @@ class RequestReadyService
                 seerrUserId = id
                 lastCheck = 0L
                 _ready.value = emptyList()
+                _onTheWay.value = emptyList()
                 hereIds = emptyList()
                 RequestReadyNotice.clear()
             }
@@ -183,6 +204,17 @@ class RequestReadyService
                         )
                     }
                 hereIds = here.mapNotNull { it.id }
+                // Benflix Home: your own requests that aren't here yet (newest first), with how far along they are
+                val hereSet = hereIds.toSet()
+                _onTheWay.value =
+                    mine
+                        .filter { r ->
+                            r.id !in hereSet &&
+                                r.media?.status != SeerrAvailability.AVAILABLE.status &&
+                                RequestStatus.from(r.status).let { it == RequestStatus.PENDING || it == RequestStatus.APPROVED }
+                        }.sortedByDescending { it.createdAt ?: "" }
+                        .take(MAX_ON_THE_WAY)
+                        .mapNotNull { onTheWayOf(it) }
                 RequestReadyNotice.setCount(here.count { it.id.toString() !in seenNow })
                 // Bubbles in the order they arrived: oldest first. Only the newest few, the rest are just remembered.
                 val fresh = here.filter { it.id.toString() !in tippedNow }
@@ -208,6 +240,32 @@ class RequestReadyService
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Could not check for arrived requests")
+            }
+        }
+
+        private fun onTheWayOf(request: MediaRequest): OnTheWay? {
+            val tmdbId = request.media?.tmdbId ?: return null
+            val movie = SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE
+            return try {
+                val json =
+                    seerrService.api
+                        .getRaw("/${if (movie) "movie" else "tv"}/$tmdbId")
+                        ?.let { kotlinx.serialization.json.Json.parseToJsonElement(it).jsonObject }
+                        ?: return null
+                val title = (json["title"] ?: json["name"])?.jsonPrimitive?.contentOrNull ?: return null
+                val poster = json["posterPath"]?.jsonPrimitive?.contentOrNull?.let { "https://image.tmdb.org/t/p/w185$it" }
+                val downloads =
+                    (json["mediaInfo"] as? JsonObject)
+                        ?.get("downloadStatus")
+                        ?.let { it as? JsonArray }
+                        .orEmpty()
+                        .mapNotNull { it as? JsonObject }
+                OnTheWay(request.id!!, title, onTheWayLine(RequestStatus.from(request.status), downloads), poster)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.v(ex, "Could not look up request %s for Home", request.id)
+                null
             }
         }
 
@@ -256,8 +314,37 @@ class RequestReadyService
             private const val MAX_SEEN = 300
             private const val MAX_TIPS = 5
             private const val MAX_ROW = 20
+            private const val MAX_ON_THE_WAY = 3
         }
     }
+
+/** Home's words for a request that isn't here yet: how long is left when it's downloading */
+internal fun onTheWayLine(
+    status: RequestStatus,
+    downloads: List<JsonObject>,
+    now: java.time.Instant = java.time.Instant.now(),
+): String {
+    if (status == RequestStatus.PENDING) return "Asked for, waiting for a yes"
+    if (downloads.isEmpty()) return "On the way, looking for a copy"
+    val ends =
+        downloads.mapNotNull { d ->
+            d["estimatedCompletionTime"]?.jsonPrimitive?.contentOrNull?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+        }
+    val last = ends.maxOrNull()
+    if (last != null) {
+        val minutes = java.time.Duration.between(now, last).toMinutes()
+        return when {
+            minutes < 2 -> "On the way, almost here"
+            minutes < 60 -> "On the way, about $minutes minutes left"
+            minutes < 120 -> "On the way, about an hour left"
+            minutes < 48 * 60 -> "On the way, about ${minutes / 60} hours left"
+            else -> "On the way, downloading"
+        }
+    }
+    val size = downloads.sumOf { it["size"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 0.0 }
+    val left = downloads.sumOf { it["sizeLeft"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 0.0 }
+    return if (size > 0) "On the way, ${(((size - left) / size) * 100).toInt().coerceIn(0, 99)}% downloaded" else "On the way, downloading"
+}
 
 /** Keeps an eye out for arrived requests while Benflix is open: soon after start, then every half hour */
 @HiltViewModel

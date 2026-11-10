@@ -53,6 +53,16 @@ data class TowerStatus(
     val disks: List<Triple<String, Long, Long>> = emptyList(),
 )
 
+/** Home's weather town on Tower (blank = off) */
+data class HomeTown(
+    val town: String,
+    /** What Tower found, like "Springfield, Illinois, United States" */
+    val place: String,
+    val celsius: Boolean,
+    /** The weather right now, like "52°, cloudy" */
+    val now: String?,
+)
+
 /** The track tidy tool's state */
 data class TrackTidy(
     val ready: Boolean,
@@ -173,6 +183,31 @@ class BenflixTower
         }
 
         /** Each of these returns the helper's message in plain words, like "Sonarr restarted." */
+        /** Home's weather: the town Ben typed (at home only, admin) */
+        suspend fun homeTown(): HomeTown = atHome { homeTownOf(helper.getJson("/api/admin/home/town")) }
+
+        /** Sets (or with a blank [town], turns off) Home's weather town. Returns Tower's words and the new state. */
+        suspend fun setHomeTown(
+            town: String,
+            celsius: Boolean,
+        ): Pair<String, HomeTown> =
+            atHome {
+                val j =
+                    helper.postJson(
+                        "/api/admin/home/town",
+                        JSONObject().put("town", town).put("units", if (celsius) "C" else "F"),
+                    )
+                j.optString("message", "Done.") to homeTownOf(j)
+            }
+
+        private fun homeTownOf(j: JSONObject) =
+            HomeTown(
+                town = j.optString("town"),
+                place = j.optString("place"),
+                celsius = j.optString("units") == "C",
+                now = j.optJSONObject("weather")?.takeIf { it.optBoolean("ready") }?.optString("line"),
+            )
+
         suspend fun restartApp(name: String): String = message(helper.postJson("/api/admin/apps/$name/restart"))
 
         suspend fun checkAgain(download: TowerDownload): String =
