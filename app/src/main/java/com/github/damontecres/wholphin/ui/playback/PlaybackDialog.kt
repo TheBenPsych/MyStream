@@ -1,10 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
-<<<<<<< HEAD
 import android.widget.Toast
-=======
-import android.view.Gravity
->>>>>>> origin/main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -132,7 +128,6 @@ fun PlaybackDialog(
                             ),
                         )
                     }
-<<<<<<< HEAD
                     add(PanelLine.Heading("Something off?"))
                     if (subtitlesOn && enableSubtitleDelay) {
                         add(
@@ -175,20 +170,6 @@ fun PlaybackDialog(
                     )
                 }
             PlayerPanel(title = "Subtitles", lines = lines, onDismissRequest = dismissAndPulse)
-=======
-                },
-                onSelectSearch = {
-                    onDismissRequest.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
-                },
-                onSelectFixTiming = {
-                    onDismissRequest.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming)
-                },
-                onSelectMoveYourself = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
-                gravity = rightGravity,
-            )
->>>>>>> origin/main
         }
 
         PlaybackDialogType.SETTINGS -> {
@@ -325,7 +306,8 @@ fun PlaybackDialog(
                             note = stringResource(R.string.surround_passthrough_summary),
                             onClick = {
                                 SurroundPassthrough.toggle(context)
-                                Toast.makeText(context, R.string.surround_passthrough_next_video, Toast.LENGTH_SHORT).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(R.string.surround_passthrough_next_video)
                             },
                         ),
                     )
@@ -361,31 +343,7 @@ fun PlaybackDialog(
                         ),
                     )
                 }
-<<<<<<< HEAD
             PlayerPanel(title = "Settings", subtitle = settings.title, lines = lines, onDismissRequest = onDismissRequest)
-=======
-            BottomDialog(
-                choices = options,
-                currentChoice = null,
-                onDismissRequest = onDismissRequest,
-                onSelectChoice = { _, choice ->
-                    if (choice.data == PlaybackDialogType.DEBUG) {
-                        onPlaybackActionClick.invoke(PlaybackAction.ShowDebug)
-                    } else if (choice.data == PlaybackDialogType.NIGHT_MODE) {
-                        NightMode.toggle(context)
-                        onDismissRequest.invoke()
-                    } else if (choice.data == PlaybackDialogType.SURROUND_PASSTHROUGH) {
-                        SurroundPassthrough.toggle(context)
-                        com.github.damontecres.wholphin.ui.components.BenflixNotices
-                            .pill(R.string.surround_passthrough_next_video)
-                        onDismissRequest.invoke()
-                    } else {
-                        onClickPlaybackDialogType(choice.data)
-                    }
-                },
-                gravity = leftGravity,
-            )
->>>>>>> origin/main
         }
 
         PlaybackDialogType.AUDIO -> {
@@ -525,7 +483,6 @@ fun PlaybackDialog(
     }
 }
 
-<<<<<<< HEAD
 /** What "Report a problem" offers in the player */
 private val REPORT_CHOICES =
     listOf("No sound", "Subtitles wrong", "Picture stutters or freezes", "Skip at the wrong time", "Wrong video", "Something else")
@@ -536,206 +493,6 @@ internal fun delayWords(delay: Duration): String =
         delay == Duration.ZERO -> "On time"
         delay.isPositive() -> "$delay later"
         else -> "${-delay} sooner"
-=======
-@Composable
-fun SubtitleChoiceBottomDialog(
-    choices: List<SimpleMediaStream>,
-    onDismissRequest: () -> Unit,
-    onSelectChoice: (Int) -> Unit,
-    onSelectSearch: () -> Unit,
-    gravity: Int,
-    hasDownloadPermission: Boolean,
-    currentChoice: Int? = null,
-    onSelectFixTiming: (() -> Unit)? = null,
-    onSelectMoveYourself: (() -> Unit)? = null,
-) {
-    val numberBefore = 2
-    val initialChoice =
-        remember(choices) {
-            choices.indexOfFirstOrNull { it.index == currentChoice }
-        }
-    val scope = rememberCoroutineScope()
-    val listState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = initialChoice?.plus(numberBefore) ?: 0,
-        )
-    val firstFocusRequester = remember { FocusRequester() }
-    val lastFocusRequester = remember { FocusRequester() }
-    val choiceFocusRequesters = remember(choices.size) { List(choices.size) { FocusRequester() } }
-    LaunchedEffect(Unit) {
-        val focusRequester =
-            initialChoice?.let { choiceFocusRequesters.getOrNull(it) } ?: firstFocusRequester
-        focusRequester.tryRequestFocus()
-    }
-    // TODO enforcing a width ends up ignore the gravity
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
-    ) {
-        val dialogWindowProvider = LocalView.current.parent as? DialogWindowProvider
-        dialogWindowProvider?.window?.let { window ->
-            window.setGravity(Gravity.BOTTOM or gravity) // Move down, by default dialogs are in the centre
-            window.setDimAmount(0f) // Remove dimmed background of ongoing playback
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .wrapContentSize()
-                    .padding(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-//                        .widthIn(max = 240.dp)
-                        .wrapContentWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                item {
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val focused by interactionSource.collectIsFocusedAsState()
-                    ListItem(
-                        selected = currentChoice == TrackIndex.DISABLED,
-                        interactionSource = interactionSource,
-                        onClick = {
-                            onSelectChoice(TrackIndex.DISABLED)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(currentChoice == TrackIndex.DISABLED)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.none),
-                            )
-                        },
-                        supportingContent = {},
-                        modifier =
-                            Modifier
-                                .focusRequester(firstFocusRequester)
-                                .onKeyEvent {
-                                    if (focused && isUp(it) && it.type == KeyEventType.KeyDown) {
-                                        scope.launch {
-                                            listState.animateScrollToItem(Int.MAX_VALUE)
-                                            lastFocusRequester.tryRequestFocus()
-                                        }
-                                        return@onKeyEvent true
-                                    }
-                                    false
-                                },
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-                item {
-                    ListItem(
-                        selected = currentChoice == TrackIndex.ONLY_FORCED,
-                        onClick = {
-                            onSelectChoice(TrackIndex.ONLY_FORCED)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(currentChoice == TrackIndex.ONLY_FORCED)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.only_forced_subtitles),
-                            )
-                        },
-                        supportingContent = {},
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                    if (choices.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-                }
-                itemsIndexed(choices) { index, choice ->
-                    val interactionSource = remember { MutableInteractionSource() }
-                    ListItem(
-                        selected = choice.index == currentChoice,
-                        onClick = {
-                            onSelectChoice(choice.index)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(choice.index == currentChoice)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = choice.streamTitle ?: choice.displayTitle,
-                            )
-                        },
-                        supportingContent = {
-                            if (choice.streamTitle != null) Text(choice.displayTitle)
-                        },
-                        interactionSource = interactionSource,
-                        modifier = Modifier.focusRequester(choiceFocusRequesters[index]),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-                if (onSelectFixTiming != null && currentChoice != null && currentChoice >= 0) {
-                    item {
-                        HorizontalDivider()
-                        ListItem(
-                            selected = false,
-                            onClick = onSelectFixTiming,
-                            leadingContent = {},
-                            headlineContent = { Text(text = "Subtitles are early or late") },
-                            supportingContent = { Text(text = "Tower lines them up with the voices") },
-                            scale = ListItemDefaults.scale(focusedScale = 1f),
-                        )
-                    }
-                }
-                if (onSelectMoveYourself != null && currentChoice != null && currentChoice >= 0) {
-                    item {
-                        ListItem(
-                            selected = false,
-                            onClick = onSelectMoveYourself,
-                            leadingContent = {},
-                            headlineContent = { Text(text = "Subtitle timing") },
-                            supportingContent = { Text(text = "Move the words earlier or later yourself") },
-                            scale = ListItemDefaults.scale(focusedScale = 1f),
-                        )
-                    }
-                }
-                item {
-                    HorizontalDivider()
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val focused by interactionSource.collectIsFocusedAsState()
-                    ListItem(
-                        selected = false,
-                        enabled = hasDownloadPermission,
-                        onClick = onSelectSearch,
-                        leadingContent = {},
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.search_and_download),
-                            )
-                        },
-                        supportingContent = {},
-                        interactionSource = interactionSource,
-                        modifier =
-                            Modifier
-                                .focusRequester(lastFocusRequester)
-                                .onKeyEvent {
-                                    if (focused && isDown(it) && it.type == KeyEventType.KeyDown) {
-                                        scope.launch {
-                                            listState.animateScrollToItem(0)
-                                            firstFocusRequester.tryRequestFocus()
-                                        }
-                                        return@onKeyEvent true
-                                    }
-                                    false
-                                },
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-            }
-        }
->>>>>>> origin/main
     }
 
 private fun speedWords(speed: Float): String = if (speed == 1f) "Normal" else "${speed.toString().removeSuffix(".0")}x"
