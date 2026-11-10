@@ -133,17 +133,28 @@ B.route(/^\/signin/, async () => {
   askName();
 });
 
-// ---------- Home: greeting, news pills and the four doors ----------
+// ---------- Home ----------
+// Everyone but Kids gets the approved Today board (f3-panel): the greeting with Tower's weather line, six square
+// doors 3 by 2, and a soft list panel as tall as the doors (news, On the way, Did you know). Kids keep the big doors.
 B.route(/^\/home$/, async (m, nav) => {
   const grow = B.doorsGrow; B.doorsGrow = false;
   const kids = B.me.kids;
   // Benflix music: the violet fifth door (not on Kids); Books: the lime sixth door (Kids too, instead of Music)
   const doors = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).concat(DOORS.books ? ["books"] : []).map((k) => DOORS[k]);
-  B.page().innerHTML = B.top("") + `<div class="home">
-    <div class="greet">${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}</div>
-    <div class="news" id="news"></div>
-    <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : doors.length === 6 ? "six" : ""}" id="doors">${doors.map((d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`).join("")}</div>
-  </div>`;
+  const doorHtml = (d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`;
+  const greet = `${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}`;
+  if (kids) {
+    B.page().innerHTML = B.top("") + `<div class="home">
+      <div class="greet">${greet}</div>
+      <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : doors.length === 6 ? "six" : ""}" id="doors">${doors.map(doorHtml).join("")}</div>
+    </div>`;
+  } else {
+    const wx = B.savedWeather();
+    B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
+      <div class="bgreet"><div class="greet">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
+    </div>`;
+  }
   B.wireTop();
   if (grow) {
     // The doors grow out of the logo squares, one after another
@@ -156,8 +167,155 @@ B.route(/^\/home$/, async (m, nav) => {
     B.sound("doors");
   }
   setTimeout(() => { const f = $(".door"); if (f && B.alive(nav)) f.focus({ preventScroll: true }); }, grow ? 800 : 0);
-  B.loadNews(nav);
+  if (!kids) B.loadBoard(nav);
 });
+
+// The weather Tower gave last time (for today, from the last 3 hours), so the line is there straight away
+const dayName = () => new Date().toLocaleDateString([], { weekday: "long" });
+B.savedWeather = () => {
+  try {
+    const w = JSON.parse(localStorage.getItem("benflix.weather") || "null");
+    if (w && Date.now() - w.at < 3 * 3600000 && w.line.startsWith(dayName())) return w.line;
+  } catch (e) {}
+  return "";
+};
+
+// Home's list: up to 4 rows. News first, then your requests On the way, then Did you know (new every time).
+// One spot is kept for the fact and one for On the way; rows come in twos, so a 3rd fact-less row gets a 2nd fact.
+B.arrangeRows = (news, way, facts) => {
+  const out = news.slice(0, 4 - (facts.length ? 1 : 0) - (way.length ? 1 : 0));
+  out.push(...way.slice(0, Math.max(0, 4 - (facts.length ? 1 : 0) - out.length)));
+  out.push(...facts.slice(0, 1));
+  if (out.length % 2 === 1 && facts.length > 1) out.push(facts[1]);
+  return out.slice(0, 4);
+};
+
+const wayLine = (r, details) => {
+  if (r.status === 1) return "Asked for, waiting for a yes";
+  const dl = ((details && details.mediaInfo && details.mediaInfo.downloadStatus) || []);
+  if (!dl.length) return "On the way, looking for a copy";
+  const ends = dl.map((d) => Date.parse(d.estimatedCompletionTime)).filter((t) => !isNaN(t));
+  if (ends.length) {
+    const min = Math.round((Math.max(...ends) - Date.now()) / 60000);
+    if (min < 2) return "On the way, almost here";
+    if (min < 60) return `On the way, about ${min} minutes left`;
+    if (min < 120) return "On the way, about an hour left";
+    if (min < 48 * 60) return `On the way, about ${Math.floor(min / 60)} hours left`;
+  }
+  const size = dl.reduce((a, d) => a + (+d.size || 0), 0), left = dl.reduce((a, d) => a + (+d.sizeLeft || 0), 0);
+  return size > 0 ? `On the way, ${Math.min(99, Math.max(0, Math.floor((size - left) / size * 100)))}% downloaded` : "On the way, downloading";
+};
+
+// Your own requests: ready ones in the last 3 days are news, the rest are On the way
+const myRequests = async () => {
+  const ready = [], way = [];
+  if (!B.seerr || !B.seerrMe) return { ready, way };
+  const me = await B.seerrMe();
+  if (!me || !me.active || !me.userFound) return { ready, way };
+  const list = await B.seerr(`/request?take=20&skip=0&sort=added&requestedBy=${me.jellyseerrUserId}`).catch(() => null);
+  const mine = ((list && list.results) || []).filter((r) => r.media && r.media.tmdbId && r.status !== 3);
+  await Promise.all(mine.slice(0, 12).map(async (r) => {
+    const md = r.media;
+    const here = md.status === 5;
+    const fresh = Date.now() - Date.parse(md.updatedAt || r.updatedAt || 0) < 3 * 86400000;
+    if (here && !(fresh && md.jellyfinMediaId)) return;
+    if (!here && !(r.status === 1 || r.status === 2)) return;
+    const d = await B.cached(`seerr-${r.type}-${md.tmdbId}-home`, 300000, () => B.seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
+    if (!d) return;
+    const title = d.title || d.name || "";
+    const img = B.tmdbImg ? B.tmdbImg(d.posterPath, "w185") : "";
+    if (here) ready.push({ title, detail: "Your request is ready to watch", dot: "#F1F2F5", img: B.img(md.jellyfinMediaId, "Primary", { h: 240 }) || img, href: `#/${r.type === "tv" ? "show" : "movie"}/${md.jellyfinMediaId}`, at: r.createdAt });
+    else way.push({ title, detail: wayLine(r, d), dot: "#F1F2F5", img, href: "#/requests", at: r.createdAt });
+  }));
+  const newest = (a, b) => String(b.at).localeCompare(String(a.at));
+  return { ready: ready.sort(newest).slice(0, 2), way: way.sort(newest).slice(0, 3) };
+};
+
+let lastFacts = "";
+B.loadBoard = async (nav) => {
+  const news = [];
+  const add = (row) => news.push(row);
+  const [prefs, nextUp, music, books, reqs, facts, weather] = await Promise.all([
+    B.prefs().catch(() => null),
+    B.get(`/Shows/NextUp?userId=${B.uid()}&limit=24&fields=DateCreated&enableResumable=false&enableRewatching=false&disableFirstEpisode=true`).catch(() => null),
+    (async () => {
+      const f = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicArtist&Recursive=true&Filters=IsFavorite&Limit=200&EnableImages=false`);
+      const ids = (f.Items || []).map((x) => x.Id);
+      return ids.length ? B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicAlbum&Recursive=true&AlbumArtistIds=${ids.join(",")}&SortBy=DateCreated&SortOrder=Descending&Fields=DateCreated&Limit=10&EnableImages=false`) : null;
+    })().catch(() => null),
+    DOORS.books ? B.call("GET", "api/books/news").catch(() => null) : null,
+    myRequests().catch(() => ({ ready: [], way: [] })),
+    B.call("GET", `api/facts/home?n=2&max=130&skip=${lastFacts}`).catch(() => null),
+    B.call("GET", "api/home/weather").catch(() => null),
+  ]);
+  if (!B.alive(nav) || !$("#blist")) return;
+  // Weather: Tower's line with today's name in front (nothing when no town is set on the Server page)
+  if (weather) {
+    const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
+    try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
+    $("#wx").textContent = line;
+  }
+  // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
+  try {
+    const c = (prefs && prefs.CustomPrefs) || {};
+    const note = String(c["benflix.note"] || "");
+    const i = note.indexOf("\n");
+    if (i > 0) {
+      const exp = +(note.slice(0, i).split("~")[1] || 0);
+      if (!exp || exp > Date.now()) add({ title: "A note from Ben", detail: note.slice(i + 1).split("\n")[0], dot: "#F1F2F5", href: "" });
+    }
+    String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
+      const [ts, title] = l.split("|");
+      if (Date.now() - +ts < 3 * 86400000) add({ title, detail: "Ben fixed it, it's ready to watch again", dot: "#F1F2F5", href: "" });
+    });
+  } catch (e) {}
+  const seen = new Set();
+  ((nextUp && nextUp.Items) || []).filter((e) => B.isNew(e) && Date.now() - new Date(e.DateCreated) < 3 * 86400000).forEach((e) => {
+    if (seen.has(e.SeriesId)) return;
+    seen.add(e.SeriesId);
+    const newSeason = e.IndexNumber === 1 && (e.ParentIndexNumber || 1) > 1;
+    add({ title: e.SeriesName, detail: newSeason ? `Season ${e.ParentIndexNumber} is here` : `New episode: season ${e.ParentIndexNumber}, episode ${e.IndexNumber}`,
+      dot: DOORS.shows.color, img: B.img(e.SeriesId, "Primary", { h: 240 }), href: `#/show/${e.SeriesId}?ep=${e.Id}` });
+  });
+  const who = new Set();
+  ((music && music.Items) || []).filter((a) => Date.now() - new Date(a.DateCreated) < 3 * 86400000).forEach((a) => {
+    const name = a.AlbumArtist || a.Name;
+    if (who.has(name) || who.size >= 2) return;
+    who.add(name);
+    add({ title: name, detail: `New music: ${a.Name}`, dot: "#B69CFF", img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}` });
+  });
+  const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
+  ((books && books.news) || []).slice(0, 2).forEach((b) => add({ title: b.name || b.text, detail: b.line || "", dot: DOORS.books.color, img: pic(b.cover), href: `#/book/${enc(b.title)}` }));
+  reqs.ready.forEach(add);
+  // Did you know: about a movie or show this person can watch (Tower picks them)
+  const factRows = ((facts && facts.facts) || []).map((f) => {
+    let text = f.fact;
+    if (f.name && !text.toLowerCase().includes(f.name.split(":")[0].trim().toLowerCase())) text = `${f.name}: ${text}`;
+    const show = f.type === "Series";
+    return { title: "Did you know?", detail: text, dot: show ? DOORS.shows.color : DOORS.movies.color, img: B.img(f.id, "Primary", { h: 240 }), href: `#/${show ? "show" : "movie"}/${f.id}`, id: f.id };
+  });
+  lastFacts = factRows.map((f) => f.id).join(",");
+  const rows = B.arrangeRows(news.slice(0, 3), reqs.way, factRows);
+  const list = $("#blist");
+  list.classList.toggle("quiet", rows.length <= 2);
+  list.style.setProperty("--n", rows.length <= 2 ? 2 : rows.length);
+  const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
+  list.innerHTML = rows.length ? `<div class="bpanel">${rows.map((r) => `<${r.href ? `a href="${esc(r.href)}"` : "div"} class="brow">
+    <i class="dot" style="background:${r.dot}"></i><div class="tx"><b>${esc(r.title)}</b>${r.detail ? `<span>${esc(r.detail)}</span>` : ""}</div>
+    ${r.img ? `<span class="th ${r.square ? "sq" : ""}" style="background-image:url('${esc(r.img)}')"></span>` : logo}</${r.href ? "a" : "div"}>`).join("")}</div>` : "";
+  fitRows(list);
+};
+
+// Every row's words fit in full: if any row would overflow, all of them get a little smaller together
+const fitRows = (list) => {
+  const panel = $(".bpanel", list);
+  if (!panel || matchMedia("(max-width: 900px)").matches) return;
+  let s = 1;
+  panel.style.setProperty("--fs", s);
+  const over = () => $$(".brow .tx", panel).some((t) => t.scrollHeight > t.parentElement.clientHeight - 4);
+  while (s > 0.62 && over()) { s -= 0.04; panel.style.setProperty("--fs", s.toFixed(2)); }
+};
+addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 
 // Big holidays only, clean and simple
 B.holiday = () => {
@@ -167,53 +325,6 @@ B.holiday = () => {
   if (md === 1031) return "Happy Halloween";
   if (md === 704) return "Happy 4th of July";
   return "";
-};
-
-// News pills: new episodes of shows you watch, notes from the server owner, fixed problems (max 3)
-B.loadNews = async (nav) => {
-  const out = [];
-  try {
-    const p = await B.prefs();
-    const c = p.CustomPrefs || {};
-    const note = String(c["benflix.note"] || "");
-    const i = note.indexOf("\n");
-    if (i > 0) {
-      const exp = +(note.slice(0, i).split("~")[1] || 0);
-      if (!exp || exp > Date.now()) out.push({ text: note.slice(i + 1).split("\n")[0], color: "#F1F2F5", href: "" });
-    }
-    String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
-      const [ts, title] = l.split("|");
-      if (Date.now() - +ts < 3 * 86400000) out.push({ text: `Ben fixed ${title}`, color: "#F1F2F5", href: "" });
-    });
-  } catch (e) {}
-  try {
-    const r = await B.get(`/Shows/NextUp?userId=${B.uid()}&limit=24&fields=DateCreated&enableResumable=false&enableRewatching=false&disableFirstEpisode=true`);
-    const seen = new Set();
-    (r.Items || []).filter((e) => B.isNew(e) && Date.now() - new Date(e.DateCreated) < 3 * 86400000).forEach((e) => {
-      if (seen.has(e.SeriesId)) return;
-      seen.add(e.SeriesId);
-      out.push({ text: e.IndexNumber === 1 ? `${e.SeriesName} season ${e.ParentIndexNumber} is here` : `${e.SeriesName} has a new episode`, color: DOORS.shows.color, href: `#/show/${e.SeriesId}?ep=${e.Id}` });
-    });
-  } catch (e) {}
-  // New albums from artists you follow (like the TV and phone app; not on Kids)
-  if (!B.me.kids) {
-    try {
-      const f = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicArtist&Recursive=true&Filters=IsFavorite&Limit=200&EnableImages=false`);
-      const ids = (f.Items || []).map((x) => x.Id);
-      if (ids.length) {
-        const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=MusicAlbum&Recursive=true&AlbumArtistIds=${ids.join(",")}&SortBy=DateCreated&SortOrder=Descending&Fields=DateCreated&Limit=10&EnableImages=false`);
-        const seen = new Set();
-        (r.Items || []).filter((a) => Date.now() - new Date(a.DateCreated) < 3 * 86400000).forEach((a) => {
-          const who = a.AlbumArtist || a.Name;
-          if (seen.has(who) || seen.size >= 2) return;
-          seen.add(who);
-          out.push({ text: `New music from ${who}`, color: "#B69CFF", href: `#/album/${a.Id}` });
-        });
-      }
-    } catch (e) {}
-  }
-  if (!B.alive(nav) || !$("#news")) return;
-  $("#news").innerHTML = out.slice(0, 3).map((n) => `<${n.href ? `a href="${n.href}"` : "span"} class="pill"><span class="d" style="background:${n.color}"></span>${esc(n.text)}</${n.href ? "a" : "span"}>`).join("");
 };
 
 // ---------- profile menu: corner card, picture + name on the left, list on the right ----------

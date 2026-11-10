@@ -107,7 +107,11 @@ enum class ServerSection(
     NOW("Watching", "Who's watching, and how hard the server works for it", BenflixPlayFilled),
     LIBRARY("Library", "Movie and show numbers, disk space, the library checkup and downloads", BenflixIcon.LIST.vector),
     PEOPLE("People", "Accounts for family and friends, and messages to them", BenflixIcon.PERSON.vector),
-    TOOLS("Tools", "Scan for new stuff, the server's chores, tidy track names, and restarting Jellyfin", BenflixIcon.WRENCH.vector),
+    TOOLS(
+        "Tools",
+        "Scan for new stuff, the server's chores, tidy track names, Home's weather town, and restarting Jellyfin",
+        BenflixIcon.WRENCH.vector,
+    ),
 }
 
 /** Benflix: green, gold or red for the traffic lights */
@@ -596,6 +600,7 @@ fun ServerStatusPage(
                 )
                 speedCheckItems(speedState, speedCheck)
                 trackTidyItems(tracks, tracksProblem, towerViewModel)
+                homeWeatherItems()
             }
         }
     }

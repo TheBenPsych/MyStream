@@ -484,8 +484,51 @@ def status():
     return {"titles": len(_titles), "with_facts": with_facts, "checked_titles": len(_checked), "busy": _gathering.is_set(), "last": n, "log": _log_lines[-15:]}
 
 
+def _can_see(item_id, token, user_id):
+    """Is this title in this person's Benflix? (Jellyfin knows each person's libraries and age limits)"""
+    try:
+        status, _, _ = _jf("GET", f"/Users/{user_id}/Items/{item_id}", token=token)
+        return status == 200
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def home_facts(token, user_id, count=2, skip=(), longest=MAX_LEN):
+    """
+    Home's "Did you know" rows: [count] facts, each about a different movie or show this person can watch,
+    picked at random every time Home opens. [skip] = title ids shown last time, so it changes.
+    """
+    import random
+
+    skip = {s.replace("-", "").lower() for s in skip if s}
+    with _lock:
+        ids = [i for i, t in _titles.items() if t.get("type") in ("Movie", "Series") and i not in skip]
+    random.shuffle(ids)
+    out = []
+    for item_id in ids[:60]:
+        t = _titles[item_id]
+        checked = _checked_for(t)
+        auto = (_auto.get(item_id) or {}).get("facts") or []
+        pool = list(checked) + [f for f in auto if _norm(f) not in {_norm(c) for c in checked}]
+        # Home's rows are small: only the shorter facts
+        pool = [f for f in pool if len(f) <= longest]
+        if not pool:
+            continue
+        if not _can_see(item_id, token, user_id):
+            continue
+        out.append({"id": item_id, "name": t.get("name") or "", "type": t.get("type"), "fact": random.choice(pool)})
+        if len(out) >= count:
+            break
+    return {"facts": out}
+
+
 def route(method, path, query, token, user_id, is_admin):
     """/api/facts/... for the apps. Returns (status, answer)."""
+    if method == "GET" and path == "/api/facts/home":
+        n = max(1, min(4, int((query.get("n") or ["2"])[0] or 2)))
+        skip = ",".join(query.get("skip") or []).split(",")
+        longest = max(60, min(MAX_LEN, int((query.get("max") or [str(MAX_LEN)])[0] or MAX_LEN)))
+        return 200, home_facts(token, user_id, n, skip, longest)
     if method == "GET" and path == "/api/facts/status":
         return 200, status()
     if method == "POST" and path == "/api/facts/gather":

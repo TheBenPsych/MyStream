@@ -211,6 +211,10 @@ data class BookNews(
     val id: String,
     val text: String,
     val titleId: String,
+    /** For Home's list: the book's name, the words under it, and its cover (older Tower helpers send none) */
+    val name: String? = null,
+    val line: String? = null,
+    val cover: String? = null,
 )
 
 data class BookStats(
@@ -450,7 +454,14 @@ class BenflixBooks
 
         suspend fun news(): List<BookNews> =
             helper.getJson("/api/books/news").optJSONArray("news").objects().map {
-                BookNews(it.optString("id"), it.optString("text"), it.optString("title"))
+                BookNews(
+                    it.optString("id"),
+                    it.optString("text"),
+                    it.optString("title"),
+                    name = it.optString("name").takeIf { s -> s.isNotBlank() },
+                    line = it.optString("line").takeIf { s -> s.isNotBlank() },
+                    cover = it.optString("cover").takeIf { s -> s.isNotBlank() },
+                )
             }
 
         suspend fun stats(): BookStats {
