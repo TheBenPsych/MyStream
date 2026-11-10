@@ -457,7 +457,11 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
     val because =
         remember(d) {
             val seen = HashSet<Long>()
-            d?.because.orEmpty().flatMap { it.songs }.filter { seen.add(it.id) }
+            d
+                ?.because
+                .orEmpty()
+                .flatMap { it.songs }
+                .filter { seen.add(it.id) }
         }
     val lists =
         buildList {
@@ -710,10 +714,14 @@ private fun MusicWall(
     onOwned: () -> Unit = {},
 ) {
     val isTv = rememberIsTv()
-    val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val grid =
+        androidx.compose.foundation.lazy.grid
+            .rememberLazyGridState()
     LaunchedEffect(listKey) { grid.scrollToItem(0) }
     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(if (isTv) 6 else 3),
+        columns =
+            androidx.compose.foundation.lazy.grid.GridCells
+                .Fixed(if (isTv) 6 else 3),
         state = grid,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -782,7 +790,10 @@ private fun MusicWall(
             }
         }
         if (owned > 0) {
-            item(key = "$listKey-owned", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            item(key = "$listKey-owned", span = {
+                androidx.compose.foundation.lazy.grid
+                    .GridItemSpan(maxLineSpan)
+            }) {
                 Box(Modifier.padding(top = 8.dp)) { OwnedMoreButton(owned, ownedOpen, onOwned) }
             }
         }

@@ -128,8 +128,18 @@ fun pillFromWords(
 ): AskPill {
     val w = words?.trim().orEmpty()
     val low = w.lowercase()
-    val pct = Regex("(\\d{1,3})\\s?%").find(w)?.groupValues?.get(1)?.toIntOrNull()
-    val day = Regex("day (\\d+)").find(low)?.groupValues?.get(1)?.toLongOrNull()
+    val pct =
+        Regex("(\\d{1,3})\\s?%")
+            .find(w)
+            ?.groupValues
+            ?.get(1)
+            ?.toIntOrNull()
+    val day =
+        Regex("day (\\d+)")
+            .find(low)
+            ?.groupValues
+            ?.get(1)
+            ?.toLongOrNull()
     val cant = low.startsWith("couldn't") || low.contains("went wrong") || low.contains("said no") || low.contains("declined")
     val ready = low.startsWith("ready") || low.contains("on benflix") || low.contains("in your music") || low == "available"
     val getting = listOf("download", "processing", "getting it", "putting it", "partly").any { low.contains(it) }
@@ -149,12 +159,35 @@ fun pillFromWords(
 /** A music request (Tower) as a pill. Newer helpers send the state; older ones only send words. */
 fun MusicRequest.askPill(): AskPill =
     when (pill) {
-        "ready" -> readyPill(AskKind.PLAY)
-        "cant" -> CantPill
-        "getting" -> gettingPill(pct)
-        "looking" -> lookingPill(days.takeIf { it >= 1 }?.let { it + 1L })
-        "asked" -> if (waiting) askedPill("waiting for Ben") else askedPill()
-        else -> if (ready) readyPill(AskKind.PLAY) else if (bad) CantPill else pillFromWords(words, AskKind.PLAY)
+        "ready" -> {
+            readyPill(AskKind.PLAY)
+        }
+
+        "cant" -> {
+            CantPill
+        }
+
+        "getting" -> {
+            gettingPill(pct)
+        }
+
+        "looking" -> {
+            lookingPill(days.takeIf { it >= 1 }?.let { it + 1L })
+        }
+
+        "asked" -> {
+            if (waiting) askedPill("waiting for Ben") else askedPill()
+        }
+
+        else -> {
+            if (ready) {
+                readyPill(AskKind.PLAY)
+            } else if (bad) {
+                CantPill
+            } else {
+                pillFromWords(words, AskKind.PLAY)
+            }
+        }
     }
 
 /** A book request (Tower) as a pill, from its state word */
@@ -163,12 +196,41 @@ fun bookPill(
     words: String,
 ): AskPill =
     when (state) {
-        "ready" -> readyPill(AskKind.READ)
-        "cant", "problem", "no" -> CantPill
-        "downloading" -> gettingPill(Regex("(\\d{1,3})%").find(words)?.groupValues?.get(1)?.toIntOrNull())
-        "searching" -> lookingPill(Regex("day (\\d+)").find(words.lowercase())?.groupValues?.get(1)?.toLongOrNull())
-        "waiting", "pending" -> askedPill("waiting for Ben")
-        else -> pillFromWords(words, AskKind.READ).let { if (it.state == AskState.READY) readyPill(AskKind.READ) else it }
+        "ready" -> {
+            readyPill(AskKind.READ)
+        }
+
+        "cant", "problem", "no" -> {
+            CantPill
+        }
+
+        "downloading" -> {
+            gettingPill(
+                Regex("(\\d{1,3})%")
+                    .find(words)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.toIntOrNull(),
+            )
+        }
+
+        "searching" -> {
+            lookingPill(
+                Regex("day (\\d+)")
+                    .find(words.lowercase())
+                    ?.groupValues
+                    ?.get(1)
+                    ?.toLongOrNull(),
+            )
+        }
+
+        "waiting", "pending" -> {
+            askedPill("waiting for Ben")
+        }
+
+        else -> {
+            pillFromWords(words, AskKind.READ).let { if (it.state == AskState.READY) readyPill(AskKind.READ) else it }
+        }
     }
 
 /** The pill itself: coloured words on a soft tint of the same colour */

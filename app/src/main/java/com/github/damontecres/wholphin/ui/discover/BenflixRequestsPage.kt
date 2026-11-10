@@ -1388,10 +1388,15 @@ fun BenflixRequestsPage(
     ) { index, _ ->
         when (index) {
             0 -> FindShelf(FindSection.MOVIES, viewModel)
+
             1 -> FindShelf(FindSection.SHOWS, viewModel)
+
             2 -> FindShelf(FindSection.ANIME, viewModel)
+
             3 -> MusicShelf()
+
             4 -> BooksShelf()
+
             // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
@@ -1419,7 +1424,11 @@ internal object RequestsLastTab {
         user: String,
         tab: Int,
     ) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(user, tab).apply()
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(user, tab)
+            .apply()
     }
 }
 
@@ -1671,6 +1680,7 @@ private fun FindShelf(
             val base = rows.orEmpty()
             val popular = base.firstOrNull { it.title == "Popular" || it.title == "Popular anime shows" }?.items.orEmpty()
             val out = mutableListOf<ShownRow>()
+
             fun add(
                 title: String,
                 items: List<DiscoverItem>,
@@ -2339,6 +2349,7 @@ private fun RequestList(
                 val stillAsking = { it: RequestEntry -> !it.notFound() }
                 // Redesign 2: grouped by the five status pills (Ready first). Ben's "Waiting for you" stays on top.
                 val waitingTitle = "Waiting for you"
+
                 fun RequestEntry.groupTitle(): String =
                     when {
                         !mineOnly && !available && status == RequestStatus.PENDING && stillAsking(this) -> waitingTitle
@@ -2529,7 +2540,6 @@ private fun StatusTag(
     val pill = entry.askPill(cantFind, daysWaiting)
     AskPillChip(if (lookYourself) pill.copy(state = AskState.LOOKING, words = pill.words + " · look for it yourself") else pill)
 }
-
 
 /**
  * Benflix: approved, nothing here or downloading, and searched [RequestsWaiting.LOOK_YOURSELF_DAYS] days or more.

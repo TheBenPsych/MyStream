@@ -76,9 +76,13 @@ private fun DiscoverItem.statusWord(): String? =
     when (availability) {
         // Redesign 2: the same words as the status pills everywhere else
         SeerrAvailability.PENDING -> "ASKED"
+
         SeerrAvailability.PROCESSING -> "GETTING IT"
+
         SeerrAvailability.PARTIALLY_AVAILABLE -> "PARTLY HERE"
+
         SeerrAvailability.AVAILABLE -> "READY TO WATCH"
+
         else -> null
     }
 
