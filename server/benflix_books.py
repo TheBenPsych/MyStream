@@ -86,6 +86,7 @@ _kick = threading.Event()
 _dir = None
 _jf = None
 _lib = {"titles": {}, "vols": {}, "scanned": 0, "folders": {}}
+_doubles = {}  # a second copy of a book -> the copy that shows
 _meta = {}  # title key -> looked-up info (description, genres, scores, cover link ...)
 _users = {}  # Jellyfin account id -> that profile's places, want list, finished ...
 _state = {"requests": [], "kids_allow": [], "covers": {}, "manga_to_add": []}
@@ -257,6 +258,86 @@ def strip_author(title, author):
     return title
 
 
+# Words that are publisher lines or book types, not real series
+NOT_SERIES = {
+    "hard case crime", "penguin classics", "vintage classics", "oxford world s classics", "modern library",
+    "everyman s library", "signet classics", "bantam classics", "dover thrift editions", "a novel", "novel",
+    "fiction", "nonfiction", "non fiction", "unknown", "none", "standalone", "stand alone", "kindle edition",
+    "audible originals", "collected works", "short stories", "stories", "omnibus", "book", "books",
+}
+NAME_SUFFIX = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "phd", "md"}
+
+
+def clean_author(raw):
+    """'King, Stephen, 1947-;Fitzgerald, F-stop' -> 'Stephen King', 'Rowling, J. K' -> 'J.K. Rowling'"""
+    s = html.unescape(str(raw or "")).strip()
+    if not s:
+        return ""
+    # Only the first of several authors (the rest are photographers, editors, narrators...)
+    s = re.split(r"\s*(?:;|\||&|\band\b|\bwith\b|\bfeat\.?\b)\s*", s, flags=re.I)[0]
+    # Birth and death years: '1947-', '1890-1976', '(1947-2020)'
+    s = re.sub(r"[(\[]?\b\d{3,4}\s*-\s*(?:\d{3,4})?[)\]]?", " ", s)
+    s = re.sub(r"\s*[(\[].*?[)\]]", " ", s)
+    parts = [p.strip(" .-") if p.strip().lower().rstrip(".") in NAME_SUFFIX else p.strip(" -") for p in s.split(",")]
+    parts = [p for p in parts if p]
+    if len(parts) >= 2:
+        if " " not in parts[0] or len(parts) > 2 and all(p.lower().rstrip(".") in NAME_SUFFIX for p in parts[2:]):
+            # 'Last, First' (and maybe ', Jr.')
+            rest = [p for p in parts[2:] if p.lower().rstrip(".") in NAME_SUFFIX]
+            s = " ".join([parts[1], parts[0]] + rest)
+        else:
+            # 'Stephen King, Peter Straub' -> the first one
+            s = parts[0]
+    else:
+        s = parts[0] if parts else ""
+    # Initials together: 'J. K Rowling', 'J K Rowling', 'J.K.Rowling' -> 'J.K. Rowling'
+    s = re.sub(r"\b([A-Z])\.(?=[A-Z][a-z])", r"\1. ", s)
+    words, out, initials = s.split(), [], ""
+    for w in words:
+        if re.fullmatch(r"(?:[A-Z]\.?)+", w) and (len(w) == 1 or "." in w or len(w) <= 3 and w.isupper() and len(words) > 1):
+            initials += "".join(c + "." for c in w if c.isalpha())
+            continue
+        if initials:
+            out.append(initials)
+            initials = ""
+        out.append(w)
+    if initials:
+        out.append(initials)
+    s = " ".join(out)
+    return re.sub(r"\s{2,}", " ", s).strip(" ,.-") + ("." if s.endswith(".") and re.search(r"\b[A-Z]\.$", s) else "")
+
+
+def author_key(name):
+    """The same person however their name is written ('J.K. Rowling' = 'Rowling, J. K' = 'J K Rowling')"""
+    t = unicodedata.normalize("NFKD", clean_author(name)).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z]+", "", t)
+
+
+def tidy_title(title):
+    """'Doctor Sleep: A Novel' -> 'Doctor Sleep'"""
+    t = re.sub(r"\s*[:(\[-]\s*a\s+novel\s*[)\]]?\s*$", "", str(title or ""), flags=re.I)
+    return t.strip() or str(title or "")
+
+
+def clean_series(series, title=""):
+    """A real series name, or '' for publisher lines ('Hard Case Crime') and books that are their own 'series'"""
+    s = re.sub(r"\s*[(\[].*?[)\]]", "", str(series or "")).strip()
+    s = re.sub(r"\s*(?:#|no\.?|book|vol\.?|volume)\s*\d+(?:\.\d+)?\s*$", "", s, flags=re.I)
+    s = re.sub(r"\s+(?:series|saga|trilogy|sequence|chronicles collection)$", "", s, flags=re.I).strip(" ,;:-")
+    n = norm(s)
+    if not n or n in NOT_SERIES or n.isdigit():
+        return ""
+    if title and n == norm(tidy_title(title)):
+        return ""
+    return s
+
+
+def link_key(name):
+    """Book names that mean the same book in the US and UK"""
+    n = norm(tidy_title(name))
+    return n.replace("philosopher s stone", "sorcerer s stone")
+
+
 def year_of(text):
     m = re.search(r"\b(1[5-9]\d\d|20\d\d)\b", str(text or ""))
     return int(m.group(1)) if m else None
@@ -317,6 +398,8 @@ def scan():
                     _scan_pages(root, kind, titles, vols)
             except OSError as e:
                 log(f"Couldn't look through {root}: {e}")
+    _same_names(titles)
+    _drop_doubles(titles)
     _link_formats(titles)
     with _lock:
         old = _lib["titles"]
@@ -357,18 +440,19 @@ def _scan_books(root, titles):
                 info = _opf_file(opf_beside)
             if not info.get("title") and ext == ".epub":
                 info = {**_epub_meta(path), **{k: v for k, v in info.items() if v}}
-            author = info.get("author") or (parts[0] if parts else "")
+            # Author/Title/book.epub: the folder name is the tidiest author name (the book's own is often 'King, Stephen, 1947-')
+            author = clean_author(tidy_name(parts[0]) if len(parts) >= 2 else (info.get("author") or (parts[0] if parts else "")))
             title = info.get("title") or strip_author(tidy_name(os.path.splitext(best)[0]), author)
             if not info.get("title") and len(parts) >= 2:
                 title = strip_author(_strip_year(tidy_name(parts[-1])), author)
-            title = _strip_year(title) or title
+            title = tidy_title(_strip_year(title) or title)
             tid = "b" + _hid("book", os.path.relpath(path, MEDIA))
             titles[tid] = {
                 "id": tid,
                 "kind": "book",
                 "name": title,
-                "author": tidy_name(author),
-                "series": info.get("series") or "",
+                "author": author,
+                "series": clean_series(info.get("series"), title),
                 "seriesIndex": info.get("series_index"),
                 "year": info.get("year") or year_of(rel_folder),
                 "path": path,
@@ -421,7 +505,7 @@ def _scan_audio(root, titles):
                 m = re.match(r"(.+?)\s+-\s+(.+)", parts[0])
                 if m:
                     author = m.group(1)
-            title = strip_author(_strip_year(tidy_name(name)), author)
+            title = tidy_title(strip_author(_strip_year(tidy_name(name)), author))
             # "HP07: Title" or "01 - Title" at the start
             title = re.sub(r"^(?:[A-Z]{1,4}\s?\d{1,2}\s*[:.-]\s+|\d{1,2}\s*[-.]\s+)", "", title) or title
             series, idx = "", None
@@ -434,8 +518,8 @@ def _scan_audio(root, titles):
                 "id": tid,
                 "kind": "audiobook",
                 "name": title,
-                "author": tidy_name(author),
-                "series": series,
+                "author": clean_author(tidy_name(author)),
+                "series": clean_series(series, title),
                 "seriesIndex": idx,
                 "year": year_of(name),
                 "folder": folder,
@@ -530,33 +614,75 @@ def _scan_pages(root, kind, titles, vols):
         }
 
 
+def _same_names(titles):
+    """One spelling per author ('Rowling, J. K' and 'J.K. Rowling' both show as 'J.K. Rowling')"""
+    spellings = {}
+    for t in titles.values():
+        if t["author"]:
+            spellings.setdefault(author_key(t["author"]), []).append(t["author"])
+    best = {}
+    for k, names in spellings.items():
+        # The most used spelling wins, then the one with dots in initials ('J.K.' over 'JK')
+        best[k] = sorted(set(names), key=lambda n: (-names.count(n), -n.count("."), n))[0]
+    for t in titles.values():
+        if t["author"]:
+            t["author"] = best[author_key(t["author"])]
+
+
+def _drop_doubles(titles):
+    """The same book twice (two downloads, or Title.epub in two folders) only shows once"""
+    groups = {}
+    for t in titles.values():
+        if t["kind"] in ("book", "audiobook"):
+            groups.setdefault((t["kind"], link_key(t["name"]), author_key(t["author"])), []).append(t)
+    rank = {".epub": 0, ".pdf": 1}
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        # Keep the one Benflix can open best, then the one with series info, then the first one added
+        group.sort(key=lambda t: (rank.get(t.get("ext"), 2) if t["kind"] == "book" else -len(t.get("files") or []), 0 if t.get("series") else 1, t["added"], t["id"]))
+        keep = group[0]
+        for t in group[1:]:
+            if not keep.get("series") and t.get("series"):
+                keep["series"], keep["seriesIndex"] = t["series"], t.get("seriesIndex")
+            _doubles[t["id"]] = keep["id"]
+            del titles[t["id"]]
+
+
 def _link_formats(titles):
     """An ebook and an audiobook of the same book find each other (Read and Listen on one page)"""
     books = {}
     for t in titles.values():
         if t["kind"] == "book":
-            books.setdefault(norm(t["name"]), []).append(t)
+            books.setdefault(link_key(t["name"]), []).append(t)
     for t in titles.values():
         if t["kind"] != "audiobook":
             continue
-        n = norm(t["name"])
+        n = link_key(t["name"])
         match = books.get(n)
         if not match:
-            # "Harry Potter and the Sorcerer's Stone" vs "Harry Potter and the Philosopher's Stone" won't match,
-            # but "Title: A Novel" vs "Title" will
+            # "Title: A Novel" vs "Title" match
             for k, v in books.items():
                 if k and n and (k.startswith(n + " ") or n.startswith(k + " ")) and len(min(k, n, key=len)) > 6:
                     match = v
                     break
         if match:
-            b = sorted(match, key=lambda x: 0 if norm(x["author"]) == norm(t["author"]) else 1)[0]
-            if not t["author"] or not b["author"] or norm(b["author"]) == norm(t["author"]) or norm(t["author"]) in norm(b["author"]):
+            ak = author_key(t["author"])
+            b = sorted(match, key=lambda x: 0 if author_key(x["author"]) == ak else 1)[0]
+            bk = author_key(b["author"])
+            if not ak or not bk or ak == bk or ak in bk or bk in ak:
                 t["linked"] = b["id"]
                 b["linked"] = t["id"]
                 if not t["author"]:
                     t["author"] = b["author"]
                 if not t["series"] and b["series"]:
                     t["series"], t["seriesIndex"] = b["series"], b["seriesIndex"]
+                elif not b["series"] and t["series"]:
+                    b["series"], b["seriesIndex"] = t["series"], t["seriesIndex"]
+                if t.get("seriesIndex") is None and b.get("seriesIndex") is not None and norm(t["series"]) == norm(b["series"]):
+                    t["seriesIndex"] = b["seriesIndex"]
+                if b.get("seriesIndex") is None and t.get("seriesIndex") is not None and norm(t["series"]) == norm(b["series"]):
+                    b["seriesIndex"] = t["seriesIndex"]
 
 
 # ---------- Reading inside files ----------
@@ -1132,8 +1258,8 @@ def tile(t, u, now=None):
         "id": tid,
         "kind": t["kind"],
         "name": t["name"],
-        "author": t["author"] or m.get("author") or "",
-        "series": t.get("series") or m.get("series") or "",
+        "author": t["author"] or clean_author(m.get("author")),
+        "series": t.get("series") or clean_series(m.get("series"), t["name"]),
         "seriesIndex": t.get("seriesIndex"),
         "year": t.get("year") or m.get("year"),
         "cover": cover_url(tid),
@@ -1158,7 +1284,7 @@ def library(user_id, is_kids):
     now = time.time()
     with _lock:
         titles = list(_lib["titles"].values())
-    tiles = [tile(t, u, now) for t in titles if visible(is_kids, t)]
+    tiles = _fill_series([tile(t, u, now) for t in titles if visible(is_kids, t)])
     tiles.sort(key=lambda x: natural(x["name"]))
     kinds = {k: sum(1 for x in tiles if x["kind"] == k) for k, _ in SECTIONS}
     return {
@@ -1169,6 +1295,32 @@ def library(user_id, is_kids):
         "folders": {k: [os.path.relpath(p, MEDIA) for p in section_dirs(k)] for k, _ in SECTIONS},
         "requests": can_ask(),
     }
+
+
+def _fill_series(tiles):
+    """'Harry Potter and the Goblet of Fire' with no series joins the author's 'Harry Potter' series"""
+    known = {}
+    for t in tiles:
+        if t["series"] and t["kind"] in ("book", "audiobook"):
+            known.setdefault(author_key(t["author"]), {})[norm(t["series"])] = t["series"]
+    for t in tiles:
+        if t["series"] or t["kind"] not in ("book", "audiobook"):
+            continue
+        n = norm(t["name"])
+        for key, name in (known.get(author_key(t["author"])) or {}).items():
+            if key and n.startswith(key + " ") and len(key) > 3:
+                t["series"] = name
+                break
+    return tiles
+
+
+def series_order(books):
+    """Book order in a series: by number when every book has one, otherwise by year it came out"""
+    numbered = all(x.get("seriesIndex") is not None for x in books)
+    return sorted(
+        books,
+        key=lambda x: (x["seriesIndex"] if numbered else (x.get("year") or 9999), x.get("seriesIndex") or 0, natural(x["name"])),
+    )
 
 
 def _one_per_book(tiles):
@@ -1320,8 +1472,9 @@ def title_page(tid, user_id, is_kids, is_admin):
         out["placeLine"] = _place_line(t, other, u)
     # More by this author, then More like this (both from what's on Benflix)
     tiles = [tile(x, u) for x in _lib["titles"].values() if x["id"] not in (tid, t.get("linked")) and visible(is_kids, x)]
-    author = norm(out["author"])
-    by = [x for x in tiles if author and norm(x["author"]) == author]
+    _fill_series(tiles + [out])
+    author = author_key(out["author"])
+    by = [x for x in tiles if author and author_key(x["author"]) == author]
     by.sort(key=lambda x: (x["series"] != out["series"], x["seriesIndex"] or 0, natural(x["name"])))
     mine = set(g.lower() for g in (m.get("genres") or [])) | set(s.lower() for s in (m.get("subjects") or [])[:15])
     like = []
@@ -1334,12 +1487,12 @@ def title_page(tid, user_id, is_kids, is_admin):
         if score >= 2:
             like.append((score, x))
     like.sort(key=lambda s: -s[0])
-    out["moreBy"] = by[:20]
-    out["moreLike"] = [x for _, x in like[:20]]
+    out["moreBy"] = _one_per_book(by)[:20]
+    out["moreLike"] = _one_per_book([x for _, x in like])[:20]
     if out["series"]:
         same = [x for x in tiles if x["series"] and norm(x["series"]) == norm(out["series"]) and x["kind"] == t["kind"]]
         same.append(out)
-        same.sort(key=lambda x: (x["seriesIndex"] or 0, natural(x["name"])))
+        same = series_order(same)
         out["seriesBooks"] = [{"id": x["id"], "name": x["name"], "seriesIndex": x["seriesIndex"]} for x in same]
     return out
 
@@ -1373,7 +1526,11 @@ def series_list(user_id, is_kids):
             g["titles"].append(t)
     out = []
     for g in groups.values():
-        g["titles"].sort(key=lambda x: (x["seriesIndex"] or 0, natural(x["name"])))
+        if g["kind"] == "series":
+            g["titles"] = series_order(g["titles"])
+            # A "series" with only one book here isn't worth a stack (it still shows on the book's page)
+            if len(g["titles"]) < 2:
+                continue
         if g["titles"]:
             g["cover"] = g["titles"][0]["cover"]
         books = [x for x in g["titles"]]
@@ -1392,7 +1549,7 @@ def authors_list(user_id, is_kids):
     groups = {}
     for t in lib["titles"]:
         if t["author"] and not (t["kind"] == "audiobook" and t.get("linked")):
-            g = groups.setdefault(norm(t["author"]), {"name": t["author"], "titles": []})
+            g = groups.setdefault(author_key(t["author"]), {"name": t["author"], "titles": []})
             g["titles"].append(t)
     out = sorted(groups.values(), key=lambda g: natural(g["name"].split()[-1] if g["name"].split() else g["name"]))
     for g in out:
@@ -2374,6 +2531,8 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
     """The helper sends /api/books/... here. Returns (status, answer) for JSON, or (status, bytes, content type),
     or ("file", path, content type) for big files the helper streams (with Range for seeking)."""
     q = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
+    # A link to a second copy that was folded into another one opens the one that shows
+    path = re.sub(r"(?<=/)(\w{13})(?=/|$)", lambda mm: _doubles.get(mm.group(1), mm.group(1)), path)
     try:
         if method == "GET" and path == "/api/books/home":
             return 200, home(user_id, is_kids)

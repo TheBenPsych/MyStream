@@ -17,17 +17,20 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,6 +54,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * A book's own page (approved design): movie-style, the big cover on the right. Manga get a row of volumes
@@ -116,14 +120,24 @@ fun BookTitlePage(
     val mainFocus = remember { FocusRequester() }
     LaunchedEffect(p.tile.id) { mainFocus.tryRequestFocus() }
     val onTile: (BookTile) -> Unit = { viewModel.navigationManager.navigateTo(Destination.BookTitle(it.id)) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // Any button up top (Read, Want to read...) shows the whole top of the page, not a cut-off half
+    val heroFocus =
+        Modifier.onFocusChanged {
+            if (it.hasFocus && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
+                scope.launch { listState.animateScrollToItem(0) }
+            }
+        }
     LazyColumn(
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 18.dp),
         contentPadding = PaddingValues(bottom = 48.dp),
         modifier = modifier.fillMaxSize(),
     ) {
         item(key = "hero") {
             if (wide) {
-                Box(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth().then(heroFocus)) {
                     // The cover on the right, fading into the page
                     Box(
                         Modifier
@@ -142,7 +156,7 @@ fun BookTitlePage(
                     HeroText(p, viewModel, note, mainFocus, Modifier.padding(start = edge, end = 340.dp, top = 8.dp))
                 }
             } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().then(heroFocus)) {
                     BookCoverImage(
                         p.tile.cover,
                         p.tile.name,
