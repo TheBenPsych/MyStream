@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/readme/hero.jpg" alt="Benflix on a TV and a phone: the Home screen with five coloured doors for Movies, Shows, Live TV, Games and Music" width="100%"/>
+  <img src="docs/readme/hero.jpg" alt="Benflix on a TV and a phone: the Home screen with six coloured doors for Movies, Shows, Live TV, Games, Music and Books, and a list of your news beside them" width="100%"/>
 </p>
 
 <p align="center">
@@ -20,10 +20,14 @@
 ## What is Benflix?
 
 Benflix is a home streaming app. It plays the movies, shows and music you already keep on your own
-[Jellyfin](https://jellyfin.org/) server, adds live TV channels, and plays your retro games right on the TV or phone.
+[Jellyfin](https://jellyfin.org/) server, lets you read and listen to your books, adds live TV channels,
+and plays your retro games right on the TV or phone.
 
-Everything sits behind **five coloured doors**: 🟧 **Movies**, 🟦 **Shows**, 🟩 **Live TV**, 🟥 **Games** and 🟪 **Music**.
-Each door keeps its colour everywhere inside it, so you always know where you are.
+Everything sits behind **six coloured doors**: 🟧 **Movies**, 🟦 **Shows**, 🟩 **Live TV**, 🟥 **Games**, 🟪 **Music**
+and 🟨 **Books**. Each door keeps its colour everywhere inside it, so you always know where you are.
+
+Beside the doors, Home shows **a short list of your news**: a new episode of a show you watch, a request that's
+ready, something on its way, or a fun fact, plus today's weather. Clear any line with an **X**, or all of them with **Clear all**.
 
 It is a personal project for family and friends. It is not in the Google Play Store or the Amazon Appstore,
 so you install it yourself. It takes about five minutes, see [How to install](#how-to-install).
@@ -32,21 +36,21 @@ Benflix is built on top of the excellent open-source app [Wholphin](https://gith
 See [Credits and license](#credits-and-license).
 
 <p align="center">
-  <img src="docs/readme/how-it-fits.png" alt="Your server at home runs Jellyfin, Seerr, Lidarr, RomM, the Benflix helper, Trailarr, Sonarr and Radarr. Benflix on your TV, your phone and in a web browser connects to it." width="100%"/>
+  <img src="docs/readme/how-it-fits.png" alt="Your server at home runs Jellyfin, Seerr, Lidarr, Chaptarr, RomM, the Benflix helper, Trailarr, Sonarr and Radarr. Benflix on your TV, your phone and in a web browser connects to it." width="100%"/>
 </p>
 
 ## A quick look
 
 <p align="center">
-  <img src="docs/readme/tv-tour.jpg" alt="Benflix on the TV: a show page, Live TV, Games, the Music page, the Now playing screen with lyrics, and Search" width="100%"/>
+  <img src="docs/readme/tv-tour.jpg" alt="Benflix on the TV: the Movies door, a show page, Live TV, Games, the Music page, the Now playing screen with lyrics, a manga in Books, book requests, and Search" width="100%"/>
 </p>
 
 <p align="center">
   <img src="docs/readme/phone-tour.jpg" alt="Real screenshots of Benflix on a phone: Home, Movies, Shows, Live TV, Games, Search, a movie page and Settings" width="100%"/>
 </p>
 
-<sub>The phone pictures are real screenshots, taken by the test robot on the public Jellyfin demo server.
-The TV pictures come from the finished Benflix design, with made-up titles.</sub>
+<sub>The phone pictures are real screenshots, taken by the test robot on the public Jellyfin demo server
+(from before the Books door arrived). The TV pictures come from the finished Benflix design, with made-up titles.</sub>
 
 ## What's inside
 
@@ -57,7 +61,9 @@ The TV pictures come from the finished Benflix design, with made-up titles.</sub
 ### 🟧 Movies and 🟦 Shows
 - Each door opens on a big **Picked for you** banner, then **Keep watching**, **My List**, **Top 10**, collections and more
 - Clean title pages with **IMDb** and **Rotten Tomatoes** scores, a trailer that fades in, and **More like this**
-- **Did you know?** fun facts on movie and show pages
+- **Did you know?** fun facts on hundreds of movie and show pages
+- **Ask for more like this**: a row of similar titles you don't have yet, ready to ask for
+- Can't decide? **This or that** and the **Mood quiz** at the bottom of Movies and Shows pick something for you
 - Shows list every season and episode, with "New episode" news on Home
 - Anime gets its own picks, Dubbed and Subbed, plus **AniList** and **MyAnimeList** scores
 - An **All movies** and **All shows** grid you can sort by newest, A to Z or year
@@ -68,7 +74,7 @@ The TV pictures come from the finished Benflix design, with made-up titles.</sub
 ### ▶️ Watching
 - A clean player with **Skip intro** and **Skip credits** that find the right spot by themselves
 - The next episode plays by itself (you choose when it stops)
-- Subtitles move out of the way of on-screen words
+- **Subtitles are in English by default**, everywhere, and they move out of the way of on-screen words
 - A **parents' guide** on every title
 - Two video players (ExoPlayer and MPV) for the best subtitle support
 
@@ -82,7 +88,8 @@ The TV pictures come from the finished Benflix design, with made-up titles.</sub
 - Album, artist and playlist pages that look like movie pages
 - A **Now playing** screen with **lyrics** and colourful music bars
 - **Save songs to your phone** to listen with no internet
-- Bring in your playlists from **Spotify, YouTube Music** or **Deezer**
+- Bring in your playlists from **Spotify, YouTube Music** or **Deezer**, or just the songs
+- **Ask for songs and albums**, and hear a **30 second preview** first
 - Music also plays in Benflix in your web browser
 
 </td>
@@ -113,8 +120,30 @@ The TV pictures come from the finished Benflix design, with made-up titles.</sub
 - **One search for everything**: movies, shows, live channels, games and music, side by side
 - Search in plain words, or with your voice, or type on your phone
 - Can't find it? **Ask for it** right from Search
-- Ask for **movies and shows** (powered by [Seerr](https://github.com/seerr-team/seerr)) or **songs, albums and playlists** (powered by [Lidarr](https://lidarr.audio/))
-- See when it's on its way, and get told when it's ready to watch
+- Ask for **movies, shows and anime** (powered by [Seerr](https://github.com/seerr-team/seerr)), **songs, albums and playlists** (powered by [Lidarr](https://lidarr.audio/)) or **books and audiobooks** (powered by Chaptarr)
+- Requests pages with a **Top 10 to ask for this week**, genres, and a wall of posters
+- See when it's on its way, and get told on Home when it's ready
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🟨 Books
+- **Read manga, comics and ebooks**, and **listen to audiobooks**, right in Benflix
+- Manga series show as one tile, with **Keep reading** on the next volume
+- Books Home has **top lists with the books you have**: New York Times, Apple Books and Hardcover best sellers, award winners, genre rows, **Readers love these** and **Quick reads**
+- A **Want to read** list, and Ask for it (or Ask Ben) for books you don't have yet
+- Book requests with a **Book of the week**, a Top 10, best seller lists, genres and a page for every book, in English
+
+</td>
+<td width="50%" valign="top">
+
+### 🌐 Web Benflix
+- Open your server's address in **any web browser**, at home or away, no install needed
+- The same six doors, player, music, requests and settings as on the TV
+- Now caught up with the TV and phone: **Ask for more like this**, the parents' guide, anime extras, game roulette and more
+- The admin's **Server page** and tools live here too
 
 </td>
 </tr>
@@ -130,11 +159,11 @@ The TV pictures come from the finished Benflix design, with made-up titles.</sub
 </td>
 <td width="50%" valign="top">
 
-### 📱 Phone and 🌐 web
-- A touch-friendly phone layout, with the same five doors
+### 📱 Phone
+- A touch-friendly phone layout, with the same six doors
 - Use your phone as a **TV remote**, or send something to **Play on TV**
 - **Quick Connect**: sign a new TV in by typing its code on your phone
-- **Web Benflix**: open your server's address in any web browser, at home or away, no install needed
+- Save songs to listen with no internet
 
 </td>
 </tr>
@@ -194,17 +223,20 @@ If you run the server, Benflix has a few extra tools that only admins see:
 
 - **Server page** in the app and in web Benflix: who's watching, your libraries, downloads, problems and chores,
   with fix-it buttons, a **Benflix versions** list for every TV and phone, and a way to send a message to one person
-- **Requests** to approve or decline, for movies, shows and music
+- **Requests** to approve or decline, for movies, shows, music and books
 - **Poster fixer** to swap bad posters one at a time
+- **Delete and find again** for a bad copy of a song
+- Send a **note** that shows on Home, and pick the town for the **Home weather** (Server > Tools)
 
 **What the server needs:**
 
 | | Needed for | |
 |---|---|---|
 | [Jellyfin](https://jellyfin.org/) (version 12 recommended) | Everything | Required |
-| Benflix helper (in the [`server`](server) folder) | Games, Live TV, web Benflix, Skip intro, music extras, fun facts | Recommended |
+| Benflix helper (in the [`server`](server) folder) | Games, Live TV, Books, web Benflix, Skip intro, music extras, fun facts, Home weather | Recommended |
 | [Seerr / Jellyseerr](https://github.com/seerr-team/seerr) | Asking for movies and shows | Optional |
 | [Lidarr](https://lidarr.audio/) | Asking for music | Optional |
+| Chaptarr (a Readarr-style book downloader) | Asking for books and audiobooks | Optional |
 | [RomM](https://github.com/rommapp/romm) | Your game library | Optional |
 | [Trailarr](https://github.com/nandyalu/trailarr) | Trailers on title pages | Optional |
 
@@ -224,7 +256,7 @@ If you want a polished Jellyfin app from the Play Store, go get Wholphin!
 Thanks also to:
 - The [Jellyfin](https://jellyfin.org/) team for the media server
 - The official [Jellyfin Android TV](https://github.com/jellyfin/jellyfin-androidtv) app, which some of Wholphin's playback code is adapted from
-- The [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin), [RomM](https://github.com/rommapp/romm), [Seerr](https://github.com/seerr-team/seerr), [Lidarr](https://lidarr.audio/), [iptv-org](https://github.com/iptv-org/iptv) and all the other open-source projects this app uses
+- The [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin), [RomM](https://github.com/rommapp/romm), [Seerr](https://github.com/seerr-team/seerr), [Lidarr](https://lidarr.audio/), [Open Library](https://openlibrary.org/), [AniList](https://anilist.co/), [iptv-org](https://github.com/iptv-org/iptv) and all the other open-source projects this app uses
 
 Benflix is not connected to, or endorsed by, Netflix, Jellyfin or Wholphin.
 
