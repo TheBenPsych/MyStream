@@ -1857,7 +1857,7 @@ private fun PosterWall(
                     showName = true,
                     subtitle = subtitleFor(item),
                     cornerNote =
-                        if (row.ranked) {
+                        if (row.ranked && index < 10) {
                             "No. ${index + 1}"
                         } else if (row.comingSoon) {
                             comingSoonNote(item)
