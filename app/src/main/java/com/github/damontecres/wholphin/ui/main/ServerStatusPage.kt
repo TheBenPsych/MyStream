@@ -1,22 +1,16 @@
 package com.github.damontecres.wholphin.ui.main
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,13 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,10 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,14 +48,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.ui.door.DOOR_HOME
+import com.github.damontecres.wholphin.ui.door.DoorFrame
+import com.github.damontecres.wholphin.ui.door.DoorFrameState
+import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
@@ -77,7 +64,6 @@ import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -112,17 +98,31 @@ enum class ServerSection(
         "Scan for new stuff, the server's chores, tidy track names, Home's weather town, and restarting Jellyfin",
         BenflixIcon.WRENCH.vector,
     ),
+    ;
+
+    /** Redesign 2: the key on the door-style rail (Overview is the rail's Home) */
+    val key: String get() = if (this == OVERVIEW) DOOR_HOME else name.lowercase()
+
+    val railIcon: BenflixIcon
+        get() =
+            when (this) {
+                OVERVIEW -> BenflixIcon.HOME
+                NOW -> BenflixIcon.PLAY
+                LIBRARY -> BenflixIcon.FILM
+                PEOPLE -> BenflixIcon.PERSON
+                TOOLS -> BenflixIcon.WRENCH
+            }
+
+    fun railItem(light: Light?): DoorSection =
+        DoorSection(key, title + if (light == Light.BAD || light == Light.WARN) " •" else "", railIcon)
+
+    companion object {
+        fun fromKey(key: String): ServerSection = entries.firstOrNull { it.key == key } ?: OVERVIEW
+    }
 }
 
 /** Benflix: green, gold or red for the traffic lights */
 internal enum class Light { GOOD, WARN, BAD, UNKNOWN }
-
-/** Benflix: one thing on the "Needs you" card */
-private data class NeedsYou(
-    val text: String,
-    val light: Light,
-    val section: ServerSection,
-)
 
 @HiltViewModel
 class ServerStatusViewModel
@@ -132,7 +132,16 @@ class ServerStatusViewModel
         val serverRepository: ServerRepository,
         val data: ServerDashboardData,
         private val actions: BenflixServerActions,
+        private val setupCheck: com.github.damontecres.wholphin.services.TowerSetupCheck,
+        val navigationManager: com.github.damontecres.wholphin.services.NavigationManager,
     ) : ViewModel() {
+        /** Redesign 2: Tower needs the setup command (null = up to date, or Tower couldn't be asked) */
+        val setupNeed = setupCheck.need
+
+        fun checkSetup(fresh: Boolean = false) {
+            viewModelScope.launch(WholphinDispatchers.IO) { setupCheck.check(fresh) }
+        }
+
         /** A short result to show in a pop-up (title to text) */
         private val _notice = MutableStateFlow<Pair<String, String>?>(null)
         val notice: StateFlow<Pair<String, String>?> = _notice
@@ -313,8 +322,35 @@ fun ServerStatusPage(
         if (isAdmin) data.startWatching()
         onPauseOrDispose { data.stopWatching() }
     }
-    var section by rememberSaveable { mutableStateOf(ServerSection.OVERVIEW) }
-    LaunchedEffect(section, isAdmin) {
+    // Redesign 2 (approved sv2-glance): the sections sit on the same rail as the doors (phones: chips).
+    // Settings' "Find a setting" can open the page on a section and tool group.
+    val jump = remember { ServerPageJump.take() }
+    val frame =
+        remember {
+            DoorFrameState(
+                door = com.github.damontecres.wholphin.ui.theme.BenflixDoor.MOVIES,
+                start = (jump.first ?: ServerSection.OVERVIEW).key,
+                jumps = false,
+                pillColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                onPillColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
+            )
+        }
+    val section = ServerSection.fromKey(frame.section)
+    // TV: start on the page itself (the rail opens with Left)
+    LaunchedEffect(Unit) {
+        if (!isTv) return@LaunchedEffect
+        delay(FIRST_FOCUS_MS)
+        frame.content.tryRequestFocus()
+    }
+    var toolGroup by rememberSaveable { mutableStateOf(jump.second) }
+    LaunchedEffect(isAdmin) {
+        if (isAdmin) {
+            viewModel.checkSetup()
+            // Overview's pills and Needs you card need Tower's answer too
+            data.refreshTower(fresh = false)
+        }
+    }
+    LaunchedEffect(section, toolGroup, isAdmin) {
         if (!isAdmin) return@LaunchedEffect
         when (section) {
             ServerSection.OVERVIEW -> {
@@ -325,8 +361,6 @@ fun ServerStatusPage(
             ServerSection.PEOPLE -> {
                 toolsViewModel.loadPeople()
                 data.loadHistory()
-                toolsViewModel.loadNotes()
-                toolsViewModel.loadVersions()
             }
 
             ServerSection.NOW -> {
@@ -334,13 +368,35 @@ fun ServerStatusPage(
             }
 
             ServerSection.TOOLS -> {
-                viewModel.loadTools()
-                towerViewModel.loadTracks()
+                when (toolGroup ?: ServerToolGroup.LIBRARY) {
+                    ServerToolGroup.LIBRARY -> {
+                        viewModel.loadTools()
+                        care.loadLibrary()
+                    }
+
+                    ServerToolGroup.DOWNLOADS -> {
+                        data.refreshTower()
+                    }
+
+                    ServerToolGroup.PEOPLE -> {
+                        toolsViewModel.loadNotes()
+                        toolsViewModel.loadVersions()
+                    }
+
+                    ServerToolGroup.FIXES -> {
+                        towerViewModel.loadTracks()
+                    }
+
+                    ServerToolGroup.TOWER -> {
+                        viewModel.loadTools()
+                        data.refreshTower()
+                        viewModel.checkSetup(fresh = true)
+                    }
+                }
             }
 
             ServerSection.LIBRARY -> {
                 data.refreshTower()
-                care.loadLibrary()
             }
         }
     }
@@ -373,8 +429,6 @@ fun ServerStatusPage(
     val notice by viewModel.notice.collectAsState()
     val requests by requestsViewModel.requests.collectAsState()
     val seerrActive by requestsViewModel.active.collectAsState(false)
-    val waitingRequests by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.count
-        .collectAsState()
     val lookYourself by com.github.damontecres.wholphin.ui.nav.RequestsWaiting.lookYourself
         .collectAsState()
     val tower by data.tower.collectAsState()
@@ -382,6 +436,7 @@ fun ServerStatusPage(
     val tracks by towerViewModel.tracks.collectAsState()
     val speedState by speedCheck.state.collectAsState()
     val tracksProblem by towerViewModel.tracksProblem.collectAsState()
+    val setupNeed by viewModel.setupNeed.collectAsState()
 
     val lights =
         remember(header, disks, problems, reports, watching, tower) {
@@ -410,122 +465,218 @@ fun ServerStatusPage(
                     },
             )
         }
-    val needsYou =
-        remember(header, disks, problems, reports, waitingRequests, lookYourself, tower) {
+    val sectionTitle: @Composable (String) -> Unit = { SectionTitle(it) }
+    val openTools: (ServerToolGroup) -> Unit = { group ->
+        toolGroup = group
+        frame.pick(ServerSection.TOOLS.key)
+    }
+    // Redesign 2 (approved sv2-glance): what needs you, with its buttons right on the card
+    val pendingStatus = com.github.damontecres.wholphin.data.model.RequestStatus.PENDING
+    val healthNeeds =
+        remember(header, disks, problems, reports, tower, setupNeed) {
             buildList {
-                brokenApps(tower).forEach {
-                    add(NeedsYou("${it.nice} isn't running properly on Tower", Light.BAD, ServerSection.LIBRARY))
+                if (header?.online == false) {
+                    add(NeedLine("offline", "Benflix can't reach Jellyfin. Is Tower on?", Light.BAD))
                 }
-                tower?.downloads.orEmpty().count { it.stuck }.takeIf { it > 0 }?.let {
+                brokenApps(tower).forEach { app ->
                     add(
-                        NeedsYou(
-                            if (it == 1) "1 download is stuck" else "$it downloads are stuck",
-                            Light.WARN,
-                            ServerSection.LIBRARY,
+                        NeedLine(
+                            key = "app-${app.name}",
+                            text = "${app.nice} isn't running properly",
+                            light = Light.BAD,
+                            supporting = app.status,
+                            actions =
+                                if (app.restartable) {
+                                    listOf((if (app.running) "Restart" else "Start") to { towerViewModel.ask(TowerAsk.Restart(app)) })
+                                } else {
+                                    emptyList()
+                                },
                         ),
                     )
                 }
-                if (waitingRequests > 0) {
+                tower?.downloads.orEmpty().filter { it.stuck }.forEach { d ->
                     add(
-                        NeedsYou(
-                            if (waitingRequests == 1) "1 request is waiting for you" else "$waitingRequests requests are waiting for you",
-                            Light.WARN,
-                            ServerSection.OVERVIEW,
+                        NeedLine(
+                            key = "stuck-${d.app}-${d.id}",
+                            text = "Stuck download: ${d.title}",
+                            light = Light.WARN,
+                            supporting = d.why ?: "It stopped moving",
+                            actions = listOf("Find another" to { towerViewModel.ask(TowerAsk.Replace(d)) }),
+                        ),
+                    )
+                }
+                if (setupNeed != null) {
+                    add(
+                        NeedLine(
+                            key = "setup",
+                            text = "Tower needs the setup command",
+                            light = Light.WARN,
+                            supporting = "The yellow card above has it, with Copy",
+                        ),
+                    )
+                }
+                disks.orEmpty().filter { it.nearlyFull }.forEach {
+                    add(
+                        NeedLine(
+                            key = "disk-${it.name}",
+                            text = "The disk with ${it.name} is ${(it.usedShare * 100).toInt()}% full",
+                            light = Light.WARN,
+                            actions = listOf("Go" to { frame.pick(ServerSection.LIBRARY.key) }),
+                        ),
+                    )
+                }
+                reports.orEmpty().size.takeIf { it > 0 }?.let {
+                    add(
+                        NeedLine(
+                            key = "reports",
+                            text = if (it == 1) "1 problem reported by family" else "$it problems reported by family",
+                            light = Light.WARN,
+                            supporting = "Further down this page",
+                        ),
+                    )
+                }
+                problems.orEmpty().sumOf { it.count }.takeIf { it >= MANY_PROBLEMS }?.let {
+                    add(NeedLine("problems", "$it problems on the server in the last day", Light.WARN, "Further down this page"))
+                }
+            }
+        }
+    val requestNeeds =
+        remember(requests, lookYourself) {
+            val waiting = requests.orEmpty().filter { it.status == pendingStatus }
+            buildList {
+                if (waiting.size > 1) {
+                    add(
+                        NeedLine(
+                            key = "req-all",
+                            text = "${waiting.size} requests are waiting for you",
+                            light = Light.WARN,
+                            actions = listOf("Yes to all" to requestsViewModel::approveAll),
+                        ),
+                    )
+                }
+                waiting.forEach { r ->
+                    add(
+                        NeedLine(
+                            key = "req-${r.request.id}",
+                            text = r.item?.title ?: "A request",
+                            light = Light.WARN,
+                            supporting = "Asked by ${r.who}" + (r.item?.releaseDate?.year?.let { " · $it" } ?: ""),
+                            poster = r.item?.posterUrl,
+                            actions =
+                                listOf(
+                                    "Yes" to { requestsViewModel.answer(r, true) },
+                                    "No" to { requestsViewModel.answer(r, false) },
+                                ),
                         ),
                     )
                 }
                 if (lookYourself.isNotEmpty()) {
                     val n = lookYourself.size
                     add(
-                        NeedsYou(
-                            if (n == 1) {
-                                "1 request has been searching for 2 weeks. Look for it yourself"
-                            } else {
-                                "$n requests have been searching for 2 weeks. Look for them yourself"
-                            },
-                            Light.WARN,
-                            ServerSection.OVERVIEW,
+                        NeedLine(
+                            key = "look-yourself",
+                            text =
+                                if (n == 1) {
+                                    "1 request has been searching for 2 weeks"
+                                } else {
+                                    "$n requests have been searching for 2 weeks"
+                                },
+                            light = Light.WARN,
+                            supporting = "Look for it yourself in Requests",
+                            actions =
+                                listOf(
+                                    "Go" to {
+                                        viewModel.navigationManager.navigateTo(
+                                            com.github.damontecres.wholphin.ui.nav.Destination.Requests,
+                                        )
+                                    },
+                                ),
                         ),
                     )
-                }
-                if (header?.online == false) {
-                    add(NeedsYou("Benflix can't reach the server. Is Tower on?", Light.BAD, ServerSection.OVERVIEW))
-                }
-                disks.orEmpty().filter { it.nearlyFull }.forEach {
-                    add(NeedsYou("The disk with ${it.name} is ${(it.usedShare * 100).toInt()}% full", Light.WARN, ServerSection.LIBRARY))
-                }
-                reports.orEmpty().size.takeIf { it > 0 }?.let {
-                    add(
-                        NeedsYou(
-                            if (it == 1) "1 problem reported by family" else "$it problems reported by family",
-                            Light.WARN,
-                            ServerSection.OVERVIEW,
-                        ),
-                    )
-                }
-                problems.orEmpty().sumOf { it.count }.takeIf { it >= MANY_PROBLEMS }?.let {
-                    add(NeedsYou("$it problems on the server in the last day", Light.WARN, ServerSection.OVERVIEW))
                 }
             }
         }
+    val bannerLight =
+        when {
+            header == null -> Light.UNKNOWN
+            healthNeeds.any { it.light == Light.BAD } -> Light.BAD
+            healthNeeds.isNotEmpty() -> Light.WARN
+            else -> Light.GOOD
+        }
+    val bannerReason =
+        healthNeeds.firstOrNull()?.let { first ->
+            first.text + if (healthNeeds.size > 1) " (and ${healthNeeds.size - 1} more below)" else ""
+        }
+    val stuckCount = tower?.downloads.orEmpty().count { it.stuck }
+    val pills =
+        listOf(
+            (if (header?.online == false) "Jellyfin: not answering" else "Jellyfin") to
+                when {
+                    header == null -> Light.UNKNOWN
+                    header?.online == true -> Light.GOOD
+                    else -> Light.BAD
+                },
+            (if (brokenApps(tower).isNotEmpty()) "Tower: ${brokenApps(tower).size} app(s) down" else "Tower") to
+                when {
+                    tower == null -> Light.UNKNOWN
+                    brokenApps(tower).isNotEmpty() -> Light.BAD
+                    else -> Light.GOOD
+                },
+            (if (stuckCount > 0) "Downloads: $stuckCount stuck" else "Downloads") to
+                when {
+                    tower == null -> Light.UNKNOWN
+                    stuckCount > 0 -> Light.WARN
+                    else -> Light.GOOD
+                },
+        )
+    val ago by produceState(agoText(updatedAt), updatedAt) {
+        while (true) {
+            value = agoText(updatedAt)
+            delay(30_000)
+        }
+    }
+    // Benflix: Refresh also tries People and Messages again if they couldn't be read
+    val refreshAll: () -> Unit = {
+        data.refresh()
+        data.refreshTower()
+        toolsViewModel.retryFailed()
+        viewModel.checkSetup(fresh = true)
+    }
 
-    val sectionTitle: @Composable (String) -> Unit = { SectionTitle(it) }
     val content: LazyListScope.() -> Unit = content@{
+        item(key = "server-header") {
+            PageHeader(
+                header = header,
+                sectionTitle = if (isAdmin) section.title else "Server",
+                loading = loadingParts > 0,
+                ago = ago,
+                waitingOn = waitingOn,
+                onRefresh = if (isAdmin) refreshAll else null,
+            )
+        }
         if (!isAdmin) {
             item { Text("Only the server's admin can see this page.", fontSize = BenflixType.lead) }
             return@content
         }
         when (section) {
             ServerSection.OVERVIEW -> {
-                item {
-                    GlanceRow(
-                        lights = lights,
-                        watchingCount = watching?.size,
-                        onClick = { section = it },
+                item(key = "banner") { ServerBanner(bannerLight, bannerReason, pills, null) }
+                setupNeed?.let { need -> item(key = "setup-card") { ServerSetupCard(need) } }
+                item(key = "cards") {
+                    ServerOverviewCards(
+                        needs = healthNeeds + requestNeeds,
+                        watching = watching,
+                        onOpenWatching = { frame.pick(ServerSection.NOW.key) },
                     )
                 }
-                item { SectionTitle("Needs you") }
-                if (needsYou.isEmpty()) {
-                    item { ServerActionRow(headline = "All good! Nothing needs you right now.") }
-                } else {
-                    items(needsYou) { need ->
+                if (!seerrActive) {
+                    item {
                         ServerActionRow(
-                            headline = need.text,
-                            // Requests and problems are further down this page, so those have no Go button
-                            onClick = { section = need.section },
-                            leading = { Dot(need.light) },
-                            actions =
-                                if (need.section ==
-                                    ServerSection.OVERVIEW
-                                ) {
-                                    emptyList()
-                                } else {
-                                    listOf("Go" to { section = need.section })
-                                },
+                            headline = "Seerr isn't connected, so requests can't show here",
+                            supporting = "Connect it in Settings > Behind the scenes.",
                         )
                     }
                 }
-                item { SectionTitle("Watching now") }
-                item {
-                    val list = watching
-                    ServerActionRow(
-                        headline =
-                            when {
-                                list == null -> "Checking…"
-                                list.isEmpty() -> "Nobody is watching right now"
-                                list.size == 1 -> "1 person is watching: ${list.first().who}"
-                                else -> "${list.size} people are watching: " + list.joinToString(", ") { it.who }
-                            },
-                        onClick = { section = ServerSection.NOW },
-                    )
-                }
-                // Requests and problems live here now, under Needs you (Benflix redesign: 5 sections)
-                requestItems(
-                    connected = seerrActive,
-                    requests = requests,
-                    onAnswer = requestsViewModel::answer,
-                    onApproveAll = requestsViewModel::approveAll,
-                )
                 problemReportItems(
                     reports = reports,
                     viewModel = toolsViewModel,
@@ -535,9 +686,9 @@ fun ServerStatusPage(
                     onFixMatch = adminTitle::openFixMatch,
                 )
                 serverProblemItems(problems)
-                towerOverviewItems(tower, towerProblem) { section = ServerSection.LIBRARY }
                 careReportItems(careReport, careReportProblem, care)
-                startupSpeedItem(sectionTitle)
+                item(key = "tools-title") { SectionTitle("Tools") }
+                item(key = "tool-tiles") { ServerToolTiles(selected = null, onPick = openTools) }
             }
 
             ServerSection.NOW -> {
@@ -556,199 +707,141 @@ fun ServerStatusPage(
             ServerSection.LIBRARY -> {
                 libraryNumberItems(library)
                 diskItems(disks)
-                towerDownloadItems(tower, towerProblem, towerViewModel)
-                item(key = "fix-posters") {
+                towerOverviewItems(tower, towerProblem) { openTools(ServerToolGroup.TOWER) }
+                item(key = "library-tools") {
                     ServerActionRow(
-                        headline = "Fix posters",
-                        supporting = "Missing, blurry or wrong-shaped posters, one at a time. Missing ones also get filled in every night.",
-                        onClick = toolsViewModel::openPosterFixer,
+                        headline = "Library tools",
+                        supporting = "Scan for new stuff, the library checkup, posters and space are under Tools",
+                        onClick = { openTools(ServerToolGroup.LIBRARY) },
+                        actions = listOf("Open" to { openTools(ServerToolGroup.LIBRARY) }),
                     )
                 }
-                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
-                    when {
-                        tower == null -> emptyList()
-                        title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
-                        title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
-                        else -> emptyList()
-                    }
-                }
-                spaceItems(toolsState, toolsViewModel, sectionTitle)
-                careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
             }
 
             ServerSection.PEOPLE -> {
                 peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
-                versionItems(
-                    versions = toolsState.versions,
-                    failed = toolsState.versionsFailed,
-                    onLoad = toolsViewModel::loadVersions,
-                    onMessage = { ids, title, prefill -> toolsDialog = ServerToolsDialog.WritePopupToMany(ids, title, prefill) },
-                    sectionTitle = sectionTitle,
-                )
-                messageItems(toolsState, { toolsDialog = it }, sectionTitle)
+                item(key = "people-tools") {
+                    ServerActionRow(
+                        headline = "Messages and Benflix versions",
+                        supporting = "Send a note to someone, or see who needs to update",
+                        onClick = { openTools(ServerToolGroup.PEOPLE) },
+                        actions = listOf("Open" to { openTools(ServerToolGroup.PEOPLE) }),
+                    )
+                }
             }
 
             ServerSection.TOOLS -> {
-                toolItems(
-                    libraries = libraries,
-                    chores = chores,
-                    onScan = viewModel::scan,
-                    onChore = viewModel::runChore,
-                    onRestart = { askRestart = true },
-                    plannedRestart = plannedRestart,
-                    onCancelRestart = viewModel::cancelRestart,
-                )
-                speedCheckItems(speedState, speedCheck)
-                trackTidyItems(tracks, tracksProblem, towerViewModel)
-                homeWeatherItems()
-                kidsRatingItems()
-                bookListItems()
+                item(key = "tool-tiles") { ServerToolTiles(selected = toolGroup, onPick = { toolGroup = it }) }
+                when (toolGroup ?: ServerToolGroup.LIBRARY) {
+                    ServerToolGroup.LIBRARY -> {
+                        toolItems(
+                            libraries = libraries,
+                            chores = chores,
+                            onScan = viewModel::scan,
+                            onChore = viewModel::runChore,
+                            onRestart = { askRestart = true },
+                            plannedRestart = plannedRestart,
+                            onCancelRestart = viewModel::cancelRestart,
+                            showRest = false,
+                        )
+                        item(key = "fix-posters") {
+                            ServerActionRow(
+                                headline = "Fix posters",
+                                supporting =
+                                    "Missing, blurry or wrong-shaped posters, one at a time. " +
+                                        "Missing ones also get filled in every night.",
+                                onClick = toolsViewModel::openPosterFixer,
+                            )
+                        }
+                        checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
+                            when {
+                                tower == null -> emptyList()
+                                title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
+                                title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
+                                else -> emptyList()
+                            }
+                        }
+                        spaceItems(toolsState, toolsViewModel, sectionTitle)
+                        careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
+                    }
+
+                    ServerToolGroup.DOWNLOADS -> {
+                        towerDownloadItems(tower, towerProblem, towerViewModel, showApps = false)
+                    }
+
+                    ServerToolGroup.PEOPLE -> {
+                        versionItems(
+                            versions = toolsState.versions,
+                            failed = toolsState.versionsFailed,
+                            onLoad = toolsViewModel::loadVersions,
+                            onMessage = { ids, title, prefill -> toolsDialog = ServerToolsDialog.WritePopupToMany(ids, title, prefill) },
+                            sectionTitle = sectionTitle,
+                        )
+                        messageItems(toolsState, { toolsDialog = it }, sectionTitle)
+                        kidsRatingItems()
+                    }
+
+                    ServerToolGroup.FIXES -> {
+                        trackTidyItems(tracks, tracksProblem, towerViewModel)
+                        speedCheckItems(speedState, speedCheck)
+                        startupSpeedItem(sectionTitle)
+                    }
+
+                    ServerToolGroup.TOWER -> {
+                        item(key = "setup-title") { SectionTitle("Setup command") }
+                        item(key = "setup-tools") {
+                            val need = setupNeed
+                            if (need != null) {
+                                ServerSetupCard(need)
+                            } else {
+                                ServerActionRow(
+                                    headline = "Tower is up to date",
+                                    supporting = "When an update needs the setup command, a yellow card shows here and on Overview.",
+                                    leading = { Dot(Light.GOOD) },
+                                )
+                            }
+                        }
+                        towerDownloadItems(tower, towerProblem, towerViewModel, showDownloads = false)
+                        toolItems(
+                            libraries = libraries,
+                            chores = chores,
+                            onScan = viewModel::scan,
+                            onChore = viewModel::runChore,
+                            onRestart = { askRestart = true },
+                            plannedRestart = plannedRestart,
+                            onCancelRestart = viewModel::cancelRestart,
+                            showScan = false,
+                        )
+                        homeWeatherItems()
+                        bookListItems()
+                    }
+                }
             }
         }
     }
 
-    // Benflix: Refresh also tries People and Messages again if they couldn't be read
-    val refreshAll: () -> Unit = {
-        data.refresh()
-        toolsViewModel.retryFailed()
-    }
-    val headerBar: @Composable () -> Unit = {
-        PageHeader(
-            header = header,
-            isAdmin = isAdmin,
-            loading = loadingParts > 0,
-            updatedAt = updatedAt,
-            onRefresh = refreshAll,
-            waitingOn = waitingOn,
-            sectionTitle = if (isAdmin) section.title else null,
-        )
-    }
-
-    if (isTv) {
-        val firstFocus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .serverLookABackground()
-                    .padding(start = 32.dp, end = 32.dp, top = 20.dp),
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier =
-                    Modifier
-                        .width(300.dp)
-                        .fillMaxHeight()
-                        .focusRestorer(firstFocus)
-                        .verticalScroll(rememberScrollState()),
-            ) {
-                headerBar()
-                Spacer(Modifier.height(8.dp))
-                if (isAdmin) {
-                    ServerSection.entries.forEach { s ->
-                        ListItem(
-                            selected = s == section,
-                            onClick = { section = s },
-                            // Benflix redesign: flat grey rows; the section you're on is a lighter grey, focus = white outline
-                            scale =
-                                androidx.tv.material3.ListItemDefaults
-                                    .scale(focusedScale = 1f),
-                            shape =
-                                androidx.tv.material3.ListItemDefaults
-                                    .shape(RoundedCornerShape(10.dp)),
-                            colors =
-                                androidx.tv.material3.ListItemDefaults.colors(
-                                    selectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
-                                    selectedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-                                    focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
-                                    focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-                                    focusedSelectedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
-                                    focusedSelectedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
-                                ),
-                            border =
-                                androidx.tv.material3.ListItemDefaults.border(
-                                    focusedBorder =
-                                        androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
-                                            shape = RoundedCornerShape(10.dp),
-                                        ),
-                                    focusedSelectedBorder =
-                                        androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, Color.White),
-                                            shape = RoundedCornerShape(10.dp),
-                                        ),
-                                ),
-                            headlineContent = {
-                                Text(
-                                    text = s.title,
-                                    fontSize = BenflixType.lead,
-                                    fontWeight = if (s == section) FontWeight.SemiBold else FontWeight.Normal,
-                                    maxLines = 1,
-                                )
-                            },
-                            leadingContent = { Icon(s.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                            trailingContent = lights[s]?.let { { Dot(it) } },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { if (it.isFocused) section = s }
-                                    .then(if (s == section) Modifier.focusRequester(firstFocus) else Modifier),
-                        )
-                    }
-                    Text(
-                        text = section.hint,
-                        fontSize = BenflixType.small,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
-                    )
-                    ListItem(
-                        selected = false,
-                        onClick = refreshAll,
-                        headlineContent = { Text("Refresh", fontSize = BenflixType.body) },
-                        leadingContent = { Icon(BenflixIcon.REFRESH.vector, contentDescription = null, modifier = Modifier.size(22.dp)) },
-                        modifier = Modifier.padding(top = 12.dp),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-            }
+    val edge = if (isTv) 0.dp else 12.dp
+    DoorFrame(
+        state = frame,
+        sections = if (isAdmin) ServerSection.entries.map { it.railItem(lights[it]) } else emptyList(),
+        modifier = modifier.fillMaxSize().serverLookABackground(),
+    ) { inner ->
+        if (isTv) {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(bottom = 48.dp),
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 40.dp, top = 20.dp, bottom = 48.dp),
+                modifier = inner,
                 content = content,
             )
-        }
-    } else {
-        Column(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .serverLookABackground(),
-        ) {
-            Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { headerBar() }
-            if (isAdmin) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                ) {
-                    items(ServerSection.entries.toList()) { s ->
-                        SectionChip(section = s, selected = s == section, light = lights[s]) { section = s }
-                    }
-                }
-            }
+        } else {
             PhonePullToRefresh(
                 refreshing = loadingParts > 0,
                 onRefresh = refreshAll,
-                modifier = Modifier.fillMaxSize(),
+                modifier = inner,
             ) {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(start = edge, end = edge, top = 8.dp, bottom = 96.dp),
                     modifier = Modifier.fillMaxSize(),
                     content = content,
                 )
@@ -838,100 +931,47 @@ fun ServerStatusPage(
 }
 
 private const val MANY_PROBLEMS = 3
+private const val FIRST_FOCUS_MS = 200L
 private const val CHORE_CHECKS = 200
 
-/** Benflix: the server's name, whether it answers, and how fresh the numbers are */
+/** Benflix: the section's name big, the server's name small, how fresh the numbers are, and Refresh */
 @Composable
 private fun PageHeader(
     header: ServerHeader?,
-    isAdmin: Boolean,
+    sectionTitle: String,
     loading: Boolean,
-    updatedAt: Long,
-    onRefresh: () -> Unit,
-    waitingOn: Set<String> = emptySet(),
-    sectionTitle: String? = null,
+    ago: String?,
+    waitingOn: Set<String>,
+    onRefresh: (() -> Unit)?,
 ) {
     val isTv = rememberIsTv()
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 8.dp)) {
-        // Benflix look A: "SERVER · TOWER" and how it's doing as small labels, the section as a big title
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
-                text = "Server · " + header?.serverName.orEmpty().ifBlank { "Benflix" },
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (header == null) {
-                com.github.damontecres.wholphin.ui.preferences
-                    .BenflixLookABadge(text = "Checking")
-            } else if (header.online) {
-                com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
-                    text = "All good",
-                    color = Color(0xFF86EFAC),
-                    background = Color(0x2E22C55E),
-                )
-            } else {
-                com.github.damontecres.wholphin.ui.preferences.BenflixLookABadge(
-                    text = "Can't reach it",
-                    color = Color(0xFFFCA5A5),
-                    background = Color(0x2EEF4444),
-                )
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val name = header?.serverName.orEmpty().ifBlank { "Benflix" }
+    val version = header?.version?.takeIf { it.isNotBlank() }?.let { " · Jellyfin $it" } ?: ""
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        Column(Modifier.weight(1f)) {
             Text(
-                text = sectionTitle ?: "Server",
+                text = "Server · $name$version",
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.SemiBold,
+                color = BenflixColors.Muted,
+                maxLines = 1,
+            )
+            Text(
+                text = sectionTitle,
                 fontSize = BenflixType.hero,
                 lineHeight = if (isTv) 42.sp else 36.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
-                modifier = Modifier.weight(1f, fill = false),
             )
-            if (!isTv && isAdmin) {
-                Spacer(Modifier.weight(1f))
-                // Phones also get a button, for people who don't know about pulling down
-                Icon(
-                    imageVector = BenflixIcon.REFRESH.vector,
-                    contentDescription = "Refresh",
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onRefresh)
-                            .padding(8.dp),
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (header == null) {
-                StatusChip(text = "Checking…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                StatusChip(
-                    text = if (header.online) "Online · Jellyfin ${header.version}" else "Can't reach the server",
-                    color = if (header.online) GoodGreen else BadRed,
-                )
-            }
-        }
-        if (isAdmin) {
-            val ago by produceState(agoText(updatedAt), updatedAt) {
-                while (true) {
-                    value = agoText(updatedAt)
-                    delay(30_000)
+            val status =
+                when {
+                    loading -> "Loading new numbers…"
+                    waitingOn.isNotEmpty() -> "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…"
+                    else -> ago
                 }
-            }
-            AnimatedVisibility(visible = loading, enter = fadeIn(BenflixMotion.enter()), exit = fadeOut(BenflixMotion.exit())) {
-                StatusChip(text = "Loading new stats…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (!loading && ago != null) {
-                Text(text = ago!!, fontSize = BenflixType.small, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            // Benflix: anything slow keeps loading quietly; say what, so it's clear the page isn't stuck
-            if (!loading && waitingOn.isNotEmpty()) {
-                Text(
-                    text = "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…",
-                    fontSize = BenflixType.small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            status?.let { Text(text = it, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1) }
         }
+        if (onRefresh != null) SmallButton("Refresh", onClick = onRefresh)
     }
 }
 
@@ -959,81 +999,6 @@ private fun Modifier.serverLookABackground(): Modifier =
                 .4f to Color.Transparent,
             ),
         )
-
-/** Benflix: the traffic lights at the top of Overview. Each one opens its section. */
-@Composable
-private fun GlanceRow(
-    lights: Map<ServerSection, Light>,
-    watchingCount: Int?,
-    onClick: (ServerSection) -> Unit,
-) {
-    val labels =
-        listOf(
-            ServerSection.OVERVIEW to "Server",
-            ServerSection.NOW to (watchingCount?.let { "$it watching" } ?: "Watching"),
-            ServerSection.LIBRARY to "Library",
-        )
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        items(labels) { (s, label) ->
-            val light = lights[s] ?: Light.UNKNOWN
-            ListItem(
-                selected = false,
-                onClick = { onClick(s) },
-                headlineContent = { Text(label, fontSize = BenflixType.body, maxLines = 1) },
-                // Words as well as the colour: OK, Check or Problem
-                supportingContent = {
-                    Text(
-                        text =
-                            when (light) {
-                                Light.GOOD -> "OK"
-                                Light.WARN -> "Check"
-                                Light.BAD -> "Problem"
-                                Light.UNKNOWN -> "Checking…"
-                            },
-                        fontSize = BenflixType.small,
-                        maxLines = 1,
-                    )
-                },
-                leadingContent = { Dot(light) },
-                modifier =
-                    Modifier
-                        .width(170.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(ServerCardColor),
-                scale = ListItemDefaults.scale(focusedScale = 1f),
-            )
-        }
-    }
-}
-
-/** Benflix: a section tab on phones */
-@Composable
-private fun SectionChip(
-    section: ServerSection,
-    selected: Boolean,
-    light: Light?,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(50))
-                .background(
-                    if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                ).clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text(
-            text = section.title,
-            fontSize = BenflixType.body,
-            fontWeight = FontWeight.SemiBold,
-            color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-        )
-        if (light != null && light != Light.GOOD && light != Light.UNKNOWN) Dot(light, 8.dp)
-    }
-}
 
 @Composable
 internal fun Dot(
@@ -1172,87 +1137,6 @@ private fun LazyListScope.historyItems(history: List<WatchedEntry>?) {
 
 private const val HISTORY_SHOWN = 40
 
-/** Benflix: requests waiting for a yes or no, then the latest answered ones */
-private fun LazyListScope.requestItems(
-    connected: Boolean,
-    requests: List<com.github.damontecres.wholphin.ui.discover.RequestEntry>?,
-    onAnswer: (com.github.damontecres.wholphin.ui.discover.RequestEntry, Boolean) -> Unit,
-    onApproveAll: () -> Unit,
-) {
-    if (!connected) {
-        item { SectionTitle("Requests") }
-        item { ServerActionRow(headline = "Seerr isn't connected. Connect it in Settings > Advanced.") }
-        return
-    }
-    val pendingStatus = com.github.damontecres.wholphin.data.model.RequestStatus.PENDING
-    val waiting = requests?.filter { it.status == pendingStatus }
-    item { SectionTitle(if (waiting == null) "Waiting for you" else "Waiting for you (${waiting.size})") }
-    when {
-        waiting == null -> {
-            item { LoadingBox("Reading requests…") }
-        }
-
-        waiting.isEmpty() -> {
-            item { ServerActionRow(headline = "No requests waiting. All caught up!") }
-        }
-
-        else -> {
-            if (waiting.size > 1) {
-                item {
-                    ServerActionRow(
-                        headline = "Approve all ${waiting.size}",
-                        onClick = onApproveAll,
-                        actions =
-                            listOf("Approve all" to onApproveAll),
-                    )
-                }
-            }
-            items(waiting, key = { "req-${it.request.id}" }) { r ->
-                ServerActionRow(
-                    headline = r.item?.title ?: "A request",
-                    supporting =
-                        "Asked by ${r.who}" + (
-                            r.item
-                                ?.releaseDate
-                                ?.year
-                                ?.let { " · $it" } ?: ""
-                        ),
-                    leading = {
-                        AsyncImage(
-                            model = r.item?.posterUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .width(54.dp)
-                                    .height(80.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                        )
-                    },
-                    actions = listOf("Approve" to { onAnswer(r, true) }, "Decline" to { onAnswer(r, false) }),
-                )
-            }
-        }
-    }
-    val answered = requests.orEmpty().filter { it.status != pendingStatus }.take(15)
-    if (answered.isNotEmpty()) {
-        item { SectionTitle("Answered lately") }
-        items(answered, key = { "req-done-${it.request.id}" }) { r ->
-            ServerActionRow(
-                headline = r.item?.title ?: "A request",
-                supporting =
-                    "Asked by ${r.who} · " +
-                        when {
-                            r.available -> "on Benflix now"
-                            r.downloading -> "downloading" + (r.downloadPercent?.let { " ($it%)" } ?: "")
-                            else -> r.status.name.lowercase()
-                        },
-            )
-        }
-    }
-}
-
 /** Benflix: Scan for new stuff, the server's chores and Restart */
 private fun LazyListScope.toolItems(
     libraries: List<BaseItemDto>?,
@@ -1262,6 +1146,16 @@ private fun LazyListScope.toolItems(
     onRestart: () -> Unit,
     plannedRestart: Long?,
     onCancelRestart: () -> Unit,
+    showScan: Boolean = true,
+    showRest: Boolean = true,
+) {
+    if (showScan) scanItems(libraries, onScan)
+    if (showRest) choreAndRestartItems(chores, onChore, onRestart, plannedRestart, onCancelRestart)
+}
+
+private fun LazyListScope.scanItems(
+    libraries: List<BaseItemDto>?,
+    onScan: (BaseItemDto?) -> Unit,
 ) {
     item { SectionTitle("Scan for new stuff") }
     item {
@@ -1280,6 +1174,15 @@ private fun LazyListScope.toolItems(
             modifier = Modifier.padding(start = 16.dp),
         )
     }
+}
+
+private fun LazyListScope.choreAndRestartItems(
+    chores: List<ServerChore>?,
+    onChore: (ServerChore) -> Unit,
+    onRestart: () -> Unit,
+    plannedRestart: Long?,
+    onCancelRestart: () -> Unit,
+) {
     item { SectionTitle("Server chores") }
     when {
         chores == null -> {

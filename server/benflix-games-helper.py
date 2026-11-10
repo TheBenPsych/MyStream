@@ -170,6 +170,10 @@ START_FILES = (".m3u", ".cue", ".gdi", ".chd", ".iso", ".rvz", ".wbfs", ".cso", 
 
 AWAY_PATH = "/benflix-games"
 
+# Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
+# starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
+SETUP_VERSION = 1
+
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _names = {}  # Jellyfin account id -> the profile's name (for "asked by")
@@ -787,6 +791,8 @@ class Handler(BaseHTTPRequestHandler):
                         "facts": facts is not None,
                         "books": books is not None,
                         "home": home is not None,
+                        # Which setup the helper came from (the app and web show the yellow setup card when it's older)
+                        "setup": SETUP_VERSION,
                     },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
