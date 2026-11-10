@@ -442,6 +442,39 @@ textarea.field { min-height: 90px; resize: vertical; }
 .sline .txt b { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sline .txt small { color: var(--ink2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sline .txt em { font-style: normal; align-self: flex-start; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
+/* Search, Redesign 2: suggestion chips under the box, door cards 3 by 2, People and Ask for it below */
+.schips { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px var(--gutter) 0; }
+.schips:empty, .bestline:empty { display: none; }
+.schips .pill.sg { font-weight: 400; }
+.schips .pill.sg b { font-weight: 800; }
+.bestline .idea { background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; margin-right: 4px; }
+.rchip { display: inline-flex; gap: 2px; }
+.rchip .pill:first-child { border-radius: 99px 0 0 99px; padding-right: 10px; }
+.rchip .pill.rx { border-radius: 0 99px 99px 0; padding: 8px 12px 8px 10px; color: var(--ink2); }
+.pill.ghost { background: none; color: var(--ink2); }
+.pill.ghost:hover { color: var(--ink); background: var(--pg3); }
+.dcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 4px var(--gutter) 16px; }
+.dbelow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; padding: 0 var(--gutter) 30px; }
+.dbelow .dcard:only-child { grid-column: 1 / -1; }
+.dcard { background: var(--pg2); border-radius: var(--r); border-top: 3px solid var(--c); padding: 10px 12px 12px; min-width: 0; }
+.dcard.askdoor { background: rgba(241, 242, 245, .08); }
+.dcard h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 17px; font-weight: 800; }
+.dcard h4 .seeall { margin-left: auto; background: var(--pg3); border: 0; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 99px; cursor: pointer; }
+.dcard h4 .seeall:hover, .dcard h4 .seeall:focus-visible { background: var(--ink); color: var(--dark); outline: none; }
+.dcard .dl { display: flex; flex-direction: column; gap: 4px; }
+.dcard .dl.two { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.seelist { display: flex; flex-direction: column; gap: 4px; }
+.sline.big .pic { width: 54px; height: 81px; }
+.sline.big .pic.sq { width: 72px; height: 72px; }
+.sline.big .txt b { font-size: 15px; }
+@media (max-width: 900px) {
+  .dcards { grid-template-columns: 1fr; padding: 4px 16px 12px; gap: 12px; }
+  .dbelow { grid-template-columns: 1fr; padding: 0 16px 24px; gap: 12px; }
+  .dcard .dl.two { grid-template-columns: 1fr; }
+  .schips { flex-wrap: nowrap; overflow-x: auto; padding: 10px 16px 0; }
+  .sline.big .pic { width: 46px; height: 69px; }
+  .sline.big .pic.sq { width: 60px; height: 60px; }
+}
 .askcard .im { background: var(--pg2); }
 
 /* ---------- my watching ---------- */

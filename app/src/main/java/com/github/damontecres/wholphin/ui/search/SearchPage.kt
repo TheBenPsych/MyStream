@@ -4,23 +4,19 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,15 +46,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.BookTile
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
@@ -68,8 +62,6 @@ import com.github.damontecres.wholphin.ui.components.BenflixTip
 import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
-import com.github.damontecres.wholphin.ui.components.TabDetails
-import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.components.VoiceSearchButton
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
 import com.github.damontecres.wholphin.ui.data.RowColumn
@@ -79,10 +71,8 @@ import com.github.damontecres.wholphin.ui.detail.GridItemDetails
 import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
-import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
-import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -143,6 +133,9 @@ fun SearchPage(
     var searchClicked by rememberSaveable(query) { mutableStateOf(false) }
     var immediateSearchQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var showProgramDialog by remember { mutableStateOf(false) }
+
+    // Redesign 2: landing on a suggestion shows its results (the box keeps what was typed)
+    var trying by remember { mutableStateOf<String?>(null) }
 
     val position by viewModel.position.collectAsState()
 
@@ -216,8 +209,6 @@ fun SearchPage(
     val positionCallback = { columns: Int, index: Int ->
         showHeader = index < columns
     }
-    // Benflix redesign: no Library / Discover tabs; Ask for it is one of the doors
-    val showTabs = false
     val isLibraryTab = selectedTab == 0
 
     LaunchedEffect(seerrActive, query) {
@@ -234,6 +225,8 @@ fun SearchPage(
         seerrActive,
     ) {
         if (!searchClicked || position.row > TAB_ROW) return@LaunchedEffect
+        // Trying a suggestion on TV: focus stays on the suggestion
+        if (trying != null) return@LaunchedEffect
 
         withContext(WholphinDispatchers.IO) {
             // Want to focus on the first successful row after all the ones before it are finished searching
@@ -270,16 +263,6 @@ fun SearchPage(
         }
     }
 
-    val tabs =
-        remember(seerrActive, state.discoverEnabled) {
-            buildList {
-                add(TabDetails(R.string.library))
-                if (seerrActive && state.discoverEnabled) {
-                    add(TabDetails(R.string.discover))
-                }
-            }
-        }
-
     // Benflix (Ben, 2026-11-09): on a TV the A to Z keyboard stays tucked away, even before anything is typed,
     // so the page is just the search box in the middle with the results under it. OK on the search box pops the
     // keyboard out from the left; Back or moving into the results tucks it again.
@@ -297,329 +280,243 @@ fun SearchPage(
         keyboardOpen = false
         focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                var isSearchActive by remember { mutableStateOf(false) }
-                // Phones type as soon as you tap the box; TVs wait for the OK button
-                val isTv = rememberIsTv()
-                var isTextFieldFocused by remember { mutableStateOf(false) }
-                val textFieldFocusRequester = remember { FocusRequester() }
+    val isTv = rememberIsTv()
+    val suggestions by viewModel.suggestions.collectAsState()
+    val foundBooks by viewModel.books.collectAsState()
+    LaunchedEffect(trying) {
+        val t = trying ?: return@LaunchedEffect
+        delay(300.milliseconds)
+        viewModel.search(t, combinedMode, preview = true)
+    }
+    val pickSuggestion = { name: String ->
+        trying = null
+        query = name
+        RecentSearches.add(searchContext, viewModel.recentAccount, name)
+        triggerImmediateSearch(name)
+    }
+    val searchBox: @Composable (Modifier) -> Unit = { boxModifier ->
+        var isSearchActive by remember { mutableStateOf(false) }
+        // Phones type as soon as you tap the box; TVs wait for the OK button
+        var isTextFieldFocused by remember { mutableStateOf(false) }
+        val textFieldFocusRequester = remember { FocusRequester() }
 
-                BackHandler(isTv && isTextFieldFocused) {
-                    when {
-                        isSearchActive -> {
-                            isSearchActive = false
-                            keyboardController?.hide()
-                        }
-
-                        else -> {
-                            focusManager.moveFocus(FocusDirection.Next)
-                        }
-                    }
+        BackHandler(isTv && isTextFieldFocused) {
+            when {
+                isSearchActive -> {
+                    isSearchActive = false
+                    keyboardController?.hide()
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(0.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-                            .focusGroup()
-                            .focusRestorer(textFieldFocusRequester)
-                            .focusRequester(focusRequesters[SEARCH_ROW]),
-                ) {
-                    AnimatedVisibility(
-                        visible = voiceSearchButtonVisible,
-                        enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.End),
-                        exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.End),
-                    ) {
-                        VoiceSearchButton(
-                            onSpeechResult = { spokenText ->
-                                query = spokenText
-                                triggerImmediateSearch(spokenText)
-                            },
-                            voiceInputManager = viewModel.voiceInputManager,
-                            modifier = Modifier.padding(end = 12.dp),
-                        )
-                    }
-
-                    SearchEditTextBox(
-                        value = query,
-                        onValueChange = {
-                            isSearchActive = true
-                            query = it
-                        },
-                        onSearchClick = { triggerImmediateSearch(query) },
-                        readOnly = isTv && !isSearchActive,
-                        // TV: the keyboard is tucked away, so say how to get it
-                        placeholder =
-                            if (isTv) {
-                                { Text("Press OK to type", color = BenflixColors.Muted) }
-                            } else {
-                                null
-                            },
-                        modifier =
-                            Modifier
-                                .focusRequester(textFieldFocusRequester)
-                                .onFocusChanged { state ->
-                                    isTextFieldFocused = state.isFocused
-                                    if (!state.isFocused) isSearchActive = false
-                                }.onPreviewKeyEvent { event ->
-                                    val isActivationKey =
-                                        event.key in listOf(Key.DirectionCenter, Key.Enter)
-                                    if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive && isTv && !keyboardOpen) {
-                                        // TV: OK pops the Benflix keyboard out first
-                                        keyboardOpen = true
-                                        focusKeyboard++
-                                        true
-                                    } else if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
-                                        isSearchActive = true
-                                        keyboardController?.show()
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                },
-                    )
-
-                    ExpandableFaButton(
-                        title = R.string.view_options,
-                        iconStringRes = R.string.fa_sliders,
-                        onClick = { showViewOptions = true },
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
+                else -> {
+                    focusManager.moveFocus(FocusDirection.Next)
                 }
             }
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                boxModifier
+                    .focusGroup()
+                    .focusRestorer(textFieldFocusRequester)
+                    .focusRequester(focusRequesters[SEARCH_ROW]),
+        ) {
             AnimatedVisibility(
-                visible = showTabs,
-                enter = expandVertically(BenflixMotion.enter()),
-                exit = shrinkVertically(BenflixMotion.exit()),
+                visible = voiceSearchButtonVisible,
+                enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.End),
+                exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.End),
             ) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    tabs = tabs,
-                    onClick = {
-                        selectedTab = it
-                        val row =
-                            when (selectedTab) {
-                                0 -> COMBINED_ROW
-                                else -> SEERR_ROW
-                            }
-                        setPosition(RowColumn(row, 0))
+                VoiceSearchButton(
+                    onSpeechResult = { spokenText ->
+                        query = spokenText
+                        triggerImmediateSearch(spokenText)
                     },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp)
-                            .onFocusChanged {
-                                if (it.hasFocus) setPosition(RowColumn(TAB_ROW, 0))
-                            },
+                    voiceInputManager = viewModel.voiceInputManager,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
             }
-            // Benflix redesign: on a TV the A to Z keyboard sits on the left, results on the right
-            val keyboardTv = rememberIsTv()
-            Row(modifier = Modifier.fillMaxSize()) {
-                if (keyboardTv) {
-                    val suggestions =
-                        remember(state.combinedResults) {
-                            (state.combinedResults as? SearchResult.Success)
-                                ?.items
-                                ?.mapNotNull { it?.name }
-                                ?.distinct()
-                                ?.take(5)
-                                .orEmpty()
-                        }
-                    AnimatedVisibility(
-                        visible = keyboardOpen,
-                        enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.Start),
-                        exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.Start),
-                    ) {
-                        SearchKeyboard(
-                            query = query,
-                            onQueryChange = { query = it },
-                            suggestions = if (query.isBlank()) emptyList() else suggestions,
-                            onSuggestion = {
-                                query = it
-                                triggerImmediateSearch(it)
-                            },
-                            big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
-                            modifier =
-                                Modifier
-                                    .fillMaxHeight()
-                                    .onFocusChanged { keyboardHasFocus = it.hasFocus }
-                                    .focusGroup()
-                                    .focusRequester(keyboardFocus),
-                        )
+
+            SearchEditTextBox(
+                value = query,
+                onValueChange = {
+                    isSearchActive = true
+                    trying = null
+                    query = it
+                },
+                onSearchClick = { triggerImmediateSearch(query) },
+                readOnly = isTv && !isSearchActive,
+                // TV: the keyboard is tucked away, so say how to get it
+                placeholder =
+                    if (isTv) {
+                        { Text("Press OK to type", color = BenflixColors.Muted) }
+                    } else {
+                        null
+                    },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .focusRequester(textFieldFocusRequester)
+                        .onFocusChanged { state ->
+                            isTextFieldFocused = state.isFocused
+                            if (!state.isFocused) isSearchActive = false
+                        }.onPreviewKeyEvent { event ->
+                            val isActivationKey =
+                                event.key in listOf(Key.DirectionCenter, Key.Enter)
+                            if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive && isTv && !keyboardOpen) {
+                                // TV: OK pops the Benflix keyboard out first
+                                keyboardOpen = true
+                                focusKeyboard++
+                                true
+                            } else if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
+                                isSearchActive = true
+                                keyboardController?.show()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+            )
+
+            ExpandableFaButton(
+                title = R.string.view_options,
+                iconStringRes = R.string.fa_sliders,
+                onClick = { showViewOptions = true },
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+    val results: @Composable (Modifier) -> Unit = { resultsModifier ->
+        Box(modifier = resultsModifier) {
+            if (query.isBlank()) {
+                // Nothing typed yet: recent searches and Popular (TV: in the left column), moods and genres
+                SearchStart(
+                    navigationManager = viewModel.navigationManager,
+                    account = viewModel.recentAccount,
+                    popular = popular,
+                    onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
+                    onClickRecent = {
+                        query = it
+                        triggerImmediateSearch(it)
+                    },
+                    showRecent = !isTv,
+                    showPopular = !isTv,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@Box
+            }
+            SearchCombinedResults(
+                result = state.combinedResults,
+                askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
+                didYouMean = state.didYouMean,
+                plainWords = state.plainWords,
+                games = foundGames,
+                books = foundBooks,
+                onClickBook = {
+                    RecentSearches.add(searchContext, viewModel.recentAccount, query)
+                    viewModel.navigationManager.navigateTo(Destination.BookTitle(it.id))
+                },
+                musicAsk = musicAsk,
+                onAskMusic = { item, kind -> viewModel.askForMusic(item, kind) },
+                query = query,
+                onClickGame = { game ->
+                    RecentSearches.add(searchContext, viewModel.recentAccount, query)
+                    val dest = game.destination
+                    if (dest != null) {
+                        viewModel.navigationManager.navigateTo(dest)
+                    } else {
+                        com.github.damontecres.wholphin.ui.games.PendingGameOpen.id = game.romId
+                        viewModel.navigationManager.navigateTo(Destination.Games)
                     }
+                },
+                focusRequester = focusRequesters[COMBINED_ROW],
+                onClickItem = onClickItem,
+                onLongClickItem = { index, item ->
+                    onLongClickItem(COMBINED_ROW, index, item)
+                },
+                onPlayItem = onPlayItem,
+                onClickPosition = { setPosition(it) },
+                onClickDiscover = onClickDiscover,
+                positionCallback = positionCallback,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+    Box(modifier = modifier.fillMaxSize()) {
+        if (isTv) {
+            // Redesign 2, TV: the search box with its column of suggestions on the left (recent searches and
+            // Popular before you type), the door cards on the right. OK on the box pops the A to Z keyboard out
+            // beside it; Back or moving into the results tucks it away again.
+            Row(modifier = Modifier.fillMaxSize().padding(top = 16.dp)) {
+                AnimatedVisibility(
+                    visible = keyboardOpen,
+                    enter = fadeIn(BenflixMotion.enter()) + expandHorizontally(expandFrom = Alignment.Start),
+                    exit = fadeOut(BenflixMotion.exit()) + shrinkHorizontally(shrinkTowards = Alignment.Start),
+                ) {
+                    SearchKeyboard(
+                        query = query,
+                        onQueryChange = {
+                            trying = null
+                            query = it
+                        },
+                        suggestions = emptyList(),
+                        onSuggestion = pickSuggestion,
+                        big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
+                        modifier =
+                            Modifier
+                                .fillMaxHeight()
+                                .onFocusChanged { keyboardHasFocus = it.hasFocus }
+                                .focusGroup()
+                                .focusRequester(keyboardFocus),
+                    )
                 }
-                Box(
+                Column(
                     modifier =
                         Modifier
-                            .weight(1f)
+                            .width(SIDE_WIDTH)
                             .fillMaxHeight()
-                            .onFocusChanged { if (it.hasFocus && keyboardTv) keyboardOpen = false },
+                            .padding(start = 16.dp, end = 10.dp),
                 ) {
-                    if (query.isBlank()) {
-                        // Nothing typed yet: recent searches, moods and genres to browse
-                        SearchStart(
-                            navigationManager = viewModel.navigationManager,
-                            account = viewModel.recentAccount,
-                            popular = popular,
-                            onClickItem = { viewModel.navigationManager.navigateTo(it.destination()) },
-                            onClickRecent = {
-                                query = it
-                                triggerImmediateSearch(it)
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        return@Box
-                    }
-//            SideEffect {
-//                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
-//            }
-                    when {
-                        isLibraryTab && combinedMode -> {
-                            SearchCombinedResults(
-                                result = state.combinedResults,
-                                askFor = (state.seerrResults as? SearchResult.SuccessSeerr)?.items.orEmpty(),
-                                didYouMean = state.didYouMean,
-                                plainWords = state.plainWords,
-                                games = foundGames,
-                                musicAsk = musicAsk,
-                                onAskMusic = { item, kind -> viewModel.askForMusic(item, kind) },
-                                query = query,
-                                onClickGame = { game ->
-                                    val dest = game.destination
-                                    if (dest != null) {
-                                        viewModel.navigationManager.navigateTo(dest)
-                                    } else {
-                                        com.github.damontecres.wholphin.ui.games.PendingGameOpen.id = game.romId
-                                        viewModel.navigationManager.navigateTo(Destination.Games)
-                                    }
-                                },
-                                focusRequester = focusRequesters[COMBINED_ROW],
-                                onClickItem = onClickItem,
-                                onLongClickItem = { index, item ->
-                                    onLongClickItem(COMBINED_ROW, index, item)
-                                },
-                                onPlayItem = onPlayItem,
-                                onClickPosition = { setPosition(it) },
-                                onClickDiscover = onClickDiscover,
-                                positionCallback = positionCallback,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-
-                        !isLibraryTab && combinedMode -> {
-                            SearchCombinedResults(
-                                result = state.seerrResults,
-                                focusRequester = focusRequesters[SEERR_ROW],
-                                onClickItem = onClickItem,
-                                onLongClickItem = { _, _ -> },
-                                onPlayItem = onPlayItem,
-                                onClickPosition = { setPosition(it) },
-                                onClickDiscover = onClickDiscover,
-                                positionCallback = positionCallback,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-
-                        isLibraryTab -> {
-                            LazyColumn(
-                                contentPadding =
-                                    PaddingValues(
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                        top = 8.dp,
-                                        bottom = 44.dp,
-                                    ),
-                                verticalArrangement = Arrangement.spacedBy(0.dp),
-                                modifier = Modifier.focusGroup(),
-                            ) {
-                                itemsIndexed(state.includedSearchableTypes) { index, type ->
-                                    val rowIndex = RESULTS_START + index
-                                    val result = state.results.getOrDefault(type, SearchResult.Searching)
-                                    val focusRequester =
-                                        remember(state.includedSearchableTypes.size) {
-                                            focusRequesters.getOrNull(rowIndex) ?: FocusRequester()
-                                        }
-                                    SearchRowResult(
-                                        title = type.titleStringRes,
-                                        result = result,
-                                        rowIndex = rowIndex,
-                                        position = position,
-                                        focusRequester = focusRequester,
-                                        onClickItem = onClickItem,
-                                        onLongClickItem = { index, item ->
-                                            onLongClickItem(rowIndex, index, item)
-                                        },
-                                        onClickPosition = { setPosition(it) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        cardContent = { index, item, mod, onClick, onLongClick ->
-                                            SearchPageCard(
-                                                item = item,
-                                                type = type,
-                                                onClick = {
-                                                    setPosition(RowColumn(rowIndex, index))
-                                                    onClick.invoke()
-                                                },
-                                                onLongClick = onLongClick,
-                                                modifier = mod,
-                                            )
-                                        },
-                                    )
-                                }
-
-                                if (!seerrActive && BuildConfig.DISCOVER_ENABLED && query.isNotBlank() && !KidsMode.isActive) {
-                                    // Benflix "Ask for it": point people to switching on requests
-                                    item {
-                                        ListItem(
-                                            selected = false,
-                                            onClick = {
-                                                viewModel.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC))
-                                            },
-                                            headlineContent = { Text(stringResource(R.string.benflix_connect_requests)) },
-                                            supportingContent = { Text(stringResource(R.string.benflix_connect_requests_summary)) },
-                                            modifier = Modifier.padding(top = 12.dp),
-                                            scale = ListItemDefaults.scale(focusedScale = 1f),
-                                        )
-                                    }
-                                }
-                                if (seerrActive && state.discoverEnabled) {
-                                    item {
-                                        SearchRowResult(
-                                            title = R.string.benflix_not_on_benflix,
-                                            result = state.seerrResults,
-                                            rowIndex = SEERR_ROW,
-                                            position = position,
-                                            focusRequester = focusRequesters[SEERR_ROW],
-                                            onClickItem = onClickItem,
-                                            onLongClickItem = { _, _ -> },
-                                            onClickDiscover = onClickDiscover,
-                                            onClickPosition = { setPosition(it) },
-                                            cardContent = { _, _, _, _, _ -> },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    searchBox(Modifier.fillMaxWidth())
+                    SearchSideColumn(
+                        query = query,
+                        suggestions = suggestions,
+                        account = viewModel.recentAccount,
+                        popular = popular,
+                        onTry = { trying = it },
+                        onPick = pickSuggestion,
+                        onClickPopular = { viewModel.navigationManager.navigateTo(it.destination()) },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
                 }
+                results(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .onFocusChanged { if (it.hasFocus) keyboardOpen = false },
+                )
             }
-            contextMenu.Compose()
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                searchBox(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp))
+                // Redesign 2, phones: the suggestions are chips under the box
+                if (query.isNotBlank() && suggestions.isNotEmpty()) {
+                    SuggestionChips(
+                        query = query,
+                        suggestions = suggestions,
+                        onPick = pickSuggestion,
+                    )
+                }
+                results(Modifier.weight(1f).fillMaxWidth())
+            }
         }
+        contextMenu.Compose()
         // Benflix first-time tip
         BenflixTip(tip = BenflixTipId.SEARCH)
     }
-
     if (showViewOptions) {
         SearchViewOptionsDialog(
             combinedResults = combinedMode,
@@ -703,10 +600,12 @@ fun SearchCombinedResults(
     musicAsk: List<SearchMusicAsk> = emptyList(),
     onAskMusic: (SearchMusicAsk, String) -> Unit = { _, _ -> },
     query: String = "",
+    books: List<BookTile> = emptyList(),
+    onClickBook: (BookTile) -> Unit = {},
 ) {
     if (askFor != null &&
         result is SearchResult.Success &&
-        (result.items.isNotEmpty() || askFor.isNotEmpty() || games.isNotEmpty() || musicAsk.isNotEmpty())
+        (result.items.isNotEmpty() || askFor.isNotEmpty() || games.isNotEmpty() || musicAsk.isNotEmpty() || books.isNotEmpty())
     ) {
         val items = remember(result) { result.items.filterNotNull() }
         SearchDoorResults(
@@ -722,6 +621,8 @@ fun SearchCombinedResults(
             musicAsk = musicAsk,
             onAskMusic = onAskMusic,
             query = query,
+            books = books,
+            onClickBook = onClickBook,
             modifier = modifier,
         )
         return
