@@ -26,8 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -907,7 +907,11 @@ private fun MusicAskDialog(
 ) {
     val first = remember { FocusRequester() }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val preview = remember { com.github.damontecres.wholphin.services.songPreview(context) }
+    val preview =
+        remember {
+            com.github.damontecres.wholphin.services
+                .songPreview(context)
+        }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { preview.stop() } }
     // Benflix: the touch Dialog, so phone taps reach the buttons (a plain Dialog is its own window)
     com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
@@ -957,7 +961,9 @@ private fun MusicAskDialog(
                 // Benflix: hear 30 seconds of the song before asking for it
                 val previewState by preview.state.collectAsState()
                 MusicButton(
-                    label = com.github.damontecres.wholphin.ui.discover.previewLabel(previewState, item.id),
+                    label =
+                        com.github.damontecres.wholphin.ui.discover
+                            .previewLabel(previewState, item.id),
                     icon = if (previewState.songId == item.id) BenflixIcon.STOP else BenflixIcon.PLAY,
                     onClick = { preview.toggle(item.id) },
                     modifier = Modifier.fillMaxWidth(),

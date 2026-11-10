@@ -59,15 +59,22 @@ fun SongPreviewButton(
     ) {
         Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
             when {
-                missing -> Text("–", fontSize = BenflixType.body, color = BenflixColors.Muted)
-                playing && state.loading -> Text("…", fontSize = BenflixType.body)
-                else ->
+                missing -> {
+                    Text("–", fontSize = BenflixType.body, color = BenflixColors.Muted)
+                }
+
+                playing && state.loading -> {
+                    Text("…", fontSize = BenflixType.body)
+                }
+
+                else -> {
                     BenflixIconImage(
                         icon = if (playing) BenflixIcon.STOP else BenflixIcon.PLAY,
                         color = androidx.tv.material3.LocalContentColor.current,
                         size = (size * 0.45f).dp,
                         contentDescription = if (playing) "Stop the preview" else "Hear 30 seconds",
                     )
+                }
             }
         }
     }

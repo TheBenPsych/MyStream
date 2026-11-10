@@ -994,7 +994,11 @@ private fun Tile(
             Surface(
                 onClick = onClick,
                 shape = ClickableSurfaceDefaults.shape(shape),
-                colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = BenflixColors.Raised,
+                        focusedContainerColor = BenflixColors.Raised,
+                    ),
                 border = doorFocusBorder(shape),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 modifier = Modifier.size(size.dp),
