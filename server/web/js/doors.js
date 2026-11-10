@@ -9,8 +9,9 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3DD6C6", games: "#FF6F91", music: "#B69CFF", books: "#B9E36A" };
-  const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#141C05" };
+  // Server isn't a door: its menu (Redesign 2, approved sv2-glance) uses a white pill
+  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3DD6C6", games: "#FF6F91", music: "#B69CFF", books: "#B9E36A", server: "#F1F2F5" };
+  const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#141C05", server: "#0B0C10" };
   const ICON = {
     home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
@@ -76,7 +77,15 @@
       ["want", "Want to read", "star"], ["finished", "Finished", "check"],
     ].filter(([k]) => (k !== "manga" && k !== "comic") || (bookCounts ? c[k] : false))
       .map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
-    return { movies, shows, live, games, music: kids ? null : music, books };
+    const srv = (id) => location.hash.startsWith(`#/server/${id}`);
+    const server = [
+      ["Overview", "home", "#/server/overview", () => srv("overview")],
+      ["Watching", "tv", "#/server/watching", () => srv("watching")],
+      ["Library", "film", "#/server/library", () => srv("library")],
+      ["People", "user", "#/server/people", () => srv("people")],
+      ["Tools", "gear", "#/server/tools", () => srv("tools")],
+    ];
+    return { movies, shows, live, games, music: kids ? null : music, books, server: B.me && B.me.admin ? server : null };
   };
 
   // Which door (if any) the page you're on belongs to: only the door pages themselves, not title pages
@@ -87,6 +96,7 @@
     if (/^#\/(games$|console\/)/.test(hash)) return "games";
     if (/^#\/(music$|songs$|liked$|mgrid\/)/.test(hash)) return "music";
     if (/^#\/books(\?|$)/.test(hash)) return "books";
+    if (/^#\/server(\/|$)/.test(hash)) return "server";
     return null;
   };
 
