@@ -145,10 +145,18 @@ fun ApplicationContent(
         // Benflix "Type on your phone for the TV": the keyboard pop-up on phones
         com.github.damontecres.wholphin.ui.search
             .PhoneKeysPrompt()
-        // Benflix "Big event alerts": a one-tap reminder for the Super Bowl, the Oscars and the like
-        com.github.damontecres.wholphin.ui.main.BigEventOffer(
-            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
-        )
+        // Benflix "Big event alerts": a one-tap reminder for the Super Bowl, the Oscars and the like.
+        // Only while on the Live TV page, so it never pops up over movies, shows, music or games.
+        // The checker itself keeps running in the background so the note is ready when Live TV opens.
+        val bigEvents: com.github.damontecres.wholphin.ui.main.BigEventViewModel =
+            androidx.hilt.lifecycle.viewmodel.compose
+                .hiltViewModel()
+        if (top is Destination.Channels) {
+            com.github.damontecres.wholphin.ui.main.BigEventOffer(
+                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
+                viewModel = bigEvents,
+            )
+        }
     }
 }
 
