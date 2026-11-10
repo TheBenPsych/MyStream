@@ -153,6 +153,17 @@ sealed interface PlaybackAction {
     data class FixSkip(
         val fix: SkipFix,
     ) : PlaybackAction
+
+    /** Benflix "Fix a problem": No sound (the same fixes the sound check uses, straight away) */
+    data object FixNoSound : PlaybackAction
+
+    /** Benflix "Fix a problem": Picture stutters (restart the picture, then a lighter quality) */
+    data object FixPicture : PlaybackAction
+
+    /** Benflix "Fix a problem": Report a problem, with what's wrong */
+    data class ReportProblem(
+        val problem: String,
+    ) : PlaybackAction
 }
 
 /**
@@ -180,6 +191,7 @@ fun PlaybackControls(
     initialFocusRequester: FocusRequester = remember { FocusRequester() },
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chapters: List<Chapter> = emptyList(),
+    live: LiveBarInfo? = null,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -200,21 +212,29 @@ fun PlaybackControls(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        SeekBar(
-            player = player,
-            controllerViewState = controllerViewState,
-            onSeekProgress = onSeekProgress,
-            interactionSource = seekBarInteractionSource,
-            isEnabled = seekEnabled,
-            intervals = seekBarIntervals,
-            seekBack = seekBack,
-            seekForward = seekForward,
-            chapters = chapters,
-            modifier =
-                Modifier
-                    .padding(vertical = 0.dp)
-                    .fillMaxWidth(.95f),
-        )
+        if (live != null) {
+            // Live TV: the programme's own line (when it started, when it ends) in place of chapters
+            LiveLine(
+                live = live,
+                modifier = Modifier.fillMaxWidth(.95f),
+            )
+        } else {
+            SeekBar(
+                player = player,
+                controllerViewState = controllerViewState,
+                onSeekProgress = onSeekProgress,
+                interactionSource = seekBarInteractionSource,
+                isEnabled = seekEnabled,
+                intervals = seekBarIntervals,
+                seekBack = seekBack,
+                seekForward = seekForward,
+                chapters = chapters,
+                modifier =
+                    Modifier
+                        .padding(vertical = 0.dp)
+                        .fillMaxWidth(.95f),
+            )
+        }
         NetflixControlRow(
             player = player,
             initialFocusRequester = initialFocusRequester,
@@ -228,6 +248,7 @@ fun PlaybackControls(
             seekForward = seekForward,
             skipBackOnResume = skipBackOnResume,
             currentSegment = currentSegment,
+            live = live != null,
             modifier =
                 Modifier
                     .fillMaxWidth(.95f)
@@ -256,6 +277,7 @@ fun NetflixControlRow(
     currentSegment: MediaSegmentDto?,
     modifier: Modifier = Modifier,
     episodesEnabled: Boolean = false,
+    live: Boolean = false,
 ) {
     val roundButtons: @Composable () -> Unit = {
         // Approved redesign order: play/pause first, then back and forward
@@ -300,6 +322,21 @@ fun NetflixControlRow(
     }
     // Labeled buttons that only show when they matter: the white Skip pill, Start from the beginning
     val pillButtons: @Composable () -> Unit = {
+        // Live TV (approved pl-family): a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
+        if (live) {
+            PlayerPillButton(
+                text = "● LIVE",
+                faIcon = null,
+                tint = Color(0xFFD93A3A),
+                onClick = {
+                    onControllerInteraction.invoke()
+                    player.seekToDefaultPosition()
+                    player.play()
+                },
+                onControllerInteraction = onControllerInteraction,
+                modifier = Modifier.semantics { contentDescription = "Live. Press to jump to live" },
+            )
+        }
         currentSegment?.let { segment ->
             PlayerPillButton(
                 text = stringResource(segment.type.skipStringRes),
@@ -352,20 +389,10 @@ fun NetflixControlRow(
             onControllerInteraction = onControllerInteraction,
             modifier = Modifier.semantics { contentDescription = "Subtitles" },
         )
+        // Redesign 2 (pl-family): Audio, Subtitle timing, Quality and the Fix a problem list all live in the
+        // one settings panel behind the gear, the same on every video player
         PlayerCircleButton(
-            faIcon = R.string.fa_volume_high,
-            label = null,
-            size = size,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.AUDIO)
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier.semantics { contentDescription = "Audio" },
-        )
-        // Speed, Night mode, picture size and the rest live under the sliders button to keep the bar simple
-        PlayerCircleButton(
-            faIcon = R.string.fa_sliders,
+            faIcon = R.string.fa_gear,
             label = null,
             size = size,
             onClick = {
@@ -472,11 +499,13 @@ fun PlayerCircleButton(
 @Composable
 fun PlayerPillButton(
     text: String?,
-    @StringRes faIcon: Int,
+    @StringRes faIcon: Int?,
     onClick: () -> Unit,
     onControllerInteraction: () -> Unit,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    /** A colour of its own (the red LIVE pill) */
+    tint: Color? = null,
 ) {
     TvButton(
         onClick = onClick,
@@ -489,8 +518,8 @@ fun PlayerPillButton(
             },
         colors =
             ButtonDefaults.colors(
-                containerColor = if (highlighted) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
-                contentColor = if (highlighted) Color.Black else Color.White,
+                containerColor = tint ?: if (highlighted) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
+                contentColor = if (highlighted && tint == null) Color.Black else Color.White,
                 focusedContainerColor = Color.White,
                 focusedContentColor = Color.Black,
             ),
@@ -500,14 +529,16 @@ fun PlayerPillButton(
                 .height(42.dp)
                 .onFocusChanged { onControllerInteraction.invoke() },
     ) {
-        Text(
-            text = stringResource(faIcon),
-            fontFamily = FontAwesome,
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.CenterVertically),
-        )
+        if (faIcon != null) {
+            Text(
+                text = stringResource(faIcon),
+                fontFamily = FontAwesome,
+                fontSize = 16.sp,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
+        }
         text?.let {
-            Spacer(Modifier.width(8.dp))
+            if (faIcon != null) Spacer(Modifier.width(8.dp))
             Text(
                 text = it,
                 fontSize = BenflixType.body,
@@ -664,6 +695,96 @@ fun SeekTimecodes(
                             .padding(8.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * Live TV in the one bar (approved pl-family): what's on now, when it started and when it ends. Times
+ * are 0 when the channel has no TV guide; then the line is simply full and says "Live".
+ */
+data class LiveBarInfo(
+    val programme: String?,
+    val startMs: Long,
+    val endMs: Long,
+    val next: String? = null,
+) {
+    private val hasTimes get() = endMs > startMs
+
+    /** The small grey line under the channel name: "Top Story tonight · 9:00 to 10:00 pm" */
+    fun topLine(): String? =
+        listOfNotNull(
+            programme?.takeIf { it.isNotBlank() },
+            if (hasTimes) "${clock(startMs)} to ${clock(endMs)}" else null,
+        ).joinToString(" · ").ifBlank { null }
+
+    internal fun progress(now: Long): Float = if (hasTimes) ((now - startMs).toFloat() / (endMs - startMs)).coerceIn(0f, 1f) else 1f
+
+    internal fun startedWords(now: Long): String {
+        if (!hasTimes) return "Live"
+        val minutes = ((now - startMs) / 60_000L).coerceAtLeast(0L)
+        return when {
+            minutes < 1 -> "Just started"
+            minutes < 60 -> "Started $minutes min ago"
+            else -> "Started ${minutes / 60} h ${minutes % 60} min ago"
+        }
+    }
+
+    internal companion object {
+        fun clock(ms: Long): String =
+            java.time.Instant
+                .ofEpochMilli(ms)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalTime()
+                .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+                .lowercase()
+    }
+}
+
+/** The Live TV line: "Started 22 min ago" above it, the programme's start and end times under it */
+@Composable
+fun LiveLine(
+    live: LiveBarInfo,
+    modifier: Modifier = Modifier,
+) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(live) {
+        while (isActive) {
+            now = System.currentTimeMillis()
+            delay(15_000L)
+        }
+    }
+    Column(modifier = modifier) {
+        Text(
+            text = live.startedWords(now) + (live.next?.let { "  ·  Next: $it" } ?: ""),
+            color = BenflixColors.Soft,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 6.dp),
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .background(Color.White.copy(alpha = .25f), RoundedCornerShape(3.dp)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(live.progress(now))
+                    .height(4.dp)
+                    .background(Color.White, RoundedCornerShape(3.dp)),
+            )
+        }
+        if (live.endMs > live.startMs) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {
+                Text(LiveBarInfo.clock(live.startMs), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.weight(1f))
+                Text(LiveBarInfo.clock(live.endMs), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+            }
+        } else {
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

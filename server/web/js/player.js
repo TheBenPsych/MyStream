@@ -96,7 +96,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         <span class="time" id="pEnds"></span>
         ${isEp ? `<button class="pbtn" id="pList" title="Episodes">${I("list")}</button>` : ""}
         <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
-        <button class="pbtn" id="pSub" title="Audio and subtitles (S turns them on and off)">${I("sub")}</button>
+        <button class="pbtn" id="pSub" title="Subtitles (S turns them on and off)">${I("sub")}</button>
+        <button class="pbtn" id="pGear" title="Settings: audio, subtitle timing, quality and Fix a problem">${I("gear")}</button>
         ${B.volume("pVol")}
         <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
       </div>
@@ -234,7 +235,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pFw").onclick = () => { v.currentTime = Math.min(total(), v.currentTime + 10); poke(); };
   B.wireVolume($("#pVol").parentNode, v, "volume");
   $("#pBack").onclick = () => leave();
-  $("#pSub").onclick = () => openPanel();
+  $("#pSub").onclick = () => openPanel("subs");
+  $("#pGear").onclick = () => openPanel();
   $("#pKeys").onclick = () => showKeys();
   v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(); report("/Progress"); });
   v.addEventListener("pause", () => {
@@ -335,32 +337,58 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   v.addEventListener("ended", async () => { const n = await findNext(); if (n && autoNext) goNext(n); else leave(); });
   B.every(10000, () => { if (!v.paused) report("/Progress"); });
 
-  // ---------- audio + subtitles panel ----------
-  const openPanel = () => {
+  // ---------- the one settings panel (Redesign 2 pl-family, same as the TV and phone) ----------
+  // Subtitles, Audio, Subtitle timing and Quality first, then the "Fix a problem" list.
+  const QUALITY_WORDS = { auto: "Best", "1080": "Sharp (1080p)", "720": "Good (720p)", "480": "Light (480p)" };
+  const QUALITY_STEPS = ["auto", "1080", "720", "480"];
+  const fixNoSound = () => { B.toast("No sound? Bringing it back…"); audioIndex = audioIndex ?? 0; forceTranscode(); };
+  const fixPicture = () => {
+    const now = settings.quality || "auto", next = QUALITY_STEPS[QUALITY_STEPS.indexOf(now) + 1];
+    if (!next) return B.toast("That's the lightest picture already. Report a problem so Ben can look at it.");
+    settings.quality = next; B.setWebSetting("quality", next);
+    B.toast(`Trying a lighter picture: ${QUALITY_WORDS[next]}. Change it back in Settings > Quality.`);
+    load(v.currentTime).catch((err) => msg(err.message));
+  };
+  const openPanel = (focus) => {
     if ($(".player .panel")) return $(".player .panel").remove();
     const streams = (source && source.MediaStreams) || [];
     const audio = streams.filter((s) => s.Type === "Audio"), subs = streams.filter((s) => s.Type === "Subtitle");
+    const subOn = subIndex !== -1, cur = subs.find((x) => x.Index === subIndex) || {};
+    const canMove = subOn && cur.DeliveryMethod === "External";
     const p = document.createElement("div");
     p.className = "panel";
-    p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Audio and subtitles</h3>
+    p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Settings</h3>
+      <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(B.lastPlayed.title || "")}</p>
+      <h4 id="psSubs">Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
       <h4>Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
-      <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
-      ${subIndex !== -1 && (subs.find((x) => x.Index === subIndex) || {}).DeliveryMethod === "External" ? `<h4>Subtitle timing</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later (keys G and H work too). <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-1, "−1 s"], [-0.5, "−½ s"], [0, "Reset"], [0.5, "+½ s"], [1, "+1 s"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : ""}
-      <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
+      <h4>Subtitle timing</h4>${canMove ? `<p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later (keys G and H work too). <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-1, "−1 s"], [-0.5, "−½ s"], [0, "Reset"], [0.5, "+½ s"], [1, "+1 s"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : `<p class="dim" style="font-size:13px;margin:-4px 0 8px">${subOn ? "These subtitles are drawn into the picture, so they can't be moved here. Try Subtitles wrong below." : "Turn subtitles on first (just above)."}</p>`}
+      <h4>Quality</h4>${QUALITY_STEPS.map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${QUALITY_WORDS[k]}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
-      ${segments.tower && !B.me.kids ? `<h4>Skip came at the wrong time?</h4><p class="dim" style="font-size:13px;margin:-4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}` : ""}
-      <h4>Something wrong?</h4>${subIndex !== -1 && !B.me.kids ? `<button class="opt" data-subsync>${I("sub")} Subtitles are early or late</button>` : ""}<button class="opt" data-report>${I("flag")} Report a problem</button>
+      <h4>Fix a problem</h4>
+      <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
+      <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
+      ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
+      <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
+      <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
     pl.classList.add("ui");
+    if (focus === "subs") { const on = $(".opt.on[data-s]", p) || $("[data-s]", p); if (on) on.focus(); }
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
       const fx = e.target.closest("[data-fix]"), dl = e.target.closest("[data-delay]");
       if (dl) return nudgeSubs(+dl.dataset.delay);
       if (fx) { p.remove(); return fixSkip(fx.dataset.fix); }
+      if (e.target.closest("[data-skipwrong]")) return $(".fixlist", p).classList.toggle("hidden");
+      if (e.target.closest("[data-nosound]")) { p.remove(); return fixNoSound(); }
+      if (e.target.closest("[data-stutter]")) { p.remove(); return fixPicture(); }
+      if (e.target.closest("[data-subwrong]")) {
+        if (subOn && !B.me.kids) { p.remove(); return fixSubs(); }
+        const first = $("#psSubs", p); if (first) first.scrollIntoView({ block: "start" });
+        return B.toast(subOn ? "Pick other subtitles at the top." : "Turn subtitles on at the top first.");
+      }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
-      if (e.target.closest("[data-subsync]")) { p.remove(); return fixSubs(); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);

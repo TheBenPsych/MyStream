@@ -20,9 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -126,19 +124,20 @@ fun AudiobookPlayerPage(
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { playFocus.tryRequestFocus() }
     if (wide) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(40.dp),
-            modifier = modifier.fillMaxSize().padding(start = edge, end = edge, top = 12.dp, bottom = 24.dp),
-        ) {
-            BookCoverImage(n.cover, n.name, Modifier.fillMaxHeight(0.85f).aspectRatio(BOOK_RATIO), audio = true)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            ) {
-                PlayerInfo(n, viewModel, playFocus, onSpeed = { speedOpen = true }, onSleep = { sleepOpen = true })
-            }
-            Chapters(n, viewModel, Modifier.width(320.dp).fillMaxHeight())
-        }
+        // Redesign 2 (pl-family): the same now-playing frame as Music, with the chapters on the right
+        com.github.damontecres.wholphin.ui.music.NowPlayingWideFrame(
+            reservedBottom = 24.dp,
+            cover = { size ->
+                BookCoverImage(n.cover, n.name, Modifier.width(size * BOOK_RATIO).aspectRatio(BOOK_RATIO), audio = true)
+            },
+            middle = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PlayerInfo(n, viewModel, playFocus, onSpeed = { speedOpen = true }, onSleep = { sleepOpen = true })
+                }
+            },
+            side = { mod -> Chapters(n, viewModel, mod) },
+            modifier = modifier.fillMaxSize(),
+        )
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -173,56 +172,38 @@ private fun PlayerInfo(
     onSleep: () -> Unit,
 ) {
     val svc = viewModel.audiobooks
-    Text("AUDIOBOOK", color = BenflixColors.Books, fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
-    Text(
-        n.name,
-        color = BenflixColors.Text,
-        fontSize = BenflixType.hero,
-        fontWeight = FontWeight.ExtraBold,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-    )
-    Text(
-        listOf(
-            n.author,
-            n.narrator
-                .takeIf {
-                    it.isNotBlank()
-                }?.let { "Read by $it" },
-        ).filterNotNull().filter { it.isNotBlank() }.joinToString("  ·  "),
-        color = BenflixColors.Soft,
-        fontSize = BenflixType.lead,
-        maxLines = 2,
+    // The same title, line and buttons as Music's now playing, in the Books lime
+    com.github.damontecres.wholphin.ui.music.NowPlayingTitle(
+        kicker = "Now playing · Audiobook",
+        title = n.name,
+        byLine =
+            listOf(
+                n.author,
+                n.narrator.takeIf { it.isNotBlank() }?.let { "Read by $it" },
+            ).filterNotNull().filter { it.isNotBlank() }.joinToString("  ·  "),
+        color = BenflixColors.Books,
+        big = true,
     )
     if (n.chapterTitle.isNotBlank()) {
-        Text(n.chapterTitle, color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, maxLines = 2)
+        Text(
+            n.chapterTitle,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.lead,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+        )
     }
     // How far through this chapter, and the whole book
     val inChapter = (n.position - n.chapterStart).coerceAtLeast(0.0)
     val chapterLen = n.chapterLength.coerceAtLeast(1.0)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.fillMaxWidth().height(6.dp).background(BenflixColors.Line, RoundedCornerShape(3.dp))) {
-            Box(
-                Modifier
-                    .fillMaxWidth((inChapter / chapterLen).toFloat().coerceIn(0f, 1f))
-                    .height(6.dp)
-                    .background(BenflixColors.Books, RoundedCornerShape(3.dp)),
-            )
-        }
-        Row(Modifier.fillMaxWidth()) {
-            Text(clockTime(inChapter.toLong()), color = BenflixColors.Muted, fontSize = BenflixType.small)
-            Box(Modifier.weight(1f))
-            Text(
-                "-" +
-                    clockTime(
-                        (chapterLen - inChapter).toLong(),
-                    ) + "  ·  " + hoursMinutes((n.total - n.position).toInt().coerceAtLeast(0)) +
-                    " left in the book",
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.small,
-            )
-        }
-    }
+    com.github.damontecres.wholphin.ui.music.NowPlayingLine(
+        progress = (inChapter / chapterLen).toFloat(),
+        leftText = clockTime(inChapter.toLong()),
+        rightText =
+            "-" + clockTime((chapterLen - inChapter).toLong()) + "  ·  " +
+                hoursMinutes((n.total - n.position).toInt().coerceAtLeast(0)) + " left in the book",
+        color = BenflixColors.Books,
+    )
     n.problem?.let { Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         MusicButton(label = "15", icon = BenflixIcon.BACK15, onClick = svc::back, big = true)

@@ -269,6 +269,16 @@ object ChannelSession {
 
     val lastNumber: Int? get() = currentNumber
 
+    /**
+     * What's on the live channel [itemId] right now (for the player's Live TV bar), or null when it
+     * isn't one of today's live channels. Its times are 0 when the channel has no TV guide.
+     */
+    fun liveNow(itemId: UUID?): ChannelBannerInfo? {
+        if (itemId == null) return null
+        val schedule = schedules.firstOrNull { it.live?.id == itemId } ?: return null
+        return bannerFor(schedule, System.currentTimeMillis())
+    }
+
     /** Today's line-up, for the guide in the player */
     val lineup: List<ChannelSchedule> get() = schedules
 

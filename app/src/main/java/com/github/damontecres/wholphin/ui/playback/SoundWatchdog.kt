@@ -118,6 +118,35 @@ class SoundWatchdog(
             }
     }
 
+    /**
+     * "No sound" pressed in the player's Fix a problem list: try the next fix straight away, without
+     * first measuring for a few seconds (the person can already hear there's nothing).
+     */
+    fun fixNow() {
+        job?.cancel()
+        job =
+            scope.launch {
+                try {
+                    onNotice("No sound? Bringing it back...")
+                    val exo = player() as? ExoPlayer
+                    Timber.i("Sound fix asked for by hand (fixes tried $fixesTried)")
+                    if (exo != null && !exo.isReleased && fixesTried == 0 && !fromServerStream()) {
+                        fixesTried++
+                        restartSound(exo)
+                        check("sound restart (asked)")
+                    } else {
+                        val fullConvert = fixesTried >= MAX_FIXES - 1
+                        fixesTried = (maxOf(fixesTried, 1) + 1).coerceAtMost(MAX_FIXES)
+                        onConvertSound(fullConvert)
+                    }
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Sound fix failed")
+                }
+            }
+    }
+
     private suspend fun waitUntilPlaying(exo: ExoPlayer): Boolean {
         var waited = 0L
         while (scope.isActive && !exo.isPlaying) {

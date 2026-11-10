@@ -43,6 +43,8 @@ data class BenflixChoice(
     val note: String? = null,
     /** Marks the current pick (a small tick on the right) */
     val selected: Boolean = false,
+    /** What it's set to now, shown on the right in grey (the player's settings panel: "Subtitles   English") */
+    val value: String? = null,
 )
 
 /**
@@ -142,6 +144,17 @@ internal fun ChoiceRow(
                         fontSize = BenflixType.small,
                     )
                 }
+            }
+            if (choice.value != null) {
+                Text(
+                    text = choice.value,
+                    color = if (focused) BenflixColors.Tray.copy(alpha = .7f) else BenflixColors.Muted,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.widthIn(max = 200.dp),
+                )
             }
             if (choice.selected) BenflixIconImage(BenflixIcon.CHECK, color = content, size = 18.dp)
         }

@@ -120,7 +120,8 @@ object SubtitleSettings {
         AppChoicePreference<SubtitlePreferences, EdgeStyle>(
             title =
                 R.string.edge_style,
-            defaultValue = EdgeStyle.EDGE_SOLID,
+            // Redesign 2 players (pl-p-subs): white words with a soft shadow, the same in every player
+            defaultValue = EdgeStyle.EDGE_SHADOW,
             getter = { it.edgeStyle },
             setter = { prefs, value ->
                 prefs.update { edgeStyle = value }
@@ -402,8 +403,10 @@ object SubtitleSettings {
                 MPVLib.setPropertyDouble("sub-outline-size", 0.0)
             }
         }
-        val outlineSizePx = calculateEdgeSize(density) * .8
-        MPVLib.setPropertyDouble("sub-outline-size", outlineSizePx)
+        if (edgeStyle == EdgeStyle.EDGE_SOLID) {
+            val outlineSizePx = calculateEdgeSize(density) * .8
+            MPVLib.setPropertyDouble("sub-outline-size", outlineSizePx)
+        }
 
 //        if (fontBold) {
 //            MPVLib.setPropertyString("sub-font", "Roboto Bold")

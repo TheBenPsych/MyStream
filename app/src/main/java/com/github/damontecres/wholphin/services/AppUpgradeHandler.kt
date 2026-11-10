@@ -19,10 +19,12 @@ import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.BackdropStyle
+import com.github.damontecres.wholphin.preferences.EdgeStyle
 import com.github.damontecres.wholphin.preferences.ExperimentalPreference
 import com.github.damontecres.wholphin.preferences.HdrOverrideMode
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.ScreensaverPreference
+import com.github.damontecres.wholphin.preferences.SubtitlePreferences
 import com.github.damontecres.wholphin.preferences.ThemeSongVolume
 import com.github.damontecres.wholphin.preferences.update
 import com.github.damontecres.wholphin.preferences.updateAdvancedPreferences
@@ -205,6 +207,9 @@ class AppUpgradeHandler
             const val VERSION_CODE_PREVIOUS_KEY = "version.previous.code"
             const val VERSION_NAME_CURRENT_KEY = "version.current.name"
             const val VERSION_CODE_CURRENT_KEY = "version.current.code"
+
+            /** Set once the old outlined subtitles were moved to the soft shadow (Redesign 2 players) */
+            private const val SUBTITLE_SHADOW_KEY = "benflix.subtitles.softShadow"
 
             private const val SUBFONT_FILE = "subfont.ttf"
             private const val SUBFONT_FALLBACK = "font-roboto/Roboto-Regular.ttf"
@@ -571,6 +576,19 @@ class AppUpgradeHandler
                     }
             }
 
+            // Benflix Redesign 2 players: subtitles are white with a soft shadow now. Anyone still on the old
+            // look (white with a black outline, never changed) moves to it once; picked styles are kept.
+            val shadowPrefs = PreferenceManager.getDefaultSharedPreferences(context)
+            if (!shadowPrefs.getBoolean(SUBTITLE_SHADOW_KEY, false)) {
+                appPreferences.updateData {
+                    it.updateInterfacePreferences {
+                        subtitlesPreferences = subtitlesPreferences.withSoftShadow()
+                        hdrSubtitlesPreferences = hdrSubtitlesPreferences.withSoftShadow()
+                    }
+                }
+                shadowPrefs.edit { putBoolean(SUBTITLE_SHADOW_KEY, true) }
+            }
+
             if (previous.isLessThan(Version.fromString("1.0.10-0-g0"))) {
                 val count = seriesTrackChoiceDao.count()
                 if (count == 0) {
@@ -588,3 +606,12 @@ class AppUpgradeHandler
             }
         }
     }
+
+/** The old Benflix subtitle look (white words, black outline) becomes white with a soft shadow; anything else stays */
+private fun SubtitlePreferences.withSoftShadow(): SubtitlePreferences {
+    val oldLook =
+        edgeStyle == EdgeStyle.EDGE_SOLID &&
+            edgeColor.and(0x00FFFFFF) == 0 &&
+            fontColor.and(0x00FFFFFF) == 0x00FFFFFF
+    return if (oldLook) toBuilder().setEdgeStyle(EdgeStyle.EDGE_SHADOW).build() else this
+}
