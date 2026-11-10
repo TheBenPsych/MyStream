@@ -751,9 +751,10 @@ class HomeDoorsViewModel
             return listOf(
                 HomeRow(
                     id = "setup-${need.need}",
-                    title = "Tower needs the setup command",
-                    detail = "New things are waiting. Open Server to copy the command",
-                    dot = BenflixColors.Warning,
+                    kind = "Tower needs the setup command",
+                    title = "New things are waiting. Open Server to copy the command",
+                    kindColor = BenflixColors.Warning,
+                    at = System.currentTimeMillis(),
                     image = null,
                     destination = Destination.ServerStatus,
                     news = true,

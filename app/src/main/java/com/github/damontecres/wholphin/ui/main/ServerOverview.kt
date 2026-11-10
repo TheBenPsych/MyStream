@@ -311,7 +311,7 @@ private fun NeedsYouCard(
                 }
                 need.actions.forEach { (label, action) ->
                     Spacer(Modifier.width(8.dp))
-                    SmallButton(label, action)
+                    SmallButton(label, onClick = action)
                 }
             }
         }

@@ -55,6 +55,8 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.basicPreferences
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.main.ServerSection
+import com.github.damontecres.wholphin.ui.main.ServerToolGroup
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -435,25 +437,23 @@ private data class ServerToolEntry(
 
 private val serverToolEntries: List<ServerToolEntry> =
     run {
-        val s = com.github.damontecres.wholphin.ui.main.ServerSection
-        val g = com.github.damontecres.wholphin.ui.main.ServerToolGroup
         listOf(
-            ServerToolEntry("Who's watching now", "watching streams stop pause message", s.NOW),
-            ServerToolEntry("Disk space", "disks full storage", s.LIBRARY),
-            ServerToolEntry("People and accounts", "users add person password account", s.PEOPLE),
-            ServerToolEntry("Scan for new stuff", "scan library refresh new files", s.TOOLS, g.LIBRARY),
-            ServerToolEntry("Library checkup", "missing episodes low quality checkup", s.TOOLS, g.LIBRARY),
-            ServerToolEntry("Fix posters", "poster pictures art blurry", s.TOOLS, g.LIBRARY),
-            ServerToolEntry("Downloads", "stuck download find another sonarr radarr", s.TOOLS, g.DOWNLOADS),
-            ServerToolEntry("Messages", "message note send pop-up", s.TOOLS, g.PEOPLE),
-            ServerToolEntry("Benflix versions", "versions update out of date", s.TOOLS, g.PEOPLE),
-            ServerToolEntry("Track names", "audio subtitle tracks tidy labels languages", s.TOOLS, g.FIXES),
-            ServerToolEntry("Speed check", "speed internet playback stutter", s.TOOLS, g.FIXES),
-            ServerToolEntry("Setup command", "setup command tower helper terminal", s.TOOLS, g.TOWER),
-            ServerToolEntry("Restart Jellyfin", "restart reboot jellyfin apps", s.TOOLS, g.TOWER),
-            ServerToolEntry("Server chores", "chores tasks scheduled", s.TOOLS, g.TOWER),
-            ServerToolEntry("Weather town", "weather town home", s.TOOLS, g.TOWER),
-            ServerToolEntry("Book lists", "books lists nyt bestsellers", s.TOOLS, g.TOWER),
+            ServerToolEntry("Who's watching now", "watching streams stop pause message", ServerSection.NOW),
+            ServerToolEntry("Disk space", "disks full storage", ServerSection.LIBRARY),
+            ServerToolEntry("People and accounts", "users add person password account", ServerSection.PEOPLE),
+            ServerToolEntry("Scan for new stuff", "scan library refresh new files", ServerSection.TOOLS, ServerToolGroup.LIBRARY),
+            ServerToolEntry("Library checkup", "missing episodes low quality checkup", ServerSection.TOOLS, ServerToolGroup.LIBRARY),
+            ServerToolEntry("Fix posters", "poster pictures art blurry", ServerSection.TOOLS, ServerToolGroup.LIBRARY),
+            ServerToolEntry("Downloads", "stuck download find another sonarr radarr", ServerSection.TOOLS, ServerToolGroup.DOWNLOADS),
+            ServerToolEntry("Messages", "message note send pop-up", ServerSection.TOOLS, ServerToolGroup.PEOPLE),
+            ServerToolEntry("Benflix versions", "versions update out of date", ServerSection.TOOLS, ServerToolGroup.PEOPLE),
+            ServerToolEntry("Track names", "audio subtitle tracks tidy labels languages", ServerSection.TOOLS, ServerToolGroup.FIXES),
+            ServerToolEntry("Speed check", "speed internet playback stutter", ServerSection.TOOLS, ServerToolGroup.FIXES),
+            ServerToolEntry("Setup command", "setup command tower helper terminal", ServerSection.TOOLS, ServerToolGroup.TOWER),
+            ServerToolEntry("Restart Jellyfin", "restart reboot jellyfin apps", ServerSection.TOOLS, ServerToolGroup.TOWER),
+            ServerToolEntry("Server chores", "chores tasks scheduled", ServerSection.TOOLS, ServerToolGroup.TOWER),
+            ServerToolEntry("Weather town", "weather town home", ServerSection.TOOLS, ServerToolGroup.TOWER),
+            ServerToolEntry("Book lists", "books lists nyt bestsellers", ServerSection.TOOLS, ServerToolGroup.TOWER),
         )
     }
 

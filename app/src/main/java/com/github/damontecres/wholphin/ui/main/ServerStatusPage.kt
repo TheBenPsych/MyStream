@@ -113,7 +113,7 @@ enum class ServerSection(
                 TOOLS -> BenflixIcon.WRENCH
             }
 
-    fun railItem(light: Light?): DoorSection =
+    internal fun railItem(light: Light?): DoorSection =
         DoorSection(key, title + if (light == Light.BAD || light == Light.WARN) " •" else "", railIcon)
 
     companion object {
