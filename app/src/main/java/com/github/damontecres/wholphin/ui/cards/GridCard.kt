@@ -107,39 +107,12 @@ fun GridCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .aspectRatio(imageAspectRatio.coerceAtLeast(AspectRatios.MIN))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .aspectRatio(imageAspectRatio.coerceAtLeast(AspectRatios.MIN)),
             )
         }
-        AnimatedVisibility(showTitle) {
-            SlidingCardText(focused) {
-                Text(
-                    text = item?.title ?: "",
-                    maxLines = 1,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                            .enableMarquee(focusedAfterDelay),
-                )
-                Text(
-                    text = item?.subtitle ?: "",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Normal,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                            .enableMarquee(focusedAfterDelay),
-                )
-            }
+        if (showTitle) {
+            // Redesign 2 (rc-p-phone): up to 2 lines, then a small grey line
+            CardNameUnder(name = item?.title.orEmpty(), line = item?.subtitle)
         }
     }
 }

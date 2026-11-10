@@ -69,6 +69,13 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
+private val SQUARE_PICTURES =
+    setOf(BaseItemKind.MUSIC_ALBUM, BaseItemKind.MUSIC_ARTIST, BaseItemKind.PLAYLIST, BaseItemKind.AUDIO_BOOK, BaseItemKind.AUDIO)
+private val WIDE_PICTURES = setOf(BaseItemKind.EPISODE, BaseItemKind.TV_CHANNEL, BaseItemKind.LIVE_TV_CHANNEL, BaseItemKind.VIDEO)
+private val COVERS = setOf(BaseItemKind.MUSIC_ALBUM, BaseItemKind.PLAYLIST, BaseItemKind.AUDIO_BOOK, BaseItemKind.BOOK, BaseItemKind.AUDIO)
+private val PICTURES =
+    setOf(BaseItemKind.MUSIC_ARTIST, BaseItemKind.PERSON, BaseItemKind.EPISODE, BaseItemKind.TV_CHANNEL, BaseItemKind.LIVE_TV_CHANNEL)
+
 /** The tabs along the top of Change poster */
 enum class PosterTab(
     val label: String,
@@ -108,8 +115,40 @@ data class PosterPickerState(
         get() =
             when (item?.type) {
                 BaseItemKind.SERIES -> PosterTab.entries
+
                 BaseItemKind.SEASON, BaseItemKind.BOX_SET -> listOf(PosterTab.POSTER, PosterTab.BACKGROUND)
-                else -> listOf(PosterTab.POSTER, PosterTab.BACKGROUND, PosterTab.LOGO)
+
+                BaseItemKind.MOVIE, null -> listOf(PosterTab.POSTER, PosterTab.BACKGROUND, PosterTab.LOGO)
+
+                // Redesign 2 (rc-q-fix): every other kind (albums, artists, books, episodes, people, channels)
+                // just has its one picture
+                else -> listOf(PosterTab.POSTER)
+            }
+
+    /** The picture's shape: albums and audiobooks are square, episodes and channels wide, the rest tall */
+    val pictureShape: Float
+        get() =
+            if (tab != PosterTab.POSTER) {
+                tab.kind.shape
+            } else {
+                when (item?.type ?: BaseItemKind.MOVIE) {
+                    in SQUARE_PICTURES -> 1f
+                    in WIDE_PICTURES -> 16f / 9f
+                    else -> tab.kind.shape
+                }
+            }
+
+    /** What the picture is called: "poster", "cover", "picture" */
+    val pictureWord: String
+        get() =
+            if (tab != PosterTab.POSTER) {
+                tab.kind.label.lowercase()
+            } else {
+                when (item?.type ?: BaseItemKind.MOVIE) {
+                    in COVERS -> "cover"
+                    in PICTURES -> "picture"
+                    else -> "poster"
+                }
             }
 
     /** The movie, show, season or collection the picture goes on */
@@ -241,7 +280,7 @@ class PosterPickerViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
                     posters.use(target, s.tab.kind, choice)
-                    showToast(context, "New ${s.tab.kind.label.lowercase()} saved. It shows everywhere in about a minute.")
+                    showToast(context, "New ${s.pictureWord} saved. It shows everywhere in about a minute.")
                     val current = currentUrl(target, s.tab.kind)
                     _state.update { it.copy(saving = false, currentUrl = current ?: choice.url, preview = null) }
                 } catch (ex: CancellationException) {
@@ -279,7 +318,7 @@ fun PosterPickerPage(
         return
     }
     androidx.compose.runtime.LaunchedEffect(Unit) { firstChip.tryRequestFocus() }
-    val kindShape = state.tab.kind.shape
+    val kindShape = state.pictureShape
     val preview: @Composable (Modifier) -> Unit = { m ->
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = m) {
             val url = state.preview?.url ?: state.currentUrl
@@ -324,7 +363,7 @@ fun PosterPickerPage(
                 modifier = Modifier.focusRequester(useFocus),
             ) {
                 Text(
-                    text = if (state.saving) "Saving…" else "Use this ${state.tab.kind.label.lowercase()}",
+                    text = if (state.saving) "Saving…" else "Use this ${state.pictureWord}",
                     fontWeight = FontWeight.Bold,
                     fontSize = BenflixType.body,
                 )
@@ -341,7 +380,15 @@ fun PosterPickerPage(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            ChipRow(state.tabs, { it.label }, { it == state.tab }, viewModel::pickTab, firstChip)
+            ChipRow(state.tabs, {
+                if (it ==
+                    PosterTab.POSTER
+                ) {
+                    state.pictureWord.replaceFirstChar { c -> c.uppercase() }
+                } else {
+                    it.label
+                }
+            }, { it == state.tab }, viewModel::pickTab, firstChip)
             if (state.tab == PosterTab.SEASONS) {
                 ChipRow(
                     state.seasons,
@@ -379,7 +426,7 @@ fun PosterPickerPage(
                 }
 
                 else -> {
-                    val wide = state.tab.kind != PosterKind.POSTER
+                    val wide = kindShape > 1.1f
                     val columns =
                         when {
                             isTv && wide -> 3
@@ -417,7 +464,17 @@ fun PosterPickerPage(
             horizontalArrangement = Arrangement.spacedBy(32.dp),
             modifier = modifier.fillMaxSize().padding(start = edge, end = edge, top = 24.dp),
         ) {
-            preview(Modifier.width(if (state.tab.kind == PosterKind.POSTER) 260.dp else 380.dp))
+            preview(
+                Modifier.width(
+                    if (kindShape < 0.9f) {
+                        260.dp
+                    } else if (kindShape < 1.1f) {
+                        300.dp
+                    } else {
+                        380.dp
+                    },
+                ),
+            )
             chooser(Modifier.weight(1f))
         }
     } else {
@@ -425,9 +482,9 @@ fun PosterPickerPage(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = modifier.fillMaxSize().padding(start = edge, end = edge, top = 12.dp),
         ) {
-            if (state.tab.kind == PosterKind.POSTER) {
+            if (kindShape < 1.1f) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    preview(Modifier.width(150.dp))
+                    preview(Modifier.width(if (kindShape < 0.9f) 150.dp else 190.dp))
                 }
             } else {
                 preview(Modifier.fillMaxWidth())

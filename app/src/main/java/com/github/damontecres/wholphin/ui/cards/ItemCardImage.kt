@@ -81,10 +81,8 @@ fun ItemCardImage(
                 null
             }
         }
-    val blurHash = remember(item, imageType) { item?.blurHashFor(imageType) }
     ItemCardImage(
         imageUrl = imageUrl,
-        blurHash = blurHash,
         name = name,
         showOverlay = showOverlay,
         favorite = favorite,
@@ -116,30 +114,29 @@ fun ItemCardImage(
     blurHash: String? = null,
     badgeItem: BaseItem? = null,
     focused: Boolean = false,
+    door: androidx.compose.ui.graphics.Color = badgeItem.doorColor(),
     fallback: @Composable BoxScope.() -> Unit = {
         ItemCardImageFallback(
             name = name,
             useFallbackText = useFallbackText,
             modifier = Modifier,
+            door = door,
         )
     },
 ) {
     var imageError by remember(imageUrl) { mutableStateOf(false) }
-    // A blurry version of the picture shows instantly while the real one loads
-    val placeholder =
-        remember(blurHash) {
-            blurHash?.let { BlurHash.decode(it) }?.let { BitmapPainter(it.asImageBitmap()) }
-        }
+    // Redesign 2 (rc-p-load): the card shows dark straight away and the picture fades in. (The old blurry
+    // preview cost the slow TVs a decode per card, so it's gone.)
+    val request = rememberFadeIn(imageUrl?.takeIf { it.isNotBlank() })
     Box(
-        modifier = modifier,
+        modifier = modifier.background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised),
     ) {
         if (!imageError && imageUrl.isNotNullOrBlank()) {
             AsyncImage(
-                model = imageUrl,
+                model = request,
                 contentDescription = name,
                 contentScale = contentScale,
                 alignment = Alignment.Center,
-                placeholder = placeholder,
                 onError = {
                     logCoilError(imageUrl, it.result)
                     imageError = true
@@ -172,41 +169,34 @@ fun BoxScope.ItemCardImageFallback(
     name: String?,
     useFallbackText: Boolean,
     modifier: Modifier = Modifier,
+    door: androidx.compose.ui.graphics.Color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Shows,
 ) {
-    // TODO options for overriding fallback
+    // Redesign 2 (rc-p-noart): no picture = a dark card with the big white name and a short door-colour line
+    if (name.isNotNullOrBlank()) {
+        NoPictureCard(name = name, door = door, modifier = modifier.align(Alignment.TopCenter))
+        return
+    }
     Box(
         modifier =
             modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised)
                 .fillMaxSize()
                 .align(Alignment.TopCenter),
     ) {
-        if (useFallbackText && name.isNotNullOrBlank()) {
-            Text(
-                text = name,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = BenflixType.small,
-                modifier =
-                    Modifier
-                        .padding(8.dp)
-                        .align(Alignment.Center),
-            )
-        } else {
-            Image(
-                painter = painterResource(id = R.drawable.video_solid),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                colorFilter =
-                    ColorFilter.tint(
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        BlendMode.SrcIn,
-                    ),
-                modifier =
-                    Modifier
-                        .fillMaxSize(.4f)
-                        .align(Alignment.Center),
-            )
-        }
+        Image(
+            painter = painterResource(id = R.drawable.video_solid),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            colorFilter =
+                ColorFilter.tint(
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    BlendMode.SrcIn,
+                ),
+            modifier =
+                Modifier
+                    .fillMaxSize(.4f)
+                    .align(Alignment.Center),
+        )
     }
 }
 
@@ -278,15 +268,3 @@ fun FavoriteIndicator(
     fontFamily = FontAwesome,
     modifier = modifier,
 )
-
-/** The server's BlurHash for this item's picture of [imageType], if it sent one */
-private fun BaseItem.blurHashFor(imageType: ImageType): String? {
-    val hashes = data.imageBlurHashes?.get(imageType) ?: return null
-    val tag =
-        if (imageType == ImageType.PRIMARY && useSeriesForPrimary) {
-            data.seriesPrimaryImageTag
-        } else {
-            data.imageTags?.get(imageType)
-        }
-    return tag?.let { hashes[it] } ?: hashes.values.firstOrNull()
-}

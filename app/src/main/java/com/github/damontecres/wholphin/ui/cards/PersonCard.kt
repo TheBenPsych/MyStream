@@ -164,36 +164,8 @@ fun PersonCard(
                         .clip(CircleShape),
             )
         }
-        SlidingCardText(focused) {
-            Text(
-                text = name ?: "",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .enableMarquee(focusedAfterDelay),
-            )
-            role?.let {
-                Text(
-                    text = role,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Normal,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                            .enableMarquee(focusedAfterDelay),
-                )
-            }
-        }
+        // Redesign 2 (rc-p-phone): name in up to 2 lines, role in grey, both centred under the face
+        CardNameUnder(name = name.orEmpty(), line = role, centred = true)
     }
 }
 

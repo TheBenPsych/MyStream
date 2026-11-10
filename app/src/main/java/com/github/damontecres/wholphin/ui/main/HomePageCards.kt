@@ -197,7 +197,11 @@ fun HomePageCardContent(
                         viewOptions.contentScale.scale
                     }
                 }
-            if (viewOptions.showTitles) {
+            // Redesign 2 (rc-family): phones always get the name under the card; TV follows the row's setting
+            val isTv =
+                com.github.damontecres.wholphin.ui.touch
+                    .rememberIsTv()
+            if (viewOptions.showTitles || !isTv) {
                 BannerCardWithTitle(
                     title = item?.title,
                     subtitle = item?.subtitle,

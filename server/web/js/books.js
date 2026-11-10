@@ -33,9 +33,8 @@
     const bar = t.status === "reading" && t.progress > 0.005 ? `<span class="bk-bar"><i style="width:${Math.max(3, t.progress * 100)}%"></i></span>` : "";
     const done = t.status === "done" ? `<span class="bk-tick">${B.I("check")}</span>` : "";
     const ears = t.kind === "audiobook" ? `<span class="bk-ears">${I("ears")}</span>` : "";
-    const img = t.cover ? `background-image:url('${pic(t.cover)}')` : "";
-    return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im" style="${img}">${t.cover ? "" : `<span class="bk-name">${esc(t.name)}</span>`}${tag}${ears}${done}${bar}</div>
-      <div class="cap">${esc(t.name)}<small>${esc(t.notHere ? "Not on Benflix yet" : t.line || "")}</small></div></a>`;
+    return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)">${esc(t.name)}</div>`}${tag}${ears}${done}${bar}</div>
+      <div class="cap"><span class="nm">${esc(t.name)}</span><small>${esc(t.notHere ? "Not on Benflix yet" : t.line || "")}</small></div></a>`;
   };
   const grid = (tiles) => tiles.length ? `<div class="bk-grid">${tiles.map((t) => card(t)).join("")}</div>` : "";
 
@@ -449,12 +448,11 @@
   const BQ = {};
   const aboutHref = (c) => c.have ? "#/book/" + enc(c.have) : `#/bookask?key=${enc(c.key)}&name=${enc(c.name || "")}&author=${enc(c.author || "")}${c.audioOnly ? "&audio=1" : ""}`;
   BQ.card = (c, ranked) => {
-    const img = c.cover ? `background-image:url('${esc(outPic(c.cover))}')` : "";
     const tag = ranked && c.rank ? `<span class="tag" style="background:${LIME};color:${ON_LIME}">#${c.rank}</span>` : "";
     const ears = c.audioOnly ? `<span class="bk-ears">${I("ears")}</span>` : "";
     const under = c.asked || c.award || c.line || c.author || "";
-    return `<a class="poster bk" href="${aboutHref(c)}"><div class="im" style="${img}">${c.cover ? "" : `<span class="bk-name">${esc(c.name)}</span>`}${tag}${ears}</div>
-      <div class="cap">${esc(c.name)}<small${c.asked ? ` style="color:${LIME};font-weight:700"` : ""}>${esc(under)}</small></div></a>`;
+    return `<a class="poster bk" href="${aboutHref(c)}"><div class="im">${c.cover ? `<img class="art" src="${esc(outPic(c.cover))}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)">${esc(c.name)}</div>`}${tag}${ears}</div>
+      <div class="cap"><span class="nm">${esc(c.name)}</span><small${c.asked ? ` style="color:${LIME};font-weight:700"` : ""}>${esc(under)}</small></div></a>`;
   };
   const genreTile = (g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`;
   BQ.page = (d, inGenre) => {
@@ -557,7 +555,7 @@
           const img = b.cover ? `background-image:url('${esc(outPic(b.cover))}')` : "";
           const href = b.have ? "#/book/" + enc(b.have) : b.isThis ? "" : `#/bookask?key=${enc(b.key)}&name=${enc(b.name)}&author=${enc(b.author || "")}`;
           return `<a class="poster bk" ${href ? `href="${href}"` : ""}><div class="im" style="${img}">${b.cover ? "" : `<span class="bk-name">${esc(b.name)}</span>`}${b.have ? `<span class="bk-tick">${B.I("check")}</span>` : ""}</div>
-            <div class="cap" ${b.isThis ? `style="color:${LIME}"` : ""}>${b.pos}. ${esc(b.name)}<small${b.have || b.asked ? ` style="color:${LIME}"` : ""}>${esc(b.have ? "On Benflix" : b.asked || (b.isThis ? "This book" : ""))}</small></div></a>`;
+            <div class="cap" ${b.isThis ? `style="color:${LIME}"` : ""}><span class="nm">${b.pos}. ${esc(b.name)}</span><small${b.have || b.asked ? ` style="color:${LIME}"` : ""}>${esc(b.have ? "On Benflix" : b.asked || (b.isThis ? "This book" : ""))}</small></div></a>`;
         }).join("")}</div><button class="arrow r" data-scroll="1" aria-label="Scroll right">${B.I("right")}</button></section>` : "";
       const back = `<div class="back"><b style="color:${LIME}">${esc((a.name || "").toUpperCase())}</b><p>${esc((a.back && a.back.blurb) || "No blurb yet.")}</p>${((a.back && a.back.quotes) || []).slice(0, 2).map((q) => `<p class="q">“${esc(q.text)}”</p>`).join("")}</div>`;
       el.innerHTML = `<div class="wrap bq-top"><div><button class="bq-flip" data-act="flip" title="Turn the cover over"><div class="front" style="${a.cover ? `background-image:url('${esc(outPic(a.cover))}')` : ""}">${a.cover ? "" : `<span class="bk-name">${esc(a.name)}</span>`}</div>${back}</button>
