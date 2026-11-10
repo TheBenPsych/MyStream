@@ -1,44 +1,30 @@
 package com.github.damontecres.wholphin.ui.games
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import androidx.tv.material3.Border
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
@@ -46,11 +32,18 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
+import com.github.damontecres.wholphin.ui.detail.title.TitleButton
+import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
+import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
+import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
+import com.github.damontecres.wholphin.ui.detail.title.TitlePage
+import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
+import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /** What the game details page shows besides the buttons */
 data class GameInfo(
@@ -104,8 +97,11 @@ fun playTimeText(ms: Long): String {
     }
 }
 
-/** The game's own page: box art, story, saves with pictures, play time and the Play / Resume buttons */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The game's own page (Benflix Redesign 2): the shared title page frame with the box art where the
+ * picture goes. Buttons: Play / Resume, Start over, Favourite, More (keep for trips, remove from this
+ * device). Tabs: Overview (the story and who made it) and Your saves.
+ */
 @Composable
 fun GameDetailsPage(
     choice: GameChoice,
@@ -122,162 +118,133 @@ fun GameDetailsPage(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val focus = remember { FocusRequester() }
     val ref = choice.ref
     val tint = consoleColour(ref.slug)
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        LaunchedEffect(Unit) { focus.tryRequestFocus() }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    if (isTv) {
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF0B0C10), Color(0xFF0B0C10)),
-                        )
-                    } else {
-                        Brush.verticalGradient(listOf(tint.copy(alpha = 0.7f), Color(0xFF0D0B0C), Color(0xFF0D0B0C)))
-                    },
-                ),
-        ) {
-            val cover: @Composable (Modifier) -> Unit = { mod ->
-                Box(
-                    mod
-                        .aspectRatio(3f / 4f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF242424)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(ref.name, color = Color.White, fontSize = BenflixType.small, modifier = Modifier.padding(8.dp))
-                    ref.coverUrl?.let { url ->
-                        AsyncImage(
-                            model =
-                                remember(url) {
-                                    ImageRequest
-                                        .Builder(context)
-                                        .data(url)
-                                        .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
-                                        .build()
-                                },
-                            contentDescription = ref.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
+    var showMore by remember { mutableStateOf(false) }
+    val coverModel =
+        remember(ref.coverUrl) {
+            ref.coverUrl?.let { url ->
+                ImageRequest
+                    .Builder(context)
+                    .data(url)
+                    .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
+                    .build()
             }
-            if (isTv) {
-                TvGameHero(
-                    choice = choice,
-                    info = info,
-                    saves = saves,
-                    playTimeMs = playTimeMs,
-                    favourite = favourite,
-                    token = token,
-                    focus = focus,
-                    onPlay = onPlay,
-                    onFavourite = onFavourite,
-                    onRemove = onRemove,
-                )
+        }
+    val kids = KidsMode.isActive
+    val canMore = !isTv || (choice.downloaded && !kids)
+    val buttons =
+        buildList {
+            val played = playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" }
+            if (choice.resume) {
+                add(TitleButton("Keep playing", BenflixIcon.PLAY, { onPlay(true) }, note = played))
+                add(TitleButton("Start over", BenflixIcon.REFRESH, { onPlay(false) }))
             } else {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 40.dp else 16.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = if (isTv) 56.dp else 16.dp, vertical = if (isTv) 36.dp else 16.dp),
-                ) {
-                    cover(Modifier.width(if (isTv) 260.dp else 110.dp))
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 8.dp),
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState()),
-                    ) {
-                        Text(
-                            ref.name,
-                            fontSize = if (isTv) BenflixType.hero else BenflixType.rowName,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                        )
-                        val facts =
-                            listOfNotNull(
-                                ref.consoleName,
-                                info?.year?.takeIf { it > 0 }?.toString(),
-                                info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
-                                info?.genres?.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                                playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
-                                if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download" else null,
-                            )
-                        Text(
-                            facts.joinToString("  ·  "),
-                            fontSize = if (isTv) BenflixType.body else BenflixType.tag,
-                            color = BenflixColors.Soft,
-                        )
-                        // Buttons
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (choice.resume) {
-                                DetailButton("▶  Resume", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(true) }
-                                DetailButton("Start over") { onPlay(false) }
-                            } else {
-                                DetailButton("▶  Play", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(false) }
-                            }
-                            DetailButton(if (favourite) "♥  Favourite" else "♡  Favourite", onClick = onFavourite)
-                        }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (!isTv) {
-                                DetailButton(if (choice.pinned) "Stop keeping for trips" else "Keep for trips") { onKeep(!choice.pinned) }
-                            }
-                            // Kids can't remove games from the device
-                            if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this device", onClick = onRemove)
-                        }
-                        if (choice.downloaded && !KidsMode.isActive) {
-                            Text(
-                                "Removing frees up space. Your saves are kept on Tower.",
-                                fontSize = BenflixType.tag,
-                                color = BenflixColors.Muted,
-                            )
-                        }
-                        when {
-                            info == null -> {
-                                Text("Loading the story…", fontSize = BenflixType.small, color = BenflixColors.Muted)
-                            }
-
-                            info.summary.isNotBlank() -> {
-                                Text(
-                                    info.summary,
-                                    fontSize = if (isTv) BenflixType.body else BenflixType.small,
-                                    color = BenflixColors.Text,
-                                    modifier = Modifier.widthIn(max = 760.dp),
-                                )
-                            }
-                        }
-                        info?.companies?.takeIf { it.isNotEmpty() }?.let {
-                            Text("Made by ${it.joinToString(", ")}", fontSize = BenflixType.small, color = BenflixColors.Muted)
-                        }
-                        if (saves.isNotEmpty()) {
-                            Text(
-                                "Your saves",
-                                fontSize = if (isTv) BenflixType.rowName else BenflixType.body,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                saves.forEach { spot -> SaveTile(spot, token, isTv) }
-                            }
-                            Text(
-                                "Resume picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
-                                fontSize = BenflixType.tag,
-                                color = BenflixColors.Muted,
-                            )
-                        }
-                    }
-                }
+                add(
+                    TitleButton(
+                        "Play",
+                        BenflixIcon.PLAY,
+                        { onPlay(false) },
+                        note = if (ref.size > 0 && !choice.downloaded) "${LocalGames.mb(ref.size)} download first" else played,
+                    ),
+                )
             }
+            add(TitleButton(if (favourite) "Favourite" else "Add to favourites", BenflixIcon.HEART, onFavourite))
+            add(
+                TitleButton(
+                    "More",
+                    BenflixIcon.MORE,
+                    { showMore = true },
+                    off = if (canMore) null else "Nothing else for this game yet",
+                ),
+            )
+        }
+    val tabs =
+        buildList {
+            add(
+                TitleTab("Overview") { scope ->
+                    TitleOverview(
+                        scope = scope,
+                        title = ref.name,
+                        story =
+                            when {
+                                info == null -> "Loading the story…"
+                                info.summary.isNotBlank() -> info.summary
+                                else -> null
+                            },
+                        strip =
+                            listOfNotNull(
+                                info?.companies?.takeIf { it.isNotEmpty() }?.let { StripPart("Made by", it.joinToString(", ")) },
+                                info?.genres?.takeIf { it.isNotEmpty() }?.let { StripPart(it.take(3).joinToString(", ")) },
+                            ),
+                        extra =
+                            if (choice.downloaded && !kids) {
+                                {
+                                    Text(
+                                        "Removing it from this device frees up space. Your saves are kept on Tower.",
+                                        fontSize = BenflixType.tag,
+                                        color = BenflixColors.Muted,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                },
+            )
+            if (saves.isNotEmpty()) {
+                add(
+                    TitleTab("Your saves") { scope ->
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = scope.side)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                saves.forEach { spot -> SaveTile(spot, token, scope.wide) }
+                            }
+                            Text(
+                                "Keep playing picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
+                                fontSize = BenflixType.tag,
+                                color = BenflixColors.Muted,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    val infoLine =
+        listOfNotNull(
+            ref.consoleName,
+            info?.year?.takeIf { it > 0 }?.toString(),
+            info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
+        ).joinToString("  ·  ")
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(BenflixColors.Tray)) {
+            TitlePage(
+                title = ref.name,
+                accent = tint,
+                picture = TitlePicture.Cover(ref.coverUrl, 3f / 4f, tint, model = coverModel),
+                info = infoLine,
+                buttons = buttons,
+                tabs = tabs,
+            )
+        }
+        if (showMore) {
+            TitleMorePanel(
+                title = ref.name,
+                onDismiss = { showMore = false },
+                items =
+                    buildList {
+                        if (!isTv) {
+                            add(
+                                TitleMoreItem(if (choice.pinned) "Stop keeping for trips" else "Keep for trips", BenflixIcon.DOWNLOAD, {
+                                    onKeep(!choice.pinned)
+                                }),
+                            )
+                        }
+                        // Kids can't remove games from the device
+                        if (choice.downloaded && !kids) {
+                            add(TitleMoreItem(if (isTv) "Remove from this TV" else "Remove from this device", BenflixIcon.TRASH, onRemove))
+                        }
+                    },
+            )
         }
     }
 }
@@ -333,169 +300,5 @@ private fun savedAgoText(time: Long): String {
         min < 60 -> "Saved $min min ago"
         min < 24 * 60 -> "Saved ${min / 60} h ago"
         else -> "Saved ${min / (24 * 60)} days ago"
-    }
-}
-
-@Composable
-private fun DetailButton(
-    text: String,
-    modifier: Modifier = Modifier,
-    primary: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(24.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = if (primary) Color.White else Color(0xFF2A2A2A),
-                contentColor = if (primary) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
-            ),
-        modifier = modifier,
-    ) {
-        Text(
-            text,
-            fontSize = BenflixType.body,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-        )
-    }
-}
-
-/**
- * Benflix redesign (game page, TV): like a movie's page. The game's picture (your last save, or the box
- * art) fills the right side, the name, facts, story, a short how-to line and the buttons sit on the left,
- * and Your saves is a row underneath.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TvGameHero(
-    choice: GameChoice,
-    info: GameInfo?,
-    saves: List<SaveSpot>,
-    playTimeMs: Long,
-    favourite: Boolean,
-    token: String,
-    focus: FocusRequester,
-    onPlay: (resume: Boolean) -> Unit,
-    onFavourite: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    val context = LocalContext.current
-    val ref = choice.ref
-    val picture: Any? = saves.firstOrNull { it.picture != null }?.picture ?: ref.coverUrl
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.62f)
-                .align(Alignment.TopEnd)
-                .clipToBounds(),
-        ) {
-            picture?.let { pic ->
-                AsyncImage(
-                    model =
-                        remember(pic) {
-                            ImageRequest
-                                .Builder(context)
-                                .data(pic)
-                                .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
-                                .build()
-                        },
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    // Old games are tiny pictures: keep the pixels sharp when they're made big
-                    filterQuality = FilterQuality.None,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Box(
-                Modifier.fillMaxSize().background(
-                    BenflixShade.heroSide,
-                ),
-            )
-            Box(Modifier.fillMaxSize().background(BenflixShade.bottom(0.4f)))
-        }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 56.dp, end = 56.dp, top = 40.dp, bottom = 32.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth(0.5f)) {
-                Text(
-                    ref.name,
-                    fontSize = BenflixType.hero,
-                    lineHeight = BenflixType.hero * 1.1f,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    maxLines = 2,
-                )
-                val facts =
-                    listOfNotNull(
-                        ref.consoleName,
-                        info?.year?.takeIf { it > 0 }?.toString(),
-                        info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
-                        info
-                            ?.genres
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.take(2)
-                            ?.joinToString(", "),
-                        playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" },
-                    )
-                Text(facts.joinToString("  ·  "), fontSize = BenflixType.body, color = BenflixColors.Soft, maxLines = 2)
-                when {
-                    info == null -> {
-                        Text("Loading the story…", fontSize = BenflixType.small, color = BenflixColors.Muted)
-                    }
-
-                    info.summary.isNotBlank() -> {
-                        Text(
-                            info.summary,
-                            fontSize = BenflixType.body,
-                            lineHeight = BenflixType.body * 1.35f,
-                            color = BenflixColors.Text,
-                            maxLines = 3,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                Text(
-                    "Hold Back (or the ☰ button) during the game for saves and the menu.",
-                    fontSize = BenflixType.small,
-                    color = BenflixColors.Muted,
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (choice.resume) {
-                        DetailButton("▶  Keep playing", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(true) }
-                        DetailButton("Start over") { onPlay(false) }
-                    } else {
-                        DetailButton("▶  Play", primary = true, modifier = Modifier.focusRequester(focus)) { onPlay(false) }
-                    }
-                    DetailButton(if (favourite) "♥  Favourite" else "♡  Favourite", onClick = onFavourite)
-                    // Kids can't remove games from the device
-                    if (choice.downloaded && !KidsMode.isActive) DetailButton("Remove from this TV", onClick = onRemove)
-                }
-            }
-            if (saves.isNotEmpty()) {
-                Text(
-                    "Your saves",
-                    fontSize = BenflixType.rowName,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    saves.forEach { spot -> SaveTile(spot, token, true) }
-                }
-            }
-        }
     }
 }

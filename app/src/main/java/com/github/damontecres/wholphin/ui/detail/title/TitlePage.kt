@@ -136,6 +136,8 @@ sealed interface TitlePicture {
         val url: String?,
         val ratio: Float,
         val tint: Color,
+        /** An image request to load instead of [url] (for pictures that need a sign-in header, like games) */
+        val model: Any? = null,
     ) : TitlePicture
 }
 
@@ -559,9 +561,9 @@ private fun BoxScope.TitlePictureView(
                         ),
                     ),
             )
-            if (picture.url != null) {
+            if (picture.url != null || picture.model != null) {
                 AsyncImage(
-                    model = picture.url,
+                    model = picture.model ?: picture.url,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier =

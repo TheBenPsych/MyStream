@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,21 +20,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -53,31 +46,21 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
-import com.github.damontecres.wholphin.ui.cards.SeasonCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.components.LoadingRow
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
-import com.github.damontecres.wholphin.ui.data.RowColumn
-import com.github.damontecres.wholphin.ui.discover.DiscoverRow
-import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
 import com.github.damontecres.wholphin.ui.endDay
 import com.github.damontecres.wholphin.ui.formatDate
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.premiereDay
-import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -338,10 +321,6 @@ fun PersonPage(
     }
 }
 
-private const val HEADER_ROW = 0
-private const val MOVIE_ROW = 1
-private const val DISCOVER_ROW = 4
-
 @Composable
 fun PersonPageContent(
     preferences: UserPreferences,
@@ -365,49 +344,9 @@ fun PersonPageContent(
     modifier: Modifier = Modifier,
     askForRest: @Composable (Modifier) -> Unit = {},
 ) {
-    val focusRequester = remember { FocusRequester() }
-    val headerFocusRequester = remember { FocusRequester() }
-    var position by rememberPosition()
-    LaunchedEffect(Unit) {
-        if (position.row > HEADER_ROW) {
-            focusRequester.tryRequestFocus()
-        } else {
-            headerFocusRequester.tryRequestFocus()
-        }
-    }
-    var focusedOnHeader by remember { mutableStateOf(true) }
-    val isTv = rememberIsTv()
-    // The poster you last opened, so Back lands on it again
-    var focusKey by rememberSaveable { mutableStateOf<String?>(null) }
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        userScrollEnabled = !focusedOnHeader,
-        modifier = modifier,
-    ) {
-        item {
-            PersonHeader(
-                name = name,
-                overview = overview,
-                imageUrl = imageUrl,
-                birthdate = birthdate,
-                birthPlace = birthPlace,
-                deathdate = deathdate,
-                favorite = favorite,
-                overviewOnClick = overviewOnClick,
-                favoriteOnClick = favoriteOnClick,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 480.dp)
-                        .padding(top = 16.dp, bottom = 40.dp)
-                        .focusRequester(headerFocusRequester)
-                        .onFocusChanged {
-                            focusedOnHeader = it.hasFocus
-                        },
-            )
-        }
-        // Approved actor page: their work split by door (Movies, Shows, Not on Benflix)
-        val doors =
+    // Approved Redesign 2 actor page: their work split into tabs (Movies, Shows, Not on Benflix yet)
+    val doors =
+        remember(movies, series, discovered) {
             listOfNotNull(
                 (movies as? RowLoadingState.Success)
                     ?.items
@@ -421,73 +360,24 @@ fun PersonPageContent(
                     ?.let { PersonDoor.Library("shows", "Shows", BenflixColors.Shows, it) },
                 discovered.takeIf { it.isNotEmpty() }?.let { PersonDoor.Ask(it) },
             )
-        val onItem = { key: String, item: BaseItem ->
-            focusKey = key
-            position = RowColumn(MOVIE_ROW, 0)
-            onClickItem(0, item)
         }
-        val onAsk = { key: String, item: DiscoverItem ->
-            focusKey = key
-            position = RowColumn(DISCOVER_ROW, 0)
-            onClickDiscover(0, item)
-        }
-        if (isTv) {
-            item(key = "doors") {
-                PersonDoorColumns(
-                    doors = doors,
-                    focusKey = focusKey,
-                    focusRequester = focusRequester,
-                    onClickItem = onItem,
-                    onClickAsk = onAsk,
-                    modifier = Modifier.padding(bottom = 32.dp),
-                )
-            }
-        } else {
-            doors.forEach { door ->
-                item(key = "door-${door.key}") {
-                    PersonDoorRow(
-                        door = door,
-                        focusKey = focusKey,
-                        focusRequester = focusRequester,
-                        onClickItem = onItem,
-                        onClickAsk = onAsk,
-                        posterWidth = 108.dp,
-                    )
-                }
-            }
-        }
-        if (enableViewMoreDiscover) {
-            item(key = "ask-more") {
-                androidx.tv.material3.Surface(
-                    onClick = onClickViewMoreDiscover,
-                    shape =
-                        androidx.tv.material3.ClickableSurfaceDefaults
-                            .shape(RoundedCornerShape(50)),
-                    colors =
-                        androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                            containerColor = BenflixColors.Raised,
-                            contentColor = BenflixColors.Soft,
-                            focusedContainerColor = BenflixColors.Text,
-                            focusedContentColor = BenflixColors.Tray,
-                        ),
-                    scale =
-                        androidx.tv.material3.ClickableSurfaceDefaults
-                            .scale(focusedScale = 1f),
-                    modifier = Modifier.padding(horizontal = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge),
-                ) {
-                    Text(
-                        text = "More to ask for  →",
-                        fontSize = BenflixType.small,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
-        // Benflix "Ask for everything by someone": tick what's missing and ask for it all at once
-        item(key = "ask-rest") {
-            askForRest(Modifier.padding(horizontal = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge))
-        }
-    }
+    PersonTitlePage(
+        name = name,
+        overview = overview,
+        imageUrl = imageUrl,
+        birthdate = birthdate,
+        deathdate = deathdate,
+        birthPlace = birthPlace,
+        favorite = favorite,
+        doors = doors,
+        onClickItem = { onClickItem(0, it) },
+        onClickAsk = { onClickDiscover(0, it) },
+        overviewOnClick = overviewOnClick,
+        favoriteOnClick = favoriteOnClick,
+        moreToAsk = if (enableViewMoreDiscover) onClickViewMoreDiscover else null,
+        askForRest = askForRest,
+        modifier = modifier,
+    )
 }
 
 fun rowTitle(
