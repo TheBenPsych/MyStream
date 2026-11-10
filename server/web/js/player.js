@@ -97,7 +97,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         ${isEp ? `<button class="pbtn" id="pList" title="Episodes">${I("list")}</button>` : ""}
         <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
         <button class="pbtn" id="pSub" title="Audio and subtitles (S turns them on and off)">${I("sub")}</button>
-        <button class="pbtn" id="pVol" title="Sound on / off (M)">${I("vol")}</button>
+        ${B.volume("pVol")}
         <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
       </div>
     </div>
@@ -208,7 +208,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pPlay").onclick = () => (v.paused ? v.play() : v.pause());
   $("#pBk").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 10); poke(); };
   $("#pFw").onclick = () => { v.currentTime = Math.min(total(), v.currentTime + 10); poke(); };
-  $("#pVol").onclick = () => { v.muted = !v.muted; $("#pVol").innerHTML = I(v.muted ? "mute" : "vol"); };
+  B.wireVolume($("#pVol").parentNode, v, "volume");
   $("#pBack").onclick = () => leave();
   $("#pSub").onclick = () => openPanel();
   $("#pKeys").onclick = () => showKeys();

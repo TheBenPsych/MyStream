@@ -185,10 +185,12 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
       <button class="pbtn" id="pBroken" title="This channel is broken">${I("flag")}</button>
       <button class="pbtn" id="pGuide" title="Guide (left arrow)">${I("list")}</button>
       <button class="pbtn" id="pStar" title="Favourite (F)">${I("star")}</button>
+      ${B.volume("pVol")}
       <button class="pbtn" id="pFull" title="Full screen">${I("full")}</button>
       <button class="pbtn" id="pBack" title="Back">${I("x")}</button>
     </div><div class="dim keyhint" style="font-size:13px;margin-top:8px">Up and down arrows change channel · Left opens the guide · type a number to jump</div></div></div>`;
   const pl = $("#pl"), v = $("#v");
+  B.wireVolume($("#pVol").parentNode, v, "volume");
   const msg = (t) => { $("#msg").innerHTML = t ? `<div><div class="spin"></div><div>${esc(t)}</div></div>` : ""; };
   const paint = () => {
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
