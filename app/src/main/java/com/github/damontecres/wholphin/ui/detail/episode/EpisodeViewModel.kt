@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.MediaStreamType
 import timber.log.Timber
@@ -113,6 +114,7 @@ class EpisodeViewModel
                         )
                     }
                     backdropService.submit(item)
+                    loadExtras(item)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -120,6 +122,40 @@ class EpisodeViewModel
                     _state.update { it.copy(episode = DataLoadingState.Error(ex)) }
                 }
             }
+
+        /** The Next episodes and Cast tabs. Nothing shows when they can't be fetched. */
+        private suspend fun loadExtras(item: BaseItem) {
+            try {
+                val people =
+                    item.data.people
+                        ?.map {
+                            com.github.damontecres.wholphin.data.model.Person
+                                .fromDto(context, it, api)
+                        }.orEmpty()
+                _state.update { it.copy(people = people) }
+                val seriesId = item.data.seriesId ?: return
+                val seasonId = item.data.seasonId ?: return
+                val all =
+                    api.tvShowsApi
+                        .getEpisodes(
+                            org.jellyfin.sdk.model.api.request.GetEpisodesRequest(
+                                seriesId = seriesId,
+                                seasonId = seasonId,
+                                userId = serverRepository.currentUser?.id,
+                                fields = com.github.damontecres.wholphin.ui.ItemRowFields,
+                                enableUserData = true,
+                            ),
+                        ).content.items
+                        .map { BaseItem(it, true) }
+                val index = all.indexOfFirst { it.id == item.id }
+                val next = if (index >= 0) all.drop(index + 1) else emptyList()
+                _state.update { it.copy(nextEpisodes = next.take(30)) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't load the next episodes for %s", item.id)
+            }
+        }
 
         fun setWatched(
             itemId: UUID,
@@ -203,4 +239,8 @@ class EpisodeViewModel
 data class EpisodeState(
     val episode: DataLoadingState<BaseItem> = DataLoadingState.Pending,
     val chosenStreams: ChosenStreams? = null,
+    /** Benflix title page: the episodes after this one in its season (the Next episodes tab) */
+    val nextEpisodes: List<BaseItem> = emptyList(),
+    /** Benflix title page: who's in this episode (the Cast tab) */
+    val people: List<com.github.damontecres.wholphin.data.model.Person> = emptyList(),
 )

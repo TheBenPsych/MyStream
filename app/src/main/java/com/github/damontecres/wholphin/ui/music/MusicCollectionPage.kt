@@ -171,111 +171,134 @@ fun MusicCollectionPage(
         actions.playList(songs, index, shuffle, state.item, sourceName)
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val heroHeight = if (wide) ((maxHeight - overlap) * 0.46f).coerceIn(200.dp, 340.dp) + overlap else 0.dp
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 48.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item(key = "hero") {
-                CollectionHero(
-                    state = state,
-                    wide = wide,
-                    easy = easy,
-                    height = heroHeight,
-                    overlap = overlap,
-                    side = side,
-                    playFocus = playFocus,
-                    // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
-                    onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
-                    onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
-                    onHeart = viewModel::toggleAlbumFavourite,
-                    onMore = { pageMenu = true },
-                    editing = editing,
-                )
-            }
-            if (songs.isEmpty() && state.loaded) {
-                item(key = "empty") {
-                    Text(
-                        text =
-                            when (kind) {
-                                CollectionKind.LIKED -> "Press the heart on a song and it lands here."
-                                CollectionKind.PLAYLIST -> "No songs in this playlist yet. Use a song's More menu to add some."
-                                else -> "No songs here yet."
-                            },
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.body,
-                        modifier = Modifier.padding(start = side, top = 16.dp),
+    // Redesign 2: albums use the shared title page frame (playlists and mixes keep this page, they can be long)
+    if (kind == CollectionKind.ALBUM && state.item != null && state.loaded) {
+        AlbumTitlePage(
+            state = state,
+            currentId = currentId,
+            playing = playing,
+            easy = easy,
+            onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
+            onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
+            onLike = viewModel::toggleAlbumFavourite,
+            onMore = { pageMenu = true },
+            onSong = { play(it, false) },
+            onSongMore = { menuFor = it },
+            onAlbum = { actions.navigationManager.navigateTo(it.destination()) },
+            modifier = modifier.fillMaxSize().padding(top = overlap),
+        )
+    } else {
+        BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+            val heroHeight = if (wide) ((maxHeight - overlap) * 0.46f).coerceIn(200.dp, 340.dp) + overlap else 0.dp
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 48.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item(key = "hero") {
+                    CollectionHero(
+                        state = state,
+                        wide = wide,
+                        easy = easy,
+                        height = heroHeight,
+                        overlap = overlap,
+                        side = side,
+                        playFocus = playFocus,
+                        // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
+                        onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
+                        onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
+                        onHeart = viewModel::toggleAlbumFavourite,
+                        onMore = { pageMenu = true },
+                        editing = editing,
                     )
                 }
-            }
-            var lastDisc: Int? = null
-            songs.forEachIndexed { index, song ->
-                val disc = song.data.parentIndexNumber
-                if (discs && disc != lastDisc) {
-                    lastDisc = disc
-                    item(key = "disc-$disc-$index") {
+                if (songs.isEmpty() && state.loaded) {
+                    item(key = "empty") {
                         Text(
-                            text = "Disc ${disc ?: 1}",
+                            text =
+                                when (kind) {
+                                    CollectionKind.LIKED -> "Press the heart on a song and it lands here."
+                                    CollectionKind.PLAYLIST -> "No songs in this playlist yet. Use a song's More menu to add some."
+                                    else -> "No songs here yet."
+                                },
                             color = BenflixColors.Soft,
-                            fontSize = BenflixType.small,
-                            fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.padding(start = side + 10.dp, top = 14.dp, bottom = 4.dp),
+                            fontSize = BenflixType.body,
+                            modifier = Modifier.padding(start = side, top = 16.dp),
                         )
                     }
                 }
-                // A playlist entry keeps its key when it moves, so focus stays on it while editing
-                item(key = "song-" + (song.data.playlistItemId ?: "$index-${song.id}")) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier =
-                            Modifier
-                                .padding(horizontal = side - 10.dp)
-                                .widthIn(max = if (wide) 980.dp else 2000.dp),
-                    ) {
-                        SongRow(
-                            song = song,
-                            number = if (withCover) index + 1 else (song.data.indexNumber ?: (index + 1)),
-                            withCover = withCover,
-                            isCurrent = song.id == currentId,
-                            isPlaying = playing,
-                            liked = song.id in state.liked,
-                            big = easy,
-                            onClick = { if (!editing) play(index, false) },
-                            onMore = { if (!editing) menuFor = index },
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (editing) {
-                            MusicButton(null, BenflixIcon.DOWN, onClick = { viewModel.move(index, 1) })
-                            MusicButton(null, BenflixIcon.DOWN, onClick = { viewModel.move(index, -1) }, modifier = Modifier.rotate(180f))
-                            MusicButton(null, BenflixIcon.CLOSE, onClick = { viewModel.removeFromPlaylist(index) })
-                        } else if (!isTv) {
-                            MusicButton(null, BenflixIcon.MORE_VERT, onClick = { menuFor = index })
+                var lastDisc: Int? = null
+                songs.forEachIndexed { index, song ->
+                    val disc = song.data.parentIndexNumber
+                    if (discs && disc != lastDisc) {
+                        lastDisc = disc
+                        item(key = "disc-$disc-$index") {
+                            Text(
+                                text = "Disc ${disc ?: 1}",
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(start = side + 10.dp, top = 14.dp, bottom = 4.dp),
+                            )
+                        }
+                    }
+                    // A playlist entry keeps its key when it moves, so focus stays on it while editing
+                    item(key = "song-" + (song.data.playlistItemId ?: "$index-${song.id}")) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = side - 10.dp)
+                                    .widthIn(max = if (wide) 980.dp else 2000.dp),
+                        ) {
+                            SongRow(
+                                song = song,
+                                number = if (withCover) index + 1 else (song.data.indexNumber ?: (index + 1)),
+                                withCover = withCover,
+                                isCurrent = song.id == currentId,
+                                isPlaying = playing,
+                                liked = song.id in state.liked,
+                                big = easy,
+                                onClick = { if (!editing) play(index, false) },
+                                onMore = { if (!editing) menuFor = index },
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (editing) {
+                                MusicButton(null, BenflixIcon.DOWN, onClick = { viewModel.move(index, 1) })
+                                MusicButton(
+                                    null,
+                                    BenflixIcon.DOWN,
+                                    onClick = { viewModel.move(index, -1) },
+                                    modifier = Modifier.rotate(180f),
+                                )
+                                MusicButton(null, BenflixIcon.CLOSE, onClick = { viewModel.removeFromPlaylist(index) })
+                            } else if (!isTv) {
+                                MusicButton(null, BenflixIcon.MORE_VERT, onClick = { menuFor = index })
+                            }
                         }
                     }
                 }
-            }
-            if (state.moreByArtist.isNotEmpty()) {
-                item(key = "more") {
-                    AlbumRow(
-                        title = "More by ${state.item?.data?.albumArtist ?: "this artist"}",
-                        albums = state.moreByArtist,
-                        side = side,
-                        size = if (wide) 132.dp else 116.dp,
-                        onClick = { actions.navigationManager.navigateTo(it.destination()) },
-                    )
+                if (state.moreByArtist.isNotEmpty()) {
+                    item(key = "more") {
+                        AlbumRow(
+                            title = "More by ${state.item?.data?.albumArtist ?: "this artist"}",
+                            albums = state.moreByArtist,
+                            side = side,
+                            size = if (wide) 132.dp else 116.dp,
+                            onClick = { actions.navigationManager.navigateTo(it.destination()) },
+                        )
+                    }
                 }
-            }
-            if (state.similar.isNotEmpty()) {
-                item(key = "similar") {
-                    AlbumRow(
-                        title = "Similar albums on Benflix",
-                        albums = state.similar,
-                        side = side,
-                        size = if (wide) 132.dp else 116.dp,
-                        onClick = { actions.navigationManager.navigateTo(it.destination()) },
-                    )
+                if (state.similar.isNotEmpty()) {
+                    item(key = "similar") {
+                        AlbumRow(
+                            title = "Similar albums on Benflix",
+                            albums = state.similar,
+                            side = side,
+                            size = if (wide) 132.dp else 116.dp,
+                            onClick = { actions.navigationManager.navigateTo(it.destination()) },
+                        )
+                    }
                 }
             }
         }
