@@ -897,6 +897,23 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .rqsplit .grid .poster .cap { display: block; }
 .rqgenres { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .rqgenres .chip { justify-content: center; padding: 12px 16px; font-size: 15px; }
+/* Redesign 2 (Requests): the five status pills, the line above the wall, square music walls, request lines */
+.rqpill { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.rqpill.p-asked { color: #C9CBD2; background: rgba(201, 203, 210, .16); }
+.rqpill.p-getting { color: #7AA7FF; background: rgba(122, 167, 255, .18); }
+.rqpill.p-looking { color: #F2B544; background: rgba(242, 181, 68, .18); }
+.rqpill.p-cant { color: #FF8A8A; background: rgba(255, 138, 138, .18); }
+.rqpill.p-ready { color: #5BD18B; background: rgba(91, 209, 139, .18); }
+.rqside button .n.amber { color: #F2B544; }
+.rqline { min-height: 24px; margin: 0 0 12px; color: var(--ink2); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rqline.bq-line { display: flex; align-items: center; gap: 14px; white-space: normal; }
+.rqline.bq-line .cv { width: 52px; aspect-ratio: 2 / 3; flex: none; border-radius: 6px; background: var(--pg3) center/cover no-repeat; }
+.rqline.bq-line .kick { font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.rqline.bq-line .grow { min-width: 0; }
+.rqsplit .grid.sq { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.rqsplit .grid.sq .pvcard { position: relative; }
+.rqthumb { width: 48px; height: 72px; flex: none; border-radius: 6px; background: var(--pg3) center/cover no-repeat; }
+.rqthumb.sq { height: 48px; }
 @media (max-width: 900px) {
   .rqsplit { flex-direction: column; gap: 12px; align-items: stretch; }
   .rqsplit > * { min-width: 0; }

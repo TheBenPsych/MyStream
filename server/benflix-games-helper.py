@@ -874,7 +874,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
                     raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
-                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json, is_kids=is_kids)
+                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json, is_kids=is_kids, user_name=_names.get(user_id, ""))
                 return self.send(status, answer)
             if path.startswith("/api/books/"):
                 # Books: manga, ebooks and audiobooks (everyone; Kids only see kids' books)

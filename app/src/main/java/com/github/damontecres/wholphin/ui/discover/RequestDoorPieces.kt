@@ -74,9 +74,11 @@ import kotlinx.coroutines.delay
 /** The words on a poster's top-left pill, or null for nothing */
 private fun DiscoverItem.statusWord(): String? =
     when (availability) {
-        SeerrAvailability.PENDING, SeerrAvailability.PROCESSING -> "ASKED FOR"
-        SeerrAvailability.PARTIALLY_AVAILABLE -> "SOME ON BENFLIX"
-        SeerrAvailability.AVAILABLE -> "ON BENFLIX"
+        // Redesign 2: the same words as the status pills everywhere else
+        SeerrAvailability.PENDING -> "ASKED"
+        SeerrAvailability.PROCESSING -> "GETTING IT"
+        SeerrAvailability.PARTIALLY_AVAILABLE -> "PARTLY HERE"
+        SeerrAvailability.AVAILABLE -> "READY TO WATCH"
         else -> null
     }
 

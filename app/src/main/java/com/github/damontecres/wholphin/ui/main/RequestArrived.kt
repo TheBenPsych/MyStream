@@ -74,7 +74,7 @@ class RequestReadyService
         data class OnTheWay(
             val requestId: Int,
             val title: String,
-            /** Plain words, like "On the way, about 20 minutes left" or "Waiting for a yes" */
+            /** The status pill words, like "Getting it · about 20 minutes left" or "Asked · waiting for Ben" */
             val line: String,
             val posterUrl: String?,
         )
@@ -328,8 +328,9 @@ internal fun onTheWayLine(
     downloads: List<JsonObject>,
     now: java.time.Instant = java.time.Instant.now(),
 ): String {
-    if (status == RequestStatus.PENDING) return "Asked for, waiting for a yes"
-    if (downloads.isEmpty()) return "On the way, looking for a copy"
+    // Redesign 2: the same five status words as Requests (Asked, Getting it, Still looking...)
+    if (status == RequestStatus.PENDING) return "Asked · waiting for Ben"
+    if (downloads.isEmpty()) return "Still looking"
     val ends =
         downloads.mapNotNull { d ->
             d["estimatedCompletionTime"]?.jsonPrimitive?.contentOrNull?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
@@ -341,16 +342,16 @@ internal fun onTheWayLine(
                 .between(now, last)
                 .toMinutes()
         return when {
-            minutes < 2 -> "On the way, almost here"
-            minutes < 60 -> "On the way, about $minutes minutes left"
-            minutes < 120 -> "On the way, about an hour left"
-            minutes < 48 * 60 -> "On the way, about ${minutes / 60} hours left"
-            else -> "On the way, downloading"
+            minutes < 2 -> "Getting it · almost here"
+            minutes < 60 -> "Getting it · about $minutes minutes left"
+            minutes < 120 -> "Getting it · about an hour left"
+            minutes < 48 * 60 -> "Getting it · about ${minutes / 60} hours left"
+            else -> "Getting it"
         }
     }
     val size = downloads.sumOf { it["size"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 0.0 }
     val left = downloads.sumOf { it["sizeLeft"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 0.0 }
-    return if (size > 0) "On the way, ${(((size - left) / size) * 100).toInt().coerceIn(0, 99)}% downloaded" else "On the way, downloading"
+    return if (size > 0) "Getting it · ${(((size - left) / size) * 100).toInt().coerceIn(0, 99)}%" else "Getting it"
 }
 
 /** Keeps an eye out for arrived requests while Benflix is open: soon after start, then every half hour */

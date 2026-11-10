@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -35,21 +35,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -83,6 +83,7 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabViewModel
 import com.github.damontecres.wholphin.ui.components.TabbedPage
+import com.github.damontecres.wholphin.ui.components.UNSET
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.detail.discover.AnimeTagCatalogViewModel
 import com.github.damontecres.wholphin.ui.detail.discover.isAdultContent
@@ -96,7 +97,6 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
@@ -279,6 +279,9 @@ class BenflixRequestsViewModel
         }
 
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+
+        /** Who is signed in, for things remembered per person on this device */
+        val userKey: String get() = serverRepository.currentUser?.id?.toString() ?: "none"
 
         /** Connected through the Jellyfin Enhanced plugin, which passes fewer filters */
         val viaJellyfin: Boolean get() = seerrService.api.viaJellyfin
@@ -1339,28 +1342,43 @@ fun BenflixRequestsPage(
         return
     }
     val admin = viewModel.isAdmin
+    // Redesign 2 (Ben 2026-11-10): the same tabs for everyone who can ask (Kids and Guest never see Requests).
+    // Grown-up family profiles see Music too; their song and album asks wait for Ben's Approve.
     val tabs =
-        remember(admin) {
-            if (admin) {
-                // Benflix: Music is only for Ben (he picked "only me" for music requests)
-                listOf("Movies", "Shows", "Anime", "Music", "Books", "Requests")
-            } else {
-                // Benflix: everyone gets the same browse tabs as Ben (Ben asked), plus their own requests
-                listOf("Movies", "Shows", "Anime", "Books", "My requests")
-            }.map { TabDetails(StringStringProvider(it)) }
+        remember {
+            REQUEST_TABS.map { TabDetails(StringStringProvider(it)) }
         }
-    val tabsId = if (admin) "benflix-requests-admin" else "benflix-requests-family"
+    val tabsId = "benflix-requests"
     val tabViewModel =
         hiltViewModel<TabViewModel, TabViewModel.Factory>(
             key = "$tabsId-${tabs.size}",
             creationCallback = { it.create(tabsId, tabs.size) },
         )
-    // Benflix music: "Ask for music" on the Music page opens straight on the Music tab
-    LaunchedEffect(admin) {
-        if (admin && RequestsJump.music) tabViewModel.updateSelectedTabIndex(3)
-        if (RequestsJump.books) tabViewModel.updateSelectedTabIndex(if (admin) 4 else 3)
-        RequestsJump.music = false
-        RequestsJump.books = false
+    // Requests opens on the tab you used last (always, whatever the "remember tabs" setting says).
+    // "Ask for music" on the Music door and "Ask for a book" on the Books door still jump to their tab.
+    val context = LocalContext.current
+    val tabState by tabViewModel.state.collectAsState()
+    var startPicked by remember { mutableStateOf(false) }
+    LaunchedEffect(tabState) {
+        // Wait for the tab page to be ready, then pick the starting tab once
+        if (tabState == UNSET) return@LaunchedEffect
+        if (!startPicked) {
+            startPicked = true
+            val jump =
+                when {
+                    RequestsJump.music -> 3
+                    RequestsJump.books -> 4
+                    else -> null
+                }
+            RequestsJump.music = false
+            RequestsJump.books = false
+            val start = (jump ?: RequestsLastTab.get(context, viewModel.userKey))?.coerceIn(0, tabs.lastIndex)
+            if (start != null && start != tabState) {
+                tabViewModel.updateSelectedTabIndex(start)
+                return@LaunchedEffect
+            }
+        }
+        if (tabState in tabs.indices) RequestsLastTab.set(context, viewModel.userKey, tabState)
     }
     TabbedPage(
         itemId = tabsId,
@@ -1368,15 +1386,40 @@ fun BenflixRequestsPage(
         modifier = modifier,
         viewModel = tabViewModel,
     ) { index, _ ->
-        // Last tab: everyone's requests with Approve / Decline (admin), or what you asked for and what arrived
         when (index) {
             0 -> FindShelf(FindSection.MOVIES, viewModel)
             1 -> FindShelf(FindSection.SHOWS, viewModel)
             2 -> FindShelf(FindSection.ANIME, viewModel)
-            3 -> if (admin) MusicShelf() else BooksShelf()
-            4 -> if (admin) BooksShelf() else RequestList(viewModel, mineOnly = true, arrivedOnly = null)
+            3 -> MusicShelf()
+            4 -> BooksShelf()
+            // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
+    }
+}
+
+/** Requests tabs, in the order Ben kept (Movies, Shows, Anime, Music, Books), then Your requests */
+private val REQUEST_TABS = listOf("Movies", "Shows", "Anime", "Music", "Books", "Your requests")
+
+/** The Requests tab each person used last, on this device */
+internal object RequestsLastTab {
+    private const val PREFS = "benflix_requests_tab"
+
+    fun get(
+        context: Context,
+        user: String,
+    ): Int? =
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(user, -1)
+            .takeIf { it >= 0 }
+
+    fun set(
+        context: Context,
+        user: String,
+        tab: Int,
+    ) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(user, tab).apply()
     }
 }
 
@@ -1473,7 +1516,9 @@ private fun FindShelf(
     viewModel: BenflixRequestsViewModel,
 ) {
     var filters by remember(section) { mutableStateOf(FindFilters()) }
-    var hideOwned by rememberSaveable { mutableStateOf(true) }
+    // Redesign 2: titles already on Benflix never show in the lists; "N more are already on Benflix" at the
+    // end of a list opens them for that list only
+    var ownedOpen by rememberSaveable(section) { mutableStateOf<String?>(null) }
     var hideAsked by rememberSaveable { mutableStateOf(false) }
     // Benflix: family accounts start with Family-friendly only on (like their search), and can turn it off
     var familyOnly by rememberSaveable { mutableStateOf(!viewModel.isAdmin) }
@@ -1515,9 +1560,9 @@ private fun FindShelf(
                 orderRequestRows(baseRows + because + collection)
             }
         }
-    val visible: (List<DiscoverItem>) -> List<DiscoverItem> = { items ->
+    val visibleWith: (List<DiscoverItem>, Boolean) -> List<DiscoverItem> = { items, withOwned ->
         items.filter { item ->
-            (!hideOwned || item.availability != SeerrAvailability.AVAILABLE) &&
+            (withOwned || item.availability != SeerrAvailability.AVAILABLE) &&
                 (
                     !hideAsked ||
                         (item.availability != SeerrAvailability.PENDING && item.availability != SeerrAvailability.PROCESSING)
@@ -1526,6 +1571,8 @@ private fun FindShelf(
                 (!familyOnly || item.type == SeerrItemType.PERSON || ratings[item.requestKey()]?.familyFriendly(item.type) == true)
         }
     }
+    val visible: (List<DiscoverItem>) -> List<DiscoverItem> = { items -> visibleWith(items, false) }
+    val cantFind by viewModel.cantFind.collectAsState()
     // Benflix: always look up details, for the Family-friendly switch and the "Adult content" banner
     LaunchedEffect(rows, searchResults) {
         viewModel.loadRatings(rows.orEmpty().flatMap { it.items } + searchResults.orEmpty())
@@ -1551,7 +1598,7 @@ private fun FindShelf(
     }
     val seasonPick by viewModel.seasonPick.collectAsState()
     seasonPick?.let { pick ->
-        SeasonPickDialog(
+        SeasonAskPanel(
             pick = pick,
             onDismiss = viewModel::closeSeasonPick,
             onAsk = { viewModel.askSeasons(pick.item, it) },
@@ -1617,77 +1664,109 @@ private fun FindShelf(
             (!viewModel.isAdmin || (mySeerrId != null && e.request.requestedBy?.id == mySeerrId)) &&
                 !(e.available && BenflixCantFind.daysSince(e.request.updatedAt ?: e.request.createdAt)?.let { it > 7 } == true)
         }
-    // true = "Waiting for you" list, false = "Your requests" list
-    var listOpen by remember { mutableStateOf<Boolean?>(null) }
-    listOpen?.let { waiting ->
-        RequestListDialog(
-            title = if (waiting) "Waiting for you" else "Your requests",
-            entries = if (waiting) waitingForYou else mine,
-            waiting = waiting,
-            onOpen = { e -> e.item?.let { openItem(it) } },
-            onAnswer = viewModel::answer,
-            onDismiss = { listOpen = null },
-        )
-    }
-    // The lists that have something to show, with Trending split into a Top 10 and the rest
+    // The lists that have something to show (Redesign 2 names and order). Trending is split into a ranked
+    // Top 10 and the rest; Popular joins the end of Trending so the wall stays long.
     val shownRows =
-        rows.orEmpty().flatMap { row ->
-            val comingSoon = row.title.startsWith("Coming soon")
-            val shown =
-                visible(row.items).let { list ->
-                    if (comingSoon) {
-                        list
-                            .filter { it.releaseDate == null || !it.releaseDate.isBefore(LocalDate.now()) }
-                            .sortedBy { it.releaseDate ?: LocalDate.MAX }
-                    } else {
-                        list
+        remember(rows, section, filters, hidden, ratings, hideAsked, familyOnly, ownedOpen) {
+            val base = rows.orEmpty()
+            val popular = base.firstOrNull { it.title == "Popular" || it.title == "Popular anime shows" }?.items.orEmpty()
+            val out = mutableListOf<ShownRow>()
+            fun add(
+                title: String,
+                items: List<DiscoverItem>,
+                ranked: Boolean = false,
+                comingSoon: Boolean = false,
+            ) {
+                val seen = HashSet<String>()
+                val unique = items.filter { seen.add(it.requestKey()) }
+                val shown = visibleWith(unique, ownedOpen == title)
+                val owned = visibleWith(unique, true).count { it.availability == SeerrAvailability.AVAILABLE }
+                if (shown.isNotEmpty() || owned > 0) out += ShownRow(title, shown, comingSoon, ranked, ownedCount = owned)
+            }
+            base.forEach { row ->
+                val t = row.title
+                when {
+                    t.startsWith("Trending") -> {
+                        val topName =
+                            when {
+                                filters.genre != null -> "Top 10 in ${filters.genre?.label}"
+                                section == FindSection.ANIME -> "Top 10 anime"
+                                else -> "Top 10 this week"
+                            }
+                        val top = visibleWith(row.items, false).take(10)
+                        add(topName, top, ranked = true)
+                        val rest = (row.items + if (section == FindSection.ANIME) emptyList() else popular).filter { it !in top }
+                        add(if (section == FindSection.ANIME) "This season" else "Trending", rest)
+                    }
+
+                    t == "Popular anime shows" -> {
+                        add("Popular", row.items)
+                    }
+
+                    t == "Popular" -> {}
+
+                    section == FindSection.ANIME && (t.startsWith("Coming soon") || t.startsWith("Top rated")) -> {}
+
+                    t.startsWith("Coming soon") -> {
+                        add(
+                            t,
+                            row.items
+                                .filter { it.releaseDate == null || !it.releaseDate.isBefore(LocalDate.now()) }
+                                .sortedBy { it.releaseDate ?: LocalDate.MAX },
+                            comingSoon = true,
+                        )
+                    }
+
+                    else -> {
+                        add(t, row.items)
                     }
                 }
-            when {
-                shown.isEmpty() -> {
-                    emptyList()
-                }
-
-                row.title.startsWith("Trending") -> {
-                    // One long wall: the Top 10 (with numbers) and then the rest of Trending
-                    listOf(
-                        ShownRow(
-                            if (filters.genre != null) "Top 10 in ${filters.genre?.label}" else "Top 10 and trending",
-                            shown,
-                            comingSoon = false,
-                            ranked = true,
-                        ),
-                    )
-                }
-
-                else -> {
-                    listOf(ShownRow(row.title, shown, comingSoon))
-                }
             }
+            out
         }
-    // Benflix (Requests layout C, Ben 2026-11-10): a short list on the left, a wall of posters on the right.
-    // The list follows focus on TV, so moving down it changes the wall straight away.
+    // Redesign 2 (side list on every tab): Search, then Yours, then the lists. The pick is remembered per tab.
     var picked by rememberSaveable(section) { mutableStateOf<String?>(null) }
-    val showGenres = picked == PICK_GENRES
-    val current = if (showGenres) null else shownRows.firstOrNull { it.title == picked } ?: shownRows.firstOrNull()
+    val current =
+        when (picked) {
+            PICK_GENRES, PICK_YOURS, PICK_WAITING -> null
+            else -> shownRows.firstOrNull { it.title == picked } ?: shownRows.firstOrNull()
+        }
+    val pickedKey = picked?.takeIf { it == PICK_GENRES || it == PICK_YOURS || it == PICK_WAITING } ?: current?.title ?: ""
     val genreLabel =
         when {
-            section == FindSection.ANIME -> "Anime genres and tags"
+            section == FindSection.ANIME -> "Genres and tags"
             filters.genre != null -> "Genre: ${filters.genre?.label}"
             else -> "Genres"
         }
     val onGenre: (FindGenre?) -> Unit = { g -> filters = filters.copy(genre = g) }
+    val yourLines =
+        mine.map { e ->
+            e.toAskLine(
+                showWho = false,
+                cantFind = e.cantFindKey()?.let { cantFind[it] },
+                onOpen = e.item?.let { item -> { openItem(item) } },
+            )
+        }
+    val waitingLines =
+        waitingForYou.map { e ->
+            e.toAskLine(
+                showWho = true,
+                cantFind = null,
+                onOpen = e.item?.let { item -> { openItem(item) } },
+                onAnswer = { yes -> viewModel.answer(e, yes) },
+            )
+        }
     val wall: @Composable (Modifier) -> Unit = { m ->
         Column(m) {
-            if (isTv) {
+            if (isTv && current != null) {
                 FocusedRequestLine(
                     focused = focusedItem,
-                    fallback = current?.items?.firstOrNull(),
+                    fallback = current.items.firstOrNull(),
                     scores = scores,
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
             }
-            if (filters.narrowed || filters.genre != null) {
+            if (current != null && (filters.narrowed || filters.genre != null)) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -1700,7 +1779,23 @@ private fun FindShelf(
                 }
             }
             when {
-                showGenres -> {
+                picked == PICK_YOURS -> {
+                    AskLinesWall(
+                        lines = yourLines,
+                        grouped = true,
+                        empty = NOTHING_ASKED_YET,
+                    )
+                }
+
+                picked == PICK_WAITING -> {
+                    AskLinesWall(
+                        lines = waitingLines,
+                        grouped = false,
+                        empty = "Nobody is waiting on you right now.",
+                    )
+                }
+
+                picked == PICK_GENRES -> {
                     GenreWall(section, filters, viewModel, onGenre)
                 }
 
@@ -1726,98 +1821,62 @@ private fun FindShelf(
                         row = current,
                         isTv = isTv,
                         onClick = openItem,
-                        onLongClick = { menuItem = it },
+                        onLongClick = { item ->
+                            // Hold OK asks straight away: movies need no choice, shows pick seasons
+                            if (item.type == SeerrItemType.PERSON) openItem(item) else viewModel.ask(item)
+                        },
                         onFocus = onFocusPoster,
                         subtitleFor = scoreLine,
+                        ownedOpen = ownedOpen == current.title,
+                        onOwned = { ownedOpen = if (ownedOpen == current.title) null else current.title },
                     )
                 }
             }
         }
     }
-    if (isTv) {
-        Row(Modifier.fillMaxSize()) {
+    RequestSideFrame(
+        isTv = isTv,
+        lists = shownRows.map { SideList(it.title, it.title) } + SideList(PICK_GENRES, genreLabel),
+        picked = pickedKey,
+        onPick = { picked = it },
+        yoursCount = mine.size,
+        waitingCount = if (viewModel.isAdmin) waitingForYou.size else null,
+        onSearch = { searchOpen = true },
+        loading = rows == null,
+        searchLabel = "Search to ask for anything",
+        phoneTop = { RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it }) },
+        phoneWall = !searching,
+        extraSide = {
+            item(key = "side-show") { SideHeading("Show") }
+            item(key = "side-filters") { SideEntry("Filters", selected = false, onClick = { showFilters = true }) }
+            item(key = "side-asked") { SideSwitch("Hide what's asked for", hideAsked) { hideAsked = !hideAsked } }
+            item(key = "side-family") { SideSwitch("Family-friendly only", familyOnly) { familyOnly = !familyOnly } }
+        },
+        extraChips = {
+            item(key = "chip-filters") { RequestsChip("Filters", false, { showFilters = true }) }
+            item(key = "chip-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
+            item(key = "chip-family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
+        },
+        wall = wall,
+        phoneAlt = { m ->
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 32.dp),
-                modifier = Modifier.width(240.dp).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+                modifier = m,
             ) {
-                item(key = "search") { RequestSearchButton(onClick = { searchOpen = true }, compact = true) }
-                if (rows == null) {
-                    item(key = "side-loading") { SideEntry("Loading…", selected = false, onPick = {}) }
-                }
-                items(shownRows, key = { "side-${it.title}" }) { row ->
-                    SideEntry(row.title, selected = row == current, onPick = { picked = row.title })
-                }
-                item(key = "side-genres") { SideEntry(genreLabel, selected = showGenres, onPick = { picked = PICK_GENRES }) }
-                item(key = "side-yours") { SideHeading("Yours") }
-                item(key = "side-mine") { SideEntry("Your requests ${mine.size}", selected = false, onClick = { listOpen = false }) }
-                if (viewModel.isAdmin) {
-                    item(key = "side-waiting") {
-                        SideEntry(
-                            "Waiting for you ${waitingForYou.size}",
-                            selected = false,
-                            dot = waitingForYou.isNotEmpty(),
-                            onClick = { listOpen = true },
-                        )
-                    }
-                }
-                item(key = "side-show") { SideHeading("Show") }
-                item(key = "side-filters") { SideEntry("Filters", selected = false, onClick = { showFilters = true }) }
-                item(key = "side-owned") { SideSwitch("Hide what's on Benflix", hideOwned) { hideOwned = !hideOwned } }
-                item(key = "side-asked") { SideSwitch("Hide what's asked for", hideAsked) { hideAsked = !hideAsked } }
-                item(key = "side-family") { SideSwitch("Family-friendly only", familyOnly) { familyOnly = !familyOnly } }
+                searchShelves(
+                    results = searchResults,
+                    anime = searchAnime,
+                    visible = visible,
+                    scoreLine = scoreLine,
+                    onOpen = openItem,
+                    onMenu = { menuItem = it },
+                    onFocusItem = onFocusPoster,
+                    isTv = false,
+                )
             }
-            wall(Modifier.weight(1f).fillMaxHeight())
-        }
-    } else {
-        Column(Modifier.fillMaxSize()) {
-            RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
-            if (searching) {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                ) {
-                    searchShelves(
-                        results = searchResults,
-                        anime = searchAnime,
-                        visible = visible,
-                        scoreLine = scoreLine,
-                        onOpen = openItem,
-                        onMenu = { menuItem = it },
-                        onFocusItem = onFocusPoster,
-                        isTv = false,
-                    )
-                }
-                return@Column
-            }
-            // Phone: the list becomes a line of buttons, then the poster wall three across
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                items(shownRows, key = { "chip-${it.title}" }) { row ->
-                    RequestsChip(row.title, row == current, { picked = row.title })
-                }
-                item(key = "chip-genres") { RequestsChip(genreLabel, showGenres, { picked = PICK_GENRES }) }
-                item(key = "chip-mine") { RequestsChip("Your requests ${mine.size}", false, { listOpen = false }) }
-                if (viewModel.isAdmin) {
-                    item(key = "chip-waiting") {
-                        RequestsChip(
-                            if (waitingForYou.isEmpty()) "Waiting for you 0" else "Waiting for you ${waitingForYou.size}  ●",
-                            false,
-                            { listOpen = true },
-                        )
-                    }
-                }
-                item(key = "chip-filters") { RequestsChip("Filters", false, { showFilters = true }) }
-                item(key = "chip-owned") { RequestsChip("Hide what's on Benflix", hideOwned, { hideOwned = !hideOwned }) }
-                item(key = "chip-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
-                item(key = "chip-family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
-            }
-            wall(Modifier.fillMaxWidth().weight(1f))
-        }
-    }
+        },
+    )
 }
 
 private const val PICK_GENRES = "__genres"
@@ -1831,6 +1890,8 @@ private fun PosterWall(
     onLongClick: (DiscoverItem) -> Unit,
     onFocus: (DiscoverItem) -> Unit,
     subtitleFor: (DiscoverItem) -> String?,
+    ownedOpen: Boolean = false,
+    onOwned: () -> Unit = {},
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val gap = 12.dp
@@ -1869,84 +1930,13 @@ private fun PosterWall(
                     onFocus = { onFocus(item) },
                 )
             }
-        }
-    }
-}
-
-/** One line in the TV side list. [onPick] runs when you land on it (the wall follows); [onClick] when you press OK. */
-@Composable
-private fun SideEntry(
-    label: String,
-    selected: Boolean,
-    onPick: (() -> Unit)? = null,
-    dot: Boolean = false,
-    onClick: (() -> Unit)? = null,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    androidx.tv.material3.Surface(
-        onClick = { (onClick ?: onPick)?.invoke() },
-        shape =
-            androidx.tv.material3.ClickableSurfaceDefaults
-                .shape(shape),
-        colors =
-            androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                containerColor = if (selected) BenflixColors.Raised else Color.Transparent,
-                contentColor = if (selected) BenflixColors.Text else BenflixColors.Soft,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
-            ),
-        scale =
-            androidx.tv.material3.ClickableSurfaceDefaults
-                .scale(focusedScale = 1f),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .onFocusChanged { if (it.isFocused) onPick?.invoke() },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            Text(
-                text = label,
-                fontSize = BenflixType.body,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (dot) {
-                Box(
-                    Modifier
-                        .padding(start = 8.dp)
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(BenflixColors.Warning),
-                )
+            if (row.ownedCount > 0) {
+                item(key = "${row.title}-owned", span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.padding(top = 8.dp)) { OwnedMoreButton(row.ownedCount, ownedOpen, onOwned) }
+                }
             }
         }
     }
-}
-
-/** A setting in the TV side list: its name, with On or Off in words */
-@Composable
-private fun SideSwitch(
-    label: String,
-    on: Boolean,
-    onToggle: () -> Unit,
-) {
-    SideEntry(label = "$label: ${if (on) "On" else "Off"}", selected = false, onClick = onToggle)
-}
-
-@Composable
-private fun SideHeading(text: String) {
-    Text(
-        text = text.uppercase(),
-        fontSize = BenflixType.tag,
-        fontWeight = FontWeight.Bold,
-        color = BenflixColors.Muted,
-        modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp),
-    )
 }
 
 /**
@@ -2007,6 +1997,8 @@ private class ShownRow(
     val items: List<DiscoverItem>,
     val comingSoon: Boolean,
     val ranked: Boolean = false,
+    /** Titles in this list already on Benflix (hidden unless opened) */
+    val ownedCount: Int = 0,
 )
 
 /** Benflix: quick picks on the Requests Anime tab; each opens the anime deep search with it picked */
@@ -2126,6 +2118,46 @@ private fun RequestList(
     val ratings by viewModel.ratings.collectAsState()
     val cantFind by viewModel.cantFind.collectAsState()
     val myId by viewModel.mySeerrId.collectAsState(initial = null)
+    // Redesign 2: Your requests holds every kind (movies, shows, songs, albums, books), grouped by status
+    val musicVm: MusicRequestsViewModel = hiltViewModel(key = "requests-yours-music")
+    val bookVm: BookRequestsViewModel = hiltViewModel(key = "requests-yours-books")
+    val musicStatus by musicVm.status.collectAsState()
+    val bookRequests by bookVm.requests.collectAsState()
+    val otherScope = rememberCoroutineScope()
+    LifecycleResumeEffect(Unit) {
+        musicVm.refresh()
+        val job = otherScope.launch { bookVm.refresh() }
+        onPauseOrDispose { job.cancel() }
+    }
+    val otherLines =
+        remember(musicStatus, bookRequests, mineOnly) {
+            val music =
+                musicStatus?.requests.orEmpty().map { r ->
+                    r.toAskLine(
+                        showWho = !mineOnly,
+                        onAnswer = if (!mineOnly && r.waiting) ({ yes -> musicVm.answer(r, yes) }) else null,
+                        onRetry = if (!mineOnly) ({ musicVm.retry(r) }) else null,
+                    )
+                }
+            val b = bookRequests
+            val books =
+                if (b == null) {
+                    emptyList()
+                } else {
+                    val waitingIds = b.waiting.map { it.id }.toSet()
+                    (if (mineOnly) b.mine else b.waiting + b.mine + b.others + b.mangaToAdd)
+                        .distinctBy { it.id }
+                        .map { r ->
+                            r.toAskLine(
+                                showWho = !mineOnly,
+                                onOpen = r.titleId?.let { id -> { bookVm.open(id) } },
+                                onAnswer = if (!mineOnly && r.id in waitingIds) ({ yes -> bookVm.answer(r, yes) }) else null,
+                                onRetry = { bookVm.retry(r) },
+                            )
+                        }
+                }
+            music + books
+        }
     var confirmAll by remember { mutableStateOf(false) }
     var cantFindFor by remember { mutableStateOf<RequestEntry?>(null) }
     cantFindFor?.let { entry ->
@@ -2168,7 +2200,7 @@ private fun RequestList(
     }
     val seasonPick by viewModel.seasonPick.collectAsState()
     seasonPick?.let { pick ->
-        SeasonPickDialog(
+        SeasonAskPanel(
             pick = pick,
             onDismiss = viewModel::closeSeasonPick,
             onAsk = { viewModel.askSeasons(pick.item, it) },
@@ -2272,7 +2304,7 @@ private fun RequestList(
                 item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
             }
 
-            list.isEmpty() && extras.isEmpty() -> {
+            list.isEmpty() && extras.isEmpty() && otherLines.isEmpty() -> {
                 item {
                     Text(
                         text =
@@ -2305,29 +2337,32 @@ private fun RequestList(
                 // Only on his list, and not ones he already stopped by hand.
                 fun RequestEntry.lookYourself() = !mineOnly && viewModel.isAdmin && needsLookingFor(cantFindKey()?.let { cantFind[it] })
                 val stillAsking = { it: RequestEntry -> !it.notFound() }
+                // Redesign 2: grouped by the five status pills (Ready first). Ben's "Waiting for you" stays on top.
+                val waitingTitle = "Waiting for you"
+                fun RequestEntry.groupTitle(): String =
+                    when {
+                        !mineOnly && !available && status == RequestStatus.PENDING && stillAsking(this) -> waitingTitle
+                        lookYourself() -> AskState.LOOKING.group
+                        else -> askPill(if (available) null else cantFindKey()?.let { cantFind[it] }).state.group
+                    }
+                val byGroup = list.groupBy { it.groupTitle() }
+                val othersByGroup = otherLines.groupBy { if (it.onYes != null) waitingTitle else it.pill.state.group }
+                val order = listOf(waitingTitle) + AskState.entries.map { it.group }
                 val groups =
-                    listOf(
-                        (if (mineOnly) "Waiting for Ben" else "Waiting for you") to
-                            list.filter { !it.available && it.status == RequestStatus.PENDING && stillAsking(it) },
-                        LOOK_YOURSELF_GROUP to list.filter { it.lookYourself() },
-                        "On the way" to
-                            list.filter {
-                                !it.available && it.status != RequestStatus.PENDING &&
-                                    it.status != RequestStatus.DECLINED && it.status != RequestStatus.FAILURE &&
-                                    !it.notFound() && !it.lookYourself()
-                            },
-                        "Couldn't find" to list.filter { it.notFound() && !it.lookYourself() },
-                        "Ready to watch" to list.filter { it.available },
-                        "Declined" to
-                            list.filter {
-                                !it.available && (it.status == RequestStatus.DECLINED || it.status == RequestStatus.FAILURE) &&
-                                    stillAsking(it)
-                            },
-                    ).filter { it.second.isNotEmpty() || (it.first == "Couldn't find" && extras.isNotEmpty()) }
+                    order
+                        .map { it to byGroup[it].orEmpty() }
+                        .filter {
+                            it.second.isNotEmpty() || othersByGroup[it.first].orEmpty().isNotEmpty() ||
+                                (it.first == AskState.CANT.group && extras.isNotEmpty())
+                        }
                 groups.forEach { (title, entries) ->
-                    val extraCount = if (title == "Couldn't find") extras.size else 0
+                    val extraCount = if (title == AskState.CANT.group) extras.size else 0
+                    val others = othersByGroup[title].orEmpty()
                     item(key = "group-$title") {
-                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size + extraCount) }
+                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size + extraCount + others.size) }
+                    }
+                    items(others, key = { "other-$title-${it.key}" }) { line ->
+                        Box(Modifier.padding(horizontal = 16.dp)) { AskLineRow(line) }
                     }
                     items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
                         Box(Modifier.padding(horizontal = 16.dp)) {
@@ -2460,7 +2495,7 @@ private fun RequestRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, isAdminList = isAdminList, lookYourself = lookYourself)
+                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, lookYourself = lookYourself)
                 if (cantFind != null) CantFindNoteLine(cantFind)
                 if (cantFind == null) {
                     RequestSteps(
@@ -2483,77 +2518,18 @@ private fun RequestRow(
     }
 }
 
+/** Redesign 2: the one status pill (Asked, Getting it, Still looking, Couldn't find it, Ready to watch) */
 @Composable
 private fun StatusTag(
     entry: RequestEntry,
     cantFind: CantFindEntry? = null,
     daysWaiting: Long? = null,
-    isAdminList: Boolean = false,
     lookYourself: Boolean = false,
 ) {
-    // Benflix: approved and nothing downloading yet. After a week it turns into "Couldn't find it" by itself,
-    // but the week only starts once it's out plus a few weeks (Ben's rule)
-    val clock = entry.clock
-    val waiting = entry.status == RequestStatus.APPROVED && !entry.downloading
-    val looking = if (clock != null) clock.daysLooking else daysWaiting
-    val stillLooking = waiting && looking != null
-    val (text, color) =
-        when {
-            entry.available -> {
-                "On Benflix" to Color(0xFF3DD68C)
-            }
-
-            lookYourself -> {
-                "Look for it yourself · day ${(looking ?: 0) + 1}" to BenflixColors.Movies
-            }
-
-            cantFind != null -> {
-                "Couldn't find it" to CANT_FIND_COLOR
-            }
-
-            entry.status == RequestStatus.PENDING -> {
-                "Waiting for Ben" to BenflixColors.Check
-            }
-
-            entry.status == RequestStatus.DECLINED -> {
-                "Declined" to BenflixColors.Problem
-            }
-
-            entry.status == RequestStatus.FAILURE -> {
-                "Something went wrong" to BenflixColors.Problem
-            }
-
-            waiting && clock?.notOut == true -> {
-                val out = clock?.outOn?.let { BenflixCantFind.niceDate(it.toString()) }
-                (if (out != null) "Not out yet · out $out" else "Not out yet") to Color(0xFF7AA7FF)
-            }
-
-            waiting && clock?.justOut == true -> {
-                "Just came out · searching" to Color(0xFF7AA7FF)
-            }
-
-            stillLooking -> {
-                val days = looking ?: 0
-                (if (days < 1) "Still looking · started today" else "Still looking · day ${days + 1}") to Color(0xFF7AA7FF)
-            }
-
-            else -> {
-                "On the way" to Color(0xFF7AA7FF)
-            }
-        }
-    Box(
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(color.copy(alpha = .18f))
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-    ) {
-        Text(text = text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
-    }
+    val pill = entry.askPill(cantFind, daysWaiting)
+    AskPillChip(if (lookYourself) pill.copy(state = AskState.LOOKING, words = pill.words + " · look for it yourself") else pill)
 }
 
-/** Benflix: the group on Ben's Requests list for ones searched two weeks with nothing found */
-private const val LOOK_YOURSELF_GROUP = "Look for these yourself"
 
 /**
  * Benflix: approved, nothing here or downloading, and searched [RequestsWaiting.LOOK_YOURSELF_DAYS] days or more.
