@@ -417,6 +417,8 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, discover()
         if method == "GET" and path == "/api/music/genre":
             return 200, genre_page(q("id"))
+        if method == "GET" and path == "/api/music/preview":
+            return 200, preview(q("id"))
         if method == "GET" and path == "/api/music/artist":
             return 200, artist_page(q("id"))
         if method == "GET" and path == "/api/music/album":
@@ -459,6 +461,45 @@ def search(text):
     }
     _mark_asked(out, _jellyfin_have(text))
     return out
+
+
+ITUNES = "https://itunes.apple.com/search"
+
+
+def preview(song_id):
+    """A 30 second taste of a song, to hear before asking for it. Deezer's free preview first (it's the same
+    catalogue, so it's the exact song), then Apple's free iTunes preview when Deezer has none. The links only
+    work for a while, so the app and web page ask for a fresh one each time Play is pressed."""
+    if not str(song_id).isdigit():
+        raise MusicError(400, "Which song?")
+    t = deezer(f"/track/{song_id}")
+    title = t.get("title_short") or t.get("title") or ""
+    artist = (t.get("artist") or {}).get("name") or ""
+    url = t.get("preview") or ""
+    source = "deezer"
+    if not url and title:
+        url = _itunes_preview(artist, title)
+        source = "itunes"
+    if not url:
+        raise MusicError(404, "No preview for this song.")
+    return {"url": url, "title": title, "artist": artist, "from": source, "seconds": 30}
+
+
+def _itunes_preview(artist, title):
+    """Apple's free 30 second preview for the same song (empty when it can't be found)"""
+    q = urllib.parse.urlencode({"term": f"{artist} {title}", "media": "music", "entity": "song", "limit": 10})
+    try:
+        found = _http(f"{ITUNES}?{q}", timeout=15) or {}
+    except (urllib.error.URLError, OSError, ValueError):
+        return ""
+    results = [r for r in (found.get("results") or []) if r.get("previewUrl")]
+    for r in results:
+        if same_song(r.get("trackName"), title) and same(r.get("artistName"), artist):
+            return r["previewUrl"]
+    for r in results:
+        if same_song(r.get("trackName"), title):
+            return r["previewUrl"]
+    return ""
 
 
 def artist_page(artist_id):

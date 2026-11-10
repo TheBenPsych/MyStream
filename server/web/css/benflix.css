@@ -771,3 +771,9 @@ a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before
   .brow .th, .lgthumb { width: 40px; border-radius: 5px; }
   .lgthumb { grid-template-rows: repeat(2, 10px); }
 }
+
+/* Song previews: the round play button beside Ask for it, and on song covers */
+.circle.pv { width: 38px; height: 38px; flex: none; }
+.circle.pv svg.i { width: 18px; height: 18px; }
+.pvcard { position: relative; flex: none; }
+.pvcard .circle.pv.on-card { position: absolute; z-index: 2; right: 8px; top: calc(var(--poster-w) - 46px); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
