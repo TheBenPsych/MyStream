@@ -76,13 +76,18 @@ const reqWords = (r) => {
   return ["Asked", "check"];
 };
 
+// Benflix (compact Requests, Ben 2026-11-10): posters come first. One slim line on top (door chips, search,
+// Your requests and Waiting for you as small buttons that open a side list), then Top 10 and the other rows.
+const detailsAnime = (d) => ((d.genres || []).some((g) => g.id === 16) || (d.genreIds || []).includes(16)) && d.originalLanguage === "ja";
 B.route(/^\/requests/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   const tab = B.q("tab") || "movies";
-  B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:6px"><div class="h1">Ask for something new</div>
-    <p class="sub">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : tab === "books" ? "Books, audiobooks and manga. Ask, and Tower finds them." : "Movies and shows that aren't on Benflix yet. Ask, and Ben's server finds them."}</p>
-    <div class="row" style="margin-bottom:10px">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).concat(B.booksTab ? [["books", "Books"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
-      <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}"></div></div>
+  const media = tab !== "music" && tab !== "books";
+  B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
+    <div class="row" style="margin-bottom:6px;align-items:center">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).concat(B.booksTab ? [["books", "Books"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
+      <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}">
+      ${media ? `<span id="rqmine"></span>` : ""}</div>
+    ${media ? "" : `<p class="sub" style="margin:0 0 6px">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : "Books, audiobooks and manga. Ask, and Tower finds them."}</p>`}</div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   if (tab === "music" && B.me.admin) return B.musicTab(nav);
@@ -93,7 +98,6 @@ B.route(/^\/requests/, async (m, nav) => {
     $("#rows").innerHTML = `<div class="wrap"><div class="note">Requests aren't set up for ${esc(B.me.name)} yet. ${B.me.admin ? "Check the Jellyfin Enhanced plugin's Seerr settings in Jellyfin's Dashboard." : "Ask Ben to turn them on for you."}</div></div>`;
     return;
   }
-  const kind = tab === "movies" ? "movie" : "tv";
   const search = async (text) => {
     if (!text.trim()) return drawRows();
     $("#rows").innerHTML = B.spinner();
@@ -105,52 +109,86 @@ B.route(/^\/requests/, async (m, nav) => {
     $("#rows").innerHTML = [B.row("Movies", mv.map(B.askCard)), B.row("Shows", tv.map(B.askCard)), B.row("Anime", an.map(B.askCard)),
       people.length ? `<section class="rowx"><h3>People</h3><div class="wrap dim" style="padding-top:0">${people.slice(0, 8).map((p) => esc(p.name)).join(", ")}</div></section>` : ""].join("") || `<div class="wrap empty">Nothing found for “${esc(text)}”. Check the spelling, or try the original name.</div>`;
   };
-  const drawRows = async () => {
-    $("#rows").innerHTML = B.spinner();
-    const base = tab === "anime" ? "/discover/tv/genre/16" : `/discover/${tab === "movies" ? "movies" : "tv"}`;
-    const [mine, waiting, trending, upcoming, popular2] = await Promise.all([
+  // Your requests / Waiting for you: only this tab's kind (anime requests sit on Anime, not Shows), with real names
+  let lists = { mine: [], waiting: [] };
+  const loadLists = async () => {
+    const [mine, waiting] = await Promise.all([
       seerr(`/request?take=40&skip=0&sort=added&requestedBy=${me.jellyseerrUserId}`).catch(() => null),
       B.me.admin ? seerr(`/request?take=40&skip=0&sort=added&filter=pending`).catch(() => null) : null,
-      seerr(`${base}?page=1`).catch(() => null),
-      tab === "anime" ? seerr(`${base}?page=2`).catch(() => null) : seerr(`/discover/${tab === "movies" ? "movies" : "tv"}/upcoming?page=1`).catch(() => null),
-      seerr(`${base}?page=3`).catch(() => null),
     ]);
-    if (!B.alive(nav)) return;
-    // Request lists only carry the TMDB number, so look up each title
-    await Promise.all([mine, waiting].flatMap((l) => ((l && l.results) || []).slice(0, 12)).map(async (r) => {
-      const md = r.media || {};
-      if (md.title || md.name || !md.tmdbId) return;
-      const d = await B.cached(`seerr-${r.type}-${md.tmdbId}`, 3600000, () => seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
-      if (d) md.title = d.title || d.name;
-    }));
-    if (!B.alive(nav)) return;
-    const notHere = (l) => ((l && l.results) || []).filter((x) => !onBenflix(x) && (tab === "anime" || !isAnime(x)));
-    const reqRow = (title, list, admin) => {
-      const items = ((list && list.results) || []).filter((r) => (r.type === kind) || tab === "anime" && r.type === "tv");
-      if (!items.length) return "";
-      return `<section class="rowx"><h3>${esc(title)}</h3><div class="wrap" style="padding-bottom:0"><div class="list">${items.slice(0, 12).map((r) => {
-        const md = r.media || {}, [word, lvl] = reqWords(r);
-        return `<div class="item"><div class="grow"><div class="t">${esc(md.title || md.name || md.externalServiceSlug || ("TMDB " + md.tmdbId))}</div><div class="s">${admin ? esc((r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone") + " asked · " : ""}<span class="word-${lvl}">${esc(word)}</span> · ${esc(B.when(r.createdAt))}</div></div>
-          <div class="acts">${admin ? `<button class="btn small white" data-yes="${r.id}">Yes</button><button class="btn small" data-no="${r.id}">No</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`}</div></div>`;
-      }).join("")}</div></div></section>`;
+    const pick = async (l) => {
+      const items = ((l && l.results) || []).filter((r) => tab === "movies" ? r.type === "movie" : true);
+      await Promise.all(items.map(async (r) => {
+        const md = r.media || (r.media = {});
+        if (!md.tmdbId) return;
+        const d = await B.cached(`seerr-${r.type}-${md.tmdbId}`, 3600000, () => seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
+        if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); }
+      }));
+      return items.filter((r) => tab === "movies" ? !r.media.anime : tab === "shows" ? r.type === "tv" && !r.media.anime : r.media.anime);
     };
-    $("#rows").innerHTML = [
-      B.me.admin ? reqRow("Waiting for you", waiting, true) : "",
-      reqRow("Your requests", mine, false),
-      B.row(tab === "anime" ? "Popular anime" : "Trending", notHere(trending).map(B.askCard)),
-      B.row(tab === "anime" ? "More anime" : "Coming soon", notHere(upcoming).map(B.askCard)),
-      B.row("More to ask for", notHere(popular2).map(B.askCard)),
-    ].join("");
+    lists = { mine: await pick(mine), waiting: await pick(waiting) };
   };
-  $("#rows").addEventListener("click", (e) => {
-    const y = e.target.closest("[data-yes]"), n = e.target.closest("[data-no]");
-    if (!y && !n) return;
-    const id = (y || n).dataset.yes || (y || n).dataset.no;
-    B.busy(y || n, async () => { await B.jf("POST", `/JellyfinEnhanced/arr/requests/${id}/${y ? "approve" : "decline"}`).catch(() => {}); drawRows(); return y ? "Said yes. It's on its way." : "Said no."; });
-  });
+  const reqItem = (r, admin) => {
+    const md = r.media || {}, [word, lvl] = reqWords(r);
+    return `<div class="item"><div class="grow"><div class="t">${esc(md.title || md.name || "Name not found")}</div><div class="s">${admin ? esc((r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone") + " asked · " : ""}<span class="word-${lvl}">${esc(word)}</span> · ${esc(B.when(r.createdAt))}</div></div>
+      <div class="acts">${admin ? `<button class="btn small white" data-yes="${r.id}">Yes</button><button class="btn small" data-no="${r.id}">No</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`}</div></div>`;
+  };
+  const drawChips = () => {
+    const box = $("#rqmine");
+    if (!box) return;
+    box.innerHTML = `<button class="chip" data-rqlist="mine">Your requests ${lists.mine.length}</button>`
+      + (B.me.admin ? ` <button class="chip ${lists.waiting.length ? "on" : ""}" data-rqlist="waiting">Waiting for you ${lists.waiting.length}</button>` : "");
+    box.onclick = (e) => { const b = e.target.closest("[data-rqlist]"); if (b) openList(b.dataset.rqlist); };
+  };
+  const openList = (which) => {
+    const items = lists[which], admin = which === "waiting";
+    const p = B.side(`<h3>${admin ? "Waiting for you" : "Your requests"} (${items.length})</h3>
+      ${items.length ? `<div class="list">${items.map((r) => reqItem(r, admin)).join("")}</div>` : `<p class="dim">${admin ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a poster and press Ask for it."}</p>`}`);
+    p.addEventListener("click", (e) => {
+      const y = e.target.closest("[data-yes]"), n = e.target.closest("[data-no]");
+      if (!y && !n) return;
+      const id = (y || n).dataset.yes || (y || n).dataset.no;
+      B.busy(y || n, async () => {
+        await B.jf("POST", `/JellyfinEnhanced/arr/requests/${id}/${y ? "approve" : "decline"}`).catch(() => {});
+        await loadLists();
+        if (B.alive(nav)) { drawChips(); B.closeAll(); openList(which); }
+        return y ? "Said yes. It's on its way." : "Said no.";
+      });
+    });
+  };
+  const top10 = (list) => list.slice(0, 10).map((r, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.askCard(r)}</div>`);
+  const drawRows = async () => {
+    $("#rows").innerHTML = B.spinner();
+    // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
+    const pages = tab === "anime"
+      ? [1, 2, 3, 4].map((n) => seerr(`/discover/tv/genre/16?page=${n}`).catch(() => null)).concat([1, 2].map((n) => seerr(`/discover/movies/genre/16?page=${n}`).catch(() => null)))
+      : [seerr(`/discover/${tab === "movies" ? "movies" : "tv"}?page=1`).catch(() => null), seerr(`/discover/${tab === "movies" ? "movies" : "tv"}/upcoming?page=1`).catch(() => null), seerr(`/discover/${tab === "movies" ? "movies" : "tv"}?page=3`).catch(() => null)];
+    const got = await Promise.all(pages);
+    if (!B.alive(nav)) return;
+    const notHere = (l) => ((l && l.results) || []).filter((x) => !onBenflix(x) && (tab === "anime" ? x.originalLanguage === "ja" : !isAnime(x)));
+    let first, second, third, names;
+    if (tab === "anime") {
+      const seen = new Set();
+      const shows = got.slice(0, 4).flatMap(notHere).map((x) => Object.assign(x, { mediaType: x.mediaType || "tv" })).filter((x) => !seen.has(x.id) && seen.add(x.id));
+      first = shows.slice(0, 30); third = shows.slice(30);
+      second = got.slice(4).flatMap(notHere).map((x) => Object.assign(x, { mediaType: x.mediaType || "movie" }));
+      names = ["Popular anime", "Anime movies", "More anime"];
+    } else {
+      [first, second, third] = got.map(notHere);
+      names = ["Trending", "Coming soon", "More to ask for"];
+    }
+    $("#rows").innerHTML = [
+      first.length >= 5 ? B.row(tab === "anime" ? "Top 10 anime to ask for" : "Top 10 to ask for this week", top10(first)) : "",
+      B.row(names[0], (first.length >= 5 ? first.slice(10) : first).map(B.askCard)),
+      B.row(names[1], second.map(B.askCard)),
+      B.row(names[2], third.map(B.askCard)),
+    ].join("") || `<div class="wrap empty">Nothing to show right now. Try again in a minute.</div>`;
+  };
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 350); };
   if (B.q("q")) search(B.q("q")); else drawRows();
+  drawChips();
+  loadLists().then(() => { if (B.alive(nav)) drawChips(); });
 });
 
 // ---------- Music (only Ben): ask for songs and albums, playlists, the Music Drop folder, tidy-up ----------

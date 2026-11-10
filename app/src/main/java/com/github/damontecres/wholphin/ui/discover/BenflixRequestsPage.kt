@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +93,7 @@ import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -101,6 +104,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -1596,202 +1600,285 @@ private fun FindShelf(
         )
         return
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val previewHeight = (maxHeight * 0.34f).coerceIn(150.dp, 260.dp)
-        Column(Modifier.fillMaxSize()) {
-            if (isTv) {
-                DelayedRequestPreview(
-                    focused = focusedItem,
-                    fallback = rows?.firstNotNullOfOrNull { visible(it.items).firstOrNull() },
-                    scores = scores,
-                    height = previewHeight,
-                )
+    // Benflix (compact Requests, Ben 2026-11-10): posters come first. One slim line on top (search, Filters,
+    // your requests as small buttons, the hide switches), then Top 10 with big numbers and the other rows.
+    // Genres and the anime picks sit lower down, after the first two rows.
+    // Movies tab shows movie requests, Shows and Anime show show requests (anime movies sit with Movies)
+    val tabType = if (section == FindSection.MOVIES) SeerrItemType.MOVIE else SeerrItemType.TV
+    val tabRequests = requestEntries.orEmpty().filter { it.item?.type == tabType }
+    val waitingForYou =
+        if (viewModel.isAdmin) tabRequests.filter { it.status == RequestStatus.PENDING && !it.available } else emptyList()
+    val mine =
+        tabRequests.filter { e ->
+            (!viewModel.isAdmin || (mySeerrId != null && e.request.requestedBy?.id == mySeerrId)) &&
+                !(e.available && BenflixCantFind.daysSince(e.request.updatedAt ?: e.request.createdAt)?.let { it > 7 } == true)
+        }
+    // true = "Waiting for you" list, false = "Your requests" list
+    var listOpen by remember { mutableStateOf<Boolean?>(null) }
+    listOpen?.let { waiting ->
+        RequestListDialog(
+            title = if (waiting) "Waiting for you" else "Your requests",
+            entries = if (waiting) waitingForYou else mine,
+            waiting = waiting,
+            onOpen = { e -> e.item?.let { openItem(it) } },
+            onAnswer = viewModel::answer,
+            onDismiss = { listOpen = null },
+        )
+    }
+    val listState = rememberLazyListState()
+    val activeGenreFocus = remember { FocusRequester() }
+    var genreFromRow by remember { mutableStateOf(false) }
+    LaunchedEffect(filters.genre) {
+        // Picked a genre lower down: jump back to the top, onto the genre's chip (so focus isn't lost)
+        if (genreFromRow) {
+            genreFromRow = false
+            listState.scrollToItem(0)
+            if (filters.genre != null) {
+                delay(80)
+                activeGenreFocus.tryRequestFocus()
             }
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            ) {
-                // Benflix: no big banner here (Ben asked), the page starts with the search box like the other tabs
-                item(key = "search") {
-                    if (isTv) {
-                        RequestSearchButton(onClick = { searchOpen = true })
-                    } else {
-                        RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+        }
+    }
+    Column(Modifier.fillMaxSize()) {
+        if (!isTv) {
+            RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isTv) item(key = "search") { RequestSearchButton(onClick = { searchOpen = true }, compact = true) }
+            item(key = "filters") { RequestsChip("Filters", filters.narrowed || filters.genre != null, { showFilters = true }) }
+            item(key = "mine") { RequestsChip("Your requests ${mine.size}", false, { listOpen = false }) }
+            if (viewModel.isAdmin) {
+                item(key = "waiting") {
+                    RequestsChip(
+                        if (waitingForYou.isEmpty()) "Waiting for you 0" else "Waiting for you ${waitingForYou.size}  ●",
+                        false,
+                        { listOpen = true },
+                    )
+                }
+            }
+            item(key = "hide-owned") { RequestsChip("Hide what's on Benflix", hideOwned, { hideOwned = !hideOwned }) }
+            item(key = "hide-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
+            item(key = "family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
+        }
+        if (isTv) {
+            FocusedRequestLine(
+                focused = focusedItem,
+                fallback = rows?.firstNotNullOfOrNull { visible(it.items).firstOrNull() },
+                scores = scores,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(if (isTv) 14.dp else 12.dp),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 48.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f),
+        ) {
+            if (searching && !isTv) {
+                searchShelves(
+                    results = searchResults,
+                    anime = searchAnime,
+                    visible = visible,
+                    scoreLine = scoreLine,
+                    onOpen = openItem,
+                    onMenu = { menuItem = it },
+                    onFocusItem = onFocusPoster,
+                    isTv = isTv,
+                )
+                return@LazyColumn
+            }
+            if (filters.genre != null || filters.narrowed) {
+                item(key = "active-filters") {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                    ) {
+                        filters.genre?.let { g ->
+                            item {
+                                Box(Modifier.focusRequester(activeGenreFocus)) {
+                                    ActiveFilterChip(g.label) { filters = filters.copy(genre = null) }
+                                }
+                            }
+                        }
+                        filters.decade?.let { d ->
+                            item { ActiveFilterChip(d.label) { filters = filters.copy(decade = null) } }
+                        }
+                        filters.minScore?.let { m ->
+                            item { ActiveFilterChip("Score $m+") { filters = filters.copy(minScore = null) } }
+                        }
+                        filters.sort?.let { o ->
+                            item { ActiveFilterChip(o.label) { filters = filters.copy(sort = null) } }
+                        }
+                        filters.language?.let { l ->
+                            item { ActiveFilterChip(l.label) { filters = filters.copy(language = null) } }
+                        }
                     }
                 }
-                if (searching && !isTv) {
-                    searchShelves(
-                        results = searchResults,
-                        anime = searchAnime,
-                        visible = visible,
-                        scoreLine = scoreLine,
-                        onOpen = openItem,
-                        onMenu = { menuItem = it },
-                        onFocusItem = onFocusPoster,
-                        isTv = isTv,
+            }
+            if (rows == null) {
+                item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
+                return@LazyColumn
+            }
+            if (key in failedRows) {
+                item(key = "load-failed") {
+                    LoadFailed(
+                        text = "Some of these didn't load.",
+                        onRetry = { viewModel.loadSection(section, filters) },
                     )
-                    return@LazyColumn
                 }
-                // Movies tab shows movie requests, Shows and Anime show show requests (anime movies sit with Movies)
-                val tabType = if (section == FindSection.MOVIES) SeerrItemType.MOVIE else SeerrItemType.TV
-                val tabRequests = requestEntries.orEmpty().filter { it.item?.type == tabType }
-                if (viewModel.isAdmin) {
-                    val waitingForYou = tabRequests.filter { it.status == RequestStatus.PENDING && !it.available }
-                    item(key = "rows-waiting") {
-                        RequestCardRow(
-                            title = "Waiting for you",
-                            entries = waitingForYou,
-                            waiting = true,
-                            onOpen = { e -> e.item?.let { openItem(it) } },
-                            onAnswer = viewModel::answer,
+            }
+            // The rows that have something to show, with Trending split into a Top 10 and the rest
+            val shownRows =
+                rows.flatMap { row ->
+                    val comingSoon = row.title.startsWith("Coming soon")
+                    val shown =
+                        visible(row.items).let { list ->
+                            if (comingSoon) {
+                                list
+                                    .filter { it.releaseDate == null || !it.releaseDate.isBefore(LocalDate.now()) }
+                                    .sortedBy { it.releaseDate ?: LocalDate.MAX }
+                            } else {
+                                list
+                            }
+                        }
+                    when {
+                        shown.isEmpty() -> {
+                            emptyList()
+                        }
+
+                        row.title.startsWith("Trending") && shown.size >= 5 -> {
+                            listOfNotNull(
+                                ShownRow(
+                                    if (filters.genre != null) "Top 10 in ${filters.genre?.label}" else "Top 10 to ask for this week",
+                                    shown.take(10),
+                                    comingSoon = false,
+                                    ranked = true,
+                                ),
+                                shown.drop(10).takeIf { it.isNotEmpty() }?.let { ShownRow(row.title, it, comingSoon = false) },
+                            )
+                        }
+
+                        else -> {
+                            listOf(ShownRow(row.title, shown, comingSoon))
+                        }
+                    }
+                }
+            shownRows.forEachIndexed { index, row ->
+                item(key = "$key-${row.title}") {
+                    RequestDoorRow(
+                        title = row.title,
+                        items = row.items,
+                        isTv = isTv,
+                        onClick = openItem,
+                        onLongClick = { menuItem = it },
+                        onFocus = onFocusPoster,
+                        cornerNoteFor = { if (row.comingSoon) comingSoonNote(it) else null },
+                        subtitleFor = scoreLine,
+                        ranked = row.ranked,
+                    )
+                }
+                // Genres (or the anime picks) after the first two rows, or at the end if there are fewer
+                if (index == minOf(1, shownRows.lastIndex)) {
+                    genreShelf(section, filters, viewModel) {
+                        genreFromRow = true
+                        filters = filters.copy(genre = it)
+                    }
+                }
+            }
+            if (shownRows.isEmpty()) {
+                if (key !in failedRows) {
+                    item {
+                        Text(
+                            text = "Nothing matches. Try fewer filters.",
+                            fontSize = BenflixType.lead,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
                         )
                     }
                 }
-                val mine =
-                    tabRequests.filter { e ->
-                        (!viewModel.isAdmin || (mySeerrId != null && e.request.requestedBy?.id == mySeerrId)) &&
-                            !(e.available && BenflixCantFind.daysSince(e.request.updatedAt ?: e.request.createdAt)?.let { it > 7 } == true)
-                    }
-                item(key = "rows-mine") {
-                    RequestCardRow(
-                        title = "Your requests",
-                        entries = mine,
-                        waiting = false,
-                        onOpen = { e -> e.item?.let { openItem(it) } },
-                        onAnswer = viewModel::answer,
-                    )
-                }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    ) {
-                        item { RequestsChip("Filters ☰", filters.narrowed, { showFilters = true }) }
-                        item { RequestsChip("Hide what's on Benflix", hideOwned, { hideOwned = !hideOwned }) }
-                        item { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
-                        item { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
-                    }
-                }
-                if (section == FindSection.ANIME) {
-                    // Benflix: anime genres and tags from AniList (Isekai, Harem...). Each opens the deep search, which
-                    // lists every anime that has it, page after page; "Deep search" starts on the full picker.
-                    item(key = "anime-deep") {
-                        val tagCatalog: AnimeTagCatalogViewModel = hiltViewModel()
-                        val catalog by tagCatalog.catalog.collectAsState()
-                        // Each chip keeps its everyday name ("Harem") but opens AniList's real tag ("Female Harem");
-                        // ones AniList doesn't have are hidden
-                        val picks =
-                            remember(catalog) {
-                                ANIME_QUICK_PICKS.mapNotNull { label -> AniListService.resolveName(label, catalog)?.let { label to it } }
-                            }
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        ) {
-                            item {
-                                RequestsChip("Deep search: every genre and tag", true, {
-                                    viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList()))
-                                })
-                            }
-                            items(picks, key = { "aq-${it.first}" }) { (label, name) ->
-                                RequestsChip(label, false, {
-                                    viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name)))
-                                })
-                            }
-                        }
-                    }
-                }
-                if (section != FindSection.ANIME) {
-                    item {
-                        val genres =
-                            remember(section) {
-                                FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
-                            }
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        ) {
-                            item { RequestsChip("All", filters.genre == null, { filters = filters.copy(genre = null) }) }
-                            items(genres, key = { it.label }) { g ->
-                                RequestsChip(g.label, filters.genre == g, {
-                                    filters =
-                                        filters.copy(genre = if (filters.genre == g) null else g)
-                                })
-                            }
-                        }
-                    }
-                }
-                if (filters.narrowed) {
-                    item {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-                        ) {
-                            filters.decade?.let { d ->
-                                item { ActiveFilterChip(d.label) { filters = filters.copy(decade = null) } }
-                            }
-                            filters.minScore?.let { m ->
-                                item { ActiveFilterChip("Score $m+") { filters = filters.copy(minScore = null) } }
-                            }
-                            filters.sort?.let { o ->
-                                item { ActiveFilterChip(o.label) { filters = filters.copy(sort = null) } }
-                            }
-                            filters.language?.let { l ->
-                                item { ActiveFilterChip(l.label) { filters = filters.copy(language = null) } }
-                            }
-                        }
-                    }
-                }
-                if (rows == null) {
-                    item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
-                } else {
-                    if (key in failedRows) {
-                        item(key = "load-failed") {
-                            LoadFailed(
-                                text = "Some of these didn't load.",
-                                onRetry = { viewModel.loadSection(section, filters) },
-                            )
-                        }
-                    }
-                    items(rows, key = { "$key-${it.title}" }) { row ->
-                        val comingSoon = row.title.startsWith("Coming soon")
-                        val shown =
-                            visible(row.items).let { list ->
-                                if (comingSoon) {
-                                    list
-                                        .filter { it.releaseDate == null || !it.releaseDate.isBefore(LocalDate.now()) }
-                                        .sortedBy { it.releaseDate ?: LocalDate.MAX }
-                                } else {
-                                    list
-                                }
-                            }
-                        if (shown.isNotEmpty()) {
-                            RequestDoorRow(
-                                title = row.title,
-                                items = shown,
-                                isTv = isTv,
-                                onClick = openItem,
-                                onLongClick = { menuItem = it },
-                                onFocus = onFocusPoster,
-                                cornerNoteFor = { if (comingSoon) comingSoonNote(it) else null },
-                                subtitleFor = scoreLine,
-                            )
-                        }
-                    }
-                    if (rows.all { visible(it.items).isEmpty() } && key !in failedRows) {
-                        item {
-                            Text(
-                                text = "Nothing matches. Try fewer filters.",
-                                fontSize = BenflixType.lead,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
-                            )
-                        }
-                    }
+                genreShelf(section, filters, viewModel) {
+                    genreFromRow = true
+                    filters = filters.copy(genre = it)
                 }
             }
         }
+    }
+}
+
+private class ShownRow(
+    val title: String,
+    val items: List<DiscoverItem>,
+    val comingSoon: Boolean,
+    val ranked: Boolean = false,
+)
+
+/** Benflix: the genre buttons (Movies, Shows) or the anime genres and tags (Anime), lower down the page */
+private fun LazyListScope.genreShelf(
+    section: FindSection,
+    filters: FindFilters,
+    viewModel: BenflixRequestsViewModel,
+    onGenre: (FindGenre) -> Unit,
+) {
+    if (section == FindSection.ANIME) {
+        // Anime genres and tags from AniList (Isekai, Harem...). Each opens the deep search, which
+        // lists every anime that has it, page after page; "Deep search" starts on the full picker.
+        item(key = "anime-deep") {
+            val tagCatalog: AnimeTagCatalogViewModel = hiltViewModel()
+            val catalog by tagCatalog.catalog.collectAsState()
+            // Each chip keeps its everyday name ("Harem") but opens AniList's real tag ("Female Harem");
+            // ones AniList doesn't have are hidden
+            val picks =
+                remember(catalog) {
+                    ANIME_QUICK_PICKS.mapNotNull { label -> AniListService.resolveName(label, catalog)?.let { label to it } }
+                }
+            GenreShelfFrame("Anime genres and tags") {
+                item {
+                    RequestsChip("Deep search: every genre and tag", true, {
+                        viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList()))
+                    })
+                }
+                items(picks, key = { "aq-${it.first}" }) { (label, name) ->
+                    RequestsChip(label, false, {
+                        viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name)))
+                    })
+                }
+            }
+        }
+    } else if (filters.genre == null && !filters.narrowed) {
+        item(key = "genres") {
+            val genres =
+                remember(section) {
+                    FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
+                }
+            GenreShelfFrame("Genres") {
+                items(genres, key = { it.label }) { g -> RequestsChip(g.label, false, { onGenre(g) }) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenreShelfFrame(
+    title: String,
+    content: LazyListScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.lead,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            content = content,
+        )
     }
 }
 

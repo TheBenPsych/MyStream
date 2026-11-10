@@ -81,6 +81,7 @@ internal fun splitRequestResults(
 internal fun RequestSearchButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Surface(
@@ -96,15 +97,20 @@ internal fun RequestSearchButton(
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
-            modifier
-                .padding(horizontal = 16.dp)
-                .widthIn(max = 640.dp)
-                .fillMaxWidth(),
+            if (compact) {
+                modifier.height(40.dp).width(300.dp)
+            } else {
+                modifier
+                    .padding(horizontal = 16.dp)
+                    .widthIn(max = 640.dp)
+                    .fillMaxWidth()
+            },
     ) {
         Text(
             text = "Search any movie, show or anime to ask for",
-            fontSize = BenflixType.body,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            fontSize = if (compact) BenflixType.small else BenflixType.body,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = if (compact) 10.dp else 14.dp),
         )
     }
 }
