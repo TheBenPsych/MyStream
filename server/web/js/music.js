@@ -20,6 +20,8 @@
     queue: '<path d="M3 6h13M3 12h13M3 18h8M18 14v7M21 17l-3 4-3-4" />',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
   };
+  // The shared title page (title.js) draws icons from the main set, so lend it shuffle
+  if (typeof P === "object" && !P.shuffle && ICON.shuffle) P.shuffle = ICON.shuffle;
   const icon = (name, cls) => (ICON[name] ? `<svg class="i ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : I(name, cls));
   B.musicIcon = icon;
   const len = (ticks) => B.hms((ticks || 0) / B.TICKS);
@@ -608,20 +610,49 @@
       new Promise((r) => setTimeout(() => r(0), 1500)),
     ]);
     if (!B.alive(nav)) return;
-    await collection(nav, {
-      kick: "ALBUM", title: al.Name, line: [al.AlbumArtist, al.ProductionYear].filter(Boolean).join(" · "), art: cover(al, 900), songs, album: true, sourceId: al.Id, total,
-      heart: !!(al.UserData || {}).IsFavorite,
-      menu: artist ? [{ label: `Go to ${artist.Name}`, value: "artist", run: () => B.go(`#/artist/${artist.Id}`) }] : [],
+    // Redesign 2: albums use the shared title page (square cover; opens on Songs)
+    const mins = Math.round(songs.reduce((t, s) => t + (s.RunTimeTicks || 0), 0) / B.TICKS / 60);
+    const discs = new Set(songs.map((s) => s.ParentIndexNumber || 1));
+    let body = "", lastDisc = null;
+    songs.forEach((s, i) => {
+      if (discs.size > 1 && s.ParentIndexNumber !== lastDisc) { lastDisc = s.ParentIndexNumber; body += `<div class="mdisc">Disc ${esc(lastDisc || 1)}</div>`; }
+      body += songRow(s, i, { number: s.IndexNumber || i + 1, cover: false, artist: false });
     });
-    // Below the songs: more by the artist, then similar albums
-    const below = [];
+    let liked = !!(al.UserData || {}).IsFavorite;
+    const playAll = (shuffle) => { M.playList(songs, 0, shuffle, al.Name); M.sourceId = al.Id; refreshRows($("#ms"), songs); openNow(); };
+    const none = songs.length ? "" : "No songs here yet";
+    const tp = B.titlePage({
+      title: al.Name,
+      color: MUSIC,
+      cover: { url: cover(al, 900), ratio: 1 },
+      info: [songs.length === 1 ? "Single" : "Album", al.AlbumArtist, al.ProductionYear, `${total > songs.length ? `${songs.length} of ${total}` : songs.length} songs`, songs.length ? B.len(mins) : ""],
+      buttons: [
+        { label: "Play", icon: "play", off: none, onClick: () => playAll(false) },
+        { label: "Shuffle", icon: "shuffle", off: none, onClick: () => playAll(true) },
+        { label: liked ? "Liked" : "Like", icon: "heart", onClick: (e, el) => { liked = !liked; M.like(al.Id, liked).then(() => { el.querySelector("span").textContent = liked ? "Liked" : "Like"; }); } },
+        { label: "More", icon: "more", onClick: (e, el) => B.tpMore(al.Name, [
+          { label: "Add all to Up next", icon: "list", onClick: () => songs.forEach((x) => M.addToUpNext(x)) },
+          { label: "Add all to a playlist", icon: "plus", onClick: () => addToPlaylist(el, songs) },
+          artist ? { label: `Go to ${artist.Name}`, icon: "user", href: `#/artist/${artist.Id}` } : null,
+        ]) },
+      ],
+      overviewFirst: false,
+      open: "Songs",
+      tabs: [
+        { name: "Songs", id: "tpSongs", keep: true, html: `<div class="msongs" id="ms">${body || `<p class="dim">No songs here yet.</p>`}</div>` },
+        { name: "More by this artist", id: "tpMoreBy", html: "" },
+        { name: "Similar albums", id: "tpSimilar", html: "" },
+      ],
+    });
+    // An album has no story: the Overview tab isn't used
+    const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
+    wireSongs($("#ms"), songs, al.Name, al.Id);
     if (artist) {
       const more = (await items(`IncludeItemTypes=MusicAlbum&AlbumArtistIds=${enc(artist.Id)}&SortBy=ProductionYear&SortOrder=Descending&Limit=20`).catch(() => [])).filter((a) => a.Id !== al.Id);
-      if (more.length) below.push(B.row(`More by ${artist.Name}`, more.map(albumCard)));
+      if (more.length && B.alive(nav)) tp.pane("tpMoreBy").innerHTML = `<div class="grid tp-grid">${more.map(albumCard).join("")}</div>`;
     }
     const similar = ((await B.get(`/Items/${enc(al.Id)}/Similar?UserId=${u}&Limit=16`).catch(() => ({}))).Items || []).filter((a) => a.Type === "MusicAlbum");
-    if (similar.length) below.push(B.row("Similar albums", similar.map(albumCard)));
-    if (B.alive(nav) && $("#mbelow")) $("#mbelow").innerHTML = below.join("");
+    if (similar.length && B.alive(nav)) tp.pane("tpSimilar").innerHTML = `<div class="grid tp-grid">${similar.map(albumCard).join("")}</div>`;
   });
   B.route(/^\/playlist\/([\w-]+)/, async (m, nav) => {
     const u = B.uid();
