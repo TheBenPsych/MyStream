@@ -165,7 +165,8 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .side h3 { margin: 0 0 6px; font-size: 24px; }
 .side .x { position: absolute; right: 18px; top: 18px; }
 .opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 16px; border-radius: 10px; background: var(--pg2); border: 0; color: var(--ink); font-weight: 600; cursor: pointer; text-align: left; margin-bottom: 6px; font-size: 16px; }
-.delay-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.delay-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.delay-row .opt:last-child { grid-column: 1 / -1; }
 .delay-row .opt { justify-content: center; padding: 11px 4px; text-align: center; }
 .opt:hover { background: var(--pg4); }
 .opt.on { box-shadow: inset 0 0 0 2px var(--ink); }

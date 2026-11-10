@@ -352,40 +352,67 @@ def _nightly():
 # ---------- Subtitles that are early or late ----------
 
 
+def _read_levels(out):
+    levels = []
+    with open(out) as f:
+        for line in f:
+            if "RMS_level=" in line:
+                v = line.split("=", 1)[1].strip()
+                levels.append(-120.0 if v in ("-inf", "nan") else float(v))
+    return levels
+
+
 def _speech(path, audio_index=None):
-    """Where people are talking, as a bit per 0.1 second (1 = voices). Uses ffmpeg to measure how loud
-    the speech part of the sound is, then calls the louder half "talking"."""
-    fd, out = tempfile.mkstemp(suffix=".txt", dir=_dir)
-    os.close(fd)
+    """Where people are talking, as a bit per 0.1 second (1 = voices). Uses ffmpeg to measure the
+    sound twice: the part where voices are (250-3400 Hz) and the hiss above it (4000 Hz and up).
+    A tenth of a second counts as talking when the voice part is fairly loud, clearly louder than the
+    hiss (laugh tracks, clapping and crowd noise are full of hiss), and going up and down the way
+    words do (music and steady background noise stay level)."""
+    outs = []
+    for _ in range(2):
+        fd, out = tempfile.mkstemp(suffix=".txt", dir=_dir)
+        os.close(fd)
+        outs.append(out)
+    voice_file, hiss_file = outs
     try:
-        amap = f"0:{audio_index}" if audio_index is not None else "0:a:0"
-        flt = (
-            "highpass=f=250,lowpass=f=3400,aresample=16000,asetnsamples=n=1600:p=0,"
-            f"astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file={out}"
+        amap = f"[0:{audio_index}]" if audio_index is not None else "[0:a:0]"
+        meta = "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file="
+        graph = (
+            f"{amap}aformat=channel_layouts=mono,aresample=16000,asetnsamples=n=1600:p=0,asplit=2[a][b];"
+            f"[a]highpass=f=250,lowpass=f=3400,{meta}{voice_file}[v];"
+            f"[b]highpass=f=4000,{meta}{hiss_file}[h]"
         )
-        code, _, err = _run(["ffmpeg", "-v", "error", "-i", path, "-map", amap, "-ac", "1", "-af", flt, "-f", "null", "-"], 1800)
+        code, _, err = _run(
+            ["ffmpeg", "-v", "error", "-i", path, "-filter_complex", graph, "-map", "[v]", "-f", "null", "-", "-map", "[h]", "-f", "null", "-"],
+            1800,
+        )
         if code != 0:
             raise CareError(500, "Tower couldn't read the sound in that video.")
-        levels, t = [], None
-        with open(out) as f:
-            for line in f:
-                if line.startswith("frame:"):
-                    m = re.search(r"pts_time:([\d.]+)", line)
-                    t = float(m.group(1)) if m else None
-                elif "RMS_level=" in line and t is not None:
-                    v = line.split("=", 1)[1].strip()
-                    levels.append(-120.0 if v in ("-inf", "nan") else float(v))
+        voice, hiss = _read_levels(voice_file), _read_levels(hiss_file)
     finally:
-        try:
-            os.remove(out)
-        except OSError:
-            pass
-    if len(levels) < 300:
+        for out in outs:
+            try:
+                os.remove(out)
+            except OSError:
+                pass
+    n = min(len(voice), len(hiss))
+    if n < 300:
         raise CareError(500, "The sound in that video is too short to line subtitles up with.")
-    ranked = sorted(levels)
-    edge = ranked[int(len(ranked) * 0.5)]
-    bits = "".join("1" if v > edge else "0" for v in levels)
-    return int(bits[::-1], 2), len(levels)
+    voice, hiss = voice[:n], hiss[:n]
+
+    def middle(xs, at=0.5):
+        ranked = sorted(xs)
+        return ranked[int(len(ranked) * at)]
+
+    above = [v - h for v, h in zip(voice, hiss)]
+    swing = []
+    for i in range(n):
+        near = voice[max(0, i - 3) : i + 4]
+        mean = sum(near) / len(near)
+        swing.append((sum((x - mean) ** 2 for x in near) / len(near)) ** 0.5)
+    loud, clear, moving = middle(voice, 0.3), middle(above) - 1, middle(swing)
+    bits = "".join("1" if v > loud and d > clear and m > moving else "0" for v, d, m in zip(voice, above, swing))
+    return int(bits[::-1], 2), n
 
 
 SRT_TIME = re.compile(r"(\d+):(\d\d):(\d\d)[,.](\d{1,3})\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d{1,3})")
@@ -468,7 +495,7 @@ def _score_at(bits, speech, k, mask):
     return (speech & moved).bit_count()
 
 
-def line_up_parts(cues, speech, frames, scale, shift, reach=20.0, part=120.0):
+def line_up_parts(cues, speech, frames, scale, shift, reach=60.0, part=120.0):
     """After the whole-video fix, checks the subtitles a couple of minutes at a time. Subtitles
     made for a different cut of a show (other ad breaks, a longer recap) are right in some parts
     and seconds off in others, and one shift for the whole video can't see that. Returns the
@@ -548,6 +575,12 @@ def _stream_info(item_id, index=None):
     pick = None
     if index is not None:
         pick = next((s for s in subs if s.get("Index") == index), None)
+        chosen = next((s for s in streams if s.get("Type") == "Subtitle" and s.get("Index") == index), None)
+        if pick is None and chosen is not None:
+            # Never check a different track than the one on screen: that made Tower say "fine" before
+            others = [s for s in subs if str(s.get("Language") or "").lower() == str(chosen.get("Language") or "").lower()]
+            tip = " Pick the other " + (chosen.get("DisplayTitle") or "subtitles").split(" - ")[0] + " subtitles in the list, they're words and Tower can fix those." if others else ""
+            raise CareError(400, "These subtitles are pictures (copied from a disc), so Tower can't move them." + tip)
     if pick is None:
         eng = [s for s in subs if str(s.get("Language") or "").lower() in ("eng", "en")]
         pick = (eng or subs or [None])[0]
@@ -578,6 +611,13 @@ def _new_name(video, sub):
     return name
 
 
+def _no_words(text):
+    """True for subtitle lines that are only sounds or music, like [LAUGHTER], (applause) or a song note"""
+    left = re.sub(r"\[[^\]]*\]|\([^)]*\)|<[^>]*>|\{[^}]*\}", " ", text)
+    left = re.sub(r"[\u266a\u266b#*\-\s.,!?:]", "", left)
+    return not left
+
+
 def fix_subtitles(item_id, index=None, auto=False):
     """Lines one subtitle track up with the voices. Returns a plain answer for the person."""
     video, sub = _stream_info(item_id, index)
@@ -585,11 +625,19 @@ def fix_subtitles(item_id, index=None, auto=False):
     if not os.path.isfile(path):
         raise CareError(404, "Tower couldn't find the video file.")
     cues = _parse_srt(_sub_text(path, sub))
-    if len(cues) < 20:
+    # Lines like [LAUGHTER] or a music note aren't voices, so only the spoken lines are matched
+    talk = [i for i, (_, _, w) in enumerate(cues) if not _no_words(w)]
+    if len(talk) < 20:
         raise CareError(400, "Those subtitles are too short to line up.")
+    spoken = [cues[i] for i in talk]
     speech, frames = _speech(path)
-    scale, shift, sure, gain = line_up(cues, speech, frames)
-    per_cue, parts, sure_parts = line_up_parts(cues, speech, frames, scale, shift)
+    scale, shift, sure, gain = line_up(spoken, speech, frames)
+    talk_shift, parts, sure_parts = line_up_parts(spoken, speech, frames, scale, shift)
+    per_cue, j = [], 0
+    for i in range(len(cues)):
+        while j + 1 < len(talk) and talk[j + 1] <= i:
+            j += 1
+        per_cue.append(talk_shift[j])
     fixed = [[s * scale + d, e * scale + d, w] for (s, e, w), d in zip(cues, per_cue)]
     before = _cover([(s, e) for s, e, _ in cues], frames, speech) or 1
     after = _cover([(s, e) for s, e, _ in fixed], frames, speech)
