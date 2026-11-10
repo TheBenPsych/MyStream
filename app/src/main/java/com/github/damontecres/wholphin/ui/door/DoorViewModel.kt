@@ -111,7 +111,10 @@ class DoorViewModel
         private var door: BenflixDoor? = null
         private var loadJob: Job? = null
         private var loadedAt = 0L
-        private var loadedFor: Pair<UUID, Boolean>? = null
+        private var loadedFor: Pair<UUID, String>? = null
+
+        /** Easy mode: fewer rows (like Kids) */
+        private var easyRows = false
 
         /** The rows on screen came from last time's snapshot (fresh ones are loading behind them) */
         private var fromSnapshot = false
@@ -136,9 +139,14 @@ class DoorViewModel
         private val freshShuffled = java.util.concurrent.ConcurrentHashMap<String, DoorRowData>()
 
         /** Starts (or refreshes) the door. Coming back within a short while keeps the rows as they are. */
-        fun start(door: BenflixDoor) {
+        fun start(
+            door: BenflixDoor,
+            easy: Boolean = easyRows,
+        ) {
             val userId = serverRepository.currentUser?.id ?: return
-            val key = userId to KidsMode.isActive
+            easyRows = easy
+            // Each profile (and Kids, Big kids, Guest, Easy mode) keeps its own rows
+            val key = userId to "${KidsMode.level}-$easy"
             val fresh = System.currentTimeMillis() - loadedAt < REFRESH_MS
             if (this.door == door && loadedFor == key && (fresh || loadJob?.isActive == true)) return
             // The first start keeps a spot recalled from DoorMemory; another profile starts at the top
@@ -234,7 +242,7 @@ class DoorViewModel
         private fun snapshotKey(
             door: BenflixDoor,
             userId: UUID,
-        ) = "door-${door.name}-$userId-${KidsMode.level}-$SNAPSHOT_FORMAT"
+        ) = "door-${door.name}-$userId-${KidsMode.level}-${if (easyRows) "easy" else "all"}-$SNAPSHOT_FORMAT"
 
         /** "Try again" on the can't-reach-the-server note */
         fun retry() {
@@ -304,7 +312,7 @@ class DoorViewModel
             val main = libs.ofKind(LibraryKind.MOVIES)
             val anime = libs.ofKind(LibraryKind.ANIME_MOVIES)
             val standUp = libs.ofKind(LibraryKind.STANDUP)
-            val easy = KidsMode.isActive
+            val easy = KidsMode.isActive || easyRows
             val order =
                 if (easy) {
                     listOf(KEEP, MY_LIST, NEW)
@@ -380,7 +388,7 @@ class DoorViewModel
             val libs = libraries()
             val main = libs.ofKind(LibraryKind.SHOWS)
             val anime = libs.ofKind(LibraryKind.ANIME_SHOWS)
-            val easy = KidsMode.isActive
+            val easy = KidsMode.isActive || easyRows
             val order =
                 if (easy) {
                     listOf(KEEP, MY_LIST, NEW_SHOWS)

@@ -190,6 +190,10 @@ class MainActivity : AppCompatActivity() {
             .load(this)
         com.github.damontecres.wholphin.services.ChannelPrefs
             .load(this)
+        // Benflix safety: Kids, Big kids and Guest come back from this device before anything is drawn. The sign-in
+        // check that follows turns them off again if the saved one was for someone else.
+        com.github.damontecres.wholphin.services.ProfileModes
+            .restoreEarly(this)
         com.github.damontecres.wholphin.util.StartupTimer
             .mark(com.github.damontecres.wholphin.util.StartupTimer.SCREEN)
         Timber.i("MainActivity.onCreate: savedInstanceState is null=${savedInstanceState == null}")

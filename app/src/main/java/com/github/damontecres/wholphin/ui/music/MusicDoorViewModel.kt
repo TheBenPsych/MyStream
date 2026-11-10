@@ -106,7 +106,10 @@ class MusicDoorViewModel
         @Volatile
         private var fromSnapshot = false
 
-        private fun snapshotKey() = serverRepository.currentUser?.id?.let { "music-door-$it-$SNAPSHOT_FORMAT" }
+        private fun snapshotKey() =
+            serverRepository.currentUser?.id?.let {
+                "music-door-$it-${com.github.damontecres.wholphin.services.KidsMode.level}-$SNAPSHOT_FORMAT"
+            }
 
         fun start() {
             // Benflix speed: Music used to start from nothing every time, waiting on Tower's mixes before

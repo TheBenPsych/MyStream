@@ -1870,8 +1870,10 @@ class PlaybackViewModel
 
         fun shouldAutoPlayNextUp(): Boolean =
             preferences.appPreferences.playbackPreferences.let {
-                // Benflix: at Kids bedtime, the next episode doesn't start by itself
+                // Benflix: at Kids bedtime (and in the 15 minutes before it: "This is the last one"),
+                // the next episode doesn't start by itself
                 !BenflixBedtime.lockedNow() &&
+                    !BenflixBedtime.lastOneNow() &&
                     !BenflixScreenTime.lockedNow() &&
                     it.autoPlayNext &&
                     // Benflix redesign: Kids profiles stop after 3 episodes in a row with no button pressed

@@ -264,6 +264,17 @@ object BenflixBedtime {
             now.isBefore(BEDTIME) &&
             windDownShownOn != java.time.LocalDate.now()
 
+    /**
+     * The 15 minutes before bedtime on Kids (Ben's pick kd-p-bedtime): what's playing now is the last one, so the
+     * next episode doesn't start by itself. A grown-up's 30 more minutes lifts it.
+     */
+    fun lastOneNow(now: LocalTime = LocalTime.now()): Boolean =
+        KidsMode.isActive &&
+            pinSet &&
+            System.currentTimeMillis() > moreTimeUntil &&
+            !now.isBefore(BEDTIME.minusMinutes(WIND_DOWN_MINUTES)) &&
+            now.isBefore(BEDTIME)
+
     fun giveMoreTime() {
         moreTimeUntil = System.currentTimeMillis() + MORE_TIME_MS
     }

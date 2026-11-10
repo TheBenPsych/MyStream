@@ -212,7 +212,7 @@ class BedtimeViewModel
     }
 
 /**
- * Sits on top of every page. At Kids bedtime (with a parent PIN set) it shows "Time for bed!".
+ * Sits on top of every page. At Kids bedtime (with a parent PIN set) it shows "Good night!".
  * If something is playing, it waits for it to finish first.
  */
 @Composable
@@ -239,8 +239,9 @@ fun BedtimeLayer(
                         .background(Color(0xEE141418), RoundedCornerShape(10.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
-                Text("15 minutes until bedtime", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Time to pick your last show!", fontSize = BenflixType.body, color = Color(0xFFD8D8F0))
+                // Ben's pick (kd-p-bedtime): gentle. What's on now finishes, then Benflix says good night.
+                Text("Bedtime soon", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("This is the last one", fontSize = BenflixType.body, color = Color(0xFFD8D8F0))
             }
         }
     }
@@ -271,7 +272,7 @@ fun BedtimeLayer(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.widthIn(max = 640.dp).padding(24.dp),
             ) {
-                Text(text = "Time for bed!", fontWeight = FontWeight.Bold, fontSize = BenflixType.hero, color = Color.White)
+                Text(text = "Good night!", fontWeight = FontWeight.Bold, fontSize = BenflixType.hero, color = Color.White)
                 Text(
                     text = "Benflix is sleeping too. See you in the morning!",
                     fontSize = BenflixType.rowName,

@@ -4,20 +4,9 @@ import android.content.Context
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -41,22 +29,10 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Border
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
@@ -68,8 +44,6 @@ import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.DOOR_NOTE_VOLUME
 import com.github.damontecres.wholphin.ui.IntroPace
 import com.github.damontecres.wholphin.ui.IntroSounds
-import com.github.damontecres.wholphin.ui.components.BenflixIcon
-import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.HomeNewsDot
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
@@ -77,7 +51,6 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.waitForSettled
@@ -213,6 +186,8 @@ class HomeDoorsViewModel
         private val funFacts: com.github.damontecres.wholphin.services.BenflixFunFacts,
         private val displayPreferencesService: com.github.damontecres.wholphin.services.DisplayPreferencesService,
         private val notes: com.github.damontecres.wholphin.services.BenflixNotes,
+        private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
+        private val localGames: com.github.damontecres.wholphin.games.LocalGames,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _rows = MutableStateFlow(HomeParts())
@@ -269,8 +244,152 @@ class HomeDoorsViewModel
             prefs.edit().putStringSet(seenKey(), (seen + ids).toList().takeLast(MAX_SEEN).toSet()).apply()
         }
 
-        fun load() {
-            if (KidsMode.isActive || GuestMode.isActive) {
+        private fun familyKey(kind: FamilyKind) = "${serverRepository.currentUser?.id}-${KidsMode.level}-${kind.name}"
+
+        private val _family = MutableStateFlow(FamilyHomeData())
+
+        /** What Kids, Easy mode and Guest show under their doors. Each profile has its own (never another's rows). */
+        val family: StateFlow<FamilyHomeData> = _family
+
+        /** The smaller Homes: Keep watching (Kids, Easy mode) or Popular here this week (Guest), and the Kids door lines */
+        fun loadFamily(kind: FamilyKind) {
+            val key = familyKey(kind)
+            // Last time's rows for this same profile show at once; anyone else's are never shown
+            _family.value = familyMemory[key] ?: FamilyHomeData(key = key)
+            val userId = serverRepository.currentUser?.id ?: return
+            viewModelScope.launchIO {
+                try {
+                    val cards =
+                        if (kind == FamilyKind.GUEST) popularCards(userId) else keepWatchingCards(userId)
+                    val lines = if (kind == FamilyKind.KIDS) kidsDoorLines(userId) else emptyMap()
+                    // Only if this profile is still the one on screen
+                    if (familyKey(kind) != key) return@launchIO
+                    val data = FamilyHomeData(key = key, cards = cards, lines = lines, loaded = true)
+                    familyMemory[key] = data
+                    _family.value = data
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Home: family rows")
+                    if (familyKey(kind) == key) _family.value = _family.value.copy(loaded = true)
+                }
+            }
+        }
+
+        private fun card(item: BaseItem): FamilyCard {
+            val showId = if (item.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) item.data.seriesId else null
+            return FamilyCard(
+                id = (showId ?: item.id).toString(),
+                title = item.title ?: item.name.orEmpty(),
+                image = poster(showId ?: item.id),
+                destination = item.destination(),
+            )
+        }
+
+        /** Movies and shows started but not finished, newest first (Kids only ever gets kids titles back) */
+        private suspend fun keepWatchingCards(userId: java.util.UUID): List<FamilyCard> =
+            coroutineScope {
+                val movies = async { doorData.resumeMovies(userId) }
+                val episodes = async { doorData.keepWatchingEpisodes(userId) }
+                (movies.await() + episodes.await())
+                    .sortedByDescending { it.data.userData?.lastPlayedDate }
+                    .map { card(it) }
+                    .distinctBy { it.id }
+                    .take(FAMILY_ROW)
+            }
+
+        /** Popular here this week: what the household watched most (from Tower), or else what's trending on Benflix */
+        private suspend fun popularCards(userId: java.util.UUID): List<FamilyCard> {
+            val household =
+                try {
+                    val answer = helper.getJson("/api/popular").optJSONArray("items")
+                    (0 until (answer?.length() ?: 0)).mapNotNull {
+                        answer?.optJSONObject(it)?.optString("id")?.let { id -> runCatching { java.util.UUID.fromString(id) }.getOrNull() }
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.i("Guest popular: %s", ex.message)
+                    emptyList()
+                }
+            val picks = doorData.byIds(userId, household)
+            val items =
+                if (picks.size >= POPULAR_MIN) {
+                    picks
+                } else {
+                    coroutineScope {
+                        val movies =
+                            async { doorData.top10(userId, org.jellyfin.sdk.model.api.BaseItemKind.MOVIE, emptySet(), anime = false) }
+                        val shows =
+                            async { doorData.top10(userId, org.jellyfin.sdk.model.api.BaseItemKind.SERIES, emptySet(), anime = false) }
+                        val m = movies.await()
+                        val s = shows.await()
+                        (0 until maxOf(m.size, s.size)).flatMap { listOfNotNull(m.getOrNull(it), s.getOrNull(it)) }
+                    }
+                }
+            return items.map { card(it) }.distinctBy { it.id }.take(FAMILY_ROW)
+        }
+
+        /** Kids doors name a couple of titles from this profile: "Bluey, Frozen and more" */
+        private suspend fun kidsDoorLines(userId: java.util.UUID): Map<BenflixDoor, String> =
+            coroutineScope {
+                fun words(names: List<String>): String? =
+                    names
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .take(
+                            2,
+                        ).takeIf { it.isNotEmpty() }
+                        ?.joinToString(", ")
+                        ?.let { "$it and more" }
+
+                suspend fun newest(type: org.jellyfin.sdk.model.api.BaseItemKind): List<String> =
+                    try {
+                        api.itemsApi
+                            .getItems(
+                                org.jellyfin.sdk.model.api.request.GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(type),
+                                    recursive = true,
+                                    sortBy =
+                                        listOf(
+                                            org.jellyfin.sdk.model.api.ItemSortBy.DATE_PLAYED,
+                                            org.jellyfin.sdk.model.api.ItemSortBy.DATE_CREATED,
+                                        ),
+                                    sortOrder = listOf(org.jellyfin.sdk.model.api.SortOrder.DESCENDING),
+                                    enableImages = false,
+                                    enableTotalRecordCount = false,
+                                    limit = 4,
+                                ),
+                            ).content.items
+                            .mapNotNull { it.name }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.d(ex, "Kids door line")
+                        emptyList()
+                    }
+                val movies = async { newest(org.jellyfin.sdk.model.api.BaseItemKind.MOVIE) }
+                val shows = async { newest(org.jellyfin.sdk.model.api.BaseItemKind.SERIES) }
+                val games =
+                    try {
+                        localGames.downloaded().filter { it.ref.kids }.map { it.ref.name }
+                    } catch (ex: Exception) {
+                        emptyList()
+                    }
+                listOfNotNull(
+                    words(movies.await())?.let { BenflixDoor.MOVIES to it },
+                    words(shows.await())?.let { BenflixDoor.SHOWS to it },
+                    (words(games) ?: "Games to play on the TV").let { BenflixDoor.GAMES to it },
+                ).toMap()
+            }
+
+        /** This profile's id (Easy mode's door order is kept per profile) */
+        val userId: java.util.UUID? get() = serverRepository.currentUser?.id
+
+        /** [small]: Kids, Easy mode and Guest have no news list, so nothing is looked up for it */
+        fun load(small: Boolean = false) {
+            if (small || KidsMode.isActive || GuestMode.isActive) {
                 HomeNewsDot.set(false)
                 _rows.value = HomeParts()
                 _weather.value = null
@@ -754,6 +873,10 @@ class HomeDoorsViewModel
         }
 
         companion object {
+            /** The smaller Homes' rows, kept per profile while Benflix is open */
+            private val familyMemory = java.util.concurrent.ConcurrentHashMap<String, FamilyHomeData>()
+            private const val FAMILY_ROW = 12
+            private const val POPULAR_MIN = 5
             private const val PREFS = "benflix_home_news"
             private const val WEATHER_KEY = "weather-line"
             private const val WEATHER_AT_KEY = "weather-at"
@@ -892,8 +1015,16 @@ fun DoorsHomePage(
     viewModel: HomeDoorsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    LifecycleStartEffect(Unit) {
-        viewModel.load()
+    val kids by KidsMode.active.collectAsState()
+    val guestOn by GuestMode.active.collectAsState()
+    val easyPref = preferences.appPreferences.benflixPreferences.easyRead
+    // Kids, Big kids, Guest and Easy mode get their own smaller Home (Redesign 2, section 11)
+    val familyKind = remember(kids, guestOn, easyPref) { familyKindNow(easyPref) }
+    val familyDoorSet = remember(familyKind) { familyKind?.let { familyDoors(it, context, viewModel.userId) } }
+    val familyData by viewModel.family.collectAsState()
+    LifecycleStartEffect(familyKind) {
+        viewModel.load(small = familyKind != null)
+        familyKind?.let { viewModel.loadFamily(it) }
         onStopOrDispose { }
     }
     // Benflix: the admin's alert (new problem report, disk nearly full) only shows while Home is on screen
@@ -909,10 +1040,9 @@ fun DoorsHomePage(
         StartupTimer.mark(StartupTimer.HOME_ROWS)
         StartupTimer.finish(context)
     }
-    val kids by KidsMode.active.collectAsState()
-    val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
-    // Music is the fifth door, but not on Kids profiles (no music on Kids)
-    val doors = remember(kids) { BenflixDoor.forHome(kids) }
+    // Music is the fifth door on the grown-up Home; the smaller Homes pick their own doors
+    val boardDoors = remember(kids) { BenflixDoor.forHome(kids) }
+    val doors = familyDoorSet?.shown ?: boardDoors
     val lite =
         remember {
             com.github.damontecres.wholphin.services.LiteMode
@@ -1015,6 +1145,7 @@ fun DoorsHomePage(
     }
 
     val onDoor: (BenflixDoor) -> Unit = { door ->
+        DoorUse.opened(context, viewModel.userId, door)
         // Approved door colour fill: the door's colour grows to fill the screen, then the page opens
         DoorWipe.start(door.color, doorRects.value.getOrNull(door.ordinal)) {
             viewModel.navigationManager.navigateTo(
@@ -1129,7 +1260,7 @@ fun DoorsHomePage(
                     }
                 },
     ) {
-        if (!easy) {
+        if (familyKind == null || familyDoorSet == null) {
             // The approved Today board (f3-panel): six square doors 3 by 2, the list beside them (TV) or under them (phone)
             HomeBoard(
                 greeting = greetingFor(viewModel.userName),
@@ -1150,253 +1281,27 @@ fun DoorsHomePage(
                 lite = lite,
                 focusDoors = { moviesFocus.tryRequestFocus() },
             )
-        } else if (wide) {
-            // Kids and Easy mode keep the big doors (approved)
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(end = 24.dp, top = 12.dp, bottom = 34.dp),
-            ) {
-                Text(
-                    text = greetingFor(viewModel.userName),
-                    color = BenflixColors.Text,
-                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(32.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                ) {
-                    doors.forEach { door ->
-                        val i = door.ordinal
-                        DoorTile(
-                            door = door,
-                            easy = easy,
-                            wide = true,
-                            labelAlpha = labelAlpha(i),
-                            onClick = { onDoor(door) },
-                            modifier =
-                                doorModifier(i)
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .then(if (i == 0) Modifier.focusRequester(moviesFocus) else Modifier),
-                        )
-                    }
-                }
-            }
         } else {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(end = 8.dp, top = 8.dp, bottom = 24.dp),
-            ) {
-                Text(
-                    text = greetingFor(viewModel.userName),
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.pageTitle,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Spacer(Modifier.height(20.dp))
-                // Phones: the doors two by two (six doors = three rows, approved h-door); a door left on its own is wide
-                val pairs = doors.chunked(2)
-                pairs.forEach { pair ->
-                    if (pair.size == 1) {
-                        val door = pair.first()
-                        val i = door.ordinal
-                        DoorTile(
-                            door = door,
-                            easy = easy,
-                            wide = false,
-                            labelAlpha = labelAlpha(i),
-                            onClick = { onDoor(door) },
-                            sideways = true,
-                            modifier =
-                                doorModifier(i)
-                                    .fillMaxWidth()
-                                    .height(if (easy) 112.dp else 96.dp),
-                        )
-                        return@forEach
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    ) {
-                        pair.forEach { door ->
-                            val i = door.ordinal
-                            DoorTile(
-                                door = door,
-                                easy = easy,
-                                wide = false,
-                                labelAlpha = labelAlpha(i),
-                                onClick = { onDoor(door) },
-                                modifier =
-                                    doorModifier(i)
-                                        .weight(1f)
-                                        .aspectRatio(if (pairs.size > 2) PHONE_DOOR_RATIO_SIX else PHONE_DOOR_RATIO)
-                                        .then(if (i == 0) Modifier.focusRequester(moviesFocus) else Modifier),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** One solid colour door: line icon at the top, name and description at the bottom. Focus = white outline only. */
-@Composable
-private fun DoorTile(
-    door: BenflixDoor,
-    easy: Boolean,
-    wide: Boolean,
-    labelAlpha: Float,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    sideways: Boolean = false,
-) {
-    val shape = RoundedCornerShape(if (wide) 14.dp else 18.dp)
-    val icon =
-        when (door) {
-            BenflixDoor.MOVIES -> BenflixIcon.FILM
-            BenflixDoor.SHOWS -> BenflixIcon.TV
-            BenflixDoor.LIVE_TV -> BenflixIcon.LIVE
-            BenflixDoor.GAMES -> BenflixIcon.PAD
-            BenflixDoor.MUSIC -> BenflixIcon.NOTE
-            BenflixDoor.BOOKS -> BenflixIcon.BOOK
-        }
-    val nameSize: TextUnit
-    val descSize: TextUnit
-    val iconSize: Dp
-    val pad: Dp
-    if (wide) {
-        nameSize = if (easy) 46.sp else 38.sp
-        descSize = 15.sp
-        iconSize = 44.dp
-        pad = 22.dp
-    } else {
-        nameSize = if (easy) 30.sp else 25.sp
-        descSize = 12.sp
-        iconSize = 36.dp
-        pad = 16.dp
-    }
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = door.color,
-                contentColor = door.onColor,
-                focusedContainerColor = door.color,
-                focusedContentColor = door.onColor,
-                pressedContainerColor = door.color,
-                pressedContentColor = door.onColor,
-            ),
-        border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder =
-                    Border(
-                        border = androidx.compose.foundation.BorderStroke(4.dp, BenflixColors.Text),
-                        inset = 0.dp,
-                        shape = shape,
-                    ),
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        androidx.compose.foundation.layout.BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = labelAlpha }
-                .padding(pad),
-        ) {
-            // Every door uses the same name size, small enough that the longest name ("Live TV") fits in full,
-            // so five doors on a TV never cut a name short ("Movie", "Game") and all names stay level
-            val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-            val fitSize = ((if (sideways) maxWidth - iconSize - 16.dp else maxWidth).value / 4.5f / fontScale).sp
-            val nameFits = if (fitSize < nameSize) fitSize else nameSize
-            // Same idea for the words under the name: one size for every door, small enough that the longest
-            // ("Your songs and playlists") fits in two lines, so six doors on a TV never cut them short
-            val measurer = rememberTextMeasurer()
-            val textWidth =
-                with(androidx.compose.ui.platform.LocalDensity.current) {
-                    (if (sideways) maxWidth - iconSize - 16.dp else maxWidth).roundToPx().coerceAtLeast(1)
-                }
-            val descFits =
-                remember(textWidth, descSize, fontScale) {
-                    var size = descSize.value
-                    while (size > 9f &&
-                        BenflixDoor.entries.any { d ->
-                            measurer
-                                .measure(
-                                    text = d.description,
-                                    style =
-                                        TextStyle(
-                                            fontSize = size.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                        ),
-                                    constraints = Constraints(maxWidth = textWidth),
-                                    maxLines = 2,
-                                ).hasVisualOverflow
-                        }
-                    ) {
-                        size -= 0.5f
-                    }
-                    size.sp
-                }
-            BenflixIconImage(
-                icon = icon,
-                color = door.onColor,
-                size = iconSize,
-                modifier = Modifier.align(if (sideways) Alignment.CenterStart else Alignment.TopStart),
+            // Kids (kd-family), Easy mode (ez-family) and Guest (gs-family): big doors and one row
+            FamilyHome(
+                kind = familyKind,
+                greeting = if (familyKind == FamilyKind.GUEST) "Welcome" else greetingFor(viewModel.userName),
+                doors = familyDoorSet,
+                // Never show rows that belong to someone else, even for a moment
+                data = if (familyData.key.endsWith("-" + familyKind.name)) familyData else FamilyHomeData(),
+                wide = wide,
+                labelAlpha = labelAlpha,
+                listAlpha = listAlpha,
+                doorModifier = { door ->
+                    doorModifier(door.ordinal).then(if (door == BenflixDoor.MOVIES) Modifier.focusRequester(moviesFocus) else Modifier)
+                },
+                onDoor = onDoor,
+                onCard = { card -> viewModel.navigationManager.navigateTo(card.destination) },
             )
-            Column(
-                modifier =
-                    if (sideways) {
-                        Modifier.align(Alignment.CenterStart).padding(start = iconSize + 16.dp)
-                    } else {
-                        Modifier.align(Alignment.BottomStart)
-                    },
-            ) {
-                Text(
-                    text = door.title,
-                    color = door.onColor,
-                    fontSize = nameFits,
-                    lineHeight = nameFits,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                if (!easy) {
-                    Text(
-                        text = door.description,
-                        color = door.onColor.copy(alpha = .85f),
-                        fontSize = descFits,
-                        lineHeight = descFits * 1.25f,
-                        fontWeight = FontWeight.SemiBold,
-                        // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
-                        minLines = if (sideways) 1 else 2,
-                        maxLines = 2,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-            }
         }
     }
 }
 
-/** Phone doors: a little taller than wide */
-private const val PHONE_DOOR_RATIO = 0.8f
-
-/** Phones with six doors (Books): a little wider than tall, so all three rows fit */
-private const val PHONE_DOOR_RATIO_SIX = 1.12f
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f
 

@@ -505,8 +505,19 @@ fun DestinationContent(
 
         Destination.Requests -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            com.github.damontecres.wholphin.ui.discover
-                .BenflixRequestsPage(modifier)
+            if (com.github.damontecres.wholphin.services.KidsMode.isActive ||
+                com.github.damontecres.wholphin.services.GuestMode.isActive
+            ) {
+                // Benflix safety: Requests checks for itself, so Kids and Guest never reach it by any route
+                Text(
+                    text = "Ask a grown-up to ask for something new.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = modifier,
+                )
+            } else {
+                com.github.damontecres.wholphin.ui.discover
+                    .BenflixRequestsPage(modifier)
+            }
         }
 
         is Destination.AnimeGenres -> {
@@ -517,8 +528,17 @@ fun DestinationContent(
 
         Destination.MyBenflix -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            com.github.damontecres.wholphin.ui.main
-                .MyBenflixPage(modifier)
+            if (com.github.damontecres.wholphin.services.GuestMode.isActive) {
+                // Benflix safety: Guest never sees anyone's watching history
+                Text(
+                    text = "Nothing you watch as Guest is saved, so there's no history here.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = modifier,
+                )
+            } else {
+                com.github.damontecres.wholphin.ui.main
+                    .MyBenflixPage(modifier)
+            }
         }
 
         is Destination.GenreHub -> {

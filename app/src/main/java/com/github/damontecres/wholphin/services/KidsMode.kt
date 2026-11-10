@@ -31,11 +31,14 @@ object KidsMode {
     /** The name shown in the menus: "Kids" or "Big kids" */
     val displayName: String get() = if (isBig) "Big kids" else "Kids"
 
-    /** The Kids level for saved-copy names: "off", "kids" or "bigkids" */
+    /**
+     * The profile kind for saved-copy names: "off", "kids", "bigkids" or "guest". Guest borrows a grown-up's
+     * sign-in, so it needs its own saved rows too (otherwise the owner's rows flash up for a visitor).
+     */
     val level: String
         get() =
             when {
-                !isActive -> "off"
+                !isActive -> if (GuestMode.isActive) "guest" else "off"
                 isBig -> "bigkids"
                 else -> "kids"
             }

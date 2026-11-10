@@ -2,13 +2,9 @@ package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.damontecres.wholphin.services.KidsMode
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.UUID
 
@@ -77,17 +73,19 @@ fun Destination.isMusicHero(): Boolean =
     ) ||
         (this is Destination.MusicList && (kind == "liked" || kind == "mix" || kind == "songs"))
 
-/** The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids get a small "kids" word after it. */
+/**
+ * The Benflix logo (redesign): four soft door-colour squares and "Benflix". Kids, Big kids and Guest show a
+ * badge next to it in the top bar instead (Redesign 2, section 11), so the logo itself stays the same for everyone.
+ */
 @Composable
 fun BenflixLogo(
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 26.dp,
     markModifier: Modifier = Modifier,
 ) {
-    val kids by KidsMode.active.collectAsState()
     com.github.damontecres.wholphin.ui.components.BenflixWordLogo(
         height = height,
-        extra = if (kids) "kids" else null,
+        extra = null,
         markModifier = markModifier,
         modifier = modifier,
     )

@@ -40,6 +40,31 @@ object ProfileModes {
             .apply()
     }
 
+    /**
+     * What this device saved for [userId]: (kids, big kids, guest). The game player runs in its own process, so it
+     * reads this itself instead of only trusting what it was told when it started.
+     */
+    fun saved(
+        context: Context,
+        userId: String?,
+    ): Triple<Boolean, Boolean, Boolean> {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val sameUser = userId.isNullOrBlank() || prefs.getString(KEY_USER, null).equals(userId, ignoreCase = true)
+        if (!sameUser) return Triple(false, false, false)
+        val kids = prefs.getBoolean(KEY_KIDS, false)
+        return Triple(kids, kids && prefs.getBoolean(KEY_BIG, false), prefs.getBoolean(KEY_GUEST, false))
+    }
+
+    /**
+     * When Benflix opens: bring back what was saved, before anything is drawn (whose sign-in it was is checked
+     * a moment later by [restore]). Leaves things alone if Kids or Guest is already on.
+     */
+    fun restoreEarly(context: Context) {
+        if (KidsMode.isActive || GuestMode.isActive) return
+        val (kids, big, guest) = saved(context, null)
+        if (kids || guest) set(kids, big, guest)
+    }
+
     /** Bring back the saved Kids / Guest state if it was saved for this sign-in, otherwise turn them off */
     fun restore(
         context: Context,
