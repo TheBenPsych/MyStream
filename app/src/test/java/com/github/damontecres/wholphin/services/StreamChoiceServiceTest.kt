@@ -524,6 +524,42 @@ class TestStreamChoiceServiceOnlyForced(
                             subtitle(1, "spa", forced = true),
                         ),
                     streamAudioLang = "eng",
+                    appSubtitleLang = UserProfileSettings.PREFER_ANY_LANGUAGE,
+                ),
+                // Benflix: a profile that never picked a subtitle language gets English
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.ONLY_FORCED,
+                    userSubtitleLang = null,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", forced = false),
+                            subtitle(1, "spa", forced = true),
+                        ),
+                    streamAudioLang = "eng",
+                ),
+                TestInput(
+                    2,
+                    SubtitlePlaybackMode.SMART,
+                    userAudioLang = null,
+                    userSubtitleLang = "",
+                    subtitles =
+                        listOf(
+                            subtitle(0, "spa", default = true),
+                            subtitle(1, "fre"),
+                            subtitle(2, "eng"),
+                        ),
+                    streamAudioLang = "jpn",
+                ),
+                TestInput(
+                    1,
+                    SubtitlePlaybackMode.ALWAYS,
+                    userSubtitleLang = null,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "spa", default = true),
+                            subtitle(1, "eng"),
+                        ),
                 ),
                 TestInput(
                     0,
