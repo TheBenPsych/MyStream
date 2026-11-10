@@ -198,17 +198,25 @@ def _nyt(path):
     return _get(NYT + path + sep + "api-key=" + urllib.parse.quote(key))
 
 
-def _hc_header():
-    tok = (_keys.get("hardcover") or "").strip()
+_hc_style = {"bearer": None}  # which way of sending the key Hardcover took last time
+
+
+def _hc_headers():
+    """The ways to send the key: older tokens go as "Bearer <token>", newer API keys may go as they are"""
+    tok = re.sub(r"\s+", " ", (_keys.get("hardcover") or "").strip())
     if not tok:
-        return None
-    return tok if tok.lower().startswith("bearer ") else "Bearer " + tok
+        return []
+    raw = tok[7:].strip() if tok.lower().startswith("bearer ") else tok
+    ways = [(True, "Bearer " + raw), (False, raw)]
+    if _hc_style["bearer"] is False:
+        ways.reverse()
+    return ways
 
 
 def hc(query, variables=None):
     """One Hardcover question (GraphQL). None when there's no token."""
-    auth = _hc_header()
-    if not auth:
+    ways = _hc_headers()
+    if not ways:
         return None
     with _lock:
         now = time.time()
@@ -218,7 +226,22 @@ def hc(query, variables=None):
     if wait > 0:
         time.sleep(wait)
     body = json.dumps({"query": query, "variables": variables or {}}).encode()
-    j = _get(HC, data=body, headers={"Content-Type": "application/json", "authorization": auth}, timeout=30) or {}
+    j, last = None, None
+    for bearer, auth in ways:
+        try:
+            j = _get(HC, data=body, headers={"Content-Type": "application/json", "authorization": auth}, timeout=30) or {}
+            _hc_style["bearer"] = bearer
+            break
+        except urllib.error.HTTPError as e:
+            if e.code not in (401, 403):
+                raise
+            try:
+                e.detail = e.read()[:300].decode("utf-8", "replace")
+            except Exception:
+                e.detail = ""
+            last = e
+    if j is None:
+        raise last
     if j.get("errors"):
         raise RuntimeError("Hardcover: " + str((j["errors"][0] or {}).get("message") or j["errors"][0])[:200])
     return j.get("data") or {}
@@ -451,7 +474,9 @@ def _nyt_problem(e):
 
 def _hc_problem(e):
     if isinstance(e, urllib.error.HTTPError) and e.code in (401, 403):
-        return "The Hardcover key didn't work. Make a new one at hardcover.app/account/api with read:catalog ticked."
+        detail = re.sub(r"\s+", " ", str(getattr(e, "detail", "") or ""))[:160]
+        return (f"Hardcover said no ({e.code}{': ' + detail if detail else ''}). "
+                "Check the key was copied whole and has read:catalog ticked.")
     if isinstance(e, urllib.error.HTTPError) and e.code == 429:
         return "Hardcover asked Tower to slow down. It tries again later."
     return f"Couldn't reach Hardcover ({str(e)[:120]})."
