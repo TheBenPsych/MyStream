@@ -30,6 +30,7 @@ import hashlib
 import html
 import json
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -1344,6 +1345,54 @@ def _one_per_book(tiles):
     return out
 
 
+HOME_GENRE_NAMES = {"Kids": "For kids", "Biography": "Biography & memoir", "Sci-Fi": "Science fiction"}
+
+
+def _home_extra_rows(tiles, user_id, is_kids):
+    """More rows for Books Home from the books themselves: a few genres (a different few each day), the best
+    rated, and quick reads. A row needs at least 4 books so it never looks half empty."""
+    rows = []
+    with _lock:
+        titles = dict(_lib["titles"])
+    books = [t for t in tiles.values() if t["kind"] in ("book", "audiobook")]
+    # Best rated (Open Library readers' scores, with enough votes to trust)
+    rated = []
+    for t in books:
+        m = meta_of(titles[t["id"]]) if t["id"] in titles else {}
+        if (m.get("score") or 0) >= 4.0 and (m.get("votes") or 0) >= 10:
+            rated.append((m["score"], m.get("votes") or 0, t))
+    rated.sort(key=lambda x: (-x[0], -x[1]))
+    top_rated = _one_per_book([dict(t, line=f"★ {sc} · {t['author']}".strip(" ·") if t["status"] == "not" else t["line"]) for sc, _v, t in rated])[:30]
+    # Quick reads: ebooks under about 220 pages
+    quick = []
+    for t in books:
+        m = meta_of(titles[t["id"]]) if t["id"] in titles else {}
+        if t["kind"] == "book" and 0 < (m.get("pages") or 0) <= 220 and t["status"] != "done":
+            quick.append((m["pages"], dict(t, line=f"{m['pages']} pages" if t["status"] == "not" else t["line"])))
+    quick = [t for _p, t in sorted(quick, key=lambda x: x[0])][:30]
+    # Genres with at least 4 books, shuffled once a day (each profile gets its own order)
+    by_genre = {}
+    for t in tiles.values():
+        for g in t.get("genres") or []:
+            if g == "Kids" and is_kids:
+                continue
+            by_genre.setdefault(g, []).append(t)
+    rng = random.Random(f"{time.strftime('%Y-%m-%d')}-{user_id}")
+    names = sorted(g for g, ts in by_genre.items() if len(_one_per_book(ts)) >= 4)
+    rng.shuffle(names)
+    genre_rows = []
+    for g in names[:5]:
+        ts = _one_per_book(by_genre[g])
+        # Not started first (something new to try), then the rest; shuffled inside so it isn't always A to Z
+        rng.shuffle(ts)
+        ts.sort(key=lambda t: t["status"] == "done")
+        genre_rows.append({"key": "genre-" + re.sub(r"\W+", "-", g.lower()), "title": HOME_GENRE_NAMES.get(g, g), "tiles": ts[:30]})
+    # Spread them out: a genre, the best rated, a genre, quick reads, then the other genres
+    order = genre_rows[:1] + [{"key": "rated", "title": "Readers love these", "tiles": top_rated}] + genre_rows[1:2]
+    order += [{"key": "quick", "title": "Quick reads", "tiles": quick}] + genre_rows[2:]
+    return [r for r in order if len(r["tiles"]) >= 4]
+
+
 def home(user_id, is_kids):
     """The rows on Books Home: On deck, New for you, Want to read, Recently added"""
     lib = library(user_id, is_kids)
@@ -1370,8 +1419,16 @@ def home(user_id, is_kids):
         {"key": "deck", "title": "On deck", "tiles": out[:30]},
         {"key": "new", "title": "New for you", "tiles": newf},
         {"key": "want", "title": "Want to read", "tiles": want + asked},
-        {"key": "recent", "title": "Recently added", "tiles": recent},
     ]
+    # The top lists (NYT, Hardcover, Apple Books, Open Library, award winners), only books on Benflix
+    if booklists is not None:
+        try:
+            for key, title, got in booklists.home_rows(list(tiles.values())):
+                rows.append({"key": key, "title": title, "tiles": got})
+        except Exception as e:
+            log(f"Home list rows: {e!r}")
+    rows.append({"key": "recent", "title": "Recently added", "tiles": recent})
+    rows += _home_extra_rows(tiles, user_id, is_kids)
     return {"rows": [r for r in rows if r["tiles"]], "counts": lib["counts"], "empty": not lib["titles"], "requests": lib["requests"], "folders": lib["folders"]}
 
 

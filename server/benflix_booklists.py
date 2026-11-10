@@ -15,6 +15,8 @@ How it works, in plain words:
     * Genre pages: Open Library's trending books for each genre.
 - Book of the week is the #1 NYT Fiction book, picked each Monday and kept for the week.
 - Books already on Benflix are left out of the rows. Asking for a book goes to Chaptarr (benflix_books.py).
+- Books Home uses the same lists the other way round (home_rows): only the books that ARE on Benflix show,
+  matched by title and author, so "NYT best sellers" on Home is the best sellers you can read right now.
 
 Saved in the Books folder (/booksdata) as lists.json, about.json and keys.json (the two keys stay on Tower).
 Only uses the Python standard library.
@@ -840,6 +842,93 @@ def page(user_id):
         "gatheredAt": _lists.get("at"),
         "missing": [w for w, k in (("NYT", "nyt"), ("Hardcover", "hardcover")) if not _keys.get(k)],
     }
+
+
+# ---------- Books Home: the same lists, but only the books already on Benflix ----------
+
+
+def _title_keys(name):
+    """'Onyx Storm: Deluxe Limited Edition' -> {'onyx storm deluxe limited edition', 'onyx storm'}"""
+    name = _books.tidy_title(name or "")
+    keys = {_books.norm(name)}
+    short = re.split(r"\s*[:;]\s+|\s+-\s+", name)[0]
+    keys.add(_books.norm(short))
+    return {k for k in keys if k}
+
+
+def _same_author(card_author, tile_author):
+    """True when the list's author and the book's author are the same person (or we can't tell)"""
+    if not card_author or not tile_author:
+        return True
+    mine = _books.author_key(tile_author)
+    first = _books.clean_author(card_author)
+    words = [w for w in re.findall(r"[a-z]+", _books.norm(first)) if len(w) >= 3]
+    return not words or words[-1] in mine
+
+
+def _have_tiles(tiles):
+    """norm title -> the profile's tiles with that title (an ebook and its audiobook can share one)"""
+    index = {}
+    for t in tiles:
+        if t.get("notHere") or t.get("kind") not in ("book", "audiobook"):
+            continue
+        for k in _title_keys(t.get("name")):
+            index.setdefault(k, []).append(t)
+    return index
+
+
+def _on_benflix(cards, index, line=None, kinds=None, limit=30):
+    """The list's books that are on Benflix, in the list's order, each book once (rank kept for the words)"""
+    out, seen = [], set()
+    for pos, c in enumerate(cards or []):
+        if not c or not c.get("name"):
+            continue
+        hits = []
+        for k in _title_keys(c["name"]):
+            hits += [t for t in index.get(k, []) if t not in hits]
+        hits = [t for t in hits if (not kinds or t["kind"] in kinds) and _same_author(c.get("author"), t.get("author"))]
+        if not hits:
+            continue
+        # The one you're reading, else the ebook (the audiobook for audiobook rows)
+        hits.sort(key=lambda t: (t.get("status") != "reading", t["kind"] != (kinds[0] if kinds else "book")))
+        t = hits[0]
+        pair = tuple(sorted([t["id"], t.get("linked") or t["id"]]))
+        if pair in seen or t["id"] in seen:
+            continue
+        seen.add(pair)
+        seen.add(t["id"])
+        words = line(c, pos) if line else None
+        v = dict(t)
+        if words and v.get("status") == "not":
+            v["line"] = words
+        out.append(v)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def home_rows(tiles):
+    """Rows for Books Home from the daily lists: only books this profile can see on Benflix. Empty rows are left
+    out by the caller. Each is (key, title, tiles)."""
+    if not _lists:
+        return []
+    index = _have_tiles(tiles)
+    if not index:
+        return []
+    ranked = lambda c, pos: f"#{c.get('rank') or pos + 1} · {c.get('author') or ''}".strip(" ·")  # noqa: E731
+    in_order = lambda c, pos: f"#{pos + 1} · {c.get('author') or ''}".strip(" ·")  # noqa: E731
+    rows = []
+    top = _lists.get("hc_trending") or []
+    if top:
+        rows.append(("top", "Top books this week", _on_benflix(top, index, in_order)))
+    rows.append(("nytf", "NYT best sellers · Fiction", _on_benflix(_lists.get("nyt_fiction"), index, ranked)))
+    rows.append(("nytn", "NYT best sellers · Nonfiction", _on_benflix(_lists.get("nyt_nonfiction"), index, ranked)))
+    rows.append(("apple", "Top on Apple Books", _on_benflix(_lists.get("apple_top"), index, ranked)))
+    rows.append(("trending", "Trending this week", _on_benflix(_lists.get("ol_trending"), index)))
+    rows.append(("awards", "Award winners", _on_benflix(_lists.get("awards"), index, lambda c, pos: c.get("award"))))
+    audio = (_lists.get("nyt_audioFiction") or []) + (_lists.get("nyt_audioNonfiction") or [])
+    rows.append(("audio", "Audiobooks people love", _on_benflix(audio, index, ranked, kinds=("audiobook",))))
+    return [r for r in rows if r[2]]
 
 
 def genre_page(slug, user_id):
