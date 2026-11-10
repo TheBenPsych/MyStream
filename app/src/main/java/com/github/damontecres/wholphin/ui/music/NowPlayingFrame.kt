@@ -49,6 +49,7 @@ fun NowPlayingWideFrame(
 ) {
     BoxWithConstraints(modifier) {
         val height = maxHeight - reservedBottom - NOW_PLAYING_TOP
+        val width = maxWidth
         Row(
             horizontalArrangement = Arrangement.spacedBy(28.dp),
             modifier =
@@ -57,7 +58,7 @@ fun NowPlayingWideFrame(
                     .padding(start = 48.dp, end = 48.dp, top = NOW_PLAYING_TOP)
                     .height(height),
         ) {
-            cover((maxWidth * 0.22f).coerceAtMost(height - 20.dp))
+            cover((width * 0.22f).coerceAtMost(height - 20.dp))
             // Scrolls (focus brings the button into view) so the buttons are never squashed away
             Column(
                 modifier =
@@ -67,7 +68,7 @@ fun NowPlayingWideFrame(
             ) {
                 middle()
             }
-            side?.invoke(Modifier.width(maxWidth * 0.27f).fillMaxHeight())
+            side?.invoke(Modifier.width(width * 0.27f).fillMaxHeight())
         }
     }
 }
