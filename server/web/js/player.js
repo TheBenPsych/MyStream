@@ -174,12 +174,17 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   try { subDelay = +localStorage.getItem(delayKey) || 0; } catch (e) {}
   function moveCues() {
     Array.from(v.textTracks).forEach((t) => {
-      Array.from(t.cues || []).forEach((c) => {
-        if (c.bfStart == null) { c.bfStart = c.startTime; c.bfEnd = c.endTime; c.bfAt = 0; }
-        if (c.bfAt === subDelay) return;
+      const cues = Array.from(t.cues || []).filter((c) => (c.bfAt == null ? 0 : c.bfAt) !== subDelay);
+      if (!cues.length) return;
+      // Browsers leave old words on screen when times change while a line is showing (they pile up),
+      // so each line is taken off the track, moved, and put back
+      cues.forEach((c) => {
+        if (c.bfStart == null) { c.bfStart = c.startTime; c.bfEnd = c.endTime; }
         c.bfAt = subDelay;
+        try { t.removeCue(c); } catch (e) {}
         c.startTime = Math.max(0, c.bfStart + subDelay);
         c.endTime = Math.max(c.startTime + 0.01, c.bfEnd + subDelay);
+        try { t.addCue(c); } catch (e) {}
       });
     });
   }
