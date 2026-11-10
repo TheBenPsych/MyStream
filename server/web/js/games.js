@@ -52,6 +52,7 @@ B.route(/^\/games$/, async (m, nav) => {
   const point = (e) => { const c = e.target.closest("[data-id^='g']"); if (!c) return; const g = B.items[c.dataset.id]; if (g) $("#gInfo").innerHTML = describeGame(g); };
   B.page().addEventListener("mouseover", point);
   B.page().addEventListener("focusin", point);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
 });
 
 // ---------- one console: A to Z grid with a search box ----------

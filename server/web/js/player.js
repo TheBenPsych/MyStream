@@ -107,7 +107,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   let hls = null, info = null, source = null, playSession = null, method = "DirectPlay", stopped = false;
   let lastTick = 0, uiTimer, pausedTimer, nextShown = false, skipped = new Set();
 
-  const msg = (t) => { $("#msg").innerHTML = t ? `<div><div class="spin"></div><div>${esc(t)}</div></div>` : ""; };
+  const msg = (t) => { if (!$("#msg")) return; $("#msg").innerHTML = t ? `<div><div class="spin"></div><div>${esc(t)}</div></div>` : ""; };
   const report = (what, extra) => B.jf("POST", `/Sessions/Playing${what}`, Object.assign({
     ItemId: it.Id, MediaSourceId: source && source.Id, PlaySessionId: playSession, PositionTicks: Math.round(v.currentTime * B.TICKS),
     IsPaused: v.paused, IsMuted: v.muted, PlayMethod: method, CanSeek: true, AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex,
