@@ -495,6 +495,57 @@ B.savePrefs = async (change, id) => {
 B.webSettings = () => loadJson("benflix.web." + (B.me ? B.me.id : ""), {});
 B.setWebSetting = (k, v) => { const s = B.webSettings(); s[k] = v; store("benflix.web." + B.me.id, JSON.stringify(s)); };
 
+// ---------- volume button + slider (web players) ----------
+// With a mouse the slider slides out when you hover the speaker, and clicking the speaker mutes.
+// On touch screens (no hover) the first tap opens the slider and a tap anywhere else closes it.
+// The level is remembered per profile under `key`, so it is the same next visit.
+B.volume = (id, cls) => `<span class="volw"><button class="${cls || "pbtn"} vbtn"${id ? ` id="${id}"` : ""} title="Sound (click to mute, M)">${I("vol")}</button><span class="vslide"><input type="range" min="0" max="100" step="1" aria-label="Volume"></span></span>`;
+B.wireVolume = (wrap, media, key) => {
+  if (!wrap || !media || wrap.dataset.wired) return;
+  wrap.dataset.wired = "1";
+  const btn = wrap.querySelector(".vbtn"), r = wrap.querySelector("input");
+  const saved = B.me ? B.webSettings()[key] : null;
+  if (saved != null && isFinite(+saved)) media.volume = Math.max(0, Math.min(1, +saved));
+  let shown = "";
+  const draw = () => {
+    const v = media.muted ? 0 : media.volume;
+    r.value = Math.round(v * 100);
+    r.style.setProperty("--v", r.value + "%");
+    const ic = v === 0 ? "mute" : "vol";
+    if (ic !== shown) { btn.innerHTML = I(ic); shown = ic; }
+    btn.title = (v === 0 ? "Sound is off" : `Sound ${r.value}%`) + " (click to " + (v === 0 ? "turn on" : "mute") + ", M)";
+  };
+  let saveT;
+  media.addEventListener("volumechange", () => {
+    draw();
+    clearTimeout(saveT);
+    saveT = setTimeout(() => { if (B.me) B.setWebSetting(key, media.volume); }, 300);
+  });
+  r.addEventListener("input", () => { media.volume = r.value / 100; if (+r.value > 0) media.muted = false; });
+  r.addEventListener("change", () => r.blur()); // so Space and the arrow keys go back to the player
+  r.addEventListener("click", (e) => e.stopPropagation());
+  const touch = () => window.matchMedia && matchMedia("(hover: none)").matches;
+  const outside = (e) => {
+    if (!document.contains(wrap) || !wrap.contains(e.target)) { wrap.classList.remove("open"); document.removeEventListener("pointerdown", outside, true); }
+  };
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (touch() && !wrap.classList.contains("open")) {
+      wrap.classList.add("open");
+      document.addEventListener("pointerdown", outside, true);
+      return;
+    }
+    if (media.volume === 0) { media.volume = 0.5; media.muted = false; }
+    else media.muted = !media.muted;
+  });
+  wrap.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    media.muted = false;
+    media.volume = Math.max(0, Math.min(1, media.volume + (e.deltaY < 0 ? 0.05 : -0.05)));
+  }, { passive: false });
+  draw();
+};
+
 // Watch time this month (adds up every TV and phone, like the app's My watching)
 B.watchTime = async () => {
   const p = await B.prefs("benflix-watch-time").catch(() => null);

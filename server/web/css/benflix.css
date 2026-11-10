@@ -908,3 +908,16 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .rqhead b { font-size: 18px; }
 }
 @media (max-width: 600px) { .rqsplit .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .rqrank { min-width: 26px; height: 26px; font-size: 14px; left: 6px; bottom: 6px; } }
+
+/* volume button + slider (web players): hover slides it out, touch screens tap to open */
+.volw { position: relative; display: inline-flex; align-items: center; flex: none; }
+.volw .vslide { width: 0; overflow: hidden; display: flex; align-items: center; transition: width .2s ease; }
+.volw.open .vslide, .volw:focus-within .vslide { width: 112px; }
+@media (hover: hover) { .volw:hover .vslide { width: 112px; } }
+.volw input[type=range] { -webkit-appearance: none; appearance: none; width: 96px; height: 28px; margin: 0 8px; background: none; cursor: pointer; --v: 100%; }
+.volw input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, #fff var(--v), rgba(255,255,255,.3) var(--v)); }
+.volw input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,.3); }
+.volw input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: #fff; }
+.volw input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #fff; border: 0; }
+.volw input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; }
+@media (hover: none) { .volw input[type=range] { height: 40px; } .volw input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; } .volw input[type=range]::-moz-range-thumb { width: 20px; height: 20px; } }
