@@ -328,7 +328,7 @@ class SeriesViewModel
                         }
                     }
                     viewModelScope.launchIO {
-                        val results = seerrService.similar(series).orEmpty()
+                        val results = seerrService.moreToAsk(series).orEmpty()
                         _state.update { it.copy(discovered = results) }
                     }
                     viewModelScope.launchIO {
