@@ -224,15 +224,31 @@ const myRequests = async () => {
     if (!d) return;
     const title = d.title || d.name || "";
     const img = B.tmdbImg ? B.tmdbImg(d.posterPath, "w185") : "";
-    if (here) ready.push({ title, detail: "Your request is ready to watch", dot: "#F1F2F5", img: B.img(md.jellyfinMediaId, "Primary", { h: 240 }) || img, href: `#/${r.type === "tv" ? "show" : "movie"}/${md.jellyfinMediaId}`, at: r.createdAt });
-    else way.push({ title, detail: wayLine(r, d), dot: "#F1F2F5", img, href: "#/requests", at: r.createdAt });
+    if (here) ready.push({ id: `req-${md.jellyfinMediaId}`, news: true, title, detail: "Your request is ready to watch", dot: "#F1F2F5", img: B.img(md.jellyfinMediaId, "Primary", { h: 240 }) || img, href: `#/${r.type === "tv" ? "show" : "movie"}/${md.jellyfinMediaId}`, at: r.createdAt });
+    else way.push({ id: `way-${r.id}`, title, detail: wayLine(r, d), dot: "#F1F2F5", img, href: "#/requests", at: r.createdAt });
   }));
   const newest = (a, b) => String(b.at).localeCompare(String(a.at));
   return { ready: ready.sort(newest).slice(0, 2), way: way.sort(newest).slice(0, 3) };
 };
 
 let lastFacts = "";
+// Rows this profile cleared (the X, Clear all, or opening news). Saved with the profile on the server
+// (benflix.cleared, shared with the TV and phone app), so every screen hides the same rows. Facts are only
+// hidden until Home opens again, because they change every time anyway.
+let clearedNow = new Set();
+let boardRows = [];
+const CLEARED = "benflix.cleared";
+const saveCleared = (ids) => {
+  const keep = ids.filter((id) => id && !id.startsWith("fact-"));
+  ids.forEach((id) => clearedNow.add(id));
+  if (!keep.length) return;
+  B.savePrefs((c) => {
+    const old = String(c[CLEARED] || "").split("\n").filter((x) => x && !keep.includes(x));
+    c[CLEARED] = old.concat(keep).slice(-80).join("\n");
+  }).catch(() => {});
+};
 B.loadBoard = async (nav) => {
+  clearedNow = new Set();
   const news = [];
   const add = (row) => news.push(row);
   const [prefs, nextUp, music, books, reqs, facts, weather] = await Promise.all([
@@ -256,17 +272,18 @@ B.loadBoard = async (nav) => {
     $("#wx").textContent = line;
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
+  const c = (prefs && prefs.CustomPrefs) || {};
+  const cleared = new Set(String(c[CLEARED] || "").split("\n").filter(Boolean));
   try {
-    const c = (prefs && prefs.CustomPrefs) || {};
     const note = String(c["benflix.note"] || "");
     const i = note.indexOf("\n");
     if (i > 0) {
-      const exp = +(note.slice(0, i).split("~")[1] || 0);
-      if (!exp || exp > Date.now()) add({ title: "A note from Ben", detail: note.slice(i + 1).split("\n")[0], dot: "#F1F2F5", href: "" });
+      const head = note.slice(0, i), exp = +(head.split("~")[1] || 0), text = note.slice(i + 1);
+      if (text.trim() && (!exp || exp > Date.now())) add({ id: `note-${head.split("~")[0]}`, news: true, title: "A note from Ben", detail: text.split("\n")[0], full: text, dot: "#F1F2F5", href: "" });
     }
     String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
       const [ts, title] = l.split("|");
-      if (Date.now() - +ts < 3 * 86400000) add({ title, detail: "Ben fixed it, it's ready to watch again", dot: "#F1F2F5", href: "" });
+      if (Date.now() - +ts < 3 * 86400000) add({ id: `fixed-${ts}`, news: true, title, detail: "Ben fixed it, it's ready to watch again", full: `Ben fixed ${title}. Try it again!`, dot: "#F1F2F5", href: "" });
     });
   } catch (e) {}
   const seen = new Set();
@@ -274,7 +291,7 @@ B.loadBoard = async (nav) => {
     if (seen.has(e.SeriesId)) return;
     seen.add(e.SeriesId);
     const newSeason = e.IndexNumber === 1 && (e.ParentIndexNumber || 1) > 1;
-    add({ title: e.SeriesName, detail: newSeason ? `Season ${e.ParentIndexNumber} is here` : `New episode: season ${e.ParentIndexNumber}, episode ${e.IndexNumber}`,
+    add({ id: `ep-${e.Id}`, news: true, title: e.SeriesName, detail: newSeason ? `Season ${e.ParentIndexNumber} is here` : `New episode: season ${e.ParentIndexNumber}, episode ${e.IndexNumber}`,
       dot: DOORS.shows.color, img: B.img(e.SeriesId, "Primary", { h: 240 }), href: `#/show/${e.SeriesId}?ep=${e.Id}` });
   });
   const who = new Set();
@@ -282,10 +299,10 @@ B.loadBoard = async (nav) => {
     const name = a.AlbumArtist || a.Name;
     if (who.has(name) || who.size >= 2) return;
     who.add(name);
-    add({ title: name, detail: `New music: ${a.Name}`, dot: "#B69CFF", img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}` });
+    add({ id: `music-${a.Id}`, news: true, title: name, detail: `New music: ${a.Name}`, dot: "#B69CFF", img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}` });
   });
   const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
-  ((books && books.news) || []).slice(0, 2).forEach((b) => add({ title: b.name || b.text, detail: b.line || "", dot: DOORS.books.color, img: pic(b.cover), href: `#/book/${enc(b.title)}` }));
+  ((books && books.news) || []).slice(0, 2).forEach((b) => add({ id: `book-${b.id}`, news: true, title: b.name || b.text, detail: b.line || "", dot: DOORS.books.color, img: pic(b.cover), href: `#/book/${enc(b.title)}` }));
   reqs.ready.forEach(add);
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
@@ -295,14 +312,56 @@ B.loadBoard = async (nav) => {
     return { title: "Did you know?", detail: text, dot: show ? DOORS.shows.color : DOORS.movies.color, img: B.img(f.id, "Primary", { h: 240 }), href: `#/${show ? "show" : "movie"}/${f.id}`, id: f.id };
   });
   lastFacts = factRows.map((f) => f.id).join(",");
-  const rows = B.arrangeRows(news.slice(0, 3), reqs.way, factRows);
+  const keep = (r) => !cleared.has(r.id) && !clearedNow.has(r.id);
+  boardRows = B.arrangeRows(news.filter(keep).slice(0, 3), reqs.way.filter(keep), factRows.filter(keep));
+  drawBoard();
+};
+
+// Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
+// clears it. Clear all clears the whole list. New news still shows when it comes.
+const drawBoard = () => {
   const list = $("#blist");
+  if (!list) return;
+  const rows = boardRows.filter((r) => !clearedNow.has(r.id));
   list.classList.toggle("quiet", rows.length <= 2);
   list.style.setProperty("--n", rows.length <= 2 ? 2 : rows.length);
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
-  list.innerHTML = rows.length ? `<div class="bpanel">${rows.map((r) => `<${r.href ? `a href="${esc(r.href)}"` : "div"} class="brow">
+  list.innerHTML = rows.length ? `<div class="bpanel">${rows.map((r, n) => `<div class="bitem">
+    <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     <i class="dot" style="background:${r.dot}"></i><div class="tx"><b>${esc(r.title)}</b>${r.detail ? `<span>${esc(r.detail)}</span>` : ""}</div>
-    ${r.img ? `<span class="th ${r.square ? "sq" : ""}" style="background-image:url('${esc(r.img)}')"></span>` : logo}</${r.href ? "a" : "div"}>`).join("")}</div>` : "";
+    ${r.img ? `<span class="th ${r.square ? "sq" : ""}" style="background-image:url('${esc(r.img)}')"></span>` : logo}</${r.href ? "a" : "button"}>
+    <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`).join("")}</div>
+    <button type="button" class="bclear">Clear all</button>` : "";
+  list.onclick = async (e) => {
+    const x = e.target.closest("[data-clear]");
+    if (x) {
+      e.preventDefault();
+      const at = +x.dataset.clear;
+      saveCleared([rows[at].id]);
+      drawBoard();
+      // Keep the keyboard on the list: the next row's X, or the last one, or the first door
+      const xs = $$(".bx", list);
+      const next = xs[at] || xs[xs.length - 1] || $(".door");
+      if (next) next.focus({ preventScroll: true });
+      return;
+    }
+    if (e.target.closest(".bclear")) {
+      saveCleared(rows.map((r) => r.id));
+      drawBoard();
+      const d = $(".door"); if (d) d.focus({ preventScroll: true });
+      return;
+    }
+    const b = e.target.closest("[data-row]");
+    if (!b) return;
+    const r = rows[+b.dataset.row];
+    if (r.href) {
+      // News goes away once it's been opened (like the TV and phone app)
+      if (r.news) saveCleared([r.id]);
+      return;
+    }
+    const clear = await B.ask(r.title, r.full || r.detail, "Got it, clear it", "Keep it");
+    if (clear) { saveCleared([r.id]); drawBoard(); }
+  };
   fitRows(list);
 };
 

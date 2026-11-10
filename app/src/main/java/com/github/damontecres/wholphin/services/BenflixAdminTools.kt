@@ -142,6 +142,12 @@ class BenflixNotes
                 count
             }
 
+        /** Benflix Home: the note from a profile's saved settings (null when there's none or it ran out of time) */
+        fun parse(value: String?): BenflixNote? =
+            value
+                ?.let { decode(it) }
+                ?.takeUnless { note -> note.expiresAt != null && note.expiresAt < System.currentTimeMillis() }
+
         private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         // The id line can carry "~<expiry millis>"

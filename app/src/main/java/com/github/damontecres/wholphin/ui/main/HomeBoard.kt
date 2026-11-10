@@ -20,14 +20,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +55,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /*
  * Benflix Home, the approved Today board (f3-panel, 2026-11-10).
@@ -82,8 +91,28 @@ fun HomeBoard(
     doorModifier: (BenflixDoor) -> Modifier,
     onDoor: (BenflixDoor) -> Unit,
     onRow: (HomeRow) -> Unit,
+    onClear: (HomeRow) -> Unit,
+    onClearAll: () -> Unit,
+    focusDoors: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // After an X or Clear all, the remote's focus moves to the next row's X (or back to the doors when the list is
+    // empty), so it never gets lost on a TV
+    val xFocus = remember { List(MAX_HOME_ROWS) { FocusRequester() } }
+    var refocus by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(rows) {
+        val i = refocus ?: return@LaunchedEffect
+        refocus = null
+        if (rows.isEmpty()) focusDoors() else xFocus[minOf(i, rows.size - 1)].tryRequestFocus()
+    }
+    val clearRow: (HomeRow) -> Unit = { row ->
+        refocus = rows.indexOf(row).coerceAtLeast(0)
+        onClear(row)
+    }
+    val clearAll: () -> Unit = {
+        refocus = 0
+        onClearAll()
+    }
     if (wide) {
         BoxWithConstraints(
             modifier =
@@ -95,7 +124,13 @@ fun HomeBoard(
             val greetingRoom = 104.dp
             val u = minOf(maxWidth / SCREEN_WIDTH, (maxHeight - greetingRoom) / BLOCK_HEIGHT).coerceAtLeast(4.dp)
             Column(Modifier.fillMaxSize()) {
-                Greeting(greeting, weather, tv = true)
+                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
+                    Box(Modifier.weight(1f)) { Greeting(greeting, weather, tv = true) }
+                    // Clear all sits just above the list's right edge (D-pad up from the top row)
+                    if (rows.isNotEmpty()) {
+                        ClearAllButton(clearAll, tv = true, modifier = Modifier.graphicsLayer { alpha = listAlpha() })
+                    }
+                }
                 Spacer(Modifier.weight(1f))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(u * BLOCK_GAP),
@@ -106,6 +141,8 @@ fun HomeBoard(
                         rows = rows,
                         u = u,
                         onRow = onRow,
+                        onClear = clearRow,
+                        xFocus = xFocus,
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -132,7 +169,16 @@ fun HomeBoard(
             }
             if (rows.isNotEmpty()) {
                 Spacer(Modifier.height(18.dp))
-                PhoneList(rows, onRow, Modifier.graphicsLayer { alpha = listAlpha() })
+                PhoneList(rows, onRow, clearRow, xFocus, Modifier.graphicsLayer { alpha = listAlpha() })
+                ClearAllButton(
+                    clearAll,
+                    tv = false,
+                    modifier =
+                        Modifier
+                            .align(Alignment.End)
+                            .padding(top = 6.dp)
+                            .graphicsLayer { alpha = listAlpha() },
+                )
             }
         }
     }
@@ -345,6 +391,8 @@ private fun ListPanel(
     rows: List<HomeRow>,
     u: Dp,
     onRow: (HomeRow) -> Unit,
+    onClear: (HomeRow) -> Unit,
+    xFocus: List<FocusRequester>,
     modifier: Modifier = Modifier,
 ) {
     if (rows.isEmpty()) {
@@ -361,12 +409,15 @@ private fun ListPanel(
         val rowHeight = (panelHeight - inset * 2 - 1.dp * (slots - 1)) / slots
         val rowPad = u * 0.85f
         val thumbWidth = u * 2.6f
+        val clearSize = u * 2.2f
         val density = LocalDensity.current
         val measurer = rememberTextMeasurer()
-        // The words' width: the row less its padding, the dot, the two gaps and the picture
+        // The words' width: the row less its padding, the dot, the two gaps, the picture and the X
         val textWidth =
             with(density) {
-                (maxWidth - inset * 2 - rowPad * 2 - u * 0.6f - u * 1.8f - thumbWidth).roundToPx().coerceAtLeast(1)
+                (maxWidth - inset * 2 - rowPad * 2 - u * 0.6f - u * 1.8f - thumbWidth - clearSize - u * 0.3f)
+                    .roundToPx()
+                    .coerceAtLeast(1)
             }
         val textRoom = with(density) { (rowHeight - u * 1.0f).roundToPx() }
         val words =
@@ -401,6 +452,9 @@ private fun ListPanel(
                     pad = rowPad,
                     corner = u * 0.6f,
                     onClick = { onRow(row) },
+                    onClear = { onClear(row) },
+                    clearSize = clearSize,
+                    clearFocus = xFocus[i],
                     modifier = Modifier.fillMaxWidth().height(rowHeight),
                 )
             }
@@ -413,6 +467,8 @@ private fun ListPanel(
 private fun PhoneList(
     rows: List<HomeRow>,
     onRow: (HomeRow) -> Unit,
+    onClear: (HomeRow) -> Unit,
+    xFocus: List<FocusRequester>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -434,6 +490,9 @@ private fun PhoneList(
                 pad = 12.dp,
                 corner = 11.dp,
                 onClick = { onRow(row) },
+                onClear = { onClear(row) },
+                clearSize = 36.dp,
+                clearFocus = xFocus[i],
                 modifier = Modifier.fillMaxWidth(),
                 vertical = 11.dp,
             )
@@ -462,6 +521,9 @@ private fun ListRow(
     pad: Dp,
     corner: Dp,
     onClick: () -> Unit,
+    onClear: () -> Unit,
+    clearSize: Dp,
+    clearFocus: FocusRequester,
     modifier: Modifier = Modifier,
     vertical: Dp = 0.dp,
 ) {
@@ -499,11 +561,30 @@ private fun ListRow(
         }
     }
     val shape = RoundedCornerShape(corner)
-    if (row.destination == null) {
-        // Just for reading (a built-in fact): nothing to open, so it doesn't take focus
-        Box(modifier) { content() }
-        return
+    // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
+    // clears it (on a TV, press right to reach the X)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+    ) {
+        RowSurface(onClick, shape, Modifier.weight(1f).fillMaxHeight(), content)
+        ClearButton(
+            onClear,
+            clearSize,
+            Modifier
+                .padding(start = clearSize * 0.12f, end = clearSize * 0.05f)
+                .focusRequester(clearFocus),
+        )
     }
+}
+
+@Composable
+private fun RowSurface(
+    onClick: () -> Unit,
+    shape: RoundedCornerShape,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -566,4 +647,107 @@ private fun Thumb(
                 .clip(shape)
                 .background(BenflixColors.PanelHigh),
     )
+}
+
+/** The small X beside each row: clears that row for this profile */
+@Composable
+private fun ClearButton(
+    onClick: () -> Unit,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = BenflixColors.Muted,
+                focusedContainerColor = BenflixColors.FocusRow,
+                focusedContentColor = BenflixColors.Text,
+                pressedContainerColor = BenflixColors.FocusRow,
+            ),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(CircleShape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier =
+            modifier
+                .size(size)
+                .semantics { contentDescription = "Clear" },
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            BenflixIconImage(icon = BenflixIcon.CLOSE, color = BenflixColors.Muted, size = size * 0.45f)
+        }
+    }
+}
+
+/** "Clear all": the whole list goes away for this profile (new news still shows when it comes) */
+@Composable
+private fun ClearAllButton(
+    onClick: () -> Unit,
+    tv: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = BenflixColors.Muted,
+                focusedContainerColor = BenflixColors.FocusRow,
+                focusedContentColor = BenflixColors.Text,
+                pressedContainerColor = BenflixColors.FocusRow,
+            ),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier,
+    ) {
+        Text(
+            text = "Clear all",
+            fontSize = if (tv) BenflixType.body else BenflixType.small,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        )
+    }
+}
+
+/** A note from Ben (or "Ben fixed it", or a fact) in full, with a button to clear it */
+@Composable
+fun HomeMessageDialog(
+    row: HomeRow,
+    onClear: () -> Unit,
+    onClose: () -> Unit,
+) {
+    com.github.damontecres.wholphin.ui.components.BasicDialog(onDismissRequest = onClose) {
+        val focus = remember { FocusRequester() }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(20.dp),
+        ) {
+            Text(
+                text = row.title,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.lead,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = row.fullText ?: row.detail,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.body,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                androidx.tv.material3.Button(
+                    onClick = onClear,
+                    modifier = Modifier.focusRequester(focus),
+                ) { Text("Got it, clear it") }
+                androidx.tv.material3.OutlinedButton(onClick = onClose) { Text("Keep it") }
+            }
+        }
+        LaunchedEffect(Unit) { focus.tryRequestFocus() }
+    }
 }
