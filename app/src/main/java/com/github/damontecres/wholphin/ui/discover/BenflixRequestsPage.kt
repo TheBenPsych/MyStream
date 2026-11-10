@@ -1648,15 +1648,15 @@ private fun FindShelf(
                     emptyList()
                 }
 
-                row.title.startsWith("Trending") && shown.size >= 5 -> {
-                    listOfNotNull(
+                row.title.startsWith("Trending") -> {
+                    // One long wall: the Top 10 (with numbers) and then the rest of Trending
+                    listOf(
                         ShownRow(
-                            if (filters.genre != null) "Top 10 in ${filters.genre?.label}" else "Top 10",
-                            shown.take(10),
+                            if (filters.genre != null) "Top 10 in ${filters.genre?.label}" else "Top 10 and trending",
+                            shown,
                             comingSoon = false,
                             ranked = true,
                         ),
-                        shown.drop(10).takeIf { it.isNotEmpty() }?.let { ShownRow(row.title, it, comingSoon = false) },
                     )
                 }
 
@@ -1853,10 +1853,11 @@ private fun PosterWall(
                 RequestPoster(
                     item = item,
                     width = posterWidth,
-                    showName = !isTv,
+                    // Benflix: names under every poster on the wall (TV too), so you can tell what's what
+                    showName = true,
                     subtitle = subtitleFor(item),
                     cornerNote =
-                        if (row.ranked) {
+                        if (row.ranked && index < 10) {
                             "No. ${index + 1}"
                         } else if (row.comingSoon) {
                             comingSoonNote(item)
