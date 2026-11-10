@@ -43,7 +43,10 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -744,7 +747,7 @@ private fun DoorTile(
             val nameFits = if (fitSize < nameSize) fitSize else nameSize
             // Same idea for the words under the name: one size for every door, small enough that the longest
             // ("Your songs and playlists") fits in two lines, so six doors on a TV never cut them short
-            val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+            val measurer = rememberTextMeasurer()
             val textWidth =
                 with(androidx.compose.ui.platform.LocalDensity.current) {
                     (if (sideways) maxWidth - iconSize - 16.dp else maxWidth).roundToPx().coerceAtLeast(1)
@@ -758,11 +761,11 @@ private fun DoorTile(
                                 .measure(
                                     text = d.description,
                                     style =
-                                        androidx.compose.ui.text.TextStyle(
+                                        TextStyle(
                                             fontSize = size.sp,
                                             fontWeight = FontWeight.SemiBold,
                                         ),
-                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = textWidth),
+                                    constraints = Constraints(maxWidth = textWidth),
                                     maxLines = 2,
                                 ).hasVisualOverflow
                         }
