@@ -30,6 +30,7 @@ import hashlib
 import html
 import json
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -1344,6 +1345,54 @@ def _one_per_book(tiles):
     return out
 
 
+HOME_GENRE_NAMES = {"Kids": "For kids", "Biography": "Biography & memoir", "Sci-Fi": "Science fiction"}
+
+
+def _home_extra_rows(tiles, user_id, is_kids):
+    """More rows for Books Home from the books themselves: a few genres (a different few each day), the best
+    rated, and quick reads. A row needs at least 4 books so it never looks half empty."""
+    rows = []
+    with _lock:
+        titles = dict(_lib["titles"])
+    books = [t for t in tiles.values() if t["kind"] in ("book", "audiobook")]
+    # Best rated (Open Library readers' scores, with enough votes to trust)
+    rated = []
+    for t in books:
+        m = meta_of(titles[t["id"]]) if t["id"] in titles else {}
+        if (m.get("score") or 0) >= 4.0 and (m.get("votes") or 0) >= 10:
+            rated.append((m["score"], m.get("votes") or 0, t))
+    rated.sort(key=lambda x: (-x[0], -x[1]))
+    top_rated = _one_per_book([dict(t, line=f"★ {sc} · {t['author']}".strip(" ·") if t["status"] == "not" else t["line"]) for sc, _v, t in rated])[:30]
+    # Quick reads: ebooks under about 220 pages
+    quick = []
+    for t in books:
+        m = meta_of(titles[t["id"]]) if t["id"] in titles else {}
+        if t["kind"] == "book" and 0 < (m.get("pages") or 0) <= 220 and t["status"] != "done":
+            quick.append((m["pages"], dict(t, line=f"{m['pages']} pages" if t["status"] == "not" else t["line"])))
+    quick = [t for _p, t in sorted(quick, key=lambda x: x[0])][:30]
+    # Genres with at least 4 books, shuffled once a day (each profile gets its own order)
+    by_genre = {}
+    for t in tiles.values():
+        for g in t.get("genres") or []:
+            if g == "Kids" and is_kids:
+                continue
+            by_genre.setdefault(g, []).append(t)
+    rng = random.Random(f"{time.strftime('%Y-%m-%d')}-{user_id}")
+    names = sorted(g for g, ts in by_genre.items() if len(_one_per_book(ts)) >= 4)
+    rng.shuffle(names)
+    genre_rows = []
+    for g in names[:5]:
+        ts = _one_per_book(by_genre[g])
+        # Not started first (something new to try), then the rest; shuffled inside so it isn't always A to Z
+        rng.shuffle(ts)
+        ts.sort(key=lambda t: t["status"] == "done")
+        genre_rows.append({"key": "genre-" + re.sub(r"\W+", "-", g.lower()), "title": HOME_GENRE_NAMES.get(g, g), "tiles": ts[:30]})
+    # Spread them out: a genre, the best rated, a genre, quick reads, then the other genres
+    order = genre_rows[:1] + [{"key": "rated", "title": "Readers love these", "tiles": top_rated}] + genre_rows[1:2]
+    order += [{"key": "quick", "title": "Quick reads", "tiles": quick}] + genre_rows[2:]
+    return [r for r in order if len(r["tiles"]) >= 4]
+
+
 def home(user_id, is_kids):
     """The rows on Books Home: On deck, New for you, Want to read, Recently added"""
     lib = library(user_id, is_kids)
@@ -1370,8 +1419,16 @@ def home(user_id, is_kids):
         {"key": "deck", "title": "On deck", "tiles": out[:30]},
         {"key": "new", "title": "New for you", "tiles": newf},
         {"key": "want", "title": "Want to read", "tiles": want + asked},
-        {"key": "recent", "title": "Recently added", "tiles": recent},
     ]
+    # The top lists (NYT, Hardcover, Apple Books, Open Library, award winners), only books on Benflix
+    if booklists is not None:
+        try:
+            for key, title, got in booklists.home_rows(list(tiles.values())):
+                rows.append({"key": key, "title": title, "tiles": got})
+        except Exception as e:
+            log(f"Home list rows: {e!r}")
+    rows.append({"key": "recent", "title": "Recently added", "tiles": recent})
+    rows += _home_extra_rows(tiles, user_id, is_kids)
     return {"rows": [r for r in rows if r["tiles"]], "counts": lib["counts"], "empty": not lib["titles"], "requests": lib["requests"], "folders": lib["folders"]}
 
 
@@ -2267,9 +2324,72 @@ def _ch_defaults():
         or next((q.get("id") for q in quality if "audio" in (q.get("name") or "").lower()), first),
         ebook_quality=next((q.get("id") for q in quality if q.get("profileType") == "ebook"), None)
         or next((q.get("id") for q in quality if "audio" not in (q.get("name") or "").lower()), first),
-        meta=(meta[0].get("id") if meta else 1),
+        meta=_ch_english_meta(meta),
     )
+    _ch_english_releases()
     return _ch_setup
+
+
+ENGLISH = "eng, en, en-US, en-GB, en-CA, en-AU, English, null"
+FOREIGN_RELEASES = (
+    r"/[\[\(](german|deutsch|ger|deu|french|fre|fra|spanish|spa|esp|italian|ita|polish|pol|russian|rus|ukrainian|ukr|"
+    r"dutch|nld|portuguese|por|swedish|swe|turkish|tur|czech|cze|hungarian|hun|japanese|jpn|chinese|chi)[\]\)]"
+    r"|\b(deutsch|fran[cç]ais|espa[nñ]ol|italiano|polski|nederlands|portugu[eê]s|svenska|t[uü]rk[cç]e|[cč]e[sš]tina|magyar)\b/i"
+)
+
+
+def _ch_english_meta(meta):
+    """A "Benflix English" metadata profile in Chaptarr, so every book it adds is the English edition
+    (made once by copying Chaptarr's first profile). Falls back to the first profile if Chaptarr says no."""
+    mine = next((m for m in meta if m.get("name") == "Benflix English"), None)
+    try:
+        if mine is None and meta:
+            new = {k: v for k, v in meta[0].items() if k != "id"}
+            new.update(name="Benflix English", allowedLanguages=ENGLISH)
+            mine = ch("POST", "/api/v1/metadataprofile", new) or None
+            log("Made the Benflix English profile in Chaptarr")
+        elif mine is not None and mine.get("allowedLanguages") != ENGLISH:
+            mine = dict(mine, allowedLanguages=ENGLISH)
+            ch("PUT", f"/api/v1/metadataprofile/{mine['id']}", mine)
+    except BooksError as e:
+        log(f"Couldn't set Chaptarr to English books: {e}")
+        mine = None
+    if mine and mine.get("id"):
+        return mine["id"]
+    return meta[0].get("id") if meta else 1
+
+
+def _ch_english_releases():
+    """A Chaptarr release profile that skips downloads marked as another language ("[German]", "Deutsch" ...)"""
+    try:
+        have = ch("GET", "/api/v1/releaseprofile") or []
+        for rp in have:
+            ign = rp.get("ignored")
+            if FOREIGN_RELEASES in (ign if isinstance(ign, list) else str(ign or "").split(",")):
+                return
+        try:
+            ch("POST", "/api/v1/releaseprofile", {"enabled": True, "required": [], "ignored": [FOREIGN_RELEASES], "indexerId": 0, "tags": []})
+        except BooksError:
+            ch("POST", "/api/v1/releaseprofile", {"enabled": True, "required": "", "ignored": FOREIGN_RELEASES, "indexerId": 0, "tags": []})
+        log("Told Chaptarr to skip downloads in other languages")
+    except BooksError as e:
+        log(f"Couldn't add Chaptarr's English-only download rule: {e}")
+
+
+def _english_edition(book):
+    """Monitor only the English edition (the one most people rated) when Chaptarr knows the editions"""
+    eds = book.get("editions") or []
+
+    def is_eng(e):
+        lang = str(e.get("language") or "").lower()
+        return lang in ("eng", "en", "english") or lang.startswith("en-")
+
+    eng = [e for e in eds if isinstance(e, dict) and is_eng(e)]
+    if not eng:
+        return book
+    pick = max(eng, key=lambda e: ((e.get("ratings") or {}).get("votes") or 0, bool(e.get("monitored"))))
+    book["editions"] = [dict(e, monitored=e is pick) for e in eds]
+    return book
 
 
 def _send_to_chaptarr(r):
@@ -2292,7 +2412,7 @@ def _send_to_chaptarr(r):
     folder = d["ebook"] if "ebook" in kinds else d["audio"]
     book_id = best.get("id") or 0
     if not book_id:
-        book = dict(best)
+        book = _english_edition(dict(best))
         author = dict(book.get("author") or {})
         author.update(
             qualityProfileId=d["ebook_quality"] if "ebook" in kinds else d["audio_quality"],

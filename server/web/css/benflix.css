@@ -830,3 +830,20 @@ a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before
 .roulette .rl-card .pic { width: 180px; height: 240px; border-radius: 10px; background: var(--pg3) center/cover no-repeat; }
 .roulette .rl-card b { font-size: 20px; }
 .roulette .rl-card.landed { border-color: var(--games); box-shadow: 0 0 0 2px var(--games) inset; }
+/* Requests (layout C, 2026-11-10): a short list on the left, a wall of posters on the right */
+.rqsplit { padding-top: 4px; }
+.rqside { flex: none; width: 220px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: calc(var(--bar) + 8px); align-self: flex-start; }
+.rqside button { text-align: left; background: none; border: 0; color: var(--ink2); padding: 8px 12px; border-radius: 8px; font: inherit; font-size: 15px; cursor: pointer; }
+.rqside button.on { background: var(--pg3); color: var(--ink); font-weight: 700; }
+.rqside button:hover, .rqside button:focus-visible { background: var(--ink); color: var(--tray); outline: none; }
+.rqside .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--check); margin-left: 6px; vertical-align: middle; }
+.rqside h4 { margin: 14px 12px 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+.rqrank { position: absolute; left: 8px; bottom: 8px; background: rgba(0, 0, 0, .78); color: #fff; font-weight: 800; font-size: 13px; padding: 1px 7px; border-radius: 6px; }
+.rqgenres { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+@media (max-width: 900px) {
+  .rqsplit { flex-direction: column; }
+  .rqside { width: auto; position: static; flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .rqside h4 { display: none; }
+  .rqside button { white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; font-size: 14px; }
+}
+@media (max-width: 600px) { .rqsplit .grid { grid-template-columns: repeat(3, 1fr); } }
