@@ -7,6 +7,7 @@ How it works, in plain words:
       Needs Ben's free NYT key, typed once on the Server page (Tools > Book lists).
     * Top 10 books right now: what Hardcover readers added most this week (Hardcover's own trending list).
       Needs Ben's free Hardcover token, typed the same way. Without it, Open Library's weekly list stands in.
+    * Top on Apple Books: Apple's top paid books chart in the US (a free feed, no key needed).
     * Trending this week: Open Library's weekly trending list (no key needed).
     * Award winners: a fixed list of the last five years of big book prizes (covers looked up once).
     * Next in your series and New from authors you read: worked out from the books already on Benflix
@@ -393,6 +394,13 @@ def gather():
             log(f"Hardcover trending: {e!r}")
             out["hc_trending"] = old.get("hc_trending") or []
             _set_health("hardcover", False, _hc_problem(e))
+    # Apple Books top paid chart (US, free feed, no key)
+    try:
+        j = _get("https://rss.applemarketingtools.com/api/v2/us/books/top-paid/50/books.json") or {}
+        out["apple_top"] = [c for c in (_apple_card(r, i + 1) for i, r in enumerate((j.get("feed") or {}).get("results") or [])) if c]
+    except Exception as e:
+        log(f"Apple Books chart: {e!r}")
+        out["apple_top"] = old.get("apple_top") or []
     # Open Library weekly trending (no key)
     try:
         j = _ol("/trending/weekly.json", {"limit": "80"})
@@ -473,6 +481,22 @@ def _nyt_card(b, res):
         "nytList": res.get("display_name") or res.get("list_name"),
     }
     return c
+
+
+def _apple_card(r, rank):
+    name = (r.get("name") or "").strip()
+    if not name:
+        return None
+    art = r.get("artworkUrl100") or ""
+    return {
+        "key": "ab:" + str(r.get("id") or re.sub(r"\W+", "-", name.lower())),
+        "name": name,
+        "author": r.get("artistName") or "",
+        "cover": re.sub(r"/\d+x\d+(bb)?\.", "/600x900bb.", art) if art else None,
+        "year": int(r["releaseDate"][:4]) if str(r.get("releaseDate") or "")[:4].isdigit() else None,
+        "rank": rank,
+        "genres": [g.get("name") for g in r.get("genres") or [] if g.get("name") and g.get("name") != "Books"],
+    }
 
 
 def _find_ol(title, author):
@@ -740,6 +764,7 @@ def page(user_id):
     add("authors", "New from authors you read", _new_from_authors(user_id, have))
     add("nytf", "NYT best sellers · Fiction", _row(_lists.get("nyt_fiction"), have), ranked=True)
     add("nytn", "NYT best sellers · Nonfiction", _row(_lists.get("nyt_nonfiction"), have), ranked=True)
+    add("apple", "Top on Apple Books", _row(_lists.get("apple_top"), have), ranked=True)
     trend = _row(_lists.get("ol_trending"), have, limit=30, seen=seen)
     add("trending", "Trending this week", trend)
     rows.append({"key": "genres", "title": "Browse by genre", "genres": _genre_tiles()[:12], "items": []})
