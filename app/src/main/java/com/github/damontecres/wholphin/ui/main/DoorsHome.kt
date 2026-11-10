@@ -742,6 +742,35 @@ private fun DoorTile(
             val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
             val fitSize = ((if (sideways) maxWidth - iconSize - 16.dp else maxWidth).value / 4.5f / fontScale).sp
             val nameFits = if (fitSize < nameSize) fitSize else nameSize
+            // Same idea for the words under the name: one size for every door, small enough that the longest
+            // ("Your songs and playlists") fits in two lines, so six doors on a TV never cut them short
+            val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+            val textWidth =
+                with(androidx.compose.ui.platform.LocalDensity.current) {
+                    (if (sideways) maxWidth - iconSize - 16.dp else maxWidth).roundToPx().coerceAtLeast(1)
+                }
+            val descFits =
+                remember(textWidth, descSize, fontScale) {
+                    var size = descSize.value
+                    while (size > 9f &&
+                        BenflixDoor.entries.any { d ->
+                            measurer
+                                .measure(
+                                    text = d.description,
+                                    style =
+                                        androidx.compose.ui.text.TextStyle(
+                                            fontSize = size.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = textWidth),
+                                    maxLines = 2,
+                                ).hasVisualOverflow
+                        }
+                    ) {
+                        size -= 0.5f
+                    }
+                    size.sp
+                }
             BenflixIconImage(
                 icon = icon,
                 color = door.onColor,
@@ -769,7 +798,8 @@ private fun DoorTile(
                     Text(
                         text = door.description,
                         color = door.onColor.copy(alpha = .85f),
-                        fontSize = descSize,
+                        fontSize = descFits,
+                        lineHeight = descFits * 1.25f,
                         fontWeight = FontWeight.SemiBold,
                         // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
                         minLines = if (sideways) 1 else 2,
