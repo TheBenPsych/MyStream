@@ -25,6 +25,7 @@ js/requests.js
 js/search.js
 js/server.js
 js/start.js
+js/title.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
