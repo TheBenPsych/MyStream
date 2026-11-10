@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
@@ -569,12 +570,14 @@ fun ExpandablePlayButton(
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
+    // Benflix: a greyed-out button still takes focus (pressing it does nothing). On TV a truly
+    // disabled button can't be focused, so pressing Down skipped it and the page never showed it.
     Button(
-        onClick = { onClick.invoke(resume) },
-        onLongClick = onLongClick,
-        enabled = enabled,
+        onClick = { if (enabled) onClick.invoke(resume) },
+        onLongClick = onLongClick?.takeIf { enabled },
+        enabled = true,
         modifier =
-            modifier.requiredSizeIn(
+            modifier.alpha(if (enabled) 1f else DISABLED_ALPHA).requiredSizeIn(
                 minWidth = MinButtonSize,
                 minHeight = MinButtonSize,
                 maxHeight = MinButtonSize,
@@ -625,9 +628,10 @@ fun ExpandableFaButton(
 ) {
     val isFocused = interactionSource.collectIsFocusedAsState().value
     val flat = LocalFlatButtons.current
+    // Benflix: greyed out but still focusable, so D-pad focus never jumps over it (see ExpandablePlayButton)
     Button(
-        onClick = onClick,
-        onLongClick = onLongClick,
+        onClick = { if (enabled) onClick.invoke() },
+        onLongClick = onLongClick?.takeIf { enabled },
         colors =
             when {
                 white -> whiteColors()
@@ -640,9 +644,9 @@ fun ExpandableFaButton(
                 flat && primary -> primaryBorder()
                 else -> buttonDefaultBorder()
             },
-        enabled = enabled,
+        enabled = true,
         modifier =
-            modifier.requiredSizeIn(
+            modifier.alpha(if (enabled) 1f else DISABLED_ALPHA).requiredSizeIn(
                 minWidth = MinButtonSize,
                 minHeight = MinButtonSize,
                 maxHeight = MinButtonSize,
@@ -851,3 +855,6 @@ private fun ViewOptionsPreview() {
         }
     }
 }
+
+/** Benflix: how see-through a greyed-out (does nothing) button is */
+private const val DISABLED_ALPHA = .45f
