@@ -24,6 +24,8 @@ concurrency:
 
 jobs:
   android:
+    # pushes to the robot's own branch only re-run the (quicker) web robot
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 150
     strategy:
@@ -136,12 +138,20 @@ jobs:
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8097/ >/dev/null && break; sleep 1; done
       - name: Run the web robot
         env:
-          SWEEP_MINUTES: ${{ github.event.inputs.minutes || '80' }}
+          SWEEP_MINUTES: ${{ github.event.inputs.minutes || '60' }}
         run: |
           mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
           cd "$GITHUB_WORKSPACE"
           NODE_PATH=/tmp/pw/node_modules timeout 6600 node tools/audit/web_sweep.js http://127.0.0.1:8097/ results/web || echo "web robot stopped with $?"
           cp /tmp/helper.log results/web/ || true
+          # the list of problems, once each, in the log too
+          python3 -c "
+          import json, collections
+          r = json.load(open('results/web/web-report.json'))
+          c = collections.Counter((p['size'], p['type'], p.get('where', ''), p.get('button', ''), (p.get('text') or '')[:160]) for p in r['problems'])
+          print('PAGES', json.dumps(r.get('viewports')))
+          for k, n in sorted(c.items()): print('WEBPROBLEM', n, ' | '.join(k))
+          " || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
@@ -150,7 +160,7 @@ jobs:
 
   publish:
     needs: [android, web]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.web.result != 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
