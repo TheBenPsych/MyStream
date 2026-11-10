@@ -232,7 +232,7 @@
   };
 
   // ---------- Not on Benflix yet (actor and director pages) ----------
-  X.person = async (p, nav) => {
+  X.person = async (p, nav, box) => {
     const tmdb = tmdbOf(p);
     if (!tmdb || !(await requestsOn())) return;
     const d = await B.seerr(`/person/${tmdb}/combined_credits`).catch(() => null);
@@ -254,9 +254,13 @@
     if (!list.length) return;
     const btn = $(".rows a.btn[href^='#/requests?q=']");
     const wrap = btn ? btn.closest(".wrap") : null;
-    const html = B.row(`Not on Benflix yet (${list.length})`, list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c))) +
-      `<div class="wrap"><button class="btn" id="askRest">${I("plus")} Ask for several at once</button></div>`;
-    if (wrap) wrap.insertAdjacentHTML("beforebegin", html); else add($(".rows"), html);
+    const html = box
+      ? `<div class="grid tp-grid">${list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c)).join("")}</div>
+        <div class="wrap0 acts" style="justify-content:flex-start;margin-top:14px"><button class="btn" id="askRest">${I("plus")} Ask for several at once</button><a class="btn" href="#/requests?q=${enc(p.Name)}">${I("search")} Search for more</a></div>`
+      : B.row(`Not on Benflix yet (${list.length})`, list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c))) +
+        `<div class="wrap"><button class="btn" id="askRest">${I("plus")} Ask for several at once</button></div>`;
+    if (box) box.insertAdjacentHTML("beforeend", html);
+    else if (wrap) wrap.insertAdjacentHTML("beforebegin", html); else add($(".rows"), html);
     $("#askRest").onclick = () => {
       const picked = new Set();
       const s = B.side(`<h3>Ask for everything by ${esc(p.Name)}</h3><p class="dim">Tick the ones you want. They're all asked for at once.</p>

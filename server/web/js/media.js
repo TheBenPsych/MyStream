@@ -654,19 +654,39 @@ B.route(/^\/collection\/([\w-]+)/, async (m, nav) => {
 B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
   const u = B.uid();
   const [p, movies, shows] = await Promise.all([
-    B.get(`/Users/${u}/Items/${m[1]}?Fields=Overview,PremiereDate,ProductionLocations,ProviderIds`),
+    B.get(`/Users/${u}/Items/${m[1]}?Fields=Overview,PremiereDate,EndDate,ProductionLocations,ProviderIds`),
     q(`/Items?userId=${u}&PersonIds=${m[1]}&IncludeItemTypes=Movie&Recursive=true&SortBy=ProductionYear&SortOrder=Descending&Fields=${B.FIELDS}`),
     q(`/Items?userId=${u}&PersonIds=${m[1]}&IncludeItemTypes=Series&Recursive=true&SortBy=ProductionYear&SortOrder=Descending&Fields=${B.FIELDS}`),
   ]);
   if (!B.alive(nav)) return;
-  B.page().innerHTML = B.top("") + `<div class="wrap" style="display:flex;gap:32px;align-items:flex-end;padding-top:20px;flex-wrap:wrap">
-    <span class="pic" style="width:180px;height:180px;font-size:60px;background-image:url('${B.img(p.Id, "Primary", { h: 400 })}')"></span>
-    <div style="flex:1;min-width:260px"><div class="h1">${esc(p.Name)}</div>${p.PremiereDate ? `<div class="dim">Born ${esc(B.day(p.PremiereDate))}${p.ProductionLocations && p.ProductionLocations[0] ? " · " + esc(p.ProductionLocations[0]) : ""}</div>` : ""}
-    <p class="dim" style="max-width:820px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${esc(p.Overview || "")}</p></div></div>
-    <div class="rows" style="padding-top:20px">${B.row("Movies", movies.map((x) => B.posterCard(x))) || ""}${B.row("Shows", shows.map((x) => B.posterCard(x))) || ""}
-    ${!movies.length && !shows.length ? '<div class="wrap empty">Nothing with them on Benflix yet.</div>' : ""}
-    ${B.me.kids ? "" : `<div class="wrap"><a class="btn" href="#/requests?q=${enc(p.Name)}">${I("plus")} Ask for more with ${esc(p.Name)}</a></div>`}</div>`;
-  B.wireTop();
+  // Redesign 2 actor page: their picture where the cover goes, then tabs Movies / Shows / Not on Benflix yet
+  const grid = (list) => (list.length ? `<div class="grid tp-grid">${list.map((x) => B.posterCard(x)).join("")}</div>` : "");
+  const fav = !!(p.UserData && p.UserData.IsFavorite);
+  const tp = B.titlePage({
+    title: p.Name,
+    color: DOORS.movies.color,
+    cover: { url: p.ImageTags && p.ImageTags.Primary ? B.img(p.Id, "Primary", { h: 600 }) : "", ratio: 2 / 3 },
+    info: [p.PremiereDate ? "Born " + B.day(p.PremiereDate) : "", p.EndDate ? "Died " + B.day(p.EndDate) : "", (p.ProductionLocations || [])[0] || ""],
+    buttons: [
+      { id: "pFav", label: fav ? "Favourite" : "Add to favourites", icon: "heart", onClick: async (e, el) => {
+        const on = !(p.UserData && p.UserData.IsFavorite);
+        await B.jf(on ? "POST" : "DELETE", `/Users/${u}/FavoriteItems/${p.Id}`).catch(() => {});
+        p.UserData = Object.assign({}, p.UserData, { IsFavorite: on });
+        el.querySelector("span").textContent = on ? "Favourite" : "Add to favourites";
+      } },
+      { label: "About them", icon: "info", off: p.Overview ? "" : "No life story for them yet", onClick: () => B.side(`<h3>${esc(p.Name)}</h3><p style="line-height:1.6">${esc(p.Overview || "")}</p>`) },
+    ],
+    tabs: [
+      { name: "Movies", id: "tpMovies", html: grid(movies) },
+      { name: "Shows", id: "tpShows", html: grid(shows) },
+      { name: "Not on Benflix yet", id: "tpAsk", html: "", skip: !!B.me.kids },
+    ],
+  });
+  // The Overview tab isn't used on actor pages: their story is behind About them
+  const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
+  if (!movies.length && !shows.length) tp.pane("tpMovies").insertAdjacentHTML("afterbegin", '<div class="wrap empty">Nothing with them on Benflix yet.</div>');
+  tp.refresh();
+  const first = $(".tp-tab:not([hidden])"); if (first) first.click();
   // Everything of theirs that isn't on Benflix yet (extras.js)
-  if (B.extras) B.extras.person(p, nav).catch(() => {});
+  if (B.extras && !B.me.kids) B.extras.person(p, nav, tp.pane("tpAsk")).catch(() => {});
 });
