@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,17 +69,19 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
 /*
- * Benflix redesign (approved 2026-11-07, s2-kb-below): signing in is one question per screen, your
- * name and then your password, with the Benflix keyboard underneath on TVs (phones use their own
- * keyboard). A big "Sign in with my phone" button opens Quick Connect (QR code + code). Neutral
- * greys and white; a soft red line under the box when something is wrong.
+ * Benflix redesign 2 (su-s-quick, approved 2026-11-10): on a TV the left half is "Sign in with your
+ * phone" (the Quick Connect code, where to type it, and a QR code), and the right half is "Or type it
+ * in" with your name, your password and the approved Benflix keyboard underneath (A to Z, numbers on
+ * top, a Talk key where the TV can listen). Phones get just the form, plus a line about Quick Connect.
+ * When signing in fails, the keyboard makes room for a plain-words card with one button.
  */
 
-private enum class SignInStep { NAME, PASSWORD, PHONE }
+private enum class SignInField { NAME, PASSWORD }
 
 /** What the sign-in screens need from the Who's watching page */
 class SignInActions(
@@ -97,29 +100,56 @@ fun SignInScreens(
     knownName: String?,
     phoneAllowed: Boolean,
     phoneCode: String?,
-    error: String?,
+    phoneProblem: SignInProblem?,
+    /** Signing in failed: what went wrong (null when nothing did) */
+    error: LoadingState.Error?,
     attempts: Int,
     actions: SignInActions,
 ) {
     val isTv = rememberIsTv()
-    var step by rememberSaveable { mutableStateOf(if (knownName.isNullOrBlank()) SignInStep.NAME else SignInStep.PASSWORD) }
     var name by rememberSaveable { mutableStateOf(knownName.orEmpty()) }
     var password by remember { mutableStateOf("") }
+    var field by rememberSaveable { mutableStateOf(if (knownName.isNullOrBlank()) SignInField.NAME else SignInField.PASSWORD) }
+    // Phones: the code is a second screen ("Sign in with a code instead")
+    var phoneCodeShown by rememberSaveable { mutableStateOf(false) }
+    val problem = remember(error) { error?.let { signInProblemFor(it.exception, name) } }
+    val signIn = {
+        if (name.isNotBlank()) {
+            actions.clearError()
+            actions.login(name.trim(), password)
+        } else {
+            field = SignInField.NAME
+        }
+    }
+    // The code waits for a phone the whole time the TV screen is open. Typing a password stops it
+    // (Jellyfin only lets one sign-in happen at a time), so it starts again if that didn't work.
+    val wantCode = phoneAllowed && (isTv || phoneCodeShown)
+    LaunchedEffect(wantCode, attempts) {
+        if (wantCode && phoneCode == null) actions.startPhone()
+    }
     val goBack = {
         actions.clearError()
-        when (step) {
-            SignInStep.NAME -> {
-                actions.close()
+        if (!isTv && phoneCodeShown) {
+            actions.stopPhone()
+            phoneCodeShown = false
+        } else {
+            actions.stopPhone()
+            actions.close()
+        }
+    }
+    val onProblem = {
+        actions.clearError()
+        when (problem?.kind) {
+            SignInProblemKind.WRONG_PASSWORD -> {
+                password = ""
+                field = SignInField.PASSWORD
             }
 
-            SignInStep.PASSWORD -> {
-                step = SignInStep.NAME
+            SignInProblemKind.CANT_REACH, SignInProblemKind.OTHER -> {
+                signIn()
             }
 
-            SignInStep.PHONE -> {
-                actions.stopPhone()
-                step = SignInStep.NAME
-            }
+            else -> {}
         }
     }
     Dialog(
@@ -138,83 +168,336 @@ fun SignInScreens(
                         .align(Alignment.TopStart)
                         .padding(start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
             )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        // Phones: the buttons stay above the keyboard instead of hiding behind it
-                        .imePadding()
-                        .verticalScroll(rememberScrollState())
-                        .padding(top = if (isTv) 72.dp else 64.dp, bottom = 24.dp, start = 16.dp, end = 16.dp),
-            ) {
-                when (step) {
-                    SignInStep.NAME -> {
-                        Question("What's your name?", "Signing in to $serverName")
-                        Answer(
+            if (isTv) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 64.dp, bottom = 20.dp),
+                ) {
+                    if (phoneAllowed) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(0.42f),
+                        ) {
+                            PhoneHalf(serverUrl = serverUrl, code = phoneCode, problem = phoneProblem, onTryAgain = actions.startPhone)
+                        }
+                        Box(
+                            Modifier
+                                .width(1.dp)
+                                .fillMaxHeight(0.7f)
+                                .background(BenflixColors.Raised),
+                        )
+                    }
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = if (phoneAllowed) Modifier.weight(0.58f) else Modifier.widthIn(max = 520.dp),
+                    ) {
+                        Text(
+                            text = if (phoneAllowed) "Or type it in" else "Sign in to $serverName",
+                            color = BenflixColors.Text,
+                            fontSize = BenflixType.rowName,
+                            fontWeight = FontWeight.ExtraBold,
+                        )
+                        TvField(
+                            label = "Name",
+                            value = name,
+                            password = false,
+                            active = field == SignInField.NAME,
+                            onClick = { field = SignInField.NAME },
+                        )
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            TvField(
+                                label = "Password (leave it empty if you don't have one)",
+                                value = password,
+                                password = true,
+                                active = field == SignInField.PASSWORD,
+                                onClick = { field = SignInField.PASSWORD },
+                                modifier = Modifier.weight(1f),
+                            )
+                            SignInButton("Sign in", white = true, enabled = name.isNotBlank()) { signIn() }
+                        }
+                        if (problem != null) {
+                            ProblemCard(problem, onClick = onProblem, modifier = Modifier.padding(top = 10.dp))
+                        } else {
+                            SignInKeyboard(
+                                value = if (field == SignInField.NAME) name else password,
+                                onValue = {
+                                    if (field == SignInField.NAME) name = it else password = it
+                                },
+                                onDone = {
+                                    if (field == SignInField.NAME) field = SignInField.PASSWORD else signIn()
+                                },
+                                // No talking your password out loud
+                                voice = field == SignInField.NAME,
+                                key = 35.dp,
+                                gap = 5.dp,
+                                keyHeight = 34.dp,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        if (attempts > 2) {
+                            SignInButton("Trouble signing in? Show details for Ben", modifier = Modifier.padding(top = 4.dp)) {
+                                actions.openDebug()
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            // Phones: the buttons stay above the keyboard instead of hiding behind it
+                            .imePadding()
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = 64.dp, bottom = 24.dp, start = 16.dp, end = 16.dp)
+                            .widthIn(max = 460.dp),
+                ) {
+                    if (phoneCodeShown) {
+                        Question("Sign in with a code", "No password needed")
+                        PhoneCode(code = phoneCode, problem = phoneProblem, onTryAgain = actions.startPhone)
+                        Line(
+                            "On a TV or phone that's already signed in, open My Benflix, then Quick Connect, and type this code.",
+                        )
+                        SignInButton("Type it in instead") { goBack() }
+                    } else {
+                        Question("Sign in to Benflix", "Signing in to $serverName")
+                        PhoneField(
+                            label = "Name",
                             value = name,
                             onValue = {
                                 name = it
                                 actions.clearError()
                             },
                             password = false,
-                            error = error,
-                            isTv = isTv,
-                            onDone = { if (name.isNotBlank()) step = SignInStep.PASSWORD },
+                            focusFirst = field == SignInField.NAME,
+                            onDone = { field = SignInField.PASSWORD },
+                            tag = "sign_in_name",
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 18.dp),
-                        ) {
-                            SignInButton("Next", white = true, enabled = name.isNotBlank()) { step = SignInStep.PASSWORD }
-                            if (phoneAllowed) {
-                                SignInButton("Sign in with my phone", icon = BenflixIcon.PHONE, big = true) {
-                                    actions.clearError()
-                                    actions.startPhone()
-                                    step = SignInStep.PHONE
-                                }
+                        PhoneField(
+                            label = "Password",
+                            value = password,
+                            onValue = {
+                                password = it
+                                actions.clearError()
+                            },
+                            password = true,
+                            focusFirst = field == SignInField.PASSWORD,
+                            onDone = { signIn() },
+                            tag = "sign_in_password",
+                        )
+                        if (problem != null) {
+                            ProblemCard(problem, onClick = onProblem)
+                        } else {
+                            SignInButton("Sign in", white = true, big = true, enabled = name.isNotBlank()) { signIn() }
+                        }
+                        if (phoneAllowed) {
+                            Line("Already signed in on a TV? Sign in here with a code instead:", BenflixColors.Muted)
+                            SignInButton("Sign in with a code", icon = BenflixIcon.PHONE) {
+                                actions.clearError()
+                                phoneCodeShown = true
                             }
                         }
-                    }
-
-                    SignInStep.PASSWORD -> {
-                        Question("Hi ${name.trim()}. What's your password?", "Leave it empty if you don't have one")
-                        LaunchedEffect(password) { actions.clearError() }
-                        Answer(
-                            value = password,
-                            onValue = { password = it },
-                            password = true,
-                            error = error,
-                            isTv = isTv,
-                            onDone = { actions.login(name.trim(), password) },
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.padding(top = 18.dp),
-                        ) {
-                            SignInButton("Sign in", white = true) { actions.login(name.trim(), password) }
-                            SignInButton("Back") { goBack() }
+                        if (attempts > 2) {
+                            SignInButton("Trouble signing in? Show details for Ben") { actions.openDebug() }
                         }
                     }
-
-                    SignInStep.PHONE -> {
-                        PhoneStep(serverUrl = serverUrl, code = phoneCode, isTv = isTv, error = error)
-                        SignInButton("Use my name and password", modifier = Modifier.padding(top = 20.dp)) { goBack() }
-                    }
-                }
-                if (attempts > 2 && step != SignInStep.PHONE) {
-                    Text(
-                        text = "Trouble signing in?",
-                        color = BenflixColors.Muted,
-                        fontSize = BenflixType.small,
-                        modifier = Modifier.padding(top = 20.dp, bottom = 6.dp),
-                    )
-                    SignInButton("Show details for Ben") { actions.openDebug() }
                 }
             }
         }
+    }
+}
+
+/** The TV's left half: the Quick Connect code, where to type it, and a QR code */
+@Composable
+private fun PhoneHalf(
+    serverUrl: String,
+    code: String?,
+    problem: SignInProblem?,
+    onTryAgain: () -> Unit,
+) {
+    Text(
+        text = "Sign in with your phone",
+        color = BenflixColors.Text,
+        fontSize = BenflixType.pageTitle,
+        lineHeight = BenflixType.pageTitle * 1.15f,
+        fontWeight = FontWeight.ExtraBold,
+    )
+    Line("On your phone, open Benflix, then My Benflix › Quick Connect, and type this code:")
+    PhoneCode(code = code, problem = problem, onTryAgain = onTryAgain)
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .background(Color.White, RoundedCornerShape(8.dp))
+                .padding(6.dp),
+        ) {
+            QrCode(text = serverUrl.trimEnd('/') + "/web/#/quickconnect", modifier = Modifier.size(96.dp))
+        }
+        Line("No Benflix on your phone? Scan this with its camera, sign in, and type the code there.", BenflixColors.Muted)
+    }
+}
+
+/** The six-letter code in boxes, "Waiting for your phone…", or why there's no code */
+@Composable
+private fun PhoneCode(
+    code: String?,
+    problem: SignInProblem?,
+    onTryAgain: () -> Unit,
+) {
+    if (problem != null && code == null) {
+        ProblemCard(problem.copy(title = "No code right now"), onClick = onTryAgain)
+        return
+    }
+    if (code == null) {
+        Text("Getting a code…", color = BenflixColors.Soft, fontSize = BenflixType.lead, modifier = Modifier.padding(vertical = 12.dp))
+        return
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+        code.forEach { c ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(width = 44.dp, height = 54.dp)
+                        .background(BenflixColors.Raised, RoundedCornerShape(8.dp)),
+            ) {
+                Text(c.toString(), color = BenflixColors.Text, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+    }
+    Line("Waiting for your phone…", BenflixColors.Muted)
+}
+
+/** A name or password box on the TV. The one the keyboard types into has a white line */
+@Composable
+private fun TvField(
+    label: String,
+    value: String,
+    password: Boolean,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Dots, with the last letter showing for a moment so you can check it
+    var showLast by remember { mutableStateOf(false) }
+    LaunchedEffect(value) {
+        showLast = password && value.isNotEmpty()
+        delay(LAST_LETTER_MS)
+        showLast = false
+    }
+    val shown =
+        if (password) {
+            "•".repeat((value.length - if (showLast) 1 else 0).coerceAtLeast(0)) + if (showLast) value.last() else ""
+        } else {
+            value
+        }
+    val shape = RoundedCornerShape(8.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (active) BenflixColors.FocusRow else BenflixColors.Raised,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.FocusRow,
+                focusedContentColor = BenflixColors.Text,
+            ),
+        border = doorFocusBorder(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+            Text(label, color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+            Text(
+                text = shown.ifEmpty { " " },
+                color = BenflixColors.Text,
+                fontSize = BenflixType.lead,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Box(
+                Modifier
+                    .padding(top = 2.dp)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(if (active) BenflixColors.Text else Color.Transparent),
+            )
+        }
+    }
+}
+
+/** A name or password box on a phone, typed with the phone's own keyboard */
+@Composable
+private fun PhoneField(
+    label: String,
+    value: String,
+    onValue: (String) -> Unit,
+    password: Boolean,
+    focusFirst: Boolean,
+    onDone: () -> Unit,
+    tag: String,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(focusFirst) { if (focusFirst) focus.tryRequestFocus() }
+    Column(Modifier.fillMaxWidth()) {
+        Text(label, color = BenflixColors.Muted, fontSize = BenflixType.small)
+        BasicTextField(
+            value = value,
+            onValueChange = onValue,
+            singleLine = true,
+            textStyle = TextStyle(color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold),
+            cursorBrush = SolidColor(BenflixColors.Text),
+            visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions =
+                KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    keyboardType = if (password) KeyboardType.Password else KeyboardType.Text,
+                    imeAction = if (password) ImeAction.Go else ImeAction.Next,
+                ),
+            keyboardActions = KeyboardActions(onGo = { onDone() }, onNext = { onDone() }),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .focusRequester(focus)
+                    .testTag(tag),
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(BenflixColors.Soft),
+        )
+    }
+}
+
+/** Why signing in didn't work, in plain words, with one button */
+@Composable
+internal fun ProblemCard(
+    problem: SignInProblem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(problem) { focus.tryRequestFocus() }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(BenflixColors.Raised, RoundedCornerShape(12.dp))
+                .padding(16.dp),
+    ) {
+        Text(problem.title, color = ERROR_RED, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold)
+        Text(problem.line, color = BenflixColors.Soft, fontSize = BenflixType.body, lineHeight = BenflixType.body * 1.35f)
+        SignInButton(problem.button, white = true, modifier = Modifier.focusRequester(focus)) { onClick() }
     }
 }
 
@@ -342,46 +625,6 @@ internal fun Answer(
     }
 }
 
-/** Quick Connect: scan the code (TV) and type the six numbers on a phone that's signed in */
-@Composable
-private fun PhoneStep(
-    serverUrl: String,
-    code: String?,
-    isTv: Boolean,
-    error: String?,
-) {
-    Question("Sign in with my phone", "No typing on the TV")
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(28.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (isTv) {
-            Box(
-                Modifier
-                    .background(Color.White, RoundedCornerShape(10.dp))
-                    .padding(10.dp),
-            ) {
-                QrCode(text = serverUrl.trimEnd('/') + "/web/#/quickconnect", modifier = Modifier.size(170.dp))
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = 420.dp)) {
-            if (isTv) Line("1. Scan this with your phone's camera and sign in")
-            Line(
-                (if (isTv) "2. " else "") + "Type this code in Quick Connect (or in Benflix on a signed-in phone: Settings, Quick Connect)",
-            )
-            Text(
-                text = code?.chunked(3)?.joinToString(" ") ?: "Getting a code…",
-                color = BenflixColors.Text,
-                fontSize = if (code != null) BenflixType.hero else BenflixType.rowName,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 4.sp,
-            )
-            Line("Waiting for your phone…", BenflixColors.Muted)
-            if (error != null) Line(error, ERROR_RED)
-        }
-    }
-}
-
 @Composable
 private fun Line(
     text: String,
@@ -457,6 +700,9 @@ private fun SignInKeyboard(
     onDone: () -> Unit,
     voice: Boolean,
     modifier: Modifier = Modifier,
+    key: Dp = 44.dp,
+    gap: Dp = 6.dp,
+    keyHeight: Dp = 40.dp,
 ) {
     // A Talk key, only where the TV can turn speech into words
     val context = LocalContext.current
@@ -493,77 +739,80 @@ private fun SignInKeyboard(
         latest[0] = text
         onValue(text)
     }
-    val key = 44.dp
-    val gap = 6.dp
-    Column(
-        verticalArrangement = Arrangement.spacedBy(gap),
-        modifier =
-            modifier.onPreviewKeyEvent { event ->
-                // A real keyboard, the phone remote app's keyboard or the remote's number keys type straight in,
-                // instead of only the keys on screen. Arrows, OK and Back still move around as usual.
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                val native = event.nativeKeyEvent
-                when {
-                    native.keyCode == android.view.KeyEvent.KEYCODE_DEL -> {
-                        type(latest[0].dropLast(1))
-                        true
-                    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalKeyHeight provides keyHeight) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(gap),
+            modifier =
+                modifier.onPreviewKeyEvent { event ->
+                    // A real keyboard, the phone remote app's keyboard or the remote's number keys type straight in,
+                    // instead of only the keys on screen. Arrows, OK and Back still move around as usual.
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    val native = event.nativeKeyEvent
+                    when {
+                        native.keyCode == android.view.KeyEvent.KEYCODE_DEL -> {
+                            type(latest[0].dropLast(1))
+                            true
+                        }
 
-                    native.unicodeChar > ' '.code && !native.isCtrlPressed && !native.isAltPressed -> {
-                        type(latest[0] + native.unicodeChar.toChar())
-                        true
-                    }
+                        native.unicodeChar > ' '.code && !native.isCtrlPressed && !native.isAltPressed -> {
+                            type(latest[0] + native.unicodeChar.toChar())
+                            true
+                        }
 
-                    native.keyCode == android.view.KeyEvent.KEYCODE_SPACE -> {
-                        type(latest[0] + " ")
-                        true
-                    }
+                        native.keyCode == android.view.KeyEvent.KEYCODE_SPACE -> {
+                            type(latest[0] + " ")
+                            true
+                        }
 
-                    else -> {
-                        false
+                        else -> {
+                            false
+                        }
                     }
-                }
-            },
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-            NUMBERS.forEachIndexed { i, n ->
-                Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { type(latest[0] + n) }
-            }
-            Key("Delete", key * 2 + gap, onLongClick = { type("") }) { type(latest[0].dropLast(1)) }
-        }
-        letters.forEach { row ->
+                },
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                row.forEach { l ->
-                    val typed = if (upper) l.uppercase() else l
-                    Key(typed, key) {
-                        type(latest[0] + typed)
-                        // Shift is for one letter, like a phone
-                        if (upper) upper = false
+                NUMBERS.forEachIndexed { i, n ->
+                    Key(n, key, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { type(latest[0] + n) }
+                }
+                Key("Delete", key * 2 + gap, onLongClick = { type("") }) { type(latest[0].dropLast(1)) }
+            }
+            letters.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    row.forEach { l ->
+                        val typed = if (upper) l.uppercase() else l
+                        Key(typed, key) {
+                            type(latest[0] + typed)
+                            // Shift is for one letter, like a phone
+                            if (upper) upper = false
+                        }
                     }
                 }
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-            Key(if (upper) "abc" else "Shift", key * 2 + gap, selected = upper) { upper = !upper }
-            Key(if (symbols) "abc" else "#+=", key * 2 + gap, selected = symbols) { symbols = !symbols }
-            if (canTalk) {
-                Key("Talk", key) {
-                    try {
-                        talk.launch(
-                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM),
-                        )
-                    } catch (e: ActivityNotFoundException) {
-                        Timber.w(e, "No speech app")
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                Key(if (upper) "abc" else "Shift", key * 2 + gap, selected = upper) { upper = !upper }
+                Key(if (symbols) "abc" else "#+=", key * 2 + gap, selected = symbols) { symbols = !symbols }
+                if (canTalk) {
+                    Key("Talk", key) {
+                        try {
+                            talk.launch(
+                                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM),
+                            )
+                        } catch (e: ActivityNotFoundException) {
+                            Timber.w(e, "No speech app")
+                        }
                     }
                 }
+                Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { type(latest[0] + " ") }
+                Key(if (qwerty) "A-Z" else "QWERTY", key * 2 + gap) { qwerty = !qwerty }
+                Key("Done", key * 2 + gap, white = true) { onDone() }
             }
-            Key("Space", if (canTalk) key * 3 + gap * 2 else key * 4 + gap * 3) { type(latest[0] + " ") }
-            Key(if (qwerty) "A-Z" else "QWERTY", key * 2 + gap) { qwerty = !qwerty }
-            Key("Done", key * 2 + gap, white = true) { onDone() }
         }
     }
 }
+
+/** How tall the keyboard's keys are (smaller on the two-sided sign-in screen) */
+private val LocalKeyHeight = androidx.compose.runtime.compositionLocalOf { 40.dp }
 
 @Composable
 private fun Key(
@@ -573,6 +822,7 @@ private fun Key(
     selected: Boolean = false,
     white: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    height: Dp = LocalKeyHeight.current,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -592,7 +842,7 @@ private fun Key(
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.width(width).height(40.dp),
+        modifier = modifier.width(width).height(height),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(

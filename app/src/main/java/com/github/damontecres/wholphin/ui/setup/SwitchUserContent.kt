@@ -135,8 +135,9 @@ fun SwitchUserContent(
         }
 
         LoadingState.Success -> {
-            // Benflix redesign (w-row): a plain dark page, the logo on top, "Who's watching?" and one
-            // centred row of round pictures with names under them. No poster wall, no fun facts.
+            // Benflix redesign 2 (su-family, 2026-11-10): the dim wall of posters is back behind (one still
+            // picture, fast on old TVs), the grown-ups are big round pictures in one row, and Kids, Big kids
+            // and Guest sit a little smaller at the end with the names lined up. No fun facts.
             val introRunning by BenflixIntroState.running.collectAsState()
             androidx.compose.runtime.DisposableEffect(Unit) {
                 onDispose {
@@ -151,6 +152,8 @@ fun SwitchUserContent(
                         .background(BenflixColors.Tray)
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
+                // The profiles show first; the wall fills in behind them once its pictures are ready
+                PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 // Ben: the logo sits top left, exactly where the top bar's logo is, so after you pick a
                 // profile the doors grow out of it in place. The intro's logo glides into this spot,
                 // so it stays hidden until it lands
@@ -185,7 +188,7 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.height(36.dp))
                     androidx.compose.runtime.CompositionLocalProvider(
-                        LocalProfileTileSize provides if (isTvLayout) 120.dp else 88.dp,
+                        LocalProfileTileSize provides if (isTvLayout) 132.dp else 92.dp,
                     ) {
                         UserList(
                             users = state.users,
@@ -248,17 +251,14 @@ fun SwitchUserContent(
             viewModel.resetAttempts()
         }
         // Benflix redesign: one question per screen with the keyboard underneath (replaces the old pop-up)
-        val error =
-            (state.switchUserState as? LoadingState.Error)?.let { e ->
-                e.message ?: e.exception?.localizedMessage ?: "That didn't work. Check and try again."
-            }
         SignInScreens(
             serverName = server.name ?: server.url,
             serverUrl = server.url,
             knownName = addUser?.name,
             phoneAllowed = state.quickConnectEnabled,
             phoneCode = state.quickConnectStatus?.code,
-            error = error,
+            phoneProblem = state.quickConnectError,
+            error = state.switchUserState as? LoadingState.Error,
             attempts = state.loginAttempts,
             actions =
                 SignInActions(

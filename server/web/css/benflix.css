@@ -105,6 +105,20 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .signin p { color: var(--ink2); margin: 0 0 22px; }
 .signin .btns { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 .signin .btns .btn { width: 100%; padding: 15px; font-size: 17px; }
+/* redesign 2: two halves on wide screens (phone code | type it in), plain-words problems */
+.signin .card.two { max-width: 980px; }
+.signin .halves { display: flex; gap: 44px; align-items: flex-start; }
+.signin .half { flex: 1; min-width: 0; }
+.signin .half.phone { flex: 1.2; }
+.signin .half h2 { font-size: 28px; margin: 0 0 12px; font-weight: 800; }
+.signin .half label { display: block; color: var(--ink2); font-size: 14px; margin-bottom: 12px; }
+.signin .half label .field { margin-top: 6px; }
+.signin .half .code { justify-content: flex-start; }
+.signin .divider { width: 1px; align-self: stretch; background: var(--line); }
+.signin .small { font-size: 14px; margin-top: 14px; }
+.signin .problem { background: var(--pg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+.signin .problem b { color: var(--bad); font-size: 17px; }
+.signin .problem p { margin: 6px 0 12px; }
 .code { display: flex; gap: 10px; justify-content: center; margin: 22px 0; }
 .code b { width: 54px; height: 68px; display: grid; place-items: center; background: var(--pg2); border: 1px solid var(--line); border-radius: 12px; font-size: 34px; font-weight: 800; }
 .linkbtn { background: none; border: 0; color: var(--ink2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 6px; font-size: 15px; }
@@ -120,7 +134,19 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .who .person:hover .pic, .who .person:focus-visible .pic { box-shadow: 0 0 0 4px #fff; }
 .who .person:hover, .who .person:focus-visible { color: var(--ink); outline: none; }
 .who .person .gone { font-size: 12px; color: var(--ink3); margin-top: -8px; }
-.who .add { margin-top: 40px; }
+.who .add { margin-top: 24px; }
+/* redesign 2 (su-family): dim poster wall behind, Kids a little smaller with names lined up */
+.who { position: relative; isolation: isolate; }
+.who .wall { position: absolute; inset: 0; z-index: -1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 1fr); overflow: hidden; opacity: 0; transition: opacity .6s; }
+.who .wall.on { opacity: 1; }
+.who .wall i { background: #1c1c22 center / cover no-repeat; }
+.who .wall::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(0,0,0,.72), rgba(0,0,0,.95) 62%); }
+.who .people { align-items: flex-start; }
+.who .person .pic { width: 150px; height: 150px; }
+.who .person { width: 160px; }
+.who .person.small { width: 130px; padding-top: 33px; }
+.who .person.small .pic { width: 117px; height: 117px; font-size: 40px; }
+.who .hint { color: var(--ink3); font-size: 14px; margin: 26px 0 0; }
 .fade-in { animation: fadein .55s ease both; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
@@ -539,6 +565,9 @@ textarea.field { min-height: 90px; resize: vertical; }
   .who .people { gap: 20px; }
   .who .person { width: 100px; font-size: 15px; }
   .who .person .pic { width: 92px; height: 92px; font-size: 36px; }
+  .who .person.small { width: 84px; padding-top: 20px; }
+  .who .person.small .pic { width: 72px; height: 72px; font-size: 28px; }
+  .who .wall { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); }
   .player .topline, .player .controls { padding: 0 16px; }
   .player .skip, .player .upnext { right: 16px; }
   .player .upnext { width: calc(100% - 32px); }

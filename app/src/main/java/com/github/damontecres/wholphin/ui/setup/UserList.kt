@@ -135,22 +135,34 @@ fun UserList(
                 }
                 kidsUser?.let { grownUp ->
                     item {
-                        KidsProfileCard(onClick = { onKids.invoke(grownUp) })
+                        SmallerTile { KidsProfileCard(onClick = { onKids.invoke(grownUp) }) }
                     }
                     if (showBigKids) {
                         item {
-                            KidsProfileCard(onClick = { onBigKids.invoke(grownUp) }, big = true)
+                            SmallerTile { KidsProfileCard(onClick = { onBigKids.invoke(grownUp) }, big = true) }
                         }
                     }
                     if (showGuest) {
                         item {
-                            GuestProfileCard(onClick = { onGuest.invoke(grownUp) })
+                            SmallerTile { GuestProfileCard(onClick = { onGuest.invoke(grownUp) }) }
                         }
                     }
                 }
             }
         }
 
+        // Redesign 2 (su-family): one small line says how to change your picture
+        if (users.isNotEmpty()) {
+            val isTv =
+                com.github.damontecres.wholphin.ui.touch
+                    .rememberIsTv()
+            Text(
+                text = if (isTv) "Hold OK on a picture to change it" else "Press and hold a picture to change it",
+                fontSize = BenflixType.small,
+                color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
+                textAlign = TextAlign.Center,
+            )
+        }
         // Small links under the row: add someone, or change server
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
@@ -166,20 +178,21 @@ fun UserList(
             title = user.user.name ?: user.user.id.toServerString(),
             dialogItems =
                 buildList {
-                    add(
-                        DialogItem(
-                            stringResource(R.string.switch_user),
-                            R.string.fa_arrow_left_arrow_right,
-                        ) {
-                            onSwitchUser.invoke(user.user)
-                        },
-                    )
+                    // "Hold OK on a picture to change it": changing the picture comes first
                     add(
                         DialogItem(
                             stringResource(R.string.change_picture),
                             R.string.fa_user,
                         ) {
                             pickPictureFor = user
+                        },
+                    )
+                    add(
+                        DialogItem(
+                            stringResource(R.string.switch_user),
+                            R.string.fa_arrow_left_arrow_right,
+                        ) {
+                            onSwitchUser.invoke(user.user)
                         },
                     )
                     if (user.known) {
@@ -209,6 +222,23 @@ fun UserList(
         )
     }
 }
+
+/**
+ * Kids, Big kids and Guest: a little smaller than the grown-ups, pushed down so every name sits on
+ * the same line as the grown-ups' names.
+ */
+@Composable
+private fun SmallerTile(content: @Composable () -> Unit) {
+    val full = LocalProfileTileSize.current
+    val small = full * SMALL_TILE
+    androidx.compose.runtime.CompositionLocalProvider(LocalProfileTileSize provides small) {
+        // The gap under a picture grows with its size (a tenth of it), so that part moves too
+        Box(Modifier.padding(top = (full - small) * 1.1f)) { content() }
+    }
+}
+
+/** How big the Kids, Big kids and Guest pictures are next to the grown-ups' */
+private const val SMALL_TILE = 0.78f
 
 /** A quiet text link on Who's watching that lights up when focused */
 @Composable

@@ -283,8 +283,13 @@ def web_login(info):
     device = "benflix-web-" + re.sub(r"[^\w-]", "", str(info.get("device") or ""))[:40]
     body = json.dumps({"Username": name, "Pw": password}).encode()
     status, data, _ = jellyfin_call("POST", "/Users/AuthenticateByName", body=body, device_id=device)
-    if status in (401, 403):
-        raise HelperError(401, "Jellyfin didn't accept that name and password.")
+    # Benflix redesign 2: plain words (the web page turns these into a card with one button)
+    if status == 401:
+        raise HelperError(401, "Wrong password. Check the name and password and try again.")
+    if status == 403:
+        # Jellyfin's "max active sessions" limit on the account (or the account is switched off)
+        ask = "" if name.lower() == "ben" else ", or ask Ben"
+        raise HelperError(403, f"{name}'s account is on too many TVs. Sign out on one{ask}.")
     if status != 200:
         raise HelperError(502, f"Jellyfin answered with an error ({status}). If you limit how many devices a person can use, sign out somewhere else first.")
     return web_session(json.loads(data))

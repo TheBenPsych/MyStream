@@ -111,7 +111,7 @@ B.call = async (method, path, body, opts) => {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    throw new Error("Couldn't reach Benflix on the server. Is it on?");
+    const err = new Error("Couldn't reach Benflix on the server. Is it on?"); err.status = 0; throw err;
   }
   const text = await r.text();
   let data = null;
@@ -122,7 +122,7 @@ B.call = async (method, path, body, opts) => {
     if (who === B.me) { B.me = null; B.go("#/who"); }
     throw new Error("Please sign in again.");
   }
-  if (!r.ok) throw new Error((data && (data.error || data.message || data.Message)) || `Something went wrong (${r.status}).`);
+  if (!r.ok) { const err = new Error((data && (data.error || data.message || data.Message)) || `Something went wrong (${r.status}).`); err.status = r.status; throw err; }
   return data;
 };
 B.jf = (method, path, body, opts) => B.call(method, "api/web/jf" + path, body, opts);

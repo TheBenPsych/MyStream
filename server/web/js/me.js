@@ -188,6 +188,7 @@ const QA = [
   ["Why won't a video play?", "Some files need the server to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
   ["Can I use this away from home?", "Yes, once Ben has set it up: open your Benflix internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
   ["Can I install it like an app?", "Yes. Settings > Install Benflix. It gets its own window and icon in the dock or Start menu."],
+  ["Can I put Benflix on a Fire TV stick?", "Older Fire TV sticks, Fire TV Cubes and TVs with Fire TV built in work (their About page says Fire OS). The newest sticks run Vega OS, which can't install Benflix: that's the Fire TV Stick 4K Select (2025), the Fire TV Stick HD (2026) and newer. Check in Settings › My Fire TV › About before you try. Google TV devices always work."],
   ["How do I add someone to Who's watching here?", "Press “Add someone” under the pictures on Who's watching and sign in with their name and password, or with a code from a TV or phone."],
   ["Where are Benflix's own channels and games?", "Benflix's own channels and the Benflix games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
   ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on the server, so they're the same on the TV, phone and here."],

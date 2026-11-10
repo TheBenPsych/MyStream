@@ -1048,6 +1048,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_hidden_genres,
             )
 
+        /** Benflix redesign 2: Settings > You > Things you love (the favourites wall, moved out of the setup) */
+        val ThingsYouLovePref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_things_you_love,
+            )
+
         /** Benflix redesign: Settings > You > Run setup again (the new-profile setup, from the first question) */
         val RunSetupAgain =
             AppClickablePreference<AppPreferences>(
@@ -1422,6 +1428,7 @@ val basicPreferences =
                     AppPreference.ProfilePicturePref,
                     AppPreference.ProfileColor,
                     AppPreference.BirthdayPreference,
+                    AppPreference.ThingsYouLovePref,
                     AppPreference.HiddenGenresPref,
                     AppPreference.RunSetupAgain,
                     AppPreference.AniListTracking,

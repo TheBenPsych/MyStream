@@ -637,7 +637,22 @@ fun PreferencesContent(
                                                 viewModel.navigationManager.navigateTo(Destination.Welcome)
                                             },
                                             modifier = focusModifier,
-                                            summary = "Picture, subtitles, word size, favourites and genres",
+                                            summary = "Picture, subtitles, word size and parent PIN",
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.ThingsYouLovePref -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = {
+                                                com.github.damontecres.wholphin.ui.main.WelcomeViewModel.only =
+                                                    com.github.damontecres.wholphin.ui.main.WelcomeStep.FAVORITES
+                                                viewModel.navigationManager.navigateTo(Destination.Welcome)
+                                            },
+                                            modifier = focusModifier,
+                                            summary = "Pick a few favourites, and your rows fill up with things like them",
                                             onLongClick = null,
                                             interactionSource = interactionSource,
                                         )
