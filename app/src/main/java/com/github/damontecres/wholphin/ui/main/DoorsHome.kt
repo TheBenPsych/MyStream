@@ -120,7 +120,42 @@ data class HomeRow(
     /** A square picture (music) instead of a poster */
     val square: Boolean = false,
     val news: Boolean = false,
+    /** The whole message, shown in a pop-up when the row has nowhere to go (a note from Ben, a built-in fact) */
+    val fullText: String? = null,
+    /** A note that talks about one part of Benflix gets a button in its pop-up to go there ("Open Live TV") */
+    val goTo: Pair<String, Destination>? = null,
 )
+
+/** The tab is called Live TV now, so old notes that say "under Channels" read right */
+fun liveTvWording(text: String): String {
+    val where = Regex("\\s*\\b(under|in|on|to) (the )?Channels\\b( (tab|page|door|section))?", RegexOption.IGNORE_CASE)
+    val without = text.replace(where, "")
+    return if (Regex("live ?tv", RegexOption.IGNORE_CASE).containsMatchIn(without)) {
+        without
+    } else {
+        text.replace(where) { " ${it.groupValues[1]} Live TV" }
+    }
+}
+
+/** Which part of Benflix a note from Ben talks about, if any */
+fun noteLink(
+    text: String,
+    kids: Boolean,
+): Pair<String, Destination>? {
+    val t = text.lowercase()
+
+    fun has(pattern: String) = Regex(pattern).containsMatchIn(t)
+    return when {
+        has("live ?tv|\\bchannels?\\b") -> "Open Live TV" to Destination.Channels
+        has("\\bmusic\\b|\\bsongs?\\b|\\balbums?\\b") && !kids -> "Open Music" to Destination.MusicDoor
+        has("\\bbooks?\\b|\\bmanga\\b|\\baudiobooks?\\b") -> "Open Books" to Destination.BooksDoor
+        has("\\bgames?\\b") -> "Open Games" to Destination.Games
+        has("\\brequests?\\b") -> "Open Requests" to Destination.Requests
+        has("\\bshows?\\b|\\bepisodes?\\b|\\bseries\\b") -> "Open Shows" to Destination.ShowsDoor
+        has("\\bmovies?\\b|\\bfilms?\\b") -> "Open Movies" to Destination.MoviesDoor
+        else -> null
+    }
+}
 
 /**
  * Home's greeting, weather and list (approved f3-panel, 2026-11-10): up to 4 rows. News about new episodes of
@@ -141,6 +176,8 @@ class HomeDoorsViewModel
         private val books: com.github.damontecres.wholphin.services.BenflixBooks,
         private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
         private val funFacts: com.github.damontecres.wholphin.services.BenflixFunFacts,
+        private val displayPreferencesService: com.github.damontecres.wholphin.services.DisplayPreferencesService,
+        private val notes: com.github.damontecres.wholphin.services.BenflixNotes,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _rows = MutableStateFlow<List<HomeRow>>(emptyList())
@@ -170,6 +207,15 @@ class HomeDoorsViewModel
         // The fact titles shown last time, so the next Home open shows different ones
         private var lastFacts: List<String> = emptyList()
 
+        /**
+         * Rows this profile cleared (the X, Clear all, or opening news). Saved on the server with the profile, so
+         * the TV, phone and web all hide the same rows. Facts are only hidden until Home opens again (they change anyway).
+         */
+        private var cleared: Set<String> = emptySet()
+        private val clearedNow = mutableSetOf<String>()
+
+        private fun shown(rows: List<HomeRow>) = rows.filter { it.id !in cleared && it.id !in clearedNow }
+
         fun load() {
             if (KidsMode.isActive || GuestMode.isActive) {
                 _rows.value = emptyList()
@@ -184,6 +230,7 @@ class HomeDoorsViewModel
                 var facts: List<HomeRow> = emptyList()
                 try {
                     val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
+                    clearedNow.clear()
                     // Benflix speed: everything is asked at the same time, so a slow Tower can't hold the doors up
                     coroutineScope {
                         val episodes = async { episodeNews() }
@@ -192,14 +239,19 @@ class HomeDoorsViewModel
                         val requests = async { requestNews() }
                         val fact = async { withTimeoutOrNull(FACT_WAIT_MS) { factRows() }.orEmpty() }
                         val weather = async { withTimeoutOrNull(WEATHER_WAIT_MS) { towerWeather() } }
+                        val saved = async { withTimeoutOrNull(PREFS_WAIT_MS) { savedPrefs() }.orEmpty() }
+                        val custom = saved.await()
+                        cleared = clearedFrom(custom)
                         news =
-                            (episodes.await() + music.await() + bookRows.await() + requests.await() + updateNews())
-                                .filter { it.id !in opened }
+                            shown(
+                                benNews(custom) + episodes.await() + music.await() + bookRows.await() + requests.await() +
+                                    updateNews(),
+                            ).filter { it.id !in opened }
                                 .take(MAX_NEWS)
                         facts = fact.await()
                         weather.await()?.let { _weather.value = it.ifBlank { null } }
                     }
-                    _rows.value = arrangeHomeRows(news, onTheWayRows(), facts)
+                    _rows.value = arrangeHomeRows(news, shown(onTheWayRows()), facts)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -211,7 +263,7 @@ class HomeDoorsViewModel
                 // changes if something did)
                 try {
                     requestReadyService.refresh(minGapMs = REQUESTS_GAP_MS)
-                    val again = arrangeHomeRows(news, onTheWayRows(), facts)
+                    val again = arrangeHomeRows(shown(news), shown(onTheWayRows()), shown(facts))
                     if (again != _rows.value) _rows.value = again
                     if (_weather.value == null) towerWeather()?.let { _weather.value = it.ifBlank { null } }
                 } catch (ex: CancellationException) {
@@ -228,8 +280,110 @@ class HomeDoorsViewModel
                 // Keep the list short: only the newest 60 opened rows are remembered
                 prefs.edit().putStringSet(openedKey(), (opened + row.id).toList().takeLast(60).toSet()).apply()
                 _rows.value = _rows.value.filter { it.id != row.id }
+                saveCleared(listOf(row.id))
             }
             row.destination?.let { navigationManager.navigateTo(it) }
+        }
+
+        /** The X on a row: it goes away, and stays away on every TV, phone and browser for this profile */
+        fun clear(row: HomeRow) {
+            _rows.value = _rows.value.filter { it.id != row.id }
+            clearedNow += row.id
+            saveCleared(listOf(row.id))
+        }
+
+        /** Clear all: the whole list goes away (new news still shows when it comes) */
+        fun clearAll() {
+            val ids = _rows.value.map { it.id }
+            _rows.value = emptyList()
+            clearedNow += ids
+            saveCleared(ids)
+        }
+
+        private fun saveCleared(ids: List<String>) {
+            // Facts change every time Home opens, so they aren't saved
+            val keep = ids.filterNot { it.startsWith("fact-") }
+            if (keep.isEmpty()) return
+            cleared = cleared + keep
+            val userId = serverRepository.currentUser?.id ?: return
+            viewModelScope.launchIO {
+                try {
+                    displayPreferencesService.updateDisplayPreferences(userId) {
+                        val old = get(CLEARED_KEY).orEmpty().split("\n").filter { it.isNotBlank() }
+                        put(CLEARED_KEY, ((old - keep.toSet()) + keep).takeLast(MAX_CLEARED).joinToString("\n"))
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not save the cleared Home rows")
+                }
+            }
+        }
+
+        /** This profile's saved settings on the server (the note from Ben, "Ben fixed it", cleared rows) */
+        private suspend fun savedPrefs(): Map<String, String?> {
+            val userId = serverRepository.currentUser?.id ?: return emptyMap()
+            return try {
+                displayPreferencesService.getDisplayPreferences(userId).customPrefs
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Home: saved settings")
+                emptyMap()
+            }
+        }
+
+        private fun clearedFrom(custom: Map<String, String?>): Set<String> =
+            custom[CLEARED_KEY]
+                .orEmpty()
+                .split("\n")
+                .filter { it.isNotBlank() }
+                .toSet()
+
+        /** A note from Ben (Server page) and "Ben fixed it" after a problem report, newest first */
+        private fun benNews(custom: Map<String, String?>): List<HomeRow> {
+            val out = mutableListOf<HomeRow>()
+            val userId = serverRepository.currentUser?.id
+            notes
+                .parse(custom[com.github.damontecres.wholphin.services.NoteKind.NOTE.key])
+                // Closed on this TV or phone before the list could be cleared
+                ?.takeUnless { userId != null && notes.isDismissed(userId, it) }
+                ?.let { note ->
+                    val text = liveTvWording(note.text)
+                    out +=
+                        HomeRow(
+                            id = "note-${note.id}",
+                            title = "A note from Ben",
+                            detail = text.lineSequence().first(),
+                            dot = BenflixColors.Text,
+                            image = null,
+                            destination = null,
+                            news = true,
+                            fullText = text,
+                            goTo = noteLink(text, KidsMode.isActive),
+                        )
+                }
+            custom["benflix.fixed"]
+                .orEmpty()
+                .split("\n")
+                .lastOrNull { it.isNotBlank() }
+                ?.let { line ->
+                    val at = line.substringBefore("|").toLongOrNull() ?: return@let
+                    val title = line.substringAfter("|").substringBefore("|")
+                    if (System.currentTimeMillis() - at > NEWS_DAYS * DAY_MS) return@let
+                    out +=
+                        HomeRow(
+                            id = "fixed-$at",
+                            title = title,
+                            detail = "Ben fixed it, it's ready to watch again",
+                            dot = BenflixColors.Text,
+                            image = null,
+                            destination = null,
+                            news = true,
+                            fullText = "Ben fixed $title. Try it again!",
+                        )
+                }
+            return out
         }
 
         private fun poster(id: java.util.UUID?): String? =
@@ -470,6 +624,7 @@ class HomeDoorsViewModel
                         dot = BenflixDoor.MOVIES.color,
                         image = null,
                         destination = null,
+                        fullText = it,
                     )
                 },
             )
@@ -522,6 +677,12 @@ class HomeDoorsViewModel
             private const val WEATHER_AT_KEY = "weather-at"
             private const val WEATHER_KEEP_MS = 3 * 3_600_000L
             private const val NEWS_DAYS = 3L
+            private const val DAY_MS = 86_400_000L
+            private const val PREFS_WAIT_MS = 2_000L
+
+            /** Shared with Benflix on the web (server/web/js/start.js) */
+            const val CLEARED_KEY = "benflix.cleared"
+            private const val MAX_CLEARED = 80
             private const val BOOK_NEWS_WAIT_MS = 1_200L
             private const val FACT_WAIT_MS = 1_200L
             private const val WEATHER_WAIT_MS = 1_200L
@@ -553,6 +714,9 @@ fun arrangeHomeRows(
 }
 
 const val MAX_HOME_ROWS = 4
+
+/** Lets the pop-up finish closing before the remote's focus moves back to the doors */
+private const val REFOCUS_DELAY_MS = 150L
 
 /** "Good morning", "Good afternoon" or "Good evening", or the holiday on the day itself */
 fun greetingFor(
@@ -779,6 +943,32 @@ fun DoorsHomePage(
     // the animation (a jump mid-grow was the stutter Ben saw)
     val rows = frozenRows ?: liveRows
     val weather = if (frozenRows != null) frozenWeather else liveWeather
+    // A row with nowhere to go (a note from Ben, "Ben fixed it", a built-in fact) opens a pop-up with all its words
+    var reading by remember { mutableStateOf<HomeRow?>(null) }
+    // The row that opened the pop-up is gone after "Got it, clear it", so the remote goes back to the doors
+    var refocusDoors by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(refocusDoors) {
+        if (refocusDoors > 0) {
+            kotlinx.coroutines.delay(REFOCUS_DELAY_MS)
+            moviesFocus.tryRequestFocus()
+        }
+    }
+    reading?.let { row ->
+        HomeMessageDialog(
+            row = row,
+            onClear = {
+                viewModel.clear(row)
+                reading = null
+                refocusDoors++
+            },
+            onGo = { place ->
+                viewModel.clear(row)
+                reading = null
+                viewModel.navigationManager.navigateTo(place)
+            },
+            onClose = { reading = null },
+        )
+    }
     val labelAlpha: (Int) -> Float = { i -> ((progress[i].value - 0.75f) / 0.25f).coerceIn(0f, 1f) }
     // The list fades in as the last door lands
     val lastDoor = doors.last().ordinal
@@ -812,7 +1002,10 @@ fun DoorsHomePage(
                     doorModifier(door.ordinal).then(if (door.ordinal == 0) Modifier.focusRequester(moviesFocus) else Modifier)
                 },
                 onDoor = onDoor,
-                onRow = viewModel::open,
+                onRow = { row -> if (row.destination == null) reading = row else viewModel.open(row) },
+                onClear = viewModel::clear,
+                onClearAll = viewModel::clearAll,
+                focusDoors = { moviesFocus.tryRequestFocus() },
             )
         } else if (wide) {
             // Kids and Easy mode keep the big doors (approved)

@@ -741,10 +741,19 @@ body.reading .mbar { display: none; }
 .bpanel { --fs: 1; height: 100%; background: #111319; border-radius: calc(.9 * var(--u)); padding: calc(.35 * var(--u)); display: grid; grid-template-rows: repeat(var(--n, 4), 1fr); }
 .blist { --n: 4; }
 .blist.quiet .bpanel { height: calc(12 * var(--u)); }
-.brow { display: grid; grid-template-columns: calc(.6 * var(--u)) 1fr calc(2.6 * var(--u)); column-gap: calc(.9 * var(--u)); align-items: center; padding: 0 calc(.85 * var(--u)); border-radius: calc(.6 * var(--u)); min-height: 0; overflow: hidden; position: relative; }
-.brow + .brow::before { content: ""; position: absolute; top: 0; left: calc(.85 * var(--u)); right: calc(.85 * var(--u)); border-top: 1px solid #262A34; }
-a.brow:hover, a.brow:focus-visible { background: var(--pg4); outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
-a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before, a.brow:focus-visible + .brow::before { display: none; }
+.bitem { display: grid; grid-template-columns: 1fr calc(2.2 * var(--u)); column-gap: calc(.3 * var(--u)); align-items: center; min-height: 0; position: relative; }
+.bitem + .bitem::before { content: ""; position: absolute; top: 0; left: calc(.85 * var(--u)); right: calc(.85 * var(--u)); border-top: 1px solid #262A34; }
+.bitem:hover::before, .bitem:focus-within::before, .bitem:hover + .bitem::before, .bitem:focus-within + .bitem::before { display: none; }
+.brow { display: grid; grid-template-columns: calc(.6 * var(--u)) 1fr calc(2.6 * var(--u)); column-gap: calc(.9 * var(--u)); align-items: center; padding: 0 calc(.85 * var(--u)); border-radius: calc(.6 * var(--u)); min-height: 0; align-self: stretch; overflow: hidden; position: relative; }
+button.brow { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.brow:hover, .brow:focus-visible { background: var(--pg4); outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
+/* The X beside each row (clears it for this profile) and Clear all above the list */
+.bx { width: calc(2.2 * var(--u)); height: calc(2.2 * var(--u)); border-radius: 50%; border: 0; background: none; color: var(--ink2); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.bx svg { width: 45%; height: 45%; }
+.bx:hover, .bx:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
+.blist { position: relative; }
+.bclear { position: absolute; right: 0; bottom: 100%; margin-bottom: 8px; background: none; border: 0; color: var(--ink2); font: inherit; font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 99px; cursor: pointer; }
+.bclear:hover, .bclear:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2px #fff; }
 .brow .dot { width: calc(.6 * var(--u)); height: calc(.6 * var(--u)); border-radius: 50%; }
 .brow .tx { min-width: 0; max-height: 100%; }
 .brow .tx b { display: block; font-size: calc(clamp(14px, calc(1.08 * var(--u)), 24px) * var(--fs)); font-weight: 700; line-height: 1.2; }
@@ -764,8 +773,11 @@ a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before
   .doors.sq3 .door .d { font-size: clamp(10.5px, calc(.95 * var(--u)), 14px); }
   .blist { margin-top: 18px; }
   .bpanel, .blist.quiet .bpanel { height: auto; grid-template-rows: none; border-radius: 16px; padding: 5px; }
+  .bitem { grid-template-columns: 1fr 36px; column-gap: 4px; }
   .brow { grid-template-columns: 8px 1fr 40px; column-gap: 12px; padding: 11px 12px; border-radius: 11px; }
-  .brow + .brow::before { left: 12px; right: 12px; }
+  .bitem + .bitem::before { left: 12px; right: 12px; }
+  .bx { width: 36px; height: 36px; }
+  .bclear { position: static; display: block; margin: 6px 0 0 auto; font-size: 13px; }
   .brow .dot { width: 8px; height: 8px; }
   .brow .tx b { font-size: 15px; } .brow .tx span { font-size: 13px; }
   .brow .th, .lgthumb { width: 40px; border-radius: 5px; }
