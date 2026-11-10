@@ -75,6 +75,19 @@ B.pick = (id) => {
   B.me = B.profiles().find((p) => p.id === id) || null;
   if (B.me) store("benflix.last", B.me.id);
   B.cache = {};
+  if (B.me) B.englishSubs();
+};
+// Subtitles are English unless someone picked another language. A profile that never picked one
+// gets English saved on the server, so Jellyfin picks English subtitle tracks for this player too.
+B.englishSubs = async () => {
+  const id = B.me && B.me.id;
+  try {
+    const me = await B.get(`/Users/${enc(id)}`);
+    const cfg = me && me.Configuration;
+    if (!cfg || cfg.SubtitleLanguagePreference || !B.me || B.me.id !== id) return;
+    cfg.SubtitleLanguagePreference = "eng";
+    await B.jf("POST", `/Users/Configuration?userId=${enc(id)}`, cfg).catch(() => B.jf("POST", `/Users/${enc(id)}/Configuration`, cfg));
+  } catch (e) { /* tries again next time this profile is picked */ }
 };
 B.addProfile = (s) => {
   const list = B.profiles().filter((p) => p.id !== s.id);

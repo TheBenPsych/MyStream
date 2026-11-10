@@ -4,12 +4,15 @@ import android.content.Context
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
+import com.github.damontecres.wholphin.services.BENFLIX_SUBTITLE_LANGUAGE
 import com.github.damontecres.wholphin.services.ProfileModes
 import com.github.damontecres.wholphin.services.hilt.IoDispatcher
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.Jellyfin
@@ -123,6 +127,7 @@ class ServerRepository
                 mostRecentServerProvider.save(currentUser)
                 _current.value = currentUser
                 _currentUserDto.value = ServerUserConfig(userDto)
+                saveEnglishSubtitlesIfUnset(userDto)
                 return@withContext currentUser
             }
 
@@ -330,6 +335,26 @@ class ServerRepository
                 val response = apiClient.quickConnectApi.authorizeQuickConnect(code, userId)
                 response.content
             }
+
+        private val backgroundScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+
+        /**
+         * Benflix: subtitles are English unless someone picked another language. A profile that never
+         * picked one gets English saved on the server too, so the web player and every app agree.
+         */
+        private fun saveEnglishSubtitlesIfUnset(userDto: UserDto) {
+            val config = userDto.configuration ?: return
+            if (!config.subtitleLanguagePreference.isNullOrBlank()) return
+            backgroundScope.launch {
+                try {
+                    val updated = config.copy(subtitleLanguagePreference = BENFLIX_SUBTITLE_LANGUAGE)
+                    apiClient.userApi.updateUserConfiguration(userDto.id, updated)
+                    updateUserDto(userDto.copy(configuration = updated))
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't save English subtitles on the profile")
+                }
+            }
+        }
 
         /**
          * Update [currentUserDto] by querying the server

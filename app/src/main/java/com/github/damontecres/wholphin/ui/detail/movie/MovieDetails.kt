@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.TrailerService
+import com.github.damontecres.wholphin.services.orBenflixSubtitleLanguage
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
@@ -58,7 +59,7 @@ fun MovieDetails(
     val playlistState by playlistViewModel.playlistState.collectAsState()
 
     val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
-    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference
+    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference.orBenflixSubtitleLanguage()
 
     val contextActions =
         remember {

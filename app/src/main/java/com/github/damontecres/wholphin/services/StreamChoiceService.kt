@@ -641,12 +641,24 @@ fun getPreferredLanguage(
                 throw IllegalArgumentException("Only audio or subtitle supported, not $type")
             }
         }
-    return when (pref) {
-        UserProfileSettings.USE_USER_PROFILE -> profileLang
-        UserProfileSettings.PREFER_ANY_LANGUAGE -> null
-        else -> pref
-    }?.takeIf { it.isNotNullOrBlank() }
+    val chosen =
+        when (pref) {
+            UserProfileSettings.USE_USER_PROFILE -> profileLang
+            UserProfileSettings.PREFER_ANY_LANGUAGE -> null
+            else -> pref
+        }?.takeIf { it.isNotNullOrBlank() }
+    // Benflix: subtitles are English unless someone picked another language
+    if (chosen == null && type == MediaStreamType.SUBTITLE && pref != UserProfileSettings.PREFER_ANY_LANGUAGE) {
+        return BENFLIX_SUBTITLE_LANGUAGE
+    }
+    return chosen
 }
+
+/** Benflix: the subtitle language everyone gets until they pick another one */
+const val BENFLIX_SUBTITLE_LANGUAGE = "eng"
+
+/** Benflix: a profile's subtitle language, English when it was never picked */
+fun String?.orBenflixSubtitleLanguage(): String = this?.takeIf { it.isNotBlank() } ?: BENFLIX_SUBTITLE_LANGUAGE
 
 /**
  * Scores streams based the user's explicit [SeriesTrackChoice]
