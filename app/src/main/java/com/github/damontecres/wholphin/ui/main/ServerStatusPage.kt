@@ -601,6 +601,7 @@ fun ServerStatusPage(
                 speedCheckItems(speedState, speedCheck)
                 trackTidyItems(tracks, tracksProblem, towerViewModel)
                 homeWeatherItems()
+                kidsRatingItems()
                 bookListItems()
             }
         }

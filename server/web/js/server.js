@@ -39,7 +39,7 @@ const PAGES = {};
 const SECTIONS = [
   { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"], ["week", "This week"]] },
   { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
-  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["posters", "Fix posters"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"]] },
+  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["posters", "Fix posters"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"], ["kidsratings", "Kids ratings"]] },
   { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
   { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
@@ -176,6 +176,42 @@ PAGES.booklists = (el) => {
     $("#blGather").onclick = (e) => B.busy(e.target, async () => (await call("POST", "api/books/lists/gather")).message);
   };
   call("GET", "api/books/lists/keys").then(draw).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
+};
+
+// ---------- Kids ratings: kids-looking titles with no rating (Redesign 2, section 11) ----------
+// Kids and Big kids leave out anything with no rating, so some kids shows and anime never showed up. This lists the
+// family, kids and animation movies and shows with no rating, so each can be given one in one place (it's locked so
+// Jellyfin doesn't take it away again).
+const KIDS_MOVIE_RATINGS = ["G", "PG", "PG-13", "R"];
+const KIDS_SHOW_RATINGS = ["TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14", "TV-MA"];
+PAGES.kidsratings = (el) => {
+  el.innerHTML = `<p class="sub">Kids and Big kids leave out anything with no rating. These family, kids and animation titles have none, so Kids never sees them. Give each one a rating: G, PG, TV-Y, TV-Y7, TV-G and TV-PG are for Kids; PG-13 and TV-14 for Big kids.</p><div id="kr">${loading()}</div>`;
+  const draw = async () => {
+    try {
+      const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Movie,Series&Recursive=true&Genres=${enc("Family|Kids|Children|Animation")}&HasParentalRating=false&SortBy=SortName&Limit=300&EnableImages=false&Fields=ProductionYear,OfficialRating`);
+      if (current !== "kidsratings") return;
+      const list = (r.Items || []).filter((it) => !it.OfficialRating);
+      $("#kr").innerHTML = list.length
+        ? `<div class="list">${list.map((it) => `<div class="item"><div class="grow"><div class="t">${esc(it.Name)}</div><div class="s">${it.Type === "Series" ? "Show" : "Movie"}${it.ProductionYear ? " · " + it.ProductionYear : ""}</div></div>
+            <div class="acts"><button class="btn small" data-rate="${esc(it.Id)}" data-show="${it.Type === "Series" ? 1 : 0}">Give it a rating</button></div></div>`).join("")}</div>`
+        : `<div class="list"><div class="item"><span class="dot ok"></span><div class="grow"><div class="t">Every kids title has a rating</div><div class="s">Family, kids and animation movies and shows all have one, so Kids can find them.</div></div></div></div>`;
+      el.querySelectorAll("[data-rate]").forEach((b) => {
+        b.onclick = () => {
+          const choices = b.dataset.show === "1" ? KIDS_SHOW_RATINGS : KIDS_MOVIE_RATINGS;
+          B.dropdown(b, choices.map((v) => ({ value: v, label: v })), null, (rating) => B.busy(b, async () => {
+            const id = b.dataset.rate;
+            const it = await B.get(`/Users/${B.uid()}/Items/${enc(id)}`);
+            it.OfficialRating = rating;
+            it.LockedFields = Array.from(new Set((it.LockedFields || []).concat(["OfficialRating"])));
+            await B.jf("POST", `/Items/${enc(id)}`, it);
+            const row = b.closest(".item"); if (row) row.remove();
+            return `${it.Name} is now ${rating}.`;
+          }));
+        };
+      });
+    } catch (err) { if (current === "kidsratings") $("#kr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  draw();
 };
 
 // ---------- Web version: where these files came from ----------

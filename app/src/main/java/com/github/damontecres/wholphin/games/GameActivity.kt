@@ -257,7 +257,16 @@ class GameActivity : ComponentActivity() {
             }
         // The game has its own process, so Kids is turned on here too: the side show's lists and search
         // then only have movies & shows rated for kids, the same as the rest of Benflix
-        if (intent.getBooleanExtra(EXTRA_KIDS, false)) KidsMode.set(true, intent.getBooleanExtra(EXTRA_BIG_KIDS, false))
+        // It also checks what this device saved, so Kids stays on even if the start message missed it
+        val (savedKids, savedBig, savedGuest) =
+            com.github.damontecres.wholphin.services.ProfileModes
+                .saved(this, intent.getStringExtra(EXTRA_USER))
+        val kidsOn = intent.getBooleanExtra(EXTRA_KIDS, false) || savedKids
+        if (kidsOn) KidsMode.set(true, intent.getBooleanExtra(EXTRA_BIG_KIDS, false) || savedBig)
+        if (savedGuest) {
+            com.github.damontecres.wholphin.services.GuestMode
+                .set(true)
+        }
         sideShow =
             SideShow(
                 context = this,

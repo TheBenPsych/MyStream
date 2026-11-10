@@ -276,6 +276,12 @@ fun SwitchUserContent(
     }
     switchUserWithPin?.let { user ->
         PinEntryDialog(
+            heading =
+                if (com.github.damontecres.wholphin.services.KidsMode.isActive) {
+                    "Leaving ${com.github.damontecres.wholphin.services.KidsMode.displayName} for ${user.name ?: "a grown-up"}"
+                } else {
+                    null
+                },
             onDismissRequest = { switchUserWithPin = null },
             onClickServerAuth = {
                 showAddUserDialog(user)

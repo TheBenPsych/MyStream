@@ -48,6 +48,7 @@ fun PinEntry(
     onTextChange: (String) -> Unit,
     onClickServerAuth: () -> Unit,
     modifier: Modifier = Modifier,
+    heading: String? = null,
 ) {
     var input by remember { mutableStateOf("") }
     val isTv = rememberIsTv()
@@ -55,6 +56,15 @@ fun PinEntry(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
+        if (heading != null) {
+            // Leaving Kids for a grown-up with a PIN: say what's happening (kd-p-leave)
+            Text(
+                text = heading,
+                fontSize = BenflixType.tag,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
         Text(
             text = stringResource(R.string.enter_pin),
             style = MaterialTheme.typography.headlineLarge,
@@ -387,7 +397,9 @@ fun PinEntryDialog(
     onDismissRequest: () -> Unit,
     onTextChange: (String) -> Unit,
     onClickServerAuth: () -> Unit,
+    heading: String? = null,
 ) {
+    // Benflix: the shared side panel on TV, a sheet on phones
     BasicDialog(
         onDismissRequest = onDismissRequest,
     ) {
@@ -395,6 +407,7 @@ fun PinEntryDialog(
             onTextChange = onTextChange,
             onClickServerAuth = onClickServerAuth,
             modifier = Modifier.padding(16.dp),
+            heading = heading,
         )
     }
 }

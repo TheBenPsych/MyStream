@@ -175,6 +175,9 @@ fun BenflixTopBar(
             height = 26.dp * scale,
             markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
         )
+        // Kids, Big kids and Guest always see whose Benflix this is (Guest also hears that nothing is saved)
+        com.github.damontecres.wholphin.ui.main
+            .ProfileBadge(scale = scale, showGuestLine = door == null)
         if (door != null) {
             Text(
                 text = door.title,
@@ -275,6 +278,10 @@ fun BenflixPhoneHeader(
             height = 22.dp,
             markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
         )
+        if (door == null) {
+            com.github.damontecres.wholphin.ui.main
+                .ProfileBadge(scale = 0.9f)
+        }
         if (door != null) {
             Text(
                 text = door.title,

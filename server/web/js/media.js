@@ -114,14 +114,16 @@ B.route(/^\/movies$/, async (m, nav) => {
   for (const l of standLibs) stand.push(...(await q(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Movie&Recursive=true&SortBy=Random&Limit=24&Fields=${F}`)));
   if (!B.alive(nav)) return;
   const kids = B.me.kids;
+  // Easy mode: fewer rows, like Kids (Keep watching, My List, New)
+  const fewer = kids || (B.easyMode && B.easyMode());
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
-    kids ? "" : B.row("Top 10 movies", B.top10(top)),
-    recent[0] ? B.row(`Because you watched ${recent[0].Name}`, because.map((it) => B.posterCard(it))) : "",
-    B.row("Anime movies", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
-    kids ? "" : B.row("Stand-up", stand.map((it) => B.posterCard(it))),
+    fewer ? "" : B.row("Top 10 movies", B.top10(top)),
+    recent[0] && !fewer ? B.row(`Because you watched ${recent[0].Name}`, because.map((it) => B.posterCard(it))) : "",
+    fewer ? "" : B.row("Anime movies", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
+    fewer ? "" : B.row("Stand-up", stand.map((it) => B.posterCard(it))),
     // Redesign 2: Genres, Collections, Studios and All movies are in the door's side menu (js/doors.js)
     B.pickerRow ? B.pickerRow("movies") : "",
   ].join("");
@@ -168,15 +170,17 @@ B.route(/^\/shows$/, async (m, nav) => {
     const card = B.posterCard(s || ep, { href: `#/show/${ep.SeriesId}?ep=${ep.Id}`, sub: `S${ep.ParentIndexNumber} E${ep.IndexNumber}`, noTick: true, newCount: newCount[ep.SeriesId] });
     return card.replace(`data-id="${esc((s || ep).Id)}"`, `data-id="${esc(ep.Id)}"`);
   };
+  // Easy mode: fewer rows, like Kids (Keep watching, My List, New shows)
+  const fewerShows = B.me.kids || (B.easyMode && B.easyMode());
   $("#rows").innerHTML = [
     B.row("Keep watching", kw.map(kwCard)),
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?mine=1&title=My%20List" }),
-    B.row("New episodes", newEpShows.map((s) => B.posterCard(s, { newCount: newCount[s.Id] }))),
+    fewerShows ? "" : B.row("New episodes", newEpShows.map((s) => B.posterCard(s, { newCount: newCount[s.Id] }))),
     B.row("New shows", newShows.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?sort=newshow&title=New%20shows" }),
-    B.me.kids ? "" : B.row("Top 10 shows", B.top10(top)),
-    recentSeries ? B.row(`Because you watched ${recentSeries.Name}`, because.map((it) => B.posterCard(it))) : "",
-    B.row("Anime", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?anime=only&title=Anime" }),
-    B.me.kids || topAnime.length < 3 ? "" : B.row("Top 10 anime", B.top10(topAnime)),
+    fewerShows ? "" : B.row("Top 10 shows", B.top10(top)),
+    recentSeries && !fewerShows ? B.row(`Because you watched ${recentSeries.Name}`, because.map((it) => B.posterCard(it))) : "",
+    fewerShows ? "" : B.row("Anime", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?anime=only&title=Anime" }),
+    fewerShows || topAnime.length < 3 ? "" : B.row("Top 10 anime", B.top10(topAnime)),
     // Redesign 2: Genres, Networks and All shows are in the door's side menu (js/doors.js)
     B.pickerRow ? B.pickerRow("shows") : "",
   ].join("");

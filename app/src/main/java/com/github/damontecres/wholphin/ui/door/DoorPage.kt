@@ -105,8 +105,10 @@ fun DoorPage(
     viewModel: DoorViewModel = hiltViewModel(key = "door-${door.name}"),
 ) {
     LaunchedEffect(Unit) { onClearBackdrop() }
-    LifecycleStartEffect(door) {
-        viewModel.start(door)
+    val easyMode = preferences.appPreferences.benflixPreferences.easyRead
+    LifecycleStartEffect(door, easyMode) {
+        // Easy mode: fewer rows, like Kids
+        viewModel.start(door, easy = easyMode)
         onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()
