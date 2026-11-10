@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -119,6 +120,7 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.overlay.DpadSeekOverlay
+import com.github.damontecres.wholphin.ui.playback.overlay.LiveBarInfo
 import com.github.damontecres.wholphin.ui.playback.overlay.PauseIndicator
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackOverlay
@@ -392,6 +394,18 @@ fun PlaybackPageContent(
 
             is PlaybackAction.FixSkip -> {
                 viewModel.fixSkip(it.fix)
+            }
+
+            PlaybackAction.FixNoSound -> {
+                viewModel.fixSoundByHand()
+            }
+
+            PlaybackAction.FixPicture -> {
+                viewModel.fixPictureByHand()
+            }
+
+            is PlaybackAction.ReportProblem -> {
+                viewModel.reportProblem(it.problem)
             }
         }
     }
@@ -671,7 +685,27 @@ fun PlaybackPageContent(
 
             // The playback controls
 
+            // Live TV (approved pl-family): the same bar, with a LIVE pill and the programme's times
+            val liveChannelId =
+                state.currentPlayback
+                    ?.item
+                    ?.takeIf { it.type == BaseItemKind.TV_CHANNEL }
+                    ?.id
+            val liveBar by produceState<LiveBarInfo?>(null, liveChannelId) {
+                if (liveChannelId == null) {
+                    value = null
+                    return@produceState
+                }
+                while (true) {
+                    val now =
+                        com.github.damontecres.wholphin.services.ChannelSession
+                            .liveNow(liveChannelId)
+                    value = LiveBarInfo(programme = now?.now, startMs = now?.startMs ?: 0L, endMs = now?.endMs ?: 0L, next = now?.next)
+                    delay(30_000L)
+                }
+            }
             PlaybackOverlay(
+                live = liveBar,
                 modifier =
                     Modifier
                         .padding(WindowInsets.systemBars.asPaddingValues())
@@ -1231,6 +1265,19 @@ fun PlaybackPageContent(
                     // See https://github.com/damontecres/Wholphin/issues/164
                     playbackSpeedEnabled = playerBackend == PlayerBackend.MPV || state.currentPlayback?.audioDecoder != null,
                     maxBitrate = state.maxBitrate,
+                    title =
+                        state.currentPlayback?.item?.let { playing ->
+                            if (playing.type == BaseItemKind.EPISODE) {
+                                listOfNotNull(
+                                    playing.data.seriesName,
+                                    playing.data.parentIndexNumber?.let { s -> playing.data.indexNumber?.let { e -> "S$s E$e" } },
+                                    playing.data.name,
+                                ).joinToString(" · ")
+                            } else {
+                                playing.name
+                            }
+                        },
+                    canFixSkips = state.currentPlayback?.item?.type != BaseItemKind.TV_CHANNEL,
                 ),
             onDismissRequest = {
                 playbackDialog =

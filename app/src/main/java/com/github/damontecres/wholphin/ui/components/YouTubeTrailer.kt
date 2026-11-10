@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -73,7 +74,7 @@ import timber.log.Timber
  * Benflix: YouTube trailers play in a pop-up inside the app (no jumping out to the YouTube app,
  * which Fire TVs and some Google TVs don't even have). It uses YouTube's own embedded player.
  *
- * TV remote: OK = pause/play, left/right = 10 seconds back/forward, Back = close.
+ * TV remote: the same bar as every player (play, back 10, forward 10, gear for Skip ad), Back = close.
  * Phone: YouTube's own touch controls, plus a Close button.
  */
 object YouTubeTrailer {
@@ -282,12 +283,49 @@ private fun YouTubeTrailerPopup(
     }
 
     val failed = bridge.error != 0 || noWebView
+    val playFocus = remember { FocusRequester() }
+    var settingsOpen by remember(request) { mutableStateOf(false) }
     LaunchedEffect(failed) {
         delay(150)
         try {
-            if (failed) buttonFocus.requestFocus() else keyFocus.requestFocus()
+            when {
+                failed -> buttonFocus.requestFocus()
+                isTv -> playFocus.requestFocus()
+                else -> keyFocus.requestFocus()
+            }
         } catch (_: IllegalStateException) {
         }
+    }
+    // Redesign 2 (pl-family): the trailer's extras live in the same side panel as every other player
+    if (settingsOpen) {
+        com.github.damontecres.wholphin.ui.playback.PlayerPanel(
+            title = "Trailer",
+            subtitle = request.title,
+            lines =
+                listOf(
+                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                        label = "Skip ad",
+                        note = "Works once YouTube shows its Skip button on the ad",
+                        onClick = { tapSkipAd() },
+                    ),
+                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                        label = "Open in YouTube",
+                        note = "Plays it in the YouTube app instead",
+                        onClick = { if (YouTubeTrailer.openOutside(context, request.url)) onClose() },
+                    ),
+                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                        label = "Close the trailer",
+                        onClick = onClose,
+                    ),
+                ),
+            onDismissRequest = {
+                settingsOpen = false
+                try {
+                    playFocus.requestFocus()
+                } catch (_: IllegalStateException) {
+                }
+            },
+        )
     }
 
     BoxWithConstraints(
@@ -299,33 +337,31 @@ private fun YouTubeTrailerPopup(
                 .focusRequester(keyFocus)
                 .onKeyEvent { event ->
                     if (failed || event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                    // On TV the bar's buttons take OK and the arrows, like every other player; the
+                    // remote's own play, rewind and fast forward buttons work from anywhere
                     when (event.key) {
-                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar,
-                        Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause,
-                        -> {
+                        Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> {
                             js("bf.toggle()")
                             true
                         }
 
-                        Key.DirectionLeft, Key.MediaRewind -> {
+                        Key.MediaRewind -> {
                             js("bf.seek(-10)")
                             true
                         }
 
-                        Key.DirectionRight, Key.MediaFastForward -> {
+                        Key.MediaFastForward -> {
                             js("bf.seek(10)")
                             true
                         }
 
-                        // Down = skip the ad (once YouTube allows it)
-                        Key.DirectionDown -> {
-                            tapSkipAd()
-                            true
-                        }
-
-                        // Up does nothing, but is swallowed so focus doesn't wander off
-                        Key.DirectionUp -> {
-                            true
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar -> {
+                            if (isTv) {
+                                false
+                            } else {
+                                js("bf.toggle()")
+                                true
+                            }
                         }
 
                         else -> {
@@ -400,7 +436,8 @@ private fun YouTubeTrailerPopup(
                 }
             }
             if (isTv && !failed) {
-                // Simple progress line, since YouTube's own controls are hidden on TV
+                // Redesign 2 (pl-family): the same bar as movies and episodes (YouTube's own controls are
+                // hidden on TV): the line, the times, round play / back / forward buttons and the gear
                 val fraction =
                     if (bridge.duration > 0f) (bridge.position / bridge.duration).coerceIn(0f, 1f) else 0f
                 Box(
@@ -409,7 +446,7 @@ private fun YouTubeTrailerPopup(
                             .fillMaxWidth()
                             .height(4.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = .2f)),
+                            .background(Color.White.copy(alpha = .25f)),
                 ) {
                     Box(
                         modifier =
@@ -420,18 +457,45 @@ private fun YouTubeTrailerPopup(
                     )
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "${clock(bridge.position)} / ${clock(bridge.duration)}",
-                        color = Color(0xFFB8B8C0),
-                        fontSize = BenflixType.small,
-                        modifier = Modifier.weight(1f),
+                    Text(text = clock(bridge.position), color = Color(0xFFB8B8C0), fontSize = BenflixType.small)
+                    Box(Modifier.weight(1f))
+                    Text(text = clock(bridge.duration), color = Color(0xFFB8B8C0), fontSize = BenflixType.small)
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    com.github.damontecres.wholphin.ui.playback.overlay.PlayerCircleButton(
+                        faIcon = if (bridge.playing) R.string.fa_pause else R.string.fa_play,
+                        label = null,
+                        size = 56.dp,
+                        onClick = { js("bf.toggle()") },
+                        onControllerInteraction = {},
+                        modifier = Modifier.focusRequester(playFocus),
                     )
-                    Text(
-                        text =
-                            (if (bridge.playing) "OK  Pause" else "OK  Play") +
-                                "     ◀ ▶  10 seconds     ▼  Skip ad     Back  Close",
-                        color = Color(0xFFB8B8C0),
-                        fontSize = BenflixType.small,
+                    com.github.damontecres.wholphin.ui.playback.overlay.PlayerCircleButton(
+                        faIcon = R.string.fa_rotate_left,
+                        label = "10",
+                        size = 46.dp,
+                        onClick = { js("bf.seek(-10)") },
+                        onControllerInteraction = {},
+                    )
+                    com.github.damontecres.wholphin.ui.playback.overlay.PlayerCircleButton(
+                        faIcon = R.string.fa_rotate_right,
+                        label = "10",
+                        size = 46.dp,
+                        onClick = { js("bf.seek(10)") },
+                        onControllerInteraction = {},
+                    )
+                    Box(Modifier.weight(1f))
+                    Text(text = "Ads? Skip ad is in the settings", color = Color(0xFFB8B8C0), fontSize = BenflixType.small)
+                    com.github.damontecres.wholphin.ui.playback.overlay.PlayerCircleButton(
+                        faIcon = R.string.fa_gear,
+                        label = null,
+                        size = 44.dp,
+                        onClick = { settingsOpen = true },
+                        onControllerInteraction = {},
                     )
                 }
             }

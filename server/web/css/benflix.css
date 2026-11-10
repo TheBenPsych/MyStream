@@ -1153,3 +1153,7 @@ body.has-rail .bk-side { display: none; }
   .home.fam .moredoor .n { font-size: 22px; }
   .pbadge { font-size: 13px; padding: 3px 10px; }
 }
+/* Redesign 2 players (pl-family): white subtitles with a soft shadow, and Live TV's red LIVE pill */
+.player video::cue { color: #fff; background: transparent; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55); }
+.player .livepill { border: 0; border-radius: 6px; background: #d93a3a; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .04em; padding: 7px 12px; cursor: pointer; }
+.player .livepill:hover { filter: brightness(1.1); }

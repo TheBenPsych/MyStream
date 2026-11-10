@@ -1,60 +1,29 @@
 package com.github.damontecres.wholphin.ui.playback
 
-import android.view.Gravity
+import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.TrackIndex
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.services.SkipFix
 import com.github.damontecres.wholphin.ui.AppColors
-import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.formatMaxBitrate
-import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
-import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialog
-import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialogItem
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
 import com.github.damontecres.wholphin.ui.touch.Dialog
-import com.github.damontecres.wholphin.ui.tryRequestFocus
-import kotlinx.coroutines.launch
 import kotlin.time.Duration
 
 enum class PlaybackDialogType {
@@ -76,6 +45,9 @@ enum class PlaybackDialogType {
 
     /** Benflix: mark where the intro or credits really are, when a skip was wrong */
     FIX_SKIPS,
+
+    /** Benflix: "Report a problem" from the player's Fix a problem list */
+    REPORT,
 }
 
 data class PlaybackSettings(
@@ -90,13 +62,19 @@ data class PlaybackSettings(
     val hasSubtitleDownloadPermission: Boolean,
     val playbackSpeedEnabled: Boolean,
     val maxBitrate: Long,
+    /** The name shown under "Settings" (the movie or episode) */
+    val title: String? = null,
+    /** "Skip at the wrong time" only shows when there's something to skip (not on live channels) */
+    val canFixSkips: Boolean = true,
 )
 
 /**
  * Centralized UI component for displaying dialogs during playback
  *
- * Typically, the user will click something generating a [com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction] which translates into the
- * [PlaybackDialogType] determining which dialog is shown by this component.
+ * Redesign 2 (approved pl-family): every list here is the one player side panel ([PlayerPanel]), in
+ * words. The gear opens Settings: Subtitles, Audio, Subtitle timing and Quality first, then the "Fix a
+ * problem" list (No sound, Subtitles wrong, Skip at the wrong time, Picture stutters, Report a problem),
+ * then the rarely used extras.
  *
  * @see com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
  */
@@ -112,203 +90,309 @@ fun PlaybackDialog(
     onPlaybackActionClick: (PlaybackAction) -> Unit,
     onChangeSubtitleDelay: (Duration) -> Unit,
 ) {
-    val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
-    // TODO, shouldn't this work out of the box?
-    val leftGravity = remember(isLtr) { if (isLtr) Gravity.START else Gravity.END }
-    val rightGravity = remember(isLtr) { if (isLtr) Gravity.END else Gravity.START }
+    val context = LocalContext.current
+    val dismissAndPulse = {
+        onControllerInteraction.invoke()
+        onDismissRequest.invoke()
+    }
+    val subtitlesOn = settings.subtitleIndex != null && settings.subtitleIndex >= 0
     when (type) {
         PlaybackDialogType.DEBUG -> {
             throw IllegalStateException("Should not open a dialog with " + PlaybackDialogType.DEBUG)
         }
 
         PlaybackDialogType.CAPTIONS -> {
-            SubtitleChoiceBottomDialog(
-                choices = settings.subtitleStreams,
-                currentChoice = settings.subtitleIndex,
-                hasDownloadPermission = settings.hasSubtitleDownloadPermission,
-                onDismissRequest = {
-                    onControllerInteraction.invoke()
-                    onDismissRequest.invoke()
-                },
-                onSelectChoice = { subtitleIndex ->
-                    onDismissRequest.invoke()
-                    if (subtitleIndex >= 0) {
-                        onPlaybackActionClick.invoke(PlaybackAction.ToggleCaptions(subtitleIndex))
-                    } else if (subtitleIndex == TrackIndex.DISABLED) {
-                        onPlaybackActionClick.invoke(PlaybackAction.ToggleCaptions(TrackIndex.DISABLED))
-                    } else if (subtitleIndex == TrackIndex.ONLY_FORCED) {
-                        onPlaybackActionClick.invoke(PlaybackAction.ToggleCaptions(TrackIndex.ONLY_FORCED))
+            val pick = { index: Int -> onPlaybackActionClick.invoke(PlaybackAction.ToggleCaptions(index)) }
+            val lines =
+                buildList {
+                    add(
+                        PanelLine.Row(
+                            label = "Off",
+                            selected = settings.subtitleIndex == TrackIndex.DISABLED,
+                            onClick = { pick(TrackIndex.DISABLED) },
+                        ),
+                    )
+                    add(
+                        PanelLine.Row(
+                            label = "Only when people speak another language",
+                            selected = settings.subtitleIndex == TrackIndex.ONLY_FORCED,
+                            onClick = { pick(TrackIndex.ONLY_FORCED) },
+                        ),
+                    )
+                    settings.subtitleStreams.forEach { choice ->
+                        add(
+                            PanelLine.Row(
+                                label = choice.streamTitle ?: choice.displayTitle,
+                                note = choice.displayTitle.takeIf { choice.streamTitle != null },
+                                selected = choice.index == settings.subtitleIndex,
+                                onClick = { pick(choice.index) },
+                            ),
+                        )
                     }
-                },
-                onSelectSearch = {
-                    onDismissRequest.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
-                },
-                onSelectFixTiming = {
-                    onDismissRequest.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming)
-                },
-                onSelectMoveYourself = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
-                gravity = rightGravity,
-            )
+                    add(PanelLine.Heading("Something off?"))
+                    if (subtitlesOn && enableSubtitleDelay) {
+                        add(
+                            PanelLine.Row(
+                                label = "Subtitle timing",
+                                value = delayWords(settings.subtitleDelay),
+                                note = "Move the words earlier or later yourself",
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
+                            ),
+                        )
+                    }
+                    if (subtitlesOn) {
+                        add(
+                            PanelLine.Row(
+                                label = "Subtitles are early or late",
+                                note = "Tower lines them up with the voices",
+                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) },
+                            ),
+                        )
+                    }
+                    add(
+                        PanelLine.Row(
+                            label = "Find other subtitles",
+                            // Greyed-out rows stay reachable and say why (Redesign 2 ground rule 1)
+                            note = if (settings.hasSubtitleDownloadPermission) "Search and download" else "Only Ben can download subtitles",
+                            onClick = {
+                                if (settings.hasSubtitleDownloadPermission) {
+                                    onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
+                                } else {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "Only Ben can download subtitles. Report a problem to ask him.",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                }
+                            },
+                        ),
+                    )
+                }
+            PlayerPanel(title = "Subtitles", lines = lines, onDismissRequest = dismissAndPulse)
         }
 
         PlaybackDialogType.SETTINGS -> {
-            val context = LocalContext.current
             val nightOn = NightMode.isOn(context)
-            val passthroughLabel =
-                if (SurroundPassthrough.isOn(context)) {
-                    R.string.surround_passthrough_on
-                } else {
-                    R.string.surround_passthrough_off
+            val subtitleName =
+                when (settings.subtitleIndex) {
+                    TrackIndex.ONLY_FORCED -> {
+                        "Other languages only"
+                    }
+
+                    null, TrackIndex.DISABLED, TrackIndex.UNSPECIFIED -> {
+                        "Off"
+                    }
+
+                    else -> {
+                        settings.subtitleStreams
+                            .firstOrNull { it.index == settings.subtitleIndex }
+                            ?.let { it.streamTitle ?: it.displayTitle } ?: "On"
+                    }
                 }
-            val options =
+            val audioName =
+                settings.audioStreams.firstOrNull { it.index == settings.audioIndex }?.let { it.streamTitle ?: it.displayTitle }
+            val lines =
                 buildList {
                     add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.NIGHT_MODE,
-                            headline = stringResource(if (nightOn) R.string.night_mode_on else R.string.night_mode_off),
-                            supporting = stringResource(R.string.night_mode_summary),
+                        PanelLine.Row(
+                            label = "Subtitles",
+                            value = subtitleName,
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.CAPTIONS) },
                         ),
                     )
                     add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.SURROUND_PASSTHROUGH,
-                            headline = stringResource(passthroughLabel),
-                            supporting = stringResource(R.string.surround_passthrough_summary),
+                        PanelLine.Row(
+                            label = "Audio",
+                            value = audioName ?: "One sound track",
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.AUDIO) },
+                        ),
+                    )
+                    if (enableSubtitleDelay) {
+                        add(
+                            PanelLine.Row(
+                                label = "Subtitle timing",
+                                value = if (subtitlesOn) delayWords(settings.subtitleDelay) else "Subtitles are off",
+                                closes = false,
+                                onClick = {
+                                    if (subtitlesOn) {
+                                        onClickPlaybackDialogType(PlaybackDialogType.SUBTITLE_DELAY)
+                                    } else {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "Turn subtitles on first (Subtitles, just above).",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
+                                },
+                            ),
+                        )
+                    }
+                    add(
+                        PanelLine.Row(
+                            label = "Quality",
+                            value = qualityWords(settings.maxBitrate),
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.BITRATE) },
+                        ),
+                    )
+                    add(PanelLine.Heading("Fix a problem"))
+                    add(
+                        PanelLine.Row(
+                            label = "No sound",
+                            note = "Benflix brings the sound back",
+                            icon = BenflixIcon.WARNING,
+                            onClick = { onPlaybackActionClick(PlaybackAction.FixNoSound) },
                         ),
                     )
                     add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.PLAYBACK_SPEED,
-                            headline = stringResource(R.string.playback_speed),
-                            supporting = settings.playbackSpeed.toString(),
-                            enabled = settings.playbackSpeedEnabled,
+                        PanelLine.Row(
+                            label = "Subtitles wrong",
+                            note = "Wrong language, early or late",
+                            icon = BenflixIcon.WARNING,
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.CAPTIONS) },
+                        ),
+                    )
+                    if (settings.canFixSkips) {
+                        add(
+                            PanelLine.Row(
+                                label = "Skip at the wrong time",
+                                note = "Mark where the intro or credits really are",
+                                icon = BenflixIcon.WARNING,
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.FIX_SKIPS) },
+                            ),
+                        )
+                    }
+                    add(
+                        PanelLine.Row(
+                            label = "Picture stutters",
+                            note = "Restarts the picture, then tries a lighter one",
+                            icon = BenflixIcon.WARNING,
+                            onClick = { onPlaybackActionClick(PlaybackAction.FixPicture) },
+                        ),
+                    )
+                    add(
+                        PanelLine.Row(
+                            label = "Report a problem",
+                            note = "Ben gets a note to fix it",
+                            icon = BenflixIcon.FLAG,
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.REPORT) },
+                        ),
+                    )
+                    add(PanelLine.Heading("More"))
+                    add(
+                        PanelLine.Row(
+                            label = stringResource(if (nightOn) R.string.night_mode_on else R.string.night_mode_off),
+                            note = stringResource(R.string.night_mode_summary),
+                            onClick = { NightMode.toggle(context) },
+                        ),
+                    )
+                    add(
+                        PanelLine.Row(
+                            label =
+                                stringResource(
+                                    if (SurroundPassthrough.isOn(context)) {
+                                        R.string.surround_passthrough_on
+                                    } else {
+                                        R.string.surround_passthrough_off
+                                    },
+                                ),
+                            note = stringResource(R.string.surround_passthrough_summary),
+                            onClick = {
+                                SurroundPassthrough.toggle(context)
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(R.string.surround_passthrough_next_video)
+                            },
+                        ),
+                    )
+                    add(
+                        PanelLine.Row(
+                            label = "Speed",
+                            value = speedWords(settings.playbackSpeed),
+                            note = if (settings.playbackSpeedEnabled) null else "Can't change while the sound goes to the soundbar",
+                            closes = false,
+                            onClick = {
+                                if (settings.playbackSpeedEnabled) {
+                                    onClickPlaybackDialogType(PlaybackDialogType.PLAYBACK_SPEED)
+                                } else {
+                                    Toast.makeText(context, "Turn Surround to soundbar off to change the speed.", Toast.LENGTH_LONG).show()
+                                }
+                            },
                         ),
                     )
                     if (enableVideoScale) {
                         add(
-                            BottomDialogItem(
-                                data = PlaybackDialogType.VIDEO_SCALE,
-                                headline = stringResource(R.string.video_scale),
-                                supporting =
-                                    playbackScaleOptions[settings.contentScale]
-                                        ?.let { stringResource(it) },
-                            ),
-                        )
-                    }
-                    if (enableSubtitleDelay) {
-                        add(
-                            BottomDialogItem(
-                                data = PlaybackDialogType.SUBTITLE_DELAY,
-                                headline = stringResource(R.string.subtitle_delay),
-                                supporting = settings.subtitleDelay.toString(),
+                            PanelLine.Row(
+                                label = "Picture size",
+                                value = playbackScaleOptions[settings.contentScale]?.let { stringResource(it) },
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.VIDEO_SCALE) },
                             ),
                         )
                     }
                     add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.BITRATE,
-                            headline = stringResource(R.string.max_bitrate),
-                            supporting = remember(settings.maxBitrate) { formatMaxBitrate(settings.maxBitrate) },
-                        ),
-                    )
-                    add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.FIX_SKIPS,
-                            headline = "Fix skip times",
-                            supporting = "Skip came at the wrong time? Mark where the intro or credits really are",
-                        ),
-                    )
-                    add(
-                        BottomDialogItem(
-                            data = PlaybackDialogType.DEBUG,
-                            headline = stringResource(if (settings.showDebugInfo) R.string.hide_debug_info else R.string.show_debug_info),
-                            supporting = null,
+                        PanelLine.Row(
+                            label = stringResource(if (settings.showDebugInfo) R.string.hide_debug_info else R.string.show_debug_info),
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.ShowDebug) },
                         ),
                     )
                 }
-            BottomDialog(
-                choices = options,
-                currentChoice = null,
-                onDismissRequest = onDismissRequest,
-                onSelectChoice = { _, choice ->
-                    if (choice.data == PlaybackDialogType.DEBUG) {
-                        onPlaybackActionClick.invoke(PlaybackAction.ShowDebug)
-                    } else if (choice.data == PlaybackDialogType.NIGHT_MODE) {
-                        NightMode.toggle(context)
-                        onDismissRequest.invoke()
-                    } else if (choice.data == PlaybackDialogType.SURROUND_PASSTHROUGH) {
-                        SurroundPassthrough.toggle(context)
-                        com.github.damontecres.wholphin.ui.components.BenflixNotices
-                            .pill(R.string.surround_passthrough_next_video)
-                        onDismissRequest.invoke()
-                    } else {
-                        onClickPlaybackDialogType(choice.data)
-                    }
-                },
-                gravity = leftGravity,
-            )
+            PlayerPanel(title = "Settings", subtitle = settings.title, lines = lines, onDismissRequest = onDismissRequest)
         }
 
         PlaybackDialogType.AUDIO -> {
-            StreamChoiceBottomDialog(
-                choices = settings.audioStreams,
-                currentChoice = settings.audioIndex,
-                onDismissRequest = {
-                    onControllerInteraction.invoke()
-                    onDismissRequest.invoke()
-                },
-                onSelectChoice = { _, choice ->
-                    onPlaybackActionClick.invoke(PlaybackAction.ToggleAudio(choice.index))
-                },
-                gravity = rightGravity,
+            val lines =
+                settings.audioStreams.map { choice ->
+                    PanelLine.Row(
+                        label = choice.streamTitle ?: choice.displayTitle,
+                        note = choice.displayTitle.takeIf { choice.streamTitle != null },
+                        selected = choice.index == settings.audioIndex,
+                        onClick = { onPlaybackActionClick.invoke(PlaybackAction.ToggleAudio(choice.index)) },
+                    )
+                }
+            PlayerPanel(
+                title = "Audio",
+                subtitle = if (lines.size <= 1) "This one has one sound track" else null,
+                lines = lines,
+                onDismissRequest = dismissAndPulse,
             )
         }
 
         PlaybackDialogType.PLAYBACK_SPEED -> {
-            val choices =
-                playbackSpeedOptions.map {
-                    BottomDialogItem(
-                        data = it.toFloat(),
-                        headline = it,
-                        supporting = null,
-                    )
-                }
-            BottomDialog(
-                choices = choices,
-                currentChoice = choices.firstOrNull { it.data == settings.playbackSpeed },
-                onDismissRequest = {
-                    onControllerInteraction.invoke()
-                    onDismissRequest.invoke()
-                },
-                onSelectChoice = { _, value ->
-                    onPlaybackActionClick.invoke(PlaybackAction.PlaybackSpeed(value.data))
-                },
-                gravity = leftGravity,
+            PlayerPanel(
+                title = "Speed",
+                lines =
+                    playbackSpeedOptions.map {
+                        val value = it.toFloat()
+                        PanelLine.Row(
+                            label = speedWords(value),
+                            selected = value == settings.playbackSpeed,
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.PlaybackSpeed(value)) },
+                        )
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
 
         PlaybackDialogType.VIDEO_SCALE -> {
-            val choices =
-                playbackScaleOptions.map { (scale, name) ->
-                    BottomDialogItem(
-                        data = scale,
-                        headline = stringResource(name),
-                        supporting = null,
-                    )
-                }
-            BottomDialog(
-                choices = choices,
-                currentChoice = choices.firstOrNull { it.data == settings.contentScale },
-                onDismissRequest = {
-                    onControllerInteraction.invoke()
-                    onDismissRequest.invoke()
-                },
-                onSelectChoice = { _, choice ->
-                    onPlaybackActionClick.invoke(PlaybackAction.Scale(choice.data))
-                },
-                gravity = leftGravity,
+            PlayerPanel(
+                title = "Picture size",
+                lines =
+                    playbackScaleOptions.map { (scale, name) ->
+                        PanelLine.Row(
+                            label = stringResource(name),
+                            selected = scale == settings.contentScale,
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.Scale(scale)) },
+                        )
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
 
@@ -320,35 +404,43 @@ fun PlaybackDialog(
 
         PlaybackDialogType.FIX_SKIPS -> {
             // Benflix: each fix is saved on Tower, which finds the same spot in the show's other episodes
-            val choices =
-                listOf(
-                    SkipFix.INTRO_START to "Intro starts here",
-                    SkipFix.INTRO_END to "Intro ends here",
-                    SkipFix.CREDITS_START to "Credits start here",
-                    SkipFix.CREDITS_END to "Credits end here",
-                    SkipFix.NO_INTRO to "No intro in this episode",
-                    SkipFix.NO_INTRO_SHOW to "No intro in this whole show",
-                    SkipFix.UNDO to "Undo my fixes for this episode",
-                ).map { (fix, name) ->
-                    BottomDialogItem(
-                        data = fix,
-                        headline = name,
-                        supporting = skipFixHint(fix),
-                    )
-                }
-            BottomDialog(
-                choices = choices,
-                currentChoice = null,
+            PlayerPanel(
+                title = "Skip at the wrong time?",
+                subtitle = "Pause at the right spot, then press one. Tower fixes the show's other episodes too.",
+                lines =
+                    listOf(
+                        SkipFix.INTRO_START to "Intro starts here",
+                        SkipFix.INTRO_END to "Intro ends here",
+                        SkipFix.CREDITS_START to "Credits start here",
+                        SkipFix.CREDITS_END to "Credits end here",
+                        SkipFix.NO_INTRO to "No intro in this episode",
+                        SkipFix.NO_INTRO_SHOW to "No intro in this whole show",
+                        SkipFix.UNDO to "Undo my fixes for this episode",
+                    ).map { (fix, name) ->
+                        PanelLine.Row(
+                            label = name,
+                            note = skipFixHint(fix),
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSkip(fix)) },
+                        )
+                    },
                 onDismissRequest = onDismissRequest,
-                onSelectChoice = { _, choice ->
-                    onDismissRequest.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.FixSkip(choice.data))
-                },
-                gravity = leftGravity,
+            )
+        }
+
+        PlaybackDialogType.REPORT -> {
+            PlayerPanel(
+                title = "Report a problem",
+                subtitle = "What's wrong? Ben gets a note with the details, so he can fix it.",
+                lines =
+                    REPORT_CHOICES.map { problem ->
+                        PanelLine.Row(label = problem, onClick = { onPlaybackActionClick.invoke(PlaybackAction.ReportProblem(problem)) })
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
 
         PlaybackDialogType.SUBTITLE_DELAY -> {
+            // Stays a small card (not the side panel), so the words stay in sight while you move them
             Dialog(
                 onDismissRequest = onDismissRequest,
                 properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -375,303 +467,46 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.BITRATE -> {
-            val choices =
-                AppPreference.bitrateValues.map { bitrate ->
-                    BottomDialogItem(
-                        data = bitrate,
-                        headline = formatMaxBitrate(bitrate),
-                        supporting = null,
-                    )
-                }
-            BottomDialog(
-                choices = choices,
-                currentChoice = choices.firstOrNull { it.data == settings.maxBitrate },
-                onDismissRequest = {
-                    onControllerInteraction.invoke()
-                    onDismissRequest.invoke()
-                },
-                onSelectChoice = { _, choice ->
-                    onPlaybackActionClick.invoke(PlaybackAction.ChangeBitrate(choice.data))
-                },
-                gravity = leftGravity,
+            PlayerPanel(
+                title = "Quality",
+                subtitle = "Lower it if the picture keeps stopping to load",
+                lines =
+                    AppPreference.bitrateValues.reversed().map { bitrate ->
+                        PanelLine.Row(
+                            label = qualityWords(bitrate),
+                            selected = bitrate == settings.maxBitrate,
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.ChangeBitrate(bitrate)) },
+                        )
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
     }
 }
 
-@Composable
-fun SubtitleChoiceBottomDialog(
-    choices: List<SimpleMediaStream>,
-    onDismissRequest: () -> Unit,
-    onSelectChoice: (Int) -> Unit,
-    onSelectSearch: () -> Unit,
-    gravity: Int,
-    hasDownloadPermission: Boolean,
-    currentChoice: Int? = null,
-    onSelectFixTiming: (() -> Unit)? = null,
-    onSelectMoveYourself: (() -> Unit)? = null,
-) {
-    val numberBefore = 2
-    val initialChoice =
-        remember(choices) {
-            choices.indexOfFirstOrNull { it.index == currentChoice }
-        }
-    val scope = rememberCoroutineScope()
-    val listState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = initialChoice?.plus(numberBefore) ?: 0,
-        )
-    val firstFocusRequester = remember { FocusRequester() }
-    val lastFocusRequester = remember { FocusRequester() }
-    val choiceFocusRequesters = remember(choices.size) { List(choices.size) { FocusRequester() } }
-    LaunchedEffect(Unit) {
-        val focusRequester =
-            initialChoice?.let { choiceFocusRequesters.getOrNull(it) } ?: firstFocusRequester
-        focusRequester.tryRequestFocus()
-    }
-    // TODO enforcing a width ends up ignore the gravity
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
-    ) {
-        val dialogWindowProvider = LocalView.current.parent as? DialogWindowProvider
-        dialogWindowProvider?.window?.let { window ->
-            window.setGravity(Gravity.BOTTOM or gravity) // Move down, by default dialogs are in the centre
-            window.setDimAmount(0f) // Remove dimmed background of ongoing playback
-        }
+/** What "Report a problem" offers in the player */
+private val REPORT_CHOICES =
+    listOf("No sound", "Subtitles wrong", "Picture stutters or freezes", "Skip at the wrong time", "Wrong video", "Something else")
 
-        Box(
-            modifier =
-                Modifier
-                    .wrapContentSize()
-                    .padding(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-//                        .widthIn(max = 240.dp)
-                        .wrapContentWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                item {
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val focused by interactionSource.collectIsFocusedAsState()
-                    ListItem(
-                        selected = currentChoice == TrackIndex.DISABLED,
-                        interactionSource = interactionSource,
-                        onClick = {
-                            onSelectChoice(TrackIndex.DISABLED)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(currentChoice == TrackIndex.DISABLED)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.none),
-                            )
-                        },
-                        supportingContent = {},
-                        modifier =
-                            Modifier
-                                .focusRequester(firstFocusRequester)
-                                .onKeyEvent {
-                                    if (focused && isUp(it) && it.type == KeyEventType.KeyDown) {
-                                        scope.launch {
-                                            listState.animateScrollToItem(Int.MAX_VALUE)
-                                            lastFocusRequester.tryRequestFocus()
-                                        }
-                                        return@onKeyEvent true
-                                    }
-                                    false
-                                },
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-                item {
-                    ListItem(
-                        selected = currentChoice == TrackIndex.ONLY_FORCED,
-                        onClick = {
-                            onSelectChoice(TrackIndex.ONLY_FORCED)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(currentChoice == TrackIndex.ONLY_FORCED)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.only_forced_subtitles),
-                            )
-                        },
-                        supportingContent = {},
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                    if (choices.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-                }
-                itemsIndexed(choices) { index, choice ->
-                    val interactionSource = remember { MutableInteractionSource() }
-                    ListItem(
-                        selected = choice.index == currentChoice,
-                        onClick = {
-                            onSelectChoice(choice.index)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(choice.index == currentChoice)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = choice.streamTitle ?: choice.displayTitle,
-                            )
-                        },
-                        supportingContent = {
-                            if (choice.streamTitle != null) Text(choice.displayTitle)
-                        },
-                        interactionSource = interactionSource,
-                        modifier = Modifier.focusRequester(choiceFocusRequesters[index]),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-                if (onSelectFixTiming != null && currentChoice != null && currentChoice >= 0) {
-                    item {
-                        HorizontalDivider()
-                        ListItem(
-                            selected = false,
-                            onClick = onSelectFixTiming,
-                            leadingContent = {},
-                            headlineContent = { Text(text = "Subtitles are early or late") },
-                            supportingContent = { Text(text = "Tower lines them up with the voices") },
-                            scale = ListItemDefaults.scale(focusedScale = 1f),
-                        )
-                    }
-                }
-                if (onSelectMoveYourself != null && currentChoice != null && currentChoice >= 0) {
-                    item {
-                        ListItem(
-                            selected = false,
-                            onClick = onSelectMoveYourself,
-                            leadingContent = {},
-                            headlineContent = { Text(text = "Subtitle timing") },
-                            supportingContent = { Text(text = "Move the words earlier or later yourself") },
-                            scale = ListItemDefaults.scale(focusedScale = 1f),
-                        )
-                    }
-                }
-                item {
-                    HorizontalDivider()
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val focused by interactionSource.collectIsFocusedAsState()
-                    ListItem(
-                        selected = false,
-                        enabled = hasDownloadPermission,
-                        onClick = onSelectSearch,
-                        leadingContent = {},
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.search_and_download),
-                            )
-                        },
-                        supportingContent = {},
-                        interactionSource = interactionSource,
-                        modifier =
-                            Modifier
-                                .focusRequester(lastFocusRequester)
-                                .onKeyEvent {
-                                    if (focused && isDown(it) && it.type == KeyEventType.KeyDown) {
-                                        scope.launch {
-                                            listState.animateScrollToItem(0)
-                                            firstFocusRequester.tryRequestFocus()
-                                        }
-                                        return@onKeyEvent true
-                                    }
-                                    false
-                                },
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-            }
-        }
+/** "On time", "500ms later", "1s sooner" */
+internal fun delayWords(delay: Duration): String =
+    when {
+        delay == Duration.ZERO -> "On time"
+        delay.isPositive() -> "$delay later"
+        else -> "${-delay} sooner"
     }
-}
 
-@Composable
-fun StreamChoiceBottomDialog(
-    choices: List<SimpleMediaStream>,
-    onDismissRequest: () -> Unit,
-    onSelectChoice: (Int, SimpleMediaStream) -> Unit,
-    gravity: Int,
-    currentChoice: Int? = null,
-) {
-    val focusRequesters = remember(choices.size) { List(choices.size) { FocusRequester() } }
-    if (currentChoice != null) {
-        LaunchedEffect(Unit) {
-            choices.indexOfFirstOrNull { it.index == currentChoice }?.let {
-                focusRequesters.getOrNull(it)?.tryRequestFocus()
-            }
-        }
-    }
-    // TODO enforcing a width ends up ignore the gravity
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
-    ) {
-        val dialogWindowProvider = LocalView.current.parent as? DialogWindowProvider
-        dialogWindowProvider?.window?.let { window ->
-            window.setGravity(Gravity.BOTTOM or gravity) // Move down, by default dialogs are in the centre
-            window.setDimAmount(0f) // Remove dimmed background of ongoing playback
-        }
+private fun speedWords(speed: Float): String = if (speed == 1f) "Normal" else "${speed.toString().removeSuffix(".0")}x"
 
-        Box(
-            modifier =
-                Modifier
-                    .wrapContentSize()
-                    .padding(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-        ) {
-            LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-//                        .widthIn(max = 240.dp)
-                        .wrapContentWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                itemsIndexed(choices) { index, choice ->
-                    val interactionSource = remember { MutableInteractionSource() }
-                    ListItem(
-                        selected = choice.index == currentChoice,
-                        onClick = {
-                            onDismissRequest()
-                            onSelectChoice(index, choice)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(choice.index == currentChoice)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = choice.streamTitle ?: choice.displayTitle,
-                            )
-                        },
-                        supportingContent = {
-                            if (choice.streamTitle != null) Text(choice.displayTitle)
-                        },
-                        interactionSource = interactionSource,
-                        modifier = Modifier.focusRequester(focusRequesters[index]),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-            }
-        }
+/** The quality in words: the top ones are "Best", the rest say about how sharp the picture is */
+internal fun qualityWords(bitrate: Long): String {
+    val mbps = bitrate / (1024.0 * 1024.0)
+    return when {
+        mbps >= 60 -> "Best"
+        mbps >= 15 -> "Very sharp · ${formatMaxBitrate(bitrate)}"
+        mbps >= 8 -> "Sharp (1080p) · ${formatMaxBitrate(bitrate)}"
+        mbps >= 3 -> "Good (720p) · ${formatMaxBitrate(bitrate)}"
+        else -> "Light · ${formatMaxBitrate(bitrate)}"
     }
 }
 

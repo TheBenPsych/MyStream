@@ -37,6 +37,7 @@ fun PlaybackController(
     modifier: Modifier = Modifier,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chapters: List<Chapter> = emptyList(),
+    live: LiveBarInfo? = null,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -59,6 +60,7 @@ fun PlaybackController(
             seekBarInteractionSource = seekBarInteractionSource,
             currentSegment = currentSegment,
             chapters = chapters,
+            live = live,
             modifier = Modifier,
         )
     }
@@ -88,6 +90,7 @@ fun Controller(
     modifier: Modifier = Modifier,
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chapters: List<Chapter> = emptyList(),
+    live: LiveBarInfo? = null,
 ) {
     // Benflix redesign: the name now sits in the top left (see PlaybackOverlay) and
     // "ends at" sits on the right under the line, so the bottom is just the bar and one row of buttons.
@@ -116,6 +119,7 @@ fun Controller(
             currentSegment = currentSegment,
             onClickPlaybackDialogType = onClickPlaybackDialogType,
             chapters = chapters,
+            live = live,
         )
     }
 }

@@ -92,6 +92,8 @@ fun PlaybackOverlay(
     trickplayUrlFor: (Int) -> String? = { null },
     seekBarInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chapters: List<Chapter> = emptyList(),
+    /** Live TV: the same bar with a LIVE pill and the programme's times instead of chapters */
+    live: LiveBarInfo? = null,
 ) {
     val seekBarFocused by seekBarInteractionSource.collectIsFocusedAsState()
     // Will be used for preview/trick play images
@@ -195,6 +197,7 @@ fun PlaybackOverlay(
                                 },
                         seekBarInteractionSource = seekBarInteractionSource,
                         chapters = chapters,
+                        live = live,
                     )
                 }
             }
@@ -254,8 +257,10 @@ fun PlaybackOverlay(
                 }
             }
         val topLine =
-            remember(item) {
-                if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
+            remember(item, live) {
+                if (live != null) {
+                    live.topLine()
+                } else if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
                     null
                 } else {
                     listOfNotNull(

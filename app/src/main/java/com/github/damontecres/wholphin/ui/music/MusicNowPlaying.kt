@@ -4,11 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -266,23 +263,11 @@ fun MusicNowPlayingPage(
         // Room kept at the bottom for the bars (none when they're turned off)
         val reserved = if (barsOn) towersHeight else 0.dp
         if (wide) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 48.dp, end = 48.dp, top = 40.dp)
-                        .height(boxHeight - reserved - 40.dp),
-            ) {
-                val coverSize = (boxWidth * 0.22f).coerceAtMost(boxHeight - reserved - 60.dp)
-                CoverImage(audio?.imageUrl, Modifier.size(coverSize))
-                // Scrolls (focus brings the button into view) so Like / Up next / Stop are never squashed away
-                Column(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
-                ) {
+            // Redesign 2 (pl-family): the same frame as the audiobook player
+            NowPlayingWideFrame(
+                reservedBottom = reserved,
+                cover = { size -> CoverImage(audio?.imageUrl, Modifier.size(size)) },
+                middle = {
                     SongWords(audio, music.thenTitle, easy, big = true)
                     Spacer(Modifier.height(14.dp))
                     ProgressLine(position, duration)
@@ -290,11 +275,15 @@ fun MusicNowPlayingPage(
                     Controls(viewModel, playing, music.liked, easy, isTv, playFocus)
                     Spacer(Modifier.height(14.dp))
                     UpNextLine(next)
-                }
-                if (lyrics != null) {
-                    LyricsColumn(lyrics, lyricIndex, Modifier.width(boxWidth * 0.27f).fillMaxHeight(), fontSize = if (easy) 24f else 20f)
-                }
-            }
+                },
+                side =
+                    if (lyrics != null) {
+                        { mod -> LyricsColumn(lyrics, lyricIndex, mod, fontSize = if (easy) 24f else 20f) }
+                    } else {
+                        null
+                    },
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
             PhoneNowPlaying(
                 viewModel = viewModel,
@@ -351,26 +340,13 @@ private fun SongWords(
     easy: Boolean,
     big: Boolean,
 ) {
-    MusicKicker(if (from.isNullOrBlank()) "Now playing" else "Now playing · from $from")
-    Text(
-        text = audio?.title.orEmpty(),
-        color = BenflixColors.Text,
-        fontSize = if (big) (if (easy) 46.sp else 40.sp) else 26.sp,
-        lineHeight = if (big) 46.sp else 30.sp,
-        fontWeight = FontWeight.ExtraBold,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 6.dp),
-    )
-    val line = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · ")
-    Text(
-        text = line,
-        color = BenflixColors.Soft,
-        fontSize = if (big) BenflixType.rowName else BenflixType.body,
-        fontWeight = FontWeight.SemiBold,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 4.dp),
+    NowPlayingTitle(
+        kicker = if (from.isNullOrBlank()) "Now playing" else "Now playing · from $from",
+        title = audio?.title.orEmpty(),
+        byLine = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · "),
+        color = BenflixColors.Music,
+        big = big,
+        easy = easy,
     )
 }
 
@@ -379,27 +355,12 @@ private fun ProgressLine(
     position: Long,
     duration: Long,
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(5.dp)
-                .background(BenflixColors.Line, RoundedCornerShape(3.dp)),
-        ) {
-            val f = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-            Box(
-                Modifier
-                    .fillMaxWidth(f)
-                    .fillMaxHeight()
-                    .background(BenflixColors.Music, RoundedCornerShape(3.dp)),
-            )
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text(songLength(position.milliseconds), color = BenflixColors.Muted, fontSize = BenflixType.small)
-            Spacer(Modifier.weight(1f))
-            Text(songLength(duration.milliseconds), color = BenflixColors.Muted, fontSize = BenflixType.small)
-        }
-    }
+    NowPlayingLine(
+        progress = if (duration > 0) position.toFloat() / duration else 0f,
+        leftText = songLength(position.milliseconds),
+        rightText = songLength(duration.milliseconds),
+        color = BenflixColors.Music,
+    )
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)

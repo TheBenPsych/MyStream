@@ -221,6 +221,10 @@ class PlaybackViewModel
 
         /** Benflix: episodes this player moved on from with Next / autoplay */
         @Volatile internal var movedOnFrom: Set<UUID> = emptySet()
+
+        /** Benflix "Picture stutters" presses for the video playing now (1st restarts, then lighter quality) */
+        internal var pictureFixesFor: UUID? = null
+        internal var pictureFixes = 0
         internal lateinit var currentItem: PlaylistItem
         internal var forceTranscoding: Boolean = false
         internal var activityListener: TrackActivityPlaybackListener? = null

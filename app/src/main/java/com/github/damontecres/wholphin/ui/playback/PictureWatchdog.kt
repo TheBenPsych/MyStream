@@ -126,6 +126,20 @@ class PictureWatchdog(
         job?.cancel()
     }
 
+    /** "Picture stutters" pressed in the player: start the picture again at the same spot now (false: can't here) */
+    fun restartNow(item: UUID?): Boolean {
+        val exo = player() ?: return false
+        job?.cancel()
+        itemId = item
+        restartedFor = item
+        lastReport = "restart asked for by hand"
+        onNotice("Smoothing out the picture...")
+        restart(exo)
+        afterRestart()
+        check(item, "picture restart (asked)")
+        return true
+    }
+
     private suspend fun waitUntilPlaying(exo: ExoPlayer): Boolean {
         var waited = 0L
         while (scope.isActive && !exo.isPlaying) {

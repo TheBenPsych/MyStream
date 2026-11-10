@@ -177,28 +177,40 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
   // Recently watched (10)
   prefs.recent = [c.Name, ...prefs.recent.filter((n) => n !== c.Name)].slice(0, 10);
   chPrefs.save(prefs).catch(() => {});
-  B.page().innerHTML = `<div class="player ui" id="pl"><video id="v" playsinline autoplay></video><div class="shadeB"></div><div class="center-msg" id="msg"></div>
-    <div class="controls" id="banner"><div class="row2" style="align-items:flex-end;gap:22px">
-      ${logo(c, 120) ? `<img src="${logo(c, 120)}" alt="" style="height:54px;max-width:120px;object-fit:contain">` : ""}
-      <div class="grow"><div class="dim" style="font-weight:700">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} ${prefs.favourites.includes(c.Name) ? "★" : ""}</div><div id="bNow" class="bnow">Tuning in…</div><div class="dim" id="bNext"></div></div>
-      <button class="pbtn" id="pPause" title="Pause (space)">${I("pause")}</button>
-      <button class="pbtn" id="pBroken" title="This channel is broken">${I("flag")}</button>
-      <button class="pbtn" id="pGuide" title="Guide (left arrow)">${I("list")}</button>
-      <button class="pbtn" id="pStar" title="Favourite (F)">${I("star")}</button>
-      ${B.volume("pVol")}
-      <button class="pbtn" id="pFull" title="Full screen">${I("full")}</button>
-      <button class="pbtn" id="pBack" title="Back">${I("x")}</button>
-    </div><div class="dim keyhint" style="font-size:13px;margin-top:8px">Up and down arrows change channel · Left opens the guide · type a number to jump</div></div></div>`;
+  // Redesign 2 (pl-family): the same bar as movies and episodes, with a LIVE pill and the programme's
+  // times in place of chapters. The side guide still opens with the left arrow.
+  B.page().innerHTML = `<div class="player ui" id="pl"><video id="v" playsinline autoplay></video><div class="shadeT"></div><div class="shadeB"></div><div class="center-msg" id="msg"></div>
+    <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button>
+      ${logo(c, 120) ? `<img src="${logo(c, 120)}" alt="" style="height:40px;max-width:100px;object-fit:contain">` : ""}
+      <div><div class="tt">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} ${prefs.favourites.includes(c.Name) ? "★" : ""}</div><div class="rating" id="bTop">Tuning in…</div></div></div>
+    <div class="controls" id="banner">
+      <div class="chap" id="bChap"></div>
+      <div class="bar"><div class="segs"><i style="flex:1"><b id="bFill" style="width:100%"></b></i></div></div>
+      <div class="row2">
+        <button class="pbtn play" id="pPause" title="Pause (space)">${I("pause")}</button>
+        <button class="livepill" id="pLive" title="Live">● LIVE</button>
+        <span class="time" id="bTimes"></span>
+        <span class="grow"></span>
+        <button class="pbtn" id="pGuide" title="Guide (left arrow)">${I("list")}</button>
+        <button class="pbtn" id="pStar" title="Favourite (F)">${I("star")}</button>
+        <button class="pbtn" id="pGear" title="Settings and Fix a problem">${I("gear")}</button>
+        ${B.volume("pVol")}
+        <button class="pbtn" id="pFull" title="Full screen (double-click)">${I("full")}</button>
+      </div><div class="dim keyhint" style="font-size:13px;margin-top:8px">Up and down arrows change channel · Left opens the guide · type a number to jump · space pauses</div></div></div>`;
   const pl = $("#pl"), v = $("#v");
   B.wireVolume($("#pVol").parentNode, v, "volume");
   const msg = (t) => { $("#msg").innerHTML = t ? `<div><div class="spin"></div><div>${esc(t)}</div></div>` : ""; };
   const paint = () => {
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
-    $("#bNow").textContent = p ? p.Name : c.Name;
-    $("#bNext").textContent = p ? `${minsLeft(p)} min left${next ? ` · Next: ${next.Name}` : ""}` : "";
+    if (!p) { $("#bTop").textContent = "Live"; $("#bChap").textContent = "Live"; $("#bTimes").textContent = ""; $("#bFill").style.width = "100%"; return; }
+    const start = new Date(p.StartDate), end = new Date(p.EndDate), mins = Math.max(0, Math.round((Date.now() - start) / 60000));
+    $("#bTop").textContent = `${p.Name} · ${B.clock(start)} to ${B.clock(end)}`;
+    $("#bChap").textContent = (mins < 1 ? "Just started" : mins < 60 ? `Started ${mins} min ago` : `Started ${Math.floor(mins / 60)} h ${mins % 60} min ago`) + (next ? ` · Next: ${next.Name}` : "");
+    $("#bTimes").textContent = `${B.clock(start)} / ${B.clock(end)}`;
+    $("#bFill").style.width = Math.max(0, Math.min(100, ((Date.now() - start) / Math.max(1, end - start)) * 100)) + "%";
   };
   let hls = null, uiTimer, info = null;
-  const poke = () => { pl.classList.add("ui"); clearTimeout(uiTimer); uiTimer = setTimeout(() => { if (!$(".sideguide")) pl.classList.remove("ui"); }, 5000); };
+  const poke = () => { pl.classList.add("ui"); clearTimeout(uiTimer); uiTimer = setTimeout(() => { if (!$(".sideguide") && !$(".player .panel")) pl.classList.remove("ui"); }, 5000); };
   pl.addEventListener("mousemove", poke);
   msg("Tuning in…");
   const tryUrl = (url, onFail) => {
@@ -246,8 +258,32 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     else { v.pause(); $("#pPause").innerHTML = I("play"); $("#pPause").title = "Play (space)"; }
   };
   $("#pPause").onclick = pause;
+  // The same settings panel as the movie player, with Live TV's own Fix a problem list
+  const openPanel = () => {
+    if ($(".player .panel")) return $(".player .panel").remove();
+    const p = document.createElement("div");
+    p.className = "panel";
+    p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Settings</h3>
+      <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(c.Name)}</p>
+      <h4>Fix a problem</h4>
+      <button class="opt" data-nosound>${I("flag")} No sound<small>Tunes in again</small></button>
+      <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tunes in again</small></button>
+      <button class="opt" data-broken>${I("flag")} This channel is broken<small>Tower swaps it tonight</small></button>
+      <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>`;
+    pl.appendChild(p);
+    pl.classList.add("ui");
+    p.onclick = (e) => {
+      if (e.target.closest("[data-x]")) return p.remove();
+      if (e.target.closest("[data-nosound],[data-stutter]")) { p.remove(); B.toast("Tuning in again…"); return B.go(`#/watch/${c.Id}`, { replace: true }); }
+      if (e.target.closest("[data-broken]")) { p.remove(); return broken(); }
+      if (e.target.closest("[data-report]")) { p.remove(); return B.report(B.lastPlayed); }
+    };
+  };
+  $("#pGear").onclick = openPanel;
+  $("#pLive").onclick = () => { try { if (v.seekable && v.seekable.length) v.currentTime = v.seekable.end(v.seekable.length - 1); } catch (e) {} v.play().catch(() => {}); $("#pPause").innerHTML = I("pause"); };
+  v.addEventListener("dblclick", () => full());
   // "This channel is broken": tells Tower, whose nightly channel check swaps it for a working one
-  $("#pBroken").onclick = async () => {
+  const broken = async () => {
     if (!(await B.ask("Is this channel broken?", `Tower's nightly channel check will swap ${c.Name} for a working copy.`, "Yes, it's broken", "Cancel"))) return;
     const src = info && (info.MediaSources || [])[0];
     B.busy(null, async () => (await B.call("POST", "api/livetv/broken", { name: c.Name, number: String(c.ChannelNumber || ""), url: (src && /^https?:/.test(src.Path || "") && src.Path) || "" })).message || "Thanks! Tonight's check swaps it.");
