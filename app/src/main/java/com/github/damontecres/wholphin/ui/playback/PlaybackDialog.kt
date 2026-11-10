@@ -315,7 +315,7 @@ fun PlaybackDialog(
                         PanelLine.Row(
                             label = "Speed",
                             value = speedWords(settings.playbackSpeed),
-                            note = if (settings.playbackSpeedEnabled) null else "Can't change while the sound goes straight to the soundbar",
+                            note = if (settings.playbackSpeedEnabled) null else "Can't change while the sound goes to the soundbar",
                             closes = false,
                             onClick = {
                                 if (settings.playbackSpeedEnabled) {
