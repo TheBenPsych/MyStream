@@ -3,13 +3,8 @@ package com.github.damontecres.wholphin.ui.detail.series
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,14 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,30 +45,30 @@ import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.ShowProgress
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.EpisodeStandIn
-import com.github.damontecres.wholphin.ui.cards.PersonRow
 import com.github.damontecres.wholphin.ui.cards.hasOwnPicture
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.AskShelf
-import com.github.damontecres.wholphin.ui.detail.DidYouKnow
-import com.github.damontecres.wholphin.ui.detail.HeroBackground
-import com.github.damontecres.wholphin.ui.detail.HeroButton
-import com.github.damontecres.wholphin.ui.detail.HeroSideColumn
-import com.github.damontecres.wholphin.ui.detail.KeepHeroAtTop
-import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
-import com.github.damontecres.wholphin.ui.door.DoorPoster
-import com.github.damontecres.wholphin.ui.door.ScoreLine
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
+import com.github.damontecres.wholphin.ui.detail.title.TitleButton
+import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
+import com.github.damontecres.wholphin.ui.detail.title.TitleFacts
+import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
+import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
+import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
+import com.github.damontecres.wholphin.ui.detail.title.TitlePage
+import com.github.damontecres.wholphin.ui.detail.title.TitleParentsGuide
+import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
+import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
+import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
-import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
 
@@ -99,15 +89,16 @@ class SeriesHeroActions(
     val fixMatch: (() -> Unit)?,
     val request: (() -> Unit)?,
     val openAsk: (DiscoverItem) -> Unit,
+    /** Admin only: Change poster */
+    val pickPoster: (() -> Unit)? = null,
 )
 
 /**
- * Benflix redesign: a show's own page, the same as a movie's (full-screen picture, words and buttons on
- * the left, a quiet right column with Created by, Starring and Network). The main button says where you
- * are ("Resume S2 E5"). Below: season chips and one row of wide episode pictures (the story of the
- * focused episode sits above the row), then More like this, Cast and the anime extras.
+ * Benflix Redesign 2: a show's own page on the shared title page frame. It opens on the Episodes tab
+ * (season chips and one row of wide episode pictures). Buttons: Resume S2 E4 (or Play), Episodes,
+ * Trailer (greyed out when there isn't one), My List, More. Tabs: Episodes, Overview, More like this,
+ * Cast, Parents' guide, Did you know. Anime shows get Characters and voices instead of Parents' guide.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SeriesHeroContent(
     series: BaseItem,
@@ -116,234 +107,162 @@ fun SeriesHeroContent(
     actions: SeriesHeroActions,
     modifier: Modifier = Modifier,
 ) {
-    val isTv = rememberIsTv()
-    val config = LocalConfiguration.current
-    val wide = isTv || config.screenWidthDp > config.screenHeightDp
-    val side = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
-    val listState = rememberLazyListState()
-    var heroFocused by remember { mutableStateOf(false) }
-    KeepHeroAtTop(listState, heroFocused)
-    val firstButton = remember { FocusRequester() }
     var showMore by remember { mutableStateOf(false) }
     var showRate by remember { mutableStateOf(false) }
     var held by remember { mutableStateOf<BaseItem?>(null) }
-    LaunchedEffect(Unit) {
-        if (isTv) {
-            delay(60)
-            firstButton.tryRequestFocus()
-        }
-    }
-    val buttons: @Composable () -> Unit = {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            HeroButton(
-                label = state.nextUpLabel ?: "Play",
-                icon = BenflixIcon.PLAY,
-                primary = true,
-                big = easy,
-                onClick = actions.playNext,
-                modifier = Modifier.focusRequester(firstButton),
+    val anime = state.subDub != null
+    val likes = series.data.userData?.likes
+    val trailer = state.trailers.firstOrNull()
+    val buttons =
+        buildList {
+            add(
+                TitleButton(
+                    label = state.nextUpLabel ?: "Play",
+                    icon = BenflixIcon.PLAY,
+                    onClick = actions.playNext,
+                    note = state.progress?.words(),
+                ),
             )
-            state.trailers.firstOrNull()?.let { trailer ->
-                HeroButton(label = "Trailer", icon = BenflixIcon.TRAILER, big = easy, onClick = { actions.trailer(trailer) })
+            if (state.inlineEpisodes.isNotEmpty()) {
+                add(TitleButton(label = "Episodes", icon = BenflixIcon.LIST, onClick = {}, opensTab = "Episodes"))
             }
-            HeroButton(
-                label = "My List",
-                icon = if (series.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
-                big = easy,
-                onClick = { actions.setMyList(!series.favorite) },
+            add(
+                TitleButton(
+                    label = "Trailer",
+                    icon = BenflixIcon.TRAILER,
+                    onClick = { trailer?.let(actions.trailer) },
+                    off = if (trailer == null) "No trailer for this one yet" else null,
+                ),
             )
-            if (!easy) {
-                val likes = series.data.userData?.likes
-                HeroButton(
-                    label =
-                        when (likes) {
-                            true -> if (series.favorite) "Loved" else "Liked"
-                            false -> "Not for me"
-                            null -> "Rate"
-                        },
-                    icon = BenflixIcon.THUMB,
-                    onClick = { showRate = true },
-                )
+            add(
+                TitleButton(
+                    label = "My List",
+                    icon = if (series.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                    onClick = { actions.setMyList(!series.favorite) },
+                    note = if (series.favorite) "On your list" else null,
+                ),
+            )
+            add(TitleButton(label = "More", icon = BenflixIcon.MORE, onClick = { showMore = true }))
+        }
+    val scores = rememberScoreParts(series)
+    val strip =
+        remember(series, scores) {
+            buildList {
+                if (!easy) addAll(scores)
+                showMakers(series)?.let { add(it) }
             }
-            HeroButton(label = "More", icon = BenflixIcon.MORE, big = easy, onClick = { showMore = true })
         }
-    }
-
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val pageHeight = maxHeight
-        if (wide) {
-            // The show's picture stays behind the page while you scroll down to the episodes
-            HeroBackground(
-                item = series,
-                dim = {
-                    if (listState.firstVisibleItemIndex > 0) {
-                        0.75f
-                    } else {
-                        (listState.firstVisibleItemScrollOffset / (pageHeight.value * 2f)).coerceIn(0f, 0.75f)
-                    }
-                },
-            )
-        }
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(bottom = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item(key = "hero") {
-                if (wide) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(pageHeight),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .fillMaxWidth()
-                                    .padding(start = side, end = side, bottom = 28.dp),
-                        ) {
-                            ShowWords(
-                                series = series,
-                                state = state,
-                                easy = easy,
-                                modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .widthIn(max = 620.dp)
-                                        // Coming back up to the buttons shows the whole top again (name included)
-                                        .onFocusChanged { heroFocused = it.hasFocus },
-                            ) {
-                                buttons()
-                                if (isTv && !easy) {
-                                    Text(
-                                        text = "Episodes, more like this and cast below",
-                                        color = BenflixColors.Muted,
-                                        fontSize = BenflixType.small,
-                                        modifier = Modifier.padding(top = 14.dp),
-                                    )
-                                }
-                            }
-                            if (!easy) {
-                                Column(
-                                    Modifier
-                                        .padding(start = 32.dp, bottom = 4.dp)
-                                        .widthIn(max = 280.dp),
-                                ) {
-                                    HeroSideColumn(lines = remember(series) { showSideLines(series) })
-                                    DidYouKnow(
-                                        facts = state.facts,
-                                        accent = BenflixColors.Shows,
-                                        card = false,
-                                        modifier = Modifier.padding(top = 16.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Column(Modifier.fillMaxWidth()) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 10f),
-                        ) { HeroBackground(item = series, dim = { 0f }) }
-                        ShowWords(series, state, easy, Modifier.padding(horizontal = 16.dp)) {
-                            buttons()
-                            DidYouKnow(
-                                facts = state.facts,
-                                accent = BenflixColors.Shows,
-                                card = true,
-                                modifier = Modifier.padding(top = 14.dp),
+    val tabs =
+        buildList {
+            if (state.inlineEpisodes.isNotEmpty()) {
+                add(
+                    TitleTab("Episodes") { scope ->
+                        EpisodesSection(
+                            seasons = state.seasons,
+                            seasonIndex = state.inlineSeasonIndex,
+                            episodes = state.inlineEpisodes,
+                            // Anime: "S3 E12 · #57", counting every episode of the seasons before
+                            numberOffset = if (anime) animeOffset(state.seasons, state.inlineSeasonIndex) else null,
+                            side = scope.side,
+                            big = easy,
+                            wide = scope.wide,
+                            onPickSeason = actions.pickSeason,
+                            onPlay = { actions.playEpisode(it, false) },
+                            onHold = if (easy) null else ({ held = it }),
+                        )
+                        if (!easy) {
+                            NextSeasonAsk(
+                                seriesId = series.id,
+                                modifier = Modifier.padding(start = scope.side, end = scope.side, top = 12.dp),
                             )
                         }
-                    }
-                }
+                    },
+                )
             }
-            if (state.inlineEpisodes.isNotEmpty()) {
-                item(key = "episodes") {
-                    EpisodesSection(
-                        seasons = state.seasons,
-                        seasonIndex = state.inlineSeasonIndex,
-                        episodes = state.inlineEpisodes,
-                        // Anime: "S3 E12 · #57", counting every episode of the seasons before
-                        numberOffset = if (state.subDub != null) animeOffset(state.seasons, state.inlineSeasonIndex) else null,
-                        side = side,
-                        big = easy,
-                        wide = wide,
-                        onPickSeason = actions.pickSeason,
-                        onPlay = { actions.playEpisode(it, false) },
-                        onHold = if (easy) null else ({ held = it }),
+            add(
+                TitleTab("Overview") { scope ->
+                    TitleOverview(
+                        scope = scope,
+                        title = series.title.orEmpty(),
+                        story = series.data.overview,
+                        strip = strip,
+                        extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
                     )
-                }
+                },
+            )
+            if (anime && !easy) {
+                add(TitleTab("Characters and voices") { scope -> AnimeRows(series, Modifier.padding(start = scope.side)) })
             }
-            if (state.similar.isNotEmpty()) {
-                item(key = "similar") {
-                    Column(Modifier.fillMaxWidth()) {
-                        SectionTitle("More like this", side)
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = side),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            itemsIndexed(state.similar.distinctBy { it.id }, key = { _, it -> it.id.toString() }) { _, item ->
-                                DoorPoster(item = item, width = 100.dp, showName = !isTv, onClick = { actions.openItem(item) })
-                            }
+            if (state.similar.isNotEmpty() || (!easy && state.discovered.isNotEmpty())) {
+                add(
+                    TitleTab("More like this") { scope ->
+                        val both = state.similar.isNotEmpty() && !easy && state.discovered.isNotEmpty()
+                        TitlePosterRow(scope, state.similar, actions.openItem, name = if (both) "More like this" else null)
+                        if (!easy && state.discovered.isNotEmpty()) {
+                            AskShelf(items = state.discovered, side = scope.side, showName = !scope.wide, onClick = actions.openAsk)
                         }
-                    }
-                }
-            }
-            if (!easy && state.discovered.isNotEmpty()) {
-                item(key = "ask") {
-                    AskShelf(items = state.discovered, side = side, showName = !isTv, onClick = actions.openAsk)
-                }
-            }
-            if (!easy) {
-                item(key = "anime") { AnimeRows(series) }
-            }
-            if (state.parentsGuide.isNotEmpty()) {
-                item(key = "parents") {
-                    ParentsGuideBlock(state.parentsGuide, Modifier.padding(start = side, end = side))
-                }
+                    },
+                )
             }
             if (state.people.isNotEmpty()) {
-                item(key = "cast") {
-                    PersonRow(
-                        people = state.people,
-                        onClick = actions.openPerson,
-                        modifier = Modifier.padding(start = side, end = side),
-                    )
-                }
+                add(TitleTab("Cast") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            }
+            if (!anime && state.parentsGuide.isNotEmpty()) {
+                add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
+            }
+            if (state.facts.isNotEmpty()) {
+                add(TitleTab("Did you know") { scope -> TitleFacts(scope, state.facts, BenflixColors.Shows) })
             }
         }
-    }
+    TitlePage(
+        title = series.title.orEmpty(),
+        originalTitle = series.data.originalTitle,
+        accent = BenflixColors.Shows,
+        picture = TitlePicture.Backdrop(series),
+        info = remember(series, state.seasons.size, state.subDub) { showMeta(series, state) },
+        rating = series.data.officialRating,
+        buttons = buttons,
+        tabs = tabs,
+        openTab = "Episodes",
+        big = easy,
+        modifier = modifier,
+    )
 
     if (showMore) {
-        BenflixChoiceDialog(
-            title = series.title,
-            onDismissRequest = { showMore = false },
-            choices =
+        TitleMorePanel(
+            title = series.title.orEmpty(),
+            onDismiss = { showMore = false },
+            items =
                 buildList {
-                    add(BenflixChoice("Shuffle episodes", actions.shuffle, BenflixIcon.SWITCH))
-                    actions.rewatch?.let { add(BenflixChoice("Watch again from the start", it, BenflixIcon.PLAY)) }
                     add(
-                        BenflixChoice(
+                        TitleMoreItem(
                             if (series.played) "Mark the whole show as not watched" else "Mark the whole show as watched",
-                            actions.markShowWatched,
                             BenflixIcon.CHECK,
+                            actions.markShowWatched,
                         ),
                     )
-                    actions.request?.let { add(BenflixChoice("Ask for more seasons", it, BenflixIcon.REQUESTS)) }
-                    actions.fixMatch?.let { add(BenflixChoice("Wrong show? Fix the match", it, BenflixIcon.FLAG)) }
+                    actions.rewatch?.let { add(TitleMoreItem("Watch again from the start", BenflixIcon.PLAY, it)) }
+                    add(TitleMoreItem("Shuffle episodes", BenflixIcon.SHUFFLE, actions.shuffle))
+                    if (!easy) {
+                        add(
+                            TitleMoreItem(
+                                when (likes) {
+                                    true -> if (series.favorite) "Rate (you loved it)" else "Rate (you liked it)"
+                                    false -> "Rate (not for you)"
+                                    null -> "Rate"
+                                },
+                                BenflixIcon.THUMB,
+                                { showRate = true },
+                            ),
+                        )
+                    }
+                    actions.request?.let { add(TitleMoreItem("Ask for more seasons", BenflixIcon.REQUESTS, it)) }
+                    actions.pickPoster?.let { add(TitleMoreItem("Pick a poster", BenflixIcon.IMAGE, it, youOnly = true)) }
+                    actions.fixMatch?.let { add(TitleMoreItem("Wrong show? Fix the match", BenflixIcon.FLAG, it, youOnly = true)) }
                 },
         )
     }
     if (showRate) {
-        val likes = series.data.userData?.likes
         BenflixChoiceDialog(
             title = "Rate ${series.title}",
             subtitle = "This shapes what Benflix picks for you",
@@ -392,57 +311,6 @@ fun SeriesHeroContent(
     }
 }
 
-@Composable
-private fun ShowWords(
-    series: BaseItem,
-    state: SeriesState,
-    easy: Boolean,
-    modifier: Modifier = Modifier,
-    buttons: @Composable () -> Unit,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = series.title.orEmpty(),
-            color = BenflixColors.Text,
-            fontSize = BenflixType.hero,
-            lineHeight = if (easy) 46.sp else 42.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val meta = remember(series, state.seasons.size, state.subDub) { showMeta(series, state) }
-        if (meta.isNotEmpty()) {
-            Text(
-                text = meta,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        if (!easy) {
-            ScoreLine(series, Modifier.padding(top = 6.dp))
-            AnimeFacts(series, Modifier.padding(top = 4.dp))
-            series.data.overview?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.body,
-                    lineHeight = BenflixType.body * 1.35f,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
-            }
-        }
-        // A Column, not a Box: the buttons and the "below" hint must sit one under the other
-        Column(Modifier.padding(top = 18.dp)) { buttons() }
-        state.progress?.words()?.let {
-            Text(text = it, color = BenflixColors.Muted, fontSize = BenflixType.small, modifier = Modifier.padding(top = 8.dp))
-        }
-    }
-}
-
 /** Season chips, the focused episode's story, then one row of wide episode pictures */
 @Composable
 private fun EpisodesSection(
@@ -476,7 +344,8 @@ private fun EpisodesSection(
         if (big) {
             300.dp
         } else if (wide) {
-            250.dp
+            // Fits the title page's tab area (the bottom 40% of the screen)
+            210.dp
         } else {
             200.dp
         }
@@ -755,37 +624,28 @@ private fun showMeta(
     return listOfNotNull(
         d.productionYear?.toString(),
         seasons.takeIf { it > 0 }?.let { if (it == 1) "1 season" else "$it seasons" },
-        d.officialRating,
         d.genres?.firstOrNull(),
         state.subDub,
         status,
     ).filter { it.isNotBlank() }.joinToString(" · ")
 }
 
-private fun showSideLines(series: BaseItem): List<Pair<String, String>> {
-    val people = series.data.people.orEmpty()
+/** "Created by **Dan Erickson**" (or the network) for the slim strip */
+private fun showMakers(series: BaseItem): StripPart? {
     val created =
-        people
+        series.data.people
+            .orEmpty()
             .filter { it.type == PersonKind.CREATOR }
             .mapNotNull { it.name }
             .take(2)
             .joinToString(", ")
-    val starring =
-        people
-            .filter { it.type == PersonKind.ACTOR }
-            .mapNotNull { it.name }
-            .take(3)
-            .joinToString(", ")
+    if (created.isNotBlank()) return StripPart("Created by", created)
     val network =
         series.data.studios
             ?.mapNotNull { it.name }
             ?.take(2)
             ?.joinToString(", ")
-    return listOfNotNull(
-        created.takeIf { it.isNotBlank() }?.let { "Created by" to it },
-        starring.takeIf { it.isNotBlank() }?.let { "Starring" to it },
-        network?.takeIf { it.isNotBlank() }?.let { "Network" to it },
-    )
+    return network?.takeIf { it.isNotBlank() }?.let { StripPart("Network", it) }
 }
 
 /** "12 episodes left · 8 h 20 m" under the buttons once you've started a show */

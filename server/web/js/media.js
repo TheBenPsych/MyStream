@@ -445,75 +445,70 @@ B.didYouKnow = async (it, color, nav) => {
   }, 10000);
 };
 
-// ---------- movie page ----------
+// ---------- movie page (Redesign 2 title page: js/title.js) ----------
 B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   const it = await B.get(`/Users/${B.uid()}/Items/${m[1]}?Fields=${B.FIELDS},People,Studios,MediaSources,ProductionLocations,RemoteTrailers,LocalTrailerCount,Chapters`).catch(() => B.get(`/Items/${m[1]}?userId=${B.uid()}&Fields=${B.FIELDS},People,MediaSources,RemoteTrailers`));
   if (!B.alive(nav)) return;
   B.items[it.Id] = it;
   const ud = it.UserData || {};
-  const resume = ud.PlaybackPositionTicks > 0;
+  const resume = ud.PlaybackPositionTicks > 0 && !ud.Played;
   const len = B.minutes(it.RunTimeTicks);
-  const ends = new Date(Date.now() + (len - B.minutes(ud.PlaybackPositionTicks || 0)) * 60000);
-  const directors = (it.People || []).filter((p) => p.Type === "Director").map((p) => p.Name);
-  const stars = (it.People || []).filter((p) => p.Type === "Actor").slice(0, 3).map((p) => p.Name);
-  B.page().innerHTML = B.top("") + `<div class="details">
-    <div class="hero" style="background-image:url('${B.backdrop(it, 1920)}')"><div class="hero-in">
-      <div class="main">
-        <h1 class="t">${esc(it.Name)}</h1>
-        <div class="meta">${[it.ProductionYear, len ? B.len(len) : "", it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : "", len ? `Ends at ${B.clock(ends)}` : ""].filter(Boolean).map((x) => `<span>${String(x).startsWith("<") ? x : esc(x)}</span>`).join("")}</div>
-        ${B.scores(it)}
-        <div class="ov">${esc(it.Overview || "")}</div>
-        ${resume ? `<div class="kwbar"><span class="line"><i style="width:${ud.PlayedPercentage || 0}%"></i></span>${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left</div>` : ""}
-        <div class="btns">
-          <a class="btn white big" href="#/play/${it.Id}${resume ? "?resume=1" : ""}">${I("play")} ${resume ? "Resume" : "Play"}</a>
-          ${it.LocalTrailerCount || (it.RemoteTrailers || []).length ? `<button class="btn big" id="bTrailer">${I("trailer")} Trailer</button>` : ""}
-          <button class="btn big" id="bList">${I(ud.IsFavorite ? "check" : "plus")} My List</button>
-          ${B.me.kids ? "" : `<button class="btn big" id="bRate">${I("thumb")} Rate</button>`}
-          <button class="btn big" id="bMore">${I("more")} More</button>
-        </div>
-      </div>
-      <div class="side-col">
-        ${directors.length ? `<div><b>Director</b><span>${esc(directors.join(", "))}</span></div>` : ""}
-        ${stars.length ? `<div><b>Starring</b><span>${esc(stars.join(", "))}</span></div>` : ""}
-        ${B.audioLine(it) ? `<div><b>Audio</b><span>${esc(B.audioLine(it))}</span></div>` : ""}
-        ${(it.Genres || []).length ? `<div><b>Genres</b><span>${esc(it.Genres.slice(0, 3).join(", "))}</span></div>` : ""}
-        <div class="dyk" id="dyk" hidden></div>
-      </div>
-    </div></div>
-    <div class="below" id="below">${B.spinner()}</div>
-  </div>`;
-  B.wireTop();
-  $(".btns .btn").focus({ preventScroll: true });
-  $("#bList").onclick = (e) => B.toggleList(it, e.currentTarget);
-  if ($("#bRate")) $("#bRate").onclick = () => B.rate(it);
-  if ($("#bTrailer")) $("#bTrailer").onclick = () => B.trailer(it);
-  $("#bMore").onclick = () => movieMore(it);
-  B.didYouKnow(it, DOORS.movies.color, nav);
-  const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
-  if (!B.alive(nav)) return;
-  $("#below").innerHTML = B.row("More like this", similar.map((x) => B.posterCard(x))) + B.peopleRow(it) + (await B.facts(it));
+  const directors = (it.People || []).filter((p) => p.Type === "Director").map((p) => p.Name).slice(0, 2);
+  const hasTrailer = !!(it.LocalTrailerCount || (it.RemoteTrailers || []).length);
+  const scores = B.me.kids ? [] : [it.CommunityRating ? ["IMDb", (+it.CommunityRating).toFixed(1)] : null, it.CriticRating ? ["Rotten Tomatoes", Math.round(it.CriticRating) + "%"] : null];
+  const audio = B.audioLine(it).split(",")[0];
+  const tp = B.titlePage({
+    title: it.Name,
+    original: it.OriginalTitle,
+    color: DOORS.movies.color,
+    picture: B.backdrop(it, 1920),
+    rating: it.OfficialRating,
+    info: [it.ProductionYear, len ? B.len(len) : "", (it.Genres || []).slice(0, 2).join(" · ")],
+    buttons: [
+      { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "" },
+      { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
+      { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
+      B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+      { label: "More", icon: "more", onClick: () => movieMore(it) },
+    ].filter(Boolean),
+    story: it.Overview,
+    strip: B.tpStrip([...scores, audio ? [audio] : null, directors.length ? ["Director", directors.join(", "), true] : null]),
+    tabs: [
+      { name: "More like this", id: "below", load: async (pane) => {
+        const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
+        if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
+      } },
+      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
+      { name: "Parents' guide", id: "tpParents" },
+      { name: "Did you know", id: "tpFacts" },
+    ],
+  });
+  // Details (studio, release date, the file for you) under the whole story
+  B.facts(it).then((html) => tp.setStoryExtra(html));
+  B.tpFacts(it, tp.pane("tpFacts"), nav);
   // In this collection, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.alive(nav) && B.extras) B.extras.movie(it, nav);
+  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
 });
+// The Did you know tab: every fact about this title from Tower
+B.tpFacts = async (it, pane, nav) => {
+  if (!pane) return;
+  const got = await B.call("GET", `/api/facts/${it.Id}`).catch(() => null);
+  const facts = [...new Set(((got && got.facts) || []).map((f) => f.text).filter(Boolean))];
+  if (!facts.length || !B.alive(nav)) return;
+  pane.innerHTML = `<div class="tp-facts">${facts.map((f) => `<p>${esc(f)}</p>`).join("")}</div>`;
+};
 const movieMore = (it) => {
   const ud = it.UserData || {};
   const ids = it.ProviderIds || {};
-  const p = B.side(`<h3>${esc(it.Name)}</h3><p class="dim">More choices</p>
-    <button class="opt" data-a="start">${I("restart")} Start over</button>
-    <button class="opt" data-a="tracks">${I("sub")} Audio, subtitles and version</button>
-    <button class="opt" data-a="watched">${I("check")} ${ud.Played ? "Mark as not watched" : "Mark as watched"}</button>
-    <button class="opt" data-a="report">${I("flag")} Report a problem</button>
-    ${B.me.admin ? `<button class="opt" data-a="fix">${I("swap")} Fix poster and details</button>` : ""}
-    ${ids.Imdb ? `<a class="opt" href="https://www.imdb.com/title/${esc(ids.Imdb)}" target="_blank" rel="noopener">${I("info")} Open on IMDb</a>` : ""}`);
-  p.onclick = async (e) => {
-    const b = e.target.closest("[data-a]"); if (!b) return;
-    B.closeAll();
-    if (b.dataset.a === "start") B.go(`#/play/${it.Id}`);
-    if (b.dataset.a === "tracks") B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`));
-    if (b.dataset.a === "watched") B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; });
-    if (b.dataset.a === "report") B.report({ id: it.Id, title: it.Name });
-    if (b.dataset.a === "fix") B.fixItem(it);
-  };
+  const resume = ud.PlaybackPositionTicks > 0 && !ud.Played;
+  B.tpMore(it.Name, [
+    { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) },
+    resume ? { label: "Play from the start", icon: "restart", onClick: () => B.go(`#/play/${it.Id}`) } : null,
+    { label: "Audio, subtitles and version", icon: "sub", onClick: () => B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`)) },
+    { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
+    ids.Imdb ? { label: "Open on IMDb", icon: "info", href: `https://www.imdb.com/title/${esc(ids.Imdb)}`, blank: true } : null,
+    B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
+  ]);
 };
 // Audio + subtitles panel before playing
 B.trackPicker = (it, done) => {
@@ -552,56 +547,50 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   const seasonId = wantSeason || (target && target.SeasonId) || (seasons.find((s) => s.IndexNumber > 0) || seasons[0] || {}).Id;
   const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks ? "Resume" : ud.PlayedPercentage || ud.UnplayedItemCount < it.RecursiveItemCount ? "Play" : "Play"} S${target.ParentIndexNumber} E${target.IndexNumber}` : "Play";
   const bits = [it.ProductionYear ? (it.Status === "Ended" && it.EndDate ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear) : "", seasons.filter((s) => s.IndexNumber > 0).length ? `${seasons.filter((s) => s.IndexNumber > 0).length} seasons` : "", it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : "", it.Status === "Ended" ? "Ended" : it.AirDays && it.AirDays.length ? `New episodes on ${it.AirDays[0]}s` : ""].filter(Boolean);
-  const stars = (it.People || []).filter((p) => p.Type === "Actor").slice(0, 3).map((p) => p.Name);
-  B.page().innerHTML = B.top("") + `<div class="details">
-    <div class="hero" style="background-image:url('${B.backdrop(it, 1920)}');min-height:82vh"><div class="hero-in">
-      <div class="main">
-        <h1 class="t">${esc(it.Name)}</h1>
-        ${it.OriginalTitle && it.OriginalTitle !== it.Name ? `<div class="t2">${esc(it.OriginalTitle)}</div>` : ""}
-        <div class="meta">${bits.map((x) => `<span>${String(x).startsWith("<") ? x : esc(x)}</span>`).join("")}</div>
-        ${B.scores(it)}
-        <div class="ov">${esc(it.Overview || "")}</div>
-        <div class="btns">
-          ${target ? `<a class="btn white big" href="#/play/${target.Id}?resume=1">${I("play")} ${esc(resumeLabel)}</a>` : ""}
-          ${it.LocalTrailerCount || (it.RemoteTrailers || []).length ? `<button class="btn big" id="bTrailer">${I("trailer")} Trailer</button>` : ""}
-          <button class="btn big" id="bList">${I(ud.IsFavorite ? "check" : "plus")} My List</button>
-          ${B.me.kids ? "" : `<button class="btn big" id="bRate">${I("thumb")} Rate</button>`}
-          <button class="btn big" id="bMore">${I("more")} More</button>
-        </div>
-      </div>
-      <div class="side-col">
-        ${it.Studios && it.Studios.length ? `<div><b>Network</b><span>${esc(it.Studios[0].Name)}</span></div>` : ""}
-        ${stars.length ? `<div><b>Starring</b><span>${esc(stars.join(", "))}</span></div>` : ""}
-        ${(it.Genres || []).length ? `<div><b>Genres</b><span>${esc(it.Genres.slice(0, 3).join(", "))}</span></div>` : ""}
-        <div class="dyk" id="dyk" hidden></div>
-      </div>
-    </div></div>
-    <div class="below">
-      <div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
-      <div class="seasons" id="groups"></div>
-      <div id="eps">${B.spinner()}</div>
-      <div id="below2"></div>
-    </div>
-  </div>`;
-  B.wireTop();
-  $(".btns .btn").focus({ preventScroll: true });
-  B.didYouKnow(it, DOORS.shows.color, nav);
-  $("#bList").onclick = (e) => B.toggleList(it, e.currentTarget);
-  if ($("#bRate")) $("#bRate").onclick = () => B.rate(it);
-  if ($("#bTrailer")) $("#bTrailer").onclick = () => B.trailer(it);
-  $("#bMore").onclick = () => {
-    const p = B.side(`<h3>${esc(it.Name)}</h3><p class="dim">More choices</p>
-      <button class="opt" data-a="all">${I("check")} ${ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched"}</button>
-      <button class="opt" data-a="report">${I("flag")} Report a problem</button>
-      ${B.me.admin ? `<button class="opt" data-a="fix">${I("swap")} Fix poster and details</button>` : ""}`);
-    p.onclick = (e) => {
-      const b = e.target.closest("[data-a]"); if (!b) return;
-      B.closeAll();
-      if (b.dataset.a === "all") B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; });
-      if (b.dataset.a === "report") B.report({ id: it.Id, title: it.Name });
-      if (b.dataset.a === "fix") B.fixItem(it);
-    };
-  };
+  const creators = (it.People || []).filter((p) => p.Type === "Creator").map((p) => p.Name).slice(0, 2);
+  const maker = creators.length ? ["Created by", creators.join(", "), true] : it.Studios && it.Studios.length ? ["Network", it.Studios[0].Name, true] : null;
+  const hasTrailer = !!(it.LocalTrailerCount || (it.RemoteTrailers || []).length);
+  const scores = B.me.kids ? [] : [it.CommunityRating ? ["IMDb", (+it.CommunityRating).toFixed(1)] : null, it.CriticRating ? ["Rotten Tomatoes", Math.round(it.CriticRating) + "%"] : null];
+  const plainBits = bits.filter((x) => !String(x).startsWith("<"));
+  const tp = B.titlePage({
+    title: it.Name,
+    original: it.OriginalTitle,
+    color: DOORS.shows.color,
+    picture: B.backdrop(it, 1920),
+    rating: it.OfficialRating,
+    info: [...plainBits.map(String), (it.Genres || [])[0]],
+    buttons: [
+      target ? { label: resumeLabel, icon: "play", href: `#/play/${target.Id}?resume=1` } : { label: "Play", icon: "play", off: "No episodes on Benflix yet" },
+      { label: "Episodes", icon: "list", onClick: () => tp.open("Episodes") },
+      { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
+      { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
+      { label: "More", icon: "more", id: "bMore" },
+    ],
+    story: it.Overview,
+    strip: B.tpStrip([...scores, maker]),
+    overviewFirst: false,
+    open: "Episodes",
+    tabs: [
+      { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
+        <div class="seasons" id="groups"></div><div id="eps">${B.spinner()}</div>` },
+      { name: "Characters and voices", id: "tpChars" },
+      { name: "More like this", id: "below2", load: async (pane) => {
+        const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
+        if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
+      } },
+      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
+      { name: "Parents' guide", id: "tpParents" },
+      { name: "Did you know", id: "tpFacts" },
+    ],
+  });
+  B.tpFacts(it, tp.pane("tpFacts"), nav);
+  B.facts(it).then((html) => tp.setStoryExtra(html));
+  $("#bMore").onclick = () => B.tpMore(it.Name, [
+    { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
+    B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+    { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
+    B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
+  ]);
   let episodes = [], group = 0;
   const drawEps = () => {
     const now = Date.now();
@@ -645,11 +634,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
-  const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
-  if (!B.alive(nav)) return;
-  $("#below2").innerHTML = B.row("More like this", similar.map((x) => B.posterCard(x))) + B.peopleRow(it) + (await B.facts(it));
   // Newer seasons to ask for, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.alive(nav) && B.extras) B.extras.show(it, nav);
+  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
 });
 
 // ---------- collection page ----------

@@ -54,15 +54,16 @@
     try { localStorage.setItem(COLL_KEY(), JSON.stringify({ at: Date.now(), map })); } catch (e) {}
     return map;
   };
-  X.collection = async (it, nav) => {
+  X.collection = async (it, nav, box) => {
     const hit = (await collections().catch(() => ({})))[it.Id];
     if (!hit || !B.alive(nav)) return;
     const [setId, name, part, total] = hit;
-    const ov = $(".details .main .ov");
-    if (ov) ov.insertAdjacentHTML("beforebegin", `<a class="partline" href="#/collection/${esc(setId)}">Part ${part} of ${total} · ${esc(name)}</a>`);
+    // "Part 1 of 3 · The Dark Knight Collection" at the end of the info line
+    const meta = $(".details .meta");
+    if (meta) meta.insertAdjacentHTML("beforeend", `<a class="partline" href="#/collection/${esc(setId)}">Part ${part} of ${total} · ${esc(name)}</a>`);
     const kids = await B.get(`/Items?userId=${B.uid()}&ParentId=${setId}&IncludeItemTypes=Movie&SortBy=ProductionYear,SortName&Fields=${B.FIELDS}`).then((r) => B.keep(r.Items)).catch(() => []);
     if (!B.alive(nav)) return;
-    addFirst($("#below"), B.row(`In this collection`, kids.map((k) => B.posterCard(k)), { id: "inColl" }));
+    add(box || $("#below"), B.row(`In this collection`, kids.map((k) => B.posterCard(k)), { id: "inColl" }));
   };
 
   // ---------- Ask for more like this ----------
@@ -125,9 +126,10 @@
     const newer = (d.seasons || []).filter((s) => s.seasonNumber > last && s.airDate && s.airDate.slice(0, 10) <= today && (st[s.seasonNumber] || 1) <= 1).map((s) => s.seasonNumber).sort((a, b) => a - b);
     if (!newer.length) return;
     const words = newer.length === 1 ? `Season ${newer[0]} is out` : `Seasons ${newer[0]} to ${newer[newer.length - 1]} are out`;
-    const btns = $(".details .btns");
+    // At the end of the Episodes tab
+    const btns = $("#tpEpisodes") || $(".details .btns");
     if (!btns) return;
-    btns.insertAdjacentHTML("afterend", `<div class="nextask"><span>${esc(words)}. They aren't on Benflix yet.</span><button class="btn white" id="askNext">${I("plus")} Ask for ${newer.length === 1 ? "it" : "them"}</button></div>`);
+    btns.insertAdjacentHTML(btns.id === "tpEpisodes" ? "beforeend" : "afterend", `<div class="nextask wrap0"><span>${esc(words)}. They aren't on Benflix yet.</span><button class="btn white" id="askNext">${I("plus")} Ask for ${newer.length === 1 ? "it" : "them"}</button></div>`);
     $("#askNext").onclick = (e) => B.busy(e.currentTarget, async () => {
       await B.seerr("/request", "POST", { mediaType: "tv", mediaId: tmdb, seasons: newer });
       $(".nextask").remove();
@@ -166,61 +168,67 @@
     try { localStorage.setItem("benflix.anilist." + it.Id, JSON.stringify({ at: Date.now(), m })); } catch (e) {}
     return m;
   });
-  X.anime = async (it, nav, box) => {
+  X.anime = async (it, nav, box, charBox) => {
     const ids = await B.animeIds(it.Type === "Movie" ? "Movie" : "Series").catch(() => new Set());
     if (!ids.has(it.Id)) return;
     const m = await aniInfo(it).catch(() => null);
     if (!m || !B.alive(nav)) return;
     // English name with the Japanese (romaji) one under it
-    const t = $(".details .main h1.t");
+    const t = $(".details h1.t");
     const romaji = m.title && m.title.romaji;
-    if (t && romaji && clean(romaji) !== clean(it.Name) && !$(".details .main .t2")) t.insertAdjacentHTML("afterend", `<div class="t2">${esc(romaji)}</div>`);
+    if (t && romaji && clean(romaji) !== clean(it.Name) && !$(".details .t2")) t.insertAdjacentHTML("afterend", `<div class="t2">${esc(romaji)}</div>`);
     // AniList score on the scores line
     const score = m.averageScore || m.meanScore;
     if (score && !B.me.kids) {
-      const s = $(".details .main .scores");
+      const s = $(".details .scores");
       const html = `<span><b>${score}%</b>AniList</span>${m.idMal ? `<a href="https://myanimelist.net/anime/${m.idMal}" target="_blank" rel="noopener" class="dim" style="align-self:center">MyAnimeList ↗</a>` : ""}`;
       if (s) s.insertAdjacentHTML("beforeend", html);
-      else { const meta = $(".details .main .meta"); if (meta) meta.insertAdjacentHTML("afterend", `<div class="scores">${html}</div>`); }
+      else { const meta = $(".details .meta"); if (meta) meta.insertAdjacentHTML("afterend", `<div class="scores">${html}</div>`); }
     }
     // Episode 9 out Saturday 5:30 PM · in 2 days
     const na = m.nextAiringEpisode;
     if (na && na.airingAt * 1000 > Date.now()) {
       const at = new Date(na.airingAt * 1000), days = Math.floor((at - Date.now()) / 86400000);
-      const meta = $(".details .main .meta");
+      const meta = $(".details .meta");
       if (meta) meta.insertAdjacentHTML("beforeend", `<span>Episode ${na.episode} out ${esc(at.toLocaleDateString([], { weekday: "long" }))} ${esc(B.clock(at))} · ${days < 1 ? "very soon" : days === 1 ? "in 1 day" : `in ${days} days`}</span>`);
     }
     // Up to 5 fan tags
     const tags = (m.tags || []).filter((x) => x.rank >= 60 && !x.isMediaSpoiler && !x.isGeneralSpoiler && !x.isAdult).slice(0, 5).map((x) => x.name);
-    const ov = $(".details .main .ov");
+    const ov = $(".details .ov");
     if (tags.length && ov) ov.insertAdjacentHTML("afterend", `<div class="anitags">${tags.map((x) => `<span>${esc(x)}</span>`).join("")}</div>`);
     // Characters and their voices (Japanese, and English when there's a dub)
     const chars = ((m.characters && m.characters.edges) || []).filter((e) => e.node && e.node.name);
-    if (chars.length && box) {
+    if (chars.length && (charBox || box)) {
       const html = `<section class="rowx people-row"><h3>Characters and voices</h3><div class="strip">${chars.map((e) => {
         const ja = (e.japanese || [])[0], en = (e.english || [])[0];
         const img = e.node.image && e.node.image.medium;
         return `<div class="person-c"><span class="pic" style="${img ? `background-image:url('${esc(img)}')` : ""}">${img ? "" : esc(B.initials(e.node.name.full))}</span>${esc(e.node.name.full)}<small>${esc([ja && ja.name.full, en && "English: " + en.name.full].filter(Boolean).join(" · "))}</small></div>`;
       }).join("")}</div></section>`;
-      const cast = box.querySelector(".people-row");
-      if (cast) cast.insertAdjacentHTML("afterend", html); else add(box, html);
+      if (charBox) add(charBox, html);
+      else {
+        const cast = box.querySelector(".people-row");
+        if (cast) cast.insertAdjacentHTML("afterend", html); else add(box, html);
+      }
     }
   };
 
   // Everything below a movie's or show's page, once its own rows are in
-  X.movie = (it, nav) => {
-    const box = $("#below");
-    X.collection(it, nav).catch(() => {});
+  // Each part goes into its own tab on the title page (panes: more, parents, chars)
+  X.movie = (it, nav, panes) => {
+    const p = panes || {};
+    const box = p.more || $("#below");
+    X.collection(it, nav, box).catch(() => {});
     X.askMore(it, nav, box).catch(() => {});
-    X.anime(it, nav, box).catch(() => {});
-    X.parents(it, nav, box).catch(() => {});
+    X.anime(it, nav, box, p.chars).catch(() => {});
+    X.parents(it, nav, p.parents || box).catch(() => {});
   };
-  X.show = (it, nav) => {
-    const box = $("#below2");
+  X.show = (it, nav, panes) => {
+    const p = panes || {};
+    const box = p.more || $("#below2");
     X.nextSeason(it, nav).catch(() => {});
     X.askMore(it, nav, box).catch(() => {});
-    X.anime(it, nav, box).catch(() => {});
-    X.parents(it, nav, box).catch(() => {});
+    X.anime(it, nav, box, p.chars).catch(() => {});
+    X.parents(it, nav, p.parents || box).catch(() => {});
   };
 
   // ---------- Not on Benflix yet (actor and director pages) ----------

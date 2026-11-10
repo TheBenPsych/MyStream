@@ -158,6 +158,7 @@ fun SeriesDetails(
                         fixMatch = if (state.isAdmin) ({ showFixMatch = true }) else null,
                         request = state.discoverSeries?.let { d -> { viewModel.navigateTo(Destination.DiscoveredItem(d)) } },
                         openAsk = { viewModel.navigateTo(it.destination) },
+                        pickPoster = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id)) }) else null,
                     ),
             )
             if (showFixMatch) {
