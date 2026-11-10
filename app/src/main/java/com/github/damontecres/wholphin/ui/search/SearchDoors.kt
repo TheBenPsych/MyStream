@@ -163,11 +163,16 @@ fun SearchDoorResults(
             mapOf(
                 SearchDoor.MOVIES to items.filter { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.BOX_SET },
                 SearchDoor.SHOWS to items.filter { it.type == BaseItemKind.SERIES || it.type == BaseItemKind.EPISODE },
+                // Kids search only ever finds kids titles (kd-p-search): live programmes have no kids rating, so none
                 SearchDoor.LIVE_TV to
-                    items.filter {
-                        it.type == BaseItemKind.TV_CHANNEL ||
-                            it.type == BaseItemKind.LIVE_TV_PROGRAM ||
-                            it.type == BaseItemKind.TV_PROGRAM
+                    if (kids) {
+                        emptyList()
+                    } else {
+                        items.filter {
+                            it.type == BaseItemKind.TV_CHANNEL ||
+                                it.type == BaseItemKind.LIVE_TV_PROGRAM ||
+                                it.type == BaseItemKind.TV_PROGRAM
+                        }
                     },
                 // Approved: no music on the Kids profile
                 SearchDoor.MUSIC to if (kids) emptyList() else items.filter { it.type in MUSIC_KINDS },

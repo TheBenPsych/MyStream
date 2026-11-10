@@ -536,6 +536,11 @@ class LocalGames
             game: PreparedGame,
             resume: Boolean,
         ) {
+            // Every player checks Kids for itself: a game not rated for everyone never starts on Kids
+            if (KidsMode.isActive && !game.ref.kids) {
+                Timber.w("Kids: %s isn't a kids game, not starting it", game.ref.name)
+                return
+            }
             val intent =
                 Intent(from, GameActivity::class.java)
                     .putExtra(GameActivity.EXTRA_CORE, game.core.absolutePath)
