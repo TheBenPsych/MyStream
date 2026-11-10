@@ -669,6 +669,8 @@ class TestStreamChoiceServiceMultipleChoices(
                         ),
                     userSubtitleLang = null,
                     userAudioLang = null,
+                    // Benflix: a blank language now means English, so "no preference" is the in-app Any language choice
+                    appSubtitleLang = UserProfileSettings.PREFER_ANY_LANGUAGE,
                 ),
                 TestInput(
                     null,
