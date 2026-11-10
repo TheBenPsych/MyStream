@@ -175,7 +175,7 @@ B.minutes = (ticks) => Math.round((ticks || 0) / TICKS / 60);
 B.len = (min) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60 ? (min % 60) + " min" : ""}`.trim() : `${min} min`);
 B.clock = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 B.hms = (s) => {
-  s = Math.max(0, Math.floor(s || 0));
+  s = isFinite(s) ? Math.max(0, Math.floor(s || 0)) : 0;
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
   return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0");
 };
