@@ -86,7 +86,7 @@ B.route(/^\/requests/, async (m, nav) => {
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
     <div class="row" style="margin-bottom:6px;align-items:center">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).concat(B.booksTab ? [["books", "Books"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}">
-      ${media ? `<span id="rqmine"></span>` : ""}</div>
+</div>
     ${media ? "" : `<p class="sub" style="margin:0 0 6px">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : "Books, audiobooks and manga. Ask, and Tower finds them."}</p>`}</div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
@@ -134,6 +134,7 @@ B.route(/^\/requests/, async (m, nav) => {
       <div class="acts">${admin ? `<button class="btn small white" data-yes="${r.id}">Yes</button><button class="btn small" data-no="${r.id}">No</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`}</div></div>`;
   };
   const drawChips = () => {
+    drawWall();
     const box = $("#rqmine");
     if (!box) return;
     box.innerHTML = `<button class="chip" data-rqlist="mine">Your requests ${lists.mine.length}</button>`
@@ -156,33 +157,76 @@ B.route(/^\/requests/, async (m, nav) => {
       });
     });
   };
-  const top10 = (list) => list.slice(0, 10).map((r, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.askCard(r)}</div>`);
+  // Layout C (Ben 2026-11-10): the list on the left picks what the poster wall on the right shows
+  const GENRES = tab === "movies"
+    ? [["Action", 28], ["Adventure", 12], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Fantasy", 14], ["History", 36], ["Horror", 27], ["Mystery", 9648], ["Romance", 10749], ["Sci-Fi", 878], ["Thriller", 53], ["War", 10752], ["Western", 37]]
+    : [["Action and adventure", 10759], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Kids", 10762], ["Mystery", 9648], ["Reality", 10764], ["Sci-Fi and fantasy", 10765], ["War and politics", 10768], ["Western", 37]];
+  let walls = [], picked = null, genre = null;
+  const ranked = (r, i) => B.askCard(r).replace('<div class="cap">', `<span class="rqrank">${i + 1}</span><div class="cap">`);
+  const drawWall = () => {
+    const side = $("#rqside"), wall = $("#rqwall");
+    if (!side || !wall) return;
+    const cur = picked === "genres" ? null : walls.find((w) => w.id === picked) || walls[0];
+    side.innerHTML = walls.map((w) => `<button class="${w === cur ? "on" : ""}" data-rqpick="${esc(w.id)}">${esc(w.title)}</button>`).join("")
+      + (tab === "anime" ? "" : `<button class="${picked === "genres" ? "on" : ""}" data-rqpick="genres">${genre ? "Genre: " + esc(genre[0]) : "Genres"}</button>`)
+      + `<h4>Yours</h4><button data-rqlist="mine">Your requests ${lists.mine.length}</button>`
+      + (B.me.admin ? `<button data-rqlist="waiting">Waiting for you ${lists.waiting.length}${lists.waiting.length ? '<span class="dot"></span>' : ""}</button>` : "");
+    if (picked === "genres") {
+      wall.innerHTML = `<div class="rqgenres">${[["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("")}</div>`;
+      return;
+    }
+    wall.innerHTML = cur ? `<div class="grid">${cur.items.map((r, i) => cur.ranked ? ranked(r, i) : B.askCard(r)).join("")}</div>` : `<div class="empty">Nothing to show right now. Try again in a minute.</div>`;
+  };
   const drawRows = async () => {
-    $("#rows").innerHTML = B.spinner();
+    $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
+    $("#rqside").onclick = (e) => {
+      const l = e.target.closest("[data-rqlist]");
+      if (l) return openList(l.dataset.rqlist);
+      const b = e.target.closest("[data-rqpick]");
+      if (b) { picked = b.dataset.rqpick; drawWall(); }
+    };
+    $("#rqwall").onclick = (e) => {
+      const g = e.target.closest("[data-rqgenre]");
+      if (!g) return;
+      const id = +g.dataset.rqgenre;
+      genre = id ? GENRES.find((x) => x[1] === id) : null;
+      picked = null;
+      loadWalls();
+    };
+    drawWall();
+    await loadWalls();
+  };
+  const loadWalls = async () => {
+    const wall = $("#rqwall");
+    if (wall) wall.innerHTML = B.spinner();
+    const kindPath = tab === "movies" ? "movies" : "tv";
     // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
     const pages = tab === "anime"
       ? [1, 2, 3, 4].map((n) => seerr(`/discover/tv/genre/16?page=${n}`).catch(() => null)).concat([1, 2].map((n) => seerr(`/discover/movies/genre/16?page=${n}`).catch(() => null)))
-      : [seerr(`/discover/${tab === "movies" ? "movies" : "tv"}?page=1`).catch(() => null), seerr(`/discover/${tab === "movies" ? "movies" : "tv"}/upcoming?page=1`).catch(() => null), seerr(`/discover/${tab === "movies" ? "movies" : "tv"}?page=3`).catch(() => null)];
+      : genre
+        ? [1, 2, 3].map((n) => seerr(`/discover/${kindPath}/genre/${genre[1]}?page=${n}`).catch(() => null))
+        : [seerr(`/discover/${kindPath}?page=1`).catch(() => null), seerr(`/discover/${kindPath}/upcoming?page=1`).catch(() => null), seerr(`/discover/${kindPath}?page=2`).catch(() => null), seerr(`/discover/${kindPath}?page=3`).catch(() => null)];
     const got = await Promise.all(pages);
     if (!B.alive(nav)) return;
-    const notHere = (l) => ((l && l.results) || []).filter((x) => !onBenflix(x) && (tab === "anime" ? x.originalLanguage === "ja" : !isAnime(x)));
-    let first, second, third, names;
+    const notHere = (l, mt) => ((l && l.results) || []).map((x) => Object.assign(x, { mediaType: x.mediaType || mt }))
+      .filter((x) => !onBenflix(x) && (tab === "anime" ? x.originalLanguage === "ja" : !isAnime(x)));
+    const seen = new Set();
+    const uniq = (l) => l.filter((x) => !seen.has(x.mediaType + x.id) && seen.add(x.mediaType + x.id));
+    const mt = tab === "movies" ? "movie" : "tv";
     if (tab === "anime") {
-      const seen = new Set();
-      const shows = got.slice(0, 4).flatMap(notHere).map((x) => Object.assign(x, { mediaType: x.mediaType || "tv" })).filter((x) => !seen.has(x.id) && seen.add(x.id));
-      first = shows.slice(0, 30); third = shows.slice(30);
-      second = got.slice(4).flatMap(notHere).map((x) => Object.assign(x, { mediaType: x.mediaType || "movie" }));
-      names = ["Popular anime", "Anime movies", "More anime"];
+      const shows = uniq(got.slice(0, 4).flatMap((l) => notHere(l, "tv")));
+      walls = [{ id: "top", title: "Top 10", items: shows.slice(0, 10), ranked: true }, { id: "popular", title: "Popular anime", items: shows.slice(10) },
+        { id: "movies", title: "Anime movies", items: uniq(got.slice(4).flatMap((l) => notHere(l, "movie"))) }];
+    } else if (genre) {
+      const all = uniq(got.flatMap((l) => notHere(l, mt)));
+      walls = [{ id: "top", title: "Top 10 in " + genre[0], items: all.slice(0, 10), ranked: true }, { id: "more", title: "More " + genre[0], items: all.slice(10) }];
     } else {
-      [first, second, third] = got.map(notHere);
-      names = ["Trending", "Coming soon", "More to ask for"];
+      const trending = uniq(notHere(got[0], mt)), soon = uniq(notHere(got[1], mt)), more = uniq(got.slice(2).flatMap((l) => notHere(l, mt)));
+      walls = [{ id: "top", title: "Top 10", items: trending.slice(0, 10), ranked: true }, { id: "trending", title: "Trending", items: trending.slice(10) },
+        { id: "soon", title: "Coming soon", items: soon }, { id: "more", title: "More to ask for", items: more }];
     }
-    $("#rows").innerHTML = [
-      first.length >= 5 ? B.row(tab === "anime" ? "Top 10 anime to ask for" : "Top 10 to ask for this week", top10(first)) : "",
-      B.row(names[0], (first.length >= 5 ? first.slice(10) : first).map(B.askCard)),
-      B.row(names[1], second.map(B.askCard)),
-      B.row(names[2], third.map(B.askCard)),
-    ].join("") || `<div class="wrap empty">Nothing to show right now. Try again in a minute.</div>`;
+    walls = walls.filter((w) => w.items.length);
+    drawWall();
   };
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 350); };
