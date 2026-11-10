@@ -108,7 +108,10 @@ fun CoverImage(
     ) {
         if (url != null && !failed) {
             AsyncImage(
-                model = url,
+                // Redesign 2: covers fade in over the dark square
+                model =
+                    com.github.damontecres.wholphin.ui.cards
+                        .rememberFadeIn(url),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 onError = { failed = true },
@@ -148,6 +151,12 @@ fun MusicCard(
     val url = remember(item.id, px) { imageUrlService.musicCover(item, px) }
     val round = item.type == BaseItemKind.MUSIC_ARTIST
     val shape = if (round) CircleShape else BenflixShapes.Card
+    // Redesign 2 (rc-q-hold): holding any card opens the same menu as a poster, unless the page has its own
+    var timesHeld by remember(item.id) { androidx.compose.runtime.mutableIntStateOf(0) }
+    if (onLongClick == null && timesHeld > 0) {
+        com.github.damontecres.wholphin.ui.components
+            .PosterHoldMenu(item, timesHeld)
+    }
     MusicCardFrame(
         name = item.title.orEmpty(),
         line = line,
@@ -156,10 +165,18 @@ fun MusicCard(
         centred = round,
         onClick = onClick,
         onFocus = onFocus,
-        onLongClick = onLongClick,
+        onLongClick = onLongClick ?: { timesHeld += 1 },
         modifier = modifier,
     ) {
-        CoverImage(url = url, shape = shape, modifier = Modifier.fillMaxSize())
+        // Redesign 2 (rc-p-noart): no cover = the dark card with the big white name and a violet line
+        com.github.damontecres.wholphin.ui.cards.CardPicture(
+            model = url,
+            name = item.title.orEmpty(),
+            door = BenflixColors.Music,
+            small = size < 140.dp,
+            centred = round,
+            modifier = Modifier.fillMaxSize().clip(shape),
+        )
     }
 }
 
@@ -205,26 +222,12 @@ fun MusicCardFrame(
         ) {
             picture()
         }
-        Text(
-            text = name,
-            color = BenflixColors.Text,
-            fontSize = BenflixType.small,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (centred) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.padding(top = 6.dp),
+        // Redesign 2 (rc-p-phone): the name in up to 2 lines, then the artist or song count in grey
+        com.github.damontecres.wholphin.ui.cards.CardNameUnder(
+            name = name,
+            line = line,
+            centred = centred,
         )
-        if (!line.isNullOrBlank()) {
-            Text(
-                text = line,
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.tag,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = if (centred) TextAlign.Center else TextAlign.Start,
-            )
-        }
     }
 }
 

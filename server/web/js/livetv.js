@@ -44,8 +44,8 @@ const logo = (c, h) => (c.ImageTags && c.ImageTags.Primary ? B.img(c.Id, "Primar
 const chCard = (c) => {
   const p = nowOn(c);
   B.items[c.Id] = c;
-  return `<a class="chcard" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><div class="im">${logo(c) ? `<img src="${logo(c)}" alt="" loading="lazy">` : `<b>${esc(c.Name)}</b>`}</div>
-    <div class="cap">${esc(c.ChannelNumber ? c.ChannelNumber + " · " : "")}${esc(c.Name)}<small>${esc(p ? p.Name : "")}</small></div></a>`;
+  return `<a class="chcard" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><div class="im">${logo(c) ? `<img class="logo-in" src="${logo(c)}" alt="" loading="lazy">` : `<b>${esc(c.Name)}</b>`}</div>
+    <div class="cap"><span class="nm">${esc(c.ChannelNumber ? c.ChannelNumber + " · " : "")}${esc(c.Name)}</span><small>${esc(p ? p.Name : "")}</small></div></a>`;
 };
 B.chCard = chCard;
 const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()) / 60000));

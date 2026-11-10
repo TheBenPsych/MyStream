@@ -125,7 +125,14 @@ internal fun ChannelLogo(
                     .clip(RoundedCornerShape(6.dp))
                     .padding(2.dp),
         ) {
-            AsyncImage(model = logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            AsyncImage(
+                model =
+                    com.github.damontecres.wholphin.ui.cards
+                        .rememberFadeIn(logo),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     } else {
         val (from, to) = BadgeColors[Math.floorMod(schedule.channel?.ordinal ?: schedule.custom?.id.hashCode(), BadgeColors.size)]

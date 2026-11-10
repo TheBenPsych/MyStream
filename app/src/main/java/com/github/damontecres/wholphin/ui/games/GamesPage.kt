@@ -59,6 +59,7 @@ import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.github.damontecres.wholphin.games.DevicePower
 import com.github.damontecres.wholphin.games.DownloadedGame
 import com.github.damontecres.wholphin.games.GameRef
@@ -207,32 +208,40 @@ fun GamesPage(
                 starting == ref.id -> "Starting…"
                 else -> null
             }
-        ServerGameCard(
-            game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
-            // Approved: the works-with icons live in the top area, not on the box art
-            playWith =
-                if (wide) {
-                    emptyList()
-                } else {
-                    listOfNotNull(
-                        if (LocalConsole.forSlug(ref.slug)?.remoteFriendly ==
-                            true
-                        ) {
-                            PlayWith.REMOTE
-                        } else {
-                            null
-                        },
-                    )
-                },
-            token = viewModel.gamesToken,
-            status = status,
-            progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
-            onClick = onClick,
-            modifier =
-                Modifier
-                    .size(width = cardHeight * ratio, height = cardHeight)
-                    .onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
-        )
+        // Redesign 2 (rc-family): game boxes keep their own shape, with the name in 2 lines and the console
+        // under them on TV, phone and web
+        Column(Modifier.width(cardHeight * ratio)) {
+            ServerGameCard(
+                game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+                // Approved: the works-with icons live in the top area, not on the box art
+                playWith =
+                    if (wide) {
+                        emptyList()
+                    } else {
+                        listOfNotNull(
+                            if (LocalConsole.forSlug(ref.slug)?.remoteFriendly ==
+                                true
+                            ) {
+                                PlayWith.REMOTE
+                            } else {
+                                null
+                            },
+                        )
+                    },
+                token = viewModel.gamesToken,
+                status = status,
+                progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
+                onClick = onClick,
+                modifier =
+                    Modifier
+                        .size(width = cardHeight * ratio, height = cardHeight)
+                        .onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
+            )
+            com.github.damontecres.wholphin.ui.cards.CardNameUnder(
+                name = ref.name,
+                line = ref.consoleName,
+            )
+        }
     }
 
     Column(modifier = modifier.fillMaxSize().onFirstUserMove { userMoved = true }) {
@@ -781,17 +790,11 @@ internal fun ServerGameCard(
         modifier = modifier,
     ) {
         Box(Modifier.fillMaxSize()) {
-            // The name sits underneath, so it shows when there's no box art
-            Text(
-                text = game.name,
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .align(Alignment.Center)
-                        .padding(10.dp),
+            // Redesign 2 (rc-p-noart): no box art = the dark card with the big white name and a pink line
+            com.github.damontecres.wholphin.ui.cards.NoPictureCard(
+                name = game.name,
+                door = BenflixColors.Games,
+                small = true,
             )
             if (game.coverUrl != null) {
                 AsyncImage(
@@ -801,6 +804,8 @@ internal fun ServerGameCard(
                                 .Builder(context)
                                 .data(game.coverUrl)
                                 .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
+                                // Redesign 2 (rc-p-load): box art fades in
+                                .crossfade(com.github.damontecres.wholphin.ui.cards.CARD_FADE_MS)
                                 .build()
                         },
                     contentDescription = game.name,

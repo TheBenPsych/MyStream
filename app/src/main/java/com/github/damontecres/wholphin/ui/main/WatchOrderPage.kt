@@ -470,7 +470,9 @@ fun WatchOrderPage(
                             GridCard(
                                 item = item,
                                 onClick = { viewModel.navigationManager.navigateTo(item.destination()) },
-                                onLongClick = {},
+                                onLongClick =
+                                    com.github.damontecres.wholphin.ui.cards
+                                        .rememberHoldMenu(item),
                                 showTitle = true,
                                 fillWidth = POSTER_WIDTH_PX,
                             )

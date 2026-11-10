@@ -165,7 +165,8 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .side h3 { margin: 0 0 6px; font-size: 24px; }
 .side .x { position: absolute; right: 18px; top: 18px; }
 .opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 16px; border-radius: 10px; background: var(--pg2); border: 0; color: var(--ink); font-weight: 600; cursor: pointer; text-align: left; margin-bottom: 6px; font-size: 16px; }
-.delay-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.delay-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.delay-row .opt:last-child { grid-column: 1 / -1; }
 .delay-row .opt { justify-content: center; padding: 11px 4px; text-align: center; }
 .opt:hover { background: var(--pg4); }
 .opt.on { box-shadow: inset 0 0 0 2px var(--ink); }
@@ -213,7 +214,6 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .poster .im { aspect-ratio: 2/3; border-radius: var(--r); background: var(--pg3) center/cover no-repeat; position: relative; overflow: hidden; }
 /* Posters load as they scroll into view (All movies / All shows grids) */
 .poster .im > img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.poster .noart { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-weight: 800; font-size: 19px; line-height: 1.15; }
 .poster:hover .im, .poster:focus-visible .im { box-shadow: 0 0 0 3px #fff; }
 .poster:focus-visible { outline: none; }
 .poster .prog { position: absolute; left: 10px; right: 10px; bottom: 9px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.55); overflow: hidden; }
@@ -519,11 +519,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .letters { display: none; }
 }
 .subpage > h2:first-child { display: none; }
-/* TV-style screens: nothing under the posters (the top area or slim line says what it is); phones keep the name strip */
-@media (min-width: 901px) {
-  .rowx .poster .cap { display: none; }
-  .grid .poster .cap { display: none; }
-}
+/* Redesign 2 (rc-q-web): the web has a mouse, not a remote, so every card keeps its name under it like the phone */
 
 /* Benflix "Keyboard shortcuts" list in the player */
 .player .keys-help .keyrow { display: flex; align-items: center; gap: 14px; padding: 5px 0; }
@@ -1009,6 +1005,32 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .volw input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #fff; border: 0; }
 .volw input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; }
 @media (hover: none) { .volw input[type=range] { height: 40px; } .volw input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; } .volw input[type=range]::-moz-range-thumb { width: 20px; height: 20px; } }
+
+/* ---------- Redesign 2: rows, posters and covers (one family) ----------
+   Names under every card: up to 2 lines, then a small grey line. Every card in a row lines up.
+   No picture = a dark card with the big white name and a short line in the door's colour at the top.
+   Cards show dark straight away and their pictures fade in. */
+.cap .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.3; min-height: 2.6em; overflow-wrap: anywhere; }
+.cap small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.3em; }
+.noart { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-start; text-align: left; padding: 22px 12px 12px; font-weight: 800; font-size: 19px; line-height: 1.15; color: var(--ink); background: var(--pg2); overflow: hidden; overflow-wrap: anywhere; }
+.noart::before { content: ""; position: absolute; left: 12px; top: 12px; width: 26px; height: 4px; border-radius: 4px; background: var(--door, var(--shows)); }
+.mcard .noart, .poster.bk .noart, .poster.gm .noart { font-size: 15px; }
+.poster, .wide, .mcard, .chcard { --door: var(--shows); }
+img.art { opacity: 0; transition: opacity .2s ease-out; }
+img.art.in { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { img.art { transition: none; } }
+.wide .im > img.art, .poster.bk .im > img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Game boxes keep their own shape (SNES wide, NES tall), at the row's height, never cropped */
+.poster.gm { width: auto; min-width: calc(var(--poster-w) * .7); max-width: calc(var(--poster-w) * 1.6); background: none; }
+.poster.gm .im { aspect-ratio: auto; height: calc(var(--poster-w) * 1.5); display: flex; justify-content: center; }
+.poster.gm .im > img.art { position: static; height: 100%; width: auto; max-width: 100%; object-fit: contain; border-radius: var(--r); }
+.poster.gm .cap { width: 0; min-width: 100%; }
+.grid .poster.gm { width: auto; max-width: none; }
+
+@media (max-width: 900px) {
+  .noart { font-size: 14px; padding: 20px 8px 8px; }
+  .noart::before { left: 8px; top: 9px; width: 20px; }
+}
 
 /* Title pages: poster grids inside a tab (actor pages) */
 .tp .tp-pane > .tp-grid { margin: 0 var(--gutter); grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }

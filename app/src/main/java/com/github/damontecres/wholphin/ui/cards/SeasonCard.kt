@@ -60,6 +60,11 @@ fun SeasonCard(
     aspectRatio: Float = item?.aspectRatio ?: AspectRatios.TALL,
 ) {
     val imageUrl = rememberImageUrl(item, imageHeight, imageWidth)
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    // Redesign 2 (rc-family): season posters on TV keep the art clean, with "Season 2" in a small pill on it
+    val showName = familyShowsName(isTv, item, aspectRatio)
     SeasonCard(
         title = item?.title,
         // Benflix: anime episodes also show their number across the whole show (Episode 135 · S3 E5)
@@ -82,6 +87,9 @@ fun SeasonCard(
         fillerTag = fillerTagFor(item),
         finaleTag = finaleTagFor(item),
         subOnly = subOnlyFor(item),
+        showName = showName,
+        nameOnCard = if (!showName && item?.type == org.jellyfin.sdk.model.api.BaseItemKind.SEASON) item?.title else null,
+        door = item.doorColor(),
     )
 }
 
@@ -123,9 +131,6 @@ fun rememberImageUrl(
     }
 }
 
-private val spaceBetweenFocused = 4.dp
-private val spaceBetweenUnfocused = 12.dp
-
 /**
  * A Card for a TV Show Season, but can generically show most items
  */
@@ -154,16 +159,11 @@ fun SeasonCard(
     finaleTag: String? = null,
     // Benflix: an anime episode with no English voices, when others in the show have them
     subOnly: Boolean = false,
+    // Redesign 2: whether the name goes under the card, or (for season posters on TV) a pill on it
+    showName: Boolean = true,
+    nameOnCard: String? = null,
+    door: androidx.compose.ui.graphics.Color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Shows,
 ) {
-    val focused by interactionSource.collectIsFocusedAsState()
-    // Do not use `by` here, this way we are Defer reads and recompositions to only when modifier calculates
-    val spaceBetween =
-        animateDpAsState(
-            if (focused) spaceBetweenFocused else spaceBetweenUnfocused,
-            label = "spaceBetween",
-        )
-
-    val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)
     val width = imageHeight * aspectRationToUse
     val height = imageWidth * (1f / aspectRationToUse)
@@ -203,10 +203,21 @@ fun SeasonCard(
                     watchedPercent = playedPercentage,
                     numberOfVersions = numberOfVersions,
                     useFallbackText = false,
+                    door = door,
                     modifier =
                         Modifier
                             .fillMaxSize(),
                 )
+                if (nameOnCard != null) {
+                    CardBadge(
+                        text = nameOnCard,
+                        background = Color.Black.copy(alpha = .78f),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(6.dp),
+                    )
+                }
                 if (finaleTag != null) {
                     CardBadge(
                         text = finaleTag,
@@ -239,45 +250,9 @@ fun SeasonCard(
                 }
             }
         }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            modifier =
-                Modifier
-                    .layout { measurable, constraints ->
-                        val topPaddingPx = (spaceBetweenUnfocused - spaceBetween.value).roundToPx()
-                        val bottomPaddingPx = spaceBetween.value.roundToPx()
-                        val placeable = measurable.measure(constraints)
-                        layout(placeable.width, placeable.height + bottomPaddingPx + topPaddingPx) {
-                            placeable.placeRelative(0, topPaddingPx)
-                        }
-                    }.fillMaxWidth(),
-        ) {
-            Text(
-                text = title ?: "",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .enableMarquee(focusedAfterDelay),
-            )
-            Text(
-                text = subtitle ?: "",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Normal,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .enableMarquee(focusedAfterDelay),
-            )
+        if (showName) {
+            // Redesign 2 (rc-p-phone): up to 2 lines, then a small grey line
+            CardNameUnder(name = title.orEmpty(), line = subtitle)
         }
     }
 }

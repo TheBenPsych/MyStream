@@ -18,7 +18,7 @@ const cover = (g) => (g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "");
 const playableHere = (c) => !!EJS_CORES[c.slug];
 const gameCard = (g, sub) => {
   B.items["g" + g.id] = g;
-  return `<a class="poster" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im" ${cover(g) ? `style="background-image:url('${cover(g)}')"` : ""}>${cover(g) ? "" : `<div class="noart">${esc(g.name)}</div>`}</div><div class="cap">${esc(g.name)}<small>${esc(sub || g.console || "")}</small></div></a>`;
+  return `<a class="poster gm" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im">${cover(g) ? `<img class="art" src="${cover(g)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--games)">${esc(g.name)}</div>`}</div><div class="cap"><span class="nm">${esc(g.name)}</span><small>${esc(sub || g.console || "")}</small></div></a>`;
 };
 const favKey = () => "benflix.gamefavs." + B.me.id;
 const favs = () => loadJson(favKey(), []);
