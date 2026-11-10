@@ -122,7 +122,7 @@ fun MusicMiniBar(
     LaunchedEffect(audio.key) {
         while (true) {
             val p = viewModel.musicService.player
-            val d = p.duration
+            val d = p.duration.takeIf { it > 0 } ?: audio.runtime?.inWholeMilliseconds ?: 0L
             progress = if (d > 0) (p.currentPosition.toFloat() / d).coerceIn(0f, 1f) else 0f
             delay(500)
         }

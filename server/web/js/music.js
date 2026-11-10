@@ -39,12 +39,44 @@
   audio.preload = "auto";
   M.audio = audio;
   let session = "";
+  // When the server converts a song on the fly the browser can't tell how long it is (duration = Infinity)
+  // and can't jump inside it, so the length comes from Jellyfin and a jump restarts the stream at that point.
+  let offset = 0;
+  const live = () => !(isFinite(audio.duration) && audio.duration > 0);
+  const pos = () => offset + (audio.currentTime || 0);
+  const songLen = () => {
+    const s = M.queue[M.index];
+    if (!live()) return audio.duration + offset;
+    return s && s.RunTimeTicks ? s.RunTimeTicks / B.TICKS : 0;
+  };
+  M.pos = pos;
+  M.len = songLen;
   const report = (what, extra) => {
     const s = M.queue[M.index];
     if (!s || !B.me) return;
-    B.jf("POST", "/Sessions/Playing" + what, Object.assign({ ItemId: s.Id, PlaySessionId: session, PositionTicks: Math.round(audio.currentTime * B.TICKS), IsPaused: audio.paused, PlayMethod: "Transcode" }, extra || {})).catch(() => {});
+    B.jf("POST", "/Sessions/Playing" + what, Object.assign({ ItemId: s.Id, PlaySessionId: session, PositionTicks: Math.round(pos() * B.TICKS), IsPaused: audio.paused, PlayMethod: "Transcode" }, extra || {})).catch(() => {});
   };
   const src = (s) => `api/web/stream/Audio/${enc(s.Id)}/universal?UserId=${B.uid()}&DeviceId=${enc("benflix-web-" + (B.me.device || ""))}&Container=mp3,aac,m4a|aac,m4b|aac,flac,webma,webm|webma,wav,ogg&TranscodingContainer=mp3&TranscodingProtocol=http&AudioCodec=mp3&MaxStreamingBitrate=320000&api_key=${enc(B.me.token)}`;
+  const seek = (t) => {
+    const s = M.queue[M.index];
+    if (!s) return;
+    const d = songLen();
+    t = Math.max(0, d ? Math.min(t, d - 1) : t);
+    if (!live() && offset === 0) { audio.currentTime = t; return; }
+    if (!live() && t >= offset) { audio.currentTime = t - offset; return; }
+    const playing = !audio.paused;
+    offset = t;
+    audio.src = src(s) + "&StartTimeTicks=" + Math.round(t * B.TICKS);
+    if (playing) audio.play().catch(() => {});
+    report("/Progress");
+  };
+  M.seek = seek;
+  // If the server sent the whole file after a jump (it ignores the start point), move to the right spot ourselves
+  audio.addEventListener("loadedmetadata", () => {
+    const s = M.queue[M.index];
+    const full = s && s.RunTimeTicks ? s.RunTimeTicks / B.TICKS : 0;
+    if (offset > 0 && !live() && full && audio.duration > full - offset + 5) { const t = offset; offset = 0; audio.currentTime = t; }
+  });
   const load = (i, play) => {
     if (!B.me) return;
     if (M.index >= 0 && M.queue[M.index] && !audio.paused) report("/Stopped");
@@ -52,6 +84,7 @@
     const s = M.queue[i];
     if (!s) return;
     session = Math.random().toString(36).slice(2);
+    offset = 0;
     audio.src = src(s);
     if (play !== false) audio.play().catch(() => {});
     report("", {});
@@ -104,7 +137,7 @@
     B.toast(`Plays next: ${s.Name}`);
   };
   M.next = () => { if (M.index + 1 < M.queue.length) load(M.index + 1); else keepGoing(true); };
-  M.prev = () => { if (audio.currentTime > 4 || M.index === 0) audio.currentTime = 0; else load(M.index - 1); };
+  M.prev = () => { if (pos() > 4 || M.index === 0) seek(0); else load(M.index - 1); };
   M.toggle = () => { if (!M.queue.length) return; wakeSound(); if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
   M.stop = () => {
     if (!M.queue.length) return;
@@ -189,11 +222,11 @@
   const lyricIndex = () => {
     const ly = M.lyrics;
     if (!ly) return -1;
-    const t = audio.currentTime * B.TICKS;
+    const t = pos() * B.TICKS;
     if (ly.timed) { let i = -1; ly.lines.forEach((l, n) => { if ((l.Start || 0) <= t) i = n; }); return Math.max(0, i); }
     // Untimed words scroll slowly over the length of the song
-    const d = audio.duration || 1;
-    return Math.min(ly.lines.length - 1, Math.floor((audio.currentTime / d) * ly.lines.length));
+    const d = songLen() || 1;
+    return Math.min(ly.lines.length - 1, Math.floor((pos() / d) * ly.lines.length));
   };
 
   // ---------- the player bar (every page) ----------
@@ -237,8 +270,8 @@
   };
   setInterval(() => {
     if (!bar || !M.current()) return;
-    const d = audio.duration || 0;
-    $(".mbar-line i", bar).style.width = d ? (100 * audio.currentTime / d) + "%" : "0";
+    const d = songLen();
+    $(".mbar-line i", bar).style.width = d ? Math.min(100, 100 * pos() / d) + "%" : "0";
     drawNow(false, true);
   }, 500);
 
@@ -266,7 +299,7 @@
         if (a) return act(a.dataset.a);
         if (e.target.closest("[data-x]")) return closeNow();
         const tr = e.target.closest(".np-track");
-        if (tr && audio.duration) { const r = tr.getBoundingClientRect(); audio.currentTime = audio.duration * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
+        if (tr && songLen()) { const r = tr.getBoundingClientRect(); seek(songLen() * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); }
         const nx = e.target.closest("[data-upnext]");
         if (nx) { closeNow(); B.go("#/upnext"); }
       });
@@ -303,10 +336,10 @@
       np.classList.toggle("nowords", !M.lyrics);
       lastLyric = -2;
     }
-    const d = audio.duration || ((s.RunTimeTicks || 0) / B.TICKS);
-    $(".np-now", np).textContent = B.hms(audio.currentTime);
-    $(".np-len", np).textContent = B.hms(d);
-    $(".np-track i", np).style.width = d ? (100 * audio.currentTime / d) + "%" : "0";
+    const d = songLen();
+    $(".np-now", np).textContent = B.hms(pos());
+    $(".np-len", np).textContent = d ? B.hms(d) : "";
+    $(".np-track i", np).style.width = d ? Math.min(100, 100 * pos() / d) + "%" : "0";
     if (M.lyrics) {
       const i = lyricIndex();
       if (i !== lastLyric || full) {
@@ -391,8 +424,8 @@
     const open = np && np.classList.contains("on");
     if (e.key === " " && (open || t === document.body)) { e.preventDefault(); M.toggle(); }
     else if (e.key === "l" || e.key === "L") { e.preventDefault(); M.like(); }
-    else if (open && e.key === "ArrowLeft") { e.preventDefault(); if (e.shiftKey) audio.currentTime = Math.max(0, audio.currentTime - 10); else M.prev(); }
-    else if (open && e.key === "ArrowRight") { e.preventDefault(); if (e.shiftKey) audio.currentTime += 10; else M.next(); }
+    else if (open && e.key === "ArrowLeft") { e.preventDefault(); if (e.shiftKey) seek(pos() - 10); else M.prev(); }
+    else if (open && e.key === "ArrowRight") { e.preventDefault(); if (e.shiftKey) seek(pos() + 10); else M.next(); }
     else if (open && e.key === "Escape") { e.preventDefault(); closeNow(); }
   });
 

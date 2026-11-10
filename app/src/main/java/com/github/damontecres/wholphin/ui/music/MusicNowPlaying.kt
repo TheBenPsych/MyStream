@@ -208,7 +208,10 @@ fun MusicNowPlayingPage(
     LaunchedEffect(Unit) {
         while (true) {
             position = viewModel.player.currentPosition
-            duration = viewModel.player.duration.coerceAtLeast(0L)
+            // A song the server converts on the fly may not know its length yet: use the library's length
+            duration =
+                viewModel.player.duration.takeIf { it > 0 }
+                    ?: (music.currentAudio ?: audio)?.runtime?.inWholeMilliseconds ?: 0L
             delay(250)
         }
     }
