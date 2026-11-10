@@ -239,6 +239,7 @@ B.top = (place, color, opts) => {
   const t = B.clock(now).split(" ");
   return `<header class="top ${opts.solid ? "solid" : ""}">
     <a class="homelink" href="#/home" title="Home">${B.logo()}</a>
+    ${B.me && B.me.kids ? '<span class="pbadge">Kids</span>' : ""}
     ${place ? `<span class="place" style="color:${color || "var(--ink)"}">${esc(place)}</span>` : ""}
     <div class="right">
       <span class="clock" id="clock">${esc(t[0])}<small>${esc(t[1] || "")}</small></span>

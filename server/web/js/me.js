@@ -137,9 +137,14 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     };
   }
   if (g.id === "look") {
-    const size = ws.textSize || 100;
-    sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`);
-    sp.onclick = (e) => { const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render(); };
+    const size = ws.textSize || (ws.easy && !B.me.kids ? 125 : 100);
+    sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
+      + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")));
+    sp.onclick = (e) => {
+      const p = e.target.closest("[data-pick]");
+      if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
+      const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
+    };
   }
   if (g.id === "family") {
     sp.innerHTML = setRow("People and their limits", "Add people, set screens, libraries and passwords.", `<a class="valbtn" href="#/server/people/people">Open</a>`)
@@ -166,7 +171,8 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     };
   }
 });
-B.applyLook = () => { const s = B.me ? B.webSettings().textSize || 100 : 100; document.body.style.zoom = s === 100 ? "" : s / 100; };
+// Easy mode starts 25% bigger (the Text size steps still change it)
+B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || (w.easy && !B.me.kids ? 125 : 100); document.body.style.zoom = s === 100 ? "" : s / 100; };
 window.addEventListener("hashchange", () => B.applyLook());
 
 // ---------- Help and updates ----------

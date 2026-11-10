@@ -134,19 +134,45 @@ B.route(/^\/signin/, async () => {
 });
 
 // ---------- Home ----------
-// Everyone but Kids gets the approved Today board (f3-panel): the greeting with Tower's weather line, six square
-// doors 3 by 2, and a soft list panel as tall as the doors (news, On the way, Did you know). Kids keep the big doors.
+// Everyone but Kids and Easy mode gets the approved Today board (f3-panel): the greeting with Tower's weather line,
+// six square doors 3 by 2, and a soft list panel as tall as the doors (news, On the way, Did you know).
+// Kids (kd-family): three big doors (Movies, Shows, Games) that name a couple of titles, then one Keep watching row.
+// Easy mode (ez-family, Settings > Look): the four doors this person opens most (the rest under More), 25% bigger,
+// then one Keep watching row.
+B.easyMode = () => !!(B.me && !B.me.kids && B.webSettings().easy);
+const doorUseKey = () => "benflix.dooruse." + (B.me ? B.me.id : "");
+B.doorUse = () => loadJson(doorUseKey(), {});
+document.addEventListener("click", (e) => {
+  const d = e.target.closest && e.target.closest("a.door[data-door]");
+  if (!d || !B.me) return;
+  const use = B.doorUse(); use[d.dataset.door] = (use[d.dataset.door] || 0) + 1;
+  store(doorUseKey(), JSON.stringify(use));
+});
 B.route(/^\/home$/, async (m, nav) => {
   const grow = B.doorsGrow; B.doorsGrow = false;
   const kids = B.me.kids;
-  // Benflix music: the violet fifth door (not on Kids); Books: the lime sixth door (Kids too, instead of Music)
-  const doors = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).concat(DOORS.books ? ["books"] : []).map((k) => DOORS[k]);
-  const doorHtml = (d) => `<a class="door" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div>${kids ? "" : `<div class="d">${esc(d.desc)}</div>`}</div></a>`;
+  const easy = B.easyMode();
+  // Benflix music: the violet fifth door (not on Kids); Books: the lime sixth door
+  const all = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).concat(DOORS.books ? ["books"] : []);
+  let keys = all, more = [];
+  if (kids) keys = ["movies", "shows", "games"];
+  if (easy) {
+    const use = B.doorUse();
+    // Movies always stays, so it's always in the same place; then the ones opened most (a tie keeps the usual order)
+    const top = ["movies"].concat(all.slice().sort((a, b) => (use[b] || 0) - (use[a] || 0))).filter((k, i, arr) => arr.indexOf(k) === i).slice(0, 4);
+    keys = all.filter((k) => top.includes(k));
+    more = all.filter((k) => !top.includes(k));
+  }
+  const doors = keys.map((k) => DOORS[k]);
+  const small = kids || easy;
+  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(d.desc)}</div></div></a>`;
   const greet = `${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}`;
-  if (kids) {
-    B.page().innerHTML = B.top("") + `<div class="home">
+  if (small) {
+    const count = doors.length + (more.length ? 1 : 0);
+    B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
       <div class="greet">${greet}</div>
-      <div class="doors ${grow ? "grow" : ""} ${doors.length === 5 ? "five" : doors.length === 6 ? "six" : ""}" id="doors">${doors.map(doorHtml).join("")}</div>
+      <div class="doors fdoors n${count} ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}${more.length ? `<button class="door moredoor" id="moreDoors"><div class="n">More</div><div class="d">${more.length} more door${more.length === 1 ? "" : "s"}</div></button>` : ""}</div>
+      <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
     const wx = B.savedWeather();
@@ -156,6 +182,8 @@ B.route(/^\/home$/, async (m, nav) => {
     </div>`;
   }
   B.wireTop();
+  const mb = $("#moreDoors");
+  if (mb) mb.onclick = () => B.side(`<h3>More doors</h3><div class="fmore">${more.map((k) => doorHtml(DOORS[k])).join("")}</div>`);
   if (grow) {
     // The doors grow out of the logo squares, one after another
     const logo = $(".top .logo .sq").getBoundingClientRect();
@@ -167,8 +195,43 @@ B.route(/^\/home$/, async (m, nav) => {
     B.sound("doors");
   }
   setTimeout(() => { const f = $(".door"); if (f && B.alive(nav)) f.focus({ preventScroll: true }); }, grow ? 800 : 0);
-  if (!kids) B.loadBoard(nav);
+  if (small) B.loadFamilyRow(nav, kids); else B.loadBoard(nav);
 });
+
+// Kids and Easy mode: one Keep watching row with names under the pictures, and (Kids) a couple of titles on each door
+B.loadFamilyRow = async (nav, kids) => {
+  const u = B.uid(), F = B.FIELDS;
+  const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
+  const [movies, eps, next] = await Promise.all([
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=12&Fields=${F}`),
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=12&Fields=${F}`),
+    get(`/Shows/NextUp?userId=${u}&Limit=12&Fields=${F}&enableResumable=false&enableRewatching=false`),
+  ]);
+  if (!B.alive(nav)) return;
+  const seen = new Set();
+  const list = movies.concat(eps, next)
+    .sort((a, b) => String((b.UserData || {}).LastPlayedDate || "").localeCompare(String((a.UserData || {}).LastPlayedDate || "")))
+    .filter((it) => { const k = it.SeriesId || it.Id; if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 12);
+  const card = (it) => (it.Type === "Episode"
+    ? B.posterCard(Object.assign({}, it, { Name: it.SeriesName }), { href: B.hrefOf(it), sub: `S${it.ParentIndexNumber} E${it.IndexNumber}`, noTick: true })
+    : B.posterCard(it, { progress: true }));
+  const box = $("#famrow");
+  if (box) {
+    box.innerHTML = list.length
+      ? B.row("Keep watching", list.map(card))
+      : `<section class="rowx"><h3>Keep watching</h3><p class="sub">${kids ? "Nothing started yet. Open a door and pick something fun!" : "Nothing started yet. Open a door to find something to watch."}</p></section>`;
+  }
+  if (!kids) return;
+  const names = async (type) => (await get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SortBy=DatePlayed,DateCreated&SortOrder=Descending&Limit=4&EnableImages=false`))
+    .map((it) => it.Name).filter(Boolean).filter((n, i, arr) => arr.indexOf(n) === i).slice(0, 2);
+  const [mn, sn] = await Promise.all([names("Movie"), names("Series")]);
+  if (!B.alive(nav)) return;
+  const line = (key, found, fallback) => { const el = $("#dl-" + key); if (el) el.textContent = found.length ? found.join(", ") + " and more" : fallback; };
+  line("movies", mn, "Films for any night");
+  line("shows", sn, "Series and episodes");
+  line("games", [], "Games to play");
+};
 
 // The weather Tower gave last time (for today, from the last 3 hours), so the line is there straight away
 const dayName = () => new Date().toLocaleDateString([], { weekday: "long" });

@@ -38,7 +38,8 @@ B.route(/^\/search/, async (m, nav) => {
       B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Movie&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
       B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Series&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
       kids ? [] : B.get(`/Persons?userId=${u}&searchTerm=${enc(t)}&Limit=16&EnableImages=true`).then((r) => r.Items || []).catch(() => []),
-      B.channels().then((l) => l.filter((c) => {
+      // Kids search only finds kids titles: live programmes have no kids rating
+      kids ? [] : B.channels().then((l) => l.filter((c) => {
         const now = c._progs.find((p) => new Date(p.StartDate) <= Date.now() && new Date(p.EndDate) > Date.now());
         const s = t.toLowerCase();
         return (c.Name || "").toLowerCase().includes(s) || ((now && now.Name) || "").toLowerCase().includes(s);
