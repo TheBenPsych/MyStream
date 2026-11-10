@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -79,6 +82,26 @@ object RecentSearches {
         val list = (listOf(q) + get(context, account).filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(key, list.joinToString("\n")) }
     }
+
+    /** The ✕ beside one recent search */
+    fun remove(
+        context: Context,
+        account: String?,
+        query: String,
+    ) {
+        val key = key(account) ?: return
+        val list = get(context, account).filterNot { it.equals(query, ignoreCase = true) }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(key, list.joinToString("\n")) }
+    }
+
+    /** Clear all */
+    fun clear(
+        context: Context,
+        account: String?,
+    ) {
+        val key = key(account) ?: return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { remove(key) }
+    }
 }
 
 /**
@@ -94,41 +117,59 @@ fun SearchStart(
     account: String? = null,
     popular: List<com.github.damontecres.wholphin.data.model.BaseItem> = emptyList(),
     onClickItem: (com.github.damontecres.wholphin.data.model.BaseItem) -> Unit = {},
+    /** TV keeps recent searches and Popular in the left column instead */
+    showRecent: Boolean = true,
+    showPopular: Boolean = true,
 ) {
     val context = LocalContext.current
-    val recent = remember(account) { RecentSearches.get(context, account) }
+    var recent by remember(account) { mutableStateOf(RecentSearches.get(context, account)) }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
         modifier = modifier,
     ) {
-        if (recent.isNotEmpty()) {
+        if (showRecent && recent.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionLabel("RECENT")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Redesign 2: each recent search has its own ✕, and Clear all empties the list
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         recent.forEach { text ->
-                            Button(
+                            RecentChip(
+                                text = text,
                                 onClick = { onClickRecent(text) },
-                                shape = ButtonDefaults.shape(RoundedCornerShape(50)),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                colors =
-                                    ButtonDefaults.colors(
-                                        containerColor = Color.White.copy(alpha = .1f),
-                                        contentColor = Color(0xFFE8E2E2),
-                                        focusedContainerColor = Color.White,
-                                        focusedContentColor = Color.Black,
-                                    ),
-                                scale = ButtonDefaults.scale(focusedScale = 1f),
-                            ) {
-                                Text(text = text, fontSize = BenflixType.body)
-                            }
+                                onRemove = {
+                                    RecentSearches.remove(context, account, text)
+                                    recent = RecentSearches.get(context, account)
+                                },
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                RecentSearches.clear(context, account)
+                                recent = emptyList()
+                            },
+                            shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            colors =
+                                ButtonDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Color(0xFFA69C9D),
+                                    focusedContainerColor = Color.White,
+                                    focusedContentColor = Color.Black,
+                                ),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                        ) {
+                            Text(text = "Clear all", fontSize = BenflixType.body)
                         }
                     }
                 }
             }
         }
-        if (popular.isNotEmpty()) {
+        if (showPopular && popular.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionLabel("POPULAR")
@@ -234,6 +275,47 @@ fun SearchStart(
                     }
                 }
             }
+        }
+    }
+}
+
+/** One recent search with its own ✕ */
+@Composable
+private fun RecentChip(
+    text: String,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Button(
+            onClick = onClick,
+            shape = ButtonDefaults.shape(RoundedCornerShape(topStartPercent = 50, bottomStartPercent = 50)),
+            contentPadding = PaddingValues(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            colors =
+                ButtonDefaults.colors(
+                    containerColor = Color.White.copy(alpha = .1f),
+                    contentColor = Color(0xFFE8E2E2),
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Color.Black,
+                ),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+        ) {
+            Text(text = text, fontSize = BenflixType.body)
+        }
+        Button(
+            onClick = onRemove,
+            shape = ButtonDefaults.shape(RoundedCornerShape(topEndPercent = 50, bottomEndPercent = 50)),
+            contentPadding = PaddingValues(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            colors =
+                ButtonDefaults.colors(
+                    containerColor = Color.White.copy(alpha = .1f),
+                    contentColor = Color(0xFFA69C9D),
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Color.Black,
+                ),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+        ) {
+            Text(text = "✕", fontSize = BenflixType.body)
         }
     }
 }
