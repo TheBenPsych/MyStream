@@ -51,14 +51,22 @@ B.route(/^\/search/, async (m, nav) => {
     const have = new Set(mine.map((x) => plain(x.Name) + "|" + plain(x.AlbumArtist || (x.Artists || [])[0] || "")));
     const mAsk = cat ? [...(cat.songs || []).slice(0, 12).map((x) => Object.assign({ kind: "song" }, x)), ...(cat.albums || []).slice(0, 6).map((x) => Object.assign({ kind: "album", album_id: x.id, album: x.title }, x))]
       .filter((x) => !x.have && x.asked !== "In your music" && !have.has(plain(x.title) + "|" + plain(x.artist))) : [];
-    if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
+    // "funny 90s movie under 2 hours": the words become filters (extras.js), searched beside the names
+    const words = B.extras ? B.extras.parseWords(t) : null;
+    const described = words ? await B.extras.searchWords(words).catch(() => []) : [];
+        if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
     if (my !== seq || !B.alive(nav)) return;
     const gl = games.filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));
     // Closest name first
     const score = (n) => { n = (n || "").toLowerCase(); const s = t.toLowerCase(); return n === s ? 0 : n.startsWith(s) ? 1 : n.includes(" " + s) ? 2 : 3; };
     [movies, shows].forEach((l) => l.sort((a, b) => score(a.Name) - score(b.Name)));
     const best = [...movies, ...shows].sort((a, b) => score(a.Name) - score(b.Name))[0];
-    $("#best").innerHTML = best ? `Best match: <b>${esc(best.Name)}</b> <span class="dim">· ${esc([best.Type === "Series" ? "Show" : "Movie", best.ProductionYear, (best.Genres || []).slice(0, 2).join(", ")].filter(Boolean).join(" · "))}</span>` : "";
+    // Nothing has what was typed in its name: the matches are close spellings, so offer the closest one
+    const low = t.toLowerCase();
+    const typo = t.length >= 3 && !described.length && ![...movies, ...shows].some((x) => (x.Name || "").toLowerCase().includes(low)) ? best : null;
+    $("#best").innerHTML = described.length ? `Showing <b>${esc(words.label)}</b> <span class="dim">· ${described.length} found</span>`
+      : typo ? `Did you mean <a href="${B.hrefOf(typo)}"><b>${esc(typo.Name)}</b></a>? <span class="dim">· ${esc([typo.Type === "Series" ? "Show" : "Movie", typo.ProductionYear].filter(Boolean).join(" · "))}</span>`
+      : best ? `Best match: <b>${esc(best.Name)}</b> <span class="dim">· ${esc([best.Type === "Series" ? "Show" : "Movie", best.ProductionYear, (best.Genres || []).slice(0, 2).join(", ")].filter(Boolean).join(" · "))}</span>` : "";
     // One line per thing: the picture with the name and year beside it (Ben, 2026-11-09)
     const line = (href, attrs, img, name, sub, square, asked) => `<${href ? `a href="${href}"` : "button"} class="sline" ${attrs || ""} title="${esc(name)}"><span class="pic ${square ? "sq" : ""}" ${img ? `style="background-image:url('${img}')"` : ""}></span><span class="txt"><b>${esc(name)}</b><small>${esc(sub || "")}</small>${asked ? `<em>Asked</em>` : ""}</span></${href ? "a" : "button"}>`;
     const kindOf = { Movie: "Movie", BoxSet: "Collection", Series: "Show", Episode: "Episode", Audio: "Song", MusicAlbum: "Album", MusicArtist: "Artist", Playlist: "Playlist" };
@@ -78,9 +86,15 @@ B.route(/^\/search/, async (m, nav) => {
     // Ask for it: movies, shows, songs and albums together, closest names first (movies and shows win a tie)
     const askAll = [...ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) })), ...mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) }))]
       .map((e, i) => ({ e, i, s: score(e.name) })).sort((a, b) => a.s - b.s || a.i - b.i).map((x) => x.e.html);
+    // What the words describe joins the names (first when few names match, like the TV app)
+    const withWords = (list, type) => {
+      const have = new Set(list.map((x) => x.Id));
+      const extra = described.filter((x) => x.Type === type && !have.has(x.Id));
+      return list.length < 3 ? [...extra, ...list] : [...list, ...extra];
+    };
     const doors = [
-      [DOORS.movies, movies.map(itemLine)],
-      [DOORS.shows, shows.map(itemLine)],
+      [DOORS.movies, withWords(movies, "Movie").map(itemLine)],
+      [DOORS.shows, withWords(shows, "Series").map(itemLine)],
       [DOORS.live, chans.map(chLine)],
       [DOORS.games, gl.map(gameLine)],
       ...(kids ? [] : [[{ name: "Music", color: "#B69CFF" }, mine.map(itemLine)], [{ name: "Ask for it", color: "#F1F2F5", ask: true }, askAll], [{ name: "People", color: "#9AA0AE" }, people.map(personLine)]]),

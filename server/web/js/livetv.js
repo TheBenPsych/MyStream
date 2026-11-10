@@ -181,6 +181,8 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     <div class="controls" id="banner"><div class="row2" style="align-items:flex-end;gap:22px">
       ${logo(c, 120) ? `<img src="${logo(c, 120)}" alt="" style="height:54px;max-width:120px;object-fit:contain">` : ""}
       <div class="grow"><div class="dim" style="font-weight:700">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} ${prefs.favourites.includes(c.Name) ? "★" : ""}</div><div id="bNow" class="bnow">Tuning in…</div><div class="dim" id="bNext"></div></div>
+      <button class="pbtn" id="pPause" title="Pause (space)">${I("pause")}</button>
+      <button class="pbtn" id="pBroken" title="This channel is broken">${I("flag")}</button>
       <button class="pbtn" id="pGuide" title="Guide (left arrow)">${I("list")}</button>
       <button class="pbtn" id="pStar" title="Favourite (F)">${I("star")}</button>
       <button class="pbtn" id="pFull" title="Full screen">${I("full")}</button>
@@ -236,6 +238,18 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     const cur = $(".sideguide .on"); if (cur) cur.scrollIntoView({ block: "center" });
   };
   const full = () => (document.fullscreenElement ? document.exitFullscreen() : pl.requestFullscreen().catch(() => {}));
+  // Pause live TV: it picks up where you left off (as far back as the channel keeps), like the TV app
+  const pause = () => {
+    if (v.paused) { v.play().catch(() => {}); $("#pPause").innerHTML = I("pause"); $("#pPause").title = "Pause (space)"; }
+    else { v.pause(); $("#pPause").innerHTML = I("play"); $("#pPause").title = "Play (space)"; }
+  };
+  $("#pPause").onclick = pause;
+  // "This channel is broken": tells Tower, whose nightly channel check swaps it for a working one
+  $("#pBroken").onclick = async () => {
+    if (!(await B.ask("Is this channel broken?", `Tower's nightly channel check will swap ${c.Name} for a working copy.`, "Yes, it's broken", "Cancel"))) return;
+    const src = info && (info.MediaSources || [])[0];
+    B.busy(null, async () => (await B.call("POST", "api/livetv/broken", { name: c.Name, number: String(c.ChannelNumber || ""), url: (src && /^https?:/.test(src.Path || "") && src.Path) || "" })).message || "Thanks! Tonight's check swaps it.");
+  };
   $("#pGuide").onclick = guide;
   $("#pFull").onclick = full;
   $("#pBack").onclick = () => B.go("#/live");
@@ -247,6 +261,7 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     else if (e.key === "ArrowDown") { e.preventDefault(); zap(-1); }
     else if (e.key === "ArrowLeft") guide();
     else if (e.key === "f") $("#pStar").click();
+    else if (e.key === " ") { e.preventDefault(); pause(); }
     else if (e.key === "Escape") { if ($(".sideguide")) $(".sideguide").remove(); else if (!document.fullscreenElement) B.go("#/live"); }
     else if (/^\d$/.test(e.key)) {
       digits += e.key; B.toast("Channel " + digits);

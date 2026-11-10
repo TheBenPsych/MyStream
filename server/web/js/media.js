@@ -57,7 +57,7 @@ B.wireDescribe = (first) => {
 const doorTop = () => `<section class="door-top" id="doorTop"><div class="art"></div><div class="info"></div></section>`;
 
 // ---------- top 10: what's trending (from Requests), on the server; otherwise the best rated lately ----------
-B.trending = async (type) => {
+B.trending = async (type, onlyAnime) => {
   const kind = type === "Movie" ? "movies" : "tv";
   let ids = [];
   try {
@@ -65,16 +65,19 @@ B.trending = async (type) => {
     pages.forEach((p) => ((p && p.results) || []).forEach((r) => { const id = r.mediaInfo && (r.mediaInfo.jellyfinMediaId || r.mediaInfo.jellyfinMediaId4k); if (id && !ids.includes(id)) ids.push(id); }));
   } catch (e) {}
   const anime = await B.animeIds(type);
+  const keep = (id) => (onlyAnime ? anime.has(id) : !anime.has(id));
   let items = [];
   if (ids.length) {
     const r = await B.get(`/Items?userId=${B.uid()}&Ids=${ids.slice(0, 40).join(",")}&Fields=${B.FIELDS}`);
     const by = {}; (r.Items || []).forEach((x) => { by[x.Id] = x; });
-    items = ids.map((id) => by[id]).filter((x) => x && !anime.has(x.Id));
+    items = ids.map((id) => by[id]).filter((x) => x && keep(x.Id));
   }
   if (items.length < 6) {
     const y = new Date().getFullYear();
-    const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=${type}&Recursive=true&Years=${y},${y - 1}&SortBy=CommunityRating&SortOrder=Descending&Limit=40&Fields=${B.FIELDS}&ImageTypes=Primary`);
-    items = (r.Items || []).filter((x) => !anime.has(x.Id));
+    // Top 10 anime: the best rated anime of any year (like the TV app)
+    const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=${type}&Recursive=true${onlyAnime ? "" : `&Years=${y},${y - 1}`}&SortBy=CommunityRating&SortOrder=Descending&Limit=${onlyAnime ? 200 : 40}&Fields=${B.FIELDS}&ImageTypes=Primary`);
+    const seen = new Set(items.map((x) => x.Id));
+    items = items.concat((r.Items || []).filter((x) => keep(x.Id) && !seen.has(x.Id)));
   }
   return B.keep(items.slice(0, 10));
 };
@@ -135,13 +138,14 @@ B.route(/^\/shows$/, async (m, nav) => {
   const u = B.uid(), F = B.FIELDS;
   const libs = await B.libs("shows");
   const animeLibs = libs.filter(B.isAnimeLib);
-  const [next, resume, mine, newShows, latestEps, top] = await Promise.all([
+  const [next, resume, mine, newShows, latestEps, top, topAnime] = await Promise.all([
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=true&enableRewatching=false`),
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).catch(() => []),
     q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
     q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
     q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`),
     B.trending("Series").catch(() => []),
+    B.trending("Series", true).catch(() => []),
   ]);
   if (!B.alive(nav)) return;
   // Keep watching: halfway-through episodes first, then the next episode of shows you're watching
@@ -174,6 +178,7 @@ B.route(/^\/shows$/, async (m, nav) => {
     B.me.kids ? "" : B.row("Top 10 shows", B.top10(top)),
     recentSeries ? B.row(`Because you watched ${recentSeries.Name}`, because.map((it) => B.posterCard(it))) : "",
     B.row("Anime", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?anime=only&title=Anime" }),
+    B.me.kids || topAnime.length < 3 ? "" : B.row("Top 10 anime", B.top10(topAnime)),
     `<section class="rowx"><h3>Browse by</h3><div class="tiles2">
       <a class="tile2" href="#/browse/shows/genres">Genres</a><a class="tile2" href="#/browse/shows/studios">Networks</a><a class="tile2" href="#/grid/shows?title=All%20shows">All shows</a></div></section>`,
     B.pickerRow ? B.pickerRow("shows") : "",
@@ -487,6 +492,8 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
   if (!B.alive(nav)) return;
   $("#below").innerHTML = B.row("More like this", similar.map((x) => B.posterCard(x))) + B.peopleRow(it) + (await B.facts(it));
+  // In this collection, Ask for more like this, anime extras and the parents' guide (extras.js)
+  if (B.alive(nav) && B.extras) B.extras.movie(it, nav);
 });
 const movieMore = (it) => {
   const ud = it.UserData || {};
@@ -641,6 +648,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
   if (!B.alive(nav)) return;
   $("#below2").innerHTML = B.row("More like this", similar.map((x) => B.posterCard(x))) + B.peopleRow(it) + (await B.facts(it));
+  // Newer seasons to ask for, Ask for more like this, anime extras and the parents' guide (extras.js)
+  if (B.alive(nav) && B.extras) B.extras.show(it, nav);
 });
 
 // ---------- collection page ----------
@@ -659,7 +668,7 @@ B.route(/^\/collection\/([\w-]+)/, async (m, nav) => {
 B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
   const u = B.uid();
   const [p, movies, shows] = await Promise.all([
-    B.get(`/Users/${u}/Items/${m[1]}?Fields=Overview,PremiereDate,ProductionLocations`),
+    B.get(`/Users/${u}/Items/${m[1]}?Fields=Overview,PremiereDate,ProductionLocations,ProviderIds`),
     q(`/Items?userId=${u}&PersonIds=${m[1]}&IncludeItemTypes=Movie&Recursive=true&SortBy=ProductionYear&SortOrder=Descending&Fields=${B.FIELDS}`),
     q(`/Items?userId=${u}&PersonIds=${m[1]}&IncludeItemTypes=Series&Recursive=true&SortBy=ProductionYear&SortOrder=Descending&Fields=${B.FIELDS}`),
   ]);
@@ -672,4 +681,6 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
     ${!movies.length && !shows.length ? '<div class="wrap empty">Nothing with them on Benflix yet.</div>' : ""}
     ${B.me.kids ? "" : `<div class="wrap"><a class="btn" href="#/requests?q=${enc(p.Name)}">${I("plus")} Ask for more with ${esc(p.Name)}</a></div>`}</div>`;
   B.wireTop();
+  // Everything of theirs that isn't on Benflix yet (extras.js)
+  if (B.extras) B.extras.person(p, nav).catch(() => {});
 });
