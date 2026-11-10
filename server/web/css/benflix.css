@@ -668,6 +668,8 @@ body.np-open .mbar { display: none; }
 /* ---------- Books (the lime sixth door) ---------- */
 :root { --books: #B9E36A; }
 .doors.six { grid-template-columns: repeat(6, 1fr); }
+/* Six doors side by side: the words under the name shrink with the window so they never run past the door */
+@media (min-width: 901px) { .doors.six .door { padding: 26px 20px; } .doors.six .door .d { font-size: min(18px, 1.15vw); } }
 .doors.grow .door:nth-child(6) { animation-delay: .35s; }
 .bk-page { display: flex; gap: 8px; padding-top: var(--bar); min-height: 100vh; }
 .bk-side { position: sticky; top: calc(var(--bar) + 8px); align-self: flex-start; width: 220px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 8px 0 0 var(--gutter); }
