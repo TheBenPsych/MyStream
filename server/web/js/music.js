@@ -542,7 +542,7 @@
     rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
-    rows.push(`<section class="rowx"><h3>Browse by</h3><div class="mbrowse"><a href="#/songs">Songs</a><a href="#/mgrid/albums">Albums</a><a href="#/mgrid/artists">Artists</a><a href="#/mgrid/genres">Genres</a><a href="#/mgrid/playlists">Playlists</a></div></section>`);
+    // Redesign 2: Songs, Albums, Artists, Genres, Playlists and Liked songs are in the door's side menu (js/doors.js)
     $("#mrows").innerHTML = rows.join("");
     const f = $("#mrows a"); if (f) f.focus({ preventScroll: true });
   });

@@ -117,10 +117,16 @@ fun Destination.drawsOwnPicture(): Boolean =
     ) ||
         this is Destination.DiscoveredItem
 
-/** Door pages draw right up to the screen's edges (their picture fills the right side) */
+/**
+ * Door pages draw right up to the screen's edges (their picture fills the right side). Redesign 2: every
+ * door's side menu sits right at the left edge, so Live TV, Games and Books do too (their own margins).
+ */
 fun Destination.fullBleed(): Boolean =
     this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
+        this is Destination.Channels ||
+        this is Destination.Games ||
+        this is Destination.BooksDoor ||
         underTopBar() ||
         (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES))
 

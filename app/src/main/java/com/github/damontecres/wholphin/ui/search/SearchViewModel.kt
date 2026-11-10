@@ -88,6 +88,7 @@ class SearchViewModel
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
         private val gameLibrary: com.github.damontecres.wholphin.services.GameLibraryClient,
         private val music: com.github.damontecres.wholphin.services.BenflixMusic,
+        private val bookShelf: com.github.damontecres.wholphin.services.BenflixBooks,
     ) : ViewModel(),
         ContextMenuProvider {
         /** Benflix: recent searches are kept per account */
@@ -105,6 +106,48 @@ class SearchViewModel
 
         /** Before you type: the Top 10 movies and shows, mixed (approved Popular row) */
         val popular: StateFlow<List<BaseItem>> = _popular
+
+        private val _books = MutableStateFlow<List<com.github.damontecres.wholphin.services.BookTile>>(emptyList())
+
+        /** Redesign 2 search: books, manga and audiobooks on Tower are their own door (never on Kids) */
+        val books: StateFlow<List<com.github.damontecres.wholphin.services.BookTile>> = _books
+        private var bookLibrary: List<com.github.damontecres.wholphin.services.BookTile>? = null
+
+        private fun searchBooks(query: String?) {
+            val q = searchPlain(query)
+            if (q.isEmpty() || KidsMode.isActive) {
+                _books.value = emptyList()
+                return
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val all =
+                    bookLibrary ?: try {
+                        bookShelf.library().titles.also { bookLibrary = it }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.i("Search: no books (%s)", ex.message)
+                        emptyList()
+                    }
+                val found =
+                    all
+                        .filter { !it.notHere }
+                        .filter { t -> listOf(t.name, t.author, t.series).any { searchPlain(it).contains(q) } }
+                        .sortedWith(
+                            compareBy({ !searchPlain(it.name).startsWith(q) }, { !searchPlain(it.name).contains(q) }, { it.name.length }),
+                        ).take(SEARCH_LIMIT)
+                if (searchPlain(currentQuery) == q) _books.value = found
+            }
+        }
+
+        private val _suggestions = MutableStateFlow<List<String>>(emptyList())
+
+        /**
+         * Redesign 2 search: whole names that start with (or have) what was typed. On TV they're the left column,
+         * on phones and the web a row of chips. They only change with the typed words, not while you try one.
+         */
+        val suggestions: StateFlow<List<String>> = _suggestions
+        private var typedQuery: String? = null
 
         private val _games = MutableStateFlow<List<SearchGame>>(emptyList())
 
@@ -402,13 +445,20 @@ class SearchViewModel
             query: String?,
             combined: Boolean = false,
             force: Boolean = false,
+            /** Trying a suggestion (landing on it): the suggestions stay as they are */
+            preview: Boolean = false,
         ) {
+            if (!preview) {
+                if (typedQuery != query) _suggestions.value = _suggestions.value.takeIf { query.isNotNullOrBlank() }.orEmpty()
+                typedQuery = query
+            }
             if (currentQuery == query && combinedMode == combined && !force) {
                 return
             }
             currentQuery = query
             combinedMode = combined
             searchGames(query)
+            searchBooks(query)
             // Benflix speed: stop searching for what was typed before, so the server only works on
             // the newest words (and an older, slower answer can't replace the new one)
             synchronized(searchJobs) {
@@ -611,6 +661,9 @@ class SearchViewModel
                                 else -> (sorted + understood).distinctBy { it.id }
                             }
                         val plainWords = words.label.takeIf { understood.isNotEmpty() && it.isNotBlank() }
+                        if (query == typedQuery) {
+                            _suggestions.value = suggestionsFor(query, sorted.mapNotNull { it.name } + _books.value.map { it.name })
+                        }
                         _state.update {
                             it.copy(
                                 combinedResults = SearchResult.Success(combined),
@@ -981,6 +1034,33 @@ private const val SEARCH_LIMIT = 50
 private val COMBINED_MUSIC_TYPES =
     setOf(BaseItemKind.AUDIO, BaseItemKind.MUSIC_ALBUM, BaseItemKind.MUSIC_ARTIST, BaseItemKind.PLAYLIST)
 private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.BOX_SET)
+
+/** For matching names: no capitals, accents or punctuation */
+internal fun searchPlain(text: String?): String =
+    java.text.Normalizer
+        .normalize(text.orEmpty(), java.text.Normalizer.Form.NFKD)
+        .replace(Regex("\\p{M}"), "")
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+
+/** Up to 6 whole names for what was typed: names starting with it first, then names that have it */
+internal fun suggestionsFor(
+    query: String,
+    names: List<String>,
+): List<String> {
+    val q = searchPlain(query)
+    if (q.isEmpty()) return emptyList()
+    val seen = mutableSetOf<String>()
+    return names
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && searchPlain(it).contains(q) && seen.add(searchPlain(it)) }
+        .withIndex()
+        .sortedBy { (i, n) -> (if (searchPlain(n).startsWith(q)) 0 else 1) * 10_000 + i }
+        .map { it.value }
+        .filterNot { searchPlain(it) == q }
+        .take(6)
+}
 
 /** How many titles the Popular row shows before you type */
 private const val POPULAR_COUNT = 12

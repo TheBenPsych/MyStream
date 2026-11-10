@@ -86,6 +86,10 @@ class UserSwitchListener
                     AppCompatDelegate.setApplicationLocales(localeList)
                 }
 
+                // Benflix: the next person starts every door at the top (not where the last person was)
+                com.github.damontecres.wholphin.ui.door.DoorMemory
+                    .clear()
+
                 // Benflix: genres this person hid
                 HiddenGenres.hidden = emptySet()
                 launchIO {
