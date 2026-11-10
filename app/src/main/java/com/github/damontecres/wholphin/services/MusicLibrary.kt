@@ -1,3 +1,5 @@
+@file:UseSerializers(UUIDSerializer::class)
+
 package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -5,6 +7,8 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.DetailItemFields
 import com.github.damontecres.wholphin.ui.SongListFields
 import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -18,6 +22,7 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.UUIDSerializer
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import org.json.JSONObject
 import timber.log.Timber
@@ -29,6 +34,7 @@ import javax.inject.Singleton
  * A "Made for you" playlist that Tower makes every morning (approved: about 6 a day, mostly songs you play
  * a lot plus a few you rarely play). [line] is the small words under it, like "Static Bloom, Luna Vale and more".
  */
+@Serializable
 data class MusicMix(
     val key: String,
     val name: String,

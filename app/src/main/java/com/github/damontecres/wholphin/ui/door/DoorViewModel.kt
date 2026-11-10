@@ -30,12 +30,14 @@ import java.util.UUID
 import javax.inject.Inject
 
 /** How a door row draws its items */
+@kotlinx.serialization.Serializable
 enum class DoorRowStyle {
     POSTERS,
     TOP10,
 }
 
 /** One row inside a door. An empty row is hidden. */
+@kotlinx.serialization.Serializable
 data class DoorRowData(
     val key: String,
     val title: String,
@@ -46,6 +48,7 @@ data class DoorRowData(
 )
 
 /** A "Browse by" tile at the bottom of a door */
+@kotlinx.serialization.Serializable
 data class DoorBrowseTile(
     val title: String,
     val destination: Destination,
@@ -67,6 +70,19 @@ data class DoorPageState(
 )
 
 /**
+ * Benflix speed: what a door showed last time, saved in memory and on disk, so the door opens straight
+ * away (even right after an update) while fresh rows load behind it.
+ */
+@kotlinx.serialization.Serializable
+data class DoorSnapshot(
+    val rows: List<DoorRowData>,
+    val browse: List<DoorBrowseTile>,
+    val order: List<String>,
+    val pick: BaseItem? = null,
+    val savedAt: Long = 0L,
+)
+
+/**
  * Benflix redesign: the Movies and Shows doors. Both have the same layout: a top area that describes
  * the poster you're on, a few rows, then "Browse by" tiles.
  */
@@ -79,6 +95,7 @@ class DoorViewModel
         private val navDrawerService: NavDrawerService,
         private val aniListLibraries: AniListLibraries,
         private val hiddenGenresStore: com.github.damontecres.wholphin.services.HiddenGenresStore,
+        private val diskCache: com.github.damontecres.wholphin.services.DiskCache,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow(DoorPageState())
@@ -96,6 +113,22 @@ class DoorViewModel
         private var loadedAt = 0L
         private var loadedFor: Pair<UUID, Boolean>? = null
 
+        /** The rows on screen came from last time's snapshot (fresh ones are loading behind them) */
+        private var fromSnapshot = false
+
+        /** Rows that came back empty while last time's rows are on screen, and whether anything came back */
+        private val emptied = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+        @Volatile
+        private var gotFresh = false
+
+        /** The "Picked for you" title this load chose (shown next time if last time's is on screen now) */
+        @Volatile
+        private var nextPick: BaseItem? = null
+
+        /** Fresh copies of the shuffled rows, held back while last time's are on screen */
+        private val freshShuffled = java.util.concurrent.ConcurrentHashMap<String, DoorRowData>()
+
         /** Starts (or refreshes) the door. Coming back within a short while keeps the rows as they are. */
         fun start(door: BenflixDoor) {
             val userId = serverRepository.currentUser?.id ?: return
@@ -110,20 +143,91 @@ class DoorViewModel
             }
             this.door = door
             loadedFor = key
+            val snapKey = snapshotKey(door, userId)
+            // Benflix speed: every trip through a door used to start from nothing and wait for ~10 server
+            // answers while the door colour held the screen. Last time's rows now show at once instead.
+            if (_state.value.rows.isEmpty()) {
+                val saved = memory[snapKey]
+                if (saved != null && System.currentTimeMillis() - saved.savedAt < REFRESH_MS) {
+                    // Just looked at (Home and back): nothing to ask the server again
+                    show(saved)
+                    loadedAt = saved.savedAt
+                    return
+                }
+            }
             loadJob?.cancel()
             loadJob =
                 viewModelScope.launchIO {
+                    if (_state.value.rows.isEmpty()) {
+                        val saved =
+                            memory[snapKey]
+                                ?: diskCache.read(snapKey, DoorSnapshot.serializer(), SNAPSHOT_MAX_AGE_MS)
+                        if (saved != null && saved.rows.isNotEmpty()) show(saved)
+                    }
                     when (door) {
                         BenflixDoor.MOVIES -> loadMovies(userId)
                         BenflixDoor.SHOWS -> loadShows(userId)
                         else -> Unit
                     }
+                    if (fromSnapshot) {
+                        if (gotFresh) {
+                            _state.update { st -> st.copy(rows = st.rows.filter { it.key !in emptied }) }
+                        } else {
+                            // Nothing came back: keep last time's rows on screen, and try again next time
+                            fromSnapshot = false
+                            _state.update { it.copy(loaded = true, pending = emptySet()) }
+                            return@launchIO
+                        }
+                    }
                     // Nothing at all and no libraries means the server couldn't be reached: say so, and try again next time
                     val offline = _state.value.rows.isEmpty() && libraries().isEmpty()
                     loadedAt = if (offline) 0L else System.currentTimeMillis()
                     _state.update { it.copy(loaded = true, offline = offline, pending = emptySet()) }
+                    if (!offline) save(snapKey)
+                    fromSnapshot = false
+                    freshShuffled.clear()
                 }
         }
+
+        private fun show(saved: DoorSnapshot) {
+            fromSnapshot = true
+            freshShuffled.clear()
+            emptied.clear()
+            gotFresh = false
+            _state.value =
+                DoorPageState(
+                    rows = saved.rows,
+                    browse = saved.browse,
+                    loaded = true,
+                    pick = saved.pick,
+                    order = saved.order,
+                )
+        }
+
+        private fun save(snapKey: String) {
+            val st = _state.value
+            if (st.rows.isEmpty()) return
+            val snap =
+                DoorSnapshot(
+                    rows =
+                        st.rows.map { shown ->
+                            val r = freshShuffled[shown.key] ?: shown
+                            r.copy(items = r.items.take(DoorDataService.ROW))
+                        },
+                    browse = st.browse,
+                    order = st.order,
+                    // The phone's "Picked for you" card changes from one visit to the next
+                    pick = nextPick ?: st.pick,
+                    savedAt = System.currentTimeMillis(),
+                )
+            memory[snapKey] = snap
+            diskCache.write(snapKey, DoorSnapshot.serializer(), snap)
+        }
+
+        private fun snapshotKey(
+            door: BenflixDoor,
+            userId: UUID,
+        ) = "door-${door.name}-$userId-${KidsMode.level}-$SNAPSHOT_FORMAT"
 
         /** "Try again" on the can't-reach-the-server note */
         fun retry() {
@@ -149,18 +253,39 @@ class DoorViewModel
             order: List<String>,
             row: DoorRowData,
         ) {
+            // Rows picked at random stay as they were on screen, so posters don't swap under you as it refreshes
+            if (fromSnapshot && row.key in SHUFFLED && _state.value.rows.any { it.key == row.key }) {
+                // ...and the fresh pick is what next time's snapshot shows
+                freshShuffled[row.key] = row.copy(items = row.items.distinctBy { it.id })
+                gotFresh = true
+                _state.update { st -> st.copy(pending = st.pending - row.key) }
+                return
+            }
             val clean = row.copy(items = row.items.distinctBy { it.id })
+            gotFresh = true
             _state.update { st ->
                 val rows = (st.rows.filter { it.key != row.key } + clean).sortedBy { order.indexOf(it.key) }
                 st.copy(rows = rows, pending = st.pending - row.key)
             }
         }
 
-        private fun remove(key: String) =
+        private fun remove(key: String) {
+            if (fromSnapshot) {
+                // Over last time's rows, an empty answer might just mean the server is out of reach: only
+                // take the row away at the end, once another row has really come back fresh
+                emptied += key
+                _state.update { st -> st.copy(pending = st.pending - key) }
+                return
+            }
             _state.update { st -> st.copy(rows = st.rows.filter { it.key != key }, pending = st.pending - key) }
+        }
 
         /** Marks every row as loading, so the page draws grey placeholder rows until each one arrives */
-        private fun startRows(order: List<String>) = _state.update { it.copy(order = order, pending = order.toSet()) }
+        private fun startRows(order: List<String>) =
+            _state.update {
+                // Over last time's rows, nothing turns grey: each row just swaps to its fresh copy when it's in
+                if (fromSnapshot) it.copy(order = order) else it.copy(order = order, pending = order.toSet())
+            }
 
         private fun putOrRemove(
             order: List<String>,
@@ -240,7 +365,8 @@ class DoorViewModel
                     }
                 }
             }
-            _state.update { st -> st.copy(pick = st.pick ?: becausePick ?: newPick) }
+            nextPick = becausePick ?: newPick
+            _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
 
         private suspend fun loadShows(userId: UUID) {
@@ -318,7 +444,8 @@ class DoorViewModel
                     }
                 }
             }
-            _state.update { st -> st.copy(pick = st.pick ?: becausePick ?: newPick) }
+            nextPick = becausePick ?: newPick
+            _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
 
         /** Something unwatched with a wide picture, for the phone's "Picked for you" card */
@@ -433,6 +560,16 @@ class DoorViewModel
             const val BROWSE_ALL = "all"
 
             private const val REFRESH_MS = 60_000L
+
+            /** Last time's snapshot is shown for up to a week (fresh rows replace it as they load) */
+            private const val SNAPSHOT_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
+            private const val SNAPSHOT_FORMAT = 1
+
+            /** Rows that come out different every time; a refresh keeps the copy already on screen */
+            private val SHUFFLED = setOf(BECAUSE, MORE_GENRE, ANIME, STAND_UP)
+
+            /** The doors' snapshots in memory, for this run of the app */
+            private val memory = java.util.concurrent.ConcurrentHashMap<String, DoorSnapshot>()
             private const val LIBRARY_WAIT_MS = 5_000L
             private const val FULL = 300
         }

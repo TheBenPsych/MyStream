@@ -12,6 +12,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.launchIO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -79,6 +80,7 @@ class BooksViewModel
     @Inject
     constructor(
         val books: BenflixBooks,
+        private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow(BooksState())
@@ -97,7 +99,16 @@ class BooksViewModel
 
         val isKids: Boolean get() = KidsMode.isActive
 
+        private fun memoryKey() = serverRepository.currentUser?.id?.let { "$it-${KidsMode.level}" }
+
         fun start() {
+            // Benflix speed: last time's Books page shows at once (this run of the app) while it refreshes
+            if (!_state.value.loaded) {
+                memoryKey()?.let { memory[it] }?.let { (at, saved) ->
+                    _state.value = saved
+                    if (System.currentTimeMillis() - at < RELOAD_MS) loadedAt = at
+                }
+            }
             if (_state.value.loaded && System.currentTimeMillis() - loadedAt < RELOAD_MS) {
                 // Places change as soon as you read, so Home's rows are always looked at again
                 viewModelScope.launchIO { loadHome() }
@@ -114,27 +125,45 @@ class BooksViewModel
 
         private suspend fun loadHome() {
             safe { books.home() }?.let { h -> _state.update { it.copy(home = h) } }
+            memoryKey()?.let { key -> memory[key]?.let { (at, _) -> memory[key] = at to _state.value } }
         }
 
-        private suspend fun loadAll() {
-            val home =
-                try {
-                    books.home()
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Books: couldn't load home")
-                    _state.update { it.copy(loaded = true, problem = ex.message ?: "Couldn't reach Tower") }
-                    return
-                }
-            _state.update { it.copy(home = home, problem = null) }
-            val lib = safe { books.library() }
-            _state.update { it.copy(library = lib, loaded = true) }
-            loadedAt = System.currentTimeMillis()
-            val series = safe { books.series() }
-            val authors = safe { books.authors() }
-            _state.update { it.copy(series = series, authors = authors) }
-        }
+        private suspend fun loadAll(): Unit =
+            kotlinx.coroutines.coroutineScope {
+                // Benflix speed: every book, series and author are asked for at the same time as Home's rows,
+                // and the page opens as soon as Home's rows are in (it used to wait for the whole library too)
+                val lib = async { safe { books.library() } }
+                val series = async { safe { books.series() } }
+                val authors = async { safe { books.authors() } }
+                val home =
+                    try {
+                        books.home()
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Books: couldn't load home")
+                        lib.cancel()
+                        series.cancel()
+                        authors.cancel()
+                        // Last time's page stays up if there is one
+                        _state.update {
+                            if (it.home != null) {
+                                it.copy(loaded = true)
+                            } else {
+                                it.copy(loaded = true, problem = ex.message ?: "Couldn't reach Tower")
+                            }
+                        }
+                        return@coroutineScope
+                    }
+                _state.update { it.copy(home = home, problem = null, loaded = true) }
+                loadedAt = System.currentTimeMillis()
+                lib.await()?.let { l -> _state.update { it.copy(library = l) } }
+                val s = series.await()
+                val a = authors.await()
+                _state.update { it.copy(series = s ?: it.series, authors = a ?: it.authors) }
+                val key = memoryKey() ?: return@coroutineScope
+                memory[key] = System.currentTimeMillis() to _state.value
+            }
 
         /** The books a section page shows, with its chip and sort */
         fun sectionTiles(
@@ -207,6 +236,9 @@ class BooksViewModel
 
         companion object {
             private const val RELOAD_MS = 5 * 60_000L
+
+            /** Each profile's Books page in memory for this run of the app, with when it was loaded */
+            private val memory = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, BooksState>>()
         }
     }
 

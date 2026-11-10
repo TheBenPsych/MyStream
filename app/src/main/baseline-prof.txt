@@ -1,6 +1,8 @@
 # Benflix startup profile: Android compiles these parts of the app ahead of time when it installs
 # (through ProfileInstaller, which also works for sideloaded installs), so the first launch, Home,
 # the top bar, rows of cards, details pages and the player start faster instead of warming up slowly.
+# Every door (Movies, Shows, Live TV, Games, Music, Books), Search and Requests are in here too, so they
+# don't open slowly for the first while after an update or a fresh install.
 HSPLcom/github/damontecres/wholphin/MainActivity*;->**(**)**
 HSPLcom/github/damontecres/wholphin/ui/main/**;->**(**)**
 HSPLcom/github/damontecres/wholphin/ui/nav/**;->**(**)**
@@ -12,7 +14,29 @@ HSPLcom/github/damontecres/wholphin/ui/theme/**;->**(**)**
 HSPLcom/github/damontecres/wholphin/ui/util/**;->**(**)**
 HSPLcom/github/damontecres/wholphin/services/**;->**(**)**
 HSPLcom/github/damontecres/wholphin/data/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/door/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/music/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/books/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/games/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/search/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/discover/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/setup/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/touch/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/preferences/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/data/**;->**(**)**
+HSPLcom/github/damontecres/wholphin/ui/*;->**(**)**
 Lcom/github/damontecres/wholphin/MainActivity*;
+Lcom/github/damontecres/wholphin/ui/door/**;
+Lcom/github/damontecres/wholphin/ui/music/**;
+Lcom/github/damontecres/wholphin/ui/books/**;
+Lcom/github/damontecres/wholphin/ui/games/**;
+Lcom/github/damontecres/wholphin/ui/search/**;
+Lcom/github/damontecres/wholphin/ui/discover/**;
+Lcom/github/damontecres/wholphin/ui/setup/**;
+Lcom/github/damontecres/wholphin/ui/touch/**;
+Lcom/github/damontecres/wholphin/ui/preferences/**;
+Lcom/github/damontecres/wholphin/ui/data/**;
+Lcom/github/damontecres/wholphin/ui/*;
 Lcom/github/damontecres/wholphin/ui/main/**;
 Lcom/github/damontecres/wholphin/ui/nav/**;
 Lcom/github/damontecres/wholphin/ui/cards/**;

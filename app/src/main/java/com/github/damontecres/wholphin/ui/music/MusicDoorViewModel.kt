@@ -14,26 +14,33 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import org.jellyfin.sdk.model.api.ItemSortBy
 import timber.log.Timber
 import javax.inject.Inject
 
 /** One tile in a row on the Music page */
+@Serializable
 sealed interface MusicTile {
     val key: String
 
+    @Serializable
     data class Mix(
         val mix: MusicMix,
     ) : MusicTile {
         override val key get() = "mix-${mix.key}"
     }
 
+    @Serializable
     data class Item(
         val item: BaseItem,
     ) : MusicTile {
         override val key get() = item.id.toString()
     }
 
+    @Serializable
     data class Liked(
         val count: Int,
     ) : MusicTile {
@@ -41,11 +48,13 @@ sealed interface MusicTile {
     }
 
     /** Ben's "Ask for music" tile (Requests > Music) */
+    @Serializable
     data object Ask : MusicTile {
         override val key get() = "ask"
     }
 
     /** The end of a row: opens the whole list */
+    @Serializable
     data class SeeAll(
         val kind: String,
         val title: String,
@@ -54,6 +63,7 @@ sealed interface MusicTile {
     }
 }
 
+@Serializable
 data class MusicRow(
     val key: String,
     val title: String,
@@ -78,6 +88,7 @@ class MusicDoorViewModel
     constructor(
         private val library: MusicLibrary,
         private val serverRepository: ServerRepository,
+        private val diskCache: com.github.damontecres.wholphin.services.DiskCache,
         val musicService: MusicService,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
@@ -91,14 +102,39 @@ class MusicDoorViewModel
 
         val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
+        /** Last time's rows are on screen while fresh ones load behind them */
+        @Volatile
+        private var fromSnapshot = false
+
+        private fun snapshotKey() = serverRepository.currentUser?.id?.let { "music-door-$it-$SNAPSHOT_FORMAT" }
+
         fun start() {
+            // Benflix speed: Music used to start from nothing every time, waiting on Tower's mixes before
+            // anything showed. Last time's page now shows at once and the fresh one replaces it when it's in.
+            val key = snapshotKey()
+            if (!_state.value.loaded && key != null) {
+                memory[key]?.let { (at, rows) ->
+                    _state.value = MusicDoorState(rows = rows, loaded = true)
+                    fromSnapshot = true
+                    if (System.currentTimeMillis() - at < RELOAD_MS) loadedAt = at
+                }
+            }
             // The mixes change each morning, the rest whenever something is added; a few minutes is fresh enough
             if (_state.value.loaded && System.currentTimeMillis() - loadedAt < RELOAD_MS) {
                 // The Liked songs count changes as soon as you press a heart, so it is always fresh
                 viewModelScope.launchIO { refreshLiked() }
                 return
             }
-            viewModelScope.launchIO { load() }
+            viewModelScope.launchIO {
+                if (!_state.value.loaded && key != null) {
+                    val saved = diskCache.read(key, ListSerializer(MusicRow.serializer()), SNAPSHOT_MAX_AGE_MS)
+                    if (!saved.isNullOrEmpty() && !_state.value.loaded) {
+                        fromSnapshot = true
+                        _state.value = MusicDoorState(rows = saved, loaded = true)
+                    }
+                }
+                load()
+            }
         }
 
         fun retry() {
@@ -136,9 +172,15 @@ class MusicDoorViewModel
 
                     val rows = mutableListOf<MusicRow>()
 
-                    fun publish() = _state.update { it.copy(rows = rows.toList()) }
+                    // Over last time's page, everything swaps in at once at the end (nothing shrinks while it loads)
+                    fun publish() {
+                        if (!fromSnapshot) _state.update { it.copy(rows = rows.toList()) }
+                    }
 
-                    val mixTiles = mixes.await().map { MusicTile.Mix(it) }
+                    // Tower's mixes can be slow (or out of reach away from home): the rest of the page doesn't wait
+                    // for them, and Made for you slots in at the top when they arrive
+                    val earlyMixes = if (fromSnapshot) mixes.await() else withTimeoutOrNull(MIX_WAIT_MS) { mixes.await() }
+                    val mixTiles = earlyMixes.orEmpty().map { MusicTile.Mix(it) }
                     if (mixTiles.isNotEmpty()) rows += MusicRow("mixes", "Made for you", mixTiles)
                     publish()
 
@@ -187,11 +229,29 @@ class MusicDoorViewModel
                             MusicRow("artists", "Artists", artists.map { MusicTile.Item(it) } + MusicTile.SeeAll("artists", "All artists"))
                         publish()
                     }
+                    if (earlyMixes == null) {
+                        val late = mixes.await().map { MusicTile.Mix(it) }
+                        if (late.isNotEmpty()) rows.add(0, MusicRow("mixes", "Made for you", late))
+                    }
+                    if (fromSnapshot) {
+                        // Only one row (playlists, always there) means nothing came back: keep last time's page
+                        if (rows.size > 1) _state.update { it.copy(rows = rows.toList()) }
+                        fromSnapshot = false
+                    } else {
+                        _state.update { it.copy(rows = rows.toList()) }
+                    }
+                    if (rows.size > 1) {
+                        snapshotKey()?.let { key ->
+                            memory[key] = System.currentTimeMillis() to rows.toList()
+                            diskCache.write(key, ListSerializer(MusicRow.serializer()), rows.toList())
+                        }
+                    }
                 }
                 loadedAt = System.currentTimeMillis()
                 _state.update { it.copy(loaded = true, noMusic = false, offline = false) }
             } catch (ex: Exception) {
                 Timber.w(ex, "Couldn't load the Music page")
+                fromSnapshot = false
                 _state.update { it.copy(loaded = true, offline = it.rows.isEmpty()) }
             }
         }
@@ -207,5 +267,11 @@ class MusicDoorViewModel
         companion object {
             const val ROW = 20
             private const val RELOAD_MS = 5 * 60_000L
+            private const val MIX_WAIT_MS = 2_500L
+            private const val SNAPSHOT_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
+            private const val SNAPSHOT_FORMAT = 1
+
+            /** Each profile's Music page in memory for this run of the app, with when it was saved */
+            private val memory = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<MusicRow>>>()
         }
     }
