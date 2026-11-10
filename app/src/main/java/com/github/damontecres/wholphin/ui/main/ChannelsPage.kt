@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,8 +33,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,8 +80,17 @@ import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.door.DOOR_HOME
+import com.github.damontecres.wholphin.ui.door.DoorFrame
+import com.github.damontecres.wholphin.ui.door.DoorFrameState
+import com.github.damontecres.wholphin.ui.door.DoorMemory
+import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.door.doorHome
+import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
@@ -266,13 +278,40 @@ fun ChannelsPage(
     // Hidden channel types ("Edit types") are left out of the guide.
     val hidden by ChannelPrefs.hidden.collectAsState()
     val shown = remember(list, hidden) { list.filter { it.group() !in hidden } }
-    BoxWithConstraints(modifier = modifier) {
-        // Two hours across on a TV, an hour and a half on a phone
-        val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
-        val dpm = ((maxWidth - CHANNEL_COL - 24.dp).value / (halfHours * 30f)).coerceAtLeast(1f)
-        GuideGrid(all = list, list = shown, halfHours = halfHours, dpm = dpm, viewModel = viewModel)
+    // Redesign 2 (section 6): the page sits in the shared door frame. Its side menu (chips on phones)
+    // jumps to Favourites, Recently watched, Benflix channels and the Guide further down the page.
+    val frame = rememberDoorFrameState(BenflixDoor.LIVE_TV, jumps = true)
+    val recentKeys by ChannelPrefs.recent.collectAsState()
+    val hasRecent = remember(recentKeys, list) { recentKeys.any { k -> list.any { it.key == k } } }
+    val sections =
+        remember(hasRecent) {
+            listOfNotNull(
+                doorHome(),
+                DoorSection(LIVE_FAVOURITES, "Favourites", BenflixIcon.STAR),
+                if (hasRecent) DoorSection(LIVE_RECENT, "Recently watched", BenflixIcon.REFRESH) else null,
+                DoorSection(LIVE_BENFLIX, "Benflix channels", BenflixIcon.TV),
+                DoorSection(LIVE_GUIDE, "Guide", BenflixIcon.CALENDAR, count = shown.size),
+            )
+        }
+    val isTv = rememberIsTv()
+    DoorFrame(frame, sections, modifier, phoneInset = true) { inner ->
+        BoxWithConstraints(modifier = inner) {
+            // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
+            val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
+            val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
+            GuideGrid(all = list, list = shown, halfHours = halfHours, dpm = dpm, viewModel = viewModel, frame = frame)
+        }
     }
 }
+
+/** Live TV's side menu places (Home is the top of the page) */
+private const val LIVE_FAVOURITES = "favourites"
+private const val LIVE_RECENT = "recent"
+private const val LIVE_BENFLIX = "benflix"
+private const val LIVE_GUIDE = "guide"
+
+/** The page's own left and right margins inside the door frame (TV: clear of the tucked side menu) */
+private fun liveEdges(isTv: Boolean): Dp = if (isTv) 40.dp + 16.dp else 8.dp
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -282,6 +321,7 @@ private fun GuideGrid(
     halfHours: Long,
     dpm: Float,
     viewModel: ChannelsViewModel,
+    frame: DoorFrameState,
 ) {
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
@@ -350,8 +390,74 @@ private fun GuideGrid(
         remember(recentKeys, favourites, byKey, declinedNow) {
             ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
         }
+    // The side menu's places: where each starts in the list, and what gets focus there
+    val recentFocus = remember { FocusRequester() }
+    val benflixFocus = remember { FocusRequester() }
+    val recentIndex = if (recentChannels.isNotEmpty()) 1 else -1
+    val benflixIndex = if (recentChannels.isNotEmpty()) 2 else 1
+    val guideIndex = benflixIndex + 1
+    val scope = rememberCoroutineScope()
+
+    fun focusAt(key: String) {
+        when (key) {
+            LIVE_RECENT -> recentFocus.tryRequestFocus()
+            LIVE_BENFLIX -> benflixFocus.tryRequestFocus()
+            LIVE_GUIDE -> firstFocus.tryRequestFocus()
+            else -> if (!rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
+        }
+    }
+    frame.onJump = { key ->
+        scope.launch {
+            val index =
+                when (key) {
+                    LIVE_RECENT -> recentIndex.coerceAtLeast(0)
+                    LIVE_BENFLIX -> benflixIndex
+                    LIVE_GUIDE -> guideIndex
+                    else -> 0
+                }
+            listState.animateScrollToItem(index)
+            delay(JUMP_SETTLE_MS)
+            focusAt(key)
+        }
+    }
+    frame.toTop = {
+        scope.launch {
+            listState.animateScrollToItem(0)
+            delay(JUMP_SETTLE_MS)
+            focusAt(DOOR_HOME)
+        }
+    }
+    LaunchedEffect(Unit) { snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it } }
+    DisposableEffect(Unit) {
+        onDispose {
+            DoorMemory.keep(
+                BenflixDoor.LIVE_TV,
+                DoorMemory.Spot(
+                    section = frame.section,
+                    scroll = listState.firstVisibleItemIndex,
+                    scrollOffset = listState.firstVisibleItemScrollOffset,
+                ),
+            )
+        }
+    }
     LaunchedEffect(Unit) {
         delay(80)
+        // Opening Live TV again within 10 minutes comes back to the same part of the page
+        val spot = DoorMemory.recall(BenflixDoor.LIVE_TV)?.takeIf { it.scroll > 0 }
+        if (spot != null) {
+            listState.scrollToItem(spot.scroll, spot.scrollOffset)
+            delay(JUMP_SETTLE_MS)
+            val at =
+                when {
+                    spot.scroll >= guideIndex -> LIVE_GUIDE
+                    spot.scroll >= benflixIndex -> LIVE_BENFLIX
+                    spot.scroll == recentIndex -> LIVE_RECENT
+                    else -> DOOR_HOME
+                }
+            // Deep in the guide, keep the spot: focus the first channel on screen instead of jumping back up
+            if (at != LIVE_GUIDE || spot.scroll == guideIndex) focusAt(at)
+            return@LaunchedEffect
+        }
         // Ben: opens at the very top, on the first card of the top row: the first favourite, or
         // "+ Add channels" when there are none yet (it used to jump down to the Benflix channels)
         listState.scrollToItem(0)
@@ -361,7 +467,7 @@ private fun GuideGrid(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             Modifier
-                .padding(top = 12.dp, start = 8.dp)
+                .padding(top = 12.dp, start = if (isTv) 40.dp else 8.dp, end = if (isTv) 16.dp else 0.dp)
                 .onPreviewKeyEvent { event ->
                     val digit = digitOf(event) ?: return@onPreviewKeyEvent false
                     if (addChannels || makeChannel) return@onPreviewKeyEvent false
@@ -424,42 +530,46 @@ private fun GuideGrid(
             }
             if (recentChannels.isNotEmpty()) {
                 item(key = "row-recent") {
-                    ChannelTileRow(title = "Recently watched") {
-                        items(recentChannels, key = { "r-${it.key}" }) { schedule ->
-                            RecentCard(
-                                schedule = schedule,
-                                width = if (isTv) 220.dp else 160.dp,
-                                onClick = { viewModel.watch(schedule) },
-                                onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
-                                modifier = Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
-                            )
+                    Box(Modifier.focusRequester(recentFocus)) {
+                        ChannelTileRow(title = "Recently watched") {
+                            items(recentChannels, key = { "r-${it.key}" }) { schedule ->
+                                RecentCard(
+                                    schedule = schedule,
+                                    width = if (isTv) 220.dp else 160.dp,
+                                    onClick = { viewModel.watch(schedule) },
+                                    onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                                    modifier = Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
+                                )
+                            }
                         }
                     }
                 }
             }
             run {
                 item(key = "row-benflix") {
-                    ChannelTileRow(title = "Benflix channels · No ads") {
-                        items(benflixChannels, key = { "b-${it.key}" }) { schedule ->
-                            RecentCard(
-                                schedule = schedule,
-                                width = if (isTv) 220.dp else 160.dp,
-                                onClick = { viewModel.watch(schedule) },
-                                onLongClick = {
-                                    // A home-made channel can also be taken away again
-                                    if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
-                                },
-                                modifier =
-                                    Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
-                            )
-                        }
-                        // Approved "Make a channel": the last tile in the Benflix channels row
-                        if (mine.size < CustomChannel.MAX) {
-                            item(key = "make") {
-                                AddChannelsTile(
-                                    label = "+  Make a channel",
-                                    onClick = { makeChannel = true },
+                    Box(Modifier.focusRequester(benflixFocus)) {
+                        ChannelTileRow(title = "Benflix channels · No ads") {
+                            items(benflixChannels, key = { "b-${it.key}" }) { schedule ->
+                                RecentCard(
+                                    schedule = schedule,
+                                    width = if (isTv) 220.dp else 160.dp,
+                                    onClick = { viewModel.watch(schedule) },
+                                    onLongClick = {
+                                        // A home-made channel can also be taken away again
+                                        if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
+                                    },
+                                    modifier =
+                                        Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
                                 )
+                            }
+                            // Approved "Make a channel": the last tile in the Benflix channels row
+                            if (mine.size < CustomChannel.MAX) {
+                                item(key = "make") {
+                                    AddChannelsTile(
+                                        label = "+  Make a channel",
+                                        onClick = { makeChannel = true },
+                                    )
+                                }
                             }
                         }
                     }
@@ -1363,3 +1473,6 @@ private fun EasyButton(
         }
     }
 }
+
+/** How long a side-menu jump waits for the list to settle before focus moves */
+private const val JUMP_SETTLE_MS = 90L

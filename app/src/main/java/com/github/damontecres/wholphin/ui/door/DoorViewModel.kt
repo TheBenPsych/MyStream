@@ -141,7 +141,8 @@ class DoorViewModel
             val key = userId to KidsMode.isActive
             val fresh = System.currentTimeMillis() - loadedAt < REFRESH_MS
             if (this.door == door && loadedFor == key && (fresh || loadJob?.isActive == true)) return
-            if (loadedFor != key) {
+            // The first start keeps a spot recalled from DoorMemory; another profile starts at the top
+            if (loadedFor != null && loadedFor != key) {
                 _state.value = DoorPageState()
                 focusedRow = null
                 focusedIndex = 0

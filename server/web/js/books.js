@@ -60,6 +60,7 @@
     }
     if (!B.alive(nav)) return;
     const counts = home.counts || {};
+    if (B.railCounts) B.railCounts("books", counts);
     const shown = PLACES.filter(([k]) => (k !== "manga" || counts.manga) && (k !== "comic" || counts.comic));
     const link = (o) => "#/books?" + new URLSearchParams(Object.assign({ p: place, c: chip, s: sort }, o)).toString();
     $("#bkSide").innerHTML = shown.map(([k, l]) => `<a class="${k === place ? "on" : ""}" href="${link({ p: k, c: "all" })}">${esc(l)}${counts[k] ? `<small>${counts[k]}</small>` : ""}</a>`).join("");

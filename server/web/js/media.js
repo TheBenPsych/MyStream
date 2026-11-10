@@ -122,9 +122,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     recent[0] ? B.row(`Because you watched ${recent[0].Name}`, because.map((it) => B.posterCard(it))) : "",
     B.row("Anime movies", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
     kids ? "" : B.row("Stand-up", stand.map((it) => B.posterCard(it))),
-    `<section class="rowx"><h3>Browse by</h3><div class="tiles2">
-      <a class="tile2" href="#/browse/movies/genres">Genres</a><a class="tile2" href="#/grid/movies?type=BoxSet&title=Collections">Collections</a>
-      <a class="tile2" href="#/browse/movies/studios">Studios</a><a class="tile2" href="#/grid/movies?title=All%20movies">All movies</a></div></section>`,
+    // Redesign 2: Genres, Collections, Studios and All movies are in the door's side menu (js/doors.js)
     B.pickerRow ? B.pickerRow("movies") : "",
   ].join("");
   B.wireDescribe(resume[0] || mine[0] || fresh[0]);
@@ -179,8 +177,7 @@ B.route(/^\/shows$/, async (m, nav) => {
     recentSeries ? B.row(`Because you watched ${recentSeries.Name}`, because.map((it) => B.posterCard(it))) : "",
     B.row("Anime", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?anime=only&title=Anime" }),
     B.me.kids || topAnime.length < 3 ? "" : B.row("Top 10 anime", B.top10(topAnime)),
-    `<section class="rowx"><h3>Browse by</h3><div class="tiles2">
-      <a class="tile2" href="#/browse/shows/genres">Genres</a><a class="tile2" href="#/browse/shows/studios">Networks</a><a class="tile2" href="#/grid/shows?title=All%20shows">All shows</a></div></section>`,
+    // Redesign 2: Genres, Networks and All shows are in the door's side menu (js/doors.js)
     B.pickerRow ? B.pickerRow("shows") : "",
   ].join("");
   B.wireDescribe(kw[0] || mine[0] || newShows[0]);

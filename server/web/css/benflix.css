@@ -1037,3 +1037,31 @@ img.art.in { opacity: 1; }
 @media (max-width: 700px) {
   .tp .tp-pane > .tp-grid { margin: 0 16px; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }
+
+/* ---------- Redesign 2 (section 6): the side menu inside every door (js/doors.js) ----------
+   Browsers: always open on the left, the section you're on on a pill in the door's colour.
+   Phone-sized windows: the same sections as chips under the top bar. */
+:root { --rail: 232px; }
+.drail { position: fixed; z-index: 25; left: 0; top: var(--bar); bottom: 0; width: var(--rail); display: flex; flex-direction: column; gap: 3px;
+  padding: 14px 14px 24px var(--gutter); overflow-y: auto; scrollbar-width: none; background: linear-gradient(90deg, var(--tray) 88%, rgba(11,12,16,0)); }
+.drail a { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 99px; color: var(--ink2); font-weight: 600; font-size: 16px; white-space: nowrap; }
+.drail a span { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.drail a .i { width: 20px; height: 20px; flex: none; }
+.drail a small { color: var(--ink3); font-weight: 600; font-size: 13px; }
+.drail a:hover, .drail a:focus-visible { background: var(--pg3); color: var(--ink); }
+.drail a:focus-visible { outline: 2.5px solid var(--ink); outline-offset: 0; }
+.drail a.on { background: var(--door); color: var(--ondoor); font-weight: 800; }
+.drail a.on small { color: var(--ondoor); }
+body.has-rail #page > :not(.top):not(.drail) { margin-left: calc(var(--rail) - var(--gutter) + 8px); }
+/* Books: the door's menu replaces its own side menu */
+body.has-rail .bk-side { display: none; }
+@media (max-width: 700px) {
+  .drail { position: sticky; top: var(--bar); bottom: auto; width: auto; flex-direction: row; gap: 8px; padding: 4px var(--gutter) 10px; overflow-x: auto; background: var(--tray); }
+  .drail a { border: 1px solid var(--line); padding: 7px 14px; font-size: 14px; gap: 0; }
+  .drail a .i, .drail a small { display: none; }
+  .drail a.on { border-color: var(--door); }
+  body.has-rail #page > :not(.top):not(.drail) { margin-left: 0; }
+  /* The chips sit between the top bar and the picture, so the picture no longer goes up behind the bar */
+  body.has-rail .door-top { margin-top: 0; padding-top: 24px; }
+  body.has-rail .bk-page { padding-top: 0; }
+}
