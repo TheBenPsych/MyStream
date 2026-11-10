@@ -2,32 +2,19 @@ package com.github.damontecres.wholphin.ui.detail.discover
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.api.seerr.model.TvDetails
@@ -40,9 +27,6 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
-import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
-import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
-import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
@@ -55,13 +39,9 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.listToDotString
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
-import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.successValue
-import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import kotlin.math.roundToInt
 
@@ -236,205 +216,46 @@ fun DiscoverSeriesDetailsContent(
     // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
     val cantFindKeys by CantFindBlocked.keys.collectAsState()
     val cantFindNow = series.id?.let { cantFindKey(false, it) }?.let { it in cantFindKeys } == true
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    // Benflix: the scores, "Asked by" and About tags load a moment after the page opens and make the top
-    // block taller. If the buttons already have focus, scroll again so they never end up below the screen.
-    var buttonsFocused by remember { mutableStateOf(false) }
-
-    var position by rememberInt()
-    val focusRequesters = remember { List(RECOMMENDED_ROW + 1) { FocusRequester() } }
-    val playFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        focusRequesters.getOrNull(position)?.tryRequestFocus()
-    }
-    var moreDialog by remember { mutableStateOf<DialogParams?>(null) }
-
-    val listState = rememberLazyListState()
-    RequestHeroLayout(backdropUrl = backdropUrl, listState = listState, modifier = modifier) { heroModifier, wide ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize(),
-        ) {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-                modifier = Modifier,
-            ) {
-                item {
-                    Column(
-                        verticalArrangement = Arrangement.Bottom,
-                        modifier =
-                            heroModifier
-                                .fillMaxWidth()
-                                .bringIntoViewRequester(bringIntoViewRequester)
-                                .onSizeChanged {
-                                    if (buttonsFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
-                                        }
-                                    }
-                                },
-                    ) {
-                        if (!wide) RequestPhonePicture(backdropUrl, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
-                        DiscoverSeriesDetailsHeader(
-                            series = series,
-                            rating = rating,
-                            overviewOnClick = overviewOnClick,
-                            showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 16.dp, bottom = 12.dp),
-                        )
-                        ExpandableDiscoverButtons(
-                            isAdmin = isAdmin,
-                            availability = availability,
-                            requestOnClick = requestOnClick,
-                            pendingOnClick = requestOnClick,
-                            cancelOnClick = cancelOnClick,
-                            moreOnClick = moreOnClick,
-                            goToOnClick = goToOnClick,
-                            buttonOnFocusChanged = {
-                                buttonsFocused = it.isFocused
-                                if (it.isFocused) {
-                                    position = HEADER_ROW
-                                    scope.launch(ExceptionHandler()) {
-                                        bringIntoViewRequester.bringIntoView()
-                                    }
-                                }
-                            },
-                            canRequest = userConfig.canRequestTv,
-                            cantFind = cantFindNow,
-                            canCancel = canCancel,
-                            trailers = trailers,
-                            trailerOnClick = trailerOnClick,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                                    .focusRequester(focusRequesters[HEADER_ROW]),
-                        )
-                    }
-                }
-//                item {
-//                    ItemRow(
-//                        title = stringResource(R.string.tv_seasons) + " (${seasons.size})",
-//                        items = seasons,
-//                        onClickItem = { index, item ->
-//                            position = SEASONS_ROW
-// //                            onClickItem.invoke(index, item)
-//                        },
-//                        onLongClickItem = { index, item ->
-//                            position = SEASONS_ROW
-//                        },
-//                        modifier =
-//                            Modifier
-//                                .fillMaxWidth()
-//                                .focusRequester(focusRequesters[SEASONS_ROW]),
-//                        cardContent = @Composable { index, item, mod, onClick, onLongClick ->
-//                            SeasonCard(
-//                                item = item,
-//                                onClick = onClick,
-//                                onLongClick = onLongClick,
-//                                imageHeight = Cards.height2x3,
-//                                imageWidth = Dp.Unspecified,
-//                                showImageOverlay = true,
-//                                modifier = mod,
-//                            )
-//                        },
-//                    )
-//                }
-                if (people.isNotEmpty()) {
-                    item {
-                        DiscoverPersonRow(
-                            people = people,
-                            onClick = {
-                                position = PEOPLE_ROW
-                                onClickPerson.invoke(it)
-                            },
-                            onLongClick = { index, person ->
-                                position = PEOPLE_ROW
-                                onLongClickPerson.invoke(index, person)
-                            },
-                            modifier = Modifier.focusRequester(focusRequesters[PEOPLE_ROW]),
-                        )
-                    }
-                }
-                if (similar.isNotEmpty()) {
-                    item {
-                        ItemRow(
-                            title = stringResource(R.string.more_like_this),
-                            items = similar,
-                            onClickItem = { index, item ->
-                                position = SIMILAR_ROW
-                                onClickItem.invoke(index, item)
-                            },
-                            onLongClickItem = { index, similar ->
-                                position = SIMILAR_ROW
-                                onLongClickSimilar.invoke(index, similar)
-                            },
-                            cardContent = { index, item, mod, onClick, onLongClick ->
-                                DiscoverItemCard(
-                                    item = item,
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    showOverlay = true,
-                                    modifier = mod,
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequesters[SIMILAR_ROW]),
-                        )
-                    }
-                }
-                if (recommended.isNotEmpty()) {
-                    item {
-                        ItemRow(
-                            title = stringResource(R.string.recommended),
-                            items = recommended,
-                            onClickItem = { index, item ->
-                                position = RECOMMENDED_ROW
-                                onClickItem.invoke(index, item)
-                            },
-                            onLongClickItem = { index, similar ->
-                                position = RECOMMENDED_ROW
-                                onLongClickSimilar.invoke(index, similar)
-                            },
-                            cardContent = { index, item, mod, onClick, onLongClick ->
-                                DiscoverItemCard(
-                                    item = item,
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    showOverlay = true,
-                                    modifier = mod,
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                        )
-                    }
-                }
-            }
+    val info =
+        remember(series) {
+            listOfNotNull(
+                series.firstAirDate?.take(4)?.takeIf { it.isNotBlank() },
+                series.seasons
+                    ?.count { (it.seasonNumber ?: 0) > 0 }
+                    ?.takeIf { it > 0 }
+                    ?.let { if (it == 1) "1 season" else "$it seasons" },
+                series.genres
+                    ?.mapNotNull { it.name }
+                    ?.take(2)
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.joinToString(" · "),
+            ).joinToString(" · ")
         }
-    }
-    moreDialog?.let { params ->
-        DialogPopup(
-            showDialog = true,
-            title = params.title,
-            dialogItems = params.items,
-            onDismissRequest = { moreDialog = null },
-            dismissOnClick = true,
-            waitToLoad = params.fromLongClick,
-        )
-    }
+    RequestTitlePage(
+        isMovie = false,
+        tmdbId = series.id,
+        title = series.name.orEmpty(),
+        story = series.overview,
+        info = info,
+        backdropUrl = backdropUrl,
+        availability = availability,
+        isAdmin = isAdmin,
+        canRequest = userConfig.canRequestTv,
+        canCancel = canCancel,
+        cantFind = cantFindNow,
+        trailers = trailers,
+        rating = rating,
+        similar = similar,
+        recommended = recommended,
+        people = people,
+        requestOnClick = requestOnClick,
+        cancelOnClick = cancelOnClick,
+        goToOnClick = goToOnClick,
+        trailerOnClick = trailerOnClick,
+        onClickItem = { onClickItem(0, it) },
+        onClickPerson = onClickPerson,
+        modifier = modifier,
+    )
 }
 
 @Composable

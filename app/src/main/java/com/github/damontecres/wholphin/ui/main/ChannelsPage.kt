@@ -334,6 +334,7 @@ private fun GuideGrid(
     val mine by ChannelPrefs.mine.collectAsState()
     var favouriteMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
     var laterMenu by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
+    var channelPage by remember { mutableStateOf<ChannelSchedule?>(null) }
     val reminders by ChannelPrefs.reminders.collectAsState()
     // Number buttons anywhere on the page: wait a moment for more digits, then turn that channel on
     LaunchedEffect(digits) {
@@ -542,10 +543,11 @@ private fun GuideGrid(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.height(ROW_HEIGHT),
                 ) {
-                    // Channel number, logo or badge, and the name. Press it to star the channel
+                    // Channel number, logo or badge, and the name. Press it for the channel's own page; hold to star it
                     val starred = schedule.key in favourites
                     Surface(
-                        onClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                        onClick = { channelPage = schedule },
+                        onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors =
                             ClickableSurfaceDefaults.colors(
@@ -793,6 +795,17 @@ private fun GuideGrid(
                     },
                 ),
             onDismissRequest = { laterMenu = null },
+        )
+    }
+    channelPage?.let { schedule ->
+        ChannelTitleSheet(
+            schedule = schedule,
+            now = now,
+            onWatch = {
+                channelPage = null
+                viewModel.watch(schedule)
+            },
+            onDismiss = { channelPage = null },
         )
     }
     favouriteMenu?.let { schedule ->

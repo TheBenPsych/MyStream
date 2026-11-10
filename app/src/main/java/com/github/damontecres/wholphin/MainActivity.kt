@@ -8,7 +8,6 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.VisibleForTesting
@@ -66,6 +65,7 @@ import com.github.damontecres.wholphin.ui.BenflixIntro
 import com.github.damontecres.wholphin.ui.CoilConfig
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.collectLatestIn
+import com.github.damontecres.wholphin.ui.components.BenflixNoticeLayer
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -370,6 +370,10 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.RequestArrivedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Benflix notices: the 7-second corner card and the white pill
+                                                BenflixNoticeLayer(
+                                                    currentDestination = navigationManager.backStack.lastOrNull(),
+                                                )
                                                 // Benflix: "Sorry, Ben couldn't find it"
                                                 com.github.damontecres.wholphin.ui.main.CantFindLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
@@ -419,9 +423,25 @@ class MainActivity : AppCompatActivity() {
             return true
         } else {
             screensaverService.pulse()
+            // Benflix notices: OK while a corner card shows opens it (the card never takes the remote's focus)
+            if (event.keyCode in OK_KEYS) {
+                val notices = com.github.damontecres.wholphin.ui.components.BenflixNotices
+                if (event.action == KeyEvent.ACTION_DOWN && (okToCard || notices.wantsOk())) {
+                    okToCard = true
+                    return true
+                }
+                if (event.action == KeyEvent.ACTION_UP && okToCard) {
+                    okToCard = false
+                    notices.openShowing()
+                    return true
+                }
+            }
             return super.dispatchKeyEvent(event)
         }
     }
+
+    /** OK went down while a corner card was showing, so letting go opens it (not the page under it) */
+    private var okToCard = false
 
     override fun onResume() {
         super.onResume()
@@ -577,9 +597,8 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Error switching preferredDisplayModeId to %s", modeId)
-                Toast
-                    .makeText(this@MainActivity, "Error changing display mode", Toast.LENGTH_SHORT)
-                    .show()
+                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                    .pill("Error changing display mode")
             }
         }
     }

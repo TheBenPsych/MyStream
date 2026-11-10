@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.main
 
-import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -98,7 +97,10 @@ private fun HomeWeatherRow(viewModel: HomeWeatherViewModel = hiltViewModel()) {
     val problem by viewModel.problem.collectAsState()
     val busy by viewModel.busy.collectAsState()
     var typing by remember { mutableStateOf(false) }
-    val done: (String) -> Unit = { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    val done: (String) -> Unit = {
+        com.github.damontecres.wholphin.ui.components.BenflixNotices
+            .pill(it)
+    }
     val current = town
     when {
         current == null && problem != null -> {

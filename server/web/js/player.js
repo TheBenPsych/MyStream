@@ -159,13 +159,37 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       t.kind = "subtitles"; t.label = s.DisplayTitle || s.Language || "Subtitles"; t.srclang = s.Language || "en";
       t.src = streamUrl(withKey(s.DeliveryUrl.replace(/\/Stream\.\w+/, "/Stream.vtt")));
       t.dataset.index = s.Index;
+      t.addEventListener("load", moveCues);
       v.appendChild(t);
     });
     showSubs();
     v.play().catch(() => { msg(""); B.toast("Press play to start."); });
     report("", {});
   };
-  const showSubs = () => { Array.from(v.textTracks).forEach((t, i) => { const tr = $$("track", v)[i]; t.mode = tr && +tr.dataset.index === subIndex ? "showing" : "disabled"; }); };
+  const showSubs = () => { Array.from(v.textTracks).forEach((t, i) => { const tr = $$("track", v)[i]; t.mode = tr && +tr.dataset.index === subIndex ? "showing" : "disabled"; }); moveCues(); };
+
+  // ---------- Subtitle timing: move the words earlier or later by hand (kept for this video in this browser) ----------
+  const delayKey = "benflix-subdelay-" + it.Id;
+  let subDelay = 0;
+  try { subDelay = +localStorage.getItem(delayKey) || 0; } catch (e) {}
+  function moveCues() {
+    Array.from(v.textTracks).forEach((t) => {
+      Array.from(t.cues || []).forEach((c) => {
+        if (c.bfStart == null) { c.bfStart = c.startTime; c.bfEnd = c.endTime; }
+        c.startTime = Math.max(0, c.bfStart + subDelay);
+        c.endTime = Math.max(c.startTime + 0.01, c.bfEnd + subDelay);
+      });
+    });
+  }
+  const delayText = () => subDelay === 0 ? "Right now: not moved" : `Right now: ${Math.abs(subDelay).toFixed(1)} seconds ${subDelay > 0 ? "later" : "earlier"}`;
+  const nudgeSubs = (by) => {
+    subDelay = by === 0 ? 0 : Math.round((subDelay + by) * 10) / 10;
+    try { localStorage.setItem(delayKey, String(subDelay)); } catch (e) {}
+    moveCues();
+    const now = $(".player .panel [data-delaynow]");
+    if (now) now.textContent = delayText();
+    B.toast("Subtitles: " + (subDelay === 0 ? "back to normal" : `${Math.abs(subDelay).toFixed(1)} seconds ${subDelay > 0 ? "later" : "earlier"}`));
+  };
 
   // ---------- chapters bar ----------
   const segs = chapters.length > 1 && dur ? chapters.map((c, i) => ({ name: c.Name, start: c.StartPositionTicks / B.TICKS, end: i + 1 < chapters.length ? chapters[i + 1].StartPositionTicks / B.TICKS : dur })) : [{ name: "", start: 0, end: dur || 1 }];
@@ -321,6 +345,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Audio and subtitles</h3>
       <h4>Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
       <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
+      ${subIndex !== -1 && (subs.find((x) => x.Index === subIndex) || {}).DeliveryMethod === "External" ? `<h4>Subtitle timing</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later (keys G and H work too). <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-1, "−1 s"], [-0.5, "−½ s"], [0, "Reset"], [0.5, "+½ s"], [1, "+1 s"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : ""}
       <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
       ${segments.tower && !B.me.kids ? `<h4>Skip came at the wrong time?</h4><p class="dim" style="font-size:13px;margin:-4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}` : ""}
@@ -331,7 +356,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
-      const fx = e.target.closest("[data-fix]");
+      const fx = e.target.closest("[data-fix]"), dl = e.target.closest("[data-delay]");
+      if (dl) return nudgeSubs(+dl.dataset.delay);
       if (fx) { p.remove(); return fixSkip(fx.dataset.fix); }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
       if (e.target.closest("[data-subsync]")) { p.remove(); return fixSubs(); }
@@ -411,6 +437,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if (k === "f" || k === "F") full();
     else if (k === "m" || k === "M") $("#pVol").click();
     else if (k === "s" || k === "S") toggleSubs();
+    else if (k === "g" || k === "G") nudgeSubs(-0.5);
+    else if (k === "h" || k === "H") nudgeSubs(0.5);
     else if (k === "Enter") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); else return; }
     else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
     else if (k === "e" && $("#pList")) $("#pList").click();
@@ -435,7 +463,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   };
   const KEYS = [
     ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
-    ["F", "Full screen"], ["M", "Sound on / off"], ["S", "Subtitles on / off"], ["Enter", "Skip intro or credits"],
+    ["F", "Full screen"], ["M", "Sound on / off"], ["S", "Subtitles on / off"], ["G / H", "Subtitles earlier / later"], ["Enter", "Skip intro or credits"],
     ["N", "Next episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
   ];
   const showKeys = () => {

@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,12 +65,9 @@ class AniListButtonViewModel
                 ResumeTimer.expectedTrip = false
                 Timber.w(ex, "Could not open the AniList sign-in page")
             }
-            Toast
-                .makeText(
-                    context,
-                    "Sign in on your phone instead: Benflix > My Benflix > AniList. This TV picks it up by itself.",
-                    Toast.LENGTH_LONG,
-                ).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                "Sign in on your phone instead: Benflix > My Benflix > AniList. This TV picks it up by itself.",
+            )
         }
     }
 
@@ -125,12 +121,9 @@ class MalButtonViewModel
                 ResumeTimer.expectedTrip = false
                 Timber.w(ex, "Could not open the MyAnimeList sign-in page")
             }
-            Toast
-                .makeText(
-                    context,
-                    "Sign in on your phone instead: Benflix > My Benflix > MyAnimeList. This TV picks it up by itself.",
-                    Toast.LENGTH_LONG,
-                ).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                "Sign in on your phone instead: Benflix > My Benflix > MyAnimeList. This TV picks it up by itself.",
+            )
         }
     }
 

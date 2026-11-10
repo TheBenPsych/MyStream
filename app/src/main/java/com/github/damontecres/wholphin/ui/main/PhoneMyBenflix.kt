@@ -35,8 +35,6 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.components.PhoneRemoteDialog
-import com.github.damontecres.wholphin.ui.components.UpdateBang
-import com.github.damontecres.wholphin.ui.components.rememberUpdateAlert
 import com.github.damontecres.wholphin.ui.nav.TopNavTab
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
@@ -126,10 +124,6 @@ fun PhoneMyBenflixHeader(
                             .clickable(onClick = menu.onClickSettings),
                 ) {
                     Text(text = stringResource(R.string.fa_gear), fontFamily = FontAwesome, fontSize = 19.sp, color = Color.White)
-                    // Update ready: the "!" leads on to Help inside Settings
-                    if (rememberUpdateAlert()) {
-                        UpdateBang(size = 14.dp, modifier = Modifier.align(Alignment.TopEnd))
-                    }
                 }
             }
         }

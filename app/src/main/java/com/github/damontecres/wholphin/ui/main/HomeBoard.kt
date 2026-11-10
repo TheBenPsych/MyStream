@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -58,22 +60,22 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /*
- * Benflix Home, the approved Today board (f3-panel, 2026-11-10).
- *
- * Everything sits on one grid, measured in "u" (on a TV, about 1.45% of the screen's width):
- *   doors  = six 12u squares, 3 by 2, 1.1u apart (so the door block is 38.2u wide and 25.2u tall)
- *   list   = 2.4u to the right of the doors, a soft panel exactly as tall as the doors, 4 rows
- *            (2 rows for each row of doors). A quiet day (2 rows) is one door row tall, level with the bottom row.
- * Phones: the doors 3 by 2 across the screen, the list underneath.
- * Every door uses the same word sizes, picked so the longest name fits on one line and the longest description
- * on two, so all names sit level. List words are picked the same way so nothing is ever cut short.
+ * Benflix Home (Redesign 2, approved hm-tall 2026-11-10). Everything sits on one grid, measured in "u"
+ * (on a TV, about 1.4% of the screen's width):
+ *   doors  = six 13u squares, 3 by 2, 1.1u apart (bigger than before)
+ *   news   = 2.4u to the right of the doors, a soft panel exactly as tall as them: Clear all at its top right,
+ *            then up to 6 rows. Each row: a small square poster, a small coloured line saying what it is
+ *            (NEW EPISODE · S3 E12), the name on up to 2 lines (a longer one slides by when you land on it), and an X.
+ *            A busy day keeps the last line for "4 more" and See all, which opens the side panel.
+ * Phones: the doors 3 by 2 across the screen, the panel (5 rows) underneath; See all opens a sheet from the bottom.
  */
 
-private const val DOOR = 12f
+private const val DOOR = 13f
 private const val DOOR_GAP = 1.1f
 private const val BLOCK_GAP = 2.4f
 private const val BLOCK_HEIGHT = 2 * DOOR + DOOR_GAP
-private const val SCREEN_WIDTH = 64.2f
+private const val LIST_WIDTH = 26f
+private const val SCREEN_WIDTH = 3 * DOOR + 2 * DOOR_GAP + BLOCK_GAP + LIST_WIDTH
 
 /** The soft dark panel behind the list (a step above the page, below the cards) */
 private val PanelColor = Color(0xFF111319)
@@ -84,8 +86,9 @@ fun HomeBoard(
     greeting: String,
     weather: String?,
     doors: List<BenflixDoor>,
-    rows: List<HomeRow>,
+    rows: HomeParts,
     wide: Boolean,
+    lite: Boolean,
     labelAlpha: (Int) -> Float,
     listAlpha: () -> Float,
     doorModifier: (BenflixDoor) -> Modifier,
@@ -93,26 +96,63 @@ fun HomeBoard(
     onRow: (HomeRow) -> Unit,
     onClear: (HomeRow) -> Unit,
     onClearAll: () -> Unit,
+    onSeen: () -> Unit,
     focusDoors: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val list = remember(rows, wide) { arrangeHomeRows(rows, if (wide) MAX_HOME_ROWS else MAX_PHONE_ROWS) }
     // After an X or Clear all, the remote's focus moves to the next row's X (or back to the doors when the list is
     // empty), so it never gets lost on a TV
     val xFocus = remember { List(MAX_HOME_ROWS) { FocusRequester() } }
     var refocus by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(rows) {
+    LaunchedEffect(list) {
         val i = refocus ?: return@LaunchedEffect
         refocus = null
-        if (rows.isEmpty()) focusDoors() else xFocus[minOf(i, rows.size - 1)].tryRequestFocus()
+        if (list.rows.isEmpty()) focusDoors() else xFocus[minOf(i, list.rows.size - 1)].tryRequestFocus()
     }
     val clearRow: (HomeRow) -> Unit = { row ->
-        refocus = rows.indexOf(row).coerceAtLeast(0)
+        refocus = list.rows.indexOf(row).coerceAtLeast(0)
         onClear(row)
     }
     val clearAll: () -> Unit = {
         refocus = 0
         onClearAll()
     }
+    // See all: the side panel (TV) or the sheet from the bottom (phone) with everything new
+    var seeAll by remember { mutableStateOf(false) }
+    val seeAllFocus = remember { FocusRequester() }
+    var backToSeeAll by remember { mutableStateOf(false) }
+    LaunchedEffect(backToSeeAll) {
+        if (!backToSeeAll) return@LaunchedEffect
+        backToSeeAll = false
+        kotlinx.coroutines.delay(150)
+        if (!seeAllFocus.tryRequestFocus()) focusDoors()
+    }
+    if (seeAll) {
+        LaunchedEffect(Unit) { onSeen() }
+        SeeAllPanel(
+            rows = rows.all,
+            lite = lite,
+            onRow = {
+                seeAll = false
+                onRow(it)
+            },
+            onClear = onClear,
+            onClearAll = {
+                seeAll = false
+                clearAll()
+            },
+            onClose = {
+                seeAll = false
+                backToSeeAll = true
+            },
+        )
+    }
+    // Phones: the list is right there under the doors, so seeing Home counts as looking at it
+    if (!wide) {
+        LaunchedEffect(list) { if (list.rows.any { it.news }) onSeen() }
+    }
+    val rowWords = RowLook(onRow = onRow, onClear = clearRow, onFocus = onSeen, lite = lite)
     if (wide) {
         BoxWithConstraints(
             modifier =
@@ -121,16 +161,10 @@ fun HomeBoard(
                     .padding(end = 24.dp, top = 12.dp, bottom = 34.dp),
         ) {
             // Room for the greeting and weather line above the doors
-            val greetingRoom = 104.dp
+            val greetingRoom = 96.dp
             val u = minOf(maxWidth / SCREEN_WIDTH, (maxHeight - greetingRoom) / BLOCK_HEIGHT).coerceAtLeast(4.dp)
             Column(Modifier.fillMaxSize()) {
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-                    Box(Modifier.weight(1f)) { Greeting(greeting, weather, tv = true) }
-                    // Clear all sits just above the list's right edge (D-pad up from the top row)
-                    if (rows.isNotEmpty()) {
-                        ClearAllButton(clearAll, tv = true, modifier = Modifier.graphicsLayer { alpha = listAlpha() })
-                    }
-                }
+                Greeting(greeting, weather, tv = true)
                 Spacer(Modifier.weight(1f))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(u * BLOCK_GAP),
@@ -138,11 +172,13 @@ fun HomeBoard(
                 ) {
                     DoorGrid(doors, u, u * DOOR_GAP, labelAlpha, doorModifier, onDoor)
                     ListPanel(
-                        rows = rows,
+                        list = list,
                         u = u,
-                        onRow = onRow,
-                        onClear = clearRow,
+                        look = rowWords,
                         xFocus = xFocus,
+                        onClearAll = clearAll,
+                        onSeeAll = { seeAll = true },
+                        seeAllFocus = seeAllFocus,
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -167,22 +203,29 @@ fun HomeBoard(
                 val u = (maxWidth - gap * 2) / 3 / DOOR
                 DoorGrid(doors, u, gap, labelAlpha, doorModifier, onDoor)
             }
-            if (rows.isNotEmpty()) {
+            if (list.rows.isNotEmpty()) {
                 Spacer(Modifier.height(18.dp))
-                PhoneList(rows, onRow, clearRow, xFocus, Modifier.graphicsLayer { alpha = listAlpha() })
-                ClearAllButton(
-                    clearAll,
-                    tv = false,
-                    modifier =
-                        Modifier
-                            .align(Alignment.End)
-                            .padding(top = 6.dp)
-                            .graphicsLayer { alpha = listAlpha() },
+                PhoneList(
+                    list = list,
+                    look = rowWords,
+                    xFocus = xFocus,
+                    onClearAll = clearAll,
+                    onSeeAll = { seeAll = true },
+                    seeAllFocus = seeAllFocus,
+                    modifier = Modifier.graphicsLayer { alpha = listAlpha() },
                 )
             }
         }
     }
 }
+
+/** What every row does, handed down to each one */
+private class RowLook(
+    val onRow: (HomeRow) -> Unit,
+    val onClear: (HomeRow) -> Unit,
+    val onFocus: () -> Unit,
+    val lite: Boolean,
+)
 
 @Composable
 private fun Greeting(
@@ -355,120 +398,98 @@ private fun TextMeasurer.fits(
     return !result.hasVisualOverflow
 }
 
-/** How tall a list row's words are (in pixels) at these sizes, wrapping as much as they need */
-private fun TextMeasurer.rowHeight(
-    row: HomeRow,
-    titleSp: Float,
-    detailSp: Float,
-    gapPx: Int,
-    width: Int,
-): Int {
-    val title =
-        measure(
-            text = row.title,
-            style = TextStyle(fontSize = titleSp.sp, fontWeight = FontWeight.Bold, lineHeight = (titleSp * 1.2f).sp),
-            constraints = Constraints(maxWidth = width),
-        ).size.height
-    if (row.detail.isBlank()) return title
-    val detail =
-        measure(
-            text = row.detail,
-            style = TextStyle(fontSize = detailSp.sp, fontWeight = FontWeight.Medium, lineHeight = (detailSp * 1.3f).sp),
-            constraints = Constraints(maxWidth = width),
-        ).size.height
-    return title + gapPx + detail
-}
-
 /** Word sizes shared by every list row, so they look even */
 private data class RowWords(
+    val kind: TextUnit,
     val title: TextUnit,
-    val detail: TextUnit,
 )
 
-/** TV, tablets and phones turned sideways: the soft panel beside the doors */
+/** TV, tablets and phones turned sideways: the soft panel beside the doors, exactly as tall as them */
 @Composable
 private fun ListPanel(
-    rows: List<HomeRow>,
+    list: HomeList,
     u: Dp,
-    onRow: (HomeRow) -> Unit,
-    onClear: (HomeRow) -> Unit,
+    look: RowLook,
     xFocus: List<FocusRequester>,
+    onClearAll: () -> Unit,
+    onSeeAll: () -> Unit,
+    seeAllFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    if (rows.isEmpty()) {
+    if (list.rows.isEmpty()) {
         Box(modifier)
         return
     }
-    // A quiet day: two rows, one door row tall, level with the bottom row of doors
-    val quiet = rows.size <= 2
-    val slots = if (quiet) 2 else rows.size
     val inset = u * 0.35f
-    BoxWithConstraints(modifier, contentAlignment = Alignment.BottomStart) {
-        val panelHeight = if (quiet) u * DOOR else maxHeight
+    val header = u * 2.3f
+    val slots = MAX_HOME_ROWS
+    BoxWithConstraints(modifier) {
         // The thin lines between rows take 1 dp each
-        val rowHeight = (panelHeight - inset * 2 - 1.dp * (slots - 1)) / slots
-        val rowPad = u * 0.85f
-        val thumbWidth = u * 2.6f
-        val clearSize = u * 2.2f
+        val rowHeight = (maxHeight - inset * 2 - header - 1.dp * (slots - 1)) / slots
+        val rowPad = u * 0.6f
+        val clearSize = u * 2.1f
         val density = LocalDensity.current
-        val measurer = rememberTextMeasurer()
-        // The words' width: the row less its padding, the dot, the two gaps, the picture and the X
-        val textWidth =
-            with(density) {
-                (maxWidth - inset * 2 - rowPad * 2 - u * 0.6f - u * 1.8f - thumbWidth - clearSize - u * 0.3f)
-                    .roundToPx()
-                    .coerceAtLeast(1)
-            }
-        val textRoom = with(density) { (rowHeight - u * 1.0f).roundToPx() }
         val words =
-            remember(rows, textWidth, textRoom, density.fontScale) {
+            remember(rowHeight, u, density.fontScale) {
+                // Start at the sheet's sizes, then shrink both together until the small line and 2 lines of name fit
                 val toSp = { d: Dp -> d.value / density.fontScale }
-                val title0 = toSp(u * 1.08f).coerceIn(10f, 24f)
-                val detail0 = toSp(u * 0.84f).coerceIn(9f, 19f)
-                val gapPx = with(density) { (u * 0.15f).roundToPx() }
-                var scale = 1f
-                while (scale > 0.62f && rows.any { measurer.rowHeight(it, title0 * scale, detail0 * scale, gapPx, textWidth) > textRoom }) {
-                    scale -= 0.04f
+                var kind = toSp(u * 0.7f).coerceIn(9f, 16f)
+                var title = toSp(u * 1.0f).coerceIn(11f, 22f)
+                val room = (rowHeight - u * 0.5f).value
+                while (title > 9f && (kind * 1.3f + title * 1.2f * 2) * density.fontScale > room) {
+                    kind *= 0.95f
+                    title *= 0.95f
                 }
-                RowWords((title0 * scale).sp, (detail0 * scale).sp)
+                RowWords(kind.sp, title.sp)
             }
         Column(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .height(panelHeight)
+                    .fillMaxSize()
                     .clip(RoundedCornerShape(u * 0.9f))
                     .background(PanelColor)
                     .padding(inset),
         ) {
-            rows.forEachIndexed { i, row ->
+            // Clear all sits at the panel's top right (Up from the top row)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().height(header),
+            ) {
+                Spacer(Modifier.weight(1f))
+                SmallButton("Clear all", onClearAll, tv = true)
+            }
+            list.rows.forEachIndexed { i, row ->
                 if (i > 0) RowDivider(Modifier.padding(horizontal = rowPad))
                 ListRow(
                     row = row,
+                    look = look,
                     words = words,
-                    dot = u * 0.6f,
-                    gap = u * 0.9f,
-                    thumbWidth = thumbWidth,
+                    gap = u * 0.8f,
+                    thumb = rowHeight - u * 0.7f,
                     pad = rowPad,
                     corner = u * 0.6f,
-                    onClick = { onRow(row) },
-                    onClear = { onClear(row) },
                     clearSize = clearSize,
                     clearFocus = xFocus[i],
                     modifier = Modifier.fillMaxWidth().height(rowHeight),
                 )
             }
+            if (list.more > 0) {
+                RowDivider(Modifier.padding(horizontal = rowPad))
+                MoreLine(list.more, onSeeAll, seeAllFocus, tv = true, modifier = Modifier.height(rowHeight).padding(horizontal = rowPad))
+            }
         }
     }
 }
 
-/** Phones: the list in the same soft panel, under the doors; rows are as tall as their words need */
+/** Phones: the same soft panel under the doors; rows are as tall as their words need */
 @Composable
 private fun PhoneList(
-    rows: List<HomeRow>,
-    onRow: (HomeRow) -> Unit,
-    onClear: (HomeRow) -> Unit,
+    list: HomeList,
+    look: RowLook,
     xFocus: List<FocusRequester>,
+    onClearAll: () -> Unit,
+    onSeeAll: () -> Unit,
+    seeAllFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -479,23 +500,111 @@ private fun PhoneList(
                 .background(PanelColor)
                 .padding(5.dp),
     ) {
-        rows.forEachIndexed { i, row ->
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.weight(1f))
+            SmallButton("Clear all", onClearAll, tv = false)
+        }
+        list.rows.forEachIndexed { i, row ->
             if (i > 0) RowDivider(Modifier.padding(horizontal = 12.dp))
             ListRow(
                 row = row,
-                words = RowWords(15.sp, 13.sp),
-                dot = 8.dp,
+                look = look,
+                words = RowWords(11.sp, 15.sp),
                 gap = 12.dp,
-                thumbWidth = 40.dp,
-                pad = 12.dp,
+                thumb = 46.dp,
+                pad = 10.dp,
                 corner = 11.dp,
-                onClick = { onRow(row) },
-                onClear = { onClear(row) },
                 clearSize = 36.dp,
                 clearFocus = xFocus[i],
                 modifier = Modifier.fillMaxWidth(),
-                vertical = 11.dp,
+                vertical = 8.dp,
             )
+        }
+        if (list.more > 0) {
+            RowDivider(Modifier.padding(horizontal = 12.dp))
+            MoreLine(list.more, onSeeAll, seeAllFocus, tv = false, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+        }
+    }
+}
+
+/** The bottom line on a busy day: "4 more" and See all */
+@Composable
+private fun MoreLine(
+    more: Int,
+    onSeeAll: () -> Unit,
+    focus: FocusRequester,
+    tv: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "$more more",
+            color = BenflixColors.Muted,
+            fontSize = if (tv) BenflixType.body else BenflixType.small,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        SmallButton("See all ›", onSeeAll, tv = tv, modifier = Modifier.focusRequester(focus))
+    }
+}
+
+/** See all: everything new in the side panel (TV and web) or a sheet from the bottom (phone), with Clear all */
+@Composable
+private fun SeeAllPanel(
+    rows: List<HomeRow>,
+    lite: Boolean,
+    onRow: (HomeRow) -> Unit,
+    onClear: (HomeRow) -> Unit,
+    onClearAll: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    com.github.damontecres.wholphin.ui.components.BenflixPanelDialog(onDismissRequest = onClose) {
+        val first = remember { FocusRequester() }
+        val xs = remember(rows.size) { List(rows.size) { FocusRequester() } }
+        val look = remember(lite) { RowLook(onRow = onRow, onClear = onClear, onFocus = {}, lite = lite) }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                Text(
+                    text = "Everything new",
+                    color = BenflixColors.Text,
+                    fontSize = BenflixType.pageTitle,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.weight(1f),
+                )
+                SmallButton("Clear all", onClearAll, tv = isTv)
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                if (rows.isEmpty()) {
+                    Text("Nothing new right now", color = BenflixColors.Muted, fontSize = BenflixType.body)
+                    LaunchedEffect(Unit) { onClose() }
+                }
+                rows.forEachIndexed { i, row ->
+                    ListRow(
+                        row = row,
+                        look = look,
+                        words = if (isTv) RowWords(13.sp, 18.sp) else RowWords(11.sp, 15.sp),
+                        gap = 12.dp,
+                        thumb = if (isTv) 56.dp else 46.dp,
+                        pad = 10.dp,
+                        corner = 12.dp,
+                        clearSize = 38.dp,
+                        clearFocus = xs[i],
+                        rowFocus = if (i == 0) first else null,
+                        modifier = Modifier.fillMaxWidth(),
+                        vertical = 8.dp,
+                    )
+                }
+            }
+        }
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(150)
+            first.tryRequestFocus()
         }
     }
 }
@@ -510,54 +619,62 @@ private fun RowDivider(modifier: Modifier = Modifier) {
     )
 }
 
-/** One list row: a dot in its door's colour, the title and words under it (wrapping, never cut), and a small picture */
+/**
+ * One news row: a small square poster, the small coloured line (what it is), and the name on up to 2 lines.
+ * When you land on it, a name too long for 2 lines slides by on one line (not with Lite mode on).
+ */
 @Composable
 private fun ListRow(
     row: HomeRow,
+    look: RowLook,
     words: RowWords,
-    dot: Dp,
     gap: Dp,
-    thumbWidth: Dp,
+    thumb: Dp,
     pad: Dp,
     corner: Dp,
-    onClick: () -> Unit,
-    onClear: () -> Unit,
     clearSize: Dp,
     clearFocus: FocusRequester,
     modifier: Modifier = Modifier,
     vertical: Dp = 0.dp,
+    rowFocus: FocusRequester? = null,
 ) {
+    var focused by remember { mutableStateOf(false) }
     val content: @Composable () -> Unit = {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = vertical),
         ) {
-            Box(
-                Modifier
-                    .size(dot)
-                    .background(row.dot, CircleShape),
-            )
+            Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = row.kind.uppercase(),
+                    color = row.kindColor,
+                    fontSize = words.kind,
+                    lineHeight = words.kind * 1.3f,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = words.kind * 0.06f,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val slide = focused && !look.lite
                 Text(
                     text = row.title,
                     color = BenflixColors.Text,
                     fontSize = words.title,
                     lineHeight = words.title * 1.2f,
                     fontWeight = FontWeight.Bold,
+                    maxLines = if (slide) 1 else 2,
+                    softWrap = !slide,
+                    overflow = if (slide) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    modifier =
+                        if (slide) {
+                            Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 700, repeatDelayMillis = 1_500)
+                        } else {
+                            Modifier
+                        },
                 )
-                if (row.detail.isNotBlank()) {
-                    Text(
-                        text = row.detail,
-                        color = BenflixColors.Muted,
-                        fontSize = words.detail,
-                        lineHeight = words.detail * 1.3f,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
             }
-            Thumb(row, thumbWidth)
         }
     }
     val shape = RoundedCornerShape(corner)
@@ -567,9 +684,22 @@ private fun ListRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min),
     ) {
-        RowSurface(onClick, shape, Modifier.weight(1f).fillMaxHeight(), content)
+        RowSurface(
+            onClick = { look.onRow(row) },
+            shape = shape,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(if (rowFocus != null) Modifier.focusRequester(rowFocus) else Modifier)
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        if (it.isFocused) look.onFocus()
+                    },
+            content = content,
+        )
         ClearButton(
-            onClear,
+            { look.onClear(row) },
             clearSize,
             Modifier
                 .padding(start = clearSize * 0.12f, end = clearSize * 0.05f)
@@ -606,25 +736,23 @@ private fun RowSurface(
     }
 }
 
-/** The small poster (or square music cover) on the right; the Benflix squares when there's no picture */
+/** The small square poster (or music cover) on the left; the Benflix squares when there's no picture */
 @Composable
 private fun Thumb(
     row: HomeRow,
-    width: Dp,
+    size: Dp,
 ) {
-    val height = if (row.square) width else width * 1.5f
-    val shape = RoundedCornerShape(width * 0.12f)
+    val shape = RoundedCornerShape(size * 0.14f)
     if (row.image == null) {
         Box(
             contentAlignment = Alignment.Center,
             modifier =
                 Modifier
-                    .width(width)
-                    .height(width * 1.5f)
+                    .size(size)
                     .clip(shape)
                     .background(BenflixColors.PanelHigh),
         ) {
-            val sq = width * 0.26f
+            val sq = size * 0.22f
             Column(verticalArrangement = Arrangement.spacedBy(sq * 0.18f)) {
                 listOf(BenflixColors.Movies to BenflixColors.Shows, BenflixColors.LiveTv to BenflixColors.Games).forEach { (a, b) ->
                     Row(horizontalArrangement = Arrangement.spacedBy(sq * 0.18f)) {
@@ -642,8 +770,7 @@ private fun Thumb(
         contentScale = ContentScale.Crop,
         modifier =
             Modifier
-                .width(width)
-                .height(height)
+                .size(size)
                 .clip(shape)
                 .background(BenflixColors.PanelHigh),
     )
@@ -682,9 +809,10 @@ private fun ClearButton(
     }
 }
 
-/** "Clear all": the whole list goes away for this profile (new news still shows when it comes) */
+/** A small word button in the panel: "Clear all" (the whole list goes for this profile) and "See all ›" */
 @Composable
-private fun ClearAllButton(
+private fun SmallButton(
+    label: String,
     onClick: () -> Unit,
     tv: Boolean,
     modifier: Modifier = Modifier,
@@ -708,10 +836,10 @@ private fun ClearAllButton(
         modifier = modifier,
     ) {
         Text(
-            text = "Clear all",
-            fontSize = if (tv) BenflixType.body else BenflixType.small,
+            text = label,
+            fontSize = if (tv) BenflixType.small else BenflixType.small,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
@@ -731,13 +859,13 @@ fun HomeMessageDialog(
             modifier = Modifier.padding(20.dp),
         ) {
             Text(
-                text = row.title,
+                text = row.kind,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.lead,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = row.fullText ?: row.detail,
+                text = row.fullText ?: row.title,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.body,
             )

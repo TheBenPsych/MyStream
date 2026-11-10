@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.main
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -137,7 +136,8 @@ fun HowToPage(modifier: Modifier = Modifier) {
                 selected = false,
                 onClick = {
                     BenflixTips.reset(context)
-                    Toast.makeText(context, "Tips will show again", Toast.LENGTH_SHORT).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Tips will show again")
                 },
                 headlineContent = { Text("Show tips again", fontSize = BenflixType.lead, fontWeight = FontWeight.Medium) },
                 supportingContent = {

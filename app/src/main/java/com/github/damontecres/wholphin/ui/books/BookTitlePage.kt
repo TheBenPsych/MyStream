@@ -1,8 +1,6 @@
 package com.github.damontecres.wholphin.ui.books
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,28 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -46,15 +35,24 @@ import com.github.damontecres.wholphin.services.BookVolume
 import com.github.damontecres.wholphin.services.CoverChoice
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
+import com.github.damontecres.wholphin.ui.detail.title.TitleButton
+import com.github.damontecres.wholphin.ui.detail.title.TitleGrid
+import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
+import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
+import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
+import com.github.damontecres.wholphin.ui.detail.title.TitlePage
+import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
+import com.github.damontecres.wholphin.ui.detail.title.TitleRowName
+import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.TitleTabScope
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * A book's own page (approved design): movie-style, the big cover on the right. Manga get a row of volumes
@@ -117,257 +115,275 @@ fun BookTitlePage(
             onReset = { viewModel.resetCover(p) },
         )
     }
-    val mainFocus = remember { FocusRequester() }
-    LaunchedEffect(p.tile.id) { mainFocus.tryRequestFocus() }
     val onTile: (BookTile) -> Unit = { viewModel.navigationManager.navigateTo(Destination.BookTitle(it.id)) }
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    // Any button up top (Read, Want to read...) shows the whole top of the page, not a cut-off half
-    val heroFocus =
-        Modifier.onFocusChanged {
-            if (it.hasFocus && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
-                scope.launch { listState.animateScrollToItem(0) }
-            }
-        }
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 18.dp),
-        contentPadding = PaddingValues(bottom = 48.dp),
-        modifier = modifier.fillMaxSize(),
-    ) {
-        item(key = "hero") {
-            if (wide) {
-                Box(Modifier.fillMaxWidth().then(heroFocus)) {
-                    // The cover on the right, fading into the page
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = edge, top = 8.dp)
-                            .width(260.dp)
-                            .aspectRatio(BOOK_RATIO),
-                    ) {
-                        BookCoverImage(p.tile.cover, p.tile.name, Modifier.fillMaxSize(), audio = p.tile.isAudio)
-                    }
-                    Box(
-                        Modifier
-                            .matchParentSize()
-                            .background(Brush.horizontalGradient(listOf(BenflixColors.Tray, BenflixColors.Tray, Color.Transparent))),
-                    )
-                    HeroText(p, viewModel, note, mainFocus, Modifier.padding(start = edge, end = 340.dp, top = 8.dp))
-                }
-            } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().then(heroFocus)) {
-                    BookCoverImage(
-                        p.tile.cover,
-                        p.tile.name,
-                        Modifier.width(180.dp).aspectRatio(BOOK_RATIO),
-                        audio = p.tile.isAudio,
-                    )
-                    HeroText(p, viewModel, note, mainFocus, Modifier.padding(horizontal = edge, vertical = 12.dp))
-                }
-            }
-        }
-        if (p.volumes.isNotEmpty()) {
-            item(key = "vols") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    RowName(
-                        (if (p.volumes.size == 1) "1 volume" else "${p.volumes.size} volumes") +
-                            (if (p.totalVols > p.volumes.size) " of ${p.totalVols}" else "") +
-                            (if (isTv) " · hold OK to mark as read" else " · press and hold to mark as read"),
-                        edge,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(horizontal = edge),
-                    ) {
-                        items(p.volumes, key = { it.id }) { v ->
-                            BookCard(
-                                tile = volumeTile(p, v),
-                                width = if (wide) 120.dp else 96.dp,
-                                onClick = { viewModel.openVolume(v) },
-                                onLongClick = { markVol = v },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        if (p.tile.isAudio && p.chapters.size > 1) {
-            item(key = "chapters") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = edge)) {
-                    RowName("${p.chapters.size} chapters", 0.dp)
-                    val shown = p.chapters.take(MAX_CHAPTERS_SHOWN)
-                    FlowRowOf(
-                        shown.map { c ->
-                            "${c.index + 1}. ${c.title}" + (
-                                if (c.seconds >
-                                    0
-                                ) {
-                                    " · " + hoursMinutes(c.seconds)
-                                } else {
-                                    ""
-                                }
-                            )
-                        },
-                    ) { i ->
-                        viewModel.listen(p, shown[i].index)
-                    }
-                }
-            }
-        }
-        if (p.moreBy.isNotEmpty()) {
-            item(key = "by") { TileRow("More by ${p.tile.author}", p.moreBy, wide, edge, onTile) }
-        }
-        if (p.moreLike.isNotEmpty()) {
-            item(key = "like") { TileRow("More like this", p.moreLike, wide, edge, onTile) }
-        }
-    }
+    BookOnTitleFrame(p, viewModel, note, onTile, { markVol = it }, modifier)
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Benflix Redesign 2: the book on the shared title page frame. The cover stands where the picture goes.
+ * Buttons: Read / Listen (or Keep reading), the other way you have it, Want to read, In this series, More.
+ * Tabs: Overview, In this series (manga volumes, or the other books in the series), More by the author,
+ * More like this. Empty tabs are left out.
+ */
 @Composable
-private fun HeroText(
+private fun BookOnTitleFrame(
     p: BookPage,
     viewModel: BookTitleViewModel,
     note: String?,
-    mainFocus: FocusRequester,
+    onTile: (BookTile) -> Unit,
+    onMarkVolume: (BookVolume) -> Unit,
     modifier: Modifier,
 ) {
     val t = p.tile
     val isTv = rememberIsTv()
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = modifier) {
-        Text(
-            text =
-                when (t.kind) {
-                    "manga" -> "MANGA"
-                    "comic" -> "COMIC"
-                    "audiobook" -> "AUDIOBOOK"
-                    else -> "BOOK"
-                },
-            color = BenflixColors.Books,
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.ExtraBold,
-        )
-        Text(
-            text = t.name,
-            color = BenflixColors.Text,
-            fontSize = BenflixType.hero,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val bits =
-            buildList {
-                if (t.author.isNotBlank()) add(t.author)
-                if (p.narrator.isNotBlank()) add("Read by ${p.narrator}")
-                t.year?.let { add("$it") }
-                if (t.isAudio && p.seconds > 0) {
-                    add(if (p.secondsLeft in 1 until p.seconds) hoursMinutes(p.secondsLeft) + " left" else hoursMinutes(p.seconds))
-                }
-                if (!t.isAudio && !t.isManga && p.minutes > 0) add("About ${hoursMinutes(p.minutes * 60)} to read")
-                if (t.series.isNotBlank() &&
-                    !t.isManga
-                ) {
-                    add(t.series + (t.seriesIndex?.let { " #" + it.toString().removeSuffix(".0") } ?: ""))
-                }
+    var showMore by remember { mutableStateOf(false) }
+    val seriesBooks =
+        remember(p) {
+            if (t.series.isBlank()) {
+                emptyList()
+            } else {
+                (p.moreBy + p.moreLike)
+                    .filter {
+                        it.series == t.series && it.id != t.id
+                    }.distinctBy { it.id }
             }
-        Text(bits.joinToString("  ·  "), color = BenflixColors.Soft, fontSize = BenflixType.lead, maxLines = 2)
-        if (p.scores.isNotEmpty()) {
-            Text(
-                p.scores.joinToString("   ") { s -> "${s.site} " + "%.1f".format(s.score) + "/${s.outOf}" },
-                color = BenflixColors.Books,
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.Bold,
-            )
         }
-        if (p.desc.isNotBlank()) {
-            Text(
-                p.desc,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                maxLines = if (isTv) 4 else 6,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (p.missing > 0) {
-            Text(
-                "Tower is missing ${p.missing} " + (if (p.missing == 1) "part" else "parts") + " of this audiobook.",
-                color = BenflixColors.Warning,
-                fontSize = BenflixType.small,
-            )
-        }
-        if (p.placeLine.isNotBlank()) Text(p.placeLine, color = BenflixColors.Muted, fontSize = BenflixType.small)
-        if (!t.readable && !t.isAudio) {
-            Text(
-                "This kind of file (${p.file.removePrefix(".").uppercase()}) can't be opened in Benflix. EPUB and PDF can.",
-                color = BenflixColors.Warning,
-                fontSize = BenflixType.small,
-            )
-        }
-        note?.let { Text(it, color = BenflixColors.Books, fontSize = BenflixType.small, fontWeight = FontWeight.Bold) }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val main =
+    val hasSeries = p.volumes.isNotEmpty() || seriesBooks.isNotEmpty()
+    val main =
+        when {
+            t.isManga -> {
+                val nv = p.volumes.firstOrNull { it.id == p.next }
                 when {
-                    t.isManga -> {
-                        val nv = p.volumes.firstOrNull { it.id == p.next }
-                        if (nv == null) {
-                            null
-                        } else if (nv.progress > 0f && !nv.done) {
-                            "Keep reading ${nv.name}"
-                        } else {
-                            "Read ${nv.name}"
-                        }
-                    }
-
-                    t.isAudio -> {
-                        if (p.placePos > 0) "Keep listening" else "Listen"
-                    }
-
-                    !t.readable -> {
-                        null
-                    }
-
-                    else -> {
-                        if (p.placePct > 0.005f && t.status != "done") "Keep reading ${(p.placePct * 100).toInt()}%" else "Read"
-                    }
+                    nv == null -> null
+                    nv.progress > 0f && !nv.done -> "Keep reading ${nv.name}"
+                    else -> "Read ${nv.name}"
                 }
-            if (main != null) {
-                MusicButton(
-                    label = main,
+            }
+
+            t.isAudio -> {
+                if (p.placePos > 0) "Keep listening" else "Listen"
+            }
+
+            !t.readable -> {
+                null
+            }
+
+            else -> {
+                if (p.placePct > 0.005f && t.status != "done") "Keep reading ${(p.placePct * 100).toInt()}%" else "Read"
+            }
+        }
+    val buttons =
+        buildList {
+            add(
+                TitleButton(
+                    label = main ?: "Read",
                     icon = if (t.isAudio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
-                    primary = true,
                     onClick = { viewModel.start(p) },
-                    modifier = Modifier.focusRequester(mainFocus),
-                )
-            }
-            if (p.otherId != null) {
-                MusicButton(
-                    label = if (p.otherKind == "audiobook") "Listen" else "Read",
-                    icon = if (p.otherKind == "audiobook") BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
-                    onClick = { viewModel.openOther(p) },
-                )
-            }
-            MusicButton(
-                label = if (t.want) "On Want to read" else "Want to read",
-                icon = if (t.want) BenflixIcon.CHECK else BenflixIcon.PLUS,
-                onClick = { viewModel.toggleWant(p) },
+                    off =
+                        when {
+                            main != null -> null
+
+                            !t.readable && !t.isAudio -> "This kind of file (${p.file.removePrefix(
+                                ".",
+                            ).uppercase()}) can't be opened in Benflix"
+
+                            else -> "Nothing to open yet"
+                        },
+                    note = if (t.isAudio && p.secondsLeft in 1 until p.seconds) hoursMinutes(p.secondsLeft) + " left" else null,
+                ),
             )
-            if (!t.isManga) {
-                MusicButton(
-                    label = if (t.status == "done") "Finished" else "Mark finished",
-                    icon = BenflixIcon.CHECK,
-                    onClick = { viewModel.mark(t.id, t.status != "done", false) },
+            if (p.otherId != null) {
+                val audio = p.otherKind == "audiobook"
+                add(
+                    TitleButton(
+                        if (audio) "Listen" else "Read",
+                        if (audio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
+                        { viewModel.openOther(p) },
+                    ),
                 )
             }
-            if (isTv && t.kind == "book" && t.readable) {
-                MusicButton("Send to my phone", BenflixIcon.PHONE, onClick = { viewModel.sendToPhone(p) })
+            add(
+                TitleButton(
+                    if (t.want) "On Want to read" else "Want to read",
+                    if (t.want) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                    { viewModel.toggleWant(p) },
+                ),
+            )
+            add(
+                TitleButton(
+                    "In this series",
+                    BenflixIcon.LIST,
+                    {},
+                    off = if (hasSeries) null else "This one isn't part of a series",
+                    opensTab = if (hasSeries) SERIES_TAB else null,
+                ),
+            )
+            add(TitleButton("More", BenflixIcon.MORE, { showMore = true }))
+        }
+    val strip =
+        buildList {
+            p.scores.forEach { s -> add(StripPart(s.site, "%.1f".format(s.score) + "/${s.outOf}")) }
+            if (p.narrator.isNotBlank()) add(StripPart("Read by", p.narrator))
+            if (!t.isAudio && !t.isManga && p.minutes > 0) add(StripPart("About ${hoursMinutes(p.minutes * 60)} to read"))
+        }
+    val tabs =
+        buildList {
+            add(
+                TitleTab("Overview") { scope ->
+                    TitleOverview(
+                        scope = scope,
+                        title = t.name,
+                        story = p.desc.takeIf { it.isNotBlank() },
+                        strip = strip,
+                        extra = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (p.missing > 0) {
+                                    Text(
+                                        "Tower is missing ${p.missing} " + (
+                                            if (p.missing ==
+                                                1
+                                            ) {
+                                                "part"
+                                            } else {
+                                                "parts"
+                                            }
+                                        ) + " of this audiobook.",
+                                        color = BenflixColors.Warning,
+                                        fontSize = BenflixType.small,
+                                    )
+                                }
+                                if (p.placeLine.isNotBlank()) Text(p.placeLine, color = BenflixColors.Muted, fontSize = BenflixType.small)
+                                note?.let {
+                                    Text(
+                                        it,
+                                        color = BenflixColors.Books,
+                                        fontSize = BenflixType.small,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                if (t.isAudio && p.chapters.size > 1) {
+                                    Text(
+                                        "${p.chapters.size} chapters",
+                                        color = BenflixColors.Text,
+                                        fontSize = BenflixType.body,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    val shown = p.chapters.take(MAX_CHAPTERS_SHOWN)
+                                    FlowRowOf(
+                                        shown.map { c ->
+                                            "${c.index + 1}. ${c.title}" +
+                                                if (c.seconds > 0) " · " + hoursMinutes(c.seconds) else ""
+                                        },
+                                    ) { i -> viewModel.listen(p, shown[i].index) }
+                                }
+                            }
+                        },
+                    )
+                },
+            )
+            if (hasSeries) {
+                add(
+                    TitleTab(SERIES_TAB) { scope ->
+                        if (p.volumes.isNotEmpty()) {
+                            Column {
+                                TitleRowName(
+                                    (if (p.volumes.size == 1) "1 volume" else "${p.volumes.size} volumes") +
+                                        (if (p.totalVols > p.volumes.size) " of ${p.totalVols}" else "") +
+                                        (if (isTv) " · hold OK to mark as read" else " · press and hold to mark as read"),
+                                    scope,
+                                )
+                                BookTiles(scope, p.volumes.map { volumeTile(p, it) }, onClick = { tile ->
+                                    p.volumes.firstOrNull { it.id == tile.id }?.let(viewModel::openVolume)
+                                }, onLongClick = { tile -> p.volumes.firstOrNull { it.id == tile.id }?.let(onMarkVolume) })
+                            }
+                        } else {
+                            BookTiles(scope, seriesBooks, onTile)
+                        }
+                    },
+                )
             }
-            if (p.canPickCover) {
-                MusicButton("Change cover", BenflixIcon.IMAGE, onClick = { viewModel.loadCovers(p) })
+            if (p.moreBy.isNotEmpty()) {
+                add(
+                    TitleTab(
+                        if (t.author.isNotBlank()) "More by ${t.author}" else "More by this author",
+                    ) { scope -> BookTiles(scope, p.moreBy, onTile) },
+                )
             }
+            if (p.moreLike.isNotEmpty()) {
+                add(TitleTab("More like this") { scope -> BookTiles(scope, p.moreLike, onTile) })
+            }
+        }
+    val info =
+        buildList {
+            add(
+                when (t.kind) {
+                    "manga" -> "Manga"
+                    "comic" -> "Comic"
+                    "audiobook" -> "Audiobook"
+                    else -> "Book"
+                },
+            )
+            if (t.author.isNotBlank()) add(t.author)
+            t.year?.let { add("$it") }
+            if (t.isAudio && p.seconds > 0) add(hoursMinutes(p.seconds))
+            if (t.series.isNotBlank() && !t.isManga) add(t.series + (t.seriesIndex?.let { " #" + it.toString().removeSuffix(".0") } ?: ""))
+        }.joinToString("  ·  ")
+    TitlePage(
+        title = t.name,
+        accent = BenflixColors.Books,
+        picture = TitlePicture.Cover(t.cover, BOOK_RATIO, BenflixColors.Books),
+        info = info,
+        buttons = buttons,
+        tabs = tabs,
+        modifier = modifier,
+    )
+    if (showMore) {
+        TitleMorePanel(
+            title = t.name,
+            onDismiss = { showMore = false },
+            items =
+                buildList {
+                    if (!t.isManga) {
+                        add(
+                            TitleMoreItem(if (t.status == "done") "Mark not finished" else "Mark finished", BenflixIcon.CHECK, {
+                                viewModel.mark(t.id, t.status != "done", false)
+                            }),
+                        )
+                    }
+                    if (isTv && t.kind == "book" &&
+                        t.readable
+                    ) {
+                        add(TitleMoreItem("Send to my phone", BenflixIcon.PHONE, { viewModel.sendToPhone(p) }))
+                    }
+                    if (p.canPickCover) add(TitleMoreItem("Change cover", BenflixIcon.IMAGE, { viewModel.loadCovers(p) }, youOnly = true))
+                },
+        )
+    }
+}
+
+/** Book covers inside a tab: one row on TV, 3 across on phones */
+@Composable
+private fun BookTiles(
+    scope: TitleTabScope,
+    tiles: List<BookTile>,
+    onClick: (BookTile) -> Unit,
+    onLongClick: ((BookTile) -> Unit)? = null,
+) {
+    if (scope.wide) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = scope.side)) {
+            items(tiles, key = { it.id }) { t ->
+                BookCard(t, 110.dp, onClick = { onClick(t) }, onLongClick = onLongClick?.let { { it(t) } })
+            }
+        }
+    } else {
+        TitleGrid(scope, tiles.size) { i, w ->
+            val t = tiles[i]
+            BookCard(t, w, onClick = { onClick(t) }, onLongClick = onLongClick?.let { { it(t) } })
         }
     }
 }
+
+private const val SERIES_TAB = "In this series"
 
 /** A volume as a card: its cover, a tick when read, a bar when part read */
 private fun volumeTile(
@@ -390,38 +406,6 @@ private fun volumeTile(
     sent = false,
     notHere = false,
 )
-
-@Composable
-private fun RowName(
-    text: String,
-    edge: androidx.compose.ui.unit.Dp,
-) {
-    Text(
-        text = text,
-        color = BenflixColors.Text,
-        fontSize = BenflixType.rowName,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = edge),
-    )
-}
-
-@Composable
-private fun TileRow(
-    title: String,
-    tiles: List<BookTile>,
-    wide: Boolean,
-    edge: androidx.compose.ui.unit.Dp,
-    onTile: (BookTile) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        RowName(title, edge)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = edge)) {
-            items(tiles, key = { it.id }) { t ->
-                BookCard(t, if (wide) 130.dp else 104.dp, onClick = { onTile(t) })
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

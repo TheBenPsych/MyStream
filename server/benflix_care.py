@@ -463,6 +463,77 @@ def line_up(cues, speech, frames, reach=90.0):
     return scale, round(shift, 2), round(sure, 2), round(gain, 3)
 
 
+def _score_at(bits, speech, k, mask):
+    moved = (bits << k) & mask if k >= 0 else bits >> -k
+    return (speech & moved).bit_count()
+
+
+def line_up_parts(cues, speech, frames, scale, shift, reach=20.0, part=120.0):
+    """After the whole-video fix, checks the subtitles a couple of minutes at a time. Subtitles
+    made for a different cut of a show (other ad breaks, a longer recap) are right in some parts
+    and seconds off in others, and one shift for the whole video can't see that. Returns the
+    shift for every cue, plus how many parts were checked and how many were sure."""
+    mask = (1 << frames) - 1
+    steps = int(reach / FRAME)
+    placed = [(s * scale + shift, e * scale + shift) for s, e, _ in cues]
+    # Cut the cues into parts of about two minutes each
+    groups, start = [], 0
+    for i in range(1, len(placed) + 1):
+        if i == len(placed) or placed[i][0] - placed[start][0] >= part:
+            groups.append((start, i))
+            start = i
+    if len(groups) > 1 and groups[-1][1] - groups[-1][0] < 8:  # a tiny last part joins the one before
+        groups[-2:] = [(groups[-2][0], groups[-1][1])]
+    moves, sure_parts = [], 0
+    for a, b in groups:
+        bits = bytearray(b"0" * frames)
+        for s, e in placed[a:b]:
+            for i in range(max(0, int(s / FRAME)), min(frames, int(e / FRAME) + 1)):
+                bits[i] = 49
+        bits = int(bits.decode()[::-1], 2)
+        scores = [_score_at(bits, speech, k, mask) for k in range(-steps, steps + 1)]
+        top = max(scores)
+        k = scores.index(top) - steps
+        mean = sum(scores) / len(scores)
+        spread = (sum((x - mean) ** 2 for x in scores) / len(scores)) ** 0.5 or 1
+        here = scores[steps] or 1
+        if b - a >= 6 and (top - mean) / spread >= 3.0:
+            moves.append(k * FRAME if top >= here * 1.05 else 0.0)  # only move a part that clearly gets better
+            sure_parts += 1
+        else:
+            moves.append(None)  # not sure: goes with the parts around it
+    # Unsure parts take the nearest sure part's move (or none)
+    filled = []
+    for i, m in enumerate(moves):
+        if m is None:
+            near = [(abs(j - i), moves[j]) for j in range(len(moves)) if moves[j] is not None]
+            m = min(near)[1] if near else 0.0
+        filled.append(m)
+    # Where two parts meet, the change can fall in the middle of a part: each line picks whichever
+    # of the moves nearby puts it and its neighbours on top of the voices best
+    per_cue = [0.0] * len(cues)
+    for g, (a, b) in enumerate(groups):
+        options = sorted({filled[x] for x in (g - 1, g, g + 1) if 0 <= x < len(filled)}, key=lambda m: m != filled[g])
+        for i in range(a, b):
+            best_m, best_score = filled[g], -1
+            if len(options) > 1:
+                near = placed[max(0, i - 3) : i + 4]
+                for m in options:
+                    score = _cover([(s + m, e + m) for s, e in near], frames, speech)
+                    if score > best_score:
+                        best_m, best_score = m, score
+            per_cue[i] = round(shift + best_m, 2)
+    return per_cue, len(groups), sure_parts
+
+
+def _cover(cues, frames, speech):
+    bits = bytearray(b"0" * frames)
+    for s, e in cues:
+        for i in range(max(0, int(s / FRAME)), min(frames, int(e / FRAME) + 1)):
+            bits[i] = 49
+    return (speech & int(bits.decode()[::-1], 2)).bit_count()
+
+
 def _stream_info(item_id, index=None):
     token, user = _admin()
     if not token:
@@ -518,11 +589,25 @@ def fix_subtitles(item_id, index=None, auto=False):
         raise CareError(400, "Those subtitles are too short to line up.")
     speech, frames = _speech(path)
     scale, shift, sure, gain = line_up(cues, speech, frames)
-    log(f"subtitles {_nice_name(video)}: speed x{scale:.4f}, shift {shift:+.1f}s, sure {sure}, gain {gain}")
-    if sure < (0.55 if auto else 0.35) or gain < (1.15 if auto else 1.04) or (abs(shift) < 0.3 and scale == 1.0):
-        return {"changed": False, "message": "They already look lined up with the voices, so Tower left them alone."}
-    fixed = [[s * scale + shift, e * scale + shift, w] for s, e, w in cues]
+    per_cue, parts, sure_parts = line_up_parts(cues, speech, frames, scale, shift)
+    fixed = [[s * scale + d, e * scale + d, w] for (s, e, w), d in zip(cues, per_cue)]
+    before = _cover([(s, e) for s, e, _ in cues], frames, speech) or 1
+    after = _cover([(s, e) for s, e, _ in fixed], frames, speech)
+    total_gain = round(after / before, 3)
+    log(
+        f"subtitles {_nice_name(video)}: speed x{scale:.4f}, shift {shift:+.1f}s, sure {sure}, gain {gain}; "
+        f"by parts {sorted(set(per_cue))} ({sure_parts} of {parts} parts sure), gain {total_gain}"
+    )
+    biggest = max(per_cue, key=abs) if per_cue else 0.0
+    trusted = sure >= (0.55 if auto else 0.25) or sure_parts * 2 >= parts
+    if not trusted or total_gain < (1.12 if auto else 1.03) or (abs(biggest) < 0.3 and scale == 1.0):
+        why = "They look lined up with the voices to Tower" if trusted else "Tower couldn't hear the voices clearly enough to be sure"
+        return {
+            "changed": False,
+            "message": f"{why}, so it left them alone. If they still look off, move them yourself with Subtitle timing.",
+        }
     fixed = [c for c in fixed if c[1] > 0]
+    shift = biggest
     external = bool(sub.get("IsExternal")) and sub.get("Path", "").lower().endswith(".srt")
     target = sub["Path"] if external else _new_name(path, sub)
     if external:
@@ -538,6 +623,8 @@ def fix_subtitles(item_id, index=None, auto=False):
         _write("subsync.json", done[-300:])
     was = "early" if shift > 0 else "late"  # moved later = they came too early
     speed = "" if scale == 1.0 else " and the speed was a little off"
+    if len(set(per_cue)) > 1:
+        speed += " in some parts of the video (Tower fixed each part on its own)"
     where = "" if external else " They're a new subtitle choice called the same language (pick it in Subtitles)."
     return {"changed": True, "shift": shift, "message": f"Fixed. They were about {abs(shift):.1f} seconds {was}{speed}.{where}"}
 

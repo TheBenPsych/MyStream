@@ -180,14 +180,28 @@ B.savedWeather = () => {
   return "";
 };
 
-// Home's list: up to 4 rows. News first, then your requests On the way, then Did you know (new every time).
-// One spot is kept for the fact and one for On the way; rows come in twos, so a 3rd fact-less row gets a 2nd fact.
+// Home's news panel (Redesign 2, approved hm-tall): up to 5 lines on the web. Your news newest first, then
+// On the way, then one Did you know at the bottom. A quiet day fills up with On the way and Did you know (a second
+// fact when there's very little); a busy day keeps the last line for "4 more" and See all (like the TV and phone).
+const HOME_SLOTS = 5;
 B.arrangeRows = (news, way, facts) => {
-  const out = news.slice(0, 4 - (facts.length ? 1 : 0) - (way.length ? 1 : 0));
-  out.push(...way.slice(0, Math.max(0, 4 - (facts.length ? 1 : 0) - out.length)));
-  out.push(...facts.slice(0, 1));
-  if (out.length % 2 === 1 && facts.length > 1) out.push(facts[1]);
-  return out.slice(0, 4);
+  const all = news.concat(way);
+  if (all.length > HOME_SLOTS) return { rows: all.slice(0, HOME_SLOTS - 1), more: all.length - (HOME_SLOTS - 1), all };
+  const out = all.slice();
+  if (out.length < HOME_SLOTS && facts.length) out.push(facts[0]);
+  if (out.length < 4 && facts.length > 1) out.push(facts[1]);
+  return { rows: out.slice(0, HOME_SLOTS), more: 0, all };
+};
+// The small coloured line's colours: green ready, amber on the way, teal Did you know, grey everything else
+const KIND_READY = "#5BD18B", KIND_WAY = "#FFB547", KIND_FACT = "#3DD6C6", KIND_OTHER = "#9497A3";
+// "On the way, about 20 minutes left" becomes "On the way · 20 min left"
+const wayKind = (line) => {
+  const l = String(line || "").toLowerCase();
+  let m;
+  const short = l.includes("waiting for a yes") ? "waiting for a yes" : l.includes("looking for a copy") ? "searching" : l.includes("almost here") ? "almost here"
+    : l.includes("an hour left") ? "1h left" : (m = l.match(/about (\d+) (minutes|hours) left/)) ? m[1] + (m[2] === "hours" ? "h left" : " min left")
+    : (m = l.match(/(\d+)% downloaded/)) ? m[1] + "%" : "";
+  return short ? `On the way · ${short}` : "On the way";
 };
 
 const wayLine = (r, details) => {
@@ -224,8 +238,8 @@ const myRequests = async () => {
     if (!d) return;
     const title = d.title || d.name || "";
     const img = B.tmdbImg ? B.tmdbImg(d.posterPath, "w185") : "";
-    if (here) ready.push({ id: `req-${md.jellyfinMediaId}`, news: true, title, detail: "Your request is ready to watch", dot: "#F1F2F5", img: B.img(md.jellyfinMediaId, "Primary", { h: 240 }) || img, href: `#/${r.type === "tv" ? "show" : "movie"}/${md.jellyfinMediaId}`, at: r.createdAt });
-    else way.push({ id: `way-${r.id}`, title, detail: wayLine(r, d), dot: "#F1F2F5", img, href: "#/requests", at: r.createdAt });
+    if (here) ready.push({ id: `req-${md.jellyfinMediaId}`, news: true, kind: "Ready to watch", title: `${title} · you asked`, name: title, kc: KIND_READY, img: B.img(md.jellyfinMediaId, "Primary", { h: 240 }) || img, href: `#/${r.type === "tv" ? "show" : "movie"}/${md.jellyfinMediaId}`, at: r.createdAt, t: Date.parse(md.updatedAt || r.updatedAt || 0) || 0 });
+    else way.push({ id: `way-${r.id}`, kind: wayKind(wayLine(r, d)), title, kc: KIND_WAY, img, href: "#/requests", at: r.createdAt });
   }));
   const newest = (a, b) => String(b.at).localeCompare(String(a.at));
   return { ready: ready.sort(newest).slice(0, 2), way: way.sort(newest).slice(0, 3) };
@@ -248,7 +262,6 @@ const noteLink = (text) => {
 // (benflix.cleared, shared with the TV and phone app), so every screen hides the same rows. Facts are only
 // hidden until Home opens again, because they change every time anyway.
 let clearedNow = new Set();
-let boardRows = [];
 const CLEARED = "benflix.cleared";
 const saveCleared = (ids) => {
   const keep = ids.filter((id) => id && !id.startsWith("fact-"));
@@ -295,11 +308,11 @@ B.loadBoard = async (nav) => {
       const where = /\s*\b(under|in|on|to) (the )?Channels\b( (tab|page|door|section))?/gi;
       let text = note.slice(i + 1);
       text = /live ?tv/i.test(text.replace(where, "")) ? text.replace(where, "") : text.replace(where, " $1 Live TV");
-      if (text.trim() && (!exp || exp > Date.now())) add({ id: `note-${head.split("~")[0]}`, news: true, title: "A note from Ben", detail: text.split("\n")[0], full: text, go: noteLink(text), dot: "#F1F2F5", href: "" });
+      if (text.trim() && (!exp || exp > Date.now())) add({ id: `note-${head.split("~")[0]}`, news: true, kind: "A note from Ben", title: text.split("\n")[0], full: text, go: noteLink(text), kc: KIND_OTHER, href: "", t: Infinity });
     }
     String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
       const [ts, title] = l.split("|");
-      if (Date.now() - +ts < 3 * 86400000) add({ id: `fixed-${ts}`, news: true, title, detail: "Ben fixed it, it's ready to watch again", full: `Ben fixed ${title}. Try it again!`, dot: "#F1F2F5", href: "" });
+      if (Date.now() - +ts < 3 * 86400000) add({ id: `fixed-${ts}`, news: true, kind: "Ben fixed it", title, full: `Ben fixed ${title}. Try it again!`, kc: KIND_READY, href: "", t: +ts });
     });
   } catch (e) {}
   const seen = new Set();
@@ -307,64 +320,106 @@ B.loadBoard = async (nav) => {
     if (seen.has(e.SeriesId)) return;
     seen.add(e.SeriesId);
     const newSeason = e.IndexNumber === 1 && (e.ParentIndexNumber || 1) > 1;
-    add({ id: `ep-${e.Id}`, news: true, title: e.SeriesName, detail: newSeason ? `Season ${e.ParentIndexNumber} is here` : `New episode: season ${e.ParentIndexNumber}, episode ${e.IndexNumber}`,
-      dot: DOORS.shows.color, img: B.img(e.SeriesId, "Primary", { h: 240 }), href: `#/show/${e.SeriesId}?ep=${e.Id}` });
+    // The episode number sits in the small line, so the name gets the whole width
+    add({ id: `ep-${e.Id}`, news: true, kind: newSeason ? "New season" : e.IndexNumber != null ? `New episode · S${e.ParentIndexNumber} E${e.IndexNumber}` : "New episode",
+      title: newSeason ? `${e.SeriesName} · Season ${e.ParentIndexNumber}` : e.SeriesName,
+      kc: KIND_OTHER, img: B.img(e.SeriesId, "Primary", { h: 240 }), href: `#/show/${e.SeriesId}?ep=${e.Id}`, t: Date.parse(e.DateCreated) || 0 });
   });
   const who = new Set();
   ((music && music.Items) || []).filter((a) => Date.now() - new Date(a.DateCreated) < 3 * 86400000).forEach((a) => {
     const name = a.AlbumArtist || a.Name;
     if (who.has(name) || who.size >= 2) return;
     who.add(name);
-    add({ id: `music-${a.Id}`, news: true, title: name, detail: `New music: ${a.Name}`, dot: "#B69CFF", img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}` });
+    add({ id: `music-${a.Id}`, news: true, kind: "New music", title: `${name} · ${a.Name}`, kc: KIND_OTHER, img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}`, t: Date.parse(a.DateCreated) || 0 });
   });
   const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
-  ((books && books.news) || []).slice(0, 2).forEach((b) => add({ id: `book-${b.id}`, news: true, title: b.name || b.text, detail: b.line || "", dot: DOORS.books.color, img: pic(b.cover), href: `#/book/${enc(b.title)}` }));
+  ((books && books.news) || []).slice(0, 2).forEach((b) => {
+    const name = b.name || b.text, id = String(b.id || "");
+    const vol = String(b.line || "").replace(/^New: /, "").replace(/ is here$/, "");
+    const [kind, title] = id.startsWith("bkr-") ? ["Ready to read", name] : id.startsWith("bks-") ? ["On your phone", name] : ["New volume", vol && vol !== b.line ? `${name} · ${vol}` : name];
+    add({ id: `book-${b.id}`, news: true, kind, title, kc: id.startsWith("bkr-") ? KIND_READY : KIND_OTHER, img: pic(b.cover), href: `#/book/${enc(b.title)}`, t: (+b.at || 0) * 1000 });
+  });
   reqs.ready.forEach(add);
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
     let text = f.fact;
     if (f.name && !text.toLowerCase().includes(f.name.split(":")[0].trim().toLowerCase())) text = `${f.name}: ${text}`;
     const show = f.type === "Series";
-    return { title: "Did you know?", detail: text, dot: show ? DOORS.shows.color : DOORS.movies.color, img: B.img(f.id, "Primary", { h: 240 }), href: `#/${show ? "show" : "movie"}/${f.id}`, id: f.id };
+    return { kind: "Did you know", title: text, kc: KIND_FACT, img: B.img(f.id, "Primary", { h: 240 }), href: `#/${show ? "show" : "movie"}/${f.id}`, id: `fact-${f.id}`, fid: f.id };
   });
-  lastFacts = factRows.map((f) => f.id).join(",");
+  lastFacts = factRows.map((f) => f.fid).join(",");
   const keep = (r) => !cleared.has(r.id) && !clearedNow.has(r.id);
-  boardRows = B.arrangeRows(news.filter(keep).slice(0, 3), reqs.way.filter(keep), factRows.filter(keep));
+  boardParts = { news: news.filter(keep).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 12), way: reqs.way.filter(keep), facts: factRows.filter(keep) };
   drawBoard();
+  homeNotices(c, reqs.ready);
+};
+
+// Notices on Home: a corner card for each request that's newly ready (once per browser), and a message
+// from Ben (saved for the next time Benflix opens) in the Needs-you card, which waits for Got it.
+const homeNotices = async (c, ready) => {
+  let carded = [];
+  try { carded = JSON.parse(localStorage.getItem("benflix.carded") || "[]"); } catch (e) {}
+  const fresh = ready.filter((r) => !carded.includes(r.id));
+  // The very first time, only remember what's already here (no pile of old cards)
+  if (localStorage.getItem("benflix.carded") !== null) fresh.slice().reverse().forEach((r) => B.corner({ id: r.id, title: `${r.name} is ready`, line: "You asked for it", img: r.img, href: r.href }));
+  try { localStorage.setItem("benflix.carded", JSON.stringify(carded.concat(fresh.map((r) => r.id)).slice(-60))); } catch (e) {}
+  const saved = String(c["benflix.messages"] || "").split("\u001E").map((r) => r.split("\u001F")).filter((f) => f.length >= 3 && f[1] !== "Message from " + B.me.name);
+  if (!saved.length) return;
+  // Take them off the profile first, so the TV or phone doesn't show the same one again
+  await B.savePrefs((p) => {
+    p["benflix.messages"] = String(p["benflix.messages"] || "").split("\u001E").filter((r) => !saved.some((f) => r === f.join("\u001F"))).join("\u001E");
+  }).catch(() => {});
+  for (const f of saved) {
+    if (!$("#blist")) return;
+    await B.needsYou(f[1] || "Message from Ben", f.slice(2).join("\u001F"), "");
+  }
 };
 
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
-// clears it. Clear all clears the whole list. New news still shows when it comes.
+// clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
+let boardParts = { news: [], way: [], facts: [] };
+const rowHtml = (r, n) => {
+  const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
+  return `<div class="bitem">
+    <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
+    ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
+    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
+};
+const live = (list) => list.filter((r) => !clearedNow.has(r.id));
 const drawBoard = () => {
   const list = $("#blist");
   if (!list) return;
-  const rows = boardRows.filter((r) => !clearedNow.has(r.id));
-  list.classList.toggle("quiet", rows.length <= 2);
-  list.style.setProperty("--n", rows.length <= 2 ? 2 : rows.length);
-  const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
-  list.innerHTML = rows.length ? `<div class="bpanel">${rows.map((r, n) => `<div class="bitem">
-    <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
-    <i class="dot" style="background:${r.dot}"></i><div class="tx"><b>${esc(r.title)}</b>${r.detail ? `<span>${esc(r.detail)}</span>` : ""}</div>
-    ${r.img ? `<span class="th ${r.square ? "sq" : ""}" style="background-image:url('${esc(r.img)}')"></span>` : logo}</${r.href ? "a" : "button"}>
-    <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`).join("")}</div>
-    <button type="button" class="bclear">Clear all</button>` : "";
-  list.onclick = async (e) => {
+  const shown = B.arrangeRows(live(boardParts.news), live(boardParts.way), live(boardParts.facts));
+  const rows = shown.rows;
+  list.innerHTML = rows.length ? `<div class="bpanel"><div class="bhead"><button type="button" class="bclear">Clear all</button></div>
+    ${rows.map(rowHtml).join("")}
+    ${shown.more ? `<div class="bmore"><span>${shown.more} more</span><button type="button" class="bsee">See all ›</button></div>` : ""}</div>` : "";
+  wireRows(list, rows, () => drawBoard());
+  const see = $(".bsee", list);
+  if (see) see.onclick = () => seeAll();
+  const all = $(".bclear", list);
+  if (all) all.onclick = () => {
+    saveCleared(boardParts.news.concat(boardParts.way, boardParts.facts).map((r) => r.id));
+    drawBoard();
+    const d = $(".door"); if (d) d.focus({ preventScroll: true });
+  };
+  fitRows(list);
+  slideNames(list);
+};
+// Pressing a row, its X, or a row with nowhere to go (a pop-up with all its words)
+const wireRows = (box, rows, redraw) => {
+  box.onclick = async (e) => {
     const x = e.target.closest("[data-clear]");
     if (x) {
       e.preventDefault();
       const at = +x.dataset.clear;
       saveCleared([rows[at].id]);
-      drawBoard();
+      redraw();
       // Keep the keyboard on the list: the next row's X, or the last one, or the first door
-      const xs = $$(".bx", list);
+      const xs = $$(".bx", box);
       const next = xs[at] || xs[xs.length - 1] || $(".door");
       if (next) next.focus({ preventScroll: true });
-      return;
-    }
-    if (e.target.closest(".bclear")) {
-      saveCleared(rows.map((r) => r.id));
-      drawBoard();
-      const d = $(".door"); if (d) d.focus({ preventScroll: true });
       return;
     }
     const b = e.target.closest("[data-row]");
@@ -376,13 +431,40 @@ const drawBoard = () => {
       return;
     }
     // A note about one part of Benflix: go there (and clear the note); otherwise just read it and clear it
-    const yes = await B.ask(r.title, r.full || r.detail, r.go ? r.go[0] : "Got it, clear it", "Keep it");
+    const yes = await B.ask(r.kind, r.full || r.title, r.go ? r.go[0] : "Got it, clear it", "Keep it");
     if (!yes) return;
     saveCleared([r.id]);
     if (r.go) B.go(r.go[1]);
     else drawBoard();
   };
-  fitRows(list);
+};
+// See all: everything new in the side panel (a sheet from the bottom on phones), with Clear all
+const seeAll = () => {
+  const rows = live(boardParts.news).concat(live(boardParts.way));
+  const panel = B.side(`<h3>Everything new</h3><div class="seeall"><div class="bhead"><button type="button" class="bclear">Clear all</button></div><div class="sarows">${rows.map(rowHtml).join("")}</div></div>`, () => { const s = $(".bsee"); if (s) s.focus(); });
+  const redraw = () => {
+    const left = live(boardParts.news).concat(live(boardParts.way));
+    drawBoard();
+    if (!left.length) { B.closeAll(); return; }
+    rows.splice(0, rows.length, ...left);
+    $(".sarows", panel).innerHTML = rows.map(rowHtml).join("");
+  };
+  wireRows(panel, rows, redraw);
+  $(".bclear", panel).onclick = () => {
+    saveCleared(rows.map((r) => r.id));
+    B.closeAll();
+    drawBoard();
+    const d = $(".door"); if (d) d.focus({ preventScroll: true });
+  };
+};
+// A name too long for 2 lines slides by when the row is picked (not when the computer asks for less motion)
+const slideNames = (box) => {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  $$(".brow", box).forEach((row) => {
+    const b = $(".tx b", row);
+    if (!b) return;
+    row.classList.toggle("long", b.scrollHeight > b.clientHeight + 2);
+  });
 };
 
 // Every row's words fit in full: if any row would overflow, all of them get a little smaller together
@@ -391,7 +473,7 @@ const fitRows = (list) => {
   if (!panel || matchMedia("(max-width: 900px)").matches) return;
   let s = 1;
   panel.style.setProperty("--fs", s);
-  const over = () => $$(".brow .tx", panel).some((t) => t.scrollHeight > t.parentElement.clientHeight - 4);
+  const over = () => $$(".brow .tx", panel).some((t) => t.scrollHeight > t.parentElement.clientHeight - 2);
   while (s > 0.62 && over()) { s -= 0.04; panel.style.setProperty("--fs", s.toFixed(2)); }
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });

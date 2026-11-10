@@ -328,13 +328,47 @@ B.dropdown = (anchor, options, current, onPick) => {
   const on = d.querySelector(".on") || d.querySelector("button");
   if (on) on.focus();
 };
+// Notices (Redesign 2, approved three levels): quick "done" words are one white pill at the bottom for 3 seconds
 let toastTimer;
 B.toast = (text) => {
   let t = $("#toast");
   if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
   t.textContent = text; t.classList.remove("hidden");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), 4500);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), 3000);
 };
+// Tap on the shoulder: a small card under the top bar on the right for 7 seconds, with a thin timer line.
+// It never takes the keyboard's focus; clicking it opens it. One at a time, oldest first.
+const cornerQueue = [];
+let cornerOn = null;
+B.corner = (card) => {
+  if (!card || (cornerOn && cornerOn.id === card.id) || cornerQueue.some((c) => c.id === card.id)) return;
+  cornerQueue.push(card);
+  if (!cornerOn) nextCorner();
+};
+const nextCorner = () => {
+  const card = cornerQueue.shift();
+  cornerOn = card || null;
+  if (!card) return;
+  const el = document.createElement("div");
+  el.className = "corner";
+  el.innerHTML = `${card.img ? `<span class="cimg" style="background-image:url('${esc(card.img)}')"></span>` : ""}<div class="cw"><b>${esc(card.title)}</b><span>${esc(card.line || "")}${card.href ? " · Click to open" : ""}</span></div><i class="ctime"></i>`;
+  if (card.href) el.onclick = () => { done(); B.go(card.href); };
+  document.body.appendChild(el);
+  let gone = false;
+  const done = () => { if (gone) return; gone = true; el.remove(); nextCorner(); };
+  setTimeout(done, 7000);
+};
+// Needs you: a centre card on the web that waits for Got it (messages from Ben)
+B.needsYou = (label, title, text) => new Promise((resolve) => {
+  B.closeAll();
+  B.shade(() => resolve());
+  const m = document.createElement("div");
+  m.className = "modal needs";
+  m.innerHTML = `<div class="nlabel">${esc(label)}</div><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ""}<div class="acts"><button class="btn white" data-ok>Got it</button></div>`;
+  m.onclick = (e) => { if (e.target.closest("[data-ok]")) { B.closeAll(); resolve(); } };
+  document.body.appendChild(m);
+  $("button", m).focus();
+});
 B.busy = async (btn, fn) => {
   if (btn) btn.disabled = true;
   try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }

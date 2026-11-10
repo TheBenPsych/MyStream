@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import android.view.Gravity
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -149,6 +148,7 @@ fun PlaybackDialog(
                     onDismissRequest.invoke()
                     onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming)
                 },
+                onSelectMoveYourself = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
                 gravity = rightGravity,
             )
         }
@@ -240,7 +240,8 @@ fun PlaybackDialog(
                         onDismissRequest.invoke()
                     } else if (choice.data == PlaybackDialogType.SURROUND_PASSTHROUGH) {
                         SurroundPassthrough.toggle(context)
-                        Toast.makeText(context, R.string.surround_passthrough_next_video, Toast.LENGTH_SHORT).show()
+                        com.github.damontecres.wholphin.ui.components.BenflixNotices
+                            .pill(R.string.surround_passthrough_next_video)
                         onDismissRequest.invoke()
                     } else {
                         onClickPlaybackDialogType(choice.data)
@@ -408,6 +409,7 @@ fun SubtitleChoiceBottomDialog(
     hasDownloadPermission: Boolean,
     currentChoice: Int? = null,
     onSelectFixTiming: (() -> Unit)? = null,
+    onSelectMoveYourself: (() -> Unit)? = null,
 ) {
     val numberBefore = 2
     val initialChoice =
@@ -545,6 +547,18 @@ fun SubtitleChoiceBottomDialog(
                             leadingContent = {},
                             headlineContent = { Text(text = "Subtitles are early or late") },
                             supportingContent = { Text(text = "Tower lines them up with the voices") },
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
+                        )
+                    }
+                }
+                if (onSelectMoveYourself != null && currentChoice != null && currentChoice >= 0) {
+                    item {
+                        ListItem(
+                            selected = false,
+                            onClick = onSelectMoveYourself,
+                            leadingContent = {},
+                            headlineContent = { Text(text = "Subtitle timing") },
+                            supportingContent = { Text(text = "Move the words earlier or later yourself") },
                             scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }

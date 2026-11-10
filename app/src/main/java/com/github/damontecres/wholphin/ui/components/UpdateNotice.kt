@@ -175,16 +175,16 @@ fun rememberServerAlert(): Boolean {
 }
 
 /**
- * Benflix: "Your request is here!" as a quiet notice instead of a pop-up (Ben asked 2026-11-03).
- * - A small red number sits on More (TV) or My Benflix (phone), and on My Benflix in the More menu,
- *   until you open My Benflix, where the "Your requests are here" row lists them.
- * - Each new arrival gets its own tip bubble for 7 seconds, one after another, oldest first.
+ * Benflix: "Your request is here!" (notices redesign, 2026-11-10): each new arrival gets its own 7-second corner
+ * card (one after another, oldest first), then a Ready to watch row on Home. No red number any more.
  */
 object RequestReadyNotice {
     data class Tip(
         val requestId: Int,
         val title: String,
         val posterUrl: String?,
+        /** Its title page (for OK on the corner card) */
+        val destination: com.github.damontecres.wholphin.ui.nav.Destination? = null,
     )
 
     private val _count = MutableStateFlow(0)

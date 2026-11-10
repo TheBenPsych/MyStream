@@ -1,26 +1,17 @@
 package com.github.damontecres.wholphin.ui.detail.episode
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -28,27 +19,37 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.ui.RequestOrRestoreFocus
+import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
-import com.github.damontecres.wholphin.ui.components.ExpandablePlayButtons
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
-import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
+import com.github.damontecres.wholphin.ui.detail.series.EpisodeCard
+import com.github.damontecres.wholphin.ui.detail.title.TitleButton
+import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
+import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
+import com.github.damontecres.wholphin.ui.detail.title.TitlePage
+import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
+import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
+import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
+import com.github.damontecres.wholphin.ui.door.lengthText
+import com.github.damontecres.wholphin.ui.formatDate
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.rememberInt
-import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
+import com.github.damontecres.wholphin.ui.premiereDay
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.util.DataLoadingState
-import com.github.damontecres.wholphin.util.ExceptionHandler
-import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUID
@@ -172,6 +173,10 @@ fun EpisodeDetails(
                 canDelete = canDelete,
                 onConfirmDelete = { viewModel.deleteItem(ep) },
                 onChooseVersion = { contextActions.onChooseVersion.invoke(ep, it) },
+                nextEpisodes = state.nextEpisodes,
+                people = state.people,
+                openEpisode = { viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.EPISODE)) },
+                openPerson = { viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.PERSON)) },
                 modifier = modifier,
             )
         }
@@ -214,8 +219,11 @@ fun EpisodeDetails(
     }
 }
 
-private const val HEADER_ROW = 0
-
+/**
+ * Benflix Redesign 2: an episode's own page on the shared title page frame. Buttons: Play (or Resume),
+ * Start over (greyed out until you've started it), Watched, More. Tabs: Overview, Next episodes, Cast.
+ * The show's name in the info line goes to the show.
+ */
 @Composable
 fun EpisodeDetailsContent(
     preferences: UserPreferences,
@@ -231,97 +239,110 @@ fun EpisodeDetailsContent(
     onChooseVersion: (MediaSourceInfo) -> Unit,
     modifier: Modifier = Modifier,
     goToShowOnClick: (() -> Unit)? = null,
+    nextEpisodes: List<BaseItem> = emptyList(),
+    people: List<Person> = emptyList(),
+    openEpisode: (BaseItem) -> Unit = {},
+    openPerson: (Person) -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var position by rememberInt(0)
-    val focusRequesters = remember { List(1) { FocusRequester() } }
     val dto = ep.data
-    val resumePosition = dto.userData?.playbackPositionTicks?.ticks ?: Duration.ZERO
-
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    RequestOrRestoreFocus(focusRequesters.getOrNull(position))
-    Box(modifier = modifier) {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                    modifier =
-                        Modifier
-                            .scrollAsOneBlock()
-                            .fillMaxWidth()
-                            .bringIntoViewRequester(bringIntoViewRequester),
-                ) {
-                    EpisodeDetailsHeader(
-                        preferences = preferences,
-                        ep = ep,
-                        chosenStreams = chosenStreams,
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        overviewOnClick = overviewOnClick,
-                        // Benflix look A: the story goes under the buttons
-                        showOverview = false,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp, bottom = 12.dp),
-                    )
-                    // Benflix look A: flat buttons (version, favourite and delete are under More)
-                    androidx.compose.runtime.CompositionLocalProvider(
-                        com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
-                    ) {
-                        ExpandablePlayButtons(
-                            downloadItem = ep,
-                            title = ep.title ?: "",
-                            resumePosition = resumePosition,
-                            watched = dto.userData?.played ?: false,
-                            favorite = dto.userData?.isFavorite ?: false,
-                            playOnClick = {
-                                position = HEADER_ROW
-                                playOnClick.invoke(it)
-                            },
-                            moreOnClick = moreOnClick,
-                            goToShowOnClick = goToShowOnClick,
-                            watchOnClick = watchOnClick,
-                            favoriteOnClick = favoriteOnClick,
-                            buttonOnFocusChanged = {
-                                if (it.isFocused) {
-                                    position = HEADER_ROW
-                                    scope.launch(ExceptionHandler()) {
-                                        bringIntoViewRequester.bringIntoView()
-                                    }
-                                }
-                            },
-                            trailers = null,
-                            trailerOnClick = {},
-                            canDelete = canDelete,
-                            onConfirmDelete = onConfirmDelete,
-                            chooseVersionParams =
-                                remember(chosenStreams, ep, onChooseVersion) {
-                                    ChooseVersionParams(
-                                        chosenStreams = chosenStreams,
-                                        mediaSources = ep.data.mediaSources.orEmpty(),
-                                        onChooseVersion = onChooseVersion,
-                                    )
-                                },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
-                                    .focusRequester(focusRequesters[HEADER_ROW]),
-                        )
-                    }
-                    EpisodeOverview(
-                        ep = ep,
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        overviewOnClick = overviewOnClick,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 16.dp),
-                    )
-                }
+    val resume = dto.userData?.playbackPositionTicks?.ticks ?: Duration.ZERO
+    val canResume = resume.inWholeSeconds > 30 && !ep.played
+    val left =
+        if (canResume) {
+            dto.runTimeTicks
+                ?.ticks
+                ?.minus(resume)
+                ?.takeIf { it.isPositive() }
+        } else {
+            null
+        }
+    val imageUrlService = LocalImageUrlService.current
+    val width = LocalConfiguration.current.screenWidthDp
+    val picture =
+        remember(ep.id) {
+            // The episode's own still, else the show's wide picture
+            val type = if (ep.data.imageTags?.containsKey(ImageType.PRIMARY) == true) ImageType.PRIMARY else ImageType.BACKDROP
+            imageUrlService.getItemImageUrl(ep, type, fillWidth = (width * 2).coerceAtMost(1920), useSeriesForPrimary = false)
+        }
+    val number =
+        listOfNotNull(
+            dto.parentIndexNumber?.let { "S$it" },
+            dto.indexNumber?.let { "E$it" },
+        ).joinToString(" ")
+    val info =
+        listOfNotNull(
+            number.takeIf { it.isNotBlank() },
+            dto.runTimeTicks?.ticks?.let(::lengthText),
+            dto.premiereDay?.let { "Aired ${formatDate(it)}" },
+        ).joinToString(" · ")
+    val buttons =
+        listOf(
+            TitleButton(
+                label = if (canResume) "Resume" else "Play",
+                icon = BenflixIcon.PLAY,
+                onClick = { playOnClick(if (canResume) resume else Duration.ZERO) },
+                note = left?.let { "${lengthText(it)} left" },
+            ),
+            TitleButton(
+                label = "Start over",
+                icon = BenflixIcon.REFRESH,
+                onClick = { playOnClick(Duration.ZERO) },
+                off = if (canResume) null else "You haven't started this one yet",
+            ),
+            TitleButton(
+                label = if (ep.played) "Watched" else "Mark watched",
+                icon = BenflixIcon.CHECK,
+                onClick = watchOnClick,
+                note = if (ep.played) "Press again to mark it as not watched" else null,
+            ),
+            TitleButton(label = "More", icon = BenflixIcon.MORE, onClick = moreOnClick),
+        )
+    val scores = rememberScoreParts(ep)
+    val tabs =
+        buildList {
+            add(
+                TitleTab("Overview") { scope ->
+                    TitleOverview(scope = scope, title = ep.title.orEmpty(), story = dto.overview, strip = scores)
+                },
+            )
+            if (nextEpisodes.isNotEmpty()) {
+                add(
+                    TitleTab("Next episodes") { scope ->
+                        val list = remember(nextEpisodes) { nextEpisodes.distinctBy { it.id } }
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = scope.side),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(list, key = { it.id.toString() }) { next ->
+                                EpisodeCard(
+                                    episode = next,
+                                    number = next.data.indexNumber?.let { "E$it" },
+                                    width = if (scope.wide) 210.dp else 200.dp,
+                                    onClick = { openEpisode(next) },
+                                    onLongClick = null,
+                                    onFocus = {},
+                                )
+                            }
+                        }
+                    },
+                )
+            }
+            if (people.isNotEmpty()) {
+                add(TitleTab("Cast") { scope -> TitleCastRow(scope, people, openPerson) })
             }
         }
-    }
+    TitlePage(
+        title = ep.name.orEmpty(),
+        accent = BenflixColors.Shows,
+        picture = TitlePicture.Wide(picture),
+        info = info,
+        rating = dto.officialRating,
+        infoExtra =
+            dto.seriesName?.let { show ->
+                goToShowOnClick?.let { go -> { TitleTextLink(show, go) } }
+            },
+        buttons = buttons,
+        tabs = tabs,
+        modifier = modifier,
+    )
 }
