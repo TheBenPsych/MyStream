@@ -139,7 +139,7 @@ private fun BookKeyRow(
                         !set -> "$what Free to get. Type it once and Tower does the rest."
                         ok == false -> bad ?: "Tower couldn't use it."
                         nyt -> "$what ${k.nytCount} best sellers right now."
-                        else -> "$what ${k.topCount} trending books right now. Hardcover tokens run out on January 1st."
+                        else -> "$what ${k.topCount} trending books right now."
                     },
                 leading = {
                     Dot(

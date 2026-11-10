@@ -451,7 +451,7 @@ def _nyt_problem(e):
 
 def _hc_problem(e):
     if isinstance(e, urllib.error.HTTPError) and e.code in (401, 403):
-        return "The Hardcover token didn't work (they run out every January 1st). Copy a fresh one."
+        return "The Hardcover key didn't work. Make a new one at hardcover.app/account/api with read:catalog ticked."
     if isinstance(e, urllib.error.HTTPError) and e.code == 429:
         return "Hardcover asked Tower to slow down. It tries again later."
     return f"Couldn't reach Hardcover ({str(e)[:120]})."

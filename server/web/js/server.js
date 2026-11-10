@@ -159,7 +159,7 @@ PAGES.booklists = (el) => {
     const c = s.counts || {};
     $("#bl").innerHTML = `<div class="list">
       ${one("nyt", "NYT Books key", "NYT best sellers (Fiction, Nonfiction, audiobooks) and Book of the week.", "https://developer.nytimes.com/get-started")}
-      ${one("hardcover", "Hardcover token", "Top 10 books right now, Next in your series, scores and reader quotes. Hardcover tokens run out every January 1st.", "https://hardcover.app/account/api")}
+      ${one("hardcover", "Hardcover token", "Top 10 books right now, Next in your series, scores and reader quotes.", "https://hardcover.app/account/api")}
       <div class="item"><div class="grow"><div class="t">Last gathered</div><div class="s">${s.gatheredAt ? esc(B.when(new Date(s.gatheredAt * 1000).toISOString())) + ` · ${c.nytFiction || 0} NYT fiction, ${c.top10 || 0} Hardcover trending, ${c.trending || 0} Open Library trending` : "Not yet"}</div></div>
         <div class="acts"><button class="btn small" id="blGather">Gather now</button></div></div>
     </div>`;
