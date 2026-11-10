@@ -25,11 +25,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -78,6 +81,7 @@ import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -87,8 +91,10 @@ import kotlin.time.Duration
 /**
  * Benflix redesign: the inside of the Movies and Shows doors (approved mv-preview + pv-fade).
  * TV: the top area describes the poster you're on, with its picture fading in from the right;
- * rows of posters below, then "Browse by" tiles. Phones: a "Picked for you" card, then the rows.
- * Kids and Easy read: the same, bigger, fewer rows, no scores.
+ * rows of posters below. Phones: a "Picked for you" card, then the rows.
+ * Redesign 2 (section 6): the door sits in the shared [DoorFrame]. Its side menu has every section
+ * (All movies, Genres, Collections, Studios, My List, Anime…), so the old "Browse by" tiles are gone.
+ * Kids and Easy read: the same, bigger, fewer rows and sections, no scores.
  */
 @Composable
 fun DoorPage(
@@ -118,16 +124,126 @@ fun DoorPage(
     val onSeeAll: (DoorRowData) -> Unit = { row ->
         viewModel.navigationManager.navigateTo(Destination.DoorRowGrid(door.name, row.key, row.title))
     }
-    val onBrowse: (DoorBrowseTile) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
+    val frame = rememberDoorFrameState(door)
+    // Ben: a door opened again within 10 minutes comes back on the row and card you were on
+    remember(viewModel) {
+        if (!viewModel.userMoved) {
+            DoorMemory.recall(door)?.row?.let { row ->
+                viewModel.focusedRow = row
+                viewModel.focusedIndex = DoorMemory.recall(door)?.index ?: 0
+                viewModel.userMoved = true
+            }
+        }
+        true
+    }
+    DisposableEffect(door) {
+        onDispose {
+            DoorMemory.keep(
+                door,
+                DoorMemory.Spot(section = frame.section, row = viewModel.focusedRow, index = viewModel.focusedIndex),
+            )
+        }
+    }
+    val rowKeys = state.rows.map { it.key }
+    val sections = remember(door, easy, rowKeys) { doorSections(door, easy, rowKeys) }
 
     if (state.loaded && state.rows.isEmpty()) {
-        EmptyDoor(door, state.browse, state.offline, onBrowse, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
+        EmptyDoor(door, state.offline, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
-    if (wide) {
-        WideDoor(door, state, easy, isTv, viewModel, onClick, onSeeAll, onBrowse, modifier)
-    } else {
-        PhoneDoor(door, state, easy, onClick, onSeeAll, onBrowse, { viewModel.navigationManager.navigateTo(it) }, modifier)
+    DoorFrame(frame, sections, modifier, ready = state.loaded) { inner ->
+        when {
+            frame.section != DOOR_HOME -> {
+                DoorSectionPage(door, frame.section, preferences, wide, inner)
+            }
+
+            wide -> {
+                WideDoor(door, state, easy, isTv, viewModel, frame, onClick, onSeeAll, inner)
+            }
+
+            else -> {
+                PhoneDoor(door, state, easy, frame, onClick, onSeeAll, { viewModel.navigationManager.navigateTo(it) }, inner)
+            }
+        }
+    }
+}
+
+/** Section keys in the Movies and Shows menus */
+private const val SEC_ALL = "all"
+private const val SEC_GENRES = "genres"
+private const val SEC_COLLECTIONS = "collections"
+private const val SEC_STUDIOS = "studios"
+private const val SEC_MY_LIST = "mylist"
+private const val SEC_ANIME = "anime"
+private const val SEC_STAND_UP = "standup"
+
+/**
+ * What's in the Movies and Shows menus (Ben: everything the old "Browse by" tiles opened, plus My List,
+ * Anime and Stand-up). Kids and Easy read get fewer: Home, All, Genres and My List.
+ */
+internal fun doorSections(
+    door: BenflixDoor,
+    easy: Boolean,
+    rowKeys: List<String>,
+): List<DoorSection> {
+    val movies = door == BenflixDoor.MOVIES
+    return buildList {
+        add(doorHome())
+        add(DoorSection(SEC_ALL, if (movies) "All movies" else "All shows", if (movies) BenflixIcon.FILM else BenflixIcon.TV))
+        add(DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST))
+        if (!easy && movies) add(DoorSection(SEC_COLLECTIONS, "Collections", BenflixIcon.IMAGE))
+        if (!easy) add(DoorSection(SEC_STUDIOS, if (movies) "Studios" else "Networks", BenflixIcon.FLAG))
+        add(DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS))
+        if (!easy && DoorViewModel.ANIME in rowKeys) add(DoorSection(SEC_ANIME, "Anime", BenflixIcon.STAR))
+        if (!easy && movies && DoorViewModel.STAND_UP in rowKeys) add(DoorSection(SEC_STAND_UP, "Stand-up", BenflixIcon.PERSON))
+    }
+}
+
+/** A section from the menu, in place of the door's Home rows (the same pages "Browse by" used to open) */
+@Composable
+private fun DoorSectionPage(
+    door: BenflixDoor,
+    key: String,
+    preferences: UserPreferences,
+    wide: Boolean,
+    modifier: Modifier,
+) {
+    val movies = door == BenflixDoor.MOVIES
+    val inner =
+        modifier.padding(
+            top = if (wide) LocalTopBarOverlap.current else 0.dp,
+            start = if (wide) 0.dp else PHONE_SIDE,
+            end = if (wide) 16.dp else 8.dp,
+        )
+    val browse = { what: String -> Destination.DoorBrowse(door.name, what) }
+    when (key) {
+        SEC_ALL -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_ALL), preferences, inner)
+        }
+
+        SEC_GENRES -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_GENRES), preferences, inner)
+        }
+
+        SEC_COLLECTIONS -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_COLLECTIONS), preferences, inner)
+        }
+
+        SEC_STUDIOS -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_STUDIOS), preferences, inner)
+        }
+
+        SEC_MY_LIST -> {
+            DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.MY_LIST, "My List"), inner)
+        }
+
+        SEC_ANIME -> {
+            DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.ANIME, if (movies) "Anime movies" else "Anime"), inner)
+        }
+
+        SEC_STAND_UP -> {
+            DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.STAND_UP, "Stand-up"), inner)
+        }
     }
 }
 
@@ -138,9 +254,9 @@ private fun WideDoor(
     easy: Boolean,
     isTv: Boolean,
     viewModel: DoorViewModel,
+    frame: DoorFrameState,
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
-    onBrowse: (DoorBrowseTile) -> Unit,
     modifier: Modifier,
 ) {
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
@@ -171,6 +287,9 @@ private fun WideDoor(
     val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
     val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
+    // Back (approved dr-p-back): first back up to the top row's first card, then out of the door
+    var focusedKey by remember { mutableStateOf(savedRow) }
+    var topRequest by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         // Wait until the top row has really loaded (not a grey placeholder), so focus starts on its first card
         withTimeoutOrNull(FIRST_FOCUS_WAIT_MS) {
@@ -191,6 +310,22 @@ private fun WideDoor(
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
+    LaunchedEffect(firstKey) {
+        snapshotFlow { columnState.firstVisibleItemIndex == 0 && (focusedKey == null || focusedKey == firstKey) }
+            .collect { frame.atTop = it }
+    }
+    frame.toTop = {
+        viewModel.focusedRow = firstKey
+        viewModel.focusedIndex = 0
+        focusedKey = firstKey
+        topRequest++
+    }
+    LaunchedEffect(topRequest) {
+        if (topRequest == 0) return@LaunchedEffect
+        columnState.scrollToItem(0)
+        delay(FOCUS_SETTLE_MS * 2)
+        if (isTv) restore.tryRequestFocus()
+    }
     // A row that loads in above the top one: go back to the very top and onto its first card
     LaunchedEffect(firstKey, restored) {
         if (!restored || viewModel.userMoved || firstKey == null) return@LaunchedEffect
@@ -231,19 +366,16 @@ private fun WideDoor(
                             startIndex = if (row.key == targetRow) targetIndex else 0,
                             focusRequester = if (row.key == targetRow) restore else null,
                             focusIndex = targetIndex,
+                            scrollKey = if (row.key == targetRow) topRequest else 0,
                             onClick = onClick,
                             onSeeAll = { onSeeAll(row) },
                             onFocus = { index, item ->
                                 focused = item
+                                focusedKey = row.key
                                 viewModel.focusedRow = row.key
                                 viewModel.focusedIndex = index
                             },
                         )
-                    }
-                }
-                if (state.browse.isNotEmpty()) {
-                    item(key = "browse") {
-                        BrowseRow(state.browse, easy, onBrowse, Modifier.padding(start = SIDE, end = SIDE))
                     }
                 }
                 // Ben: the "Can't decide?" games sit at the very bottom, and only pick from this door
@@ -351,8 +483,13 @@ private fun DoorRow(
     onFocus: (Int, BaseItem) -> Unit,
     modifier: Modifier = Modifier,
     side: Dp = SIDE,
+    /** Changes when Back sends you to the top: the row scrolls back to the card focus goes to */
+    scrollKey: Int = 0,
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
+    LaunchedEffect(scrollKey) {
+        if (scrollKey > 0) listState.scrollToItem(focusIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
+    }
     // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
     Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
@@ -401,40 +538,6 @@ private fun DoorRow(
                 item(key = "see-all") {
                     SeeAllTile(width = posterWidth, onClick = onSeeAll)
                 }
-            }
-        }
-    }
-}
-
-/** "Browse by": dark tiles (Genres, Collections, Studios, All movies) */
-@Composable
-private fun BrowseRow(
-    tiles: List<DoorBrowseTile>,
-    easy: Boolean,
-    onBrowse: (DoorBrowseTile) -> Unit,
-    modifier: Modifier = Modifier,
-    columns: Int = tiles.size.coerceAtLeast(1),
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = "Browse by",
-            color = BenflixColors.Text,
-            fontSize = BenflixType.lead,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
-        tiles.chunked(columns).forEach { line ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-            ) {
-                line.forEach { tile ->
-                    BrowseTile(title = tile.title, big = easy, onClick = { onBrowse(tile) }, modifier = Modifier.weight(1f))
-                }
-                repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -692,9 +795,9 @@ private fun PhoneDoor(
     door: BenflixDoor,
     state: DoorPageState,
     easy: Boolean,
+    frame: DoorFrameState,
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
-    onBrowse: (DoorBrowseTile) -> Unit,
     onOpen: (Destination) -> Unit,
     modifier: Modifier,
 ) {
@@ -706,6 +809,9 @@ private fun PhoneDoor(
     LaunchedEffect(topKey) {
         if (!touched && topKey != null) columnState.scrollToItem(0)
     }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { snapshotFlow { columnState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it } }
+    frame.toTop = { scope.launch { columnState.animateScrollToItem(0) } }
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
         // About 3.5 posters across
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
@@ -752,11 +858,6 @@ private fun PhoneDoor(
                         onFocus = { _, _ -> },
                         side = PHONE_SIDE,
                     )
-                }
-            }
-            if (state.browse.isNotEmpty()) {
-                item(key = "browse") {
-                    BrowseRow(state.browse, easy, onBrowse, Modifier.padding(horizontal = PHONE_SIDE), columns = 2)
                 }
             }
             if (door.hasPickers() && state.rows.isNotEmpty()) {
@@ -835,13 +936,11 @@ private fun PickedCard(
     }
 }
 
-/** Nothing in this door yet: a short note and the Browse by tiles */
+/** Nothing in this door yet: a short note (and Try again when the server can't be reached) */
 @Composable
 private fun EmptyDoor(
     door: BenflixDoor,
-    browse: List<DoorBrowseTile>,
     offline: Boolean,
-    onBrowse: (DoorBrowseTile) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier,
 ) {
@@ -880,8 +979,6 @@ private fun EmptyDoor(
                         .fillMaxWidth()
                         .focusRequester(retryFocus),
             )
-        } else if (browse.isNotEmpty()) {
-            BrowseRow(browse, false, onBrowse)
         }
     }
 }
