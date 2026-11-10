@@ -116,12 +116,15 @@ class DoorViewModel
         /** The rows on screen came from last time's snapshot (fresh ones are loading behind them) */
         private var fromSnapshot = false
 
-        /** Rows that came back empty while last time's rows are on screen, and whether anything came back */
-        // (a plain synchronized set: ConcurrentHashMap's key set needs Android 7, and Benflix runs on 6)
+        /**
+         * Rows that came back empty while last time's rows are on screen. A plain synchronized set:
+         * ConcurrentHashMap's key set needs Android 7, and Benflix runs on 6.
+         */
         private val emptied: MutableSet<String> =
             java.util.Collections
                 .synchronizedSet(mutableSetOf())
 
+        /** Whether any row came back fresh this load */
         @Volatile
         private var gotFresh = false
 
