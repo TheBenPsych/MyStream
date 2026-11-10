@@ -65,6 +65,8 @@ data class AskedBy(
     val status: RequestStatus,
     // Benflix: Seerr user id, so "Couldn't find it" can tell them
     val seerrUserId: Int? = null,
+    // Benflix: when it was asked (Seerr's date), so the newest ask can lead when several are shown as one
+    val createdAt: String? = null,
 )
 
 /** Benflix: tells an open title page ("true-123" movie / "false-456" show) that one of its requests was answered */
@@ -137,8 +139,9 @@ class WhoAskedViewModel
                         whenAsked = ago(request["createdAt"].str()),
                         status = RequestStatus.from(request["status"].str()?.toIntOrNull()),
                         seerrUserId = user?.get("id").str()?.toIntOrNull(),
+                        createdAt = request["createdAt"].str(),
                     )
-                }
+                }.sortedByDescending { it.createdAt.orEmpty() }
         }
 
         fun answer(
@@ -253,22 +256,19 @@ fun WhoAskedBlock(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier,
     ) {
-        asked.forEach { entry ->
-            val state =
-                when (entry.status) {
-                    RequestStatus.PENDING -> "waiting for you"
-                    RequestStatus.APPROVED -> "approved"
-                    RequestStatus.DECLINED -> "declined"
-                    RequestStatus.COMPLETED -> "done"
-                    else -> null
-                }
+        // Benflix: asks still waiting keep their own line (with Approve / Decline). All the others become
+        // one line ("Asked by Ben · 25 days ago · done · 2 asks"), so the page's buttons stay on screen.
+        val rows = remember(asked) { askedRows(asked) }
+        rows.forEach { (entry, text) ->
             val boxModifier =
                 Modifier
                     .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             val label: @Composable () -> Unit = {
                 Text(
-                    text = listOfNotNull("Asked by ${entry.who}", entry.whenAsked, state).joinToString(" · "),
+                    text = text,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -317,4 +317,33 @@ fun WhoAskedBlock(
             ) { Text("Can't find it", maxLines = 1) }
         }
     }
+}
+
+private fun askedState(status: RequestStatus): String? =
+    when (status) {
+        RequestStatus.PENDING -> "waiting for you"
+        RequestStatus.APPROVED -> "approved"
+        RequestStatus.DECLINED -> "declined"
+        RequestStatus.COMPLETED -> "done"
+        else -> null
+    }
+
+/** Benflix: each waiting ask on its own line, then everything else folded into one line (newest first) */
+internal fun askedRows(asked: List<AskedBy>): List<Pair<AskedBy, String>> {
+    val (waiting, others) = asked.partition { it.status == RequestStatus.PENDING }
+    val rows =
+        waiting.map { entry ->
+            entry to listOfNotNull("Asked by ${entry.who}", entry.whenAsked, askedState(entry.status)).joinToString(" · ")
+        }
+    val newest = others.firstOrNull() ?: return rows
+    val names = others.map { it.who }.distinct()
+    val who = if (names.size <= 2) names.joinToString(" & ") else "${names.take(2).joinToString(", ")} +${names.size - 2}"
+    val text =
+        listOfNotNull(
+            "Asked by $who",
+            newest.whenAsked,
+            askedState(newest.status),
+            if (others.size > 1) "${others.size} asks" else null,
+        ).joinToString(" · ")
+    return rows + (newest to text)
 }

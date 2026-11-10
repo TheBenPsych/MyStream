@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -486,13 +486,9 @@ fun SeerrExtrasBlock(
         // tags (ecchi, nudity, gore...) say "Mature content" so the page and the cards agree
         if (grownUp) Pill(if (e.adult) "⚠ Adult content" else "⚠ Mature content", background = Color(0xFFB3261E))
         if (isTv) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-            ) {
-                if (scores.isNotEmpty()) ScoresCard(scores, big = true, modifier = Modifier.fillMaxHeight())
-                if (facts.isNotEmpty()) FactsCard(facts, big = true, modifier = Modifier.weight(1f).fillMaxHeight())
-            }
+            // Benflix: one slim strip on TV (scores, then the facts side by side). The two tall boxes
+            // pushed Ask for it / Trailer off the bottom of the screen.
+            InfoStrip(scores, facts, Modifier.fillMaxWidth())
         } else {
             if (scores.isNotEmpty()) ScoresCard(scores, big = false, modifier = Modifier.fillMaxWidth())
             if (facts.isNotEmpty()) FactsCard(facts, big = false, modifier = Modifier.fillMaxWidth())
@@ -591,6 +587,59 @@ private fun FactLabel(
         letterSpacing = 1.5.sp,
         modifier = modifier,
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InfoStrip(
+    scores: List<Score>,
+    facts: List<Fact>,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(22.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier =
+            modifier
+                .background(CARD_BACKGROUND, RoundedCornerShape(14.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        scores.forEach { score ->
+            Column {
+                Text(
+                    text = score.value,
+                    color = score.color,
+                    fontSize = BenflixType.rowName,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = BenflixType.tag, maxLines = 1)
+            }
+        }
+        if (scores.isNotEmpty() && facts.isNotEmpty()) {
+            Spacer(
+                Modifier
+                    .width(1.dp)
+                    .height(36.dp)
+                    .background(Color.White.copy(alpha = .18f)),
+            )
+        }
+        facts.forEach { fact ->
+            Column(Modifier.widthIn(max = 230.dp)) {
+                FactLabel(fact.label)
+                Text(
+                    text = fact.value,
+                    color = Color.White,
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = BenflixType.tag, maxLines = 1) }
+            }
+        }
+    }
 }
 
 @Composable
