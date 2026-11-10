@@ -58,7 +58,7 @@ enum class ServerToolGroup(
 ) {
     LIBRARY("Library", "Scan for new stuff, the library checkup and posters", BenflixIcon.FILM),
     DOWNLOADS("Downloads", "What's downloading, and stuck ones", BenflixIcon.DOWNLOAD),
-    PEOPLE("People", "Messages, and which Benflix version everyone has", BenflixIcon.PERSON),
+    PEOPLE("People", "Messages, Benflix versions and Kids ratings", BenflixIcon.PERSON),
     FIXES("Playback fixes", "Tidy track names and check playback speed", BenflixIcon.PLAY),
     TOWER("Tower", "Setup command, apps, restart, chores, weather town", BenflixIcon.SERVER),
 }

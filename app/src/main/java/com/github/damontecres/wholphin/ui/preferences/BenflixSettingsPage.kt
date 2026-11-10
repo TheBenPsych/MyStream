@@ -447,6 +447,7 @@ private val serverToolEntries: List<ServerToolEntry> =
             ServerToolEntry("Downloads", "stuck download find another sonarr radarr", ServerSection.TOOLS, ServerToolGroup.DOWNLOADS),
             ServerToolEntry("Messages", "message note send pop-up", ServerSection.TOOLS, ServerToolGroup.PEOPLE),
             ServerToolEntry("Benflix versions", "versions update out of date", ServerSection.TOOLS, ServerToolGroup.PEOPLE),
+            ServerToolEntry("Kids ratings", "kids ratings age rating allowed", ServerSection.TOOLS, ServerToolGroup.PEOPLE),
             ServerToolEntry("Track names", "audio subtitle tracks tidy labels languages", ServerSection.TOOLS, ServerToolGroup.FIXES),
             ServerToolEntry("Speed check", "speed internet playback stutter", ServerSection.TOOLS, ServerToolGroup.FIXES),
             ServerToolEntry("Setup command", "setup command tower helper terminal", ServerSection.TOOLS, ServerToolGroup.TOWER),
