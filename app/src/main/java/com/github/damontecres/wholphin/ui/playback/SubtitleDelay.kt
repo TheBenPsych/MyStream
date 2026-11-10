@@ -28,7 +28,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-private val delayIncrements = listOf(50.milliseconds, 250.milliseconds, 1.seconds)
+// Benflix: half a second and two seconds, so five buttons fit across a phone too
+private val delayIncrements = listOf(500.milliseconds, 2.seconds)
 
 /**
  * Shows buttons for adding to or subtracting from the given [Duration], ie subtitle delay
@@ -47,12 +48,23 @@ fun SubtitleDelay(
         modifier = modifier,
     ) {
         Text(
-            text = stringResource(R.string.subtitle_delay) + ": " + delay.toString(),
+            text =
+                stringResource(R.string.subtitle_delay) + ": " +
+                    when {
+                        delay == Duration.ZERO -> "not moved"
+                        delay.isPositive() -> "$delay later"
+                        else -> "${-delay} sooner"
+                    },
             color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "Words show up before people talk? Press +",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             delayIncrements.reversed().forEach {
                 SubtitleDelayButton(
@@ -85,7 +97,7 @@ fun SubtitleDelayButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.width(64.dp),
+        modifier = modifier.width(60.dp),
         shape =
             ClickableSurfaceDefaults.shape(
                 shape = RoundedCornerShape(33),

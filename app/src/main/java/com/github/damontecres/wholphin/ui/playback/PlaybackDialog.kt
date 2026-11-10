@@ -149,6 +149,7 @@ fun PlaybackDialog(
                     onDismissRequest.invoke()
                     onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming)
                 },
+                onSelectMoveYourself = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
                 gravity = rightGravity,
             )
         }
@@ -408,6 +409,7 @@ fun SubtitleChoiceBottomDialog(
     hasDownloadPermission: Boolean,
     currentChoice: Int? = null,
     onSelectFixTiming: (() -> Unit)? = null,
+    onSelectMoveYourself: (() -> Unit)? = null,
 ) {
     val numberBefore = 2
     val initialChoice =
@@ -545,6 +547,18 @@ fun SubtitleChoiceBottomDialog(
                             leadingContent = {},
                             headlineContent = { Text(text = "Subtitles are early or late") },
                             supportingContent = { Text(text = "Tower lines them up with the voices") },
+                            scale = ListItemDefaults.scale(focusedScale = 1f),
+                        )
+                    }
+                }
+                if (onSelectMoveYourself != null && currentChoice != null && currentChoice >= 0) {
+                    item {
+                        ListItem(
+                            selected = false,
+                            onClick = onSelectMoveYourself,
+                            leadingContent = {},
+                            headlineContent = { Text(text = "Subtitle timing") },
+                            supportingContent = { Text(text = "Move the words earlier or later yourself") },
                             scale = ListItemDefaults.scale(focusedScale = 1f),
                         )
                     }
