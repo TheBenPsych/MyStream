@@ -35,7 +35,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -43,6 +42,8 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -84,9 +85,23 @@ enum class QuizKind(
     SHORT("Under 30 min"),
     UNDER_TWO("Under 2 hours"),
     LONG("Long one"),
+
+    /** Shows door: episodes longer than half an hour */
+    HOUR("Longer episodes"),
     MOVIE("Movie"),
     SHOW("Show"),
     ANY("Any"),
+    ;
+
+    companion object {
+        /** The answers that make sense for where the quiz was opened (Movies, Shows, or anywhere) */
+        fun forDoor(door: String): List<QuizKind> =
+            when (pickerDoor(door)) {
+                BenflixDoor.MOVIES -> listOf(UNDER_TWO, LONG, ANY)
+                BenflixDoor.SHOWS -> listOf(SHORT, HOUR, ANY)
+                else -> listOf(SHORT, UNDER_TWO, LONG, MOVIE, SHOW, ANY)
+            }
+    }
 }
 
 /** One result, and how many of the chosen moods it matches */
@@ -109,6 +124,7 @@ class MoodQuizViewModel
         val results: StateFlow<List<QuizResult>?> = _results
 
         fun find(
+            door: String,
             moods: Set<QuizMood>,
             kinds: Set<QuizKind>,
         ) {
@@ -121,6 +137,7 @@ class MoodQuizViewModel
                         val wantShow = QuizKind.SHOW in kinds
                         val types =
                             when {
+                                pickerDoor(door) != null -> pickerTypes(door)
                                 wantMovie && !wantShow -> listOf(BaseItemKind.MOVIE)
                                 wantShow && !wantMovie -> listOf(BaseItemKind.SERIES)
                                 QuizKind.SHORT in kinds && !wantMovie -> listOf(BaseItemKind.SERIES)
@@ -172,12 +189,13 @@ class MoodQuizViewModel
         ): Boolean {
             val minutes = (item.data.runTimeTicks ?: 0L) / 600_000_000L
             if (minutes <= 0) return true
-            val time = kinds.filter { it == QuizKind.SHORT || it == QuizKind.UNDER_TWO || it == QuizKind.LONG }
+            val time = kinds.filter { it == QuizKind.SHORT || it == QuizKind.UNDER_TWO || it == QuizKind.LONG || it == QuizKind.HOUR }
             if (time.isEmpty()) return true
             return time.any {
                 when (it) {
                     QuizKind.SHORT -> minutes <= 30
                     QuizKind.UNDER_TWO -> minutes < 120
+                    QuizKind.HOUR -> minutes > 30
                     else -> minutes >= 120
                 }
             }
@@ -191,9 +209,18 @@ class MoodQuizViewModel
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MoodQuizPage(
+    door: String,
     modifier: Modifier = Modifier,
     viewModel: MoodQuizViewModel = hiltViewModel(),
 ) {
+    val accent = pickerAccent(door)
+    val kindChoices = remember(door) { QuizKind.forDoor(door) }
+    val stepTwo =
+        when (pickerDoor(door)) {
+            BenflixDoor.MOVIES -> "How long a movie?"
+            BenflixDoor.SHOWS -> "How long are the episodes?"
+            else -> "How much time, and what kind?"
+        }
     var step by rememberSaveable { mutableIntStateOf(0) }
     val moods = remember { mutableStateListOf<QuizMood>() }
     val kinds = remember { mutableStateListOf<QuizKind>() }
@@ -213,15 +240,16 @@ fun MoodQuizPage(
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.3.sp,
-                    color = Color(0xFFA69C9D),
+                    color = accent,
                 )
                 Text(
-                    text = if (step == 0) "What's the group in the mood for?" else "How much time, and what kind?",
+                    text = if (step == 0) "What's the group in the mood for?" else stepTwo,
                     fontFamily = BenflixFont,
                     fontWeight = FontWeight.Bold,
                     fontSize = BenflixType.pageTitle,
+                    color = BenflixColors.Text,
                 )
-                Text("Pick as many as you like.", fontSize = BenflixType.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Pick as many as you like.", fontSize = BenflixType.body, color = BenflixColors.Muted)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -232,15 +260,17 @@ fun MoodQuizPage(
                             QuizChip(
                                 text = mood.title,
                                 on = mood in moods,
+                                accent = accent,
                                 onClick = { if (mood in moods) moods.remove(mood) else moods.add(mood) },
                                 modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
                             )
                         }
                     } else {
-                        QuizKind.entries.forEachIndexed { i, kind ->
+                        kindChoices.forEachIndexed { i, kind ->
                             QuizChip(
                                 text = kind.title,
                                 on = kind in kinds,
+                                accent = accent,
                                 onClick = { if (kind in kinds) kinds.remove(kind) else kinds.add(kind) },
                                 modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
                             )
@@ -254,21 +284,26 @@ fun MoodQuizPage(
                             if (step == 0) {
                                 step = 1
                             } else {
-                                viewModel.find(moods.toSet(), kinds.toSet())
+                                viewModel.find(door, moods.toSet(), kinds.toSet())
                                 step = 2
                             }
                         },
+                        colors = pickerButtonColors(primary = true),
                         scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
-                        Text(if (step == 0) "Next" else "Show picks")
+                        Text(if (step == 0) "Next" else "Show picks", fontWeight = FontWeight.Bold)
                     }
                     if (step == 1) {
-                        Button(onClick = { step = 0 }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Back") }
+                        Button(
+                            onClick = { step = 0 },
+                            colors = pickerButtonColors(primary = false),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                        ) { Text("Back", fontWeight = FontWeight.Bold) }
                     }
                     Text(
                         text = if (count == 0) "Nothing picked: anything goes" else "$count picked",
                         fontSize = BenflixType.small,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = BenflixColors.Muted,
                         modifier = Modifier.padding(top = 12.dp),
                     )
                 }
@@ -282,6 +317,7 @@ fun MoodQuizPage(
                             .joinToString(" or ") { it.title.lowercase() }
                             .ifEmpty { "Something for everyone" },
                     viewModel = viewModel,
+                    accent = accent,
                     firstFocus = firstFocus,
                     onChangeAnswers = { step = 0 },
                 )
@@ -294,6 +330,7 @@ fun MoodQuizPage(
 private fun QuizResults(
     title: String,
     viewModel: MoodQuizViewModel,
+    accent: Color,
     firstFocus: FocusRequester,
     onChangeAnswers: () -> Unit,
 ) {
@@ -304,9 +341,14 @@ private fun QuizResults(
             fontFamily = BenflixFont,
             fontWeight = FontWeight.Bold,
             fontSize = BenflixType.pageTitle,
+            color = BenflixColors.Text,
             modifier = Modifier.weight(1f),
         )
-        Button(onClick = onChangeAnswers, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Change answers") }
+        Button(
+            onClick = onChangeAnswers,
+            colors = pickerButtonColors(primary = false),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+        ) { Text("Change answers", fontWeight = FontWeight.Bold) }
     }
     when (val list = results) {
         null -> {
@@ -315,7 +357,7 @@ private fun QuizResults(
 
         else -> {
             if (list.isEmpty()) {
-                Text("Nothing matched. Try fewer answers.", fontSize = BenflixType.lead)
+                Text("Nothing matched. Try fewer answers.", fontSize = BenflixType.lead, color = BenflixColors.Text)
             } else {
                 LaunchedEffect(list) {
                     delay(80)
@@ -324,7 +366,7 @@ private fun QuizResults(
                 Text(
                     text = "Best matches first. Ones that fit every mood say so.",
                     fontSize = BenflixType.small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = BenflixColors.Muted,
                 )
                 LazyVerticalGrid(
                     // About 6 across on a TV, 2 or 3 on a phone
@@ -350,7 +392,7 @@ private fun QuizResults(
                                     text = "Fits every mood",
                                     fontSize = BenflixType.tag,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = accent,
                                 )
                             }
                         }
@@ -365,6 +407,7 @@ private fun QuizResults(
 private fun QuizChip(
     text: String,
     on: Boolean,
+    accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -374,17 +417,17 @@ private fun QuizChip(
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors =
             ButtonDefaults.colors(
-                containerColor = if (on) Color(0xFF2A1416) else Color(0xFF1A1616),
-                contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                containerColor = if (on) BenflixColors.FocusRow else BenflixColors.Raised,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.Text,
+                focusedContentColor = BenflixColors.Tray,
             ),
         border =
             ButtonDefaults.border(
                 border =
                     if (on) {
                         androidx.tv.material3.Border(
-                            androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFE5303A)),
+                            androidx.compose.foundation.BorderStroke(2.dp, accent),
                             shape = RoundedCornerShape(10.dp),
                         )
                     } else {

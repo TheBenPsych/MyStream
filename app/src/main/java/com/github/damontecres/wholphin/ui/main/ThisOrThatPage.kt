@@ -35,7 +35,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -47,6 +46,9 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.door.doorFocusBorder
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -91,11 +93,18 @@ class ThisOrThatViewModel
         private val _state = MutableStateFlow(ThisOrThatState())
         val state: StateFlow<ThisOrThatState> = _state
 
-        init {
+        /** The door it was opened from (Movies or Shows), blank = both */
+        private var door: String? = null
+
+        /** Starts once per door (coming back from a title's page keeps the game where it was) */
+        fun startFor(door: String) {
+            if (this.door == door) return
+            this.door = door
             start()
         }
 
         fun start() {
+            val types = pickerTypes(door.orEmpty())
             _state.value = ThisOrThatState()
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val pool =
@@ -104,7 +113,7 @@ class ThisOrThatViewModel
                             .getItems(
                                 GetItemsRequest(
                                     userId = serverRepository.currentUser?.id,
-                                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                    includeItemTypes = types,
                                     recursive = true,
                                     isPlayed = false,
                                     minCommunityRating = 6.0,
@@ -144,12 +153,34 @@ class ThisOrThatViewModel
         }
     }
 
+/** What the pick-a-movie games pick from: the Movies door = movies, Shows = shows, anywhere else = both */
+internal fun pickerTypes(door: String): List<BaseItemKind> =
+    when (pickerDoor(door)) {
+        BenflixDoor.MOVIES -> listOf(BaseItemKind.MOVIE)
+        BenflixDoor.SHOWS -> listOf(BaseItemKind.SERIES)
+        else -> listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
+    }
+
+internal fun pickerDoor(door: String): BenflixDoor? = BenflixDoor.entries.firstOrNull { it.name == door }
+
+/** The game's colour: the door you came from, or plain white from Search */
+internal fun pickerAccent(door: String): Color = pickerDoor(door)?.color ?: BenflixColors.Text
+
 @Composable
 fun ThisOrThatPage(
+    door: String,
     modifier: Modifier = Modifier,
     viewModel: ThisOrThatViewModel = hiltViewModel(),
 ) {
+    LaunchedEffect(door) { viewModel.startFor(door) }
     val state by viewModel.state.collectAsState()
+    val accent = pickerAccent(door)
+    val what =
+        when (pickerDoor(door)) {
+            BenflixDoor.MOVIES -> "movie"
+            BenflixDoor.SHOWS -> "show"
+            else -> "one"
+        }
     val isTv = rememberIsTv()
     val pool = state.pool
     Column(
@@ -165,6 +196,7 @@ fun ThisOrThatPage(
             fontFamily = BenflixFont,
             fontWeight = FontWeight.Bold,
             fontSize = BenflixType.pageTitle,
+            color = BenflixColors.Text,
         )
         when {
             pool == null -> {
@@ -177,6 +209,7 @@ fun ThisOrThatPage(
                     Winner(
                         item = state.champion,
                         isTv = isTv,
+                        accent = accent,
                         onPlay = { viewModel.navigationManager.navigateTo(Destination.MediaItem(it)) },
                         onAgain = viewModel::start,
                     )
@@ -186,11 +219,11 @@ fun ThisOrThatPage(
             else -> {
                 val challenger = pool.getOrNull(state.challengerIndex)
                 Text(
-                    text = "ROUND ${state.round} OF ${ThisOrThatViewModel.ROUNDS} · WHICH ONE TONIGHT?",
+                    text = "ROUND ${state.round} OF ${ThisOrThatViewModel.ROUNDS} · WHICH $what TONIGHT?".uppercase(),
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.3.sp,
-                    color = Color(0xFFA69C9D),
+                    color = BenflixColors.Muted,
                 )
                 BoxWithConstraints(
                     contentAlignment = Alignment.TopCenter,
@@ -218,7 +251,7 @@ fun ThisOrThatPage(
                             text = "or",
                             fontSize = BenflixType.rowName,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = accent,
                             modifier = Modifier.padding(top = posterWidth * .7f),
                         )
                         PickPoster(
@@ -248,6 +281,8 @@ private fun PickPoster(
         Surface(
             onClick = onClick,
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+            colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
+            border = doorFocusBorder(RoundedCornerShape(10.dp)),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier = modifier.fillMaxWidth().aspectRatio(2f / 3f),
         ) {
@@ -259,11 +294,12 @@ private fun PickPoster(
                     Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.DarkGray),
+                        .background(BenflixColors.Raised),
             )
         }
         Text(
             text = listOfNotNull(item?.name, item?.data?.productionYear?.toString()).joinToString(" · "),
+            color = BenflixColors.Text,
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
@@ -277,6 +313,7 @@ private fun PickPoster(
 private fun Winner(
     item: BaseItem?,
     isTv: Boolean,
+    accent: Color,
     onPlay: (BaseItem) -> Unit,
     onAgain: () -> Unit,
 ) {
@@ -291,14 +328,14 @@ private fun Winner(
         modifier = Modifier.padding(bottom = 16.dp),
     ) {
         if (item == null) {
-            Text("Not enough to pick from yet. Try again later.", fontSize = BenflixType.body)
+            Text("Not enough to pick from yet. Try again later.", fontSize = BenflixType.body, color = BenflixColors.Text)
         } else {
             Text(
                 text = "TONIGHT'S PICK",
                 fontSize = BenflixType.small,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.3.sp,
-                color = Color(0xFF9A9AA3),
+                color = accent,
             )
             AsyncImage(
                 model = LocalImageUrlService.current.rememberImageUrl(item),
@@ -309,10 +346,11 @@ private fun Winner(
                         .width(if (isTv) 200.dp else 160.dp)
                         .aspectRatio(2f / 3f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.DarkGray),
+                        .background(BenflixColors.Raised),
             )
             Text(
                 text = item.name.orEmpty(),
+                color = BenflixColors.Text,
                 fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -323,9 +361,10 @@ private fun Winner(
                 Button(
                     onClick = { onPlay(item) },
                     modifier = Modifier.focusRequester(focus),
+                    colors = pickerButtonColors(primary = true),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
-                    Text("Let's watch it")
+                    Text("Let's watch it", fontWeight = FontWeight.Bold)
                 }
             }
             Button(
@@ -338,10 +377,21 @@ private fun Winner(
                     } else {
                         Modifier
                     },
+                colors = pickerButtonColors(primary = item == null),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
-                Text("Play again")
+                Text("Play again", fontWeight = FontWeight.Bold)
             }
         }
     }
 }
+
+/** Benflix buttons for the pick games: white for the main one, dark grey for the rest, white when focused */
+@Composable
+internal fun pickerButtonColors(primary: Boolean) =
+    ButtonDefaults.colors(
+        containerColor = if (primary) BenflixColors.Text else BenflixColors.FocusRow,
+        contentColor = if (primary) BenflixColors.Tray else BenflixColors.Text,
+        focusedContainerColor = BenflixColors.Text,
+        focusedContentColor = BenflixColors.Tray,
+    )

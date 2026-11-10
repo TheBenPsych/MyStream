@@ -479,16 +479,16 @@ fun DestinationContent(
                 .TrailerShufflePage(modifier)
         }
 
-        Destination.ThisOrThat -> {
+        is Destination.ThisOrThat -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main
-                .ThisOrThatPage(modifier)
+                .ThisOrThatPage(destination.door, modifier)
         }
 
-        Destination.MoodQuiz -> {
+        is Destination.MoodQuiz -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main
-                .MoodQuizPage(modifier)
+                .MoodQuizPage(destination.door, modifier)
         }
 
         Destination.Requests -> {
