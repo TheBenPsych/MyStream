@@ -84,6 +84,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -155,7 +156,7 @@ class HomeDoorsViewModel
                     // Benflix speed: the news sources are asked at the same time (they used to go one after
                     // another, so a slow Tower kept the doors waiting and the pills popped in mid-animation)
                     val items =
-                        kotlinx.coroutines.coroutineScope {
+                        coroutineScope {
                             val episodes = async { episodeNews() }
                             val music = async { musicNews() }
                             val books = async { bookNews() }
