@@ -98,7 +98,16 @@ private fun PickerTile(
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.height(if (compact) 112.dp else if (easy) 104.dp else 88.dp),
+        modifier =
+            modifier.height(
+                if (compact) {
+                    112.dp
+                } else if (easy) {
+                    104.dp
+                } else {
+                    88.dp
+                },
+            ),
     ) {
         val badge: @Composable () -> Unit = {
             Box(
@@ -128,9 +137,20 @@ private fun PickerTile(
             ) {
                 badge()
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-                    Text(text = title, fontSize = if (easy) BenflixType.rowName else BenflixType.lead, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                    Text(
+                        text = title,
+                        fontSize = if (easy) BenflixType.rowName else BenflixType.lead,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                    )
                     if (!easy) {
-                        Text(text = line, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = line,
+                            fontSize = BenflixType.small,
+                            color = BenflixColors.Muted,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
