@@ -2094,8 +2094,10 @@ def _ch_defaults():
     first = quality[0].get("id") if quality else 1
     _ch_setup.update(
         at=time.time(), ebook=ebook or audio, audio=audio or ebook,
-        audio_quality=next((q.get("id") for q in quality if "audio" in (q.get("name") or "").lower()), first),
-        ebook_quality=next((q.get("id") for q in quality if "audio" not in (q.get("name") or "").lower()), first),
+        audio_quality=next((q.get("id") for q in quality if q.get("profileType") == "audiobook"), None)
+        or next((q.get("id") for q in quality if "audio" in (q.get("name") or "").lower()), first),
+        ebook_quality=next((q.get("id") for q in quality if q.get("profileType") == "ebook"), None)
+        or next((q.get("id") for q in quality if "audio" not in (q.get("name") or "").lower()), first),
         meta=(meta[0].get("id") if meta else 1),
     )
     return _ch_setup
@@ -2130,7 +2132,11 @@ def _send_to_chaptarr(r):
             monitored=True,
             addOptions={"monitor": "none", "searchForMissingBooks": False},
         )
-        book.update(author=author, monitored=True, addOptions={"searchForNewBook": True})
+        # Chaptarr keeps an ebook switch and an audiobook switch on each book, so "Both" turns both on
+        book.update(
+            author=author, monitored=True, addOptions={"searchForNewBook": True},
+            ebookMonitored="ebook" in kinds, audiobookMonitored="audiobook" in kinds,
+        )
         try:
             added = ch("POST", "/api/v1/book", book) or {}
             book_id = added.get("id") or 0
@@ -2147,6 +2153,16 @@ def _send_to_chaptarr(r):
         book = ch("GET", f"/api/v1/book/{book_id}") or {}
         if not book.get("monitored"):
             ch("PUT", "/api/v1/book/monitor", {"bookIds": [book_id], "monitored": True})
+        # Already in Chaptarr (maybe as the other format): switch on the format(s) asked for, keep what was on
+        want_e = "ebook" in kinds and book.get("ebookMonitored") is False
+        want_a = "audiobook" in kinds and book.get("audiobookMonitored") is False
+        if want_e or want_a:
+            book.update(monitored=True)
+            if want_e:
+                book["ebookMonitored"] = True
+            if want_a:
+                book["audiobookMonitored"] = True
+            ch("PUT", f"/api/v1/book/{book_id}", book)
     except BooksError:
         pass
     ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": [book_id]})
