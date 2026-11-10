@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.preferences
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,7 +62,8 @@ fun BenflixQuickConnect(
     LaunchedEffect(Unit) { viewModel.reset() }
     LaunchedEffect(status) {
         if (status == LoadingState.Success) {
-            Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                .pill(successMessage)
             viewModel.reset()
             onDismiss()
         }

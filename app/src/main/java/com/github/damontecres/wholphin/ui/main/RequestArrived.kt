@@ -2,6 +2,9 @@ package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +19,7 @@ import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.jellyfinId
 import com.github.damontecres.wholphin.services.requestedArrived
+import com.github.damontecres.wholphin.ui.components.BenflixNotices
 import com.github.damontecres.wholphin.ui.components.RequestReadyNotice
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -46,10 +50,8 @@ import javax.inject.Singleton
 
 /**
  * Benflix: "Your request is here!" When something a person asked for in Requests has arrived on Benflix,
- * they get a quiet notice (Ben asked 2026-11-03, it used to be a pop-up): a red number on More (TV) or
- * My Benflix (phone), a 7-second tip bubble for each one (one after another), and a
- * "Your requests are here" row on My Benflix. The number clears when My Benflix is opened.
- * Each request gets its bubble once per device. The very first check only remembers what has already
+ * they get a 7-second corner card for each one (one after another) and a Ready to watch row on Home.
+ * Each request gets its card once per device. The very first check only remembers what has already
  * arrived, so nobody gets a pile of old bubbles (they still show in the My Benflix row).
  */
 @Singleton
@@ -227,6 +229,17 @@ class RequestReadyService
                         RequestReadyNotice.Tip(
                             requestId = request.id!!,
                             title = title,
+                            destination =
+                                request.media?.jellyfinId?.let {
+                                    Destination.MediaItem(
+                                        it,
+                                        if (SeerrItemType.fromString(request.type) == SeerrItemType.MOVIE) {
+                                            org.jellyfin.sdk.model.api.BaseItemKind.MOVIE
+                                        } else {
+                                            org.jellyfin.sdk.model.api.BaseItemKind.SERIES
+                                        },
+                                    )
+                                },
                             posterUrl =
                                 request.media?.jellyfinId?.let {
                                     runCatching {
@@ -360,6 +373,7 @@ class RequestArrivedViewModel
     constructor(
         private val service: RequestReadyService,
         private val seerrServerRepository: SeerrServerRepository,
+        val navigationManager: com.github.damontecres.wholphin.services.NavigationManager,
     ) : ViewModel() {
         init {
             viewModelScope.launch(WholphinDispatchers.IO) {
@@ -380,11 +394,31 @@ class RequestArrivedViewModel
         }
     }
 
-/** No pop-up any more: this only starts the watching. The notice itself lives in the top bar / phone menu. */
+/**
+ * Starts the watching, and turns each new arrival into a 7-second corner card ("Mickey 17 is ready", OK to watch).
+ * Cards wait while something plays (the notice layer holds them), and each one shows once per device.
+ */
 @Composable
 fun RequestArrivedLayer(
     @Suppress("UNUSED_PARAMETER") currentDestination: Destination?,
     viewModel: RequestArrivedViewModel = hiltViewModel(),
 ) {
-    viewModel.hashCode()
+    val tips by RequestReadyNotice.tips.collectAsState()
+    LaunchedEffect(tips) {
+        tips.forEach { tip ->
+            BenflixNotices.card(
+                BenflixNotices.Card(
+                    id = "req-${tip.requestId}",
+                    title = "${tip.title} is ready",
+                    line = "You asked for it",
+                    image = tip.posterUrl,
+                    onOpen = {
+                        RequestReadyNotice.tipDone(tip)
+                        viewModel.navigationManager.navigateTo(tip.destination ?: Destination.Requests)
+                    },
+                    onTimeout = { RequestReadyNotice.tipDone(tip) },
+                ),
+            )
+        }
+    }
 }

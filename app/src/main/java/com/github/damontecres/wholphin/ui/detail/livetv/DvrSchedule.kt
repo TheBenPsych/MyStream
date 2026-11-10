@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.livetv
 
 import android.text.format.DateUtils
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -197,9 +196,8 @@ fun DvrSchedule(
                                 ),
                             )
                         } else {
-                            Toast
-                                .makeText(context, "Program has no channel ID", Toast.LENGTH_LONG)
-                                .show()
+                            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                .pill("Program has no channel ID")
                         }
                     },
                     onRecord = { _, _ ->

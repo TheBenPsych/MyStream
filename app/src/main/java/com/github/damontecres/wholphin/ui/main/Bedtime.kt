@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -308,7 +307,8 @@ fun BedtimeLayer(
                                 askPin = false
                                 viewModel.moreTime()
                             } else {
-                                Toast.makeText(context, context.getString(R.string.incorrect), Toast.LENGTH_SHORT).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(context.getString(R.string.incorrect))
                             }
                         }
                     },
@@ -382,7 +382,8 @@ private fun ScreenTimeUp(viewModel: BedtimeViewModel) {
                                 askPin = false
                                 viewModel.moreScreenTime()
                             } else {
-                                Toast.makeText(context, context.getString(R.string.incorrect), Toast.LENGTH_SHORT).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(context.getString(R.string.incorrect))
                             }
                         }
                     },
@@ -409,7 +410,9 @@ fun ParentPinDialog(
     var step by remember { mutableStateOf(if (hasPin) ParentPinStep.CHECK else ParentPinStep.NEW) }
     var pending by remember { mutableStateOf("") }
 
-    fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+    fun toast(text: String) =
+        com.github.damontecres.wholphin.ui.components.BenflixNotices
+            .pill(text)
     BasicDialog(onDismissRequest = { onDone(hasPin) }) {
         when (step) {
             ParentPinStep.CHECK -> {

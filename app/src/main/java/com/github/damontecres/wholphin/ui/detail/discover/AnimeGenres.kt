@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -753,9 +752,9 @@ fun AnimeGenrePage(
                         busy = opening == anime.id,
                         onClick = {
                             viewModel.open(anime) {
-                                Toast
-                                    .makeText(context, "Couldn't find ${anime.title} in Requests", Toast.LENGTH_SHORT)
-                                    .show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                                    "Couldn't find ${anime.title} in Requests",
+                                )
                             }
                         },
                     )

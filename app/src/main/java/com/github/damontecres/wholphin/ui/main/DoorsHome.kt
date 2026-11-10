@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.IntroPace
 import com.github.damontecres.wholphin.ui.IntroSounds
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.components.HomeNewsDot
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -106,15 +107,18 @@ import java.time.LocalTime
 import javax.inject.Inject
 
 /**
- * One row of Home's list (approved f3-panel): your news first (new episode, new volume, request ready),
- * then On the way (your own requests), then Did you know. [dot] is the door colour (white = requests and app news).
+ * One row of Home's news panel (Redesign 2 Home, approved hm-tall 2026-11-10): a small square poster, a small
+ * coloured line saying what it is ([kind], like "New episode · S3 E12"), then the name on up to 2 lines.
  * [destination] is where pressing it goes (null = nowhere, just reading). News goes away once opened.
  */
 data class HomeRow(
     val id: String,
+    /** The small coloured line: "New episode · S3 E12", "Ready to watch", "On the way · 2h left", "Did you know" */
+    val kind: String,
+    /** The name (or the fact), up to 2 lines; a longer one slides by when the row is picked */
     val title: String,
-    val detail: String,
-    val dot: Color,
+    /** Green = ready to watch, amber = on the way, teal = Did you know, grey = everything else */
+    val kindColor: Color,
     val image: String?,
     val destination: Destination?,
     /** A square picture (music) instead of a poster */
@@ -124,6 +128,37 @@ data class HomeRow(
     val fullText: String? = null,
     /** A note that talks about one part of Benflix gets a button in its pop-up to go there ("Open Live TV") */
     val goTo: Pair<String, Destination>? = null,
+    /** When it happened, so news is newest first */
+    val at: Long = 0L,
+)
+
+/** The colours of the small kind line on Home's rows */
+object HomeKind {
+    val Ready = BenflixColors.Ok
+    val OnTheWay = BenflixColors.Movies
+    val Fact = BenflixColors.LiveTv
+    val Other = BenflixColors.Muted
+}
+
+/** Everything Home could show: your news (newest first), your requests on the way, and Did you know facts */
+data class HomeParts(
+    val news: List<HomeRow> = emptyList(),
+    val onTheWay: List<HomeRow> = emptyList(),
+    val facts: List<HomeRow> = emptyList(),
+) {
+    fun without(ids: Set<String>) =
+        HomeParts(news.filter { it.id !in ids }, onTheWay.filter { it.id !in ids }, facts.filter { it.id !in ids })
+
+    /** Everything See all lists (facts aren't news, so they stay on Home only) */
+    val all: List<HomeRow> get() = news + onTheWay
+
+    val isEmpty: Boolean get() = news.isEmpty() && onTheWay.isEmpty() && facts.isEmpty()
+}
+
+/** What the panel shows: [rows], and how many more are under See all */
+data class HomeList(
+    val rows: List<HomeRow>,
+    val more: Int,
 )
 
 /** The tab is called Live TV now, so old notes that say "under Channels" read right */
@@ -180,8 +215,8 @@ class HomeDoorsViewModel
         private val notes: com.github.damontecres.wholphin.services.BenflixNotes,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
-        private val _rows = MutableStateFlow<List<HomeRow>>(emptyList())
-        val rows: StateFlow<List<HomeRow>> = _rows
+        private val _rows = MutableStateFlow(HomeParts())
+        val rows: StateFlow<HomeParts> = _rows
 
         private val _weather = MutableStateFlow<String?>(null)
 
@@ -216,9 +251,28 @@ class HomeDoorsViewModel
 
         private fun shown(rows: List<HomeRow>) = rows.filter { it.id !in cleared && it.id !in clearedNow }
 
+        private fun seenKey() = "seen-" + (serverRepository.currentUser?.id?.toString() ?: "none")
+
+        /** The white dot on your picture: news on Home you haven't looked at yet */
+        private fun updateDot() {
+            val seen = prefs.getStringSet(seenKey(), emptySet()).orEmpty()
+            HomeNewsDot.set(_rows.value.news.any { it.id !in seen })
+        }
+
+        /** You looked at Home's list (moved into it, scrolled past it, or opened See all): the dot goes */
+        fun markSeen() {
+            val ids = _rows.value.news.map { it.id }
+            HomeNewsDot.set(false)
+            if (ids.isEmpty()) return
+            val seen = prefs.getStringSet(seenKey(), emptySet()).orEmpty()
+            if (seen.containsAll(ids)) return
+            prefs.edit().putStringSet(seenKey(), (seen + ids).toList().takeLast(MAX_SEEN).toSet()).apply()
+        }
+
         fun load() {
             if (KidsMode.isActive || GuestMode.isActive) {
-                _rows.value = emptyList()
+                HomeNewsDot.set(false)
+                _rows.value = HomeParts()
                 _weather.value = null
                 _loaded.value = true
                 return
@@ -247,11 +301,13 @@ class HomeDoorsViewModel
                                 benNews(custom) + episodes.await() + music.await() + bookRows.await() + requests.await() +
                                     updateNews(),
                             ).filter { it.id !in opened }
+                                .sortedByDescending { it.at }
                                 .take(MAX_NEWS)
                         facts = fact.await()
                         weather.await()?.let { _weather.value = it.ifBlank { null } }
                     }
-                    _rows.value = arrangeHomeRows(news, shown(onTheWayRows()), facts)
+                    _rows.value = HomeParts(news, shown(onTheWayRows()), facts)
+                    updateDot()
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -263,7 +319,7 @@ class HomeDoorsViewModel
                 // changes if something did)
                 try {
                     requestReadyService.refresh(minGapMs = REQUESTS_GAP_MS)
-                    val again = arrangeHomeRows(shown(news), shown(onTheWayRows()), shown(facts))
+                    val again = HomeParts(shown(news), shown(onTheWayRows()), shown(facts))
                     if (again != _rows.value) _rows.value = again
                     if (_weather.value == null) towerWeather()?.let { _weather.value = it.ifBlank { null } }
                 } catch (ex: CancellationException) {
@@ -279,7 +335,7 @@ class HomeDoorsViewModel
                 val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
                 // Keep the list short: only the newest 60 opened rows are remembered
                 prefs.edit().putStringSet(openedKey(), (opened + row.id).toList().takeLast(60).toSet()).apply()
-                _rows.value = _rows.value.filter { it.id != row.id }
+                _rows.value = _rows.value.without(setOf(row.id))
                 saveCleared(listOf(row.id))
             }
             row.destination?.let { navigationManager.navigateTo(it) }
@@ -287,15 +343,17 @@ class HomeDoorsViewModel
 
         /** The X on a row: it goes away, and stays away on every TV, phone and browser for this profile */
         fun clear(row: HomeRow) {
-            _rows.value = _rows.value.filter { it.id != row.id }
+            _rows.value = _rows.value.without(setOf(row.id))
             clearedNow += row.id
             saveCleared(listOf(row.id))
         }
 
         /** Clear all: the whole list goes away (new news still shows when it comes) */
         fun clearAll() {
-            val ids = _rows.value.map { it.id }
-            _rows.value = emptyList()
+            val parts = _rows.value
+            val ids = (parts.all + parts.facts).map { it.id }
+            HomeNewsDot.set(false)
+            _rows.value = HomeParts()
             clearedNow += ids
             saveCleared(ids)
         }
@@ -353,14 +411,16 @@ class HomeDoorsViewModel
                     out +=
                         HomeRow(
                             id = "note-${note.id}",
-                            title = "A note from Ben",
-                            detail = text.lineSequence().first(),
-                            dot = BenflixColors.Text,
+                            kind = "A note from Ben",
+                            title = text.lineSequence().first(),
+                            kindColor = HomeKind.Other,
                             image = null,
                             destination = null,
                             news = true,
                             fullText = text,
                             goTo = noteLink(text, KidsMode.isActive),
+                            // A note from Ben always leads
+                            at = Long.MAX_VALUE,
                         )
                 }
             custom["benflix.fixed"]
@@ -374,13 +434,14 @@ class HomeDoorsViewModel
                     out +=
                         HomeRow(
                             id = "fixed-$at",
+                            kind = "Ben fixed it",
                             title = title,
-                            detail = "Ben fixed it, it's ready to watch again",
-                            dot = BenflixColors.Text,
+                            kindColor = HomeKind.Ready,
                             image = null,
                             destination = null,
                             news = true,
                             fullText = "Ben fixed $title. Try it again!",
+                            at = at,
                         )
                 }
             return out
@@ -422,19 +483,26 @@ class HomeDoorsViewModel
                 .map { ep ->
                     val season = ep.parentIndexNumber
                     val newSeason = ep.indexNumber == 1 && (season ?: 1) > 1
+                    val show = ep.seriesName ?: ep.name.orEmpty()
                     HomeRow(
                         id = "ep-${ep.id}",
-                        title = ep.seriesName ?: ep.name.orEmpty(),
-                        detail =
+                        // The episode number sits in the small line, so the name gets the whole width
+                        kind =
                             when {
-                                newSeason -> "Season $season is here"
-                                season != null && ep.indexNumber != null -> "New episode: season $season, episode ${ep.indexNumber}"
+                                newSeason -> "New season"
+                                season != null && ep.indexNumber != null -> "New episode · S$season E${ep.indexNumber}"
                                 else -> "New episode"
                             },
-                        dot = BenflixDoor.SHOWS.color,
+                        title = if (newSeason) "$show · Season $season" else show,
+                        kindColor = HomeKind.Other,
                         image = poster(ep.seriesId ?: ep.id),
                         destination = BaseItem(ep).destination(),
                         news = true,
+                        at =
+                            ep.dateCreated
+                                ?.atZone(java.time.ZoneId.systemDefault())
+                                ?.toInstant()
+                                ?.toEpochMilli() ?: 0L,
                     )
                 }
         }
@@ -475,13 +543,18 @@ class HomeDoorsViewModel
                     .map { album ->
                         HomeRow(
                             id = "music-${album.id}",
-                            title = album.albumArtist ?: album.name.orEmpty(),
-                            detail = "New music: ${album.name}",
-                            dot = BenflixDoor.MUSIC.color,
+                            kind = "New music",
+                            title = listOfNotNull(album.albumArtist, album.name).joinToString(" · "),
+                            kindColor = HomeKind.Other,
                             image = poster(album.id),
                             destination = BaseItem(album).destination(),
                             square = true,
                             news = true,
+                            at =
+                                album.dateCreated
+                                    ?.atZone(java.time.ZoneId.systemDefault())
+                                    ?.toInstant()
+                                    ?.toEpochMilli() ?: 0L,
                         )
                     }
             } catch (ex: CancellationException) {
@@ -496,14 +569,16 @@ class HomeDoorsViewModel
         private suspend fun bookNews(): List<HomeRow> =
             try {
                 withTimeoutOrNull(BOOK_NEWS_WAIT_MS) { books.news() }.orEmpty().take(2).map {
+                    val (kind, title) = bookWords(it)
                     HomeRow(
                         id = "book-${it.id}",
-                        title = it.name ?: it.text,
-                        detail = it.line.orEmpty(),
-                        dot = BenflixDoor.BOOKS.color,
+                        kind = kind,
+                        title = title,
+                        kindColor = if (it.id.startsWith("bkr-")) HomeKind.Ready else HomeKind.Other,
                         image = books.url(it.cover),
                         destination = Destination.BookTitle(it.titleId),
                         news = true,
+                        at = it.at,
                     )
                 }
             } catch (ex: CancellationException) {
@@ -518,18 +593,24 @@ class HomeDoorsViewModel
         private suspend fun requestNews(): List<HomeRow> =
             requestReadyService.ready.value
                 .mapNotNull { it.jellyfinId }
-                .take(2)
-                .mapNotNull { id ->
+                .take(3)
+                .mapIndexedNotNull { i, id ->
                     try {
                         val item = api.userLibraryApi.getItem(id).content
                         HomeRow(
                             id = "req-$id",
-                            title = item.name.orEmpty(),
-                            detail = "Your request is ready to watch",
-                            dot = BenflixColors.Text,
+                            kind = "Ready to watch",
+                            title = "${item.name.orEmpty()} · you asked",
+                            kindColor = HomeKind.Ready,
                             image = poster(item.id),
                             destination = BaseItem(item).destination(),
                             news = true,
+                            at =
+                                item.dateCreated
+                                    ?.atZone(java.time.ZoneId.systemDefault())
+                                    ?.toInstant()
+                                    ?.toEpochMilli()
+                                    ?: (System.currentTimeMillis() - i),
                         )
                     } catch (ex: CancellationException) {
                         throw ex
@@ -549,12 +630,13 @@ class HomeDoorsViewModel
             return listOf(
                 HomeRow(
                     id = "update-$version",
-                    title = "Benflix update",
-                    detail = "A new version is ready to install",
-                    dot = BenflixColors.Text,
+                    kind = "Benflix update",
+                    title = "A new version is ready to install",
+                    kindColor = HomeKind.Other,
                     image = null,
                     destination = Destination.UpdateApp,
                     news = true,
+                    at = System.currentTimeMillis() - UpdateNotice.daysBehind.value * DAY_MS,
                 ),
             )
         }
@@ -564,9 +646,9 @@ class HomeDoorsViewModel
             requestReadyService.onTheWay.value.map {
                 HomeRow(
                     id = "way-${it.requestId}",
+                    kind = onTheWayKind(it.line),
                     title = it.title,
-                    detail = it.line,
-                    dot = BenflixColors.Text,
+                    kindColor = HomeKind.OnTheWay,
                     image = it.posterUrl,
                     destination = Destination.Requests,
                 )
@@ -597,9 +679,9 @@ class HomeDoorsViewModel
                             }
                             HomeRow(
                                 id = "fact-$id",
-                                title = "Did you know?",
-                                detail = fact,
-                                dot = if (show) BenflixDoor.SHOWS.color else BenflixDoor.MOVIES.color,
+                                kind = "Did you know",
+                                title = fact,
+                                kindColor = HomeKind.Fact,
                                 image = poster(id),
                                 destination = Destination.MediaItem(id, if (show) BaseItemKind.SERIES else BaseItemKind.MOVIE),
                             )
@@ -619,9 +701,9 @@ class HomeDoorsViewModel
                 funFacts.pick(api, userId)?.let {
                     HomeRow(
                         id = "fact-built-in",
-                        title = "Did you know?",
-                        detail = it,
-                        dot = BenflixDoor.MOVIES.color,
+                        kind = "Did you know",
+                        title = it,
+                        kindColor = HomeKind.Fact,
                         image = null,
                         destination = null,
                         fullText = it,
@@ -689,31 +771,90 @@ class HomeDoorsViewModel
             private const val REQUESTS_GAP_MS = 5 * 60_000L
             private const val FACT_MAX_LENGTH = 130
             private const val POSTER_HEIGHT = 240
-            const val MAX_NEWS = 3
+            const val MAX_NEWS = 12
+            private const val MAX_SEEN = 80
         }
     }
 
 /**
- * Home's list, at most 4 rows: news first, then On the way, then Did you know. One spot is kept for the fact
- * and one for On the way when there is one. The rows come in twos (2 per row of doors, approved), so when
- * there would be 3 (or 1), a second fact makes it even.
+ * Home's news panel (approved hm-tall): up to [slots] lines (6 on a TV, 5 on phones). Your news newest first, then
+ * On the way, then one Did you know at the bottom. A quiet day fills up with On the way and Did you know (two facts
+ * when there's very little), so the panel never looks empty. A busy day shows what fits and keeps the last line
+ * for "4 more" and See all.
  */
 fun arrangeHomeRows(
-    news: List<HomeRow>,
-    onTheWay: List<HomeRow>,
-    facts: List<HomeRow>,
-): List<HomeRow> {
-    val out = mutableListOf<HomeRow>()
-    val keepFact = if (facts.isNotEmpty()) 1 else 0
-    val keepWay = if (onTheWay.isNotEmpty()) 1 else 0
-    out += news.take(MAX_HOME_ROWS - keepFact - keepWay)
-    out += onTheWay.take((MAX_HOME_ROWS - keepFact - out.size).coerceAtLeast(0))
-    out += facts.take(1)
-    if (out.size % 2 == 1 && facts.size > 1) out += facts[1]
-    return out.take(MAX_HOME_ROWS)
+    parts: HomeParts,
+    slots: Int,
+): HomeList {
+    val all = parts.all
+    if (all.size > slots) return HomeList(all.take(slots - 1), all.size - (slots - 1))
+    val out = all.toMutableList()
+    if (out.size < slots) out += parts.facts.take(1)
+    if (out.size < QUIET_ROWS && parts.facts.size > 1) out += parts.facts[1]
+    return HomeList(out.take(slots), 0)
 }
 
-const val MAX_HOME_ROWS = 4
+/** On a quiet day the panel is topped up with a second fact until it has this many rows */
+private const val QUIET_ROWS = 4
+
+/** "On the way, about 20 minutes left" becomes the small line "On the way · 20 min left" */
+fun onTheWayKind(line: String): String {
+    val l = line.lowercase()
+    val short =
+        when {
+            "waiting for a yes" in l -> {
+                "waiting for a yes"
+            }
+
+            "looking for a copy" in l -> {
+                "searching"
+            }
+
+            "almost here" in l -> {
+                "almost here"
+            }
+
+            "an hour left" in l -> {
+                "1h left"
+            }
+
+            else -> {
+                Regex("about (\\d+) (minutes|hours) left").find(l)?.let {
+                    it.groupValues[1] + if (it.groupValues[2] == "hours") "h left" else " min left"
+                } ?: Regex("(\\d+)% downloaded").find(l)?.let { "${it.groupValues[1]}%" }
+            }
+        }
+    return if (short == null) "On the way" else "On the way · $short"
+}
+
+/** Books news: the small line and the name ("New volume", "One Piece · Vol. 109") */
+fun bookWords(news: com.github.damontecres.wholphin.services.BookNews): Pair<String, String> {
+    val name = news.name ?: news.text
+    return when {
+        news.id.startsWith("bkr-") -> {
+            "Ready to read" to name
+        }
+
+        news.id.startsWith("bks-") -> {
+            "On your phone" to name
+        }
+
+        else -> {
+            val vol =
+                news.line
+                    ?.removePrefix("New: ")
+                    ?.removeSuffix(" is here")
+                    ?.takeIf { it.isNotBlank() && it != news.line }
+            "New volume" to (if (vol != null) "$name · $vol" else name)
+        }
+    }
+}
+
+/** Home's news panel on a TV (and tablets, and phones turned sideways) */
+const val MAX_HOME_ROWS = 6
+
+/** Phones and the web show one line fewer */
+const val MAX_PHONE_ROWS = 5
 
 /** Lets the pop-up finish closing before the remote's focus moves back to the doors */
 private const val REFOCUS_DELAY_MS = 150L
@@ -792,7 +933,7 @@ fun DoorsHomePage(
     // The doors' spots are only locked in once they've settled and the growing starts
     var started by remember { mutableStateOf(!grow) }
     // The list and weather as they were when the doors started growing (null = show the live ones)
-    var frozenRows by remember { mutableStateOf<List<HomeRow>?>(null) }
+    var frozenRows by remember { mutableStateOf<HomeParts?>(null) }
     var frozenWeather by remember { mutableStateOf<String?>(null) }
     val moviesFocus = remember { FocusRequester() }
     var focusedOnce by rememberSaveable { mutableStateOf(false) }
@@ -1005,6 +1146,8 @@ fun DoorsHomePage(
                 onRow = { row -> if (row.destination == null) reading = row else viewModel.open(row) },
                 onClear = viewModel::clear,
                 onClearAll = viewModel::clearAll,
+                onSeen = viewModel::markSeen,
+                lite = lite,
                 focusDoors = { moviesFocus.tryRequestFocus() },
             )
         } else if (wide) {

@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.preferences
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -66,12 +65,8 @@ fun SetPinFlow(
                                 pendingPin = it
                                 flowState = PinFlowState.CONFIRM_PIN
                             } else {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        context.getString(R.string.pin_too_short),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(context.getString(R.string.pin_too_short))
                             }
                         },
                         modifier = Modifier.padding(16.dp),
@@ -86,12 +81,8 @@ fun SetPinFlow(
                             if (it == pendingPin) {
                                 onAddPin.invoke(pendingPin)
                             } else {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        context.getString(R.string.incorrect),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                    .pill(context.getString(R.string.incorrect))
                                 flowState = PinFlowState.ENTER_PIN
                             }
                         },

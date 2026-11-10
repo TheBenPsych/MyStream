@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import android.view.Gravity
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -240,7 +239,8 @@ fun PlaybackDialog(
                         onDismissRequest.invoke()
                     } else if (choice.data == PlaybackDialogType.SURROUND_PASSTHROUGH) {
                         SurroundPassthrough.toggle(context)
-                        Toast.makeText(context, R.string.surround_passthrough_next_video, Toast.LENGTH_SHORT).show()
+                        com.github.damontecres.wholphin.ui.components.BenflixNotices
+                            .pill(R.string.surround_passthrough_next_video)
                         onDismissRequest.invoke()
                     } else {
                         onClickPlaybackDialogType(choice.data)
