@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -157,12 +159,32 @@ class BookRequestsViewModel
     }
 
 /**
- * Requests > Books (approved): search any book or manga. Books ask for Ebook, Audiobook or Both (Both is
+ * Requests > Books (approved): the rows (bookShelfItems in BookDiscover.kt), and search any book or manga. Books ask for Ebook, Audiobook or Both (Both is
  * picked first); manga go on Ben's "Manga to add" list. Everyone else's asks wait for Ben's yes. Below the
  * search: what you asked for with its status, and (Ben) what's waiting, everyone else's and problems.
  */
 @Composable
-fun BooksShelf(viewModel: BookRequestsViewModel = hiltViewModel()) {
+fun BooksShelf(
+    viewModel: BookRequestsViewModel = hiltViewModel(),
+    shelvesViewModel: BookShelvesViewModel = hiltViewModel(key = "book-shelves-main"),
+) {
+    val shelves by shelvesViewModel.shelves.collectAsState()
+    val shelvesProblem by shelvesViewModel.problem.collectAsState()
+    val shelvesNote by shelvesViewModel.note.collectAsState()
+    // Coming back from a book's details page: the rows pick up anything just asked for
+    LifecycleResumeEffect(Unit) {
+        shelvesViewModel.load(null)
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(shelvesNote) {
+        if (shelvesNote != null) {
+            delay(6_000)
+            shelvesViewModel.note.value = null
+        }
+    }
+    val isTv = rememberIsTv()
+    val config = LocalConfiguration.current
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp
     val query by viewModel.query.collectAsState()
     val found by viewModel.found.collectAsState()
     val searching by viewModel.searching.collectAsState()
@@ -200,6 +222,9 @@ fun BooksShelf(viewModel: BookRequestsViewModel = hiltViewModel()) {
             item(
                 key = "note",
             ) { Text(it, color = BenflixColors.Books, fontSize = BenflixType.body, fontWeight = FontWeight.Bold) }
+        }
+        shelvesNote?.let {
+            item(key = "shelves-note") { Text(it, color = BenflixColors.Books, fontSize = BenflixType.body, fontWeight = FontWeight.Bold) }
         }
         problem?.let { item(key = "problem") { Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small) } }
         requests?.problems?.forEach { line ->
@@ -240,16 +265,33 @@ fun BooksShelf(viewModel: BookRequestsViewModel = hiltViewModel()) {
             }
             return@LazyColumn
         }
-        val r = requests
-        if (r == null) {
-            item(key = "loading") { Muted("Loading…") }
-            return@LazyColumn
-        }
+        val r = requests ?: BookRequests(emptyList(), emptyList(), emptyList(), emptyList(), true, emptyList())
         if (admin && r.waiting.isNotEmpty()) {
             section("Waiting for you", r.waiting) { RequestRow(it, viewModel, admin, answer = true) }
         }
+        // The approved rows: Book of the week, Top 10, your series and authors, NYT, Trending, genres, awards, audiobooks
+        bookShelfItems(
+            d = shelves,
+            problem = shelvesProblem,
+            admin = admin,
+            wide = wide,
+            onOpen = shelvesViewModel::open,
+            onAsk = shelvesViewModel::quickAsk,
+            onGenre = shelvesViewModel::openGenre,
+            onRetry = { shelvesViewModel.load(null) },
+        )
         section(if (admin) "What you asked for" else "My books", r.mine) { RequestRow(it, viewModel, admin) }
-        if (r.mine.isEmpty()) item(key = "mine-none") { Muted("Search above to ask for a book. You'll get a note on Home when it's here.") }
+        if (r.mine.isEmpty()) {
+            item(key = "mine-none") {
+                Muted(
+                    if (isTv) {
+                        "OK on a cover shows the book. Hold OK to ask for it straight away. You'll get a note on Home when it's here."
+                    } else {
+                        "Tap a cover to see the book. Press and hold to ask for it straight away. You'll get a note on Home when it's here."
+                    },
+                )
+            }
+        }
         if (admin) {
             section("Manga to add", r.mangaToAdd) { RequestRow(it, viewModel, admin) }
             section("Everyone else's", r.others) { RequestRow(it, viewModel, admin) }
