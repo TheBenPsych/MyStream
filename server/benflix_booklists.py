@@ -693,16 +693,25 @@ def _view(c, have, **extra):
 
 
 def _row(cards, have, limit=30, seen=None, **extra):
+    """A row's books, each only once (the apps need every book in a row to be different; a book that won
+    two prizes, like James, shows once with both prizes)"""
     out = []
+    here = {}
     for c in cards or []:
         v = _view(c, have, **extra)
         if not v:
             continue
         n = _books.norm(v["name"])
+        twin = here.get(v["key"]) or here.get(n)
+        if twin is not None:
+            if v.get("award") and v["award"] not in (twin.get("award") or ""):
+                twin["award"] = (twin["award"] + " · " if twin.get("award") else "") + v["award"]
+            continue
         if seen is not None:
             if n in seen:
                 continue
             seen.add(n)
+        here[v["key"]] = here[n] = v
         out.append(v)
         if len(out) >= limit:
             break

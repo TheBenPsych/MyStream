@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.discover
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -211,7 +212,7 @@ internal fun LazyListScope.bookShelfItems(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ShelfTitle(if (d.name != null) "Top 10 in ${d.name}" else "Top 10 books right now")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
-                    itemsIndexed(d.top10, key = { _, c -> "t10-" + c.key }) { i, c ->
+                    itemsIndexed(d.top10, key = { i, c -> "t10-$i-" + c.key }) { i, c ->
                         Top10Book(i + 1, c, if (wide) 124.dp else 96.dp, onClick = { onOpen(c) }, onLongClick = { onAsk(c) })
                     }
                 }
@@ -358,7 +359,8 @@ internal fun CoverRow(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.padding(start = edge)) { ShelfTitle(title) }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = edge, vertical = 4.dp)) {
-            items(items, key = { title + it.key }) { c ->
+            // The index too, so the same book twice in one row (older Tower helpers) can't crash the page
+            itemsIndexed(items, key = { i, c -> "$title-$i-" + c.key }) { _, c ->
                 AskCover(c, if (wide) 124.dp else 100.dp, ranked, onClick = { onOpen(c) }, onLongClick = onAsk?.let { { it(c) } })
             }
         }
@@ -467,7 +469,12 @@ internal fun GenreTiles(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ShelfTitle(title)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
-            items(genres, key = { "g-" + it.slug }) { g -> GenreTile(g.name, colorOf(g.color), wide, onClick = { onGenre(g) }) }
+            itemsIndexed(genres, key = {
+                i,
+                g,
+                ->
+                "g-$i-" + g.slug
+            }) { _, g -> GenreTile(g.name, colorOf(g.color), wide, onClick = { onGenre(g) }) }
             if (withAll) item(key = "g-all") { GenreTile("All genres", BenflixColors.PanelHigh, wide, onClick = { onGenre(null) }) }
         }
     }
@@ -834,6 +841,17 @@ fun BookAboutPage(
                 }
             }
         }
+        // The rest of the description, piece by piece, lined up under the words at the top
+        val pieces = descPieces(about.desc).drop(1)
+        itemsIndexed(pieces, key = { i, _ -> "desc-$i" }) { _, piece ->
+            ReadPiece(
+                piece,
+                modifier =
+                    Modifier
+                        .padding(start = if (wide) edge + coverWidth + 36.dp else edge, end = edge)
+                        .widthIn(max = 980.dp),
+            )
+        }
         if (about.series.size > 1) {
             item(key = "series") { SeriesLine(about, admin, edge, wide, viewModel) }
         }
@@ -990,13 +1008,62 @@ private fun AboutTop(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 6.dp),
         )
-        Text(
-            a.desc.ifBlank { "No description yet." },
-            color = if (a.desc.isBlank()) BenflixColors.Muted else BenflixColors.Text,
-            fontSize = BenflixType.lead,
-            lineHeight = BenflixType.lead * 1.45f,
-        )
+        // Only the first part here; the rest follows as its own pieces, so the remote steps down through all of it
+        ReadPiece(descPieces(a.desc).firstOrNull() ?: "No description yet.", muted = a.desc.isBlank())
     }
+}
+
+/**
+ * The description in pieces of a few sentences each. On TV every piece can take focus, so pressing Down
+ * reads on through a long description (the page scrolls with you) instead of jumping past it.
+ */
+internal fun descPieces(desc: String): List<String> {
+    val out = mutableListOf<String>()
+    desc
+        .split(Regex("\\n\\s*\\n|\\n"))
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .forEach { para ->
+            if (para.length <= PIECE) {
+                out += para
+            } else {
+                val sentences = Regex("(?<=[.!?…”\"])\\s+").split(para)
+                val now = StringBuilder()
+                sentences.forEach { sen ->
+                    if (now.isNotEmpty() && now.length + sen.length > PIECE) {
+                        out += now.toString()
+                        now.clear()
+                    }
+                    if (now.isNotEmpty()) now.append(' ')
+                    now.append(sen)
+                }
+                if (now.isNotEmpty()) out += now.toString()
+            }
+        }
+    return out
+}
+
+private const val PIECE = 360
+
+@Composable
+private fun ReadPiece(
+    text: String,
+    modifier: Modifier = Modifier,
+    muted: Boolean = false,
+) {
+    var focused by remember { mutableStateOf(false) }
+    Text(
+        text,
+        color = if (muted) BenflixColors.Muted else BenflixColors.Text,
+        fontSize = BenflixType.lead,
+        lineHeight = BenflixType.lead * 1.45f,
+        modifier =
+            modifier
+                .onFocusChanged { focused = it.isFocused }
+                .focusable()
+                .background(if (focused) BenflixColors.FocusRow else Color.Transparent, BenflixShapes.Card)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
 }
 
 /** The series line: each book with a tick (on Benflix), its pill (asked), and "Ask for books 2 and 3" */
@@ -1031,7 +1098,7 @@ private fun SeriesLine(
             }
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = edge, vertical = 4.dp)) {
-            items(a.series, key = { "s-" + it.key }) { b ->
+            itemsIndexed(a.series, key = { i, b -> "s-$i-" + b.key }) { _, b ->
                 val w = if (wide) 108.dp else 88.dp
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(w)) {
                     Box {
