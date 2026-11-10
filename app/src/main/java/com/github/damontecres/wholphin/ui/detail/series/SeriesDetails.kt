@@ -157,6 +157,7 @@ fun SeriesDetails(
                         openPerson = { viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.PERSON)) },
                         fixMatch = if (state.isAdmin) ({ showFixMatch = true }) else null,
                         request = state.discoverSeries?.let { d -> { viewModel.navigateTo(Destination.DiscoveredItem(d)) } },
+                        openAsk = { viewModel.navigateTo(it.destination) },
                     ),
             )
             if (showFixMatch) {

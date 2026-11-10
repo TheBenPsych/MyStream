@@ -170,6 +170,48 @@ class SeerrService
             }
 
         /**
+         * Benflix: the "Ask for something like it" row on a movie or show page. TMDB's
+         * recommendations first (they match better), topped up with its similar list, leaving out
+         * anything already on Benflix, blocklisted ones and repeats. Empty for Kids and Guest, and
+         * null when Seerr isn't connected (the row then stays hidden).
+         */
+        suspend fun moreToAsk(item: BaseItem): List<DiscoverItem>? {
+            if (KidsMode.isActive || GuestMode.isActive) return emptyList()
+            if (!active.first()) return null
+            val tmdbId = item.data.providerIds?.get("Tmdb")?.toIntOrNull() ?: return emptyList()
+            val isMovie = item.type == BaseItemKind.MOVIE
+            if (!isMovie && item.type != BaseItemKind.SERIES) return emptyList()
+            val recommended =
+                runCatching {
+                    if (isMovie) {
+                        api.moviesApi.movieMovieIdRecommendationsGet(movieId = tmdbId, page = 1).results?.map { createDiscoverItem(it) }
+                    } else {
+                        api.tvApi.tvTvIdRecommendationsGet(tvId = tmdbId, page = 1).results?.map { createDiscoverItem(it) }
+                    }
+                }.getOrNull().orEmpty()
+            val similar =
+                runCatching {
+                    if (isMovie) {
+                        api.moviesApi.movieMovieIdSimilarGet(movieId = tmdbId).results?.map { createDiscoverItem(it) }
+                    } else {
+                        api.tvApi.tvTvIdSimilarGet(tvId = tmdbId).results?.map { createDiscoverItem(it) }
+                    }
+                }.getOrNull().orEmpty()
+            return (recommended + similar)
+                .asSequence()
+                .filter { it.id != tmdbId }
+                .filter { it.jellyfinItemId == null }
+                .filter {
+                    it.availability != SeerrAvailability.AVAILABLE &&
+                        it.availability != SeerrAvailability.PARTIALLY_AVAILABLE &&
+                        it.availability != SeerrAvailability.BLOCKLISTED
+                }.filter { it.posterUrl != null }
+                .distinctBy { it.id }
+                .take(20)
+                .toList()
+        }
+
+        /**
          * Get the combined movie & TV credits of a person as [DiscoverItem]s
          *
          * The two lists returned by the API are merged, de-duplicated by id since a person can be

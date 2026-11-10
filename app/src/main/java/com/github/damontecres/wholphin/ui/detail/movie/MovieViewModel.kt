@@ -190,7 +190,7 @@ class MovieViewModel
                     }
                 }
                 viewModelScope.launchIO {
-                    val results = seerrService.similar(movie).orEmpty()
+                    val results = seerrService.moreToAsk(movie).orEmpty()
                     _state.update {
                         it.copy(
                             discovered = results,

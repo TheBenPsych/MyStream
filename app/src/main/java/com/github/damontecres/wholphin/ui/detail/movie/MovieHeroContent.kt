@@ -45,6 +45,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.AniListFacts
@@ -54,6 +55,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.QrCode
+import com.github.damontecres.wholphin.ui.detail.AskShelf
 import com.github.damontecres.wholphin.ui.detail.DidYouKnow
 import com.github.damontecres.wholphin.ui.detail.HeroBackground
 import com.github.damontecres.wholphin.ui.detail.HeroButton
@@ -92,6 +94,7 @@ class MovieHeroActions(
     val openItem: (BaseItem) -> Unit,
     val openPerson: (Person) -> Unit,
     val openCollection: (MovieCollection) -> Unit,
+    val openAsk: (DiscoverItem) -> Unit,
 )
 
 /**
@@ -275,6 +278,11 @@ fun MovieHeroContent(
                         showName = !isTv,
                         onClick = actions.openItem,
                     )
+                }
+            }
+            if (!easy && state.discovered.isNotEmpty()) {
+                item(key = "ask") {
+                    AskShelf(items = state.discovered, side = side, showName = !isTv, onClick = actions.openAsk)
                 }
             }
             if (!easy && state.fromDirector.isNotEmpty()) {
