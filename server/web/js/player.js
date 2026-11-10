@@ -175,7 +175,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   function moveCues() {
     Array.from(v.textTracks).forEach((t) => {
       Array.from(t.cues || []).forEach((c) => {
-        if (c.bfStart == null) { c.bfStart = c.startTime; c.bfEnd = c.endTime; }
+        if (c.bfStart == null) { c.bfStart = c.startTime; c.bfEnd = c.endTime; c.bfAt = 0; }
+        if (c.bfAt === subDelay) return;
+        c.bfAt = subDelay;
         c.startTime = Math.max(0, c.bfStart + subDelay);
         c.endTime = Math.max(c.startTime + 0.01, c.bfEnd + subDelay);
       });
@@ -316,6 +318,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
 
   v.addEventListener("timeupdate", () => {
     const t = v.currentTime;
+    if (subDelay) moveCues(); // words that arrive while playing get moved too
     drawBar();
     const now = performance.now();
     if (!v.paused && lastTick) WT.add(Math.min(5000, now - lastTick));
@@ -345,7 +348,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Audio and subtitles</h3>
       <h4>Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
       <h4>Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}</button>`).join("")}
-      ${subIndex !== -1 && (subs.find((x) => x.Index === subIndex) || {}).DeliveryMethod === "External" ? `<h4>Subtitle timing</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later (keys G and H work too). <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-1, "−1 s"], [-0.5, "−½ s"], [0, "Reset"], [0.5, "+½ s"], [1, "+1 s"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : ""}
+      ${subIndex !== -1 && v.textTracks.length ? `<h4>Subtitle timing</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later. Words come after? Press −. (Keys: G sooner, H later.) <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-1, "−1 s"], [-0.5, "−½ s"], [0, "Reset"], [0.5, "+½ s"], [1, "+1 s"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : ""}
       <h4>Quality</h4>${Object.keys(QUALITY).map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${k === "auto" ? "Best (no limit)" : k + "p"}</button>`).join("")}
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
       ${segments.tower && !B.me.kids ? `<h4>Skip came at the wrong time?</h4><p class="dim" style="font-size:13px;margin:-4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}` : ""}
