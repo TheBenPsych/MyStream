@@ -885,7 +885,7 @@ PAGES.chores = (el) => {
 
 
 // ---------- This week: the Sunday report card ----------
-const dayName = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+const shortDay = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 PAGES.week = (el) => {
   el.innerHTML = `<p class="sub">A short look back at the last 7 days. It's ready fresh every Sunday morning.</p><div id="wk">${loading()}</div>`;
   const draw = async (fresh) => {
@@ -894,7 +894,7 @@ PAGES.week = (el) => {
     if (current !== "week") return;
     const sundayNote = new Date().getDay() === 0 ? `<div class="note">It's Sunday: here's your report card.</div>` : "";
     const watchers = (r.watchers || []).map((w, i) => `<div class="item"><div class="grow"><div class="t">${i === 0 ? "🏆 " : ""}${esc(w.name)}</div><div class="s">${w.plays} thing${w.plays === 1 ? "" : "s"} played</div></div></div>`).join("");
-    $("#wk").innerHTML = sundayNote + `<p class="sub">${esc(dayName(r.from))} to ${esc(dayName(r.to))}</p>
+    $("#wk").innerHTML = sundayNote + `<p class="sub">${esc(shortDay(r.from))} to ${esc(shortDay(r.to))}</p>
       <div class="tiles">
         ${tile("Movies added", String(r.added_movies))}${tile("Episodes added", String(r.added_episodes))}
         ${tile("Files play-tested", String(r.checked))}${tile("Subtitles fixed", String(r.subtitles_fixed))}
@@ -971,7 +971,7 @@ PAGES.playtest = (el) => {
   const draw = (s) => {
     if (current !== "playtest") return;
     $("#pt").innerHTML = `${s.on ? "" : `<div class="note">The play test isn't on Tower yet. Run the Benflix setup command again.</div>`}
-      <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? dayName(s.last) : "Not yet")}</div>
+      <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? shortDay(s.last) : "Not yet")}</div>
       <h3 class="section-title">Broken</h3><div class="list">${s.broken.map((r) => item(r, "bad")).join("") || `<div class="empty">Every new file played fine.</div>`}</div>
       <h3 class="section-title">Worth a look</h3><div class="list">${s.look.map((r) => item(r, "look")).join("") || `<div class="empty">Nothing odd.</div>`}</div>`;
     el.querySelectorAll("[data-ok]").forEach((b) => { b.onclick = () => B.busy(b, async () => { draw(await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.ok)}/ok`)); }); });

@@ -51,6 +51,7 @@ B.wireDescribe = (first) => {
   };
   B.page().addEventListener("mouseover", pointAt);
   B.page().addEventListener("focusin", pointAt);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
   show(first);
 };
 const doorTop = () => `<section class="door-top" id="doorTop"><div class="art"></div><div class="info"></div></section>`;
@@ -311,12 +312,15 @@ B.route(/^\/grid\/(movies|shows)/, async (m, nav) => {
   window.addEventListener("scroll", onScroll);
   B.onLeave(() => window.removeEventListener("scroll", onScroll));
   // Slim line: what the poster you point at is
-  B.page().addEventListener("mouseover", (e) => {
-    const c = e.target.closest(".poster[data-id]"); if (!c) return;
+  // (#page stays the same element on every page, so take this away again when you leave)
+  const onPoint = (e) => {
+    const c = e.target.closest(".poster[data-id]"); if (!c || !$("#slim")) return;
     const it = B.items[c.dataset.id]; if (!it) return;
     const bits = [it.ProductionYear, it.RunTimeTicks && it.Type === "Movie" ? B.len(B.minutes(it.RunTimeTicks)) : it.ChildCount ? `${it.ChildCount} seasons` : "", it.Status === "Ended" ? "Ended" : it.Status === "Continuing" ? "Airing" : "", (it.Genres || []).slice(0, 2).join(", "), it.CommunityRating ? `${it.CommunityRating.toFixed(1)} IMDb` : ""].filter(Boolean);
     $("#slim").innerHTML = `<b>${esc(it.Name)}</b> · ${esc(bits.join(" · "))}`;
-  });
+  };
+  B.page().addEventListener("mouseover", onPoint);
+  B.onLeave(() => B.page().removeEventListener("mouseover", onPoint));
   $("#letters").onclick = (e) => {
     const b = e.target.closest("[data-l]"); if (!b) return;
     while (!$(`.grid-head[data-h="${b.dataset.l}"]`) && drawn < shown.length) more();
