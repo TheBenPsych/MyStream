@@ -144,7 +144,12 @@ class PageReaderViewModel
                     }
                     tmp.renameTo(file)
                     // Keep the cache small: only the 5 newest PDFs stay
-                    dir.listFiles { f -> f.name.endsWith(".pdf") }?.sortedByDescending { it.lastModified() }?.drop(5)?.forEach { it.delete() }
+                    dir
+                        .listFiles { f ->
+                            f.name.endsWith(".pdf")
+                        }?.sortedByDescending { it.lastModified() }
+                        ?.drop(5)
+                        ?.forEach { it.delete() }
                 }
                 pdfLock.withLock {
                     val fd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -192,7 +197,10 @@ class PageReaderViewModel
             _state.value = _state.value.copy(mode = mode, rtl = rtl)
             viewModelScope.launchIO {
                 try {
-                    books.savePlace(id, JSONObject().put("readerMode", JSONObject().put("mode", mode.key).put("dir", if (rtl) "rtl" else "ltr")))
+                    books.savePlace(
+                        id,
+                        JSONObject().put("readerMode", JSONObject().put("mode", mode.key).put("dir", if (rtl) "rtl" else "ltr")),
+                    )
                 } catch (ex: Exception) {
                     Timber.w(ex, "Reader mode")
                 }

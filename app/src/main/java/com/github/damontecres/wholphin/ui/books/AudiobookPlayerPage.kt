@@ -115,7 +115,7 @@ fun AudiobookPlayerPage(
             title = "Sleep timer",
             choices = options.map { sleepLabel(it) },
             picked = -1,
-            note = if (!isTv) "When the timer ends the sound fades out. Shake the phone for 15 more minutes." else "When the timer ends the sound fades out.",
+            note = "When the timer ends the sound fades out." + (if (!isTv) " Shake the phone for 15 more minutes." else ""),
             onDismiss = { sleepOpen = false },
             onPick = {
                 sleepOpen = false
@@ -174,9 +174,22 @@ private fun PlayerInfo(
 ) {
     val svc = viewModel.audiobooks
     Text("AUDIOBOOK", color = BenflixColors.Books, fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
-    Text(n.name, color = BenflixColors.Text, fontSize = BenflixType.hero, fontWeight = FontWeight.ExtraBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
     Text(
-        listOf(n.author, n.narrator.takeIf { it.isNotBlank() }?.let { "Read by $it" }).filterNotNull().filter { it.isNotBlank() }.joinToString("  ·  "),
+        n.name,
+        color = BenflixColors.Text,
+        fontSize = BenflixType.hero,
+        fontWeight = FontWeight.ExtraBold,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+    Text(
+        listOf(
+            n.author,
+            n.narrator
+                .takeIf {
+                    it.isNotBlank()
+                }?.let { "Read by $it" },
+        ).filterNotNull().filter { it.isNotBlank() }.joinToString("  ·  "),
         color = BenflixColors.Soft,
         fontSize = BenflixType.lead,
         maxLines = 2,
@@ -200,7 +213,11 @@ private fun PlayerInfo(
             Text(clockTime(inChapter.toLong()), color = BenflixColors.Muted, fontSize = BenflixType.small)
             Box(Modifier.weight(1f))
             Text(
-                "-" + clockTime((chapterLen - inChapter).toLong()) + "  ·  " + hoursMinutes((n.total - n.position).toInt().coerceAtLeast(0)) + " left in the book",
+                "-" +
+                    clockTime(
+                        (chapterLen - inChapter).toLong(),
+                    ) + "  ·  " + hoursMinutes((n.total - n.position).toInt().coerceAtLeast(0)) +
+                    " left in the book",
                 color = BenflixColors.Muted,
                 fontSize = BenflixType.small,
             )
@@ -309,7 +326,19 @@ private fun ChoiceDialog(
             Text(title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
             note?.let { Text(it, fontSize = BenflixType.small, color = BenflixColors.Soft) }
             choices.forEachIndexed { i, label ->
-                MusicButton(label, if (i == picked) BenflixIcon.CHECK else null, primary = i == picked, onClick = { onPick(i) }, modifier = Modifier.fillMaxWidth())
+                MusicButton(
+                    label,
+                    if (i ==
+                        picked
+                    ) {
+                        BenflixIcon.CHECK
+                    } else {
+                        null
+                    },
+                    primary = i == picked,
+                    onClick = { onPick(i) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -326,14 +355,22 @@ private fun sleepLabel(minutes: Int?): String =
 
 private fun sleepNow(n: AudiobookNow): String =
     when {
-        n.fading -> "Fading out"
-        n.sleepEndOfChapter -> "Sleep: end of chapter"
+        n.fading -> {
+            "Fading out"
+        }
+
+        n.sleepEndOfChapter -> {
+            "Sleep: end of chapter"
+        }
+
         n.sleepAt != null -> {
             val left = ((n.sleepAt - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0) + 1
             "Sleep: ${left}m"
         }
 
-        else -> "Sleep timer"
+        else -> {
+            "Sleep timer"
+        }
     }
 
 /**
@@ -416,11 +453,29 @@ fun AudiobookMiniBar(
             ) {
                 BookCoverImage(n.cover, "", Modifier.size(width = 30.dp, height = 44.dp), audio = true)
                 Column(Modifier.weight(1f)) {
-                    Text(n.name, color = BenflixColors.Text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(n.chapterTitle, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        n.name,
+                        color = BenflixColors.Text,
+                        fontSize = BenflixType.small,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        n.chapterTitle,
+                        color = BenflixColors.Muted,
+                        fontSize = BenflixType.tag,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 MusicButton(null, BenflixIcon.BACK15, onClick = viewModel.audiobooks::back)
-                MusicButton(null, if (n.playing) BenflixIcon.PAUSE else null, filledPlay = !n.playing, onClick = viewModel.audiobooks::playPause)
+                MusicButton(
+                    null,
+                    if (n.playing) BenflixIcon.PAUSE else null,
+                    filledPlay = !n.playing,
+                    onClick = viewModel.audiobooks::playPause,
+                )
             }
             Line(if (n.total > 0) (n.position / n.total).toFloat() else 0f, 2.dp)
         }

@@ -265,7 +265,11 @@ class BenflixBooks
                 canAsk = j.optBoolean("requests"),
                 folders =
                     j.optJSONObject("folders")?.let { f ->
-                        f.keys().asSequence().flatMap { k -> f.optJSONArray(k).strings().asSequence() }.toList()
+                        f
+                            .keys()
+                            .asSequence()
+                            .flatMap { k -> f.optJSONArray(k).strings().asSequence() }
+                            .toList()
                     } ?: emptyList(),
             )
         }
@@ -279,9 +283,19 @@ class BenflixBooks
             )
         }
 
-        suspend fun series(): List<BookGroup> = helper.getJson("/api/books/series").optJSONArray("series").objects().map(::group)
+        suspend fun series(): List<BookGroup> =
+            helper
+                .getJson("/api/books/series")
+                .optJSONArray("series")
+                .objects()
+                .map(::group)
 
-        suspend fun authors(): List<BookGroup> = helper.getJson("/api/books/authors").optJSONArray("authors").objects().map(::group)
+        suspend fun authors(): List<BookGroup> =
+            helper
+                .getJson("/api/books/authors")
+                .optJSONArray("authors")
+                .objects()
+                .map(::group)
 
         suspend fun title(id: String): BookPage {
             val j = helper.getJson("/api/books/title/" + Uri.encode(id))
@@ -337,7 +351,16 @@ class BenflixBooks
                 placePos = place?.optDouble("pos", 0.0) ?: 0.0,
                 placeFile = place?.optInt("file", 0) ?: 0,
                 subjects = j.optJSONArray("subjects").strings(),
-                fileSeconds = j.optJSONArray("fileSeconds").let { a -> if (a == null) emptyList() else (0 until a.length()).map { a.optDouble(it, 0.0) } },
+                fileSeconds =
+                    j.optJSONArray("fileSeconds").let { a ->
+                        if (a ==
+                            null
+                        ) {
+                            emptyList()
+                        } else {
+                            (0 until a.length()).map { a.optDouble(it, 0.0) }
+                        }
+                    },
                 placeCpos = place?.optDouble("cpos", 0.0) ?: 0.0,
             )
         }
@@ -376,7 +399,12 @@ class BenflixBooks
             index: Int? = null,
         ): String = url("/api/books/file/$id" + (index?.let { "/$it" } ?: ""))!!
 
-        suspend fun whatNext(id: String): List<BookTile> = helper.getJson("/api/books/next/" + Uri.encode(id)).optJSONArray("picks").objects().map(::tile)
+        suspend fun whatNext(id: String): List<BookTile> =
+            helper
+                .getJson("/api/books/next/" + Uri.encode(id))
+                .optJSONArray("picks")
+                .objects()
+                .map(::tile)
 
         /** Saves your place (and how long you read or listened since last time) */
         suspend fun savePlace(
@@ -504,7 +532,13 @@ class BenflixBooks
             helper
                 .postJson(
                     "/api/books/cover",
-                    JSONObject().put("id", id).put("url", choice.url).put("edition", choice.edition).put("scope", if (all) "all" else "one"),
+                    JSONObject()
+                        .put(
+                            "id",
+                            id,
+                        ).put("url", choice.url)
+                        .put("edition", choice.edition)
+                        .put("scope", if (all) "all" else "one"),
                 ).optString("words", "Cover changed.")
 
         suspend fun resetCover(id: String) {
@@ -513,7 +547,14 @@ class BenflixBooks
 
         suspend fun kidsList(): List<KidsBook> =
             helper.getJson("/api/books/kids").optJSONArray("titles").objects().map {
-                KidsBook(it.optString("id"), it.optString("name"), it.optString("author"), it.optString("kind"), it.optBoolean("allowed"), url(it.text("cover")))
+                KidsBook(
+                    it.optString("id"),
+                    it.optString("name"),
+                    it.optString("author"),
+                    it.optString("kind"),
+                    it.optBoolean("allowed"),
+                    url(it.text("cover")),
+                )
             }
 
         suspend fun kidsAllow(
@@ -594,7 +635,8 @@ class BenflixBooks
                 problem = j.text("problem"),
             )
 
-        private fun counts(j: JSONObject?): Map<String, Int> = j?.let { o -> o.keys().asSequence().associateWith { o.optInt(it) } } ?: emptyMap()
+        private fun counts(j: JSONObject?): Map<String, Int> =
+            j?.let { o -> o.keys().asSequence().associateWith { o.optInt(it) } } ?: emptyMap()
     }
 
 private fun JSONObject.text(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() && it != "null" }

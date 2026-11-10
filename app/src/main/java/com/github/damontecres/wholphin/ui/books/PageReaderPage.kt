@@ -329,7 +329,12 @@ private fun PageImage(
                 bitmap = remember(b) { b.asImageBitmap() },
                 contentDescription = "Page ${n + 1}",
                 contentScale = scale,
-                modifier = if (scroll) modifier.aspectRatio(b.width.toFloat() / b.height) else modifier.aspectRatio(b.width.toFloat() / b.height, matchHeightConstraintsFirst = true),
+                modifier =
+                    if (scroll) {
+                        modifier.aspectRatio(b.width.toFloat() / b.height)
+                    } else {
+                        modifier.aspectRatio(b.width.toFloat() / b.height, matchHeightConstraintsFirst = true)
+                    },
             )
         }
     } else {
@@ -461,7 +466,11 @@ private fun EndCard(
     val focus = remember { FocusRequester() }
     LaunchedEffect(active) { if (active && isTv) focus.tryRequestFocus() }
     Box(Modifier.fillMaxSize().background(BenflixColors.Tray), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(24.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(24.dp),
+        ) {
             if (next != null && vol != null) {
                 Text("NEXT VOLUME", color = BenflixColors.Books, fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
                 BookCoverImage(vol.nextCover, vol.nextName ?: "", Modifier.width(150.dp).aspectRatio(BOOK_RATIO))
@@ -477,7 +486,12 @@ private fun EndCard(
                     if (!stopped) MusicButton("Not now", null, onClick = { stopped = true })
                 }
             } else {
-                Text("You finished ${state.name}", color = BenflixColors.Text, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "You finished ${state.name}",
+                    color = BenflixColors.Text,
+                    fontSize = BenflixType.pageTitle,
+                    fontWeight = FontWeight.ExtraBold,
+                )
                 MusicButton(
                     "Back to the book",
                     BenflixIcon.BACK_ARROW,

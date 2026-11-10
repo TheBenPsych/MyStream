@@ -136,7 +136,13 @@ fun BooksKidsPage(
                     ) {
                         BookCoverImage(b.cover, b.name, Modifier.width(44.dp).aspectRatio(BOOK_RATIO), audio = b.kind == "audiobook")
                         Column(Modifier.weight(1f)) {
-                            Text(b.name, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                b.name,
+                                fontSize = BenflixType.body,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Text(
                                 listOf(b.author, kindWord(b.kind)).filter { it.isNotBlank() }.joinToString(" · "),
                                 color = BenflixColors.Muted,

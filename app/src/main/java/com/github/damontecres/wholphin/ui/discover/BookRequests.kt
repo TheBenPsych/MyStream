@@ -196,9 +196,15 @@ fun BooksShelf(viewModel: BookRequestsViewModel = hiltViewModel()) {
         item(key = "search") {
             RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book, author or manga")
         }
-        note?.let { item(key = "note") { Text(it, color = BenflixColors.Books, fontSize = BenflixType.body, fontWeight = FontWeight.Bold) } }
+        note?.let {
+            item(
+                key = "note",
+            ) { Text(it, color = BenflixColors.Books, fontSize = BenflixType.body, fontWeight = FontWeight.Bold) }
+        }
         problem?.let { item(key = "problem") { Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small) } }
-        requests?.problems?.forEach { line -> item(key = "p-$line") { Text(line, color = BenflixColors.Warning, fontSize = BenflixType.small) } }
+        requests?.problems?.forEach { line ->
+            item(key = "p-$line") { Text(line, color = BenflixColors.Warning, fontSize = BenflixType.small) }
+        }
         if (requests?.connected == false && admin) {
             item(key = "not-connected") {
                 Text(
@@ -211,9 +217,16 @@ fun BooksShelf(viewModel: BookRequestsViewModel = hiltViewModel()) {
         if (query.trim().length >= 2) {
             val f = found
             when {
-                f == null && searching -> item(key = "searching") { Muted("Looking…") }
+                f == null && searching -> {
+                    item(key = "searching") { Muted("Looking…") }
+                }
+
                 f == null -> {}
-                f.first.isEmpty() && f.second.isEmpty() -> item(key = "nothing") { Muted("Nothing found. Try the author's name, or fewer words.") }
+
+                f.first.isEmpty() && f.second.isEmpty() -> {
+                    item(key = "nothing") { Muted("Nothing found. Try the author's name, or fewer words.") }
+                }
+
                 else -> {
                     if (f.first.isNotEmpty()) {
                         item(key = "books-title") { Heading("Books") }
@@ -256,7 +269,13 @@ private fun LazyListScope.section(
 
 @Composable
 private fun Heading(text: String) {
-    Text(text, color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+    Text(
+        text,
+        color = BenflixColors.Text,
+        fontSize = BenflixType.rowName,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp),
+    )
 }
 
 @Composable
@@ -275,7 +294,14 @@ private fun FoundRow(
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
         BookCoverImage(f.cover, f.name, Modifier.width(64.dp).aspectRatio(BOOK_RATIO))
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-            Text(f.name, color = BenflixColors.Text, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                f.name,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.lead,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             val bits =
                 listOfNotNull(
                     f.author.takeIf { it.isNotBlank() },
@@ -329,7 +355,14 @@ private fun RequestRow(
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
         BookCoverImage(r.cover, r.name, Modifier.width(52.dp).aspectRatio(BOOK_RATIO))
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f).widthIn(max = 900.dp)) {
-            Text(r.name, color = BenflixColors.Text, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                r.name,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             val kinds =
                 when {
                     r.state == "manga" -> "Manga"
@@ -338,7 +371,13 @@ private fun RequestRow(
                     else -> "Ebook"
                 }
             Text(
-                listOfNotNull(r.author.takeIf { it.isNotBlank() }, kinds, r.who.takeIf { admin && it.isNotBlank() }?.let { "asked by $it" }).joinToString(" · "),
+                listOfNotNull(
+                    r.author.takeIf {
+                        it.isNotBlank()
+                    },
+                    kinds,
+                    r.who.takeIf { admin && it.isNotBlank() }?.let { "asked by $it" },
+                ).joinToString(" · "),
                 color = BenflixColors.Muted,
                 fontSize = BenflixType.small,
                 maxLines = 1,

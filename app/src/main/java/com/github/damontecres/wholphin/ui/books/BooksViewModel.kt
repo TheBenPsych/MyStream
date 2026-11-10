@@ -157,10 +157,23 @@ class BooksViewModel
                     BookFilter.DONE -> base.filter { it.status == "done" }
                 }
             return when (s) {
-                BookSort.ADDED -> chipped.sortedByDescending { it.added }
-                BookSort.NAME -> chipped.sortedBy { sortName(it.name) }
-                BookSort.AUTHOR -> chipped.sortedWith(compareBy({ sortName(it.author) }, { it.series.lowercase() }, { it.seriesIndex ?: 0.0 }))
-                BookSort.READ -> chipped.sortedByDescending { it.lastAt }
+                BookSort.ADDED -> {
+                    chipped.sortedByDescending { it.added }
+                }
+
+                BookSort.NAME -> {
+                    chipped.sortedBy { sortName(it.name) }
+                }
+
+                BookSort.AUTHOR -> {
+                    chipped.sortedWith(
+                        compareBy({ sortName(it.author) }, { it.series.lowercase() }, { it.seriesIndex ?: 0.0 }),
+                    )
+                }
+
+                BookSort.READ -> {
+                    chipped.sortedByDescending { it.lastAt }
+                }
             }
         }
 
@@ -176,7 +189,10 @@ class BooksViewModel
 
         fun open(tile: BookTile) {
             lastKey = tile.id
-            navigationManager.navigateTo(com.github.damontecres.wholphin.ui.nav.Destination.BookTitle(tile.id))
+            navigationManager.navigateTo(
+                com.github.damontecres.wholphin.ui.nav.Destination
+                    .BookTitle(tile.id),
+            )
         }
 
         private suspend fun <T> safe(block: suspend () -> T): T? =
@@ -195,4 +211,9 @@ class BooksViewModel
     }
 
 /** "The Hobbit" sorts under H */
-fun sortName(name: String): String = name.lowercase().removePrefix("the ").removePrefix("a ").removePrefix("an ")
+fun sortName(name: String): String =
+    name
+        .lowercase()
+        .removePrefix("the ")
+        .removePrefix("a ")
+        .removePrefix("an ")

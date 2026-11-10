@@ -128,7 +128,12 @@ class AudiobookService
 
                             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                                 Timber.w(error, "Audiobook couldn't play")
-                                _now.update { it?.copy(problem = "Couldn't play this part of the book. Tower may be busy; try again.", loading = false) }
+                                _now.update {
+                                    it?.copy(
+                                        problem = "Couldn't play this part of the book. Tower may be busy; try again.",
+                                        loading = false,
+                                    )
+                                }
                             }
                         },
                     )
@@ -173,7 +178,16 @@ class AudiobookService
                 } else if (page.placePos > 0) {
                     val f = page.placeFile.coerceIn(0, (files.size - 1).coerceAtLeast(0))
                     // A few seconds back, so you hear where you were
-                    f to (if (page.placeCpos > 0) page.placeCpos else page.placePos - (starts.getOrNull(f) ?: 0.0)).minus(REWIND_ON_START).coerceAtLeast(0.0)
+                    f to
+                        (
+                            if (page.placeCpos >
+                                0
+                            ) {
+                                page.placeCpos
+                            } else {
+                                page.placePos - (starts.getOrNull(f) ?: 0.0)
+                            }
+                        ).minus(REWIND_ON_START).coerceAtLeast(0.0)
                 } else {
                     0 to 0.0
                 }
@@ -265,7 +279,13 @@ class AudiobookService
 
                 else -> {
                     sleepChapter = null
-                    _now.update { it?.copy(sleepAt = System.currentTimeMillis() + minutes * 60_000L, sleepEndOfChapter = false, fading = false) }
+                    _now.update {
+                        it?.copy(
+                            sleepAt = System.currentTimeMillis() + minutes * 60_000L,
+                            sleepEndOfChapter = false,
+                            fading = false,
+                        )
+                    }
                     startShake()
                 }
             }
@@ -364,7 +384,13 @@ class AudiobookService
         fun setSpeed(speed: Float) {
             val s = speed.coerceIn(MIN_SPEED, MAX_SPEED)
             _now.update { it?.copy(speed = s) }
-            _now.value?.id?.let { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat("speed-$it", s).apply() }
+            _now.value?.id?.let {
+                context
+                    .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putFloat("speed-$it", s)
+                    .apply()
+            }
             scope.launch { onMain { player?.playbackParameters = PlaybackParameters(s) } }
         }
 

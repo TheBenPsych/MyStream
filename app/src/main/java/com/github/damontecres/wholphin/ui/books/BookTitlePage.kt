@@ -183,7 +183,19 @@ fun BookTitlePage(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = edge)) {
                     RowName("${p.chapters.size} chapters", 0.dp)
                     val shown = p.chapters.take(MAX_CHAPTERS_SHOWN)
-                    FlowRowOf(shown.map { c -> "${c.index + 1}. ${c.title}" + (if (c.seconds > 0) " · " + hoursMinutes(c.seconds) else "") }) { i ->
+                    FlowRowOf(
+                        shown.map { c ->
+                            "${c.index + 1}. ${c.title}" + (
+                                if (c.seconds >
+                                    0
+                                ) {
+                                    " · " + hoursMinutes(c.seconds)
+                                } else {
+                                    ""
+                                }
+                            )
+                        },
+                    ) { i ->
                         viewModel.listen(p, shown[i].index)
                     }
                 }
@@ -239,7 +251,11 @@ private fun HeroText(
                     add(if (p.secondsLeft in 1 until p.seconds) hoursMinutes(p.secondsLeft) + " left" else hoursMinutes(p.seconds))
                 }
                 if (!t.isAudio && !t.isManga && p.minutes > 0) add("About ${hoursMinutes(p.minutes * 60)} to read")
-                if (t.series.isNotBlank() && !t.isManga) add(t.series + (t.seriesIndex?.let { " #" + it.toString().removeSuffix(".0") } ?: ""))
+                if (t.series.isNotBlank() &&
+                    !t.isManga
+                ) {
+                    add(t.series + (t.seriesIndex?.let { " #" + it.toString().removeSuffix(".0") } ?: ""))
+                }
             }
         Text(bits.joinToString("  ·  "), color = BenflixColors.Soft, fontSize = BenflixType.lead, maxLines = 2)
         if (p.scores.isNotEmpty()) {
@@ -251,7 +267,13 @@ private fun HeroText(
             )
         }
         if (p.desc.isNotBlank()) {
-            Text(p.desc, color = BenflixColors.Soft, fontSize = BenflixType.body, maxLines = if (isTv) 4 else 6, overflow = TextOverflow.Ellipsis)
+            Text(
+                p.desc,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.body,
+                maxLines = if (isTv) 4 else 6,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (p.missing > 0) {
             Text(
@@ -410,8 +432,19 @@ private fun MarkDialog(
     BasicDialog(onDismissRequest = onDismiss) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 520.dp).padding(22.dp)) {
             Text(v.name, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
-            MusicButton("Mark as read", BenflixIcon.CHECK, primary = true, onClick = { onMark(true, false) }, modifier = Modifier.fillMaxWidth())
-            MusicButton("Mark this and every one before it", BenflixIcon.CHECK, onClick = { onMark(true, true) }, modifier = Modifier.fillMaxWidth())
+            MusicButton(
+                "Mark as read",
+                BenflixIcon.CHECK,
+                primary = true,
+                onClick = { onMark(true, false) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MusicButton(
+                "Mark this and every one before it",
+                BenflixIcon.CHECK,
+                onClick = { onMark(true, true) },
+                modifier = Modifier.fillMaxWidth(),
+            )
             if (v.done || v.progress > 0f) {
                 MusicButton("Mark as not read", BenflixIcon.CLOSE, onClick = { onMark(false, false) }, modifier = Modifier.fillMaxWidth())
             }
@@ -441,7 +474,16 @@ private fun CoverDialog(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(choices, key = { it.url }) { c ->
                         BookCard(
-                            tile = page.tile.copy(id = c.url, name = c.label, cover = c.thumb, line = c.edition, status = "not", isNew = false, newCount = 0),
+                            tile =
+                                page.tile.copy(
+                                    id = c.url,
+                                    name = c.label,
+                                    cover = c.thumb,
+                                    line = c.edition,
+                                    status = "not",
+                                    isNew = false,
+                                    newCount = 0,
+                                ),
                             width = 110.dp,
                             onClick = { picked = c },
                         )

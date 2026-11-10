@@ -120,12 +120,43 @@ fun BooksDoorPage(
     val onTile: (BookTile) -> Unit = { viewModel.open(it) }
     val content: @Composable (Modifier) -> Unit = { m ->
         when {
-            home.empty -> EmptyBooks(home.folders, home.canAsk && !viewModel.isKids, viewModel, m)
-            group != null -> GroupPage(group!!, wide, easy, onTile, onBack = { viewModel.group.value = null }, modifier = m)
-            place == BooksPlace.HOME -> BooksHomeRows(home.rows, wide, easy, home.canAsk && !viewModel.isKids, viewModel, onTile, m)
-            place == BooksPlace.SERIES -> GroupGrid(state.series, "series", wide, easy, onGroup = { viewModel.group.value = it }, modifier = m)
-            place == BooksPlace.AUTHORS -> GroupGrid(state.authors, "authors", wide, easy, onGroup = { viewModel.group.value = it }, modifier = m)
-            else -> SectionGrid(viewModel, place, wide, easy, onTile, m)
+            home.empty -> {
+                EmptyBooks(home.folders, home.canAsk && !viewModel.isKids, viewModel, m)
+            }
+
+            group != null -> {
+                GroupPage(group!!, wide, easy, onTile, onBack = { viewModel.group.value = null }, modifier = m)
+            }
+
+            place == BooksPlace.HOME -> {
+                BooksHomeRows(home.rows, wide, easy, home.canAsk && !viewModel.isKids, viewModel, onTile, m)
+            }
+
+            place == BooksPlace.SERIES -> {
+                GroupGrid(
+                    state.series,
+                    "series",
+                    wide,
+                    easy,
+                    onGroup = { viewModel.group.value = it },
+                    modifier = m,
+                )
+            }
+
+            place == BooksPlace.AUTHORS -> {
+                GroupGrid(
+                    state.authors,
+                    "authors",
+                    wide,
+                    easy,
+                    onGroup = { viewModel.group.value = it },
+                    modifier = m,
+                )
+            }
+
+            else -> {
+                SectionGrid(viewModel, place, wide, easy, onTile, m)
+            }
         }
     }
     if (wide) {
@@ -308,7 +339,13 @@ private fun SectionGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = PaddingValues(start = edge, end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = 12.dp, bottom = 48.dp),
+        contentPadding =
+            PaddingValues(
+                start = edge,
+                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
+                top = 12.dp,
+                bottom = 48.dp,
+            ),
         modifier = modifier,
     ) {
         item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
@@ -368,7 +405,13 @@ private fun GroupGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = PaddingValues(start = edge, end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = 12.dp, bottom = 48.dp),
+        contentPadding =
+            PaddingValues(
+                start = edge,
+                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
+                top = 12.dp,
+                bottom = 48.dp,
+            ),
         modifier = modifier,
     ) {
         if (wide) {
@@ -442,7 +485,13 @@ private fun GroupPage(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = PaddingValues(start = edge, end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = 12.dp, bottom = 48.dp),
+        contentPadding =
+            PaddingValues(
+                start = edge,
+                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
+                top = 12.dp,
+                bottom = 48.dp,
+            ),
         modifier = modifier,
     ) {
         item(key = "title", span = { GridItemSpan(maxLineSpan) }) {

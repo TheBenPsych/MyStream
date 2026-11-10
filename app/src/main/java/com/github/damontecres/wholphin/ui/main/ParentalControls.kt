@@ -237,7 +237,8 @@ fun ParentalControlsDialog(
                     )
                     // Benflix Books: which books Kids may see (kids-rated books always show)
                     val booksNav =
-                        androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<com.github.damontecres.wholphin.ui.books.BooksKidsViewModel>()
+                        androidx.hilt.lifecycle.viewmodel.compose
+                            .hiltViewModel<com.github.damontecres.wholphin.ui.books.BooksKidsViewModel>()
                     ListItem(
                         selected = false,
                         onClick = {
