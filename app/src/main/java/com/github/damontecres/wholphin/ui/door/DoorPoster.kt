@@ -44,6 +44,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.cards.doorColor
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.PosterHoldMenu
@@ -132,7 +133,6 @@ fun DoorPoster(
                 useSeriesForPrimary = true,
             )
         }
-    var failed by remember(url) { mutableStateOf(false) }
     val progress = remember(item) { item.progress() }
     val newLabel = remember(item) { item.newLabel() }
     // Benflix: holding a poster (finger on phones, OK on TV) opens its menu, unless the page has its own
@@ -157,29 +157,14 @@ fun DoorPoster(
                     .onFocusChanged { if (it.isFocused) onFocus?.invoke() },
         ) {
             Box(Modifier.fillMaxSize()) {
-                if (url != null && !failed) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop,
-                        onError = { failed = true },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Text(
-                        text = item.title.orEmpty(),
-                        color = BenflixColors.Text,
-                        fontSize = if (width > 90.dp) BenflixType.lead else BenflixType.small,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier =
-                            Modifier
-                                .align(Alignment.Center)
-                                .padding(10.dp),
-                    )
-                }
+                // Redesign 2 (rc-p-load, rc-p-noart): dark first, the poster fades in; no poster = big white name
+                com.github.damontecres.wholphin.ui.cards.CardPicture(
+                    model = url,
+                    name = item.title.orEmpty(),
+                    door = item.doorColor(),
+                    small = width <= 90.dp,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 if (newLabel != null) {
                     Text(
                         text = newLabel,
@@ -229,26 +214,12 @@ fun DoorPoster(
             }
         }
         if (showName) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                        .background(BenflixColors.Panel, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = item.title.orEmpty(),
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                yearText(item)?.let {
-                    Text(text = it, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1)
-                }
-            }
+            // Redesign 2 (rc-p-phone): the name in up to 2 lines, then the year or episode in grey
+            com.github.damontecres.wholphin.ui.cards.CardNameUnder(
+                name = item.title.orEmpty(),
+                line = yearText(item),
+                strip = true,
+            )
         }
     }
 }
@@ -287,6 +258,9 @@ fun DoorTop10Poster(
     onFocus: (() -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val nameStrip =
+        com.github.damontecres.wholphin.ui.cards
+            .cardNameHeight(strip = true)
     val posterHeight = width / POSTER_RATIO
     val numberHeight = posterHeight * 0.92f
     val numberSize = with(LocalDensity.current) { numberHeight.toSp() }
@@ -308,7 +282,7 @@ fun DoorTop10Poster(
             modifier =
                 Modifier
                     .offset(x = pull, y = numberHeight * 0.07f)
-                    .padding(bottom = if (showName) NAME_STRIP else 0.dp),
+                    .padding(bottom = if (showName) nameStrip else 0.dp),
         )
         DoorPoster(
             item = item,
@@ -325,7 +299,6 @@ fun DoorTop10Poster(
 }
 
 private val TOP10_GREY = Color(0xFF5A5E6A)
-private val NAME_STRIP = 38.dp
 
 /** The tile at the end of a row that opens the whole list */
 @Composable

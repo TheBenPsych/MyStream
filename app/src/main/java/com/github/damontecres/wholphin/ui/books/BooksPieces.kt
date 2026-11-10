@@ -62,27 +62,19 @@ fun BookCoverImage(
                 .clip(BenflixShapes.Card)
                 .background(BenflixColors.PanelHigh),
     ) {
+        // Redesign 2: no cover = the dark card with the big white name and a lime line; covers fade in
         if (url == null || failed) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(10.dp),
-            ) {
-                BenflixIconImage(if (audio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK, color = BenflixColors.Books, size = 26.dp)
-                Text(
-                    text = name,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            com.github.damontecres.wholphin.ui.cards.NoPictureCard(
+                name = name,
+                door = BenflixColors.Books,
+                small = true,
+            )
         }
         if (url != null && !failed) {
             AsyncImage(
-                model = url,
+                model =
+                    com.github.damontecres.wholphin.ui.cards
+                        .rememberFadeIn(url),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 onError = { failed = true },
@@ -170,23 +162,15 @@ fun BookCard(
                 }
             }
         }
-        Text(
-            text = tile.name,
-            color = BenflixColors.Text,
-            fontSize = BenflixType.small,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-        val line = if (tile.notHere) "Not on Benflix yet" else tile.line
-        if (line.isNotBlank()) {
-            Text(
-                text = line,
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.tag,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        // Redesign 2 (rc-family): on TV the name is on the cover, so none under it. Phones get the name in up
+        // to 2 lines, then the author or "Vol 4 of 12" in grey.
+        val isTv =
+            com.github.damontecres.wholphin.ui.touch
+                .rememberIsTv()
+        if (!isTv) {
+            com.github.damontecres.wholphin.ui.cards.CardNameUnder(
+                name = tile.name,
+                line = if (tile.notHere) "Not on Benflix yet" else tile.line,
             )
         }
     }

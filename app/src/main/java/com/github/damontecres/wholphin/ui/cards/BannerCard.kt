@@ -164,7 +164,7 @@ fun BannerCard(
         interactionSource = cardInteractionSource,
         colors =
             CardDefaults.colors(
-//                containerColor = Color.Transparent,
+                containerColor = BenflixColors.Raised,
             ),
         // Benflix redesign: the tile you're on only gets a white outline (no growing)
         scale = CardDefaults.scale(focusedScale = 1f),
@@ -177,24 +177,21 @@ fun BannerCard(
                     .fillMaxSize(),
 //                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
+            // Redesign 2: the picture fades in over a dark card; no picture = the big white name
+            val request = rememberFadeIn(imageUrl)
             if (!imageError && imageUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = request,
                     contentDescription = null,
                     contentScale = imageContentScale,
                     onError = remember { { imageError = true } },
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                Text(
-                    text = name ?: "",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier =
-                        Modifier
-                            .padding(16.dp)
-                            .align(Alignment.Center),
+                NoPictureCard(
+                    name = name ?: item?.title.orEmpty(),
+                    door = item.doorColor(),
+                    small = cardHeight.isSpecified && cardHeight < 110.dp,
                 )
             }
             if (showTitleArt && !grown) {
@@ -337,22 +334,13 @@ fun BannerCardWithTitle(
     titleOnlyWhenFocused: Boolean = false,
     growOnFocus: Boolean = false,
 ) {
-    val focused by interactionSource.collectIsFocusedAsState()
     val grown by rememberGrowOnFocus(interactionSource, growOnFocus && canGrow(item, aspectRatio))
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()
-    // Benflix "clean tiles": the art already shows the name, so on TV the title only appears on the
-    // tile you're on, and on phones rows show only artwork
-    val titleAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if ((!titleOnlyWhenFocused || focused) && !grown) 1f else 0f,
-        animationSpec =
-            androidx.compose.animation.core
-                .tween(150),
-        label = "titleAlpha",
-    )
-    val showText = !titleOnlyWhenFocused || isTv
-    val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
+    // Redesign 2 (rc-family): on TV posters stay clean (the name is on the art); covers, episodes, channels
+    // and people get their name under them. Phones put the name under every card.
+    val showText = familyShowsName(isTv, item, aspectRatio)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)
     val width by androidx.compose.animation.core.animateDpAsState(
         targetValue = cardHeight * if (grown) AspectRatios.WIDE else aspectRationToUse,
@@ -384,34 +372,11 @@ fun BannerCardWithTitle(
             grown = grown,
         )
         if (showText) {
-            SlidingCardText(focused, modifier = Modifier.alpha(titleAlpha)) {
-                Text(
-                    text = title ?: "",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                            .enableMarquee(focusedAfterDelay),
-                )
-                Text(
-                    text = subtitle ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
-                            .enableMarquee(focusedAfterDelay),
-                )
-            }
+            CardNameUnder(
+                name = title.orEmpty(),
+                line = subtitle,
+                modifier = Modifier.alpha(if (grown) 0f else 1f),
+            )
         }
     }
 }

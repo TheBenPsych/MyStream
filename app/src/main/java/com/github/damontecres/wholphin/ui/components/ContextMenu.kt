@@ -688,7 +688,7 @@ private fun buildContextMenuItems(
         if (onChangePoster != null) {
             add(
                 DialogItem(
-                    "Change poster",
+                    "Pick a picture",
                     BenflixIcon.IMAGE.vector,
                     dismissOnClick = false,
                     onClick = onChangePoster,
@@ -1150,5 +1150,18 @@ fun buildContextForMusicQueue(
         }
     }
 
-/** Benflix: titles whose poster the main profile can change */
-private val POSTER_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.SEASON, BaseItemKind.BOX_SET)
+/** Benflix: titles whose picture the main profile can change (Redesign 2 rc-q-fix: every kind of card) */
+private val POSTER_TYPES =
+    setOf(
+        BaseItemKind.MOVIE,
+        BaseItemKind.SERIES,
+        BaseItemKind.SEASON,
+        BaseItemKind.BOX_SET,
+        BaseItemKind.EPISODE,
+        BaseItemKind.MUSIC_ALBUM,
+        BaseItemKind.MUSIC_ARTIST,
+        BaseItemKind.BOOK,
+        BaseItemKind.AUDIO_BOOK,
+        BaseItemKind.PERSON,
+        BaseItemKind.TV_CHANNEL,
+    )

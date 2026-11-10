@@ -436,7 +436,8 @@
   // ---------- pieces for the music pages ----------
   const card = (it, href, sub) => {
     const art = cover(it, 360);
-    return `<a class="mcard" href="${href}" title="${esc(it.Name)}"><div class="im">${art ? `<img class="art" src="${art}" alt="" loading="lazy" decoding="async">` : icon("note")}</div><div class="cap">${esc(it.Name)}<small>${esc(sub || "")}</small></div></a>`;
+    B.items[it.Id] = it;
+    return `<a class="mcard" href="${href}" data-id="${esc(it.Id)}" title="${esc(it.Name)}"><div class="im">${art ? `<img class="art" src="${art}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--music)">${esc(it.Name)}</div>`}</div><div class="cap"><span class="nm">${esc(it.Name)}</span><small>${esc(sub || "")}</small></div></a>`;
   };
   const albumCard = (a) => card(a, `#/album/${a.Id}`, a.AlbumArtist || a.ProductionYear || "");
   const artistCard = (a) => card(a, `#/artist/${a.Id}`, "Artist").replace('class="mcard"', 'class="mcard round"');
@@ -444,9 +445,9 @@
   const mixCard = (m) => {
     const covers = (m.covers || []).slice(0, 4);
     while (covers.length && covers.length < 4) covers.push(covers[covers.length % Math.max(1, covers.length)]);
-    return `<a class="mcard mix" href="#/mix/${enc(m.key)}"><div class="im collage">${covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("")}<b>${esc(m.name)}</b></div><div class="cap">${esc(m.name)}<small>${esc(m.line || "")}</small></div></a>`;
+    return `<a class="mcard mix" href="#/mix/${enc(m.key)}"><div class="im collage">${covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("")}<b>${esc(m.name)}</b></div><div class="cap"><span class="nm">${esc(m.name)}</span><small>${esc(m.line || "")}</small></div></a>`;
   };
-  const likedCard = (n) => `<a class="mcard" href="#/liked"><div class="im liked">${I("heart")}</div><div class="cap">Liked songs<small>${n} songs</small></div></a>`;
+  const likedCard = (n) => `<a class="mcard" href="#/liked"><div class="im liked">${I("heart")}</div><div class="cap"><span class="nm">Liked songs</span><small>${n} songs</small></div></a>`;
   B.musicMixes = () => B.cached("music-mixes-" + B.me.id + new Date().toDateString(), 3600000, async () => ((await B.call("GET", "api/music/mixes")) || {}).mixes || []);
   const libs = () => B.cached("music-libs", 600000, async () => (await B.views()).filter((l) => l.CollectionType === "music"));
   const songRow = (s, i, opts) => {
@@ -537,7 +538,7 @@
     if (!B.alive(nav)) return;
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
-    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), B.me.admin ? [`<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}</div><div class="cap">Ask for music<small>Songs, albums, artists</small></div></a>`] : [])));
+    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), B.me.admin ? [`<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}</div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, artists</small></div></a>`] : [])));
     rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));

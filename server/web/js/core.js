@@ -390,6 +390,97 @@ B.hrefOf = (it) => {
   if (it.Type === "TvChannel") return `#/live?play=${it.Id}`;
   return `#/movie/${it.Id}`;
 };
+// Redesign 2 (rows, posters and covers): the door colour for the short line on a card with no picture
+B.doorOf = (it) => {
+  const t = (it && it.Type) || "";
+  if (t === "Movie" || t === "BoxSet") return "var(--movies)";
+  if (t === "TvChannel" || t === "Program") return "var(--live)";
+  if (/^(MusicAlbum|MusicArtist|Audio|Playlist)$/.test(t)) return "var(--music)";
+  if (t === "Book" || t === "AudioBook") return "var(--books)";
+  return "var(--shows)";
+};
+// Pictures fade in when they arrive (dark card first). Covers already in the browser's memory show at once.
+(() => {
+  const done = (img) => img.classList.add("in");
+  const isArt = (t) => t && t.tagName === "IMG" && t.classList.contains("art");
+  document.addEventListener("load", (e) => { if (isArt(e.target)) done(e.target); }, true);
+  document.addEventListener("error", (e) => {
+    if (!isArt(e.target)) return;
+    const im = e.target.parentElement;
+    e.target.remove();
+    // No picture after all: show the dark card with the name
+    if (im && !im.querySelector(".noart")) {
+      const card = im.closest(".poster, .mcard, .wide, .chcard");
+      const nm = card && card.querySelector(".nm");
+      const name = card ? card.getAttribute("title") || (nm ? nm.textContent : "") : "";
+      if (name) {
+        const d = document.createElement("div");
+        d.className = "noart";
+        d.textContent = name;
+        const it = card.dataset.id && B.items[card.dataset.id];
+        if (it && it.Type) d.style.setProperty("--door", B.doorOf(it));
+        im.appendChild(d);
+      }
+    }
+  }, true);
+  // Pictures that finished before they were on the page
+  new MutationObserver((list) => {
+    for (const m of list) for (const n of m.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      const imgs = n.tagName === "IMG" ? [n] : n.querySelectorAll ? n.querySelectorAll("img.art") : [];
+      for (const i of imgs) if (isArt(i) && i.complete && i.naturalWidth) done(i);
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+// Redesign 2 (rc-q-hold): the same hold menu on every kind of card. Right-click (or hold a finger on a phone)
+// any card: open, play, watched, My List, and for Ben's profile Pick a picture.
+B.cardMenu = (it, href) => {
+  if (!it || !B.tpMore) return;
+  const ud = it.UserData || {};
+  const video = it.Type === "Movie" || it.Type === "Episode" || it.Type === "Video";
+  const watchable = video || it.Type === "Series" || it.Type === "Season";
+  const word = /^(MusicAlbum|Book|AudioBook|Playlist)$/.test(it.Type) ? "cover" : /^(Movie|Series|Season|BoxSet)$/.test(it.Type) ? "poster" : "picture";
+  B.tpMore(it.Name || "", [
+    href ? { label: "Open", icon: "right", href } : null,
+    video ? { label: ud.PlaybackPositionTicks > 0 && !ud.Played ? "Resume" : "Play", icon: "play", onClick: () => B.go(`#/play/${it.Id}${ud.PlaybackPositionTicks > 0 && !ud.Played ? "?resume=1" : ""}`) } : null,
+    watchable && B.markWatched ? { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) } : null,
+    B.toggleList && it.Type !== "TvChannel" ? { label: ud.IsFavorite ? "Take off My List" : "Add to My List", icon: ud.IsFavorite ? "check" : "plus", onClick: () => B.toggleList(it) } : null,
+    B.me && B.me.admin && B.fixItem && it.Type !== "Playlist" ? { label: "Pick a " + word, icon: "swap", youOnly: true, onClick: () => B.fixItem(Object.assign(it, { fixTab: "Primary" })) } : null,
+  ]);
+};
+(() => {
+  const CARDS = "a.poster[data-id], a.wide[data-id], a.mcard[data-id], a.chcard[data-id]";
+  let timer = null, held = null;
+  const open = (card) => {
+    const it = B.items && B.items[card.dataset.id];
+    if (!it || !it.Type) return false;
+    B.cardMenu(it, card.getAttribute("href"));
+    return true;
+  };
+  document.addEventListener("contextmenu", (e) => {
+    if (e.defaultPrevented) return;
+    const card = e.target.closest && e.target.closest(CARDS);
+    if (!card) return;
+    clearTimeout(timer);
+    if (held === card) { e.preventDefault(); return; }
+    if (open(card)) { e.preventDefault(); if ("ontouchstart" in window) { held = card; setTimeout(() => { held = null; }, 1500); } }
+  });
+  // Phones that don't send a right-click for a long press (iPhone): hold for half a second
+  document.addEventListener("touchstart", (e) => {
+    const card = e.target.closest && e.target.closest(CARDS);
+    clearTimeout(timer);
+    if (!card) return;
+    timer = setTimeout(() => { held = card; open(card); setTimeout(() => { held = null; }, 1500); }, 550);
+  }, { passive: true });
+  const cancel = () => clearTimeout(timer);
+  document.addEventListener("touchmove", cancel, { passive: true });
+  document.addEventListener("touchend", cancel, { passive: true });
+  // The press that opened the menu doesn't also open the card
+  document.addEventListener("click", (e) => {
+    if (held && e.target.closest && e.target.closest(CARDS) === held) { e.preventDefault(); e.stopPropagation(); }
+    held = null;
+  }, true);
+})();
 B.posterCard = (it, opts) => {
   opts = opts || {};
   B.items[it.Id] = it;
@@ -399,12 +490,12 @@ B.posterCard = (it, opts) => {
   const newCount = it.Type === "Series" && ud.UnplayedItemCount && opts.newCount ? opts.newCount : 0;
   const year = it.ProductionYear ? String(it.ProductionYear) : "";
   return `<a class="poster" href="${opts.href || B.hrefOf(it)}" data-id="${esc(it.Id)}" title="${esc(it.Name)}">
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart">${esc(it.SeriesName || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(it.SeriesName || it.Name)}</div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}
     </div>
-    <div class="cap">${esc(it.Type === "Episode" ? it.SeriesName : it.Name)}<small>${esc(opts.sub || year)}</small></div>
+    <div class="cap"><span class="nm">${esc(it.Type === "Episode" ? it.SeriesName : it.Name)}</span><small>${esc(opts.sub || year)}</small></div>
   </a>`;
 };
 B.wideCard = (it, opts) => {
@@ -415,12 +506,12 @@ B.wideCard = (it, opts) => {
   const pct = ud.PlayedPercentage ? Math.min(100, ud.PlayedPercentage) : 0;
   const soon = opts.soon;
   return `<${soon ? "div" : "a"} class="wide ${soon ? "soon" : ""}" ${soon ? "" : `href="${opts.href || B.hrefOf(it)}"`} data-id="${esc(it.Id)}" ${opts.play ? `data-play="${esc(it.Id)}"` : ""}>
-    <div class="im" style="background-image:url('${src}')">
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(opts.title || it.Name)}</div>`}
       ${pct && !ud.Played ? `<div class="prog" style="position:absolute;left:10px;right:10px;bottom:9px;height:4px;border-radius:2px;background:rgba(0,0,0,.55);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#fff"></i></div>` : ""}
       ${ud.Played ? `<span class="tick" style="position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center">${I("check")}</span>` : ""}
       ${opts.tag ? `<span class="tag">${esc(opts.tag)}</span>` : ""}
     </div>
-    <div class="cap">${esc(opts.title || it.Name)}<small>${esc(opts.sub || "")}</small>${opts.story && it.Overview ? `<div class="story">${esc(it.Overview)}</div>` : ""}</div>
+    <div class="cap"><span class="nm">${esc(opts.title || it.Name)}</span><small>${esc(opts.sub || "")}</small>${opts.story && it.Overview ? `<div class="story">${esc(it.Overview)}</div>` : ""}</div>
   </${soon ? "div" : "a"}>`;
 };
 // ---------- Song previews: 30 seconds of a song before asking for it (Requests > Music, Search's Ask for it) ----------

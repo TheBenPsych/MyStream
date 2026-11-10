@@ -18,7 +18,9 @@
     try { it = await B.get(`/Users/${B.uid()}/Items/${start.Id}`); } catch (e) { return B.toast(e.message); }
     let tab = (start && start.fixTab) || "details";
     // Seasons only for shows; title logos not for seasons or collections
-    const kinds = () => KINDS.filter((k) => (k.seasons ? it.Type === "Series" : k.type !== "Logo" || (it.Type !== "Season" && it.Type !== "BoxSet")));
+    // Albums, artists, episodes, people, books and channels (Redesign 2: Pick a picture on every card) have just their one picture
+    const titleKind = /^(Movie|Series|Season|BoxSet)$/.test(it.Type);
+    const kinds = () => KINDS.filter((k) => (!titleKind ? k.type === "Primary" : k.seasons ? it.Type === "Series" : k.type !== "Logo" || (it.Type !== "Season" && it.Type !== "BoxSet")));
     const p = B.side(`<div id="fixBody">${B.spinner()}</div>`, () => B.render());
     const body = () => p.querySelector("#fixBody");
     const tabs = () => `<h3>Fix ${esc(it.Name)}</h3><p class="dim">Changes show on every TV, phone and browser.</p>

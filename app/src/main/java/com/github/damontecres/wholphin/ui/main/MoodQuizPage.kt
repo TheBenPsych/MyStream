@@ -381,7 +381,9 @@ private fun QuizResults(
                             GridCard(
                                 item = result.item,
                                 onClick = { viewModel.navigationManager.navigateTo(result.item.destination()) },
-                                onLongClick = {},
+                                onLongClick =
+                                    com.github.damontecres.wholphin.ui.cards
+                                        .rememberHoldMenu(result.item),
                                 // The poster plus its name underneath
                                 showTitle = true,
                                 fillWidth = QUIZ_POSTER_WIDTH_PX,

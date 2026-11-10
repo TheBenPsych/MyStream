@@ -260,7 +260,9 @@ fun HubRows(
                             GridCard(
                                 item = item,
                                 onClick = { onClickItem(item) },
-                                onLongClick = {},
+                                onLongClick =
+                                    com.github.damontecres.wholphin.ui.cards
+                                        .rememberHoldMenu(item),
                                 showTitle = false,
                                 modifier =
                                     Modifier
