@@ -121,7 +121,14 @@ fun DiscoverMovieDetailsHeader(
                 OverviewText(
                     overview = overview,
                     // Benflix: 2 lines on TV so the buttons fit on the first screen (press it to read it all)
-                    maxLines = if (com.github.damontecres.wholphin.ui.touch.rememberIsTv()) 2 else 3,
+                    maxLines =
+                        if (com.github.damontecres.wholphin.ui.touch
+                                .rememberIsTv()
+                        ) {
+                            2
+                        } else {
+                            3
+                        },
                     onClick = overviewOnClick,
                     textBoxHeight = Dp.Unspecified,
                     modifier =
