@@ -170,7 +170,19 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .opt:hover { background: var(--pg4); }
 .opt.on { box-shadow: inset 0 0 0 2px var(--ink); }
 .opt small { margin-left: auto; color: var(--ink3); font-weight: 500; }
-#toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 120; background: var(--ink); color: var(--dark); padding: 12px 20px; border-radius: 12px; font-weight: 700; max-width: calc(100% - 32px); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+#toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 120; background: var(--ink); color: var(--dark); padding: 11px 22px; border-radius: 99px; font-weight: 700; text-align: center; max-width: calc(100% - 32px); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+/* Notices: the 7-second corner card (top right, under the top bar) and the Needs-you centre card */
+.corner { position: fixed; z-index: 110; right: 28px; top: calc(var(--bar) + 10px); width: min(400px, calc(100vw - 32px)); background: #16181E; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; padding: 12px 14px 15px; cursor: default; animation: cornerin .18s ease; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.corner { cursor: pointer; }
+@keyframes cornerin { from { transform: translateX(24px); opacity: 0; } }
+.corner .cimg { width: 52px; height: 52px; border-radius: 8px; background: var(--pg3) center/cover no-repeat; }
+.corner .cw { min-width: 0; display: flex; flex-direction: column; gap: 2px; grid-column: auto / -1; }
+.corner .cw b { font-size: 16px; line-height: 1.25; }
+.corner .cw span { font-size: 13px; color: var(--ink2); }
+.corner .ctime { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--ink2); transform-origin: left; animation: ctime 7s linear forwards; }
+@keyframes ctime { to { transform: scaleX(0); } }
+.modal.needs .nlabel { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--movies); margin-bottom: 6px; text-transform: uppercase; }
+@media (max-width: 700px) { .corner { left: 12px; right: 12px; width: auto; top: calc(var(--bar) + 6px); } }
 
 /* ---------- door pages: top area + rows ---------- */
 .door-top { position: relative; height: min(46vh, 470px); min-height: 330px; margin-top: calc(-1 * var(--bar)); padding: calc(var(--bar) + 30px) var(--gutter) 0; overflow: hidden; }
@@ -726,63 +738,72 @@ body.reading .mbar { display: none; }
   .bk-mbar .bk-speed, .bk-mbar [data-a=sleep] { display: none; }
 }
 
-/* ---------- Home: the approved Today board (f3-panel). Everything is measured in --u (about 1.45% of the
-   window's width, smaller on short windows): doors 12u squares 1.1u apart, list 2.4u to the right, as tall as the doors ---------- */
-.board { --u: min(calc((100vw - 2 * var(--gutter)) / 64.2), calc((100vh - var(--bar) - 200px) / 25.2)); }
+/* ---------- Home (Redesign 2, approved hm-tall). Everything is measured in --u (about 1.4% of the window's width,
+   smaller on short windows): doors 13u squares 1.1u apart, the news panel 2.4u to the right, exactly as tall as the doors.
+   The panel: Clear all at its top right, then up to 5 rows (small square poster, small coloured line, name on 2 lines) ---------- */
+.board { --u: min(calc((100vw - 2 * var(--gutter)) / 69.6), calc((100vh - var(--bar) - 190px) / 27.1)); }
 .board .bgreet { margin: 8px 0 18px; }
 .board .greet { margin: 0; }
 .board .wx { color: var(--ink2); font-size: 18px; font-weight: 500; margin-top: 4px; min-height: 1.4em; }
-.board .bmain { margin-top: auto; display: grid; grid-template-columns: calc(38.2 * var(--u)) 1fr; column-gap: calc(2.4 * var(--u)); height: calc(25.2 * var(--u)); }
-.doors.sq3 { flex: none; display: grid; grid-template-columns: repeat(3, calc(12 * var(--u))); grid-auto-rows: calc(12 * var(--u)); gap: calc(1.1 * var(--u)); min-height: 0; max-height: none; }
-.doors.sq3 .door { padding: calc(.85 * var(--u)); border-radius: calc(.8 * var(--u)); grid-column: auto; min-height: 0; }
-.doors.sq3 .door svg.i { width: calc(1.8 * var(--u)); height: calc(1.8 * var(--u)); }
-.doors.sq3 .door .n { font-size: clamp(13px, calc(1.5 * var(--u)), 30px); line-height: 1.1; white-space: nowrap; }
-.doors.sq3 .door .d { font-size: clamp(11px, calc(.95 * var(--u)), 17px); line-height: 1.22; min-height: 2.44em; margin-top: calc(.2 * var(--u)); font-weight: 600; }
-.doors.sq3 .door:focus-visible { outline-width: max(3px, calc(.22 * var(--u))); outline-offset: 0; border-radius: calc(.8 * var(--u)); }
-.blist { min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
-.bpanel { --fs: 1; height: 100%; background: #111319; border-radius: calc(.9 * var(--u)); padding: calc(.35 * var(--u)); display: grid; grid-template-rows: repeat(var(--n, 4), 1fr); }
-.blist { --n: 4; }
-.blist.quiet .bpanel { height: calc(12 * var(--u)); }
-.bitem { display: grid; grid-template-columns: 1fr calc(2.2 * var(--u)); column-gap: calc(.3 * var(--u)); align-items: center; min-height: 0; position: relative; }
-.bitem + .bitem::before { content: ""; position: absolute; top: 0; left: calc(.85 * var(--u)); right: calc(.85 * var(--u)); border-top: 1px solid #262A34; }
+.board .bmain { margin-top: auto; display: grid; grid-template-columns: calc(41.2 * var(--u)) 1fr; column-gap: calc(2.4 * var(--u)); height: calc(27.1 * var(--u)); }
+.doors.sq3 { flex: none; display: grid; grid-template-columns: repeat(3, calc(13 * var(--u))); grid-auto-rows: calc(13 * var(--u)); gap: calc(1.1 * var(--u)); min-height: 0; max-height: none; }
+.doors.sq3 .door { padding: calc(.9 * var(--u)); border-radius: calc(.85 * var(--u)); grid-column: auto; min-height: 0; }
+.doors.sq3 .door svg.i { width: calc(1.9 * var(--u)); height: calc(1.9 * var(--u)); }
+.doors.sq3 .door .n { font-size: clamp(13px, calc(1.6 * var(--u)), 32px); line-height: 1.1; white-space: nowrap; }
+.doors.sq3 .door .d { font-size: clamp(11px, calc(1 * var(--u)), 18px); line-height: 1.22; min-height: 2.44em; margin-top: calc(.2 * var(--u)); font-weight: 600; }
+.doors.sq3 .door:focus-visible { outline-width: max(3px, calc(.22 * var(--u))); outline-offset: 0; border-radius: calc(.85 * var(--u)); }
+.blist { min-width: 0; display: flex; flex-direction: column; position: relative; }
+.bpanel { --fs: 1; height: 100%; background: #111319; border-radius: calc(.9 * var(--u)); padding: calc(.35 * var(--u)); display: grid; grid-template-rows: calc(2.3 * var(--u)) repeat(5, minmax(0, 1fr)); }
+.bhead { display: flex; justify-content: flex-end; align-items: center; }
+.bitem { display: grid; grid-template-columns: 1fr calc(2.1 * var(--u)); column-gap: calc(.3 * var(--u)); align-items: center; min-height: 0; position: relative; }
+.bitem + .bitem::before, .bmore::before { content: ""; position: absolute; top: 0; left: calc(.6 * var(--u)); right: calc(.6 * var(--u)); border-top: 1px solid #262A34; }
 .bitem:hover::before, .bitem:focus-within::before, .bitem:hover + .bitem::before, .bitem:focus-within + .bitem::before { display: none; }
-.brow { display: grid; grid-template-columns: calc(.6 * var(--u)) 1fr calc(2.6 * var(--u)); column-gap: calc(.9 * var(--u)); align-items: center; padding: 0 calc(.85 * var(--u)); border-radius: calc(.6 * var(--u)); min-height: 0; align-self: stretch; overflow: hidden; position: relative; }
+.brow { display: grid; grid-template-columns: auto 1fr; column-gap: calc(.8 * var(--u)); align-items: center; padding: calc(.35 * var(--u)) calc(.6 * var(--u)); border-radius: calc(.6 * var(--u)); min-height: 0; align-self: stretch; overflow: hidden; position: relative; }
 button.brow { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .brow:hover, .brow:focus-visible { background: var(--pg4); outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
-/* The X beside each row (clears it for this profile) and Clear all above the list */
-.bx { width: calc(2.2 * var(--u)); height: calc(2.2 * var(--u)); border-radius: 50%; border: 0; background: none; color: var(--ink2); cursor: pointer; display: grid; place-items: center; padding: 0; }
+/* The X beside each row (clears it for this profile), Clear all, and See all on a busy day */
+.bx { width: calc(2.1 * var(--u)); height: calc(2.1 * var(--u)); border-radius: 50%; border: 0; background: none; color: var(--ink2); cursor: pointer; display: grid; place-items: center; padding: 0; }
 .bx svg { width: 45%; height: 45%; }
 .bx:hover, .bx:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
-.blist { position: relative; }
-.bclear { position: absolute; right: 0; bottom: 100%; margin-bottom: 8px; background: none; border: 0; color: var(--ink2); font: inherit; font-size: 15px; font-weight: 600; padding: 6px 14px; border-radius: 99px; cursor: pointer; }
-.bclear:hover, .bclear:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2px #fff; }
-.brow .dot { width: calc(.6 * var(--u)); height: calc(.6 * var(--u)); border-radius: 50%; }
-.brow .tx { min-width: 0; max-height: 100%; }
-.brow .tx b { display: block; font-size: calc(clamp(14px, calc(1.08 * var(--u)), 24px) * var(--fs)); font-weight: 700; line-height: 1.2; }
-.brow .tx span { display: block; font-size: calc(clamp(12px, calc(.84 * var(--u)), 19px) * var(--fs)); color: var(--ink2); line-height: 1.3; margin-top: .15em; }
-.brow .th { width: calc(2.6 * var(--u)); aspect-ratio: 2/3; border-radius: calc(.3 * var(--u)); background: var(--pg3) center/cover no-repeat; }
-.brow .th.sq { aspect-ratio: 1; }
-.lgthumb { width: calc(2.6 * var(--u)); aspect-ratio: 2/3; border-radius: calc(.3 * var(--u)); background: var(--pg3); display: grid; grid-template-columns: repeat(2, 26%); grid-template-rows: repeat(2, calc(.68 * var(--u))); gap: 5%; place-content: center; }
+.bclear, .bsee { background: none; border: 0; color: var(--ink2); font: inherit; font-size: 14px; font-weight: 600; padding: 5px 12px; border-radius: 99px; cursor: pointer; }
+.bclear:hover, .bclear:focus-visible, .bsee:hover, .bsee:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2px #fff; }
+.bmore { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 calc(.6 * var(--u)); color: var(--ink2); font-weight: 600; font-size: 15px; }
+.brow .tx { min-width: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: center; }
+.brow .tx small { display: block; font-size: calc(clamp(10px, calc(.7 * var(--u)), 15px) * var(--fs)); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brow .tx b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: calc(clamp(13px, calc(1 * var(--u)), 22px) * var(--fs)); font-weight: 700; line-height: 1.2; }
+.brow .tx b i { font-style: normal; }
+/* A name too long for 2 lines slides by on one line while the row is picked */
+.brow.long:hover .tx b, .brow.long:focus-visible .tx b { display: block; white-space: nowrap; -webkit-line-clamp: none; }
+.brow.long:hover .tx b i, .brow.long:focus-visible .tx b i { display: inline-block; padding-right: 3em; animation: slidename 9s linear .7s infinite; }
+@keyframes slidename { 0%, 8% { transform: translateX(0); } 92%, 100% { transform: translateX(-100%); } }
+.brow .th, .lgthumb { width: calc(var(--rowh, 3.8) * var(--u)); aspect-ratio: 1; border-radius: calc(.4 * var(--u)); }
+.brow .th { background: var(--pg3) center/cover no-repeat; }
+.lgthumb { background: var(--pg3); display: grid; grid-template-columns: repeat(2, 24%); grid-template-rows: repeat(2, calc(.7 * var(--u))); gap: 5%; place-content: center; }
 .lgthumb i { border-radius: 22%; } .lgthumb i:nth-child(1) { background: var(--movies); } .lgthumb i:nth-child(2) { background: var(--shows); } .lgthumb i:nth-child(3) { background: var(--live); } .lgthumb i:nth-child(4) { background: var(--games); }
 .board.grow .blist { animation: fadein .4s .6s both; }
+/* See all: the same rows in the side panel */
+.seeall { --u: 16px; --fs: 1; margin-top: 10px; }
+.seeall .sarows { display: flex; flex-direction: column; gap: 2px; }
+.seeall .brow { padding: 8px 10px; }
+.seeall .brow .th, .seeall .lgthumb { width: 52px; }
 @media (max-width: 900px) {
-  .board { --u: calc((100vw - 2 * var(--gutter) - 20px) / 36); }
+  .board { --u: calc((100vw - 2 * var(--gutter) - 20px) / 39); }
   .board .wx { font-size: 14px; }
   .board .bmain { margin-top: 4px; display: block; height: auto; }
   .doors.sq3 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 10px; }
   .doors.sq3 .door { aspect-ratio: 1; grid-column: auto !important; min-height: 0 !important; }
-  .doors.sq3 .door .n { font-size: clamp(13px, calc(1.5 * var(--u)), 22px); }
-  .doors.sq3 .door .d { font-size: clamp(10.5px, calc(.95 * var(--u)), 14px); }
+  .doors.sq3 .door .n { font-size: clamp(13px, calc(1.6 * var(--u)), 22px); }
+  .doors.sq3 .door .d { font-size: clamp(10.5px, calc(1 * var(--u)), 14px); }
   .blist { margin-top: 18px; }
-  .bpanel, .blist.quiet .bpanel { height: auto; grid-template-rows: none; border-radius: 16px; padding: 5px; }
+  .bpanel { height: auto; display: block; border-radius: 16px; padding: 5px; }
   .bitem { grid-template-columns: 1fr 36px; column-gap: 4px; }
-  .brow { grid-template-columns: 8px 1fr 40px; column-gap: 12px; padding: 11px 12px; border-radius: 11px; }
-  .bitem + .bitem::before { left: 12px; right: 12px; }
+  .brow { column-gap: 12px; padding: 9px 10px; border-radius: 11px; }
+  .bitem + .bitem::before, .bmore::before { left: 12px; right: 12px; }
+  .bmore { padding: 8px 10px; font-size: 13px; }
   .bx { width: 36px; height: 36px; }
-  .bclear { position: static; display: block; margin: 6px 0 0 auto; font-size: 13px; }
-  .brow .dot { width: 8px; height: 8px; }
-  .brow .tx b { font-size: 15px; } .brow .tx span { font-size: 13px; }
-  .brow .th, .lgthumb { width: 40px; border-radius: 5px; }
+  .bclear, .bsee { font-size: 13px; }
+  .brow .tx small { font-size: 11px; } .brow .tx b { font-size: 15px; }
+  .brow .th, .lgthumb { width: 46px; border-radius: 6px; }
   .lgthumb { grid-template-rows: repeat(2, 10px); }
 }
 

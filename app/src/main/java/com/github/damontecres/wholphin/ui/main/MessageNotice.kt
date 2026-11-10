@@ -31,6 +31,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixMessage
 import com.github.damontecres.wholphin.services.BenflixMessages
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixNotices
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -126,7 +127,27 @@ fun MessageLayer(
         }
     }
     val playing = currentDestination is Destination.Playback || currentDestination is Destination.PlaybackList
-    val message = waiting.firstOrNull { it.live || !playing }
+    // Notices redesign: nothing covers a movie. While something plays, a message is a small corner card,
+    // and the Needs-you panel (with Got it) opens once playback stops.
+    LaunchedEffect(playing, waiting) {
+        if (!playing) return@LaunchedEffect
+        waiting.forEach { m ->
+            BenflixNotices.card(
+                BenflixNotices.Card(
+                    id = "msg-${m.id}",
+                    title = m.header.ifBlank { "Message from Ben" },
+                    line =
+                        m.text
+                            .lineSequence()
+                            .firstOrNull()
+                            .orEmpty()
+                            .take(70) + " · opens after this",
+                    whilePlaying = true,
+                ),
+            )
+        }
+    }
+    val message = waiting.firstOrNull { !playing }
     if (!popupTurn("ben-message", BenflixPopups.MESSAGE, message != null)) return
     message ?: return
     val focus = remember(message.id) { FocusRequester() }

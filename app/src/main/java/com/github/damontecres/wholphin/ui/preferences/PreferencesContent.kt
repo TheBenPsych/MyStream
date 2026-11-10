@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.preferences
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -932,12 +931,9 @@ fun PreferencesContent(
                                                 when (validation) {
                                                     is PreferenceValidation.Invalid -> {
                                                         // TODO?
-                                                        Toast
-                                                            .makeText(
-                                                                context,
-                                                                validation.message,
-                                                                Toast.LENGTH_SHORT,
-                                                            ).show()
+                                                        com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                                                            validation.message,
+                                                        )
                                                     }
 
                                                     PreferenceValidation.Valid -> {

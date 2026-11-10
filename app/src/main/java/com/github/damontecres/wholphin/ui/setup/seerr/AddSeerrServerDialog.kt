@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.setup.seerr
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
@@ -74,7 +73,8 @@ fun SeerrDialog(
             val serverAddedMessage = stringResource(R.string.seerr_server_added)
             LaunchedEffect(state.serverConnectionStatus) {
                 if (state.serverConnectionStatus == LoadingState.Success) {
-                    Toast.makeText(context, serverAddedMessage, Toast.LENGTH_SHORT).show()
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill(serverAddedMessage)
                     onDismissRequest.invoke()
                 }
             }

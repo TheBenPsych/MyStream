@@ -215,6 +215,8 @@ data class BookNews(
     val name: String? = null,
     val line: String? = null,
     val cover: String? = null,
+    /** When it arrived (milliseconds), so Home's news is newest first */
+    val at: Long = 0L,
 )
 
 data class BookStats(
@@ -571,6 +573,7 @@ class BenflixBooks
                     name = it.optString("name").takeIf { s -> s.isNotBlank() },
                     line = it.optString("line").takeIf { s -> s.isNotBlank() },
                     cover = it.optString("cover").takeIf { s -> s.isNotBlank() },
+                    at = (it.optDouble("at", 0.0) * 1000).toLong(),
                 )
             }
 

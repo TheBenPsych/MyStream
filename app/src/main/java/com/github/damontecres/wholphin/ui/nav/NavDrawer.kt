@@ -408,10 +408,8 @@ fun NavDrawer(
     // Benflix: requests waiting for the main profile to say yes or no
     hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
     val requestsWaiting by RequestsWaiting.count.collectAsState()
-    val requestsUnseen by RequestsWaiting.unseen.collectAsState()
     // Benflix: searched two weeks with nothing found, so Ben should start looking himself
     val lookYourself by RequestsWaiting.lookYourself.collectAsState()
-    val lookYourselfUnseen by RequestsWaiting.lookYourselfUnseen.collectAsState()
     val kids by KidsMode.active.collectAsState()
     val guest by com.github.damontecres.wholphin.services.GuestMode.active
         .collectAsState()
@@ -425,12 +423,11 @@ fun NavDrawer(
     val readyCount =
         com.github.damontecres.wholphin.ui.components
             .rememberRequestReadyCount()
-    val updateDot =
-        com.github.damontecres.wholphin.ui.components
-            .rememberUpdateDot()
-    // A bigger white dot on your picture when something new needs you. Waiting requests only count until
-    // you've seen them (opening Requests), and "Mark all as seen" in the menu clears the lot.
-    val badge = !kids && !guest && (updateDot || serverAlert || readyCount > 0 || requestsUnseen > 0 || lookYourselfUnseen > 0)
+    // Notices redesign (2026-11-10): the white dot on your picture only means "news on Home". Updates are a Home
+    // row, server problems live on the Server page, and the menu still says "Update ready", "3 waiting" and so on.
+    val homeNews by com.github.damontecres.wholphin.ui.components.HomeNewsDot.on
+        .collectAsState()
+    val badge = !kids && !guest && homeNews
 
     var showMenu by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -524,6 +521,8 @@ fun NavDrawer(
                         onClick = {
                             showMenu = false
                             menuViewModel.markAllSeen()
+                            com.github.damontecres.wholphin.ui.components.HomeNewsDot
+                                .set(false)
                         },
                     ),
                 )

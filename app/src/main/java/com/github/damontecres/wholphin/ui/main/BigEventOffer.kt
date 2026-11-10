@@ -1,43 +1,19 @@
 package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.ui.door.doorFocusBorder
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixMotion
-import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.components.BenflixNotices
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -205,10 +181,14 @@ class BigEventViewModel
         }
     }
 
-/** The corner note for [BigEventViewModel]: "The Super Bowl is on Sunday at 6:30 PM on CBS. Remind me?" */
+/**
+ * The corner card for [BigEventViewModel] (Live TV only): "Big event coming up: Super Bowl", Sunday at 6:30 PM
+ * on CBS, OK to get a reminder. It shows for 7 seconds and never takes the remote's focus; letting it pass
+ * counts as No thanks.
+ */
 @Composable
 fun BigEventOffer(
-    modifier: Modifier = Modifier,
+    @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
     viewModel: BigEventViewModel = hiltViewModel(),
 ) {
     val offer by viewModel.offer.collectAsState()
@@ -216,81 +196,22 @@ fun BigEventOffer(
     // A reminder that's due takes the corner first
     val now = System.currentTimeMillis()
     val busy = reminders.any { it.startMs - now <= 60_000L && now - it.startMs < 120_000L }
-    AnimatedVisibility(
-        visible = offer != null && !busy,
-        enter = fadeIn(BenflixMotion.enter()),
-        exit = fadeOut(BenflixMotion.exit()),
-        modifier = modifier,
-    ) {
-        val event = offer ?: return@AnimatedVisibility
-        val first = remember(event) { FocusRequester() }
-        LaunchedEffect(event) { first.tryRequestFocus() }
-        val shape = RoundedCornerShape(16.dp)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier =
-                Modifier
-                    .padding(24.dp)
-                    .widthIn(max = 380.dp)
-                    .background(BenflixColors.Panel, shape)
-                    .border(1.dp, BenflixColors.Line, shape)
-                    .padding(16.dp),
-        ) {
-            Text(
-                text = "Big event coming up",
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.tag,
-                fontWeight = FontWeight.Bold,
+    val event = offer?.takeUnless { busy }
+    val id = event?.let { "event-${it.id}" }
+    DisposableEffect(id) {
+        if (event != null && id != null) {
+            BenflixNotices.card(
+                BenflixNotices.Card(
+                    id = id,
+                    title = "Big event coming up: ${event.title}",
+                    line = "${whenWords(event.startMs)} on ${event.channelName} · OK for a reminder",
+                    onOpen = { viewModel.answer(true) },
+                    onTimeout = { viewModel.answer(false) },
+                ),
             )
-            Text(
-                text = event.title,
-                color = BenflixColors.Text,
-                fontSize = BenflixType.lead,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${whenWords(event.startMs)} on ${event.channelName}",
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.small,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OfferButton("Remind me", primary = true, modifier = Modifier.focusRequester(first)) { viewModel.answer(true) }
-                OfferButton("No thanks") { viewModel.answer(false) }
-            }
         }
-    }
-}
-
-@Composable
-private fun OfferButton(
-    label: String,
-    modifier: Modifier = Modifier,
-    primary: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(50)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = if (primary) BenflixColors.Text else BenflixColors.Raised,
-                contentColor = if (primary) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
-            ),
-        border = doorFocusBorder(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        Text(
-            label,
-            fontSize = BenflixType.small,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        // The card belongs to Live TV: leaving the page takes it away (it's offered again next time)
+        onDispose { if (id != null) BenflixNotices.drop(id) }
     }
 }
 

@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -271,7 +270,8 @@ fun InstallUpdatePage(
                 false
             }
         if (!launch(plainView = false) && !launch(plainView = true)) {
-            Toast.makeText(context, "Couldn't open the installer. Try Install now again.", Toast.LENGTH_LONG).show()
+            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                .pill("Couldn't open the installer. Try Install now again.")
             return
         }
         // Safety net: if the install screen didn't cover Benflix after a few seconds, open it the other way

@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.components
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -230,7 +229,8 @@ fun PlayOnTvButton(
                             val sent = viewModel.cast.play(screen, item, position)
                             open = false
                             val text = if (sent) "Casting to ${screen.name}…" else "Couldn't reach ${screen.name}"
-                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                            com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                .pill(text)
                         },
                         headlineContent = { Text(screen.name) },
                         supportingContent = { Text("Chromecast") },
@@ -260,7 +260,8 @@ fun PlayOnTvButton(
                                         val sent = viewModel.play(screen, item, position)
                                         open = false
                                         val text = if (sent) "Playing on ${screen.name}" else "Couldn't reach ${screen.name}"
-                                        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                                        com.github.damontecres.wholphin.ui.components.BenflixNotices
+                                            .pill(text)
                                     }
                                 },
                                 headlineContent = { Text(screen.name) },
