@@ -232,6 +232,18 @@ const myRequests = async () => {
 };
 
 let lastFacts = "";
+// A note from Ben that talks about one part of Benflix gets a button in its pop-up to go there
+const noteLink = (text) => {
+  const t = text.toLowerCase();
+  if (/live ?tv|\bchannels?\b/.test(t)) return ["Open Live TV", "#/live"];
+  if (/\bmusic\b|\bsongs?\b|\balbums?\b/.test(t) && DOORS.music && !B.me.kids) return ["Open Music", "#/music"];
+  if (/\bbooks?\b|\bmanga\b|\baudiobooks?\b/.test(t) && DOORS.books) return ["Open Books", "#/books"];
+  if (/\bgames?\b/.test(t)) return ["Open Games", "#/games"];
+  if (/\brequests?\b/.test(t)) return ["Open Requests", "#/requests"];
+  if (/\bshows?\b|\bepisodes?\b|\bseries\b/.test(t)) return ["Open Shows", "#/shows"];
+  if (/\bmovies?\b|\bfilms?\b/.test(t)) return ["Open Movies", "#/movies"];
+  return null;
+};
 // Rows this profile cleared (the X, Clear all, or opening news). Saved with the profile on the server
 // (benflix.cleared, shared with the TV and phone app), so every screen hides the same rows. Facts are only
 // hidden until Home opens again, because they change every time anyway.
@@ -278,8 +290,12 @@ B.loadBoard = async (nav) => {
     const note = String(c["benflix.note"] || "");
     const i = note.indexOf("\n");
     if (i > 0) {
-      const head = note.slice(0, i), exp = +(head.split("~")[1] || 0), text = note.slice(i + 1);
-      if (text.trim() && (!exp || exp > Date.now())) add({ id: `note-${head.split("~")[0]}`, news: true, title: "A note from Ben", detail: text.split("\n")[0], full: text, dot: "#F1F2F5", href: "" });
+      const head = note.slice(0, i), exp = +(head.split("~")[1] || 0);
+      // The tab is called Live TV now, so old notes that say "under Channels" read right
+      const where = /\s*\b(under|in|on|to) (the )?Channels\b( (tab|page|door|section))?/gi;
+      let text = note.slice(i + 1);
+      text = /live ?tv/i.test(text.replace(where, "")) ? text.replace(where, "") : text.replace(where, " $1 Live TV");
+      if (text.trim() && (!exp || exp > Date.now())) add({ id: `note-${head.split("~")[0]}`, news: true, title: "A note from Ben", detail: text.split("\n")[0], full: text, go: noteLink(text), dot: "#F1F2F5", href: "" });
     }
     String(c["benflix.fixed"] || "").split("\n").filter(Boolean).slice(-1).forEach((l) => {
       const [ts, title] = l.split("|");
@@ -359,8 +375,12 @@ const drawBoard = () => {
       if (r.news) saveCleared([r.id]);
       return;
     }
-    const clear = await B.ask(r.title, r.full || r.detail, "Got it, clear it", "Keep it");
-    if (clear) { saveCleared([r.id]); drawBoard(); }
+    // A note about one part of Benflix: go there (and clear the note); otherwise just read it and clear it
+    const yes = await B.ask(r.title, r.full || r.detail, r.go ? r.go[0] : "Got it, clear it", "Keep it");
+    if (!yes) return;
+    saveCleared([r.id]);
+    if (r.go) B.go(r.go[1]);
+    else drawBoard();
   };
   fitRows(list);
 };

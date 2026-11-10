@@ -122,7 +122,40 @@ data class HomeRow(
     val news: Boolean = false,
     /** The whole message, shown in a pop-up when the row has nowhere to go (a note from Ben, a built-in fact) */
     val fullText: String? = null,
+    /** A note that talks about one part of Benflix gets a button in its pop-up to go there ("Open Live TV") */
+    val goTo: Pair<String, Destination>? = null,
 )
+
+/** The tab is called Live TV now, so old notes that say "under Channels" read right */
+fun liveTvWording(text: String): String {
+    val where = Regex("\\s*\\b(under|in|on|to) (the )?Channels\\b( (tab|page|door|section))?", RegexOption.IGNORE_CASE)
+    val without = text.replace(where, "")
+    return if (Regex("live ?tv", RegexOption.IGNORE_CASE).containsMatchIn(without)) {
+        without
+    } else {
+        text.replace(where) { " ${it.groupValues[1]} Live TV" }
+    }
+}
+
+/** Which part of Benflix a note from Ben talks about, if any */
+fun noteLink(
+    text: String,
+    kids: Boolean,
+): Pair<String, Destination>? {
+    val t = text.lowercase()
+
+    fun has(pattern: String) = Regex(pattern).containsMatchIn(t)
+    return when {
+        has("live ?tv|\\bchannels?\\b") -> "Open Live TV" to Destination.Channels
+        has("\\bmusic\\b|\\bsongs?\\b|\\balbums?\\b") && !kids -> "Open Music" to Destination.MusicDoor
+        has("\\bbooks?\\b|\\bmanga\\b|\\baudiobooks?\\b") -> "Open Books" to Destination.BooksDoor
+        has("\\bgames?\\b") -> "Open Games" to Destination.Games
+        has("\\brequests?\\b") -> "Open Requests" to Destination.Requests
+        has("\\bshows?\\b|\\bepisodes?\\b|\\bseries\\b") -> "Open Shows" to Destination.ShowsDoor
+        has("\\bmovies?\\b|\\bfilms?\\b") -> "Open Movies" to Destination.MoviesDoor
+        else -> null
+    }
+}
 
 /**
  * Home's greeting, weather and list (approved f3-panel, 2026-11-10): up to 4 rows. News about new episodes of
@@ -316,16 +349,18 @@ class HomeDoorsViewModel
                 // Closed on this TV or phone before the list could be cleared
                 ?.takeUnless { userId != null && notes.isDismissed(userId, it) }
                 ?.let { note ->
+                    val text = liveTvWording(note.text)
                     out +=
                         HomeRow(
                             id = "note-${note.id}",
                             title = "A note from Ben",
-                            detail = note.text.lineSequence().first(),
+                            detail = text.lineSequence().first(),
                             dot = BenflixColors.Text,
                             image = null,
                             destination = null,
                             news = true,
-                            fullText = note.text,
+                            fullText = text,
+                            goTo = noteLink(text, KidsMode.isActive),
                         )
                 }
             custom["benflix.fixed"]
@@ -925,6 +960,11 @@ fun DoorsHomePage(
                 viewModel.clear(row)
                 reading = null
                 refocusDoors++
+            },
+            onGo = { place ->
+                viewModel.clear(row)
+                reading = null
+                viewModel.navigationManager.navigateTo(place)
             },
             onClose = { reading = null },
         )

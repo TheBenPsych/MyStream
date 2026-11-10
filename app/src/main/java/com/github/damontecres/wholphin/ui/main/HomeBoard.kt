@@ -721,6 +721,7 @@ private fun ClearAllButton(
 fun HomeMessageDialog(
     row: HomeRow,
     onClear: () -> Unit,
+    onGo: (com.github.damontecres.wholphin.ui.nav.Destination) -> Unit,
     onClose: () -> Unit,
 ) {
     com.github.damontecres.wholphin.ui.components.BasicDialog(onDismissRequest = onClose) {
@@ -741,9 +742,16 @@ fun HomeMessageDialog(
                 fontSize = BenflixType.body,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // A note about one part of Benflix: go there (and clear the note) in one press
+                row.goTo?.let { (label, place) ->
+                    androidx.tv.material3.Button(
+                        onClick = { onGo(place) },
+                        modifier = Modifier.focusRequester(focus),
+                    ) { Text(label) }
+                }
                 androidx.tv.material3.Button(
                     onClick = onClear,
-                    modifier = Modifier.focusRequester(focus),
+                    modifier = if (row.goTo == null) Modifier.focusRequester(focus) else Modifier,
                 ) { Text("Got it, clear it") }
                 androidx.tv.material3.OutlinedButton(onClick = onClose) { Text("Keep it") }
             }
