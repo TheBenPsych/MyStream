@@ -2327,6 +2327,7 @@ def _ch_defaults():
         meta=_ch_english_meta(meta),
     )
     _ch_english_releases()
+    _ch_setup["indexers"] = _ch_indexers()
     return _ch_setup
 
 
@@ -2338,25 +2339,84 @@ FOREIGN_RELEASES = (
 )
 
 
+SKIP_TITLES = ["podcast", "calendar", "planner", "box set", "boxed set", "bundle", "collection set", "books set",
+               "bonus chapter", "exclusive scenes", "coloring book", "colouring book", "pick-a-stick",
+               "dramatized adaptation", "preorder", "edition tapa", "edición", "deutsche ausgabe", "german edition"]
+ENGLISH_PROFILE = {"allowedLanguages": ENGLISH, "skipPartsAndSets": True, "skipMissingDate": True, "minPopularity": 0}
+
+
 def _ch_english_meta(meta):
-    """A "Benflix English" metadata profile in Chaptarr, so every book it adds is the English edition
-    (made once by copying Chaptarr's first profile). Falls back to the first profile if Chaptarr says no."""
+    """A "Benflix English" metadata profile in Chaptarr: English editions only, and no box sets, calendars,
+    podcasts or bonus chapters, so asking for one book doesn't pull in hundreds of foreign copies of
+    the author's other books. Made once by copying Chaptarr's first profile, then kept up to date.
+    Falls back to the first profile if Chaptarr says no."""
     mine = next((m for m in meta if m.get("name") == "Benflix English"), None)
+
+    def ours(base):
+        out = dict(base, name="Benflix English", **ENGLISH_PROFILE)
+        old = base.get("ignored")
+        out["ignored"] = SKIP_TITLES if isinstance(old, list) or old is None else ", ".join(SKIP_TITLES)
+        return out
+
     try:
         if mine is None and meta:
-            new = {k: v for k, v in meta[0].items() if k != "id"}
-            new.update(name="Benflix English", allowedLanguages=ENGLISH)
-            mine = ch("POST", "/api/v1/metadataprofile", new) or None
+            mine = ch("POST", "/api/v1/metadataprofile", {k: v for k, v in ours(meta[0]).items() if k != "id"}) or None
             log("Made the Benflix English profile in Chaptarr")
-        elif mine is not None and mine.get("allowedLanguages") != ENGLISH:
-            mine = dict(mine, allowedLanguages=ENGLISH)
-            ch("PUT", f"/api/v1/metadataprofile/{mine['id']}", mine)
+        elif mine is not None:
+            want = ours(mine)
+            if any(mine.get(k) != want.get(k) for k in [*ENGLISH_PROFILE, "ignored"]):
+                ch("PUT", f"/api/v1/metadataprofile/{mine['id']}", want)
+                log("Updated the Benflix English profile in Chaptarr")
     except BooksError as e:
         log(f"Couldn't set Chaptarr to English books: {e}")
         mine = None
     if mine and mine.get("id"):
         return mine["id"]
     return meta[0].get("id") if meta else 1
+
+
+def _ch_indexers():
+    """How many places Chaptarr can search for books (None when it won't say)"""
+    try:
+        return len([i for i in ch("GET", "/api/v1/indexer") or [] if i.get("enableAutomaticSearch", True) or i.get("enableInteractiveSearch")])
+    except BooksError:
+        return None
+
+
+def _english_author(book):
+    """An author Chaptarr already had (from an older request) moves onto the English profile too"""
+    d = _ch_setup
+    aid = book.get("authorId") or (book.get("author") or {}).get("id")
+    if not aid or not d.get("meta"):
+        return
+    try:
+        a = ch("GET", f"/api/v1/author/{aid}") or {}
+        if a and a.get("metadataProfileId") != d["meta"]:
+            a["metadataProfileId"] = d["meta"]
+            ch("PUT", f"/api/v1/author/{aid}", a)
+            ch("POST", "/api/v1/command", {"name": "RefreshAuthor", "authorId": aid})
+            log(f"Moved {a.get('authorName') or 'an author'} onto English books in Chaptarr")
+    except BooksError as e:
+        log(f"Couldn't move the author onto English books: {e}")
+
+
+def _pick_english_edition(book_id, book):
+    """Chaptarr searches for the book by its chosen edition's title, so a Persian or Spanish edition
+    finds nothing. Switch the chosen edition to the English one most people rated."""
+    try:
+        eds = ch("GET", "/api/v1/edition?" + urllib.parse.urlencode({"bookId": book_id})) or []
+    except BooksError:
+        eds = book.get("editions") or []
+    picked = _english_edition({"editions": eds}).get("editions")
+    if not picked or picked == eds:
+        return book
+    try:
+        book = dict(book, editions=picked)
+        ch("PUT", f"/api/v1/book/{book_id}", book)
+        log(f"Chose the English edition of {book.get('title')}")
+    except BooksError as e:
+        log(f"Couldn't choose the English edition: {e}")
+    return book
 
 
 def _ch_english_releases():
@@ -2376,20 +2436,22 @@ def _ch_english_releases():
         log(f"Couldn't add Chaptarr's English-only download rule: {e}")
 
 
+def _is_english(e):
+    lang = str((e or {}).get("language") or "").lower()
+    return lang in ("eng", "en", "english") or lang.startswith("en-")
+
+
 def _english_edition(book):
     """Monitor only the English edition (the one most people rated) when Chaptarr knows the editions"""
-    eds = book.get("editions") or []
-
-    def is_eng(e):
-        lang = str(e.get("language") or "").lower()
-        return lang in ("eng", "en", "english") or lang.startswith("en-")
-
-    eng = [e for e in eds if isinstance(e, dict) and is_eng(e)]
+    eds = [e for e in book.get("editions") or [] if isinstance(e, dict)]
+    eng = [e for e in eds if _is_english(e)]
     if not eng:
         return book
-    pick = max(eng, key=lambda e: ((e.get("ratings") or {}).get("votes") or 0, bool(e.get("monitored"))))
-    book["editions"] = [dict(e, monitored=e is pick) for e in eds]
-    return book
+    chosen = [e for e in eds if e.get("monitored")]
+    if chosen and all(_is_english(e) for e in chosen):
+        return book
+    pick = max(eng, key=lambda e: ((e.get("ratings") or {}).get("votes") or 0, bool(e.get("isbn13"))))
+    return dict(book, editions=[dict(e, monitored=e is pick) for e in eds])
 
 
 def _send_to_chaptarr(r):
@@ -2440,6 +2502,8 @@ def _send_to_chaptarr(r):
         raise BooksError(502, "Chaptarr didn't keep the book.")
     try:
         book = ch("GET", f"/api/v1/book/{book_id}") or {}
+        _english_author(book)
+        book = _pick_english_edition(book_id, book)
         if not book.get("monitored"):
             ch("PUT", "/api/v1/book/monitor", {"bookIds": [book_id], "monitored": True})
         # Already in Chaptarr (maybe as the other format): switch on the format(s) asked for, keep what was on
@@ -2457,6 +2521,7 @@ def _send_to_chaptarr(r):
     ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": [book_id]})
     with _lock:
         r["ch"] = book_id
+        r["searchedAt"] = int(time.time())
         r["state"] = "searching"
         r.pop("problem", None)
     log(f"Asked Chaptarr for {r['name']} ({', '.join(kinds)})")
@@ -2517,6 +2582,15 @@ def check_requests():
             _send(r)
     changed = _check_chaptarr(active) if CH_URL else False
     for r in active:
+        # Nothing found yet: Chaptarr only looks once, so ask it to look again every 12 hours
+        if r["state"] == "searching" and r.get("ch") and time.time() - (r.get("searchedAt") or r["at"]) > 12 * 3600:
+            try:
+                ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": [r["ch"]]})
+                r["searchedAt"] = int(time.time())
+                changed = True
+            except Exception as e:
+                log(f"Couldn't ask Chaptarr to look again for {r['name']}: {e!r}")
+    for r in active:
         if r["state"] in ("searching",) and time.time() - r["at"] > GIVE_UP_AFTER:
             r["state"] = "cant"
             changed = True
@@ -2567,6 +2641,11 @@ def requests_view(user_id, is_admin):
         out["mangaToAdd"] = [request_view(r, True) for r in _state["requests"] if r["state"] == "manga"]
         if not can_ask():
             out["problems"].append("Chaptarr isn't connected. Set it up, then run the Benflix setup command again.")
+        elif _ch_setup.get("indexers") == 0:
+            out["problems"].append(
+                "Chaptarr has nowhere to look for books yet, so requests find nothing. In Prowlarr, add book sites "
+                "(indexers) and connect Chaptarr under Settings > Apps."
+            )
     return out
 
 
