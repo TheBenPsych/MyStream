@@ -30,7 +30,10 @@ object IntroSounds {
     /** The Music door's own note, a little louder, as it grows out of the centre of the logo */
     @RawRes val MUSIC_DOOR = R.raw.intro_note_fs5
 
-    private val ALL = listOf(OPEN_LOW, OPEN_HIGH) + DOORS + MUSIC_DOOR
+    /** Benflix Books: the lime Books door's note (A5), right after Music's */
+    @RawRes val BOOKS_DOOR = R.raw.intro_note_a5
+
+    private val ALL = listOf(OPEN_LOW, OPEN_HIGH) + DOORS + MUSIC_DOOR + BOOKS_DOOR
 
     private var pool: SoundPool? = null
     private val soundIds = mutableMapOf<Int, Int>()

@@ -92,6 +92,10 @@ fun Destination.door(): BenflixDoor? =
         is Destination.MusicDoor -> BenflixDoor.MUSIC
         is Destination.MusicList -> BenflixDoor.MUSIC
         is Destination.MusicUpNext -> BenflixDoor.MUSIC
+        is Destination.BooksDoor -> BenflixDoor.BOOKS
+        is Destination.BookTitle -> BenflixDoor.BOOKS
+        is Destination.AudiobookPlayer -> BenflixDoor.BOOKS
+        is Destination.BooksKids -> BenflixDoor.BOOKS
         is Destination.DoorBrowse -> BenflixDoor.entries.firstOrNull { it.name == door }
         is Destination.DoorRowGrid -> BenflixDoor.entries.firstOrNull { it.name == door }
         else -> null
@@ -184,6 +188,9 @@ fun BenflixTopBar(
             // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
             com.github.damontecres.wholphin.ui.music
                 .MusicNowPill(scale = scale, modifier = down)
+            // Benflix Books: while an audiobook plays, a lime pill (OK opens the player)
+            com.github.damontecres.wholphin.ui.books
+                .AudiobookPill(scale = scale, modifier = down)
             if (showClock) BigClock(scale = scale)
             TopBarIconButton(
                 icon = BenflixIcon.SEARCH,

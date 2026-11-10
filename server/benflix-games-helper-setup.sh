@@ -19,12 +19,17 @@ TRACKS=/mnt/user/appdata/benflix-tracks
 LIVETV=/mnt/user/appdata/benflix-livetv
 SKIPS=/mnt/user/appdata/benflix-skips
 MUSICDATA=/mnt/user/appdata/benflix-music
+BOOKSDATA=/mnt/user/appdata/benflix-books
 OLD=/mnt/user/appdata/wolf/benflix
 RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS" "$MUSICDATA"
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS" "$MUSICDATA" "$BOOKSDATA"
+# Books: the folders the Books door reads (Chaptarr fills Books and Audiobooks; manga goes in Manga by hand)
+for d in Books Audiobooks Manga; do
+  [ -d "$MEDIA/$d" ] || { mkdir -p "$MEDIA/$d"; chown nobody:users "$MEDIA/$d" 2>/dev/null; }
+done
 # Music: the Music folder Jellyfin reads, the drop folder that sorts itself, and a spot for leftovers
 mkdir -p "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers"
 chown nobody:users "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers" 2>/dev/null
@@ -34,7 +39,7 @@ HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -166,6 +171,31 @@ MUSIC_ENV=$APP/music.env
 [ -f "$MUSIC_ENV" ] || : >"$MUSIC_ENV"
 chmod 600 "$MUSIC_ENV"
 
+say "Connecting Chaptarr (for asking for books in Benflix)"
+find_chaptarr() {
+  local c cfg key port base ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i chaptarr | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Chaptarr app found yet. Set it up with the Chaptarr steps, then run this again."; return; fi
+  cfg=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")/config.xml
+  [ -f "$cfg" ] || cfg=/mnt/user/appdata/chaptarr/config.xml
+  if [ ! -f "$cfg" ]; then echo "  PROBLEM  Couldn't find Chaptarr's settings file. Open Chaptarr once in the browser, then run this again."; return; fi
+  key=$(sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' "$cfg" | head -1)
+  port=$(sed -n 's:.*<Port>\(.*\)</Port>.*:\1:p' "$cfg" | head -1)
+  base=$(sed -n 's:.*<UrlBase>\(.*\)</UrlBase>.*:\1:p' "$cfg" | head -1)
+  [ -n "$port" ] || port=8789
+  if [ -z "$key" ]; then echo "  PROBLEM  Chaptarr has no API key in its settings file yet. Open Chaptarr once, then run this again."; return; fi
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port$base" "http://$HOST_IP:$port$base" ${ipaddr:+"http://$ipaddr:$port$base"}; do
+    if curl -fs -m 8 -H "X-Api-Key: $key" "$u/api/v1/system/status" >/dev/null; then
+      printf 'CHAPTARR_URL=%s\nCHAPTARR_KEY=%s\n' "$u" "$key" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but it didn't answer on port $port. Send this output to Claude."
+}
+find_chaptarr
+
 say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
 SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
 find_slskd() {
@@ -221,8 +251,8 @@ docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
   --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$SLSK_DL:/slskd:rw" \
-  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
+  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" \
+  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint 7zip >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
   >/dev/null && sleep 5
 # The first start also installs ffmpeg for the skip times, which can take a minute or two
 for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
@@ -263,6 +293,15 @@ if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"music": true'; then
   echo "      Drop music files in \\\\TOWER\\Homelab\\Media\\Music Drop and they sort themselves into Music."
 else
   echo "  PROBLEM  Music didn't load in the helper. Send this output to Claude."
+fi
+
+say "Books"
+if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"books": true'; then
+  echo "  ok  The Books door reads Homelab/Media/Books, Audiobooks and Manga."
+  if grep -q CHAPTARR_URL "$TOOLS_ENV"; then echo "  ok  Asking for books goes to Chaptarr."; else echo "  PROBLEM  Asking for books is off until Chaptarr is found (see Connecting Chaptarr above)."; fi
+  echo "      Manga: one folder per series (Manga/Series Name/), with .cbz files or picture folders inside."
+else
+  echo "  PROBLEM  Books didn't load in the helper. Send this output to Claude."
 fi
 
 say "Free Live TV"

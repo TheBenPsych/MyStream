@@ -418,6 +418,9 @@ class PlaybackViewModel
          */
         internal suspend fun init() {
             musicService.stop()
+            // Benflix Books: a movie or show stops the audiobook (its place is saved)
+            com.github.damontecres.wholphin.services.AudiobookService
+                .stopForOther()
             this.preferences = userPreferencesService.getCurrent()
             val settingsMaxBitrate =
                 preferences.appPreferences.playbackPreferences.maxBitrate

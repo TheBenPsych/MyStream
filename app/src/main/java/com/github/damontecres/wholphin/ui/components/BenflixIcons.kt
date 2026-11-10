@@ -119,6 +119,13 @@ enum class BenflixIcon(
     NEXT("M18 5.5v13", "M6 5.5v13l9-6.5z"),
     STOP("M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"),
     WRENCH("M14.5 4.5a4.5 4.5 0 0 0 5 5.9L11 19a2.1 2.1 0 0 1-3-3l8.6-8.5a4.5 4.5 0 0 0-2.1-3z"),
+
+    // Benflix Books: an open book, headphones, and back 15 / ahead 30 for audiobooks
+    BOOK("M3 5.5c3-1.3 6-1.1 9 .8v13c-3-1.9-6-2.1-9-.8z", "M21 5.5c-3-1.3-6-1.1-9 .8v13c3-1.9 6-2.1 9-.8z"),
+    HEADPHONES("M4 15v-3a8 8 0 0 1 16 0v3", "M4 15h3v5H5a1 1 0 0 1-1-1z", "M20 15h-3v5h2a1 1 0 0 0 1-1z"),
+    BACK15("M4.5 12a7.5 7.5 0 1 0 2.2-5.3", "M4.5 4.5v4h4"),
+    AHEAD30("M19.5 12a7.5 7.5 0 1 1-2.2-5.3", "M19.5 4.5v4h-4"),
+    MOON("M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"),
     ;
 
     /** Built once per icon */

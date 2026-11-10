@@ -120,6 +120,7 @@ class HomeDoorsViewModel
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val requestReadyService: RequestReadyService,
+        private val books: com.github.damontecres.wholphin.services.BenflixBooks,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _news = MutableStateFlow<List<HomeNews>>(emptyList())
@@ -150,7 +151,7 @@ class HomeDoorsViewModel
             viewModelScope.launchIO {
                 try {
                     val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
-                    val items = (episodeNews() + musicNews() + requestNews() + updateNews()).filter { it.id !in opened }
+                    val items = (episodeNews() + musicNews() + bookNews() + requestNews() + updateNews()).filter { it.id !in opened }
                     _news.value = items.take(MAX_NEWS)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -262,6 +263,25 @@ class HomeDoorsViewModel
             }
         }
 
+        /** Books: a new volume of a manga you read, or a book you asked for is here (Tower works these out) */
+        private suspend fun bookNews(): List<HomeNews> =
+            try {
+                kotlinx.coroutines.withTimeoutOrNull(BOOK_NEWS_WAIT_MS) { books.news() }.orEmpty().take(2).map {
+                    HomeNews(
+                        id = "book-${it.id}",
+                        text = it.text,
+                        door = BenflixDoor.BOOKS,
+                        destination = Destination.BookTitle(it.titleId),
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                // Tower's helper isn't set up for books yet (or can't be reached): no book news
+                Timber.d(ex, "Home news: books")
+                emptyList()
+            }
+
         /** Something you asked for in Requests is here */
         private suspend fun requestNews(): List<HomeNews> =
             requestReadyService.ready.value
@@ -305,6 +325,7 @@ class HomeDoorsViewModel
         companion object {
             private const val PREFS = "benflix_home_news"
             private const val NEWS_DAYS = 3L
+            private const val BOOK_NEWS_WAIT_MS = 2_500L
             const val MAX_NEWS = 3
         }
     }
@@ -415,14 +436,25 @@ fun DoorsHomePage(
             // after Games, with its own (slightly louder) note
             val musicStart = MUSIC_DOOR_START_MS * f
             val musicGrow = MUSIC_DOOR_GROW_MS * f
-            val starts = doors.map { if (it == BenflixDoor.MUSIC) musicStart else it.ordinal * stagger }
-            val lengths = doors.map { if (it == BenflixDoor.MUSIC) musicGrow else growMs }
+            // Books grows out of the same middle spot one beat after Music (on Music's beat on Kids, which has no Music)
+            val booksStart = if (BenflixDoor.MUSIC in doors) musicStart + stagger else musicStart
+            val starts =
+                doors.map {
+                    when (it) {
+                        BenflixDoor.MUSIC -> musicStart
+                        BenflixDoor.BOOKS -> booksStart
+                        else -> it.ordinal * stagger
+                    }
+                }
+            val lengths = doors.map { if (it == BenflixDoor.MUSIC || it == BenflixDoor.BOOKS) musicGrow else growMs }
             val total = doors.indices.maxOf { starts[it] + lengths[it] }
             var played = 0
             runIntroTimeline(total, pace) { t ->
                 while (played < doors.size && t >= starts[played]) {
                     if (doors[played] == BenflixDoor.MUSIC) {
                         IntroSounds.play(context, IntroSounds.MUSIC_DOOR, MUSIC_NOTE_VOLUME)
+                    } else if (doors[played] == BenflixDoor.BOOKS) {
+                        IntroSounds.play(context, IntroSounds.BOOKS_DOOR, MUSIC_NOTE_VOLUME)
                     } else {
                         IntroSounds.DOORS.getOrNull(played)?.let { IntroSounds.play(context, it, DOOR_NOTE_VOLUME) }
                     }
@@ -451,6 +483,7 @@ fun DoorsHomePage(
                     BenflixDoor.LIVE_TV -> Destination.Channels
                     BenflixDoor.GAMES -> Destination.Games
                     BenflixDoor.MUSIC -> Destination.MusicDoor
+                    BenflixDoor.BOOKS -> Destination.BooksDoor
                 },
             )
         }
@@ -484,16 +517,18 @@ fun DoorsHomePage(
                 // The matching logo square: top left Movies, top right Shows, bottom left Live TV, bottom right
                 // Games. Music starts as a tiny square in the gap at the very middle of the logo.
                 val gap = mark.width * 0.1f
-                val sq = if (i == BenflixDoor.MUSIC.ordinal) gap else (mark.width - gap) / 2f
+                // Music and Books both grow out of the tiny gap in the middle of the logo
+                val centre = i == BenflixDoor.MUSIC.ordinal || i == BenflixDoor.BOOKS.ordinal
+                val sq = if (centre) gap else (mark.width - gap) / 2f
                 val sx =
                     when {
-                        i == BenflixDoor.MUSIC.ordinal -> mark.left + (mark.width - gap) / 2f
+                        centre -> mark.left + (mark.width - gap) / 2f
                         i % 2 == 0 -> mark.left
                         else -> mark.left + sq + gap
                     }
                 val sy =
                     when {
-                        i == BenflixDoor.MUSIC.ordinal -> mark.top + (mark.height - gap) / 2f
+                        centre -> mark.top + (mark.height - gap) / 2f
                         i < 2 -> mark.top
                         else -> mark.top + sq + gap
                     }
@@ -590,7 +625,26 @@ fun DoorsHomePage(
                     }
                 }
                 Spacer(Modifier.height(20.dp))
-                doors.filter { it != BenflixDoor.MUSIC }.chunked(2).forEach { pair ->
+                // Phones: the doors two by two (six doors = three rows, approved h-door); a door left on its own is wide
+                val pairs = doors.chunked(2)
+                pairs.forEach { pair ->
+                    if (pair.size == 1) {
+                        val door = pair.first()
+                        val i = door.ordinal
+                        DoorTile(
+                            door = door,
+                            easy = easy,
+                            wide = false,
+                            labelAlpha = labelAlpha(i),
+                            onClick = { onDoor(door) },
+                            sideways = true,
+                            modifier =
+                                doorModifier(i)
+                                    .fillMaxWidth()
+                                    .height(if (easy) 112.dp else 96.dp),
+                        )
+                        return@forEach
+                    }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -606,27 +660,11 @@ fun DoorsHomePage(
                                 modifier =
                                     doorModifier(i)
                                         .weight(1f)
-                                        .aspectRatio(PHONE_DOOR_RATIO)
+                                        .aspectRatio(if (pairs.size > 2) PHONE_DOOR_RATIO_SIX else PHONE_DOOR_RATIO)
                                         .then(if (i == 0) Modifier.focusRequester(moviesFocus) else Modifier),
                             )
                         }
                     }
-                }
-                // Phones: Music is a wide fifth door under the four
-                if (BenflixDoor.MUSIC in doors) {
-                    val i = BenflixDoor.MUSIC.ordinal
-                    DoorTile(
-                        door = BenflixDoor.MUSIC,
-                        easy = easy,
-                        wide = false,
-                        labelAlpha = labelAlpha(i),
-                        onClick = { onDoor(BenflixDoor.MUSIC) },
-                        sideways = true,
-                        modifier =
-                            doorModifier(i)
-                                .fillMaxWidth()
-                                .height(if (easy) 112.dp else 96.dp),
-                    )
                 }
             }
         }
@@ -652,6 +690,7 @@ private fun DoorTile(
             BenflixDoor.LIVE_TV -> BenflixIcon.LIVE
             BenflixDoor.GAMES -> BenflixIcon.PAD
             BenflixDoor.MUSIC -> BenflixIcon.NOTE
+            BenflixDoor.BOOKS -> BenflixIcon.BOOK
         }
     val nameSize: TextUnit
     val descSize: TextUnit
@@ -782,6 +821,9 @@ private fun NewsPill(
 
 /** Phone doors: a little taller than wide */
 private const val PHONE_DOOR_RATIO = 0.8f
+
+/** Phones with six doors (Books): a little wider than tall, so all three rows fit */
+private const val PHONE_DOOR_RATIO_SIX = 1.12f
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f
 

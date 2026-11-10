@@ -96,6 +96,39 @@ fun DestinationContent(
             }
         }
 
+        Destination.BooksDoor -> {
+            com.github.damontecres.wholphin.ui.books
+                .BooksDoorPage(preferences, onClearBackdrop, modifier)
+        }
+
+        is Destination.BookTitle -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.books
+                .BookTitlePage(destination.id, modifier)
+        }
+
+        is Destination.BookReader -> {
+            com.github.damontecres.wholphin.ui.books
+                .BookReaderPage(destination.id, destination.chapter, modifier)
+        }
+
+        is Destination.PageReader -> {
+            com.github.damontecres.wholphin.ui.books
+                .PageReaderPage(destination.id, destination.book, modifier)
+        }
+
+        Destination.AudiobookPlayer -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.books
+                .AudiobookPlayerPage(modifier)
+        }
+
+        Destination.BooksKids -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.books
+                .BooksKidsPage(modifier)
+        }
+
         is Destination.MusicList -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             when (destination.kind) {

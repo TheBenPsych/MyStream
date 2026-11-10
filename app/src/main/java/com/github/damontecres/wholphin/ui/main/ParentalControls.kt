@@ -235,6 +235,19 @@ fun ParentalControlsDialog(
                         trailingContent = { Switch(checked = guestTile, onCheckedChange = null) },
                         scale = ListItemDefaults.scale(focusedScale = 1f),
                     )
+                    // Benflix Books: which books Kids may see (kids-rated books always show)
+                    val booksNav =
+                        androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<com.github.damontecres.wholphin.ui.books.BooksKidsViewModel>()
+                    ListItem(
+                        selected = false,
+                        onClick = {
+                            onDismiss()
+                            booksNav.navigationManager.navigateTo(com.github.damontecres.wholphin.ui.nav.Destination.BooksKids)
+                        },
+                        headlineContent = { Text("Kids books") },
+                        supportingContent = { Text("Kids see books rated for kids. Pick any others they may read or listen to") },
+                        scale = ListItemDefaults.scale(focusedScale = 1f),
+                    )
                     KidsWatchedSection(posterUrl = viewModel::posterUrl)
                 }
             }

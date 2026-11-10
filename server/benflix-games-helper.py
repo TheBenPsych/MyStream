@@ -10,6 +10,8 @@ Benflix games helper: a tiny web service on the Unraid server (port 8097).
 - Server page tools (admin only): apps, downloads, how busy Tower is, track tidy. See benflix_server_tools.py.
 - Music (admin only): ask for songs and albums (Lidarr does the downloading), playlists, the Music Drop
   folder and the music tidy-up. See benflix_music.py.
+- Books (everyone): manga, ebooks and audiobooks from Tower's book folders, your place in each, and asking
+  for books (LazyLibrarian does the downloading). See benflix_books.py.
 - Benflix in a web browser: open http://<server>:8097 and anyone signs in with their Benflix name.
   The app is in web/ next to this file (benflix_web.py serves it and keeps it up to date from GitHub).
   /api/web/login signs in through Jellyfin, /api/web/jf/... passes the browser's requests on to
@@ -50,6 +52,11 @@ try:  # Music requests (Lidarr), the Music Drop folder and the music tidy-up, in
     import benflix_music as music
 except ImportError:
     music = None
+
+try:  # Books: manga, ebooks and audiobooks, your places, and asking for books, in benflix_books.py next to this file
+    import benflix_books as books
+except ImportError:
+    books = None
 
 try:  # Benflix Server page tools (admin only), in benflix_server_tools.py next to this file
     import benflix_server_tools as tools
@@ -160,6 +167,7 @@ AWAY_PATH = "/benflix-games"
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
+_names = {}  # Jellyfin account id -> the profile's name (for "asked by")
 _lock = threading.Lock()
 
 
@@ -211,6 +219,7 @@ def check_signed_in(token):
     is_admin = bool(policy.get("IsAdministrator"))
     with _lock:
         _tokens[token] = (time.time(), user_id, is_admin, is_kids)
+        _names[user_id] = str(user.get("Name") or "")
     return user_id, is_admin, is_kids
 
 
@@ -626,6 +635,47 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
 
+    def send_range(self, path, content_type, head=False):
+        """A big file (an audiobook chapter, an ebook, a PDF) with Range support, so players can jump around"""
+        size = os.path.getsize(path)
+        start, end = 0, size - 1
+        rng = self.headers.get("Range", "")
+        m = re.fullmatch(r"bytes=(\d*)-(\d*)", rng.strip())
+        partial = False
+        if m and (m.group(1) or m.group(2)):
+            if m.group(1):
+                start = int(m.group(1))
+                end = int(m.group(2)) if m.group(2) else size - 1
+            else:
+                start = max(0, size - int(m.group(2)))
+            end = min(end, size - 1)
+            if start > end:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            partial = True
+        self.send_response(206 if partial else 200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.send_header("Cache-Control", "private, max-age=3600")
+        if partial:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        if head:
+            return
+        with open(path, "rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(1024 * 1024, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def read_body(self, limit):
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0 or length > limit:
@@ -725,6 +775,7 @@ class Handler(BaseHTTPRequestHandler):
                         "music": music is not None,
                         "care": care is not None and care.ffmpeg_ok(),
                         "facts": facts is not None,
+                        "books": books is not None,
                     },
                 )
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
@@ -773,10 +824,17 @@ class Handler(BaseHTTPRequestHandler):
                 (path.startswith("/api/web/jf/") and "/Images/" in path)
                 or path.startswith("/api/web/stream/")
                 or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/file|bios/file)", path)
+                or re.fullmatch(r"/api/books/(?:cover/\w+|vol/\w+/p/\d+|file/\w+(?:/\d+)?|x/\w+/.+)", path)
             ):
                 # Pictures, video and game files in the browser (an <img>, <video> or emulator can't send the
                 # header, so the sign-in rides along in the address)
                 token = (query.get("api_key") or [""])[0]
+                if not token and path.startswith("/api/books/x/"):
+                    # The ebook reader's pages and pictures carry the sign-in in a cookie (relative links inside a book can't)
+                    for part in (self.headers.get("Cookie") or "").split(";"):
+                        k, _, v = part.strip().partition("=")
+                        if k == "bftoken":
+                            token = urllib.parse.unquote(v)
             user_id, is_admin, is_kids = check_signed_in(token)
             if skips is not None and is_admin:
                 # Lets Tower check every season's skip times by itself, without waiting for someone to press play
@@ -804,6 +862,16 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
                 status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json, is_kids=is_kids)
                 return self.send(status, answer)
+            if path.startswith("/api/books/"):
+                # Books: manga, ebooks and audiobooks (everyone; Kids only see kids' books)
+                if books is None:
+                    raise HelperError(503, "Books aren't on the server yet. Run the Benflix setup command again.")
+                answer = books.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json, user_name=_names.get(user_id, ""))
+                if answer[0] == "file":
+                    return self.send_range(answer[1], answer[2], head=(method == "HEAD"))
+                if len(answer) == 3:
+                    return self.send(answer[0], answer[1], answer[2])
+                return self.send(answer[0], answer[1])
             if path.startswith("/api/subsync/"):
                 # The player's "Subtitles are off" button: Tower lines them up with the voices
                 if care is None:
@@ -941,6 +1009,8 @@ if __name__ == "__main__":
         web.start()
     if music is not None:
         music.start(jellyfin_call)
+    if books is not None:
+        books.start(jellyfin_call)
     if care is not None:
         care.start(
             jellyfin_call,

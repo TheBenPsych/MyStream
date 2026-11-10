@@ -63,6 +63,10 @@ object BenflixColors {
     /** Music, the fifth door: soft violet with dark words */
     val Music = Color(0xFFB69CFF)
     val OnMusic = Color(0xFF160F26)
+
+    /** Books, the sixth door: lime with dark words */
+    val Books = Color(0xFFB9E36A)
+    val OnBooks = Color(0xFF141C05)
 }
 
 /** The Home doors, in their fixed order (Music is the fifth) */
@@ -77,10 +81,13 @@ enum class BenflixDoor(
     LIVE_TV("Live TV", "Channels playing now", BenflixColors.LiveTv, BenflixColors.OnLiveTv),
     GAMES("Games", "Play on the TV", BenflixColors.Games, BenflixColors.OnGames),
     MUSIC("Music", "Your songs and playlists", BenflixColors.Music, BenflixColors.OnMusic),
+
+    /** Ben: the Books door always says "Read and listen" */
+    BOOKS("Books", "Read and listen", BenflixColors.Books, BenflixColors.OnBooks),
     ;
 
     companion object {
-        /** The doors on Home: Kids profiles keep the four (no music on Kids) */
-        fun forHome(kids: Boolean): List<BenflixDoor> = if (kids) entries.take(4) else entries
+        /** The doors on Home: Kids profiles get five (Books where Music would be; no music on Kids) */
+        fun forHome(kids: Boolean): List<BenflixDoor> = if (kids) entries.filter { it != MUSIC } else entries
     }
 }

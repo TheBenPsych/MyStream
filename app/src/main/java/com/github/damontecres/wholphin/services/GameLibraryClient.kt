@@ -271,6 +271,10 @@ class GameLibraryClient
                 )
             }
 
+        /** Benflix Books: asks the helper to remove something (like a book request) and returns its JSON answer */
+        suspend fun deleteJson(path: String): JSONObject =
+            withContext(Dispatchers.IO) { JSONObject(call(Request.Builder().url(address + path).delete())) }
+
         /**
          * Downloads a file from the helper (a game file, BIOS or save) into [target], reporting bytes as they arrive.
          * Returns false if the helper says there's no such file.

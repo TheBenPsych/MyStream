@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121318">
+<title>Benflix reader</title>
+<!--
+  Benflix Books ebook reader for the TV and phone apps. The app opens this page in a web view:
+  web/reader.html#id=<book>&token=<sign-in>&tv=1 . The same reader (js/reader.js) runs in the browser version.
+-->
+<style>
+  @font-face { font-family: Outfit; src: url("fonts/outfit_regular.ttf"); }
+  @font-face { font-family: Outfit; font-weight: 600; src: url("fonts/outfit_semibold.ttf"); }
+  html, body { margin: 0; height: 100%; background: #121318; overflow: hidden; }
+</style>
+<link rel="stylesheet" href="css/reader.css">
+</head>
+<body>
+<div id="reader"></div>
+<script src="js/reader.js"></script>
+<script>
+  (function () {
+    var p = new URLSearchParams(location.hash.slice(1));
+    // The helper lives one folder up (at home "/", away from home "/benflix-games/")
+    var base = location.pathname.replace(/web\/reader\.html$/, "");
+    var reader = BookReader.open(document.getElementById("reader"), {
+      id: p.get("id"),
+      token: p.get("token"),
+      tv: p.get("tv") === "1",
+      chapter: p.get("chapter") ? +p.get("chapter") : undefined,
+      base: base,
+    });
+    // The app's Back button asks here first (closes a panel or the bar)
+    window.readerBack = function () { return reader.back(); };
+    window.readerSave = function () { reader.save(); };
+    // The app's Back with nothing open: save the place, then BenflixApp.close()
+    window.readerClose = function () { reader.close(); };
+  })();
+</script>
+</body>
+</html>
