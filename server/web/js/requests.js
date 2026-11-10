@@ -162,20 +162,21 @@ B.route(/^\/requests/, async (m, nav) => {
     ? [["Action", 28], ["Adventure", 12], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Fantasy", 14], ["History", 36], ["Horror", 27], ["Mystery", 9648], ["Romance", 10749], ["Sci-Fi", 878], ["Thriller", 53], ["War", 10752], ["Western", 37]]
     : [["Action and adventure", 10759], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Kids", 10762], ["Mystery", 9648], ["Reality", 10764], ["Sci-Fi and fantasy", 10765], ["War and politics", 10768], ["Western", 37]];
   let walls = [], picked = null, genre = null;
-  const ranked = (r, i) => B.askCard(r).replace('<div class="cap">', `<span class="rqrank">${i + 1}</span><div class="cap">`);
+  // Top 10: a number badge on the picture's bottom corner (the name and year stay under the poster)
+  const ranked = (r, i) => B.askCard(r).replace(/<\/div>\s*<div class="cap">/, `<span class="rqrank">${i + 1}</span></div><div class="cap">`);
   const drawWall = () => {
     const side = $("#rqside"), wall = $("#rqwall");
     if (!side || !wall) return;
     const cur = picked === "genres" ? null : walls.find((w) => w.id === picked) || walls[0];
-    side.innerHTML = walls.map((w) => `<button class="${w === cur ? "on" : ""}" data-rqpick="${esc(w.id)}">${esc(w.title)}</button>`).join("")
+    side.innerHTML = `<h4>Lists</h4>` + walls.map((w) => `<button class="${w === cur ? "on" : ""}" data-rqpick="${esc(w.id)}">${esc(w.title)}<span class="n">${w.items.length}</span></button>`).join("")
       + (tab === "anime" ? "" : `<button class="${picked === "genres" ? "on" : ""}" data-rqpick="genres">${genre ? "Genre: " + esc(genre[0]) : "Genres"}</button>`)
-      + `<h4>Yours</h4><button data-rqlist="mine">Your requests ${lists.mine.length}</button>`
-      + (B.me.admin ? `<button data-rqlist="waiting">Waiting for you ${lists.waiting.length}${lists.waiting.length ? '<span class="dot"></span>' : ""}</button>` : "");
+      + `<h4>Yours</h4><button data-rqlist="mine">Your requests<span class="n">${lists.mine.length}</span></button>`
+      + (B.me.admin ? `<button data-rqlist="waiting">Waiting for you${lists.waiting.length ? `<span class="n">${lists.waiting.length} <span class="dot"></span></span>` : '<span class="n">0</span>'}</button>` : "");
     if (picked === "genres") {
-      wall.innerHTML = `<div class="rqgenres">${[["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("")}</div>`;
+      wall.innerHTML = `<div class="rqhead"><b>Genres</b><span>Pick one and every list shows only that genre</span></div><div class="rqgenres">${[["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("")}</div>`;
       return;
     }
-    wall.innerHTML = cur ? `<div class="grid">${cur.items.map((r, i) => cur.ranked ? ranked(r, i) : B.askCard(r)).join("")}</div>` : `<div class="empty">Nothing to show right now. Try again in a minute.</div>`;
+    wall.innerHTML = cur ? `<div class="rqhead"><b>${esc(cur.title)}</b><span>${cur.items.length} to ask for</span></div><div class="grid">${cur.items.map((r, i) => cur.ranked && i < 10 ? ranked(r, i) : B.askCard(r)).join("")}</div>` : `<div class="empty">Nothing to show right now. Try again in a minute.</div>`;
   };
   const drawRows = async () => {
     $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
@@ -201,29 +202,30 @@ B.route(/^\/requests/, async (m, nav) => {
     if (wall) wall.innerHTML = B.spinner();
     const kindPath = tab === "movies" ? "movies" : "tv";
     // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
-    const pages = tab === "anime"
-      ? [1, 2, 3, 4].map((n) => seerr(`/discover/tv/genre/16?page=${n}`).catch(() => null)).concat([1, 2].map((n) => seerr(`/discover/movies/genre/16?page=${n}`).catch(() => null)))
+    const pg = (path, list) => list.map((n) => seerr(`${path}?page=${n}`).catch(() => null));
+    // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
+    const groups = tab === "anime"
+      ? [pg("/discover/tv/genre/16", [1, 2, 3, 4]), pg("/discover/movies/genre/16", [1, 2, 3]), pg("/discover/tv/genre/16", [5, 6, 7])]
       : genre
-        ? [1, 2, 3].map((n) => seerr(`/discover/${kindPath}/genre/${genre[1]}?page=${n}`).catch(() => null))
-        : [seerr(`/discover/${kindPath}?page=1`).catch(() => null), seerr(`/discover/${kindPath}/upcoming?page=1`).catch(() => null), seerr(`/discover/${kindPath}?page=2`).catch(() => null), seerr(`/discover/${kindPath}?page=3`).catch(() => null)];
-    const got = await Promise.all(pages);
+        ? [pg(`/discover/${kindPath}/genre/${genre[1]}`, [1, 2, 3, 4])]
+        : [pg(`/discover/${kindPath}`, [1, 2, 3]), pg(`/discover/${kindPath}/upcoming`, [1, 2, 3]), pg(`/discover/${kindPath}`, [4, 5, 6])];
+    const got = await Promise.all(groups.map((g) => Promise.all(g)));
     if (!B.alive(nav)) return;
     const notHere = (l, mt) => ((l && l.results) || []).map((x) => Object.assign(x, { mediaType: x.mediaType || mt }))
       .filter((x) => !onBenflix(x) && (tab === "anime" ? x.originalLanguage === "ja" : !isAnime(x)));
     const seen = new Set();
     const uniq = (l) => l.filter((x) => !seen.has(x.mediaType + x.id) && seen.add(x.mediaType + x.id));
     const mt = tab === "movies" ? "movie" : "tv";
+    const all = (i, m) => uniq((got[i] || []).flatMap((l) => notHere(l, m || mt)));
+    // Each wall is long (40 to 60 posters); the Top 10 are the first ten of the first wall, with numbers
     if (tab === "anime") {
-      const shows = uniq(got.slice(0, 4).flatMap((l) => notHere(l, "tv")));
-      walls = [{ id: "top", title: "Top 10", items: shows.slice(0, 10), ranked: true }, { id: "popular", title: "Popular anime", items: shows.slice(10) },
-        { id: "movies", title: "Anime movies", items: uniq(got.slice(4).flatMap((l) => notHere(l, "movie"))) }];
+      walls = [{ id: "top", title: "Top 10 and popular", items: all(0, "tv"), ranked: true }, { id: "movies", title: "Anime movies", items: all(1, "movie") },
+        { id: "more", title: "More anime", items: all(2, "tv") }];
     } else if (genre) {
-      const all = uniq(got.flatMap((l) => notHere(l, mt)));
-      walls = [{ id: "top", title: "Top 10 in " + genre[0], items: all.slice(0, 10), ranked: true }, { id: "more", title: "More " + genre[0], items: all.slice(10) }];
+      walls = [{ id: "top", title: "Top 10 in " + genre[0], items: all(0), ranked: true }];
     } else {
-      const trending = uniq(notHere(got[0], mt)), soon = uniq(notHere(got[1], mt)), more = uniq(got.slice(2).flatMap((l) => notHere(l, mt)));
-      walls = [{ id: "top", title: "Top 10", items: trending.slice(0, 10), ranked: true }, { id: "trending", title: "Trending", items: trending.slice(10) },
-        { id: "soon", title: "Coming soon", items: soon }, { id: "more", title: "More to ask for", items: more }];
+      walls = [{ id: "top", title: "Top 10 and trending", items: all(0), ranked: true }, { id: "soon", title: "Coming soon", items: all(1) },
+        { id: "more", title: "More to ask for", items: all(2) }];
     }
     walls = walls.filter((w) => w.items.length);
     drawWall();
