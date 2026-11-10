@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +35,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +60,7 @@ import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
+import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
@@ -207,6 +214,7 @@ fun RequestDoorRow(
     modifier: Modifier = Modifier,
     cornerNoteFor: (DiscoverItem) -> String? = { null },
     subtitleFor: (DiscoverItem) -> String? = { null },
+    ranked: Boolean = false,
 ) {
     val first = remember { FocusRequester() }
     Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
@@ -227,16 +235,102 @@ fun RequestDoorRow(
             itemsIndexed(items, key = { _, it -> it.requestKey() }) { index, item ->
                 // Phones have nothing to focus, so details (scores) load as posters come on screen
                 if (!isTv) LaunchedEffect(item.requestKey()) { onFocus(item) }
-                RequestPoster(
-                    item = item,
-                    width = if (isTv) 120.dp else 104.dp,
-                    showName = !isTv,
-                    subtitle = subtitleFor(item),
-                    cornerNote = cornerNoteFor(item),
-                    onClick = { onClick(item) },
-                    onLongClick = { onLongClick(item) },
-                    onFocus = { onFocus(item) },
-                    modifier = if (index == 0) Modifier.focusRequester(first) else Modifier,
+                val poster: @Composable (Modifier) -> Unit = { m ->
+                    RequestPoster(
+                        item = item,
+                        width = if (isTv) 120.dp else 104.dp,
+                        showName = !isTv,
+                        subtitle = subtitleFor(item),
+                        cornerNote = cornerNoteFor(item),
+                        onClick = { onClick(item) },
+                        onLongClick = { onLongClick(item) },
+                        onFocus = { onFocus(item) },
+                        modifier = m.then(if (index == 0) Modifier.focusRequester(first) else Modifier),
+                    )
+                }
+                if (ranked) {
+                    RankedPoster(index + 1, if (isTv) 120.dp else 104.dp, poster)
+                } else {
+                    poster(Modifier)
+                }
+            }
+        }
+    }
+}
+
+/** Top 10: a tall outlined number tucked half behind the poster (like the Books page and the doors) */
+@Composable
+private fun RankedPoster(
+    rank: Int,
+    width: Dp,
+    poster: @Composable (Modifier) -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val posterHeight = width / POSTER_RATIO
+    val numberHeight = posterHeight * 0.8f
+    val numberSize = with(LocalDensity.current) { numberHeight.toSp() }
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = rank.toString(),
+            style =
+                TextStyle(
+                    fontSize = numberSize,
+                    fontFamily = BenflixTitleFont,
+                    lineHeight = numberSize,
+                    letterSpacing = (-1).sp,
+                    drawStyle = Stroke(width = 5f, join = StrokeJoin.Round),
+                ),
+            color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
+            maxLines = 1,
+            modifier = Modifier.offset(y = posterHeight * 0.2f),
+        )
+        Box(Modifier.offset(x = -width * 0.18f).onFocusChanged { focused = it.hasFocus }) {
+            poster(Modifier)
+        }
+    }
+}
+
+/**
+ * Benflix (compact Requests, 2026-11-10): one small line about the poster you're on, instead of the big
+ * picture area. Only this line reads [focused], so moving along a row doesn't redraw the page.
+ */
+@Composable
+fun FocusedRequestLine(
+    focused: State<DiscoverItem?>,
+    fallback: DiscoverItem?,
+    scores: Map<String, String>,
+    modifier: Modifier = Modifier,
+) {
+    val item = focused.value ?: fallback
+    val score = item?.let { scores[it.requestKey()] ?: it.score?.let { s -> "★ ${"%.1f".format(s)}" } }
+    val rest =
+        listOfNotNull(
+            item?.releaseDate?.year?.toString(),
+            score,
+            item?.statusWord()?.lowercase()?.replaceFirstChar { it.uppercase() },
+            item?.overview?.takeIf { it.isNotBlank() },
+        ).joinToString("  ·  ")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth().height(22.dp).padding(horizontal = SIDE_ROW),
+    ) {
+        if (item != null) {
+            Text(
+                text = item.title.orEmpty(),
+                color = BenflixColors.Text,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 360.dp),
+            )
+            if (rest.isNotEmpty()) {
+                Text(
+                    text = "  ·  $rest",
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

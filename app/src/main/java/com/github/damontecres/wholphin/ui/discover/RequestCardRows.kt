@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +32,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.RequestStatus
+import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -71,6 +74,65 @@ internal fun RequestCardRow(
                     onOpen = { onOpen(entry) },
                     onAnswer = { onAnswer(entry, it) },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Benflix (compact Requests, 2026-11-10): "Your requests" and "Waiting for you" are small buttons on the
+ * top line now; pressing one opens this short list of the same cards.
+ */
+@Composable
+internal fun RequestListDialog(
+    title: String,
+    entries: List<RequestEntry>,
+    waiting: Boolean,
+    onOpen: (RequestEntry) -> Unit,
+    onAnswer: (RequestEntry, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val isTv = rememberIsTv()
+    BasicDialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(20.dp),
+        ) {
+            Text(
+                text = "$title (${entries.size})",
+                fontSize = BenflixType.rowName,
+                fontWeight = FontWeight.Bold,
+                color = BenflixColors.Text,
+            )
+            if (entries.isEmpty()) {
+                Text(
+                    text =
+                        if (waiting) {
+                            "Nobody is waiting on you right now."
+                        } else {
+                            "Nothing asked for yet. Pick a poster and press Ask for it."
+                        },
+                    fontSize = BenflixType.body,
+                    color = BenflixColors.Soft,
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.heightIn(max = if (isTv) 380.dp else 520.dp),
+                ) {
+                    items(entries, key = { "rd-$title-${it.request.id ?: it.hashCode()}" }) { entry ->
+                        RequestCard(
+                            entry = entry,
+                            waiting = waiting,
+                            width = if (isTv) 420 else 300,
+                            onOpen = {
+                                onDismiss()
+                                onOpen(entry)
+                            },
+                            onAnswer = { onAnswer(entry, it) },
+                        )
+                    }
+                }
             }
         }
     }
