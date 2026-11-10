@@ -814,3 +814,19 @@ a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before
   .bq-genre { width: 140px; height: 78px; }
   .bq-t10 .num { font-size: 110px; }
 }
+
+/* ---------- movie and show page extras (extras.js) ---------- */
+.details .main .partline { display: inline-block; margin: 2px 0 10px; color: var(--movies); font-weight: 700; font-size: 15px; }
+.details .main .partline:hover { text-decoration: underline; }
+.details .main .anitags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.details .main .anitags span { border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; font-size: 13px; color: var(--ink2); }
+.details .nextask { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 16px; padding: 12px 16px; border-radius: var(--r); background: var(--pg2); border: 1px solid var(--line); width: fit-content; max-width: 100%; font-weight: 600; }
+.parents { display: grid; gap: 8px; max-width: 520px; }
+.parents div { display: grid; grid-template-columns: 170px auto 1fr; align-items: center; gap: 12px; font-size: 15px; }
+.parents i { display: inline-flex; gap: 4px; }
+.parents i b { width: 8px; height: 8px; border-radius: 50%; }
+.parents small { margin-top: 2px; }
+.roulette .rl-card { display: grid; justify-items: center; gap: 8px; padding: 18px; border-radius: var(--r2); background: var(--pg2); border: 1px solid var(--line); text-align: center; }
+.roulette .rl-card .pic { width: 180px; height: 240px; border-radius: 10px; background: var(--pg3) center/cover no-repeat; }
+.roulette .rl-card b { font-size: 20px; }
+.roulette .rl-card.landed { border-color: var(--games); box-shadow: 0 0 0 2px var(--games) inset; }

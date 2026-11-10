@@ -42,6 +42,7 @@ B.route(/^\/games$/, async (m, nav) => {
   $("#rows").innerHTML = text ? B.row(`Games matching “${B.q("q")}”`, all.filter((g) => g.name.toLowerCase().includes(text)).slice(0, 60).map((g) => gameCard(g))) || `<div class="wrap empty">No games match that.</div>` : [
     B.row("Continue playing", cont.map((g) => gameCard(g))),
     B.row("Favourites", fav.map((g) => gameCard(g))),
+    all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
     `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end">${esc(c.name)}<small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
     B.row("Arcade", arcade.slice(0, 30).map((g) => gameCard(g))),
     ...consoles.filter((c) => EJS_CORES[c.slug] !== "arcade").slice(0, 6).map((c) => B.row(c.name, c.games.slice(0, 24).map((g) => gameCard(g, c.year)), { seeAll: `#/console/${enc(c.slug)}` })),
@@ -49,6 +50,7 @@ B.route(/^\/games$/, async (m, nav) => {
   ].join("");
   const first = cont[0] || fav[0] || all[0];
   if (first) $("#gInfo").innerHTML = describeGame(first);
+  if ($("#gSpin")) $("#gSpin").onclick = () => B.gameRoulette(all);
   const point = (e) => { const c = e.target.closest("[data-id^='g']"); if (!c) return; const g = B.items[c.dataset.id]; if (g) $("#gInfo").innerHTML = describeGame(g); };
   B.page().addEventListener("mouseover", point);
   B.page().addEventListener("focusin", point);
@@ -75,9 +77,39 @@ B.route(/^\/console\/([^?]+)/, async (m, nav) => {
     });
     $("#cg").innerHTML = html ? html + "</div>" : `<div class="empty">No games match that.</div>`;
   };
-  $("#cq").oninput = (e) => draw(e.target.value.toLowerCase());
+  $("#cq").oninput = (e) => { $("#cBest") && ($("#cBest").hidden = !!e.target.value); draw(e.target.value.toLowerCase()); };
   draw("");
+  // "Best on <console>": the 10 best-loved games, from RomM's ratings (only when at least 5 are rated)
+  const rated = games.filter((g) => (g.rating || 0) > 0);
+  if (rated.length >= 5) {
+    const best = rated.sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name)).slice(0, 10);
+    $(".gridbar").insertAdjacentHTML("beforebegin", `<div id="cBest">${B.row(`Best on ${c.name}`, best.map((g) => gameCard(g, g.year || "")))}</div>`);
+  }
 });
+
+// ---------- Game roulette: a slot-machine roll through your games that slows down and lands on one ----------
+B.gameRoulette = (all) => {
+  const p = B.side(`<h3>Game roulette</h3><p class="dim">Rolling through your games…</p><div class="roulette" id="rl"></div><div class="acts" id="rlActs" style="margin-top:18px;visibility:hidden">
+    <a class="btn white" id="rlPlay">${I("play")} Play</a><a class="btn" id="rlLook">${I("info")} Look at it</a><button class="btn" id="rlAgain">Spin again</button></div>`);
+  const spin = () => {
+    $("#rlActs", p).style.visibility = "hidden";
+    let n = 0, wait = 50;
+    const steps = 22 + Math.floor(Math.random() * 8);
+    const tick = () => {
+      if (!document.body.contains(p)) return;
+      const g = all[Math.floor(Math.random() * all.length)];
+      $("#rl", p).innerHTML = `<div class="rl-card ${n >= steps ? "landed" : ""}"><span class="pic" style="${cover(g) ? `background-image:url('${cover(g)}')` : ""}"></span><b>${esc(g.name)}</b><small class="dim">${esc([g.console, g.year].filter(Boolean).join(" · "))}</small></div>`;
+      if (n++ < steps) { wait *= 1.12; setTimeout(tick, wait); return; }
+      $("#rlPlay", p).href = `#/playgame/${g.id}`;
+      $("#rlLook", p).href = `#/game/${g.id}`;
+      $("#rlActs", p).style.visibility = "visible";
+      $("#rlPlay", p).focus();
+    };
+    tick();
+  };
+  p.addEventListener("click", (e) => { if (e.target.closest("#rlAgain")) spin(); if (e.target.closest("#rlPlay,#rlLook")) B.closeAll(); });
+  spin();
+};
 
 // ---------- a game's own page ----------
 B.route(/^\/game\/(\d+)/, async (m, nav) => {

@@ -23,6 +23,7 @@ import os
 import re
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -522,6 +523,55 @@ def home_facts(token, user_id, count=2, skip=(), longest=MAX_LEN):
     return {"facts": out}
 
 
+# ---------- Parents' guide ----------
+# How much violence, swearing, scary bits and adult scenes a title has, from IMDb's public parents guide
+# (the same one the TV and phone app shows). Kept for a month per title, in parents.json.
+PARENTS_NAMES = {"VIOLENCE": "Violence", "PROFANITY": "Swearing", "FRIGHTENING": "Scary bits", "NUDITY": "Adult scenes", "ALCOHOL": "Drinking and drugs"}
+PARENTS_ORDER = ["VIOLENCE", "PROFANITY", "FRIGHTENING", "NUDITY", "ALCOHOL"]
+PARENTS_LEVELS = {"none": 0, "mild": 1, "moderate": 2, "severe": 3}
+PARENTS_WORDS = ["None", "A little", "Some", "A lot"]
+PARENTS_QUERY = ("query ParentsGuide($id: ID!) { title(id: $id) { parentsGuide { categories "
+                 "{ category { id text } severity { text } } } } }")
+_parents_lock = threading.Lock()
+
+
+def parents_guide(imdb_id):
+    """[{label, level, rank}] for an IMDb id, or [] when IMDb has no guide (or can't be reached)."""
+    month = 30 * 86400
+    with _parents_lock:
+        saved = _read("parents.json", {}) or {}
+        hit = saved.get(imdb_id)
+        if isinstance(hit, dict) and time.time() - hit.get("at", 0) < month:
+            return hit.get("lines") or []
+    try:
+        body = json.dumps({"query": PARENTS_QUERY, "variables": {"id": imdb_id}}).encode()
+        req = urllib.request.Request("https://graphql.imdb.com/", data=body, method="POST", headers={
+            "Content-Type": "application/json", "Referer": "https://www.imdb.com/", "User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+    except (urllib.error.URLError, OSError, ValueError):
+        return []
+    cats = ((((data or {}).get("data") or {}).get("title") or {}).get("parentsGuide") or {}).get("categories") or []
+    found = {}
+    for c in cats:
+        cid = str(((c or {}).get("category") or {}).get("id") or "").upper()
+        sev = str(((c or {}).get("severity") or {}).get("text") or "").lower()
+        if cid in PARENTS_NAMES and sev in PARENTS_LEVELS:
+            rank = PARENTS_LEVELS[sev]
+            found[cid] = {"label": PARENTS_NAMES[cid], "level": PARENTS_WORDS[rank], "rank": rank}
+    lines = [found[k] for k in PARENTS_ORDER if k in found]
+    with _parents_lock:
+        saved = _read("parents.json", {}) or {}
+        saved[imdb_id] = {"lines": lines, "at": int(time.time())}
+        if len(saved) > 5000:
+            saved = dict(sorted(saved.items(), key=lambda kv: kv[1].get("at", 0))[-4000:])
+        try:
+            _write("parents.json", saved)
+        except OSError:
+            pass
+    return lines
+
+
 def route(method, path, query, token, user_id, is_admin):
     """/api/facts/... for the apps. Returns (status, answer)."""
     if method == "GET" and path == "/api/facts/home":
@@ -537,6 +587,10 @@ def route(method, path, query, token, user_id, is_admin):
         remember_admin(token, user_id)
         threading.Thread(target=gather, kwargs={"why": "asked"}, name="facts-gather", daemon=True).start()
         return 200, {"message": "Gathering facts now. It takes a while the first time."}
+    m = re.fullmatch(r"/api/facts/parents/(tt\d{5,10})", path)
+    if method == "GET" and m:
+        # Parents' guide for the web version (browsers can't ask IMDb themselves)
+        return 200, {"lines": parents_guide(m.group(1))}
     m = re.fullmatch(r"/api/facts/([0-9a-fA-F-]{32,36})", path)
     if method == "GET" and m:
         if is_admin:
