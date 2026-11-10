@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -903,12 +904,14 @@ private fun MusicAskDialog(
     onDismiss: () -> Unit,
 ) {
     val first = remember { FocusRequester() }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    // Benflix: the touch Dialog, so phone taps reach the buttons (a plain Dialog is its own window)
+    com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
-                    .width(360.dp)
+                    .widthIn(max = 360.dp)
+                    .fillMaxWidth()
                     .background(BenflixColors.Tray, RoundedCornerShape(16.dp))
                     .padding(20.dp),
         ) {
@@ -931,6 +934,15 @@ private fun MusicAskDialog(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(item.artist, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                    if (item.kind == "song" && item.albumTitle.isNotBlank() && plain(item.albumTitle) != plain(item.title)) {
+                        Text(
+                            "Album: ${item.albumTitle}",
+                            color = BenflixColors.Muted,
+                            fontSize = BenflixType.small,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
             if (item.asked != null) {
@@ -946,7 +958,7 @@ private fun MusicAskDialog(
                 )
                 if (item.albumId != 0L && item.albumTitle.isNotBlank() && plain(item.albumTitle) != plain(item.title)) {
                     MusicButton(
-                        label = "Ask for the whole album (${item.albumTitle})",
+                        label = "Ask for the whole album",
                         icon = null,
                         onClick = { onAsk("album") },
                         modifier = Modifier.fillMaxWidth(),
