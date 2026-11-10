@@ -52,15 +52,15 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
-import com.github.damontecres.wholphin.ui.door.DOOR_HOME
-import com.github.damontecres.wholphin.ui.door.DoorFrame
-import com.github.damontecres.wholphin.ui.door.DoorFrameState
-import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
+import com.github.damontecres.wholphin.ui.door.DOOR_HOME
+import com.github.damontecres.wholphin.ui.door.DoorFrame
+import com.github.damontecres.wholphin.ui.door.DoorFrameState
+import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -560,7 +560,13 @@ fun ServerStatusPage(
                             key = "req-${r.request.id}",
                             text = r.item?.title ?: "A request",
                             light = Light.WARN,
-                            supporting = "Asked by ${r.who}" + (r.item?.releaseDate?.year?.let { " · $it" } ?: ""),
+                            supporting =
+                                "Asked by ${r.who}" + (
+                                    r.item
+                                        ?.releaseDate
+                                        ?.year
+                                        ?.let { " · $it" } ?: ""
+                                ),
                             poster = r.item?.posterUrl,
                             actions =
                                 listOf(
