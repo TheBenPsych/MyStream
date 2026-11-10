@@ -575,6 +575,12 @@ def _stream_info(item_id, index=None):
     pick = None
     if index is not None:
         pick = next((s for s in subs if s.get("Index") == index), None)
+        chosen = next((s for s in streams if s.get("Type") == "Subtitle" and s.get("Index") == index), None)
+        if pick is None and chosen is not None:
+            # Never check a different track than the one on screen: that made Tower say "fine" before
+            others = [s for s in subs if str(s.get("Language") or "").lower() == str(chosen.get("Language") or "").lower()]
+            tip = " Pick the other " + (chosen.get("DisplayTitle") or "subtitles").split(" - ")[0] + " subtitles in the list, they're words and Tower can fix those." if others else ""
+            raise CareError(400, "These subtitles are pictures (copied from a disc), so Tower can't move them." + tip)
     if pick is None:
         eng = [s for s in subs if str(s.get("Language") or "").lower() in ("eng", "en")]
         pick = (eng or subs or [None])[0]
