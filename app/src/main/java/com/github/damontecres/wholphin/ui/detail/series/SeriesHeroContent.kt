@@ -455,7 +455,7 @@ private fun SeasonChip(
 
 /** A wide episode picture with "E5 · Name" under it, a progress line and a small tick when watched */
 @Composable
-private fun EpisodeCard(
+internal fun EpisodeCard(
     episode: BaseItem,
     number: String?,
     width: Dp,

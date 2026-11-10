@@ -1,31 +1,14 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.github.damontecres.wholphin.R
@@ -39,21 +22,17 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.SeerrUserConfig
 import com.github.damontecres.wholphin.services.TrailerService
-import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
-import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
-import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
+import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.rememberInt
-import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.util.DataLoadingState
-import com.github.damontecres.wholphin.util.ExceptionHandler
-import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 fun DiscoverMovieDetails(
@@ -202,159 +181,46 @@ fun DiscoverMovieDetailsContent(
     // Benflix: Ben couldn't find it, so the Ask button becomes a "Couldn't find it" label
     val cantFindKeys by CantFindBlocked.keys.collectAsState()
     val cantFindNow = movie.id?.let { cantFindKey(true, it) }?.let { it in cantFindKeys } == true
-    val scope = rememberCoroutineScope()
-    var position by rememberInt(0)
-    val focusRequesters = remember { List(RECOMMENDED_ROW + 1) { FocusRequester() } }
-
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    // Benflix: the scores, "Asked by" and About tags load a moment after the page opens and make the top
-    // block taller. If the buttons already have focus, scroll again so they never end up below the screen.
-    var buttonsFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        focusRequesters.getOrNull(position)?.tryRequestFocus()
-    }
-    val listState = rememberLazyListState()
-    RequestHeroLayout(backdropUrl = backdropUrl, listState = listState, modifier = modifier) { heroModifier, wide ->
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 48.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item {
-                Column(
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier =
-                        heroModifier
-                            .fillMaxWidth()
-                            .bringIntoViewRequester(bringIntoViewRequester)
-                            .onSizeChanged {
-                                if (buttonsFocused) {
-                                    scope.launch(ExceptionHandler()) {
-                                        bringIntoViewRequester.bringIntoView()
-                                    }
-                                }
-                            },
-                ) {
-                    if (!wide) RequestPhonePicture(backdropUrl, Modifier.padding(top = 8.dp))
-                    DiscoverMovieDetailsHeader(
-                        preferences = preferences,
-                        movie = movie,
-                        rating = rating,
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        overviewOnClick = overviewOnClick,
-                        showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp, bottom = 12.dp),
-                    )
-                    ExpandableDiscoverButtons(
-                        isAdmin = isAdmin,
-                        availability =
-                            SeerrAvailability.from(movie.mediaInfo?.status)
-                                ?: SeerrAvailability.UNKNOWN,
-                        requestOnClick = requestOnClick,
-                        cancelOnClick = cancelOnClick,
-                        moreOnClick = moreOnClick,
-                        goToOnClick = goToOnClick,
-                        buttonOnFocusChanged = {
-                            buttonsFocused = it.isFocused
-                            if (it.isFocused) {
-                                position = HEADER_ROW
-                                scope.launch(ExceptionHandler()) {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
-                            }
-                        },
-                        canRequest = userConfig.canRequestMovies,
-                        cantFind = cantFindNow,
-                        canCancel = canCancel,
-                        trailers = trailers,
-                        trailerOnClick = trailerOnClick,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                                .focusRequester(focusRequesters[HEADER_ROW]),
-                    )
-                }
-            }
-            if (people.isNotEmpty()) {
-                item {
-                    DiscoverPersonRow(
-                        people = people,
-                        onClick = {
-                            position = PEOPLE_ROW
-                            onClickPerson.invoke(it)
-                        },
-                        onLongClick = { index, person ->
-                            position = PEOPLE_ROW
-                            onLongClickPerson.invoke(index, person)
-                        },
-                        modifier = Modifier.focusRequester(focusRequesters[PEOPLE_ROW]),
-                    )
-                }
-            }
-
-            if (similar.isNotEmpty()) {
-                item {
-                    ItemRow(
-                        title = stringResource(R.string.more_like_this),
-                        items = similar,
-                        onClickItem = { index, item ->
-                            position = SIMILAR_ROW
-                            onClickItem.invoke(index, item)
-                        },
-                        onLongClickItem = { index, similar ->
-                            position = SIMILAR_ROW
-                            onLongClickSimilar.invoke(index, similar)
-                        },
-                        cardContent = { index, item, mod, onClick, onLongClick ->
-                            DiscoverItemCard(
-                                item = item,
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                                showOverlay = true,
-                                modifier = mod,
-                            )
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[SIMILAR_ROW]),
-                    )
-                }
-            }
-            if (recommended.isNotEmpty()) {
-                item {
-                    ItemRow(
-                        title = stringResource(R.string.recommended),
-                        items = recommended,
-                        onClickItem = { index, item ->
-                            position = RECOMMENDED_ROW
-                            onClickItem.invoke(index, item)
-                        },
-                        onLongClickItem = { index, similar ->
-                            position = RECOMMENDED_ROW
-                            onLongClickSimilar.invoke(index, similar)
-                        },
-                        cardContent = { index, item, mod, onClick, onLongClick ->
-                            DiscoverItemCard(
-                                item = item,
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                                showOverlay = true,
-                                modifier = mod,
-                            )
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                    )
-                }
-            }
+    val resources = LocalResources.current
+    val info =
+        remember(movie, resources) {
+            listOfNotNull(
+                movie.releaseDate?.take(4)?.takeIf { it.isNotBlank() },
+                movie.runtime
+                    ?.toDouble()
+                    ?.minutes
+                    ?.roundMinutes
+                    ?.let { resources.formatDuration(it) },
+                movie.genres
+                    ?.mapNotNull { it.name }
+                    ?.take(2)
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.joinToString(" · "),
+            ).joinToString(" · ")
         }
-    }
+    RequestTitlePage(
+        isMovie = true,
+        tmdbId = movie.id,
+        title = movie.title.orEmpty(),
+        story = movie.overview,
+        info = info,
+        backdropUrl = backdropUrl,
+        availability = SeerrAvailability.from(movie.mediaInfo?.status) ?: SeerrAvailability.UNKNOWN,
+        isAdmin = isAdmin,
+        canRequest = userConfig.canRequestMovies,
+        canCancel = canCancel,
+        cantFind = cantFindNow,
+        trailers = trailers,
+        rating = rating,
+        similar = similar,
+        recommended = recommended,
+        people = people,
+        requestOnClick = requestOnClick,
+        cancelOnClick = cancelOnClick,
+        goToOnClick = goToOnClick,
+        trailerOnClick = trailerOnClick,
+        onClickItem = { onClickItem(0, it) },
+        onClickPerson = onClickPerson,
+        modifier = modifier,
+    )
 }
