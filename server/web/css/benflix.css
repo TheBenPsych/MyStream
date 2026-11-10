@@ -777,3 +777,40 @@ a.brow:hover::before, a.brow:focus-visible::before, a.brow:hover + .brow::before
 .circle.pv svg.i { width: 18px; height: 18px; }
 .pvcard { position: relative; flex: none; }
 .pvcard .circle.pv.on-card { position: absolute; z-index: 2; right: 8px; top: calc(var(--poster-w) - 46px); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+
+/* ---------- Requests > Books: Book of the week, genre tiles, a book's details page ---------- */
+.bq-hero, .bq-top { display: flex; gap: 28px; align-items: flex-start; }
+.bq-hero { background: var(--pg2); border-radius: 14px; padding: 22px; }
+.bq-hero .cv { width: 170px; aspect-ratio: 2 / 3; border-radius: 10px; background: var(--pg3, #1D2027) center / cover no-repeat; flex: none; }
+.bq-hero .grow, .bq-top .grow { flex: 1; min-width: 0; }
+.bq-hero .kick, .bq-top .kick { font-size: 13px; font-weight: 800; letter-spacing: .14em; margin-bottom: 6px; }
+.bq-hero .t { font-size: 34px; font-weight: 800; line-height: 1.1; margin-bottom: 6px; }
+.bq-hero .meta, .bq-top .meta { color: var(--ink2); font-size: 16px; margin-bottom: 6px; }
+.bq-hero .ov { color: var(--ink2); font-size: 16px; max-width: 720px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.bq-hero .btns, .bq-top .btns { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.bq-t10 .num { font-size: 190px; }
+.bq-genre { flex: none; width: 176px; height: 96px; border-radius: 12px; padding: 12px; display: flex; align-items: flex-end; font-weight: 800; font-size: 16px; color: #0B0C10; text-decoration: none; }
+.bq-genre:hover, .bq-genre:focus-visible { outline: 3px solid var(--ink); outline-offset: 0; }
+.bq-genre.all { background: var(--pg3, #1D2027); color: var(--ink); }
+.bq-genres { display: flex; flex-wrap: wrap; gap: 12px; }
+.bq-flip { width: 250px; aspect-ratio: 2 / 3; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--pg2); cursor: pointer; display: block; color: var(--ink); text-align: left; }
+.bq-flip .front { width: 100%; height: 100%; background: center / cover no-repeat; display: grid; place-items: center; }
+.bq-flip .back { display: none; width: 100%; height: 100%; padding: 16px; overflow: hidden; font-size: 13px; line-height: 1.4; }
+.bq-flip .back .q { color: var(--ink2); font-weight: 700; }
+.bq-flip.on .front { display: none; }
+.bq-flip.on .back { display: block; }
+.bq-about { font-size: 19px; line-height: 1.55; max-width: 900px; white-space: pre-line; color: var(--ink); }
+.bq-facts { display: flex; flex-wrap: wrap; gap: 12px; }
+.bq-fact { background: var(--pg2); border-radius: 10px; padding: 12px 16px; min-width: 110px; font-weight: 700; }
+.bq-fact small { display: block; color: var(--ink3); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+@media (max-width: 700px) {
+  .bq-hero { gap: 14px; padding: 14px; }
+  .bq-hero .cv { width: 104px; }
+  .bq-hero .t { font-size: 24px; }
+  .bq-top { flex-direction: column; align-items: center; }
+  .bq-top .grow { width: 100%; }
+  .bq-flip { width: 180px; }
+  .bq-about { font-size: 17px; }
+  .bq-genre { width: 140px; height: 78px; }
+  .bq-t10 .num { font-size: 110px; }
+}

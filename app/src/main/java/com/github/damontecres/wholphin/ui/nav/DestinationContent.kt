@@ -107,6 +107,18 @@ fun DestinationContent(
                 .BookTitlePage(destination.id, modifier)
         }
 
+        is Destination.BookAbout -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.discover
+                .BookAboutPage(destination.key, destination.name, destination.author, destination.audioOnly, modifier)
+        }
+
+        is Destination.BookGenre -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.discover
+                .BookGenrePage(destination.slug, destination.name, modifier)
+        }
+
         is Destination.BookReader -> {
             com.github.damontecres.wholphin.ui.books
                 .BookReaderPage(destination.id, destination.chapter, modifier)

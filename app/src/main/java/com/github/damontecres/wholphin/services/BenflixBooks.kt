@@ -226,6 +226,116 @@ data class BookStats(
     val topAuthors: List<String>,
 )
 
+/** A book on Requests > Books (from Tower's daily lists: NYT, Hardcover, Open Library) */
+data class BookCard(
+    val key: String,
+    val name: String,
+    val author: String,
+    val year: Int?,
+    val cover: String?,
+    val score: Double?,
+    /** Its number on the NYT list */
+    val rank: Int?,
+    val weeks: Int,
+    /** Like "Booker Prize 2024" */
+    val award: String?,
+    val audioMinutes: Int?,
+    /** Already asked for: its words, like "Downloading" */
+    val asked: String?,
+    /** The small line under the cover, like "The Empyrean, book 3" */
+    val line: String?,
+    val desc: String?,
+    /** Already on Benflix (only the Book of the week can be) */
+    val have: String?,
+    /** Asking picks Audiobook (the Audiobooks row) */
+    val audioOnly: Boolean,
+) {
+    fun toFound() = BookFound(key, name, author, year, cover, score, null, have, asked, manga = false)
+
+    /** What hold OK (or the quick Ask) asks for */
+    val quickTypes: List<String> get() = if (audioOnly) listOf("audiobook") else listOf("ebook", "audiobook")
+}
+
+data class BookGenre(
+    val slug: String,
+    val name: String,
+    val color: String,
+)
+
+data class BookShelf(
+    val key: String,
+    val title: String,
+    val items: List<BookCard>,
+    val ranked: Boolean,
+    val genres: List<BookGenre>,
+)
+
+/** Requests > Books (and a genre's page): Book of the week, Top 10, then the rows */
+data class BookDiscover(
+    val name: String?,
+    val hero: BookCard?,
+    val top10: List<BookCard>,
+    val rows: List<BookShelf>,
+    /** Keys Ben hasn't typed yet ("NYT", "Hardcover") */
+    val missing: List<String>,
+    val gatheredAt: Long,
+)
+
+data class BookFact(
+    val label: String,
+    val value: String,
+)
+
+data class BookInSeries(
+    val key: String,
+    val name: String,
+    val pos: Int,
+    val cover: String?,
+    val author: String,
+    val have: String?,
+    val asked: String?,
+    val isThis: Boolean,
+)
+
+/** A book's details page on Requests > Books */
+data class BookAbout(
+    val card: BookCard,
+    val desc: String,
+    val genres: List<String>,
+    val score: Double?,
+    val votes: Int,
+    val scoreFrom: String?,
+    val nytRank: Int?,
+    val nytList: String?,
+    val nytWeeks: Int,
+    val award: String?,
+    val facts: List<BookFact>,
+    val seriesName: String?,
+    val series: List<BookInSeries>,
+    /** The back cover: the blurb and up to two reader quotes */
+    val blurb: String,
+    val quotes: List<String>,
+    val byAuthor: List<BookCard>,
+    val likeThis: List<BookCard>,
+    val have: String?,
+    val asked: String?,
+    val want: Boolean,
+)
+
+/** Server page: the NYT key and the Hardcover token for the book lists */
+data class BookListKeys(
+    val nytSet: Boolean,
+    val nytOk: Boolean?,
+    val nytProblem: String?,
+    val hardcoverSet: Boolean,
+    val hardcoverOk: Boolean?,
+    val hardcoverProblem: String?,
+    val gatheredAt: Long,
+    val nytCount: Int,
+    val topCount: Int,
+    val trendingCount: Int,
+)
+
 /**
  * Benflix Books: everything on the Books door comes from the Benflix helper on Tower (benflix_books.py):
  * the library, each book's page, your place in each book (saved per profile, so it follows you between
@@ -526,6 +636,136 @@ class BenflixBooks
         suspend fun forget(id: String) {
             helper.deleteJson("/api/books/request/" + Uri.encode(id))
         }
+
+        // ---------- Requests > Books rows and details ----------
+
+        suspend fun discover(): BookDiscover = discoverOf(helper.getJson("/api/books/discover"))
+
+        suspend fun genre(slug: String): BookDiscover = discoverOf(helper.getJson("/api/books/discover/genre/" + Uri.encode(slug)))
+
+        suspend fun allGenres(): List<BookGenre> =
+            helper
+                .getJson("/api/books/discover/genres")
+                .optJSONArray("genres")
+                .objects()
+                .map(::genreOf)
+
+        suspend fun about(
+            key: String,
+            name: String,
+            author: String,
+        ): BookAbout {
+            val j =
+                helper.getJson(
+                    "/api/books/about?key=" + Uri.encode(key) + "&name=" + Uri.encode(name) + "&author=" + Uri.encode(author),
+                )
+            val nyt = j.optJSONObject("nyt")
+            val series = j.optJSONObject("series")
+            val back = j.optJSONObject("back")
+            return BookAbout(
+                card = card(j),
+                desc = j.optString("desc"),
+                genres = j.optJSONArray("genres").strings(),
+                score = if (j.isNull("score")) null else j.optDouble("score"),
+                votes = j.optInt("votes"),
+                scoreFrom = j.text("scoreFrom"),
+                nytRank = nyt?.let { if (it.isNull("rank")) null else it.optInt("rank") },
+                nytList = nyt?.text("list"),
+                nytWeeks = nyt?.optInt("weeks") ?: 0,
+                award = j.text("award"),
+                facts = j.optJSONArray("facts").objects().map { BookFact(it.optString("label"), it.optString("value")) },
+                seriesName = series?.text("name"),
+                series =
+                    series?.optJSONArray("books").objects().map {
+                        BookInSeries(
+                            key = it.optString("key"),
+                            name = it.optString("name"),
+                            pos = it.optInt("pos"),
+                            cover = url(it.text("cover")),
+                            author = it.optString("author"),
+                            have = it.text("have"),
+                            asked = it.text("asked"),
+                            isThis = it.optBoolean("isThis"),
+                        )
+                    },
+                blurb = back?.optString("blurb").orEmpty(),
+                quotes = back?.optJSONArray("quotes").objects().mapNotNull { it.text("text") },
+                byAuthor = j.optJSONArray("byAuthor").objects().map(::card),
+                likeThis = j.optJSONArray("likeThis").objects().map(::card),
+                have = j.text("have"),
+                asked = j.text("asked"),
+                want = j.optBoolean("want"),
+            )
+        }
+
+        suspend fun listKeys(): BookListKeys = keysOf(helper.getJson("/api/books/lists/keys"))
+
+        /** Saves one key (the other is left alone). Returns Tower's words and how both look now. */
+        suspend fun setListKey(
+            which: String,
+            value: String,
+        ): Pair<String, BookListKeys> {
+            val j = helper.postJson("/api/books/lists/keys", JSONObject().put(which, value))
+            return j.optString("message") to keysOf(j)
+        }
+
+        private fun keysOf(j: JSONObject): BookListKeys {
+            val nyt = j.optJSONObject("nyt") ?: JSONObject()
+            val hc = j.optJSONObject("hardcover") ?: JSONObject()
+            val counts = j.optJSONObject("counts") ?: JSONObject()
+            return BookListKeys(
+                nytSet = nyt.optBoolean("set"),
+                nytOk = if (nyt.isNull("ok") || !nyt.has("ok")) null else nyt.optBoolean("ok"),
+                nytProblem = nyt.text("problem"),
+                hardcoverSet = hc.optBoolean("set"),
+                hardcoverOk = if (hc.isNull("ok") || !hc.has("ok")) null else hc.optBoolean("ok"),
+                hardcoverProblem = hc.text("problem"),
+                gatheredAt = j.optLong("gatheredAt"),
+                nytCount = counts.optInt("nytFiction"),
+                topCount = counts.optInt("top10"),
+                trendingCount = counts.optInt("trending"),
+            )
+        }
+
+        private fun discoverOf(j: JSONObject) =
+            BookDiscover(
+                name = j.text("name"),
+                hero = j.optJSONObject("hero")?.let(::card),
+                top10 = j.optJSONArray("top10").objects().map(::card),
+                rows =
+                    j.optJSONArray("rows").objects().map { r ->
+                        BookShelf(
+                            key = r.optString("key"),
+                            title = r.optString("title"),
+                            items = r.optJSONArray("items").objects().map(::card),
+                            ranked = r.optBoolean("ranked"),
+                            genres = r.optJSONArray("genres").objects().map(::genreOf),
+                        )
+                    },
+                missing = j.optJSONArray("missing").strings(),
+                gatheredAt = j.optLong("gatheredAt"),
+            )
+
+        private fun genreOf(j: JSONObject) = BookGenre(j.optString("slug"), j.optString("name"), j.optString("color", "#B9E36A"))
+
+        private fun card(j: JSONObject) =
+            BookCard(
+                key = j.optString("key"),
+                name = j.optString("name"),
+                author = j.optString("author"),
+                year = if (j.isNull("year")) null else j.optInt("year").takeIf { it > 0 },
+                cover = url(j.text("cover")),
+                score = if (j.isNull("score")) null else j.optDouble("score"),
+                rank = if (j.isNull("rank")) null else j.optInt("rank").takeIf { it > 0 },
+                weeks = j.optInt("weeks"),
+                award = j.text("award"),
+                audioMinutes = if (j.isNull("audioMinutes")) null else j.optInt("audioMinutes").takeIf { it > 0 },
+                asked = j.text("asked"),
+                line = j.text("line"),
+                desc = j.text("desc"),
+                have = j.text("have"),
+                audioOnly = j.optBoolean("audioOnly"),
+            )
 
         // ---------- Ben's cover picker and the Kids list ----------
 

@@ -43,6 +43,11 @@ import uuid
 import zipfile
 import xml.etree.ElementTree as ET
 
+try:  # Requests > Books rows (NYT, Hardcover, Open Library), in benflix_booklists.py next to this file
+    import benflix_booklists as booklists
+except ImportError:
+    booklists = None
+
 MEDIA = "/media"
 SECTIONS = (
     ("book", ("Books", "Ebooks", "eBooks")),
@@ -138,6 +143,10 @@ def start(jellyfin_call=None):
     else:
         log("No folder to save in, so places and requests won't be kept. Run the Benflix setup command again.")
     threading.Thread(target=_loop, name="books", daemon=True).start()
+    if booklists is not None:
+        import sys
+
+        booklists.start(sys.modules[__name__], _dir)
 
 
 def _read(path, default):
@@ -2595,6 +2604,12 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         m = re.fullmatch(r"/api/books/send/(\w+)", path)
         if method == "POST" and m:
             return 200, send_to_phone(user_id, m.group(1))
+        if booklists is not None and (path.startswith("/api/books/discover") or path.startswith("/api/books/about") or path.startswith("/api/books/lists/")):
+            if is_kids:
+                return 403, {"error": "Ask a grown-up to get this book."}
+            got = booklists.route(method, path, query, user_id, is_admin, read_json)
+            if got is not None:
+                return got
         if method == "GET" and path == "/api/books/search":
             return 200, search(q("q"), is_kids)
         if method == "GET" and path == "/api/books/requests":
