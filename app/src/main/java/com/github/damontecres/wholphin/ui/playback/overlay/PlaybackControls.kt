@@ -736,8 +736,10 @@ data class LiveBarInfo(
                 .ofEpochMilli(ms)
                 .atZone(java.time.ZoneId.systemDefault())
                 .toLocalTime()
-                .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-                .lowercase()
+                .format(
+                    java.time.format.DateTimeFormatter
+                        .ofPattern("h:mm a"),
+                ).lowercase()
     }
 }
 
@@ -779,9 +781,17 @@ fun LiveLine(
         }
         if (live.endMs > live.startMs) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {
-                Text(LiveBarInfo.clock(live.startMs), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    LiveBarInfo.clock(live.startMs),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 Spacer(Modifier.weight(1f))
-                Text(LiveBarInfo.clock(live.endMs), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    LiveBarInfo.clock(live.endMs),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         } else {
             Spacer(Modifier.height(12.dp))

@@ -159,8 +159,11 @@ fun PlaybackDialog(
                                     onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
                                 } else {
                                     Toast
-                                        .makeText(context, "Only Ben can download subtitles. Report a problem to ask him.", Toast.LENGTH_LONG)
-                                        .show()
+                                        .makeText(
+                                            context,
+                                            "Only Ben can download subtitles. Report a problem to ask him.",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
                                 }
                             },
                         ),
@@ -217,7 +220,12 @@ fun PlaybackDialog(
                                     if (subtitlesOn) {
                                         onClickPlaybackDialogType(PlaybackDialogType.SUBTITLE_DELAY)
                                     } else {
-                                        Toast.makeText(context, "Turn subtitles on first (Subtitles, just above).", Toast.LENGTH_SHORT).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "Turn subtitles on first (Subtitles, just above).",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                     }
                                 },
                             ),
