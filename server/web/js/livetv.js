@@ -64,6 +64,7 @@ B.route(/^\/live$/, async (m, nav) => {
   const hidden = new Set(prefs.hidden);
   const shown = list.filter((c) => !hidden.has(c._type));
   const describe = (c) => {
+    if (!$("#liveInfo")) return; // already left the page
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
     $("#liveInfo").innerHTML = `<div class="meta">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} · ${esc(c._type)}</div>
       <div class="t">${esc(p ? p.Name : c.Name)}</div>
@@ -94,6 +95,7 @@ B.route(/^\/live$/, async (m, nav) => {
   const point = (e) => { const el = e.target.closest("[data-id],[data-ch]"); if (!el) return; const c = list.find((x) => x.Id === (el.dataset.id || el.dataset.ch)); if (!c) return; clearTimeout(timer); timer = setTimeout(() => describe(c), 250); };
   B.page().addEventListener("mouseover", point);
   B.page().addEventListener("focusin", point);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
   let filtered = shown;
   const redraw = () => { $("#gRows").innerHTML = guideRows(filtered.slice(0, 300)); };
   $("#chSearch").oninput = (e) => {

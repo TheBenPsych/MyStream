@@ -41,7 +41,7 @@ const SECTIONS = [
   { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
   { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["posters", "Fix posters"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"]] },
   { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
-  { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["webversion", "Web version"]] },
+  { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
 const SUB_HOME = {};
 SECTIONS.forEach((s) => s.subs.forEach(([id]) => { SUB_HOME[id] = s.id; }));
@@ -141,6 +141,41 @@ PAGES.livetv = (el) => {
     } catch (err) { if (current === "livetv") $("#lt").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   draw(); every(10000, draw);
+};
+
+// ---------- Book lists: the free NYT key and Hardcover token for Requests > Books ----------
+PAGES.booklists = (el) => {
+  el.innerHTML = `<p class="sub">These two free keys fill Requests &gt; Books: NYT best sellers and Book of the week (NYT), and Top 10 books right now, Next in your series, scores and reader quotes (Hardcover). Tower tries each one straight away and gathers the lists once a day. The keys stay on Tower.</p><div id="bl">${loading()}</div>`;
+  const draw = (s) => {
+    if (current !== "booklists") return;
+    const one = (k, name, what, link) => {
+      const v = s[k] || {};
+      const state = !v.set ? ["Not added yet", "check"] : v.ok === false ? ["Not working", "bad"] : ["Working", "ok"];
+      return `<div class="item"><div class="grow"><div class="t">${name} <span class="word-${state[1]}">${state[0]}</span></div>
+        <div class="s">${esc(v.ok === false && v.problem ? v.problem : what)} <a href="${link}" target="_blank" rel="noopener">Get one</a></div>
+        <div class="row" style="margin-top:8px;gap:8px"><input class="field" data-key="${k}" type="password" autocomplete="off" placeholder="${v.set ? "Paste a new one to change it" : "Paste it here"}" style="max-width:420px">
+        <button class="btn small white" data-save="${k}">Save</button>${v.set ? `<button class="btn small" data-clear="${k}">Remove</button>` : ""}</div></div></div>`;
+    };
+    const c = s.counts || {};
+    $("#bl").innerHTML = `<div class="list">
+      ${one("nyt", "NYT Books key", "NYT best sellers (Fiction, Nonfiction, audiobooks) and Book of the week.", "https://developer.nytimes.com/get-started")}
+      ${one("hardcover", "Hardcover token", "Top 10 books right now, Next in your series, scores and reader quotes.", "https://hardcover.app/account/api")}
+      <div class="item"><div class="grow"><div class="t">Last gathered</div><div class="s">${s.gatheredAt ? esc(B.when(new Date(s.gatheredAt * 1000).toISOString())) + ` · ${c.nytFiction || 0} NYT fiction, ${c.top10 || 0} Hardcover trending, ${c.trending || 0} Open Library trending` : "Not yet"}</div></div>
+        <div class="acts"><button class="btn small" id="blGather">Gather now</button></div></div>
+    </div>`;
+    el.querySelectorAll("[data-save],[data-clear]").forEach((b) => {
+      b.onclick = () => B.busy(b, async () => {
+        const k = b.dataset.save || b.dataset.clear;
+        const v = b.dataset.save ? el.querySelector(`[data-key="${k}"]`).value.trim() : "";
+        if (b.dataset.save && !v) return "Paste it in the box first.";
+        const r = await call("POST", "api/books/lists/keys", { [k]: v });
+        draw(r);
+        return r.message;
+      });
+    });
+    $("#blGather").onclick = (e) => B.busy(e.target, async () => (await call("POST", "api/books/lists/gather")).message);
+  };
+  call("GET", "api/books/lists/keys").then(draw).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
 };
 
 // ---------- Web version: where these files came from ----------
@@ -885,7 +920,7 @@ PAGES.chores = (el) => {
 
 
 // ---------- This week: the Sunday report card ----------
-const dayName = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+const shortDay = (sec) => new Date(sec * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 PAGES.week = (el) => {
   el.innerHTML = `<p class="sub">A short look back at the last 7 days. It's ready fresh every Sunday morning.</p><div id="wk">${loading()}</div>`;
   const draw = async (fresh) => {
@@ -894,7 +929,7 @@ PAGES.week = (el) => {
     if (current !== "week") return;
     const sundayNote = new Date().getDay() === 0 ? `<div class="note">It's Sunday: here's your report card.</div>` : "";
     const watchers = (r.watchers || []).map((w, i) => `<div class="item"><div class="grow"><div class="t">${i === 0 ? "🏆 " : ""}${esc(w.name)}</div><div class="s">${w.plays} thing${w.plays === 1 ? "" : "s"} played</div></div></div>`).join("");
-    $("#wk").innerHTML = sundayNote + `<p class="sub">${esc(dayName(r.from))} to ${esc(dayName(r.to))}</p>
+    $("#wk").innerHTML = sundayNote + `<p class="sub">${esc(shortDay(r.from))} to ${esc(shortDay(r.to))}</p>
       <div class="tiles">
         ${tile("Movies added", String(r.added_movies))}${tile("Episodes added", String(r.added_episodes))}
         ${tile("Files play-tested", String(r.checked))}${tile("Subtitles fixed", String(r.subtitles_fixed))}
@@ -971,7 +1006,7 @@ PAGES.playtest = (el) => {
   const draw = (s) => {
     if (current !== "playtest") return;
     $("#pt").innerHTML = `${s.on ? "" : `<div class="note">The play test isn't on Tower yet. Run the Benflix setup command again.</div>`}
-      <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? dayName(s.last) : "Not yet")}</div>
+      <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? shortDay(s.last) : "Not yet")}</div>
       <h3 class="section-title">Broken</h3><div class="list">${s.broken.map((r) => item(r, "bad")).join("") || `<div class="empty">Every new file played fine.</div>`}</div>
       <h3 class="section-title">Worth a look</h3><div class="list">${s.look.map((r) => item(r, "look")).join("") || `<div class="empty">Nothing odd.</div>`}</div>`;
     el.querySelectorAll("[data-ok]").forEach((b) => { b.onclick = () => B.busy(b, async () => { draw(await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.ok)}/ok`)); }); });

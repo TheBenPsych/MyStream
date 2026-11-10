@@ -185,6 +185,23 @@ sealed class Destination(
         val id: String,
     ) : Destination(false)
 
+    /** Requests > Books: a book's details page (Ask for it, About this book, the series, the back cover) */
+    @Serializable
+    data class BookAbout(
+        val key: String,
+        val name: String,
+        val author: String,
+        /** From the Audiobooks row: asking picks Audiobook */
+        val audioOnly: Boolean = false,
+    ) : Destination(false)
+
+    /** Requests > Books: one genre's page (an empty [slug] is "All genres") */
+    @Serializable
+    data class BookGenre(
+        val slug: String,
+        val name: String,
+    ) : Destination(false)
+
     /** Benflix Books: the ebook reader (EPUB), full screen */
     @Serializable
     data class BookReader(

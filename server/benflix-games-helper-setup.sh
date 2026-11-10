@@ -39,7 +39,7 @@ HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix_home.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_home.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1

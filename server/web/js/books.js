@@ -389,9 +389,22 @@
       const r = await api("GET", "requests");
       if (!B.alive(nav) || input.value.trim()) return;
       rows.innerHTML = (r.problems || []).map((p) => `<div class="wrap"><div class="note">${esc(p)}</div></div>`).join("") +
-        (B.me.admin ? reqList("Waiting for you", r.waiting, true) : "") + (reqList(B.me.admin ? "What you asked for" : "My books", r.mine) || `<div class="wrap"><p class="sub">Search above to ask for a book. You'll get a note on Home when it's here.</p></div>`) +
+        (B.me.admin ? reqList("Waiting for you", r.waiting, true) : "") + `<div id="bqRows">${shelvesHtml || B.spinner()}</div>` +
+        (reqList(B.me.admin ? "What you asked for" : "My books", r.mine) || `<div class="wrap"><p class="sub">Click a cover to see the book and ask for it. You'll get a note on Home when it's here.</p></div>`) +
         (B.me.admin ? reqList("Manga to add", r.mangaToAdd) + reqList("Everyone else's", r.others) : "");
     };
+    // The approved rows (Book of the week, Top 10, your series and authors, NYT, Trending, genres, awards, audiobooks)
+    let shelvesHtml = "";
+    const shelves = async () => {
+      try {
+        shelvesHtml = BQ.page(await api("GET", "discover"), false);
+      } catch (e) {
+        shelvesHtml = `<div class="wrap"><div class="note">Couldn't load the book lists. ${esc(e.message)}</div></div>`;
+      }
+      const el = $("#bqRows");
+      if (B.alive(nav) && el) el.innerHTML = shelvesHtml;
+    };
+    shelves();
     const found = (f, manga) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.volumes ? f.volumes + " volumes" : "", f.score ? (manga ? "AniList " : "Open Library ") + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
       <div class="acts">${f.have ? `<a class="btn small" href="#/book/${enc(f.have)}">On Benflix</a>` : f.asked ? `<span class="dim">${esc(f.asked)}</span>` : manga ? `<button class="btn small white" data-ask="${esc(f.key)}" data-types="">Ask for it</button>` :
         `<select class="field" data-kind="${esc(f.key)}" style="padding:6px 10px;border-radius:8px;width:auto"><option value="ebook,audiobook">Both</option><option value="ebook">Ebook</option><option value="audiobook">Audiobook</option></select><button class="btn small white" data-ask="${esc(f.key)}">Ask for it</button>`}</div></div>`;
@@ -409,6 +422,7 @@
     rows.onclick = async (e) => {
       const b = e.target.closest("button");
       if (!b) return;
+      if (b.dataset.bq != null) return BQ.quick(b, () => shelves());
       await B.busy(b, async () => {
         if (b.dataset.ask != null) {
           const f = results.books.concat(results.manga).find((x) => x.key === b.dataset.ask);
@@ -428,4 +442,156 @@
     if (input.value.trim()) search(input.value); else await lists();
     B.every(10000, () => { if (!input.value.trim()) lists().catch(() => {}); });
   };
+
+  // ---------- Requests > Books: the rows, genre pages and a book's details page ----------
+  // Covers from NYT / Hardcover / Open Library are outside pictures: no sign-in in their address
+  const outPic = (u) => (!u ? "" : /^https?:/.test(u) ? u : pic(u));
+  const BQ = {};
+  const aboutHref = (c) => c.have ? "#/book/" + enc(c.have) : `#/bookask?key=${enc(c.key)}&name=${enc(c.name || "")}&author=${enc(c.author || "")}${c.audioOnly ? "&audio=1" : ""}`;
+  BQ.card = (c, ranked) => {
+    const img = c.cover ? `background-image:url('${esc(outPic(c.cover))}')` : "";
+    const tag = ranked && c.rank ? `<span class="tag" style="background:${LIME};color:${ON_LIME}">#${c.rank}</span>` : "";
+    const ears = c.audioOnly ? `<span class="bk-ears">${I("ears")}</span>` : "";
+    const under = c.asked || c.award || c.line || c.author || "";
+    return `<a class="poster bk" href="${aboutHref(c)}"><div class="im" style="${img}">${c.cover ? "" : `<span class="bk-name">${esc(c.name)}</span>`}${tag}${ears}</div>
+      <div class="cap">${esc(c.name)}<small${c.asked ? ` style="color:${LIME};font-weight:700"` : ""}>${esc(under)}</small></div></a>`;
+  };
+  const genreTile = (g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`;
+  BQ.page = (d, inGenre) => {
+    const admin = B.me.admin;
+    let h = "";
+    if (admin && (d.missing || []).length && !inGenre) {
+      h += `<div class="wrap"><div class="note">Some rows are hidden until you add the ${d.missing.join(" and ")} key on the Server page. <a href="#/server/tools/booklists">Add it</a></div></div>`;
+    }
+    const hero = d.hero;
+    if (hero) {
+      const btn = hero.have ? `<a class="btn white big" href="#/book/${enc(hero.have)}">${B.I("check")} On Benflix</a>`
+        : hero.asked ? `<span class="btn big" style="color:${LIME}">${esc(hero.asked)}</span>`
+          : `<button class="btn white big" data-bq="${esc(hero.key)}">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`;
+      h += `<div class="wrap"><div class="bq-hero"><a class="cv" href="${aboutHref(hero)}" style="${hero.cover ? `background-image:url('${esc(outPic(hero.cover))}')` : ""}"></a><div class="grow">
+        <div class="kick" style="color:${LIME}">${inGenre ? "PICK OF THE WEEK" : "BOOK OF THE WEEK"}</div><div class="t">${esc(hero.name)}</div>
+        <div class="meta">${esc([hero.author, hero.line].filter(Boolean).join(" · "))}</div>${hero.desc ? `<p class="ov">${esc(hero.desc)}</p>` : ""}
+        <div class="btns">${btn}<a class="btn big" href="${aboutHref(hero)}">${I("book")} About this book</a></div></div></div></div>`;
+      BQ.cards[hero.key] = hero;
+    }
+    const remember = (list) => (list || []).forEach((c) => { BQ.cards[c.key] = c; });
+    remember(d.top10);
+    if ((d.top10 || []).length) {
+      h += B.row(inGenre ? `Top 10 in ${d.name}` : "Top 10 books right now", d.top10.slice(0, 10).map((c, i) => `<div class="top10 bq-t10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${BQ.card(c)}</div>`));
+    }
+    (d.rows || []).forEach((r) => {
+      if ((r.genres || []).length) {
+        h += B.row(r.title, r.genres.map(genreTile).concat([`<a class="bq-genre all" href="#/bookgenre/all">All genres</a>`]));
+      } else {
+        remember(r.items);
+        h += B.row(r.title, (r.items || []).map((c) => BQ.card(c, r.ranked)));
+      }
+    });
+    if (!h) h = `<div class="wrap"><p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p></div>`;
+    return h;
+  };
+  BQ.cards = {};
+  // "Ask for it" on Book of the week (Both, or Audiobook on audiobooks)
+  BQ.quick = (b, after) => B.busy(b, async () => {
+    const c = BQ.cards[b.dataset.bq];
+    if (!c) return "";
+    const r = await api("POST", "request", { key: c.key, name: c.name, author: c.author, year: c.year, cover: c.cover, types: c.audioOnly ? ["audiobook"] : ["ebook", "audiobook"] });
+    if (after) after();
+    return r.words || "Asked for it.";
+  });
+
+  B.route(/^\/bookgenre\/(\w+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home");
+    const slug = m[1];
+    B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:6px"><a class="chip" href="#/requests?tab=books">${B.I("left")} Books requests</a>
+      <div class="h1" style="margin-top:12px">${esc(B.q("name") || (slug === "all" ? "All genres" : ""))}</div></div><div class="rows" id="bqg">${B.spinner()}</div>`;
+    B.wireTop();
+    const el = $("#bqg");
+    const draw = async () => {
+      try {
+        if (slug === "all") {
+          const g = await api("GET", "discover/genres");
+          if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="bq-genres">${(g.genres || []).map(genreTile).join("")}</div></div>`;
+          return;
+        }
+        const d = await api("GET", "discover/genre/" + enc(slug));
+        if (!B.alive(nav)) return;
+        el.innerHTML = BQ.page(d, true);
+      } catch (e) {
+        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`;
+      }
+    };
+    el.onclick = (e) => { const b = e.target.closest("[data-bq]"); if (b) BQ.quick(b, draw); };
+    draw();
+  });
+
+  B.route(/^\/bookask/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home");
+    const key = B.q("key") || "", audioOnly = B.q("audio") === "1";
+    B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:0"><a class="chip" href="#/requests?tab=books">${B.I("left")} Books requests</a></div><div id="bqa">${B.spinner()}</div>`;
+    B.wireTop();
+    const el = $("#bqa");
+    let a, pick = audioOnly ? "audiobook" : "both";
+    const draw = async () => {
+      try {
+        a = await api("GET", `about?key=${enc(key)}&name=${enc(B.q("name") || "")}&author=${enc(B.q("author") || "")}`);
+      } catch (e) {
+        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`;
+        return;
+      }
+      if (!B.alive(nav)) return;
+      const admin = B.me.admin;
+      const scores = [a.score ? `<span><b>${(+a.score).toFixed(1)}</b>${esc(a.scoreFrom || "Score")} /5</span>` : "",
+        a.nyt && a.nyt.rank ? `<span><b>#${a.nyt.rank}</b>NYT ${esc(a.nyt.list || "")}${a.nyt.weeks > 1 ? `, ${a.nyt.weeks} weeks` : ""}</span>` : "",
+        a.award ? `<span>${esc(a.award)}</span>` : ""].join("");
+      const chips = (audioOnly ? [["audiobook", "Audiobook"]] : [["ebook", "Ebook"], ["audiobook", "Audiobook"], ["both", "Both"]])
+        .map(([k, l]) => `<button class="chip ${pick === k ? "on" : ""}" data-pick="${k}">${l}</button>`).join("");
+      const ask = a.have ? `<a class="btn white big" href="#/book/${enc(a.have)}">${B.I("check")} On Benflix</a>`
+        : a.asked ? `<span class="btn big" style="color:${LIME}">${esc(a.asked)}</span>`
+          : `${chips}<button class="btn white big" data-act="ask">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`;
+      const s = a.series;
+      const missing = s ? s.books.filter((b) => !b.have && !b.asked && !b.isThis) : [];
+      const missWords = missing.length === 1 ? "book " + missing[0].pos : missing.length === 2 ? `books ${missing[0].pos} and ${missing[1].pos}` : `the other ${missing.length} books`;
+      const seriesRow = s && s.books.length > 1 ? `<section class="rowx"><h3>${esc(s.name)} · ${s.books.length} books ${missing.length ? `<button class="btn small" data-act="series">${B.I("plus")} ${admin ? "Ask for" : "Ask Ben for"} ${missWords}</button>` : ""}</h3>
+        <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${B.I("left")}</button><div class="strip">${s.books.map((b) => {
+          const img = b.cover ? `background-image:url('${esc(outPic(b.cover))}')` : "";
+          const href = b.have ? "#/book/" + enc(b.have) : b.isThis ? "" : `#/bookask?key=${enc(b.key)}&name=${enc(b.name)}&author=${enc(b.author || "")}`;
+          return `<a class="poster bk" ${href ? `href="${href}"` : ""}><div class="im" style="${img}">${b.cover ? "" : `<span class="bk-name">${esc(b.name)}</span>`}${b.have ? `<span class="bk-tick">${B.I("check")}</span>` : ""}</div>
+            <div class="cap" ${b.isThis ? `style="color:${LIME}"` : ""}>${b.pos}. ${esc(b.name)}<small${b.have || b.asked ? ` style="color:${LIME}"` : ""}>${esc(b.have ? "On Benflix" : b.asked || (b.isThis ? "This book" : ""))}</small></div></a>`;
+        }).join("")}</div><button class="arrow r" data-scroll="1" aria-label="Scroll right">${B.I("right")}</button></section>` : "";
+      const back = `<div class="back"><b style="color:${LIME}">${esc((a.name || "").toUpperCase())}</b><p>${esc((a.back && a.back.blurb) || "No blurb yet.")}</p>${((a.back && a.back.quotes) || []).slice(0, 2).map((q) => `<p class="q">“${esc(q.text)}”</p>`).join("")}</div>`;
+      el.innerHTML = `<div class="wrap bq-top"><div><button class="bq-flip" data-act="flip" title="Turn the cover over"><div class="front" style="${a.cover ? `background-image:url('${esc(outPic(a.cover))}')` : ""}">${a.cover ? "" : `<span class="bk-name">${esc(a.name)}</span>`}</div>${back}</button>
+          <div class="dim" style="font-size:13px;margin-top:8px;text-align:center">Click the cover to turn it over</div></div>
+        <div class="grow"><div class="kick" style="color:${LIME}">${audioOnly ? "AUDIOBOOK" : "BOOK"}</div><div class="h1" style="font-size:40px;margin:4px 0">${esc(a.name)}</div>
+          <div class="meta">${esc([a.author, a.year, (a.genres || []).slice(0, 2).join(", ")].filter(Boolean).join(" · "))}</div>
+          ${scores ? `<div class="scores">${scores}</div>` : ""}
+          <div class="btns" style="flex-wrap:wrap">${ask}${a.have ? "" : `<button class="btn big" data-act="want">${B.I(a.want ? "check" : "plus")} ${a.want ? "On Want to read" : "Want to read"}</button>`}</div>
+          <h3 style="margin:22px 0 8px">About this book</h3><p class="bq-about">${esc(a.desc || "No description yet.")}</p></div></div>
+        ${seriesRow}
+        ${(a.facts || []).length ? `<div class="wrap"><div class="bq-facts">${a.facts.map((f) => `<div class="bq-fact"><small>${esc(f.label)}</small>${esc(f.value)}</div>`).join("")}</div></div>` : ""}
+        ${B.row("More by " + String(a.author || "this author").split(",")[0], (a.byAuthor || []).map((c) => BQ.card(c)))}
+        ${B.row("More like this", (a.likeThis || []).map((c) => BQ.card(c)))}`;
+    };
+    el.onclick = async (e) => {
+      const p = e.target.closest("[data-pick]");
+      if (p) { pick = p.dataset.pick; el.querySelectorAll("[data-pick]").forEach((x) => x.classList.toggle("on", x === p)); return; }
+      const b = e.target.closest("[data-act]");
+      if (!b) return;
+      const act = b.dataset.act;
+      if (act === "flip") return b.classList.toggle("on");
+      await B.busy(b, async () => {
+        let words = "";
+        if (act === "ask") words = (await api("POST", "request", { key: a.key, name: a.name, author: a.author, year: a.year, cover: a.cover, types: pick === "both" ? ["ebook", "audiobook"] : [pick] })).words;
+        if (act === "series") {
+          for (const x of missing()) await api("POST", "request", { key: x.key, name: x.name, author: x.author, cover: x.cover, types: ["ebook", "audiobook"] });
+          words = "Asked for them.";
+        }
+        if (act === "want") words = (await api("POST", "want", { id: a.key, want: !a.want, name: a.name, author: a.author, cover: a.cover, kind: "book" })).want ? "Added to Want to read." : "Taken off Want to read.";
+        await draw();
+        return words;
+      });
+    };
+    const missing = () => (a && a.series ? a.series.books.filter((b) => !b.have && !b.asked && !b.isThis) : []);
+    draw();
+  });
 })();

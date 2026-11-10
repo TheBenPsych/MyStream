@@ -21,7 +21,7 @@ const P = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   down: '<path d="m6 9 6 6 6-6"/>', up: '<path d="m18 15-6-6-6 6"/>',
   left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>',
-  play: '<path d="M7 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/>', pause: '<path d="M8 5v14M16 5v14" stroke-width="3.2"/>',
+  play: '<path d="M7 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/>', stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/>', pause: '<path d="M8 5v14M16 5v14" stroke-width="3.2"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 5 5 9-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9L12 3Z"/>',
   thumb: '<path d="M7 10v11M7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/>',
@@ -175,7 +175,7 @@ B.minutes = (ticks) => Math.round((ticks || 0) / TICKS / 60);
 B.len = (min) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60 ? (min % 60) + " min" : ""}`.trim() : `${min} min`);
 B.clock = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 B.hms = (s) => {
-  s = Math.max(0, Math.floor(s || 0));
+  s = isFinite(s) ? Math.max(0, Math.floor(s || 0)) : 0;
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
   return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0");
 };
@@ -389,6 +389,63 @@ B.wideCard = (it, opts) => {
     <div class="cap">${esc(opts.title || it.Name)}<small>${esc(opts.sub || "")}</small>${opts.story && it.Overview ? `<div class="story">${esc(it.Overview)}</div>` : ""}</div>
   </${soon ? "div" : "a"}>`;
 };
+// ---------- Song previews: 30 seconds of a song before asking for it (Requests > Music, Search's Ask for it) ----------
+// Tower's helper (/api/music/preview) hands back a fresh free preview link (Deezer, or Apple's iTunes when Deezer
+// has none). One plays at a time; pressing it again stops it. Benflix music pauses for it and carries on after.
+const PV = { audio: null, id: null, paused: false, n: 0 };
+B.previewBtn = (id, cls) => (id ? `<button class="circle pv ${cls || ""}" data-pv="${esc(String(id))}" title="Hear 30 seconds" aria-label="Hear 30 seconds">${I("play")}</button>` : "");
+const pvDraw = () => $$("[data-pv]").forEach((b) => {
+  const on = PV.id != null && b.dataset.pv === String(PV.id);
+  b.classList.toggle("white", on);
+  b.innerHTML = I(on ? "stop" : "play");
+  b.title = on ? "Stop the preview" : "Hear 30 seconds";
+  b.setAttribute("aria-label", b.title);
+});
+const pvQuiet = () => { if (PV.audio) { PV.audio.pause(); PV.audio.src = ""; PV.audio = null; } };
+B.previewStop = () => {
+  PV.n++;
+  pvQuiet();
+  PV.id = null;
+  if (PV.paused && B.music && B.music.audio) B.music.audio.play().catch(() => {});
+  PV.paused = false;
+  pvDraw();
+};
+B.previewToggle = async (id, btn) => {
+  if (PV.id === String(id)) return B.previewStop();
+  pvQuiet();
+  const n = ++PV.n;
+  PV.id = String(id);
+  pvDraw();
+  let url = "";
+  try { url = (await B.call("GET", "api/music/preview?id=" + encodeURIComponent(id))).url || ""; } catch (e) { url = ""; }
+  if (n !== PV.n) return;
+  if (!url) {
+    PV.id = null;
+    pvDraw();
+    if (PV.paused && B.music && B.music.audio) B.music.audio.play().catch(() => {});
+    PV.paused = false;
+    if (btn && document.contains(btn)) { btn.innerHTML = "–"; btn.title = "No preview for this one"; setTimeout(pvDraw, 2500); }
+    return;
+  }
+  const m = B.music && B.music.audio;
+  if (m && !m.paused) { m.pause(); PV.paused = true; }
+  const a = new Audio(url);
+  a.volume = 0.9;
+  a.onended = () => { if (PV.audio === a) B.previewStop(); };
+  a.onerror = () => { if (PV.audio === a) B.previewStop(); };
+  PV.audio = a;
+  a.play().catch(() => { if (PV.audio === a) B.previewStop(); });
+};
+// The capture phase, so pressing play never also opens the Ask for it panel underneath
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-pv]");
+  if (!b) return;
+  e.preventDefault();
+  e.stopPropagation();
+  B.previewToggle(b.dataset.pv, b);
+}, true);
+window.addEventListener("hashchange", () => { if (PV.id) B.previewStop(); });
+
 B.row = (title, cards, opts) => {
   opts = opts || {};
   if (!cards || !cards.length) return "";

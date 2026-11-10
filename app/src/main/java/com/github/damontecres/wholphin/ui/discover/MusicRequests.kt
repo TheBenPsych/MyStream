@@ -112,6 +112,8 @@ class MusicRequestsViewModel
     @Inject
     constructor(
         private val music: BenflixMusic,
+        /** Benflix: 30 second song previews beside Ask for it */
+        val preview: com.github.damontecres.wholphin.services.SongPreview,
     ) : ViewModel() {
         val status = MutableStateFlow<MusicStatus?>(null)
         val problem = MutableStateFlow<String?>(null)
@@ -307,6 +309,11 @@ class MusicRequestsViewModel
  */
 @Composable
 fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
+    ProvideSongPreview(viewModel.preview) { MusicShelfContent(viewModel) }
+}
+
+@Composable
+private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
     val status by viewModel.status.collectAsState()
     val problem by viewModel.problem.collectAsState()
     val query by viewModel.query.collectAsState()
@@ -352,7 +359,10 @@ fun MusicShelf(viewModel: MusicRequestsViewModel = hiltViewModel()) {
     askSong?.let { song ->
         AskSongDialog(
             song = song,
-            onDismiss = { askSong = null },
+            onDismiss = {
+                askSong = null
+                viewModel.preview.stop()
+            },
             onSong = {
                 askSong = null
                 viewModel.ask("song", song.id, song.title)
@@ -583,6 +593,7 @@ private fun SongTileRow(
                     name = if (numbered) "${i + firstNumber}. ${song.title}" else song.title,
                     line = song.asked ?: if (song.have) "In your music" else song.artist,
                     onClick = { onSong(song) },
+                    previewId = song.id,
                 )
             }
             if (allLabel != null) {
@@ -843,66 +854,78 @@ private fun SongRow(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = BenflixColors.Panel,
-                contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.FocusRow,
-                focusedContentColor = BenflixColors.Text,
-            ),
-        border = doorFocusBorder(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    val preview = LocalSongPreview.current
+    // Benflix: a round play button beside the row plays 30 seconds of the song (Right on the remote reaches it)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .padding(horizontal = 16.dp)
-                .widthIn(max = 900.dp)
+                .widthIn(max = 960.dp)
                 .fillMaxWidth(),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(8.dp),
+        Surface(
+            onClick = onClick,
+            shape = ClickableSurfaceDefaults.shape(shape),
+            colors =
+                ClickableSurfaceDefaults.colors(
+                    containerColor = BenflixColors.Panel,
+                    contentColor = BenflixColors.Text,
+                    focusedContainerColor = BenflixColors.FocusRow,
+                    focusedContentColor = BenflixColors.Text,
+                ),
+            border = doorFocusBorder(shape),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            modifier = Modifier.weight(1f),
         ) {
-            if (number != null) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(8.dp),
+            ) {
+                if (number != null) {
+                    Text(
+                        text = "$number",
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BenflixColors.Muted,
+                        modifier = Modifier.widthIn(min = 32.dp),
+                    )
+                }
+                Cover(song.cover, 48, RoundedCornerShape(6.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = song.title,
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = if (showAlbum) "${song.artist} · ${song.album}" else song.artist,
+                        fontSize = BenflixType.small,
+                        color = BenflixColors.Soft,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (song.seconds > 0) {
+                    Text("%d:%02d".format(song.seconds / 60, song.seconds % 60), fontSize = BenflixType.small, color = BenflixColors.Muted)
+                }
                 Text(
-                    text = "$number",
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = BenflixColors.Muted,
-                    modifier = Modifier.widthIn(min = 32.dp),
-                )
-            }
-            Cover(song.cover, 48, RoundedCornerShape(6.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = if (showAlbum) "${song.artist} · ${song.album}" else song.artist,
+                    text = song.asked ?: if (song.have) "In your music" else "Ask for it",
                     fontSize = BenflixType.small,
-                    color = BenflixColors.Soft,
+                    fontWeight = FontWeight.Bold,
+                    color = if (song.asked == null && !song.have) BenflixColors.Text else BenflixColors.Muted,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 220.dp),
                 )
             }
-            if (song.seconds > 0) {
-                Text("%d:%02d".format(song.seconds / 60, song.seconds % 60), fontSize = BenflixType.small, color = BenflixColors.Muted)
-            }
-            Text(
-                text = song.asked ?: if (song.have) "In your music" else "Ask for it",
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.Bold,
-                color = if (song.asked == null && !song.have) BenflixColors.Text else BenflixColors.Muted,
-                maxLines = 1,
-                modifier = Modifier.widthIn(max = 220.dp),
-            )
+        }
+        if (preview != null && song.id != 0L) {
+            val state by preview.state.collectAsState()
+            SongPreviewButton(state = state, songId = song.id, onClick = { preview.toggle(song.id) })
         }
     }
 }
@@ -964,17 +987,36 @@ private fun Tile(
     name: String,
     line: String?,
     onClick: () -> Unit,
+    previewId: Long? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(size.dp)) {
-        Surface(
-            onClick = onClick,
-            shape = ClickableSurfaceDefaults.shape(shape),
-            colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
-            border = doorFocusBorder(shape),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-            modifier = Modifier.size(size.dp),
-        ) {
-            AsyncImage(model = picture, contentDescription = name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        Box {
+            Surface(
+                onClick = onClick,
+                shape = ClickableSurfaceDefaults.shape(shape),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = BenflixColors.Raised,
+                        focusedContainerColor = BenflixColors.Raised,
+                    ),
+                border = doorFocusBorder(shape),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                modifier = Modifier.size(size.dp),
+            ) {
+                AsyncImage(model = picture, contentDescription = name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            }
+            // Benflix: on phones a small play button sits on the song's cover (on TV it's in the Ask for it pop-up)
+            val preview = LocalSongPreview.current
+            if (preview != null && previewId != null && previewId != 0L && !rememberIsTv()) {
+                val state by preview.state.collectAsState()
+                SongPreviewButton(
+                    state = state,
+                    songId = previewId,
+                    onClick = { preview.toggle(previewId) },
+                    size = 36,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                )
+            }
         }
         Text(
             text = name,
@@ -1197,6 +1239,10 @@ private fun AskSongDialog(
                     Text(song.title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text, maxLines = 2)
                     Text("${song.artist} · ${song.album}", fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2)
                 }
+            }
+            LocalSongPreview.current?.let { preview ->
+                val state by preview.state.collectAsState()
+                MusicButton(previewLabel(state, song.id), modifier = Modifier.fillMaxWidth()) { preview.toggle(song.id) }
             }
             MusicButton("Just this song", primary = true, modifier = Modifier.fillMaxWidth(), onClick = onSong)
             MusicButton("The whole album", modifier = Modifier.fillMaxWidth(), onClick = onAlbum)
