@@ -24,6 +24,8 @@ B.intro = () => new Promise((done) => {
 });
 
 // ---------- Who's watching ----------
+// Redesign 2 (su-family): the dim wall of posters behind, the grown-ups as big round pictures in one row,
+// and Kids profiles a little smaller at the end with the names lined up.
 B.route(/^\/who$/, async () => {
   // Switching profile stops the last person's music and forgets their hearts
   if (B.music) { B.music.stop(); B.music.liked.clear(); }
@@ -31,11 +33,13 @@ B.route(/^\/who$/, async () => {
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
   const last = load("benflix.last");
-  const order = list.slice().sort((a, b) => (a.kids - b.kids) || a.name.localeCompare(b.name));
+  const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
+    <div class="wall" aria-hidden="true"></div>
     ${B.logo()}
     <h1>Who's watching?</h1>
-    <div class="people">${order.map((p) => `<button class="person" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
+    <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
+    <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
   </div>`;
   const focus = $(`.person[data-id="${CSS.escape(last || "")}"]`) || $(".person");
@@ -51,73 +55,132 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
+  whoWall(list);
 });
 
-// ---------- sign in: one question per screen, then Quick Connect as the second way ----------
+// 12 still posters (PG-13 or lower), picked once a day and kept, so the wall costs nothing most days
+async function whoWall(list) {
+  const el = $(".who .wall");
+  const who = list.find((p) => !p.expired && !p.kids) || list.find((p) => !p.expired);
+  if (!el || !who) return;
+  let wall = loadJson("benflix.wall", null);
+  if (!wall || wall.by !== who.id || Date.now() - wall.t > 864e5 || !(wall.items || []).length) {
+    try {
+      const r = await B.call("GET", `api/web/jf/Users/${enc(who.id)}/Items?IncludeItemTypes=Movie,Series&Recursive=true&SortBy=Random&Limit=12&MaxOfficialRating=PG-13&HasParentalRating=true&ImageTypes=Primary&Fields=PrimaryImageAspectRatio`, undefined, { profile: who, quiet401: true });
+      wall = { t: Date.now(), by: who.id, items: ((r && r.Items) || []).filter((it) => it.ImageTags && it.ImageTags.Primary).map((it) => [it.Id, it.ImageTags.Primary]) };
+      try { localStorage.setItem("benflix.wall", JSON.stringify(wall)); } catch (e) {}
+    } catch (e) { return; }
+  }
+  if (!$(".who .wall")) return;
+  el.innerHTML = wall.items.slice(0, 12).map(([id, tag]) => `<i style="background-image:url('api/web/jf/Items/${enc(id)}/Images/Primary?fillHeight=300&quality=80&tag=${enc(tag)}&api_key=${enc(who.token)}')"></i>`).join("");
+  requestAnimationFrame(() => el.classList.add("on"));
+}
+
+// ---------- sign in ----------
+// Redesign 2 (su-s-quick): on a wide screen the left half is "Sign in with your phone" (a Quick Connect
+// code and the steps) and the right half is "Or type it in". Narrow screens get just the form, with a
+// line about signing in with a code. When it doesn't work, plain words and one button.
+B.signInProblem = (err, name) => {
+  const st = err && err.status, msg = String((err && err.message) || "");
+  const who = String(name || "").trim();
+  if (st === 0 || /couldn't reach|is it on/i.test(msg)) return { kind: "reach", title: "Can't reach the Tower (is it on?)", line: "Check the Tower is switched on, then try again in a minute.", button: "Try again" };
+  if (st === 403 || /too many|limit how many devices/i.test(msg)) {
+    const whose = who ? `${who}'s account` : "This account";
+    return { kind: "many", title: "On too many TVs", line: `${whose} is on too many TVs. Sign out on one${/^ben$/i.test(who) ? "" : ", or ask Ben"}.`, button: "OK" };
+  }
+  if (st === 401 || /accept that name and password|wrong password/i.test(msg)) return { kind: "wrong", title: "Wrong password", line: "Check the name and password and try again. Capital letters count.", button: "Type it again" };
+  if (st === 400 && /name/i.test(msg)) return { kind: "wrong", title: "Type your name first", line: "Your name is the one you use for Benflix on the TV.", button: "OK" };
+  return { kind: "other", title: "That didn't work", line: msg || "Something went wrong signing in. Try again in a minute.", button: "Try again" };
+};
 B.route(/^\/signin/, async () => {
   B.me = null;
-  let name = B.q("name") || "";
+  const name0 = B.q("name") || "";
   const back = B.profiles().length ? `<button class="linkbtn" id="toWho">Back to Who's watching</button>` : "";
-  const shell = (inner) => {
-    B.page().innerHTML = `<div class="signin"><div class="card fade-in">${B.logo()}${inner}<div style="margin-top:22px">${back}</div></div></div>`;
-    const w = $("#toWho"); if (w) w.onclick = () => B.go("#/who");
+  const wide = () => matchMedia("(min-width: 820px)").matches;
+  let gen = 0, codeOnPhone = false; // gen: each new code wait gets a number, so old waits stop
+  const draw = () => {
+    gen++;
+    const form = `<form id="f" class="half type">
+        <h2>${wide() ? "Or type it in" : "Sign in to Benflix"}</h2>
+        <label>Name<input class="field" id="nm" autocomplete="username" value="${esc(name0)}"></label>
+        <label>Password<input class="field" id="pw" type="password" autocomplete="current-password" placeholder="Leave it empty if you don't have one"></label>
+        <div id="prob"></div>
+        <div class="btns"><button class="btn white" type="submit" id="go">Sign in</button></div>
+        ${wide() ? "" : `<p class="dim small">Already signed in on a TV or phone? <button class="linkbtn" type="button" id="useCode">Sign in with a code instead</button></p>`}
+      </form>`;
+    const phone = `<div class="half phone">
+        <h2>Sign in with your phone</h2>
+        <p>On your phone, open Benflix, then My Benflix › Quick Connect, and type this code:</p>
+        <div id="code">${B.spinner()}</div>
+        <div id="qcProb"></div>
+        ${wide() ? "" : `<button class="btn" type="button" id="useForm">Type it in instead</button>`}
+      </div>`;
+    const inner = wide() ? `${phone}<div class="divider"></div>${form}` : (codeOnPhone ? phone : form);
+    B.page().innerHTML = `<div class="signin"><div class="card ${wide() ? "two" : ""} fade-in">${B.logo()}<div class="halves">${inner}</div><div style="margin-top:22px">${back}</div></div></div>`;
+    const w = $("#toWho"); if (w) w.onclick = () => { gen++; B.go("#/who"); };
+    const uc = $("#useCode"); if (uc) uc.onclick = () => { codeOnPhone = true; draw(); };
+    const uf = $("#useForm"); if (uf) uf.onclick = () => { codeOnPhone = false; draw(); };
+    if ($("#f")) wireForm();
+    if ($("#code")) quickConnect();
   };
-  const askName = () => {
-    shell(`<h1>Sign in to Benflix</h1><p>Type your name, the one you use for Benflix on the TV.</p>
-      <form id="f"><input class="field" id="v" autocomplete="username" placeholder="Your name" value="${esc(name)}">
-      <div class="err" id="err"></div>
-      <div class="btns"><button class="btn white" type="submit">Next</button><button class="btn" type="button" id="qc">${I("phone")} Sign in with my phone or TV</button></div></form>`);
-    $("#v").focus();
-    $("#f").onsubmit = (e) => {
-      e.preventDefault();
-      name = $("#v").value.trim();
-      if (!name) { $("#v").classList.add("bad"); $("#err").textContent = "Type your name first."; return; }
-      askPassword();
-    };
-    $("#qc").onclick = quickConnect;
+  const showProblem = (box, p, onButton) => {
+    box.innerHTML = `<div class="problem"><b>${esc(p.title)}</b><p>${esc(p.line)}</p><button class="btn white" type="button">${esc(p.button)}</button></div>`;
+    const b = box.querySelector("button"); b.focus();
+    b.onclick = () => { box.innerHTML = ""; onButton(); };
   };
-  const askPassword = () => {
-    shell(`<h1>Hi ${esc(name)}</h1><p>Now your password. Leave it empty if you don't have one.</p>
-      <form id="f"><input type="text" autocomplete="username" value="${esc(name)}" hidden><input class="field" id="v" type="password" autocomplete="current-password" placeholder="Password">
-      <div class="err" id="err"></div>
-      <div class="btns"><button class="btn white" type="submit" id="go">Sign in</button><button class="btn ghost" type="button" id="bk">Not ${esc(name)}?</button></div></form>`);
-    $("#v").focus();
-    $("#bk").onclick = askName;
+  const wireForm = () => {
+    const nm = $("#nm"), pw = $("#pw");
+    (name0 ? pw : nm).focus();
     $("#f").onsubmit = async (e) => {
       e.preventDefault();
-      const go = $("#go"); go.disabled = true; go.textContent = "Signing in…"; $("#err").textContent = "";
+      const name = nm.value.trim();
+      if (!name) { nm.classList.add("bad"); nm.focus(); return; }
+      const go = $("#go"); go.disabled = true; go.textContent = "Signing in…"; $("#prob").innerHTML = "";
       const device = B.newDevice();
       try {
-        const s = await B.call("POST", "api/web/login", { username: name, password: $("#v").value, device }, { device });
+        const s = await B.call("POST", "api/web/login", { username: name, password: pw.value, device }, { device });
         finish(s, device);
       } catch (err) {
-        $("#v").classList.add("bad"); $("#err").textContent = err.message;
         go.disabled = false; go.textContent = "Sign in";
+        const p = B.signInProblem(err, name);
+        if (p.kind === "wrong") pw.classList.add("bad");
+        showProblem($("#prob"), p, () => {
+          pw.classList.remove("bad");
+          if (p.kind === "wrong") { pw.value = ""; pw.focus(); }
+          else if (p.kind === "reach" || p.kind === "other") $("#f").requestSubmit();
+          else nm.focus();
+        });
       }
     };
+    nm.oninput = () => nm.classList.remove("bad");
   };
   const quickConnect = async () => {
-    const device = B.newDevice();
-    shell(`<h1>Sign in with a code</h1><p>On a TV or phone that's already signed in to Benflix, open Settings, then Quick Connect, and type this code.</p><div id="code">${B.spinner()}</div><div class="err" id="err"></div>
-      <div class="btns"><button class="btn" id="bk">Type my name instead</button></div>`);
-    $("#bk").onclick = () => { stop = true; askName(); };
-    let stop = false;
+    const my = ++gen, device = B.newDevice();
+    const stop = () => my !== gen || !$("#code") || !location.hash.startsWith("#/signin");
     try {
       const s = await B.call("POST", "api/web/qc/start", {}, { device });
-      $("#code").innerHTML = `<div class="code">${String(s.code || "").split("").map((c) => `<b>${esc(c)}</b>`).join("")}</div><p style="text-align:center" class="dim">Waiting for the code…</p>`;
+      if (stop()) return;
+      $("#code").innerHTML = `<div class="code">${String(s.code || "").split("").map((c) => `<b>${esc(c)}</b>`).join("")}</div><p class="dim">Waiting for your phone…</p>`;
       const tick = async () => {
-        if (stop || !$("#code")) return;
+        if (stop()) return;
         try {
           const c = await B.call("POST", "api/web/qc/check", { secret: s.secret }, { device });
           if (c.ok) return finish(await B.call("POST", "api/web/qc/finish", { secret: s.secret }, { device }), device);
-          if (c.gone) { $("#err").textContent = "That code ran out. Press back and try again."; return; }
-        } catch (err) { $("#err").textContent = err.message; }
+          // the code ran out: get a fresh one
+          if (c.gone) return quickConnect();
+        } catch (err) {}
         setTimeout(tick, 3000);
       };
       setTimeout(tick, 3000);
-    } catch (err) { $("#code").innerHTML = ""; $("#err").textContent = err.message; }
+    } catch (err) {
+      if (stop()) return;
+      $("#code").innerHTML = "";
+      const p = B.signInProblem(err, "");
+      showProblem($("#qcProb"), Object.assign({}, p, { title: /turned off/i.test(err.message) ? "Quick Connect is off" : "No code right now", line: /turned off/i.test(err.message) ? err.message : p.line, button: "Try again" }), () => { $("#code").innerHTML = B.spinner(); quickConnect(); });
+    }
   };
   const finish = (s, device) => {
+    gen++;
     const p = { id: s.id, name: s.name, token: s.token, admin: !!s.admin, kids: !!s.kids, image: s.image || null, device };
     const old = B.profiles().find((x) => x.id === p.id);
     if (old && old.token !== p.token) {
@@ -130,7 +193,7 @@ B.route(/^\/signin/, async () => {
     B.doorsGrow = true;
     B.go("#/home");
   };
-  askName();
+  draw();
 });
 
 // ---------- Home ----------

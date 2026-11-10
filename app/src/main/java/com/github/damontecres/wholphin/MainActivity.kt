@@ -275,6 +275,11 @@ class MainActivity : AppCompatActivity() {
         // skip Who's watching (checked against the timer in Settings)
         val checkResume = savedInstanceState?.getBoolean(KEY_IN_APP, false) == true
         if (savedInstanceState == null) ResumeTimer.clear(this)
+        // Benflix redesign 2: the first open after an update shows "Finishing the update" and starts clean
+        val finishingUpdate =
+            savedInstanceState == null &&
+                com.github.damontecres.wholphin.ui.UpdateFinish
+                    .firstOpenAfterUpdate(this)
         if (aniListSync.isSignInReturn(intent)) aniListSync.finishSignIn(intent)
         if (malSync.isSignInReturn(intent)) malSync.finishSignIn(intent)
         viewModel.appStart(intent, resume = if (checkResume) null else false)
@@ -288,6 +293,7 @@ class MainActivity : AppCompatActivity() {
                         val userPreferences by userPreferencesService.flow.collectAsState(null)
                         // Benflix startup animation, every time the app is opened fresh
                         var showIntro by rememberSaveable { mutableStateOf(true) }
+                        var finishing by rememberSaveable { mutableStateOf(finishingUpdate) }
                         if (userPreferences == null) {
                             // Show loading page if it is taking a while to get app preferences
                             var showLoading by remember { mutableStateOf(false) }
@@ -398,7 +404,10 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
-                        if (showIntro) {
+                        if (finishing) {
+                            com.github.damontecres.wholphin.ui
+                                .FinishingUpdateScreen(onDone = { finishing = false })
+                        } else if (showIntro) {
                             BenflixIntro(onFinished = { showIntro = false })
                         }
                     }

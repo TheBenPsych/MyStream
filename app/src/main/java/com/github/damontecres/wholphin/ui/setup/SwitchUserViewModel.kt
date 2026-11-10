@@ -118,6 +118,7 @@ class SwitchUserViewModel
                             serverVersionSupported = supported,
                         )
                     }
+                    launch { checkPictures(serverUsers.map { it.user }) }
                     loadPosterWall(serverUsers.map { it.user })
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error fetching users for server $server")
@@ -149,6 +150,42 @@ class SwitchUserViewModel
                 } catch (ex: Exception) {
                     Timber.w(ex, "Error checking quick connect for server ${server.url}")
                     _state.update { it.copy(quickConnectEnabled = false) }
+                }
+            }
+        }
+
+        /**
+         * Benflix rule (redesign 2): profile pictures live on the server and are checked every time Who's
+         * watching opens, so a picture changed on another TV (or a copy here that got mixed up after an
+         * update) is put right. Everyone saved on this device is checked at once; anyone who can't be
+         * reached in a few seconds keeps the picture this device already has.
+         */
+        private suspend fun checkPictures(users: List<JellyfinUser>) {
+            val accounts = users.filter { it.accessToken != null && !it.requireLogin }
+            if (accounts.isEmpty()) return
+            withTimeoutOrNull(PICTURE_CHECK_MS) {
+                coroutineScope {
+                    accounts.forEach { user ->
+                        launch {
+                            try {
+                                val prefs =
+                                    jellyfin
+                                        .createApi(server.url, accessToken = user.accessToken)
+                                        .displayPreferencesApi
+                                        .getDisplayPreferences(
+                                            displayPreferencesId = DisplayPreferencesService.DEFAULT_DISPLAY_PREF_ID,
+                                            userId = user.id,
+                                            client = DisplayPreferencesService.DEFAULT_CLIENT,
+                                        ).content
+                                        .customPrefs
+                                profilePictureSync.restore(server.url, user, prefs)
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Couldn't check a profile picture")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -324,20 +361,22 @@ class SwitchUserViewModel
 
                         403 -> {
                             Timber.w(ex, "Error switching user 403")
-                            SwitchUserResult.Error(
-                                context.getString(R.string.login_not_authorized),
-                                false,
-                            )
+                            // Benflix: Jellyfin's "max active sessions" limit, in plain words
+                            SwitchUserResult.Error(tooManyLine(user.name.orEmpty()), false)
                         }
 
                         else -> {
                             Timber.e(ex, "Error switching user")
-                            SwitchUserResult.Error(ex.localizedMessage, true)
+                            SwitchUserResult.Error(signInProblemFor(ex, user.name).title, true)
                         }
                     }
+                } catch (ex: CancellationException) {
+                    throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error switching user")
-                    SwitchUserResult.Error(ex.localizedMessage, true)
+                    val problem = signInProblemFor(ex, user.name)
+                    // Tower off: no point asking for the password, it wouldn't work either
+                    SwitchUserResult.Error(problem.title, problem.kind != SignInProblemKind.CANT_REACH)
                 }
             }
 
@@ -348,6 +387,8 @@ class SwitchUserViewModel
             password: String,
         ) {
             quickConnectJob?.cancel()
+            // The code stopped waiting; the TV screen asks for a fresh one if this doesn't work
+            _state.update { it.copy(quickConnectStatus = null) }
             viewModelScope.launchIO {
                 try {
                     val api = jellyfin.createApi(baseUrl = server.url)
@@ -364,11 +405,8 @@ class SwitchUserViewModel
                     setupNavigationManager.navigateTo(SetupDestination.AppContent(current))
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error logging in user")
-                    if (ex is InvalidStatusException && ex.status == 401) {
-                        _state.update { it.copy(switchUserState = LoadingState.Error("Invalid username or password")) }
-                    } else {
-                        setError("Error during login", ex)
-                    }
+                    // The sign-in screen turns this into plain words (see signInProblemFor)
+                    setError(null, ex)
                 }
             }
         }
@@ -387,7 +425,7 @@ class SwitchUserViewModel
                                 .quickConnectApi
                                 .initiateQuickConnect()
                                 .content
-                        _state.update { it.copy(quickConnectStatus = quickConnectStatus) }
+                        _state.update { it.copy(quickConnectStatus = quickConnectStatus, quickConnectError = null) }
 
                         var networkFailures = 0
                         while (!quickConnectStatus.authenticated) {
@@ -437,7 +475,8 @@ class SwitchUserViewModel
                                 )
                             }
                         }
-                        setError("Error with Quick Connect", ex)
+                        // Benflix: shown on the phone half of the screen, so typing still works beside it
+                        _state.update { it.copy(quickConnectStatus = null, quickConnectError = signInProblemFor(ex, null)) }
                     }
                 }
         }
@@ -572,6 +611,8 @@ data class SwitchUserState(
     val loading: LoadingState = LoadingState.Pending,
     val quickConnectEnabled: Boolean = false,
     val quickConnectStatus: QuickConnectResult? = null,
+    // Benflix: why the Quick Connect code couldn't be made (shown beside the typing side)
+    val quickConnectError: SignInProblem? = null,
     val users: List<JellyfinUserAndImage> = emptyList(),
     // LoadingState for while adding/switching users
     val switchUserState: LoadingState = LoadingState.Pending,
@@ -589,6 +630,9 @@ private const val POSTER_WALL_COUNT = 12
 /** Benflix speed: a new random poster wall once a day */
 private const val POSTER_WALL_KEEP_MS = 24L * 60 * 60 * 1000
 private const val POSTER_WALL_HEIGHT = 260
+
+/** How long Who's watching spends checking profile pictures with the server */
+private const val PICTURE_CHECK_MS = 6_000L
 
 /** How long Kids waits to read the other grown-ups' parental settings before it starts anyway */
 private const val PARENTAL_LOOKUP_MS = 4_000L

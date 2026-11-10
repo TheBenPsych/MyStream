@@ -136,14 +136,18 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * The steps of the new-profile setup (approved redesign): Picture, Subtitles, Word size, Favourites,
- * Genres, then "All set". Each one has a small "Skip for now". [BROUGHT_OVER] is the one page people
- * who did the old setup see instead ("We brought your settings over"). [FINISH] isn't a question.
+ * The steps of the new-profile setup (redesign 2, su-p-welcome, 2026-11-10): four short steps, Picture,
+ * Subtitles, Bigger words and Parent PIN (grown-ups only), then "All set". Each one has a small "Skip
+ * for now". The device check runs quietly in the background. [BROUGHT_OVER] is the one page people who
+ * did the old setup see instead ("We brought your settings over"). [FINISH] isn't a question.
+ * [FAVORITES] isn't in the setup any more: Settings > You > Things you love opens it on its own.
+ * (Hide genres is in Settings > You too.)
  */
-enum class WelcomeStep { BROUGHT_OVER, PICTURE, SUBTITLES, EASY_READ, FAVORITES, HIDE_GENRES, FINISH }
+enum class WelcomeStep { BROUGHT_OVER, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, FAVORITES, FINISH }
 
-/** The steps that get a white dot at the top */
-private val DottedSteps = WelcomeStep.entries.filter { it != WelcomeStep.FINISH && it != WelcomeStep.BROUGHT_OVER }
+/** The setup, in order */
+private val FlowSteps =
+    listOf(WelcomeStep.PICTURE, WelcomeStep.SUBTITLES, WelcomeStep.EASY_READ, WelcomeStep.PARENT_PIN, WelcomeStep.FINISH)
 
 /** A poster on the "Pick a few things you love" wall */
 data class WelcomePoster(
@@ -187,8 +191,20 @@ class WelcomeViewModel
         private val imageUrlService: ImageUrlService,
         private val profilePictureSync: ProfilePictureSync,
         private val deviceProfileService: DeviceProfileService,
+        private val parentPin: com.github.damontecres.wholphin.services.BenflixParentPin,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** Opened from Settings for one step only (like Things you love): Done goes back to Settings */
+        val single: WelcomeStep? = only.also { only = null }
+
+        /** The steps this person gets, in order (the dots count these) */
+        private val _steps = MutableStateFlow(FlowSteps)
+        val steps: StateFlow<List<WelcomeStep>> = _steps
+
+        /** Whether this TV already has a parent PIN (null while checking or if it couldn't be read) */
+        private val _hasPin = MutableStateFlow<Boolean?>(null)
+        val hasPin: StateFlow<Boolean?> = _hasPin
+
         /** Save the picked picture here and on their Jellyfin account, so it follows them */
         fun pickPicture(index: Int) {
             val current = serverRepository.current.value ?: return
@@ -258,10 +274,16 @@ class WelcomeViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
                     val id = userId ?: return@launch
-                    val tag =
-                        api.userApi
-                            .getCurrentUser()
-                            .content.primaryImageTag ?: return@launch
+                    val me = api.userApi.getCurrentUser().content
+                    // Grown-ups only: a kids account (max rating set, or named Kids) skips the Parent PIN
+                    val kid = me.policy?.maxParentalRating != null || me.name?.trim().equals("kids", ignoreCase = true)
+                    if (kid) {
+                        _steps.value = FlowSteps - WelcomeStep.PARENT_PIN
+                        if (_step.value == WelcomeStep.PARENT_PIN) goTo(WelcomeStep.FINISH)
+                    } else {
+                        _hasPin.value = parentPin.pinState(id)
+                    }
+                    val tag = me.primaryImageTag ?: return@launch
                     _profileImage.value = api.imageApi.getUserImageUrl(id, tag = tag)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -285,29 +307,37 @@ class WelcomeViewModel
         private fun stepKey(): String? = userId?.toString()
 
         private fun savedStep(): WelcomeStep {
+            single?.let { return it }
             val first = if (broughtOver) WelcomeStep.BROUGHT_OVER else WelcomeStep.PICTURE
             val key = stepKey() ?: return first
             val name = stepPrefs.getString(key, null) ?: return first
-            return WelcomeStep.entries.firstOrNull { it.name == name } ?: first
+            // Someone half way through the old, longer setup carries on at the Parent PIN step
+            return WelcomeStep.entries.firstOrNull { it.name == name }?.takeIf { it in FlowSteps || it == WelcomeStep.BROUGHT_OVER }
+                ?: if (name == WelcomeStep.FAVORITES.name || name == "HIDE_GENRES") WelcomeStep.PARENT_PIN else first
         }
 
         private fun goTo(step: WelcomeStep) {
             _step.value = step
-            stepKey()?.let { key -> stepPrefs.edit { putString(key, step.name) } }
+            if (single == null) stepKey()?.let { key -> stepPrefs.edit { putString(key, step.name) } }
         }
 
         fun next() {
-            val steps = WelcomeStep.entries
             val current = _step.value
             if (current == WelcomeStep.FAVORITES) saveLikes()
+            if (single != null) {
+                // Opened from Settings: back to Settings
+                navigationManager.goBack()
+                return
+            }
             // The common answer is picked already: keep it even if they skip
             if (current == WelcomeStep.SUBTITLES && _subtitles.value == null) setSubtitles(SubtitleModePreference.SMART)
             if (current == WelcomeStep.BROUGHT_OVER) {
                 goTo(WelcomeStep.PICTURE)
                 return
             }
+            val steps = _steps.value
             val index = steps.indexOf(current)
-            if (index < steps.lastIndex) {
+            if (index in 0 until steps.lastIndex) {
                 goTo(steps[index + 1])
             } else {
                 finish()
@@ -316,10 +346,40 @@ class WelcomeViewModel
 
         /** Back one step. On the first step it does nothing */
         fun back(): Boolean {
-            val index = WelcomeStep.entries.indexOf(_step.value)
-            if (index <= 0 || (_step.value == WelcomeStep.PICTURE && !broughtOver)) return false
-            goTo(WelcomeStep.entries[index - 1])
+            if (single != null) {
+                navigationManager.goBack()
+                return true
+            }
+            val steps = _steps.value
+            val index = steps.indexOf(_step.value)
+            if (index <= 0) {
+                if (_step.value == WelcomeStep.PICTURE && broughtOver) {
+                    goTo(WelcomeStep.BROUGHT_OVER)
+                    return true
+                }
+                return false
+            }
+            goTo(steps[index - 1])
             return true
+        }
+
+        suspend fun checkPin(pin: String): Boolean {
+            val id = userId ?: return false
+            return withContext(WholphinDispatchers.IO) { parentPin.check(id, pin) }
+        }
+
+        suspend fun setPin(pin: String?): Boolean {
+            val id = userId ?: return false
+            return try {
+                withContext(WholphinDispatchers.IO) { parentPin.set(id, pin) }
+                _hasPin.value = !pin.isNullOrBlank()
+                true
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Welcome: couldn't save the parent PIN")
+                false
+            }
         }
 
         fun setAccent(accent: BenflixAccent) {
@@ -523,6 +583,9 @@ class WelcomeViewModel
             /** Set by the gate before opening the setup: this person did the old setup */
             @Volatile var broughtOver = false
 
+            /** Set by Settings before opening one step on its own (like Things you love) */
+            @Volatile var only: WelcomeStep? = null
+
             /** Settings > Run setup again: start from the first question */
             fun restart(
                 context: Context,
@@ -620,15 +683,16 @@ fun WelcomePage(
                     com.github.damontecres.wholphin.ui.nav
                         .BenflixLogo(height = 26.dp)
                     Spacer(Modifier.weight(1f))
-                    if (step in DottedSteps) StepDots(step)
+                    val steps by viewModel.steps.collectAsState()
+                    if (viewModel.single == null && step in steps && step != WelcomeStep.FINISH) StepDots(step, steps)
                 }
                 when (step) {
                     WelcomeStep.BROUGHT_OVER -> BroughtOverStep(viewModel)
                     WelcomeStep.PICTURE -> PictureStep(viewModel, isTv)
                     WelcomeStep.SUBTITLES -> SubtitlesStep(viewModel)
                     WelcomeStep.EASY_READ -> EasyReadStep(viewModel)
+                    WelcomeStep.PARENT_PIN -> ParentPinStep(viewModel)
                     WelcomeStep.FAVORITES -> FavoritesStep(viewModel, isTv)
-                    WelcomeStep.HIDE_GENRES -> HideGenresStep(viewModel)
                     WelcomeStep.FINISH -> FinishStep(viewModel, isTv)
                 }
             }
@@ -638,15 +702,19 @@ fun WelcomePage(
 
 /** Small dots for the steps: the current one wider and filled, done ones dimmer */
 @Composable
-private fun StepDots(step: WelcomeStep) {
-    val index = DottedSteps.indexOf(step)
-    val description = "Step ${index + 1} of ${DottedSteps.size}"
+private fun StepDots(
+    step: WelcomeStep,
+    steps: List<WelcomeStep>,
+) {
+    val dotted = steps - WelcomeStep.FINISH
+    val index = dotted.indexOf(step)
+    val description = "Step ${index + 1} of ${dotted.size}"
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description },
     ) {
-        DottedSteps.forEachIndexed { i, _ ->
+        dotted.forEachIndexed { i, _ ->
             val color =
                 when {
                     i == index -> Color.White
@@ -690,7 +758,7 @@ private fun StepButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        if (step != WelcomeStep.PICTURE && step != WelcomeStep.BROUGHT_OVER) {
+        if (viewModel.single == null && step != WelcomeStep.PICTURE && step != WelcomeStep.BROUGHT_OVER) {
             OutlinedButton(onClick = { viewModel.back() }, scale = OutlinedButtonDefaults.scale(focusedScale = 1f)) { Text("Back") }
         }
         Button(
@@ -702,7 +770,7 @@ private fun StepButtons(
             Text(nextLabel)
         }
         extra()
-        if (step in DottedSteps) {
+        if (viewModel.single == null && step in FlowSteps && step != WelcomeStep.FINISH) {
             androidx.tv.material3.Surface(
                 onClick = viewModel::next,
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
@@ -1066,17 +1134,6 @@ private fun EasyReadStep(viewModel: WelcomeViewModel) {
     StepButtons(viewModel)
 }
 
-/** Last question (approved p2-gen-rows): More of this / Hide for me for each genre */
-@Composable
-private fun HideGenresStep(viewModel: WelcomeViewModel) {
-    StepTitle(
-        title = "Genres",
-        subtitle = "More of this gets its own row. Hide for me takes it out everywhere for you (Search still finds it).",
-    )
-    GenreRowsPicker(modifier = Modifier.padding(vertical = 8.dp))
-    StepButtons(viewModel, nextLabel = "Done")
-}
-
 @Composable
 private fun FavoritesStep(
     viewModel: WelcomeViewModel,
@@ -1125,8 +1182,49 @@ private fun FavoritesStep(
     }
     StepButtons(
         viewModel,
-        nextLabel = if (picked.isEmpty()) "Next" else "Next (${picked.size} picked)",
+        nextLabel =
+            when {
+                viewModel.single != null -> "Done"
+                picked.isEmpty() -> "Next"
+                else -> "Next (${picked.size} picked)"
+            },
     )
+}
+
+/**
+ * Grown-ups only: a parent PIN keeps Kids safe on this TV (it locks Kids at bedtime and guards the
+ * parent settings). One PIN for the whole TV, so if there already is one this just says so.
+ */
+@Composable
+private fun ParentPinStep(viewModel: WelcomeViewModel) {
+    val hasPin by viewModel.hasPin.collectAsState()
+    var setting by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.tryRequestFocus() }
+    StepTitle(
+        "Parent PIN",
+        if (hasPin == true) {
+            "This TV already has a parent PIN, so Kids is safe. You can change it in Settings > Family."
+        } else {
+            "Four numbers only grown-ups know. Kids can't leave Kids without it, and it locks Kids at bedtime."
+        },
+    )
+    if (hasPin == true) {
+        StepButtons(viewModel, focus = focus)
+    } else {
+        StepButtons(viewModel, nextLabel = "Set a PIN", focus = focus, onNext = { setting = true })
+    }
+    if (setting) {
+        ParentPinDialog(
+            hasPin = false,
+            checkPin = viewModel::checkPin,
+            setPin = viewModel::setPin,
+            onDone = { set ->
+                setting = false
+                if (set) viewModel.next()
+            },
+        )
+    }
 }
 
 /** The search box above the poster wall. On a TV it only takes typing once it's pressed (so the D-pad can pass it) */

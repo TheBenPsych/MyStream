@@ -452,6 +452,19 @@ def sign_in():
                 tap(n)
             time.sleep(5)
             continue
+        # Redesign 2 sign-in: TV = "Sign in with your phone" beside "Or type it in"; phone = one form
+        if find(root, r"^Or type it in$|^Sign in to Benflix$") is not None:
+            if find(root, rf"^{USER}$") is None:
+                # TV: the keyboard has the focus and types into the Name box to begin with
+                type_answer(edit, USER)
+                shot("typed-user")
+                continue
+            n = find(dump(), r"^Sign in$")
+            if n is not None:
+                tap(n)
+            time.sleep(6)
+            log("sign-in screen: " + " | ".join(x for x in texts(dump()) if x)[:300])
+            continue
         if find(root, r"^What's your name\?$") is not None:
             if find(root, rf"^{USER}$") is None:
                 type_answer(edit, USER)
@@ -566,7 +579,8 @@ def welcome_setup():
     # step after the first) is never pressed; the search box on the favourites step is left alone.
     # Hello: Let's go. Device check, picture, subtitles, a TV that already has a PIN, favourites: Next.
     # Easy read: Looks good. Parent PIN: No thanks. Hide genres (last): Done. Then the finish screen: Go to Home.
-    buttons = [r"^Let's go$", r"^Next", r"^Looks good$", r"^No thanks$", r"^Done$"]
+    # Redesign 2: the Parent PIN step's main button sets a PIN, so the robot uses "Skip for now" there.
+    buttons = [r"^Let's go$", r"^Next", r"^Looks good$", r"^No thanks$", r"^Done$", r"^Skip for now$"]
     seen = []
     tries = {}
     finished = False
