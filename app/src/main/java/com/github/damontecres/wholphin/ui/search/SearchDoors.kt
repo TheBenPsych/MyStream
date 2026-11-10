@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.yearText
 import com.github.damontecres.wholphin.ui.music.CoverImage
@@ -904,6 +906,13 @@ private fun MusicAskDialog(
     onDismiss: () -> Unit,
 ) {
     val first = remember { FocusRequester() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preview =
+        remember {
+            com.github.damontecres.wholphin.services
+                .songPreview(context)
+        }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { preview.stop() } }
     // Benflix: the touch Dialog, so phone taps reach the buttons (a plain Dialog is its own window)
     com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -947,6 +956,18 @@ private fun MusicAskDialog(
             }
             if (item.asked != null) {
                 Text("Already asked for: ${item.asked}", color = BenflixColors.Soft, fontSize = BenflixType.small)
+            }
+            if (item.kind == "song" && item.id != 0L) {
+                // Benflix: hear 30 seconds of the song before asking for it
+                val previewState by preview.state.collectAsState()
+                MusicButton(
+                    label =
+                        com.github.damontecres.wholphin.ui.discover
+                            .previewLabel(previewState, item.id),
+                    icon = if (previewState.songId == item.id) BenflixIcon.STOP else BenflixIcon.PLAY,
+                    onClick = { preview.toggle(item.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             if (item.kind == "song") {
                 MusicButton(

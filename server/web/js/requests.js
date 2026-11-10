@@ -158,13 +158,13 @@ B.route(/^\/requests/, async (m, nav) => {
 const music = (method, path, body) => B.call(method, "api/music" + path, body);
 const songLine = (s, n) => `<div class="item">${n ? `<b class="dim" style="min-width:28px">${n}</b>` : ""}<div style="width:48px;height:48px;border-radius:6px;flex:none;background:var(--pg3) center/cover url('${esc(s.cover || "")}')"></div>
   <div class="grow"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)}${s.album ? " · " + esc(s.album) : ""}${s.seconds ? " · " + Math.floor(s.seconds / 60) + ":" + String(s.seconds % 60).padStart(2, "0") : ""}</div></div>
-  <div class="acts">${s.asked || s.have ? `<span class="dim">${esc(s.asked || "In your music")}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
+  <div class="acts">${B.previewBtn(s.id)}${s.asked || s.have ? `<span class="dim">${esc(s.asked || "In your music")}</span>` : `<button class="btn small white" data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}">Ask for it</button>`}</div></div>`;
 const albumCard = (a) => `<button class="poster" data-mopen="album:${a.id}" title="${esc(a.title)}"><div class="im" style="aspect-ratio:1;${a.cover ? `background-image:url('${esc(a.cover)}')` : ""}"></div>
   <div class="cap">${esc(a.title)}<small>${esc(a.asked || [a.year, a.type === "single" ? "Single" : a.type === "ep" ? "EP" : ""].filter(Boolean).join(" · "))}</small></div></button>`;
 const genreCard = (g) => `<button class="poster" data-mgenre="${g.id}" title="${esc(g.name)}"><div class="im" style="aspect-ratio:1;${g.picture ? `background-image:url('${esc(g.picture)}')` : ""}"></div><div class="cap">${esc(g.name)}</div></button>`;
 // Top songs, New releases, Top albums, Top artists (and Genres on the main page)
-const songCard = (s, n) => `<button class="poster" ${s.asked || s.have ? "" : `data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}"`} title="${esc(s.title)}"><div class="im" style="aspect-ratio:1;${s.cover ? `background-image:url('${esc(s.cover)}')` : ""}"></div>
-  <div class="cap">${n ? n + ". " : ""}${esc(s.title)}<small>${esc(s.asked || (s.have ? "In your music" : s.artist))}</small></div></button>`;
+const songCard = (s, n) => `<div class="pvcard">${B.previewBtn(s.id, "on-card")}<button class="poster" ${s.asked || s.have ? "" : `data-msong="${s.id}" data-malbum="${s.album_id}" data-mname="${esc(s.title)}" data-maname="${esc(s.album)}"`} title="${esc(s.title)}"><div class="im" style="aspect-ratio:1;${s.cover ? `background-image:url('${esc(s.cover)}')` : ""}"></div>
+  <div class="cap">${n ? n + ". " : ""}${esc(s.title)}<small>${esc(s.asked || (s.have ? "In your music" : s.artist))}</small></div></button></div>`;
 const discoverHtml = (d, title, allSongs) => {
   const songs = allSongs ? d.songs : d.songs.slice(0, 10);
   return (d.songs.length ? `<div class="wrap"><h3 class="section-title">${esc(allSongs ? title : "Top 10 songs right now")}</h3><div class="list">${songs.map((x, i) => songLine(x, i + 1)).join("")}</div>
@@ -279,6 +279,7 @@ B.musicTab = async (nav) => {
     const d = b.dataset;
     if (d.msong) {
       const s = B.side(`<h3>${esc(d.mname)}</h3><p class="dim">${esc(d.maname)}</p>
+        <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(d.msong)}<span class="dim">Hear 30 seconds</span></div>
         <button class="opt" data-pick="song">Just this song</button><button class="opt" data-pick="album">The whole album</button>`);
       s.addEventListener("click", (ev) => {
         const pick = ev.target.closest("[data-pick]");
