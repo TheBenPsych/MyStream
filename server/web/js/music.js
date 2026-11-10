@@ -238,7 +238,7 @@
       bar.className = "mbar hidden";
       bar.innerHTML = `<button class="mbar-open" data-open title="Now playing"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
         <div class="mbar-ctl"><button class="circle" data-a="prev" title="Previous song">${icon("prev")}</button><button class="circle white" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song">${I("next")}</button>
-        <button class="circle mheart" data-a="like" title="Like (L)">${I("heart")}</button></div>
+        <button class="circle mheart" data-a="like" title="Like (L)">${I("heart")}</button>${B.volume("", "circle")}</div>
         <div class="mbar-line"><i></i></div>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
@@ -246,6 +246,7 @@
         if (e.target.closest("[data-open]")) openNow();
       });
       document.body.appendChild(bar);
+      B.wireVolume($(".volw", bar), audio, "musicVolume");
     }
     const on = !!s;
     bar.classList.toggle("hidden", !on);
@@ -287,7 +288,7 @@
         <div class="np-main"><div class="np-cover"></div>
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
-            <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button></div>
+            <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
             <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
@@ -304,6 +305,7 @@
         if (nx) { closeNow(); B.go("#/upnext"); }
       });
       document.body.appendChild(np);
+      B.wireVolume($(".volw", np), audio, "musicVolume");
     }
     np.classList.add("on");
     document.body.classList.add("np-open");
