@@ -181,7 +181,8 @@ fun SearchStart(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(start = 8.dp),
             ) {
-                StartButton("Watching together? Take the mood quiz") { navigationManager.navigateTo(Destination.MoodQuiz) }
+                StartButton("Can't decide? Play This or that") { navigationManager.navigateTo(Destination.ThisOrThat()) }
+                StartButton("Watching together? Take the mood quiz") { navigationManager.navigateTo(Destination.MoodQuiz()) }
                 StartButton("Watch in order: Marvel, Star Wars and more") { navigationManager.navigateTo(Destination.WatchOrder) }
             }
         }

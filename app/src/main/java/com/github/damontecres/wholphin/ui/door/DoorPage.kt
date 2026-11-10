@@ -127,7 +127,7 @@ fun DoorPage(
     if (wide) {
         WideDoor(door, state, easy, isTv, viewModel, onClick, onSeeAll, onBrowse, modifier)
     } else {
-        PhoneDoor(state, easy, onClick, onSeeAll, onBrowse, modifier)
+        PhoneDoor(door, state, easy, onClick, onSeeAll, onBrowse, { viewModel.navigationManager.navigateTo(it) }, modifier)
     }
 }
 
@@ -244,6 +244,18 @@ private fun WideDoor(
                 if (state.browse.isNotEmpty()) {
                     item(key = "browse") {
                         BrowseRow(state.browse, easy, onBrowse, Modifier.padding(start = SIDE, end = SIDE))
+                    }
+                }
+                // Ben: the "Can't decide?" games sit at the very bottom, and only pick from this door
+                if (door.hasPickers() && state.rows.isNotEmpty()) {
+                    item(key = "pickers") {
+                        PickerRow(
+                            door = door,
+                            easy = easy,
+                            compact = false,
+                            onOpen = { viewModel.navigationManager.navigateTo(it) },
+                            modifier = Modifier.padding(start = SIDE, end = SIDE),
+                        )
                     }
                 }
             }
@@ -677,11 +689,13 @@ private fun minutesLeft(item: BaseItem): String? {
 
 @Composable
 private fun PhoneDoor(
+    door: BenflixDoor,
     state: DoorPageState,
     easy: Boolean,
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
     onBrowse: (DoorBrowseTile) -> Unit,
+    onOpen: (Destination) -> Unit,
     modifier: Modifier,
 ) {
     // Ben: open at the very top. The picked card and rows load in one by one; until you touch the
@@ -743,6 +757,11 @@ private fun PhoneDoor(
             if (state.browse.isNotEmpty()) {
                 item(key = "browse") {
                     BrowseRow(state.browse, easy, onBrowse, Modifier.padding(horizontal = PHONE_SIDE), columns = 2)
+                }
+            }
+            if (door.hasPickers() && state.rows.isNotEmpty()) {
+                item(key = "pickers") {
+                    PickerRow(door, easy, compact = true, onOpen = onOpen, modifier = Modifier.padding(horizontal = PHONE_SIDE))
                 }
             }
         }
