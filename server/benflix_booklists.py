@@ -248,6 +248,8 @@ def hc(query, variables=None):
 
 
 def _ol(path, params=None):
+    if path == "/search.json" and params is not None:
+        params = dict(params, lang="en")  # English titles and covers when a book has editions in many languages
     url = OL + path + ("?" + urllib.parse.urlencode(params) if params else "")
     return _get(url) or {}
 
@@ -369,6 +371,44 @@ def hc_search(text, per_page=5):
         except ValueError:
             res = {}
     return [(h or {}).get("document") or {} for h in res.get("hits") or []]
+
+
+_NOT_LATIN = re.compile(r"[\u0370-\u03ff\u0400-\u052f\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+_ACCENTS = re.compile(r"[ąćęłńśźżđőűøåæßñãõçěščřžůýäöüìòùõ]", re.I)
+
+
+def _english_rank(title):
+    """How English a title looks: 2 = plain English letters, 1 = Latin letters with foreign accents
+    (a German or Polish copy), 0 = another alphabet (Cyrillic, Greek, Japanese ...)"""
+    t = str(title or "")
+    if not t or _NOT_LATIN.search(t):
+        return 0
+    return 1 if _ACCENTS.search(t) else 2
+
+
+def hc_series_books(name):
+    """A series in order from Hardcover, one book per place: the English book most people read.
+    Hardcover lists every translation as its own book at the same place, so the most-read
+    English-looking one wins (that's the original edition, with its English cover)."""
+    d = hc(
+        "query ($n: String!) { series(where: {name: {_eq: $n}}, limit: 1, order_by: {books_count: desc}) { id name "
+        "book_series(order_by: {position: asc}, limit: 300) { position book { id title users_count } } } }",
+        {"n": name},
+    )
+    found = ((d or {}).get("series") or [None])[0]
+    best = {}
+    for bs in (found or {}).get("book_series") or []:
+        pos = bs.get("position")
+        b = bs.get("book") or {}
+        if pos is None or not b.get("id") or float(pos) != int(float(pos)) or int(float(pos)) < 1:
+            continue  # skip "1.5" novellas
+        p = int(float(pos))
+        rank = (_english_rank(b.get("title")), b.get("users_count") or 0)
+        if p not in best or rank > best[p][0]:
+            best[p] = (rank, b)
+    rows = [(p, best[p][1]["id"]) for p in sorted(best) if best[p][0][0]]
+    full = {b.get("id"): _hc_card(b) for b in hc_books([i for _p, i in rows][:30])}
+    return [dict(full[i], pos=p) for p, i in rows if full.get(i)]
 
 
 # ---------- The daily gather ----------
@@ -586,26 +626,12 @@ def _gather_series(old):
     out = {}
     for name in sorted(series)[:60]:
         prev = old.get(name)
-        if prev and time.time() - prev.get("at", 0) < 6 * 86400:
+        if prev and prev.get("v") == 2 and time.time() - prev.get("at", 0) < 6 * 86400:
             out[name] = prev
             continue
         try:
-            d = hc(
-                "query ($n: String!) { series(where: {name: {_eq: $n}}, limit: 3, order_by: {books_count: desc}) { id name "
-                "book_series(order_by: {position: asc}, limit: 40) { position book { id title } } } }",
-                {"n": name},
-            )
-            found = ((d or {}).get("series") or [None])[0]
-            books, seen = [], set()
-            for bs in (found or {}).get("book_series") or []:
-                pos = bs.get("position")
-                b = bs.get("book") or {}
-                if pos is None or float(pos) != int(float(pos)) or int(float(pos)) in seen or not b.get("id"):
-                    continue  # skip "1.5" novellas and second copies
-                seen.add(int(float(pos)))
-                books.append({"pos": int(float(pos)), "id": b["id"], "name": b.get("title")})
-            full = {b.get("id"): _hc_card(b) for b in hc_books([b["id"] for b in books][:30])}
-            out[name] = {"at": int(time.time()), "books": [dict(full.get(b["id"]) or {}, pos=b["pos"]) for b in books if full.get(b["id"])]}
+            books = hc_series_books(name)
+            out[name] = {"at": int(time.time()), "v": 2, "books": books}
         except Exception as e:
             log(f"Series {name}: {e!r}")
             if prev:
@@ -693,16 +719,25 @@ def _view(c, have, **extra):
 
 
 def _row(cards, have, limit=30, seen=None, **extra):
+    """A row's books, each only once (the apps need every book in a row to be different; a book that won
+    two prizes, like James, shows once with both prizes)"""
     out = []
+    here = {}
     for c in cards or []:
         v = _view(c, have, **extra)
         if not v:
             continue
         n = _books.norm(v["name"])
+        twin = here.get(v["key"]) or here.get(n)
+        if twin is not None:
+            if v.get("award") and v["award"] not in (twin.get("award") or ""):
+                twin["award"] = (twin["award"] + " · " if twin.get("award") else "") + v["award"]
+            continue
         if seen is not None:
             if n in seen:
                 continue
             seen.add(n)
+        here[v["key"]] = here[n] = v
         out.append(v)
         if len(out) >= limit:
             break
@@ -872,12 +907,21 @@ def _nyt_rank(name):
     return None
 
 
-def _age_of(subjects):
+def _age_of(subjects, genres=None):
+    """Who it's for. Hardcover's genres first (cleaner), then Open Library's subjects, which often
+    say "juvenile fiction" on grown-up books too, so "young adult" and "adult" win over it."""
+    g = " ".join(genres or []).lower()
     s = " ".join(subjects or []).lower()
-    if any(w in s for w in ("juvenile", "children's", "picture book", "middle grade")):
+    if "children" in g or "middle grade" in g or "picture book" in g:
         return "Kids"
+    if "young adult" in g:
+        return "Teens"
+    if "adult" in g:
+        return "Adults"
     if "young adult" in s:
         return "Teens"
+    if any(w in s for w in ("picture book", "middle grade", "juvenile literature", "children's stories")):
+        return "Kids"
     return "Adults"
 
 
@@ -960,21 +1004,7 @@ def _look_up(key, name, author):
                     log(f"Hardcover quotes {name}: {e!r}")
                 s = info.get("series")
                 if s and s.get("name"):
-                    sd = hc(
-                        "query ($n: String!) { series(where: {name: {_eq: $n}}, limit: 1, order_by: {books_count: desc}) { "
-                        "book_series(order_by: {position: asc}, limit: 40) { position book { id title } } } }",
-                        {"n": s["name"]},
-                    )
-                    rows, seen = [], set()
-                    for bs in (((sd or {}).get("series") or [{}])[0] or {}).get("book_series") or []:
-                        pos = bs.get("position")
-                        bk = bs.get("book") or {}
-                        if pos is None or float(pos) != int(float(pos)) or int(float(pos)) in seen:
-                            continue
-                        seen.add(int(float(pos)))
-                        rows.append((int(float(pos)), bk.get("id")))
-                    full = {b.get("id"): _hc_card(b) for b in hc_books([i for _p, i in rows if i][:25])}
-                    info["seriesBooks"] = [dict(full[i], pos=p) for p, i in rows if full.get(i)]
+                    info["seriesBooks"] = hc_series_books(s["name"])
         except Exception as e:
             log(f"Hardcover details {name}: {e!r}")
     # More by this author, more like this (Open Library)
@@ -992,6 +1022,7 @@ def _look_up(key, name, author):
     except Exception as e:
         log(f"More like {name}: {e!r}")
     info["at"] = int(time.time())
+    info["v"] = 2  # 2 = English series books
     return info
 
 
@@ -1001,7 +1032,7 @@ def about(key, name, author, user_id, is_admin):
         raise _books.BooksError(400, "Which book?")
     with _lock:
         info = _about.get(key)
-    if not info or time.time() - info.get("at", 0) > 7 * 86400:
+    if not info or info.get("v") != 2 or time.time() - info.get("at", 0) > 7 * 86400:
         info = _look_up(key, name or "", author or "")
         if not info.get("desc"):
             info["at"] -= 6 * 86400  # nothing found (maybe no internet): look again in a day, not a week
@@ -1044,7 +1075,7 @@ def about(key, name, author, user_id, is_admin):
         facts.append({"label": "Narrator", "value": info["narrator"]})
     if series and series.get("name"):
         facts.append({"label": "Series", "value": series["name"] + (f", book {series['pos']:g}" if isinstance(series.get("pos"), (int, float)) else "")})
-    facts.append({"label": "Age", "value": _age_of(subjects)})
+    facts.append({"label": "Age", "value": _age_of(subjects, info.get("genres"))})
     if info.get("publisher"):
         facts.append({"label": "Publisher", "value": info["publisher"]})
     genres = info.get("genres") or _books._book_genres(subjects)

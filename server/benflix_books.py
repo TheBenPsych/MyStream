@@ -2267,9 +2267,72 @@ def _ch_defaults():
         or next((q.get("id") for q in quality if "audio" in (q.get("name") or "").lower()), first),
         ebook_quality=next((q.get("id") for q in quality if q.get("profileType") == "ebook"), None)
         or next((q.get("id") for q in quality if "audio" not in (q.get("name") or "").lower()), first),
-        meta=(meta[0].get("id") if meta else 1),
+        meta=_ch_english_meta(meta),
     )
+    _ch_english_releases()
     return _ch_setup
+
+
+ENGLISH = "eng, en, en-US, en-GB, en-CA, en-AU, English, null"
+FOREIGN_RELEASES = (
+    r"/[\[\(](german|deutsch|ger|deu|french|fre|fra|spanish|spa|esp|italian|ita|polish|pol|russian|rus|ukrainian|ukr|"
+    r"dutch|nld|portuguese|por|swedish|swe|turkish|tur|czech|cze|hungarian|hun|japanese|jpn|chinese|chi)[\]\)]"
+    r"|\b(deutsch|fran[cç]ais|espa[nñ]ol|italiano|polski|nederlands|portugu[eê]s|svenska|t[uü]rk[cç]e|[cč]e[sš]tina|magyar)\b/i"
+)
+
+
+def _ch_english_meta(meta):
+    """A "Benflix English" metadata profile in Chaptarr, so every book it adds is the English edition
+    (made once by copying Chaptarr's first profile). Falls back to the first profile if Chaptarr says no."""
+    mine = next((m for m in meta if m.get("name") == "Benflix English"), None)
+    try:
+        if mine is None and meta:
+            new = {k: v for k, v in meta[0].items() if k != "id"}
+            new.update(name="Benflix English", allowedLanguages=ENGLISH)
+            mine = ch("POST", "/api/v1/metadataprofile", new) or None
+            log("Made the Benflix English profile in Chaptarr")
+        elif mine is not None and mine.get("allowedLanguages") != ENGLISH:
+            mine = dict(mine, allowedLanguages=ENGLISH)
+            ch("PUT", f"/api/v1/metadataprofile/{mine['id']}", mine)
+    except BooksError as e:
+        log(f"Couldn't set Chaptarr to English books: {e}")
+        mine = None
+    if mine and mine.get("id"):
+        return mine["id"]
+    return meta[0].get("id") if meta else 1
+
+
+def _ch_english_releases():
+    """A Chaptarr release profile that skips downloads marked as another language ("[German]", "Deutsch" ...)"""
+    try:
+        have = ch("GET", "/api/v1/releaseprofile") or []
+        for rp in have:
+            ign = rp.get("ignored")
+            if FOREIGN_RELEASES in (ign if isinstance(ign, list) else str(ign or "").split(",")):
+                return
+        try:
+            ch("POST", "/api/v1/releaseprofile", {"enabled": True, "required": [], "ignored": [FOREIGN_RELEASES], "indexerId": 0, "tags": []})
+        except BooksError:
+            ch("POST", "/api/v1/releaseprofile", {"enabled": True, "required": "", "ignored": FOREIGN_RELEASES, "indexerId": 0, "tags": []})
+        log("Told Chaptarr to skip downloads in other languages")
+    except BooksError as e:
+        log(f"Couldn't add Chaptarr's English-only download rule: {e}")
+
+
+def _english_edition(book):
+    """Monitor only the English edition (the one most people rated) when Chaptarr knows the editions"""
+    eds = book.get("editions") or []
+
+    def is_eng(e):
+        lang = str(e.get("language") or "").lower()
+        return lang in ("eng", "en", "english") or lang.startswith("en-")
+
+    eng = [e for e in eds if isinstance(e, dict) and is_eng(e)]
+    if not eng:
+        return book
+    pick = max(eng, key=lambda e: ((e.get("ratings") or {}).get("votes") or 0, bool(e.get("monitored"))))
+    book["editions"] = [dict(e, monitored=e is pick) for e in eds]
+    return book
 
 
 def _send_to_chaptarr(r):
@@ -2292,7 +2355,7 @@ def _send_to_chaptarr(r):
     folder = d["ebook"] if "ebook" in kinds else d["audio"]
     book_id = best.get("id") or 0
     if not book_id:
-        book = dict(best)
+        book = _english_edition(dict(best))
         author = dict(book.get("author") or {})
         author.update(
             qualityProfileId=d["ebook_quality"] if "ebook" in kinds else d["audio_quality"],
