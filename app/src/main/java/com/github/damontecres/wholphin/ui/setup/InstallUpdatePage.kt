@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
@@ -269,16 +271,40 @@ fun InstallUpdatePage(
                 Timber.w(ex, "No installer for plainView=%s", plainView)
                 false
             }
+        // Only one install screen at a time. Two at once (for example a slow TV still "Preparing" the first one)
+        // read the same file together, and the second said "There was a problem parsing the package".
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastInstallerOpenAt < INSTALLER_REOPEN_GAP_MS) {
+            Timber.w("Install screen was just opened, not opening a second one")
+            return
+        }
+        lastInstallerOpenAt = now
+        // Notice if the install screen covers Benflix at all, even for a moment or as a small box on top
+        var leftScreen = false
+        lateinit var observer: LifecycleEventObserver
+        observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_PAUSE) leftScreen = true
+                // Back from the install screen (cancelled or failed): Install now works again straight away
+                if (event == Lifecycle.Event.ON_RESUME && leftScreen) {
+                    lastInstallerOpenAt = 0L
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
         if (!launch(plainView = false) && !launch(plainView = true)) {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            lastInstallerOpenAt = 0L
             com.github.damontecres.wholphin.ui.components.BenflixNotices
                 .pill("Couldn't open the installer. Try Install now again.")
             return
         }
-        // Safety net: if the install screen didn't cover Benflix after a few seconds, open it the other way
+        // Safety net: only if the install screen never showed up at all, open it the other way
         scope.launch {
             delay(INSTALLER_CHECK_MS)
-            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            if (!leftScreen && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                 Timber.w("Installer didn't show up, trying again")
+                lifecycleOwner.lifecycle.removeObserver(observer)
                 launch(plainView = true)
             }
         }
@@ -410,7 +436,13 @@ fun InstallUpdatePage(
 }
 
 /** How long to wait for Android's install screen before trying to open it a second way */
-private const val INSTALLER_CHECK_MS = 4_000L
+private const val INSTALLER_CHECK_MS = 6_000L
+
+/** After opening the install screen, ignore another open for this long, so two never stack up */
+private const val INSTALLER_REOPEN_GAP_MS = 10_000L
+
+/** When the install screen was last opened (since the TV or phone started) */
+private var lastInstallerOpenAt = 0L
 
 @Composable
 fun InstallUpdatePageContent(

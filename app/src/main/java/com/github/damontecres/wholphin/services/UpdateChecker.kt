@@ -100,6 +100,7 @@ class UpdateChecker
             private const val KEY_READY_VERSION = "benflix_update_ready_version"
             private const val KEY_READY_URI = "benflix_update_ready_uri"
             private const val KEY_READY_AT = "benflix_update_ready_at"
+            private const val KEY_READY_SIZE = "benflix_update_ready_size"
 
             /** When this TV or phone first saw an update for the version it has (used when the build history is missing) */
             private const val KEY_FIRST_SEEN_FOR = "benflix_update_first_seen_for"
@@ -351,6 +352,7 @@ class UpdateChecker
                 putString(KEY_READY_VERSION, version.toString())
                 putString(KEY_READY_URI, uri.toString())
                 putLong(KEY_READY_AT, System.currentTimeMillis())
+                putLong(KEY_READY_SIZE, fileSize(uri))
             }
         }
 
@@ -359,19 +361,52 @@ class UpdateChecker
                 remove(KEY_READY_VERSION)
                 remove(KEY_READY_URI)
                 remove(KEY_READY_AT)
+                remove(KEY_READY_SIZE)
             }
         }
 
-        /** The finished download of [version], if it's still there and can be read, otherwise null */
+        /**
+         * The finished download of [version], if it's still there, whole and readable, otherwise null.
+         * A file that changed size since it was downloaded (cut short or half overwritten) is thrown away, so it's
+         * downloaded fresh instead of Android saying "There was a problem parsing the package".
+         */
         fun readyDownload(version: Version): Uri? {
             if (prefs.getString(KEY_READY_VERSION, null) != version.toString()) return null
             val uri = prefs.getString(KEY_READY_URI, null)?.let { Uri.parse(it) } ?: return null
             return try {
                 val ok = context.contentResolver.openInputStream(uri)?.use { it.read() >= 0 } == true
-                if (ok) uri else null
+                val savedSize = prefs.getLong(KEY_READY_SIZE, -1L)
+                val size = fileSize(uri)
+                when {
+                    !ok -> null
+                    savedSize > 0 && size > 0 && size != savedSize -> {
+                        Timber.w("The ready update file changed size (%d, expected %d), downloading again", size, savedSize)
+                        clearReady()
+                        null
+                    }
+                    else -> uri
+                }
             } catch (ex: Exception) {
                 Timber.w(ex, "The ready update file is gone")
                 null
+            }
+        }
+
+        /** The size of a downloaded file in bytes, or -1 if Android doesn't say */
+        private fun fileSize(uri: Uri): Long =
+            try {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: -1L
+            } catch (ex: Exception) {
+                -1L
+            }
+
+        /** Stop if the download came out shorter or longer than GitHub said, instead of keeping a broken file */
+        private fun checkComplete(
+            copied: Long,
+            expected: Long,
+        ) {
+            if (expected > 0 && copied != expected) {
+                throw IOException("The update download stopped early ($copied of $expected bytes)")
             }
         }
 
@@ -459,11 +494,13 @@ class UpdateChecker
                             )
                         if (uri != null) {
                             try {
-                                it.body.byteStream().use { input ->
-                                    resolver.openOutputStream(uri).use { output ->
-                                        copyTo(input, output!!, callback = callback)
+                                val copied =
+                                    it.body.byteStream().use { input ->
+                                        resolver.openOutputStream(uri, "wt").use { output ->
+                                            copyTo(input, output!!, callback = callback)
+                                        }
                                     }
-                                }
+                                checkComplete(copied, it.body.contentLength())
                             } catch (ex: Exception) {
                                 try {
                                     resolver.delete(uri, null, null)
@@ -532,10 +569,18 @@ class UpdateChecker
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             downloadDir.mkdirs()
             val targetFile = File(downloadDir, APK_NAME)
-            targetFile.outputStream().use { output ->
-                response.body.byteStream().use { input ->
-                    copyTo(input, output, callback = callback)
-                }
+            try {
+                val copied =
+                    targetFile.outputStream().use { output ->
+                        response.body.byteStream().use { input ->
+                            copyTo(input, output, callback = callback)
+                        }
+                    }
+                checkComplete(copied, response.body.contentLength())
+            } catch (ex: Exception) {
+                // Don't leave half a file where the installer could pick it up
+                targetFile.delete()
+                throw ex
             }
             return targetFile
         }
