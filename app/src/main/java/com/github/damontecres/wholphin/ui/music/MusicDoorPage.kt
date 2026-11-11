@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.door.doorHome
+import com.github.damontecres.wholphin.ui.door.doorSectionStart
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -340,11 +341,19 @@ private fun MusicSectionPage(
     modifier: Modifier,
 ) {
     val hero = key == "songs" || key == "liked"
+    val railGap = doorSectionStart()
+    val listStart =
+        when {
+            !wide -> BenflixSpace.phoneEdge
+            hero -> 0.dp
+            else -> railGap
+        }
     val inner =
         modifier.padding(
             // Songs and Liked songs draw their cover up behind the top bar, like they do on their own
             top = if (wide && !hero) LocalTopBarOverlap.current else 0.dp,
-            start = if (wide) 0.dp else BenflixSpace.phoneEdge,
+            // Songs and Liked songs keep their own side margin; the lists need one to clear the side menu
+            start = listStart,
             end = if (wide) 16.dp else 8.dp,
         )
     when (key) {

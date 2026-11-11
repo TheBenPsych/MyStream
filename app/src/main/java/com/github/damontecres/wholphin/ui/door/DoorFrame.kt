@@ -409,6 +409,14 @@ fun DoorChip(
 /** How far a door's own left edge moves in for the rail (TV): the rail covers part of the usual margin */
 fun doorRailInset(isTv: Boolean): Dp = if (isTv) RAIL_TUCKED - CONTENT_TUCK else RAIL_OPEN
 
+/**
+ * Ben (TV photo, My List): a section page that has no side margin of its own needs this much, or the
+ * tucked side menu's icons sit on its first poster and its title. Lines it up with the door's Home rows.
+ * Wide touch screens already sit right of the open menu, so they need none.
+ */
+@Composable
+fun doorSectionStart(): Dp = if (rememberIsTv()) BenflixSpace.tvEdge else 0.dp
+
 private val RAIL_TUCKED = 76.dp
 private val RAIL_OPEN = 250.dp
 
