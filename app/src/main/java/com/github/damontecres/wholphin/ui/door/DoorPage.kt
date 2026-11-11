@@ -214,7 +214,7 @@ private fun DoorSectionPage(
     val inner =
         modifier.padding(
             top = if (wide) LocalTopBarOverlap.current else 0.dp,
-            start = if (wide) 0.dp else PHONE_SIDE,
+            start = if (wide) doorSectionStart() else PHONE_SIDE,
             end = if (wide) 16.dp else 8.dp,
         )
     val browse = { what: String -> Destination.DoorBrowse(door.name, what) }
