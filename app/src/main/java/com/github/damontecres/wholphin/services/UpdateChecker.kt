@@ -378,13 +378,19 @@ class UpdateChecker
                 val savedSize = prefs.getLong(KEY_READY_SIZE, -1L)
                 val size = fileSize(uri)
                 when {
-                    !ok -> null
+                    !ok -> {
+                        null
+                    }
+
                     savedSize > 0 && size > 0 && size != savedSize -> {
                         Timber.w("The ready update file changed size (%d, expected %d), downloading again", size, savedSize)
                         clearReady()
                         null
                     }
-                    else -> uri
+
+                    else -> {
+                        uri
+                    }
                 }
             } catch (ex: Exception) {
                 Timber.w(ex, "The ready update file is gone")
