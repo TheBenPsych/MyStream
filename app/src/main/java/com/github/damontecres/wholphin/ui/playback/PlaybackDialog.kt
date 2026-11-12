@@ -471,10 +471,10 @@ fun PlaybackDialog(
                 title = "Quality",
                 subtitle = "Lower it if the picture keeps stopping to load",
                 lines =
-                    AppPreference.bitrateValues.reversed().map { bitrate ->
+                    qualityChoices().map { bitrate ->
                         PanelLine.Row(
                             label = qualityWords(bitrate),
-                            selected = bitrate == settings.maxBitrate,
+                            selected = if (isBestQuality(bitrate)) isBestQuality(settings.maxBitrate) else bitrate == settings.maxBitrate,
                             onClick = { onPlaybackActionClick.invoke(PlaybackAction.ChangeBitrate(bitrate)) },
                         )
                     },
@@ -498,11 +498,25 @@ internal fun delayWords(delay: Duration): String =
 
 private fun speedWords(speed: Float): String = if (speed == 1f) "Normal" else "${speed.toString().removeSuffix(".0")}x"
 
+/** Rates this high all play the original file, so they're one "Best" choice */
+private const val BEST_QUALITY_MBPS = 60
+
+internal fun isBestQuality(bitrate: Long): Boolean = bitrate / (1024.0 * 1024.0) >= BEST_QUALITY_MBPS
+
+/**
+ * The Quality menu's rows, highest first: one "Best" row (the top rate, so nothing is ever
+ * squeezed), then each lower rate once. Before, every rate from 60 Mbps up showed as its own "Best".
+ */
+internal fun qualityChoices(): List<Long> {
+    val all = AppPreference.bitrateValues.reversed()
+    return listOfNotNull(all.firstOrNull()) + all.filterNot { isBestQuality(it) }
+}
+
 /** The quality in words: the top ones are "Best", the rest say about how sharp the picture is */
 internal fun qualityWords(bitrate: Long): String {
     val mbps = bitrate / (1024.0 * 1024.0)
     return when {
-        mbps >= 60 -> "Best"
+        isBestQuality(bitrate) -> "Best"
         mbps >= 15 -> "Very sharp · ${formatMaxBitrate(bitrate)}"
         mbps >= 8 -> "Sharp (1080p) · ${formatMaxBitrate(bitrate)}"
         mbps >= 3 -> "Good (720p) · ${formatMaxBitrate(bitrate)}"

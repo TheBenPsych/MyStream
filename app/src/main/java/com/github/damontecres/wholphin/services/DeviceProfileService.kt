@@ -43,13 +43,15 @@ class DeviceProfileService
         suspend fun getOrCreateDeviceProfile(
             appPrefs: AppPreferences,
             serverVersion: ServerVersion?,
+            // Benflix: the quality picked in the player for this video (else the saved one)
+            maxBitrateNow: Long? = null,
         ): DeviceProfile =
             withContext(WholphinDispatchers.Default) {
                 val prefs = appPrefs.playbackPreferences
                 mutex.withLock {
                     val newConfig =
                         DeviceProfileConfiguration(
-                            maxBitrate = prefs.maxBitrate.toInt(),
+                            maxBitrate = (maxBitrateNow?.takeIf { it > 0 } ?: prefs.maxBitrate).toInt(),
                             overrides = prefs.overrides,
                             experimental = appPrefs.experimentalPreferences,
                             jellyfinTenEleven =
