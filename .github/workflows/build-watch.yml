@@ -1,0 +1,69 @@
+name: Build watcher
+
+# Benflix (Ben 2026-11-12): checks every "MyStream build" on main when it finishes.
+# - Failed the first time: tries it once more by itself (GitHub's build computers sometimes shut down
+#   halfway, which isn't a problem with the code).
+# - Failed again: opens a GitHub issue "The app update didn't build" so Ben gets an email.
+# - A later build worked: closes that issue again with a note.
+on:
+  workflow_run:
+    workflows: ["MyStream build"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: write
+  issues: write
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retry, report, or all clear
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          TITLE: ${{ github.event.workflow_run.display_title }}
+        run: |
+          ISSUE_TITLE="The app update didn't build"
+          open_issue=$(gh issue list -R "$REPO" --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ "$CONCLUSION" = "success" ]; then
+            if [ -n "$open_issue" ]; then
+              gh issue close "$open_issue" -R "$REPO" --comment "All good again: the build for \"$TITLE\" worked, so the update is out. $RUN_URL"
+            fi
+            echo "Build worked."
+            exit 0
+          fi
+          if [ "$CONCLUSION" != "failure" ] && [ "$CONCLUSION" != "timed_out" ]; then
+            # Cancelled: a newer build took over, nothing to do
+            echo "Build was $CONCLUSION, nothing to do."
+            exit 0
+          fi
+          latest=$(gh api "repos/$REPO/commits/main" --jq .sha)
+          if [ "$latest" != "$SHA" ]; then
+            echo "A newer change is on main; its own build will make the update."
+            exit 0
+          fi
+          if [ "$ATTEMPT" -lt 2 ]; then
+            echo "First failure: trying once more."
+            gh run rerun "$RUN_ID" -R "$REPO" --failed
+            exit 0
+          fi
+          body="The build that turns the newest change into an app update failed twice, so the update isn't out yet.
+
+          Change: $TITLE
+          Build: $RUN_URL
+
+          Ask Claude in the Benflix project to look at it. This issue closes by itself when a build works."
+          if [ -n "$open_issue" ]; then
+            gh issue comment "$open_issue" -R "$REPO" --body "$body"
+          else
+            gh issue create -R "$REPO" --title "$ISSUE_TITLE" --body "$body" --assignee TheBenPsych || \
+              gh issue create -R "$REPO" --title "$ISSUE_TITLE" --body "$body"
+          fi
