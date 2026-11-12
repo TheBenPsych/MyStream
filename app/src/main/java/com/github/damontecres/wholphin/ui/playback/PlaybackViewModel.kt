@@ -653,6 +653,9 @@ class PlaybackViewModel
                 }
                 this@PlaybackViewModel.currentItem = playlistItem
                 this@PlaybackViewModel.itemId = item.id
+                // Benflix: autoplay moved on to another episode, so the show page under the player
+                // shows this one when they come back (or tab out of the app and back in)
+                if (item.type == BaseItemKind.EPISODE) pointPageUnderAt(item)
 
                 val isLiveTv = item.type == BaseItemKind.TV_CHANNEL
                 val base = item.data
@@ -2123,6 +2126,47 @@ class PlaybackViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not report the damaged file")
+                }
+            }
+        }
+
+        /** Benflix: the page under the player follows the episode playing now (see [play]) */
+        private fun pointPageUnderAt(episode: BaseItem) {
+            val data = episode.data
+            val seasonId = data.seasonId
+            val seriesId = data.seriesId
+            viewModelScope.launch(WholphinDispatchers.Main) {
+                try {
+                    navigationManager.replaceBelow(destination) { below ->
+                        when {
+                            below is Destination.SeriesOverview &&
+                                below.itemId == seriesId &&
+                                seasonId != null &&
+                                below.seasonEpisode?.episodeId != episode.id -> {
+                                below.copy(
+                                    seasonEpisode =
+                                        com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds(
+                                            seasonId,
+                                            data.parentIndexNumber,
+                                            episode.id,
+                                            data.indexNumber,
+                                        ),
+                                )
+                            }
+
+                            below is Destination.MediaItem &&
+                                below.type == BaseItemKind.EPISODE &&
+                                below.itemId != episode.id -> {
+                                below.copy(itemId = episode.id)
+                            }
+
+                            else -> {
+                                null
+                            }
+                        }
+                    }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not move the page under the player to %s", episode.id)
                 }
             }
         }
