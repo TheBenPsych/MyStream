@@ -40,6 +40,7 @@ class SubtitleTimingViewModel
         fun fix(
             itemId: UUID,
             subtitleIndex: Int,
+            better: Boolean = false,
             onFixed: () -> Unit,
         ) {
             if (job?.isActive == true) {
@@ -50,7 +51,7 @@ class SubtitleTimingViewModel
                 viewModelScope.launch {
                     val id = itemId.toString().replace("-", "")
                     try {
-                        var answer = helper.postJson("/api/subsync/$id", JSONObject().put("index", subtitleIndex))
+                        var answer = helper.postJson("/api/subsync/$id", JSONObject().put("index", subtitleIndex).put("better", better))
                         showToast(context, answer.optString("message", "Tower is lining the subtitles up."), Toast.LENGTH_LONG)
                         repeat(90) {
                             val state = answer.optString("state")

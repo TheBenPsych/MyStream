@@ -149,6 +149,13 @@ fun PlaybackDialog(
                                 onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) },
                             ),
                         )
+                        add(
+                            PanelLine.Row(
+                                label = "Find better subtitles",
+                                note = "Bazarr swaps them for different ones",
+                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FindBetterSubtitles) },
+                            ),
+                        )
                     }
                     add(
                         PanelLine.Row(

@@ -196,6 +196,34 @@ find_chaptarr() {
 }
 find_chaptarr
 
+say "Connecting Bazarr (for \"Find better subtitles\" in the player)"
+find_bazarr() {
+  local c dir cfg key port base ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i bazarr | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Bazarr app found. Find better subtitles stays off."; return; fi
+  dir=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")
+  [ -n "$dir" ] || dir=/mnt/user/appdata/bazarr
+  for cfg in "$dir/config/config.yaml" "$dir/config.yaml" "$dir/config/config.ini" "$dir/config.ini"; do [ -f "$cfg" ] && break; done
+  if [ ! -f "$cfg" ]; then echo "  PROBLEM  Couldn't find Bazarr's settings file. Open Bazarr once in the browser, then run this again."; return; fi
+  # The key sits under "auth:" (newer Bazarr, config.yaml) or "[auth]" (older, config.ini)
+  key=$(awk '/^\[?auth\]?:?[[:space:]]*$/{a=1;next} /^(\[|[A-Za-z_]+:[[:space:]]*$)/{a=0} a && /apikey/{sub(/.*apikey[[:space:]]*[:=][[:space:]]*/,""); gsub(/["\047[:space:]]/,""); print; exit}' "$cfg")
+  port=$(awk '/^\[?general\]?:?[[:space:]]*$/{a=1;next} /^(\[|[A-Za-z_]+:[[:space:]]*$)/{a=0} a && /^[[:space:]]*port[[:space:]]*[:=]/{sub(/.*[:=][[:space:]]*/,""); gsub(/["\047[:space:]]/,""); print; exit}' "$cfg")
+  base=$(awk '/^\[?general\]?:?[[:space:]]*$/{a=1;next} /^(\[|[A-Za-z_]+:[[:space:]]*$)/{a=0} a && /base_url/{sub(/.*base_url[[:space:]]*[:=][[:space:]]*/,""); gsub(/["\047[:space:]]/,""); print; exit}' "$cfg")
+  [ -n "$port" ] || port=6767
+  base=${base%/}
+  if [ -z "$key" ]; then echo "  PROBLEM  Bazarr has no API key in its settings yet. Open Bazarr once, then run this again."; return; fi
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port$base" "http://$HOST_IP:$port$base" ${ipaddr:+"http://$ipaddr:$port$base"}; do
+    if curl -fs -m 8 -H "X-API-KEY: $key" "$u/api/system/status" >/dev/null; then
+      printf 'BAZARR_URL=%s\nBAZARR_KEY=%s\n' "$u" "$key" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but it didn't answer on port $port. Send this output to Claude."
+}
+find_bazarr
+
 say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
 SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
 find_slskd() {

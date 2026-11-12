@@ -158,7 +158,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     (source.MediaStreams || []).filter((s) => s.Type === "Subtitle" && s.DeliveryMethod === "External" && s.DeliveryUrl).forEach((s) => {
       const t = document.createElement("track");
       t.kind = "subtitles"; t.label = s.DisplayTitle || s.Language || "Subtitles"; t.srclang = s.Language || "en";
-      t.src = streamUrl(withKey(s.DeliveryUrl.replace(/\/Stream\.\w+/, "/Stream.vtt")));
+      const vtt = streamUrl(withKey(s.DeliveryUrl.replace(/\/Stream\.\w+/, "/Stream.vtt")));
+      t.src = vtt + (vtt.includes("?") ? "&" : "?") + "fresh=" + Date.now(); // new words after a fix, not the browser's old copy
       t.dataset.index = s.Index;
       t.addEventListener("load", moveCues);
       v.appendChild(t);
@@ -377,6 +378,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Fix a problem</h4>
       <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
       <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
+      ${subOn && !B.me.kids ? `<button class="opt" data-better>${I("sub")} Find better subtitles<small>Bazarr swaps them for different ones</small></button>` : ""}
       ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
       <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
       <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
@@ -393,6 +395,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if (e.target.closest("[data-skipwrong]")) return $(".fixlist", p).classList.toggle("hidden");
       if (e.target.closest("[data-nosound]")) { p.remove(); return fixNoSound(); }
       if (e.target.closest("[data-stutter]")) { p.remove(); return fixPicture(); }
+      if (e.target.closest("[data-better]")) { p.remove(); return fixSubs(true); }
       if (e.target.closest("[data-subwrong]")) {
         if (subOn && !B.me.kids) { p.remove(); return fixSubs(); }
         const first = $("#psSubs", p); if (first) first.scrollIntoView({ block: "start" });
@@ -431,10 +434,10 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   };
 
   // ---------- "Subtitles are early or late": Tower lines them up with the voices ----------
-  const fixSubs = async () => {
+  const fixSubs = async (better) => {
     const was = ((source && source.MediaStreams) || []).find((x) => x.Index === subIndex) || {};
     let job;
-    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex }); } catch (err) { return B.toast(err.message); }
+    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex, better: !!better }); } catch (err) { return B.toast(err.message); }
     B.toast(job.message || "Tower is lining the subtitles up. It takes a minute or two.");
     for (let i = 0; i < 90 && B.alive(nav); i++) {
       await new Promise((r) => setTimeout(r, 4000));

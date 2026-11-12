@@ -125,6 +125,9 @@ sealed interface PlaybackAction {
     /** Benflix: "Subtitles are early or late" (Tower lines them up with the voices) */
     data object FixSubtitleTiming : PlaybackAction
 
+    /** Benflix: "Find better subtitles" (Bazarr throws these out and fetches different ones) */
+    data object FindBetterSubtitles : PlaybackAction
+
     data class ToggleCaptions(
         val index: Int,
     ) : PlaybackAction
