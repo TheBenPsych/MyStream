@@ -12,7 +12,9 @@ const EJS_CORES = {
   virtualboy: "vb", "virtual-boy": "vb", arcade: "arcade", fbneo: "arcade", mame: "arcade", cps1: "arcade", cps2: "arcade", cps3: "arcade", neogeoaes: "arcade", neogeomvs: "arcade",
   coleco: "coleco", colecovision: "coleco", "3do": "3do",
 };
-const EJS_DATA = "https://cdn.emulatorjs.org/stable/data/";
+// Benflix security: one fixed version of the game player, never "whatever is newest today", so a change on
+// their website can't reach Benflix by itself. To update: check the newest at https://www.npmjs.com/package/@emulatorjs/emulatorjs
+const EJS_DATA = "https://cdn.emulatorjs.org/4.2.3/data/";
 B.gamesList = () => B.cached("games", 300000, () => B.call("GET", "api/games"));
 const cover = (g) => (g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "");
 const playableHere = (c) => !!EJS_CORES[c.slug];
