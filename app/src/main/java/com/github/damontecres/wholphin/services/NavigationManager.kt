@@ -83,6 +83,26 @@ class NavigationManager
             log()
         }
 
+        /**
+         * Benflix: swap the page right under [top] (when it's still on the back stack) for what
+         * [change] returns, e.g. so the show page under the player shows the episode on now.
+         * Nothing happens when [change] returns null or the same page.
+         */
+        fun replaceBelow(
+            top: Destination,
+            change: (Destination) -> Destination?,
+        ) {
+            synchronized(this) {
+                val topIndex = backStack.lastIndexOf(top)
+                if (topIndex < 1) return
+                val below = backStack[topIndex - 1]
+                val replacement = change(below) ?: return
+                if (replacement == below) return
+                Timber.i("Page under the player now: %s", replacement)
+                backStack[topIndex - 1] = replacement
+            }
+        }
+
         private fun log() {
             val dest = backStack.lastOrNull().toString()
             Timber.i("Current Destination: %s", dest)
