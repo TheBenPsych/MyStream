@@ -531,43 +531,54 @@ class AnimeGenrePageViewModel
             }
         }
 
-        private suspend fun findInRequests(item: AniListBrowseItem): com.github.damontecres.wholphin.data.model.DiscoverItem? {
-            val wantedType = if (item.isMovie) SeerrItemType.MOVIE else SeerrItemType.TV
-            val names = item.titles.filter { name -> name.any { it.isLetterOrDigit() && it.code < 0x2E80 } }.take(3)
-            val wanted =
-                item.titles
-                    .map { AniListService.clean(it) }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
-            for (name in names) {
-                val results =
-                    seerrService
-                        .search(AniListService.searchable(name))
-                        .map { seerrService.createDiscoverItem(it) }
-                        .filter { it.type == wantedType }
-                if (results.isEmpty()) continue
-
-                fun yearOk(
-                    d: com.github.damontecres.wholphin.data.model.DiscoverItem,
-                    slack: Int,
-                ): Boolean {
-                    val y = d.releaseDate?.year ?: return true
-                    return item.year == null || kotlin.math.abs(y - item.year) <= slack
-                }
-
-                fun nameOf(d: com.github.damontecres.wholphin.data.model.DiscoverItem) = AniListService.clean(d.title ?: "")
-                results.firstOrNull { nameOf(it) in wanted && yearOk(it, 1) }?.let { return it }
-                // A show AniList splits in seasons ("Show Season 2") is one show in Requests
-                results
-                    .firstOrNull { d ->
-                        val n = nameOf(d)
-                        n.length >= 4 && wanted.any { w -> w.startsWith(n) || n.startsWith(w) } && yearOk(d, 2)
-                    }?.let { return it }
-                results.firstOrNull { nameOf(it) in wanted }?.let { return it }
-            }
-            return null
-        }
+        private suspend fun findInRequests(item: AniListBrowseItem) =
+            findAnimeInRequests(seerrService, item.titles, item.year, item.isMovie)
     }
+
+/**
+ * Benflix: finds an AniList anime in Requests. AniList and Requests (TMDB) don't share numbers, so it's
+ * looked up by its names and year. A show AniList splits in seasons is one show in Requests.
+ */
+internal suspend fun findAnimeInRequests(
+    seerrService: SeerrService,
+    titles: List<String>,
+    year: Int?,
+    isMovie: Boolean,
+): com.github.damontecres.wholphin.data.model.DiscoverItem? {
+    val wantedType = if (isMovie) SeerrItemType.MOVIE else SeerrItemType.TV
+    val names = titles.filter { name -> name.any { it.isLetterOrDigit() && it.code < 0x2E80 } }.take(3)
+    val wanted =
+        titles
+            .map { AniListService.clean(it) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+    for (name in names) {
+        val results =
+            seerrService
+                .search(AniListService.searchable(name))
+                .map { seerrService.createDiscoverItem(it) }
+                .filter { it.type == wantedType }
+        if (results.isEmpty()) continue
+
+        fun yearOk(
+            d: com.github.damontecres.wholphin.data.model.DiscoverItem,
+            slack: Int,
+        ): Boolean {
+            val y = d.releaseDate?.year ?: return true
+            return year == null || kotlin.math.abs(y - year) <= slack
+        }
+
+        fun nameOf(d: com.github.damontecres.wholphin.data.model.DiscoverItem) = AniListService.clean(d.title ?: "")
+        results.firstOrNull { nameOf(it) in wanted && yearOk(it, 1) }?.let { return it }
+        results
+            .firstOrNull { d ->
+                val n = nameOf(d)
+                n.length >= 4 && wanted.any { w -> w.startsWith(n) || n.startsWith(w) } && yearOk(d, 2)
+            }?.let { return it }
+        results.firstOrNull { nameOf(it) in wanted }?.let { return it }
+    }
+    return null
+}
 
 /**
  * Benflix: the anime deep search. Every anime with all of the picked genres and tags (and none of the

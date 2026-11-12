@@ -87,7 +87,7 @@ B.route(/^\/requests/, async (m, nav) => {
   const media = tab !== "music" && tab !== "books";
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
     <div class="row" style="margin-bottom:6px;align-items:center">${[["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"]].concat(B.me.admin ? [["music", "Music"]] : []).concat(B.booksTab ? [["books", "Books"]] : []).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
-      <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="Search for something to ask for" value="${esc(B.q("q") || "")}">
+      <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search for something to ask for"}" value="${esc(B.q("q") || "")}">
 </div>
     ${media ? "" : `<p class="sub" style="margin:0 0 6px">${tab === "music" ? "Songs and albums for your Music folder. Ask, and Tower finds them." : "Books, audiobooks and manga. Ask, and Tower finds them."}</p>`}</div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
@@ -166,7 +166,10 @@ B.route(/^\/requests/, async (m, nav) => {
   let walls = [], picked = null, genre = null;
   // Top 10: a number badge on the picture's bottom corner (the name and year stay under the poster)
   const ranked = (r, i) => B.askCard(r).replace(/<\/div>\s*<div class="cap">/, `<span class="rqrank">${i + 1}</span></div><div class="cap">`);
+  let animeUi = null;
   const drawWall = () => {
+    // Anime has its own side list and walls (B.animeRequests, below)
+    if (tab === "anime") { if (animeUi) animeUi.drawSide(); return; }
     const side = $("#rqside"), wall = $("#rqwall");
     if (!side || !wall) return;
     const cur = picked === "genres" ? null : walls.find((w) => w.id === picked) || walls[0];
@@ -181,6 +184,7 @@ B.route(/^\/requests/, async (m, nav) => {
     wall.innerHTML = cur ? `<div class="rqhead"><b>${esc(cur.title)}</b><span>${cur.items.length} to ask for</span></div><div class="grid">${cur.items.map((r, i) => cur.ranked && i < 10 ? ranked(r, i) : B.askCard(r)).join("")}</div>` : `<div class="empty">Nothing to show right now. Try again in a minute.</div>`;
   };
   const drawRows = async () => {
+    if (tab === "anime") { animeUi = B.animeRequests(nav, () => lists, openList); return; }
     $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
     $("#rqside").onclick = (e) => {
       const l = e.target.closest("[data-rqlist]");
@@ -404,4 +408,301 @@ B.musicTab = async (nav) => {
   B.every(10000, () => { if (!searching) drawStatus(); });
   drawDiscover();
   if (B.q("q")) search(B.q("q")); else drawStatus();
+};
+
+// ---------- Anime tab (Ben's anime Requests design, 2026-11-12) ----------
+// Requests layout C with anime ways in: This season (opens here), Top 10 this week, This week's calendar,
+// Find by feel, Mix and match tags, Hidden gems, Finished and dubbed, Movies, Coming next season.
+// Lists come from AniList (first seasons only, nothing adult); a poster opens its Requests page, found by name.
+// Shows already on Benflix are left out, with a small "12 already on Benflix" note.
+B.animeRequests = (nav, getLists, openList) => {
+  const SHOWS = ["TV", "TV_SHORT", "ONA"];
+  const CARD = "id idMal format status episodes popularity averageScore meanScore isAdult genres seasonYear title { english romaji native } synonyms startDate { year } coverImage { large medium } nextAiringEpisode { episode } relations { edges { relationType node { id format } } }";
+  const LIST_Q = `query ($page: Int, $sort: [MediaSort], $season: MediaSeason, $seasonYear: Int, $status: MediaStatus, $formats: [MediaFormat], $genres: [String], $tags: [String], $noGenres: [String], $noTags: [String], $scoreOver: Int, $popUnder: Int, $popOver: Int) {
+    Page(page: $page, perPage: 50) { pageInfo { hasNextPage }
+      media(type: ANIME, isAdult: false, sort: $sort, season: $season, seasonYear: $seasonYear, status: $status, format_in: $formats, genre_in: $genres, genre_not_in: $noGenres, tag_in: $tags, tag_not_in: $noTags, minimumTagRank: 50, averageScore_greater: $scoreOver, popularity_lesser: $popUnder, popularity_greater: $popOver) { ${CARD} } } }`;
+  const WEEK_Q = `query ($page: Int, $from: Int, $to: Int) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage }
+    airingSchedules(airingAt_greater: $from, airingAt_lesser: $to, sort: TIME) { episode airingAt media { ${CARD} } } } }`;
+  const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
+  const FEELS = [["Action", "Fights, powers", "#FF6F91", { genres: ["Action"] }], ["Isekai", "Sent to another world", "#B69CFF", { tags: ["Isekai"] }],
+    ["Cosy", "Calm, slice of life", "#B9E36A", { genres: ["Slice of Life"], tags: ["Iyashikei"], noGenres: ["Horror"], noTags: ["Gore"] }],
+    ["Romance", "Love stories", "#FF8FB1", { genres: ["Romance"] }], ["Sports", "Teams and matches", "#FFB547", { genres: ["Sports"] }],
+    ["Mecha", "Giant robots", "#7AA7FF", { genres: ["Mecha"] }], ["Mystery", "Puzzles, twists", "#3DD6C6", { genres: ["Mystery"] }],
+    ["Horror", "Creepy, dark", "#9B7B7B", { genres: ["Horror"] }], ["Comedy", "Just funny", "#F2D65B", { genres: ["Comedy"] }], ["Fantasy", "Magic, quests", "#8FB8FF", { genres: ["Fantasy"] }]];
+  const SIDE = [["season", "This season"], ["top", "Top 10 this week"], ["week", "This week"], ["feel", "Find by feel"], ["tags", "Mix and match tags"],
+    ["gems", "Hidden gems"], ["dubbed", "Finished and dubbed"], ["movies", "Movies"], ["next", "Coming next season"]];
+  const cleanName = (t) => String(t || "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]/gu, "");
+  const al = async (query, variables) => {
+    const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
+    if (!r.ok) throw new Error("AniList " + r.status);
+    return (await r.json()).data || {};
+  };
+  const titlesOf = (m) => [m.title && m.title.english, m.title && m.title.romaji, m.title && m.title.native].concat(m.synonyms || []).filter((x) => x && x.trim()).filter((x, i, a) => a.indexOf(x) === i);
+  const cardOf = (m) => {
+    if (!m || m.isAdult || (m.genres || []).includes("Hentai")) return null;
+    const later = SHOWS.includes(m.format) && ((m.relations && m.relations.edges) || []).some((e) => e.relationType === "PREQUEL" && e.node && SHOWS.includes(e.node.format));
+    return { id: m.id, idMal: m.idMal, titles: titlesOf(m), format: m.format, year: (m.startDate && m.startDate.year) || m.seasonYear, score: m.averageScore || m.meanScore,
+      episodes: m.episodes, next: m.nextAiringEpisode && m.nextAiringEpisode.episode, status: m.status, cover: m.coverImage && (m.coverImage.large || m.coverImage.medium), later };
+  };
+  const seasonOf = (d) => { const mo = d.getMonth() + 1; return [mo === 12 || mo <= 2 ? "WINTER" : mo <= 5 ? "SPRING" : mo <= 8 ? "SUMMER" : "FALL", mo === 12 ? d.getFullYear() + 1 : d.getFullYear()]; };
+  const ORDER = ["WINTER", "SPRING", "SUMMER", "FALL"];
+  const step = ([s, y], n) => { let i = ORDER.indexOf(s) + n, yy = y; while (i < 0) { i += 4; yy--; } while (i > 3) { i -= 4; yy++; } return [ORDER[i], yy]; };
+  const sLabel = ([s, y]) => s.charAt(0) + s.slice(1).toLowerCase() + " " + y;
+  const NOW = seasonOf(new Date());
+  const SEASONS = [NOW, step(NOW, -1), step(NOW, -2)];
+  const asks = {
+    season: (i) => ({ key: "season-" + SEASONS[i].join("-"), season: SEASONS[i][0], seasonYear: SEASONS[i][1], formats: SHOWS }),
+    top: () => ({ key: "top", sort: ["TRENDING_DESC"], formats: SHOWS.concat("MOVIE"), pages: 1 }),
+    gems: () => ({ key: "gems", sort: ["SCORE_DESC"], formats: SHOWS.concat("MOVIE"), scoreOver: 79, popUnder: 50000, popOver: 2000 }),
+    dubbed: () => ({ key: "finished", status: "FINISHED", formats: SHOWS, pages: 4 }),
+    movies: () => ({ key: "movies", formats: ["MOVIE"] }),
+    next: () => { const n = step(NOW, 1); return { key: "next-" + n.join("-"), season: n[0], seasonYear: n[1], formats: SHOWS.concat("MOVIE") }; },
+    feel: (f) => Object.assign({ key: "feel-" + f[0], formats: SHOWS.concat("MOVIE") }, f[3], { noGenres: (f[3].noGenres || []).concat("Ecchi") }),
+  };
+  const load = (a) => B.cached("anime-req-" + a.key, 6 * 3600000, async () => {
+    const out = [];
+    for (let page = 1; page <= (a.pages || 2); page++) {
+      const v = { page, sort: a.sort || ["POPULARITY_DESC"], noGenres: (a.noGenres || []).concat("Hentai") };
+      ["season", "seasonYear", "status", "formats", "genres", "tags", "noTags", "scoreOver", "popUnder", "popOver"].forEach((k) => { if (a[k] != null && !(Array.isArray(a[k]) && !a[k].length)) v[k] = a[k]; });
+      const p = (await al(LIST_Q, v)).Page;
+      if (!p) throw new Error("AniList had no answer");
+      (p.media || []).map(cardOf).filter((c) => c && (a.keepLater || !c.later)).forEach((c) => out.push(c));
+      if (!p.pageInfo || !p.pageInfo.hasNextPage) break;
+    }
+    const seen = new Set();
+    return out.filter((c) => !seen.has(c.id) && seen.add(c.id));
+  });
+  const week = () => B.cached("anime-req-week", 3 * 3600000, async () => {
+    const now = Math.floor(Date.now() / 1000), out = [];
+    for (let page = 1; page <= 8; page++) {
+      const p = (await al(WEEK_Q, { page, from: now - 12 * 3600, to: now + 7 * 86400 })).Page;
+      if (!p) { if (page === 1) throw new Error("AniList had no answer"); break; }
+      (p.airingSchedules || []).forEach((s) => { const c = cardOf(s.media); if (c) out.push({ card: c, ep: s.episode, at: s.airingAt }); });
+      if (!p.pageInfo || !p.pageInfo.hasNextPage) break;
+    }
+    return out;
+  });
+  const dubs = () => B.cached("anime-dubs", 86400000, async () => {
+    const r = await fetch("https://raw.githubusercontent.com/MAL-Dubs/MAL-Dubs/main/data/dubInfo.json");
+    if (!r.ok) throw new Error("dub list " + r.status);
+    return new Set((await r.json()).dubbed || []);
+  });
+  const tagList = () => B.cached("anime-tags", 86400000, async () => ((await al("query { MediaTagCollection { name category isAdult } }", {})).MediaTagCollection || []).filter((t) => !t.isAdult));
+  // What's already on Benflix: everything in the anime libraries, by AniList / MyAnimeList number and by name
+  const owned = () => B.cached("anime-owned", 600000, async () => {
+    const libs = (await B.views()).filter(B.isAnimeLib);
+    const o = { ids: new Set(), mal: new Set(), names: new Set() };
+    for (const l of libs) {
+      const r = await B.get(`/Items?userId=${B.uid()}&ParentId=${l.Id}&IncludeItemTypes=Series,Movie&Recursive=true&Fields=ProviderIds,OriginalTitle&EnableImages=false&EnableUserData=false`).catch(() => ({}));
+      (r.Items || []).forEach((x) => {
+        [x.Name, x.OriginalTitle].forEach((n) => { const c = cleanName(n); if (c) o.names.add(c); });
+        const p = x.ProviderIds || {};
+        if (p.AniList) o.ids.add(+p.AniList);
+        if (p.MyAnimeList || p.Mal) o.mal.add(+(p.MyAnimeList || p.Mal));
+      });
+    }
+    return o;
+  });
+  const has = (o, c) => {
+    if (!o) return false;
+    if (o.ids.has(c.id) || (c.idMal && o.mal.has(c.idMal))) return true;
+    const names = c.titles.map(cleanName).filter(Boolean);
+    if (names.some((n) => o.names.has(n))) return true;
+    return c.later && names.some((t) => [...o.names].some((n) => n.length >= 5 && t.startsWith(n)));
+  };
+
+  let pick = "season", seasonI = 0, feel = null, must = [], leave = [], own = null, dub = null, tags = null;
+  const wall = () => $("#rqwall"), side = () => $("#rqside");
+  const drawSide = () => {
+    const l = getLists();
+    side().innerHTML = `<h4>Anime</h4><button data-an-search>Search anime</button>` + SIDE.map(([k, t]) => `<button class="${k === pick ? "on" : ""}" data-an-pick="${k}">${esc(t)}</button>`).join("")
+      + `<h4>Yours</h4><button data-rqlist="mine">Your requests<span class="n">${l.mine.length}</span></button>`
+      + (B.me.admin ? `<button data-rqlist="waiting">Waiting for you${l.waiting.length ? `<span class="n">${l.waiting.length} <span class="dot"></span></span>` : '<span class="n">0</span>'}</button>` : "");
+  };
+  const badge = (c) => {
+    const bits = [];
+    if (c.score) bits.push(`<span class="anb anb-score">${(c.score / 10).toFixed(1)}</span>`);
+    if (dub && dub.size) bits.push(`<span class="anb anb-dub">${c.idMal && dub.has(c.idMal) ? "Sub+Dub" : "Sub"}</span>`);
+    return bits.join("");
+  };
+  const airing = (c) => {
+    if (c.status !== "RELEASING" || !c.next || c.next < 2) return "";
+    return c.episodes ? `Ep ${c.next - 1} of ${c.episodes}` : `Ep ${c.next - 1} out`;
+  };
+  B.animeCards = B.animeCards || {};
+  const poster = (c, rank) => {
+    B.animeCards[c.id] = c;
+    return `<button class="poster ancard" data-an="${c.id}" title="${esc(c.titles[0] || "")}">
+      <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart">${esc(c.titles[0] || "")}</div>`}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
+      <div class="cap">${esc(c.titles[0] || "")}<small>${esc(airing(c) || c.year || "")}</small></div></button>`;
+  };
+  const head = (title, note, extra) => `${extra || ""}<div class="rqhead"><b>${esc(title)}</b><span>${esc(note || "")}</span></div>`;
+  const showWall = async (a, title, note, opts) => {
+    opts = opts || {};
+    const w = wall();
+    w.innerHTML = head(title, note, opts.top) + B.spinner();
+    let items;
+    try { items = await load(a); } catch (e) {
+      if (!B.alive(nav) || wall() !== w) return;
+      w.innerHTML = head(title, note, opts.top) + `<div class="empty">These didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div>`;
+      return;
+    }
+    if (!B.alive(nav) || wall() !== w || w.dataset.at !== opts.at) return;
+    if (opts.keep) items = items.filter(opts.keep);
+    const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
+    w.innerHTML = head(title, [note, here ? `${here} already on Benflix` : ""].filter(Boolean).join(" · "), opts.top)
+      + (shown.length ? `<div class="grid">${shown.map((c, i) => poster(c, opts.ranked && i < 10 ? i + 1 : 0)).join("")}</div>` : `<div class="empty">${here ? "You already have all of these on Benflix." : "Nothing here right now."}</div>`);
+  };
+  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const showWeek = async () => {
+    const w = wall(), at = w.dataset.at;
+    w.innerHTML = head("This week in anime", "New episodes by day, for shows you don't have yet") + B.spinner();
+    let all;
+    try { all = await week(); } catch (e) {
+      if (wall() === w && w.dataset.at === at) w.innerHTML = head("This week in anime", "") + `<div class="empty">The calendar didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div>`;
+      return;
+    }
+    if (!B.alive(nav) || w.dataset.at !== at) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = [0, 1, 2, 3, 4, 5, 6].map((n) => new Date(today.getTime() + n * 86400000));
+    const by = {};
+    let here = new Set();
+    all.forEach((a) => {
+      if (has(own, a.card)) { here.add(a.card.id); return; }
+      const k = dayKey(new Date(a.at * 1000));
+      const l = by[k] || (by[k] = []);
+      if (!l.some((x) => x.card.id === a.card.id)) l.push(a);
+    });
+    const name = (d, i) => i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.getDate();
+    const time = (a) => new Date(a.at * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+    const row = (a) => { B.animeCards[a.card.id] = a.card; return `<div class="anep"><button class="anep-open" data-an="${a.card.id}"><span class="pic" ${a.card.cover ? `style="background-image:url('${esc(a.card.cover)}')"` : ""}></span><span class="t"><b>${esc(a.card.titles[0] || "")}</b><small>Ep ${a.ep} · ${esc(time(a))}${a.card.score ? " · AniList " + (a.card.score / 10).toFixed(1) : ""}</small></span></button><button class="btn small white" data-an="${a.card.id}">Ask</button></div>`; };
+    const note = ["New episodes by day, for shows you don't have yet", here.size ? `${here.size} already on Benflix` : ""].filter(Boolean).join(" · ");
+    let dayI = 0;
+    const draw = () => {
+      const phone = window.innerWidth <= 700;
+      w.innerHTML = head("This week in anime", note) + (phone
+        ? `<div class="row an-days">${days.map((d, i) => `<button class="chip ${i === dayI ? "on" : ""}" data-an-day="${i}">${name(d, i)}</button>`).join("")}</div><div class="anlist">${(by[dayKey(days[dayI])] || []).map(row).join("") || '<div class="empty">Nothing new that day.</div>'}</div>`
+        : `<div class="ancal">${days.map((d, i) => `<div class="anday"><h4 class="${i === 0 ? "on" : ""}">${name(d, i)}</h4>${(by[dayKey(d)] || []).map(row).join("") || '<p class="dim">Nothing new</p>'}</div>`).join("")}</div>`);
+    };
+    draw();
+    w.onclickday = (i) => { dayI = i; draw(); };
+  };
+  const showFeels = () => {
+    wall().innerHTML = head("What are you in the mood for?", "") + `<div class="anfeels">${FEELS.filter((f) => !tags || (f[3].tags || []).every((t) => tags.some((x) => x.name === t))).map((f) => `<button class="anfeel" data-an-feel="${esc(f[0])}" style="--c:${f[2]}"><b>${esc(f[0])}</b><span>${esc(f[1])}</span></button>`).join("")}</div>`;
+  };
+  const recipe = (f) => { const m = (f[3].genres || []).concat(f[3].tags || []).join(" + "), n = (f[3].noGenres || []).concat(f[3].noTags || []); return n.length ? m + " · " + n.map((x) => "no " + x).join(", ") : m; };
+  const showTags = async () => {
+    const w = wall(), at = w.dataset.at;
+    w.innerHTML = head("Mix and match", "Click a tag to need it. Click again to leave it out. A third click clears it.") + B.spinner();
+    if (!tags) { try { tags = await tagList(); } catch (e) { tags = []; } }
+    if (!B.alive(nav) || w.dataset.at !== at) return;
+    const state = (n) => must.includes(n) ? "on" : leave.includes(n) ? "out" : "";
+    const chip = (n) => `<button class="chip antag ${state(n)}" data-an-tag="${esc(n)}">${leave.includes(n) ? "No " : ""}${esc(n)}</button>`;
+    const groups = {};
+    tags.forEach((t) => { const g = (t.category || "Other").split("-")[0]; (groups[g] = groups[g] || []).push(t.name); });
+    const picked = must.length || leave.length;
+    w.innerHTML = head("Mix and match", "Click a tag to need it. Click again to leave it out. A third click clears it.")
+      + (picked ? `<div class="row" style="margin-bottom:10px">${must.concat(leave).map(chip).join("")}<button class="chip" data-an-clear>Clear all</button></div><div id="anmix"></div>` : "")
+      + `<details class="antags" ${picked ? "" : "open"}><summary>Genres and tags</summary><h4>Genres</h4><div class="row">${GENRES.map(chip).join("")}</div>`
+      + Object.keys(groups).sort().map((g) => `<h4>${esc(g)}</h4><div class="row">${groups[g].sort().map(chip).join("")}</div>`).join("") + `</details>`;
+    if (picked) {
+      const box = $("#anmix", w);
+      const fake = document.createElement("div");
+      const a = { key: "mix-" + must.join(",") + "|" + leave.join(","), genres: must.filter((n) => GENRES.includes(n)), tags: must.filter((n) => !GENRES.includes(n)), noGenres: leave.filter((n) => GENRES.includes(n)), noTags: leave.filter((n) => !GENRES.includes(n)), formats: SHOWS.concat("MOVIE"), pages: 2 };
+      box.innerHTML = B.spinner();
+      let items;
+      try { items = await load(a); } catch (e) { box.innerHTML = `<div class="empty">That didn't load. AniList may be busy.</div>`; return; }
+      if (w.dataset.at !== at || !box.isConnected) return;
+      const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
+      fake.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Benflix` : ""}</p><div class="grid">${shown.map((c) => poster(c, 0)).join("")}</div>`;
+      box.replaceChildren(...fake.childNodes);
+    }
+  };
+  const draw = () => {
+    drawSide();
+    const w = wall();
+    w.dataset.at = String(Date.now() + Math.random());
+    const at = w.dataset.at;
+    if (pick === "season") {
+      const pills = `<div class="row" style="margin-bottom:10px">${SEASONS.map((s, i) => `<button class="chip ${i === seasonI ? "on" : ""}" data-an-season="${i}">${sLabel(s)}</button>`).join("")}</div>`;
+      return showWall(asks.season(seasonI), sLabel(SEASONS[seasonI]), seasonI === 0 ? "Airing now" : seasonI === 1 ? "Last season" : "", { top: pills, at });
+    }
+    if (pick === "top") return showWall(asks.top(), "Top 10 this week", "What anime fans are watching most", { ranked: true, at });
+    if (pick === "week") return showWeek();
+    if (pick === "feel") {
+      if (!feel) return showFeels();
+      return showWall(asks.feel(feel), feel[0], recipe(feel), { top: `<div class="row" style="margin-bottom:10px"><button class="chip" data-an-feels>All feels</button></div>`, at });
+    }
+    if (pick === "tags") return showTags();
+    if (pick === "gems") return showWall(asks.gems(), "Hidden gems", "Scores of 8 and up that few people have found", { at });
+    if (pick === "movies") return showWall(asks.movies(), "Movies", "", { at });
+    if (pick === "next") return showWall(asks.next(), "Coming next season", sLabel(step(NOW, 1)), { at });
+    if (pick === "dubbed") {
+      if (!dub || !dub.size) {
+        w.innerHTML = head("Finished and dubbed", "") + `<div class="empty">Couldn't get the list of dubbed anime. <button class="btn small" data-an-retry>Try again</button></div>`;
+        return;
+      }
+      return showWall(asks.dubbed(), "Finished and dubbed", "Every episode out, with English voices", { keep: (c) => c.idMal && dub.has(c.idMal), at });
+    }
+  };
+  // Opens a title's Requests page: AniList and Requests don't share numbers, so it's found by its names and year
+  const open = async (c, btn) => {
+    if (btn) btn.classList.add("busy");
+    const want = c.isMovie || c.format === "MOVIE" ? "movie" : "tv";
+    const wanted = new Set(c.titles.map(cleanName).filter(Boolean));
+    const yearOk = (x, slack) => { const y = +((x.releaseDate || x.firstAirDate || "").slice(0, 4)); return !y || !c.year || Math.abs(y - c.year) <= slack; };
+    const nameOf = (x) => cleanName(x.title || x.name || x.originalName || x.originalTitle);
+    let found = null;
+    for (const n of c.titles.filter((t) => /[A-Za-z0-9]/.test(t)).slice(0, 3)) {
+      const r = await seerr(`/search?query=${enc(n.replace(/[:!?]/g, " ").trim())}&page=1`).catch(() => null);
+      const res = ((r && r.results) || []).filter((x) => x.mediaType === want);
+      found = res.find((x) => wanted.has(nameOf(x)) && yearOk(x, 1))
+        || res.find((x) => { const m = nameOf(x); return m.length >= 4 && [...wanted].some((w) => w.startsWith(m) || m.startsWith(w)) && yearOk(x, 2); })
+        || res.find((x) => wanted.has(nameOf(x)));
+      if (found) break;
+    }
+    if (btn) btn.classList.remove("busy");
+    if (!B.alive(nav)) return;
+    if (found) B.go(`#/ask/${want}/${found.id}`);
+    else B.toast(`Couldn't find ${c.titles[0] || "that"} in Requests yet. Try Search anime.`);
+  };
+
+  $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
+  side().onclick = (e) => {
+    const l = e.target.closest("[data-rqlist]");
+    if (l) return openList(l.dataset.rqlist);
+    if (e.target.closest("[data-an-search]")) { const q = $("#rq"); if (q) { q.placeholder = "Search anime to ask for"; q.focus(); } return; }
+    const b = e.target.closest("[data-an-pick]");
+    if (b) { pick = b.dataset.anPick; if (pick === "feel") feel = null; draw(); }
+  };
+  wall().onclick = (e) => {
+    const t = e.target;
+    const a = t.closest("[data-an]");
+    if (a) { const c = B.animeCards[a.dataset.an]; if (c) open(c, a); return; }
+    const s = t.closest("[data-an-season]");
+    if (s) { seasonI = +s.dataset.anSeason; return draw(); }
+    const f = t.closest("[data-an-feel]");
+    if (f) { feel = FEELS.find((x) => x[0] === f.dataset.anFeel) || null; return draw(); }
+    if (t.closest("[data-an-feels]")) { feel = null; return draw(); }
+    const d = t.closest("[data-an-day]");
+    if (d && wall().onclickday) return wall().onclickday(+d.dataset.anDay);
+    const g = t.closest("[data-an-tag]");
+    if (g) {
+      const n = g.dataset.anTag;
+      if (must.includes(n)) { must = must.filter((x) => x !== n); leave.push(n); } else if (leave.includes(n)) leave = leave.filter((x) => x !== n); else must.push(n);
+      return draw();
+    }
+    if (t.closest("[data-an-clear]")) { must = []; leave = []; return draw(); }
+    if (t.closest("[data-an-retry]")) {
+      Object.keys(B.cache).filter((k) => k.startsWith("anime-")).forEach((k) => { delete B.cache[k]; });
+      if (pick === "dubbed") dubs().then((x) => { dub = x; draw(); }).catch(() => draw()); else draw();
+    }
+  };
+  draw();
+  // Dubs and what's on Benflix load beside the first list; the wall is drawn again when they're in
+  Promise.all([owned().catch(() => null), dubs().catch(() => null), tagList().catch(() => null)]).then(([o, d, t]) => {
+    own = o; dub = d; tags = t;
+    if (B.alive(nav) && wall()) draw();
+  });
+  return { drawSide: () => { if (side()) drawSide(); } };
 };

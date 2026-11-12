@@ -674,6 +674,27 @@ class AniListService
         /** The index already built for a library this app run, if any */
         fun savedIndex(parentId: UUID): Map<UUID, AniListIndexEntry>? = indexes[parentId]
 
+        /**
+         * Benflix (anime Requests): a library's AniList matches from this app run or saved on the device,
+         * without looking anything new up (so it never waits on AniList).
+         */
+        fun knownIndex(parentId: UUID): Map<UUID, AniListIndexEntry> =
+            indexes[parentId]
+                ?: diskCache
+                    .read(
+                        "anilist-index-$parentId",
+                        MapSerializer(String.serializer(), AniListIndexEntry.serializer()),
+                        Long.MAX_VALUE,
+                    )?.mapNotNull { (k, v) -> runCatching { UUID.fromString(k) }.getOrNull()?.let { it to v } }
+                    ?.toMap()
+                    .orEmpty()
+
+        /** Benflix (anime Requests): one question to AniList, waiting its turn like every other */
+        internal suspend fun ask(
+            text: String,
+            variables: JsonObject,
+        ): JsonObject? = query(text, variables)
+
         private fun tagsOf(m: JsonObject): List<String> =
             (
                 m.arr("genres").orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull } +
