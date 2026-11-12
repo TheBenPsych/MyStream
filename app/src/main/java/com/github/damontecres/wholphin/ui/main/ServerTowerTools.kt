@@ -374,6 +374,8 @@ internal fun LazyListScope.towerDownloadItems(
     status: TowerStatus?,
     problem: String?,
     viewModel: ServerTowerViewModel,
+    showDownloads: Boolean = true,
+    showApps: Boolean = true,
 ) {
     if (status == null) {
         item {
@@ -388,7 +390,7 @@ internal fun LazyListScope.towerDownloadItems(
     status.problems.forEach { text ->
         item(key = "tower-problem-$text") { ServerActionRow(headline = text, leading = { Dot(Light.WARN) }) }
     }
-    if (!status.sonarr || !status.radarr) {
+    if (showDownloads && (!status.sonarr || !status.radarr)) {
         item {
             ServerActionRow(
                 headline =
@@ -401,6 +403,15 @@ internal fun LazyListScope.towerDownloadItems(
     }
     val stuck = status.downloads.filter { it.stuck }
     val going = status.downloads.filter { !it.stuck }
+    if (showDownloads) downloadListItems(stuck, going, viewModel)
+    if (showApps) appListItems(status, viewModel)
+}
+
+private fun LazyListScope.downloadListItems(
+    stuck: List<TowerDownload>,
+    going: List<TowerDownload>,
+    viewModel: ServerTowerViewModel,
+) {
     if (stuck.isNotEmpty()) {
         item { SectionTitle("Stuck downloads (${stuck.size})") }
         items(stuck, key = { "stuck-${it.app}-${it.id}" }) { d ->
@@ -438,6 +449,12 @@ internal fun LazyListScope.towerDownloadItems(
             )
         }
     }
+}
+
+private fun LazyListScope.appListItems(
+    status: TowerStatus,
+    viewModel: ServerTowerViewModel,
+) {
     item { SectionTitle("Your apps on Tower") }
     val apps = status.apps
     if (apps == null) {

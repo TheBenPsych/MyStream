@@ -36,25 +36,72 @@ function statusBox(name, level, word) {
 }
 
 const PAGES = {};
+// Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
+// (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
+const TOOL_GROUPS = [
+  { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
+  { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
+  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions and Kids ratings", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"]] },
+  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names", subs: [["tracks", "Track names"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
+];
 const SECTIONS = [
-  { id: "overview", label: "Overview", icon: "gear", subs: [["overview", "Overview"], ["week", "This week"]] },
-  { id: "watching", label: "Watching", icon: "tv", subs: [["now", "Right now"]] },
-  { id: "library", label: "Library", icon: "film", subs: [["library", "Library"], ["posters", "Fix posters"], ["downloads", "Downloads"], ["find", "Find copies"], ["tidy", "Tidy-up"], ["playtest", "Play test"], ["chores", "Chores"], ["kidsratings", "Kids ratings"]] },
-  { id: "people", label: "People", icon: "user", subs: [["people", "People"], ["versions", "Versions"], ["messages", "Messages"], ["problems", "Problems"]] },
-  { id: "tools", label: "Tools", icon: "server", subs: [["apps", "Apps"], ["tracks", "Track tidy"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
+  { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
+  { id: "watching", label: "Watching", subs: [["now", "Right now"]] },
+  { id: "library", label: "Library", subs: [["library", "Library"]] },
+  { id: "people", label: "People", subs: [["people", "People"]] },
+  { id: "tools", label: "Tools", subs: TOOL_GROUPS.flatMap((t) => t.subs) },
 ];
 const SUB_HOME = {};
 SECTIONS.forEach((s) => s.subs.forEach(([id]) => { SUB_HOME[id] = s.id; }));
 const go = (sub) => B.go(`#/server/${SUB_HOME[sub] || "overview"}/${sub}`);
+const groupOf = (sub) => TOOL_GROUPS.find((t) => t.subs.some(([id]) => id === sub)) || TOOL_GROUPS[0];
+// The five tool tiles (Overview's bottom and the top of Tools)
+function toolTiles(on) {
+  return `<div class="srv-tiles">${TOOL_GROUPS.map((t) => `<a class="srv-tile ${t === on ? "on" : ""}" href="#/server/tools/${t.subs[0][0]}">${B.I(t.icon)}<b>${esc(t.label)}</b><span>${esc(t.line)}</span></a>`).join("")}</div>`;
+}
+
+// Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
+// Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
+const SETUP_NEEDED = 1;
+const SETUP_WAITING = {
+  1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
+};
+const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
+const setupNeed = async () => {
+  try {
+    const h = await call("GET", "health");
+    const have = Number((h && h.setup) || 0);
+    if (have >= SETUP_NEEDED) return null;
+    return Object.keys(SETUP_WAITING).filter((k) => +k > have).flatMap((k) => SETUP_WAITING[k]);
+  } catch (e) { return null; }
+};
+function setupCard(waiting) {
+  return `<div class="srv-setup"><div class="t">${B.I("info")}Tower needs the setup command</div>
+    <p>This Benflix is newer than the helper on Tower. Run the command once and these start working:</p>
+    <ul>${waiting.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
+    <code>${esc(SETUP_COMMAND)}</code>
+    <div class="acts"><button class="btn small white" data-setup="copy">Copy</button><button class="btn small" data-setup="where">Where do I paste it?</button></div></div>`;
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-setup]");
+  if (!b) return;
+  if (b.dataset.setup === "copy") {
+    try { await navigator.clipboard.writeText(SETUP_COMMAND); b.textContent = "Copied"; } catch (err) { B.toast("Couldn't copy. Select the command and copy it by hand."); }
+  } else {
+    B.ask("Where do I paste it?", "Open Unraid in your browser (http://10.0.0.58), click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, and Benflix keeps working while it runs.", "OK", "Close");
+  }
+});
 
 B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   if (!B.me.admin) return B.go("#/home");
   const sec = SECTIONS.find((s) => s.id === m[1]) || SECTIONS[0];
   const sub = sec.subs.find(([id]) => id === m[2]) ? m[2] : sec.subs[0][0];
-  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="split">
-    <nav>${SECTIONS.map((s) => `<a href="#/server/${s.id}" class="${s === sec ? "on" : ""}">${B.I(s.icon)}${esc(s.label)}${s.id === "overview" ? '<span class="cnt" id="needCount"></span>' : ""}</a>`).join("")}</nav>
-    <main><h2>${esc(sec.label)}</h2>
-      ${sec.subs.length > 1 ? `<div class="tabs">${sec.subs.map(([id, label]) => `<a class="chip ${id === sub ? "on" : ""}" href="#/server/${sec.id}/${id}">${esc(label)}</a>`).join("")}</div>` : ""}
+  const group = sec.id === "tools" ? groupOf(sub) : null;
+  const chips = group ? group.subs : sec.subs;
+  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="srv"><main><div class="srv-kicker">Server</div><h2>${esc(sec.label)}</h2>
+      ${group ? toolTiles(group) : ""}
+      ${chips.length > 1 ? `<div class="tabs">${chips.map(([id, label]) => `<a class="chip ${id === sub ? "on" : ""}" href="#/server/${sec.id}/${id}">${esc(label)}</a>`).join("")}</div>` : ""}
       <div id="main" class="subpage"></div></main>
   </div>`;
   B.wireTop();
@@ -63,9 +110,20 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   PAGES[sub]($("#main"));
 });
 
-// ---------- Overview: status boxes, what needs you, who's watching ----------
+// ---------- Tools > Tower > Setup command ----------
+PAGES.setup = (el) => {
+  el.innerHTML = `<p class="sub">When an update needs the setup command, a yellow card shows here and on Overview.</p><div id="su">${loading()}</div>`;
+  setupNeed().then((waiting) => {
+    if (current !== "setup") return;
+    $("#su").innerHTML = waiting ? setupCard(waiting) : `<div class="list"><div class="item"><span class="dot"></span><div class="grow"><div class="t">Tower is up to date</div><div class="s">You only need the setup command again when a yellow card asks.</div></div></div></div>`;
+  });
+};
+
+// ---------- Overview (approved sv2-glance): the big line, Needs you and Watching now, then the tools ----------
 PAGES.overview = (el) => {
-  el.innerHTML = `<p class="sub">How Tower and Jellyfin are doing. Updates by itself every 15 seconds.</p><div id="ov">${loading()}</div>`;
+  el.innerHTML = `<div id="ov">${loading()}</div>`;
+  let setupWaiting = null;
+  setupNeed().then((w) => { setupWaiting = w; });
   const draw = async (fresh) => {
     try {
       const [t, sessions, info, reqs] = await Promise.all([
@@ -81,34 +139,60 @@ PAGES.overview = (el) => {
       const stuck = (t.downloads || []).filter((d) => d.stuck);
       const disksFull = (t.disks || []).filter((d) => d.used / (d.used + d.free) > 0.9);
       const pending = ((reqs && reqs.results) || []).filter((r) => r.status === 1);
+      const need = (light, title, sub, acts) => `<div class="srv-need"><span class="dot ${light}"></span><div class="grow"><div class="t">${esc(title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div><div class="acts">${acts || ""}</div></div>`;
+      // Health first (these colour the big line), then requests
+      const health = [];
+      if (!info) health.push(["bad", "Benflix can't reach Jellyfin. Is Tower on?", "", ""]);
+      down.forEach((a) => health.push(["bad", `${a.nice} isn't running properly`, a.status, `<a class="btn small white" href="#/server/tools/apps">Go</a>`]));
+      stuck.forEach((d) => health.push(["warn", `Stuck download: ${d.title}`, d.why || "It stopped moving", `<button class="btn small white" data-replace="${esc(d.app)}/${esc(String(d.id))}" data-title="${esc(d.title)}" data-episodes="${d.episodes || 1}">Find another</button>`]));
+      if (setupWaiting) health.push(["warn", "Tower needs the setup command", "The yellow card above has it, with Copy", ""]);
+      disksFull.forEach((d) => health.push(["warn", `The disk with ${d.name} is nearly full`, `${bytes(d.free)} free`, `<a class="btn small" href="#/server/library/library">Go</a>`]));
+      const asks = pending.map((r) => ["warn", (r.media && (r.media.title || r.media.name)) || "A request", `Asked by ${(r.requestedBy && (r.requestedBy.displayName || r.requestedBy.username)) || "someone"}`, `<button class="btn small white" data-rq="${r.id}" data-yes="1">Yes</button><button class="btn small" data-rq="${r.id}">No</button>`]);
+      const bad = health.some((h) => h[0] === "bad");
+      const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
+      const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";
+      const reason = health.length ? health[0][1] + (health.length > 1 ? ` (and ${health.length - 1} more below)` : "") : "";
+      const pill = (label, l) => `<span class="srv-pill"><span class="dot ${l === "ok" ? "" : l}"></span>${esc(label)}</span>`;
       let html = problemsNote(t.problems);
-      html += `<div class="status">
-        ${statusBox("Jellyfin", info ? "ok" : "bad", info ? "OK" : "Not answering")}
-        ${statusBox("Apps", down.length ? "bad" : "ok", down.length ? `${down.length} down` : "OK")}
-        ${statusBox("Downloads", stuck.length ? "check" : "ok", stuck.length ? `${stuck.length} stuck` : "OK")}
-        ${statusBox("Disks", disksFull.length ? "check" : "ok", disksFull.length ? "Nearly full" : "OK")}
-        ${statusBox("Requests", pending.length ? "check" : "ok", pending.length ? `${pending.length} waiting` : "OK")}
-      </div>`;
-      const needs = [];
-      if (pending.length) needs.push(`<div class="item needs"><div class="grow"><div class="t">${pending.length} request${pending.length === 1 ? "" : "s"} waiting</div><div class="s">${esc(pending.slice(0, 3).map((r) => (r.media && (r.media.title || r.media.name)) || "").filter(Boolean).join(", ") || "Open Requests to say yes or no")}</div></div><div class="acts"><a class="btn small white" href="#/requests">Go</a></div></div>`);
-      down.forEach((a) => needs.push(`<div class="item needs"><div class="grow"><div class="t">${esc(a.nice)} isn't working</div><div class="s">${esc(a.status)}</div></div><div class="acts"><a class="btn small white" href="#/server/tools/apps">Go</a></div></div>`));
-      stuck.forEach((d) => needs.push(`<div class="item needs"><div class="grow"><div class="t">Download stuck: ${esc(d.title)}</div><div class="s">${esc(d.why || "Stuck")}</div></div><div class="acts"><a class="btn small white" href="#/server/library/downloads">Go</a></div></div>`));
-      html += `<h3 class="section-title">Needs you</h3><div class="list">${needs.join("") || `<div class="empty">Nothing needs you right now.</div>`}</div>`;
-      html += `<h3 class="section-title">Watching now</h3><div class="list">` + (watching.map((s) => {
-        const it = s.NowPlayingItem;
-        const title = it.Type === "Episode" ? [it.SeriesName, it.Name].filter(Boolean).join(" · ") : it.Name;
-        return `<div class="item"><div class="grow"><div class="t">${esc(s.UserName || "Someone")} · ${esc(title)}</div><div class="s">${esc(s.DeviceName || "")}${s.PlayState && s.PlayState.PlayMethod === "Transcode" ? " · converting" : ""}</div></div></div>`;
-      }).join("") || `<div class="empty">Nobody is watching right now.</div>`) + `</div>`;
-      if (info) html += `<p class="sub">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</p>`;
-      html += `<div class="tiles">
-        ${tile("Processor", pct(t.cpu), t.cpu)}${tile("Memory", pct(t.memory), t.memory)}${tile("Graphics chip", pct(t.gpu), t.gpu)}${tile("Up for", upTime(t.up_seconds))}
-        ${(t.disks || []).map((d) => { const used = Math.round(100 * d.used / (d.used + d.free)); return tile(d.name + " free", bytes(d.free), used); }).join("")}
-      </div>`;
+      html += `<div class="srv-banner ${level}"><div class="h"><span class="big-dot"></span>${esc(headline)}</div>${reason ? `<div class="r">${esc(reason)}</div>` : ""}
+        <div class="pills">${pill(info ? "Jellyfin" : "Jellyfin: not answering", info ? "ok" : "bad")}${pill(down.length ? `Tower: ${down.length} app${down.length === 1 ? "" : "s"} down` : "Tower", down.length ? "bad" : apps.length ? "ok" : "off")}${pill(stuck.length ? `Downloads: ${stuck.length} stuck` : "Downloads", stuck.length ? "warn" : "ok")}${info ? `<span class="dim">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</span>` : ""}</div></div>`;
+      if (setupWaiting) html += setupCard(setupWaiting);
+      const needs = health.concat(asks);
+      html += `<div class="srv-cards">
+        <section class="srv-card"><h3>Needs you${needs.length ? ` <span class="cnt">${needs.length}</span>` : ""}</h3>${needs.map((n) => need(...n)).join("") || `<div class="empty">All good! Nothing needs you right now.</div>`}</section>
+        <section class="srv-card"><h3>Watching now${watching.length ? ` <span class="cnt">${watching.length}</span>` : ""}</h3>${watching.map((s) => {
+          const it = s.NowPlayingItem;
+          const title = it.Type === "Episode" ? [it.SeriesName, it.Name].filter(Boolean).join(" · ") : it.Name;
+          const pic = it.Type === "Episode" && it.SeriesId ? it.SeriesId : it.Id;
+          const pos = (s.PlayState && s.PlayState.PositionTicks) || 0, len = it.RunTimeTicks || 0;
+          const pct = len ? Math.min(100, Math.round(100 * pos / len)) : null;
+          return `<a class="srv-watch" href="#/server/watching/now"><img src="${imgUrl(pic, 120)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="grow"><div class="t">${esc(s.UserName || "Someone")}</div><div class="s">${esc(title)}</div><div class="s dim">${esc(s.DeviceName || "")}${s.PlayState && s.PlayState.IsPaused ? " · Paused" : ""}</div>${pct == null ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div></a>`;
+        }).join("") || `<div class="empty">Nobody is watching right now.</div>`}</section></div>`;
+      html += `<h3 class="section-title">Tools</h3>${toolTiles(null)}`;
       $("#ov").innerHTML = html;
-      const n = needs.length, c = $("#needCount");
-      if (c) c.textContent = n ? `${n} need${n === 1 ? "s" : ""} you` : "";
     } catch (err) {
       if (current === "overview") $("#ov").innerHTML = `<div class="note">${esc(err.message)}</div>`;
+    }
+  };
+  el.onclick = async (e) => {
+    const r = e.target.closest("[data-rq]"), d = e.target.closest("[data-replace]");
+    if (r) {
+      const yes = !!r.dataset.yes;
+      B.busy(r, async () => {
+        await jf("POST", `/JellyfinEnhanced/arr/requests/${r.dataset.rq}/${yes ? "approve" : "decline"}`);
+        draw(false);
+        return yes ? "Said yes. It's on its way." : "Said no.";
+      });
+    }
+    if (d) {
+      const episodes = Number(d.dataset.episodes || 1);
+      const ask = episodes > 1
+        ? `${d.dataset.title} is one download with all ${episodes} episodes in it. Remove the whole pack and look for another copy of each episode?`
+        : `Remove this download of ${d.dataset.title} and look for a different copy?`;
+      if (!await B.ask(ask)) return;
+      d.disabled = true;
+      try { B.toast((await call("POST", `api/admin/downloads/${d.dataset.replace}/replace`)).message); } catch (err) { B.toast(err.message); }
+      draw(true);
     }
   };
   draw(true); every(15000, () => draw(false));

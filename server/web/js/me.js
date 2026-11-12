@@ -65,15 +65,39 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   const groups = GROUPS.filter((g) => !g.adminOnly || B.me.admin);
   const g = groups.find((x) => x.id === m[1]) || groups[0];
   B.page().innerHTML = B.top("Settings", null, { solid: true }) + `<div class="split">
-    <nav><input class="field navsearch" id="setSearch" placeholder="Search settings">${groups.map((x) => `<a href="#/settings/${x.id}" class="${x === g ? "on" : ""}">${I(x.icon)}${esc(x.label)}</a>`).join("")}</nav>
+    <nav><input class="field navsearch" id="setSearch" placeholder="Find a setting" autocomplete="off"><div class="find-hits" id="findHits"></div>${groups.map((x) => `<a href="#/settings/${x.id}" class="${x === g ? "on" : ""}">${I(x.icon)}${esc(x.label)}</a>`).join("")}</nav>
     <main><h2>${esc(g.label)}</h2>${g.line ? `<div class="group-line" style="margin-top:4px">${esc(g.line)}</div>` : ""}<div id="sp">${B.spinner()}</div></main></div>`;
   B.wireTop();
+  // Approved ss-family + ss-q-find: "Find a setting" lists matches as you type. For Ben it also finds Server tools.
+  const FIND = [
+    ["Subtitles", "subtitle captions", "#/settings/watching"], ["Audio language", "audio language dub", "#/settings/watching"],
+    ["Skip intros by themselves", "skip intro credits", "#/settings/watching"], ["Next episode by itself", "autoplay next episode", "#/settings/watching"],
+    ["Quality", "quality picture slow", "#/settings/picture"], ["Sounds", "sound volume notes music bars", "#/settings/picture"],
+    ["Text size", "text size bigger zoom", "#/settings/look"], ["Password", "password", "#/settings/you"], ["Profile picture", "picture photo avatar", "#/settings/you"],
+    ["Sign in a TV or phone", "code quick connect sign in tv phone", "#/settings/devices"], ["Install Benflix", "install app", "#/settings/install"],
+    ["Help and updates", "help update how", "#/settings/help"],
+  ].concat(B.me.admin ? [
+    ["People and their limits", "people family kids limits", "#/settings/family"], ["Reset this browser", "reset behind", "#/settings/behind"],
+    ["Server: Who's watching now", "watching streams stop", "#/server/watching/now"], ["Server: People and accounts", "users add person account", "#/server/people/people"],
+    ["Server: Library checkup", "checkup tidy unwatched biggest", "#/server/tools/tidy"], ["Server: Fix posters", "poster pictures art", "#/server/tools/posters"],
+    ["Server: Find copies", "find better copy missing episodes", "#/server/tools/find"], ["Server: Downloads", "download stuck sonarr radarr", "#/server/tools/downloads"],
+    ["Server: Messages", "message note send", "#/server/tools/messages"], ["Server: Benflix versions", "versions update out of date", "#/server/tools/versions"],
+    ["Server: Track names", "track names audio subtitle labels", "#/server/tools/tracks"], ["Server: Setup command", "setup command tower helper terminal", "#/server/tools/setup"],
+    ["Server: Apps on Tower", "apps docker restart", "#/server/tools/apps"], ["Server: Chores and restart", "chores restart jellyfin tasks", "#/server/tools/chores"],
+    ["Server: Live TV lists", "live tv channels guide", "#/server/tools/livetv"], ["Server: Book lists", "books nyt hardcover keys", "#/server/tools/booklists"],
+  ] : []);
+  const findHits = (t) => FIND.filter(([label, words]) => t.length > 1 && (label.toLowerCase().includes(t) || words.split(" ").some((w) => w.startsWith(t)))).slice(0, 8);
+  $("#setSearch").oninput = (e) => {
+    const t = e.target.value.trim().toLowerCase();
+    $("#findHits").innerHTML = findHits(t).map(([label, , hash]) => {
+      const server = label.startsWith("Server: ");
+      return `<a href="${esc(hash)}">${esc(server ? label.slice(8) : label)}<small>${server ? "On the Server page" : "Settings"}</small></a>`;
+    }).join("") || (t.length > 1 ? `<div class="dim" style="padding:8px 14px;font-size:14px">Nothing by that name</div>` : "");
+  };
   $("#setSearch").onkeydown = (e) => {
     if (e.key !== "Enter") return;
-    const t = e.target.value.trim().toLowerCase();
-    const map = { subtitle: "watching", audio: "watching", skip: "watching", autoplay: "watching", next: "watching", quality: "picture", sound: "picture", volume: "picture", text: "look", size: "look", password: "you", picture: "you", code: "devices", quick: "devices", connect: "devices", people: "family", reset: "behind" };
-    const hit = Object.keys(map).find((k) => t.includes(k) || k.includes(t));
-    if (hit) B.go("#/settings/" + map[hit]); else B.toast("No setting by that name.");
+    const hit = findHits(e.target.value.trim().toLowerCase())[0];
+    if (hit) B.go(hit[2]); else B.toast("No setting by that name.");
   };
   const ws = B.webSettings();
   const sp = $("#sp");

@@ -1157,3 +1157,58 @@ body.has-rail .bk-side { display: none; }
 .player video::cue { color: #fff; background: transparent; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55); }
 .player .livepill { border: 0; border-radius: 6px; background: #d93a3a; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .04em; padding: 7px 12px; cursor: pointer; }
 .player .livepill:hover { filter: brightness(1.1); }
+
+/* ---------- Redesign 2 (Server and Settings, approved sv2-glance): the Server page (js/server.js) ----------
+   The sections sit on the doors' side menu; Overview has the big line, Needs you + Watching now, then the tools. */
+.srv { padding: 10px var(--gutter) 60px; }
+.srv main { min-width: 0; max-width: 1180px; }
+.srv h2 { margin: 0 0 14px; font-size: 32px; font-weight: 800; }
+.srv-kicker { color: var(--ink3); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.srv-banner { border-radius: var(--r2); padding: 18px 22px; margin-bottom: 16px; background: rgba(91,209,139,.12); border: 1px solid rgba(91,209,139,.35); --c: var(--ok); }
+.srv-banner.warn { background: rgba(232,212,77,.11); border-color: rgba(232,212,77,.4); --c: var(--check); }
+.srv-banner.bad { background: rgba(255,122,122,.11); border-color: rgba(255,122,122,.4); --c: var(--bad); }
+.srv-banner .h { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 800; }
+.srv-banner .big-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--c); flex: none; }
+.srv-banner .r { color: var(--ink2); margin-top: 4px; }
+.srv-banner .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.srv-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--pg2); border-radius: 99px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.srv-pill .dot { width: 9px; height: 9px; }
+.srv-banner .pills .dim { font-size: 13px; margin-left: 4px; }
+.srv-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; align-items: start; }
+.srv-card { background: var(--pg2); border-radius: var(--r2); padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.srv-card h3 { margin: 0 0 4px; font-size: 19px; display: flex; align-items: center; gap: 10px; }
+.srv-card h3 .cnt { background: var(--ink); color: var(--tray); border-radius: 99px; padding: 1px 9px; font-size: 13px; }
+.srv-card .empty { color: var(--ink2); }
+.srv-need, .srv-watch { display: flex; align-items: center; gap: 12px; background: var(--pg3); border-radius: var(--r); padding: 10px 12px; min-width: 0; }
+.srv-need .grow, .srv-watch .grow { flex: 1; min-width: 0; }
+.srv-need .t, .srv-watch .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.srv-need .s, .srv-watch .s { font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srv-need .acts { display: flex; gap: 6px; flex: none; }
+.srv-watch img { width: 40px; height: 60px; object-fit: cover; border-radius: 6px; background: var(--pg4); flex: none; }
+.srv-watch:hover, .srv-watch:focus-visible { background: var(--pg4); }
+.srv-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+.srv-tile { display: flex; flex-direction: column; gap: 4px; background: var(--pg2); border-radius: var(--r); padding: 14px; min-height: 118px; color: var(--ink); }
+.srv-tile .i { width: 24px; height: 24px; margin-bottom: 4px; }
+.srv-tile span { font-size: 13px; color: var(--ink3); }
+.srv-tile:hover, .srv-tile:focus-visible { background: var(--pg4); }
+.srv-tile:focus-visible { outline: 2.5px solid var(--ink); outline-offset: 0; }
+.srv-tile.on { background: var(--ink); color: var(--tray); }
+.srv-tile.on span { color: rgba(11,12,16,.7); }
+.srv-setup { border: 1px solid rgba(232,212,77,.5); background: rgba(232,212,77,.1); border-radius: var(--r2); padding: 16px 18px; margin-bottom: 16px; }
+.srv-setup .t { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 800; }
+.srv-setup .t .i { width: 22px; height: 22px; color: var(--check); }
+.srv-setup p { color: var(--ink2); margin: 8px 0 4px; }
+.srv-setup ul { margin: 0 0 10px; padding-left: 20px; color: var(--ink2); font-size: 14px; }
+.srv-setup code { display: block; background: var(--tray); border-radius: 6px; padding: 12px; font-size: 13px; word-break: break-all; user-select: all; }
+.srv-setup .acts { display: flex; gap: 8px; margin-top: 10px; }
+@media (max-width: 900px) {
+  .srv { padding: 4px 16px 60px; }
+  .srv-cards { grid-template-columns: 1fr; }
+  .srv-tiles { grid-template-columns: 1fr 1fr; }
+  .srv-banner .h { font-size: 21px; }
+}
+/* Settings: "Find a setting" lists matches (for Ben, Server tools too) */
+.find-hits { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 10px; }
+.find-hits a { padding: 8px 14px; border-radius: 10px; font-size: 14px; color: var(--ink2); }
+.find-hits a small { display: block; color: var(--ink3); font-size: 12px; }
+.find-hits a:hover, .find-hits a:focus-visible { background: var(--pg3); color: var(--ink); }

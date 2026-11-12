@@ -189,6 +189,7 @@ class HomeDoorsViewModel
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
         private val localGames: com.github.damontecres.wholphin.games.LocalGames,
         val navigationManager: NavigationManager,
+        private val setupCheck: com.github.damontecres.wholphin.services.TowerSetupCheck,
     ) : ViewModel() {
         private val _rows = MutableStateFlow(HomeParts())
         val rows: StateFlow<HomeParts> = _rows
@@ -413,12 +414,13 @@ class HomeDoorsViewModel
                         val fact = async { withTimeoutOrNull(FACT_WAIT_MS) { factRows() }.orEmpty() }
                         val weather = async { withTimeoutOrNull(WEATHER_WAIT_MS) { towerWeather() } }
                         val saved = async { withTimeoutOrNull(PREFS_WAIT_MS) { savedPrefs() }.orEmpty() }
+                        val setup = async { withTimeoutOrNull(WEATHER_WAIT_MS) { setupNews() }.orEmpty() }
                         val custom = saved.await()
                         cleared = clearedFrom(custom)
                         news =
                             shown(
-                                benNews(custom) + episodes.await() + music.await() + bookRows.await() + requests.await() +
-                                    updateNews(),
+                                setup.await() + benNews(custom) + episodes.await() + music.await() + bookRows.await() +
+                                    requests.await() + updateNews(),
                             ).filter { it.id !in opened }
                                 .sortedByDescending { it.at }
                                 .take(MAX_NEWS)
@@ -737,6 +739,28 @@ class HomeDoorsViewModel
                         null
                     }
                 }
+
+        /**
+         * Redesign 2 (approved ss-p-setup): Ben's note when Tower's helper is older than this app needs.
+         * Pressing it opens Server, where the yellow card has the command with Copy. Clearing it hides it until
+         * the next time a new setup is needed.
+         */
+        private suspend fun setupNews(): List<HomeRow> {
+            if (serverRepository.currentUserDto?.policy?.isAdministrator != true) return emptyList()
+            val need = setupCheck.check() ?: return emptyList()
+            return listOf(
+                HomeRow(
+                    id = "setup-${need.need}",
+                    kind = "Tower needs the setup command",
+                    title = "New things are waiting. Open Server to copy the command",
+                    kindColor = BenflixColors.Warning,
+                    at = System.currentTimeMillis(),
+                    image = null,
+                    destination = Destination.ServerStatus,
+                    news = true,
+                ),
+            )
+        }
 
         /**
          * A new Benflix version. The main profile sees it right away; everyone else once this TV or phone

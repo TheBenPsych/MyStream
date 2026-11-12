@@ -88,6 +88,9 @@ class DoorFrameState(
     val door: BenflixDoor,
     start: String,
     val jumps: Boolean,
+    /** The pill's colour (the door's own colour unless a page that isn't a door, like Server, picks one) */
+    val pillColor: Color = door.color,
+    val onPillColor: Color = door.onColor,
 ) {
     var section by mutableStateOf(start)
 
@@ -236,7 +239,6 @@ private fun DoorRail(
     sections: List<DoorSection>,
     alwaysOpen: Boolean,
 ) {
-    val door = state.door
     var focused by remember { mutableStateOf(false) }
     val open = alwaysOpen || focused
     // Cheap on old TVs: only the width moves, and the names are only drawn while it's open
@@ -283,7 +285,8 @@ private fun DoorRail(
                 val on = section.key == state.section
                 RailItem(
                     section = section,
-                    door = door,
+                    pill = state.pillColor,
+                    onPill = state.onPillColor,
                     on = on,
                     open = open,
                     onClick = { state.pick(section.key) },
@@ -297,7 +300,8 @@ private fun DoorRail(
 @Composable
 private fun RailItem(
     section: DoorSection,
-    door: BenflixDoor,
+    pill: Color,
+    onPill: Color,
     on: Boolean,
     open: Boolean,
     onClick: () -> Unit,
@@ -309,10 +313,10 @@ private fun RailItem(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (on) door.color else Color.Transparent,
-                contentColor = if (on) door.onColor else BenflixColors.Soft,
-                focusedContainerColor = if (on) door.color else BenflixColors.FocusRow,
-                focusedContentColor = if (on) door.onColor else BenflixColors.Text,
+                containerColor = if (on) pill else Color.Transparent,
+                contentColor = if (on) onPill else BenflixColors.Soft,
+                focusedContainerColor = if (on) pill else BenflixColors.FocusRow,
+                focusedContentColor = if (on) onPill else BenflixColors.Text,
             ),
         border = focusRing(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -341,7 +345,7 @@ private fun RailItem(
                         text = "$it",
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (on) door.onColor else BenflixColors.Muted,
+                        color = if (on) onPill else BenflixColors.Muted,
                     )
                 }
             }
@@ -365,6 +369,8 @@ private fun DoorChips(
             DoorChip(
                 label = section.label,
                 door = state.door,
+                pill = state.pillColor,
+                onPill = state.onPillColor,
                 selected = section.key == state.section,
                 onClick = { state.pick(section.key) },
             )
@@ -380,6 +386,8 @@ fun DoorChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    pill: Color = door.color,
+    onPill: Color = door.onColor,
 ) {
     val shape = BenflixShapes.Pill
     Surface(
@@ -387,10 +395,10 @@ fun DoorChip(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (selected) door.color else BenflixColors.Raised,
-                contentColor = if (selected) door.onColor else BenflixColors.Text,
-                focusedContainerColor = if (selected) door.color else BenflixColors.FocusRow,
-                focusedContentColor = if (selected) door.onColor else BenflixColors.Text,
+                containerColor = if (selected) pill else BenflixColors.Raised,
+                contentColor = if (selected) onPill else BenflixColors.Text,
+                focusedContainerColor = if (selected) pill else BenflixColors.FocusRow,
+                focusedContentColor = if (selected) onPill else BenflixColors.Text,
             ),
         border = focusRing(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
