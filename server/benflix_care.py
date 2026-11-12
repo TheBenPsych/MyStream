@@ -647,7 +647,9 @@ def fix_subtitles(item_id, index=None, auto=False):
         f"by parts {sorted(set(per_cue))} ({sure_parts} of {parts} parts sure), gain {total_gain}"
     )
     biggest = max(per_cue, key=abs) if per_cue else 0.0
-    trusted = sure >= (0.55 if auto else 0.25) or sure_parts * 2 >= parts
+    # When a person asks, they've already seen the words are off, so a weaker match is enough
+    # (laugh tracks keep "sure" low even when the answer is right, like a PAL-speed file: x0.959)
+    trusted = sure >= (0.55 if auto else 0.1) or sure_parts * 2 >= parts
     if not trusted or total_gain < (1.12 if auto else 1.03) or (abs(biggest) < 0.3 and scale == 1.0):
         why = "They look lined up with the voices to Tower" if trusted else "Tower couldn't hear the voices clearly enough to be sure"
         return {
