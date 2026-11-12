@@ -76,7 +76,7 @@ data class AnimeAiringCard(
 )
 
 /** The four anime seasons, in AniList's names */
-enum class AnimeSeason(
+enum class AnimeQuarter(
     val label: String,
 ) {
     WINTER("Winter"),
@@ -86,7 +86,7 @@ enum class AnimeSeason(
     ;
 
     companion object {
-        fun of(date: LocalDate): AnimeSeason =
+        fun of(date: LocalDate): AnimeQuarter =
             when (date.monthValue) {
                 12, 1, 2 -> WINTER
                 in 3..5 -> SPRING
@@ -101,27 +101,27 @@ enum class AnimeSeason(
 
 /** A season and its year, like "Fall 2026" */
 data class AnimeSeasonPick(
-    val season: AnimeSeason,
+    val season: AnimeQuarter,
     val year: Int,
 ) {
     val label: String get() = "${season.label} $year"
 
     fun next(): AnimeSeasonPick =
-        if (season == AnimeSeason.FALL) {
-            AnimeSeasonPick(AnimeSeason.WINTER, year + 1)
+        if (season == AnimeQuarter.FALL) {
+            AnimeSeasonPick(AnimeQuarter.WINTER, year + 1)
         } else {
-            AnimeSeasonPick(AnimeSeason.entries[season.ordinal + 1], year)
+            AnimeSeasonPick(AnimeQuarter.entries[season.ordinal + 1], year)
         }
 
     fun previous(): AnimeSeasonPick =
-        if (season == AnimeSeason.WINTER) {
-            AnimeSeasonPick(AnimeSeason.FALL, year - 1)
+        if (season == AnimeQuarter.WINTER) {
+            AnimeSeasonPick(AnimeQuarter.FALL, year - 1)
         } else {
-            AnimeSeasonPick(AnimeSeason.entries[season.ordinal - 1], year)
+            AnimeSeasonPick(AnimeQuarter.entries[season.ordinal - 1], year)
         }
 
     companion object {
-        fun now(today: LocalDate = LocalDate.now()) = AnimeSeasonPick(AnimeSeason.of(today), AnimeSeason.yearOf(today))
+        fun now(today: LocalDate = LocalDate.now()) = AnimeSeasonPick(AnimeQuarter.of(today), AnimeQuarter.yearOf(today))
     }
 }
 
