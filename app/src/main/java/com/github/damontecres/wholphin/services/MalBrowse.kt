@@ -90,6 +90,29 @@ class MalBrowse
                     }.build()
                     .toString()
             val body = get(url) ?: return null
+            return pageOf(body)
+        }
+
+        /**
+         * Benflix (anime Requests backup): one page of any Jikan list, like "seasons/now" or "top/anime",
+         * with [params] added (sfw is always on, so nothing adult comes back).
+         */
+        suspend fun list(
+            path: String,
+            params: Map<String, String> = emptyMap(),
+        ): AniListBrowsePage? {
+            val url =
+                "$URL/$path"
+                    .toHttpUrl()
+                    .newBuilder()
+                    .addQueryParameter("sfw", "true")
+                    .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
+                    .build()
+                    .toString()
+            return pageOf(get(url) ?: return null)
+        }
+
+        private fun pageOf(body: JsonObject): AniListBrowsePage {
             val pagination = body["pagination"] as? JsonObject
             val items =
                 (body["data"] as? JsonArray)

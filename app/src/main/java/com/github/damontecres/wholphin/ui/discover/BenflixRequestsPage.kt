@@ -1480,7 +1480,8 @@ private fun FindShelf(
     var showFilters by remember { mutableStateOf(false) }
     var menuItem by remember { mutableStateOf<DiscoverItem?>(null) }
     val key = viewModel.key(section, filters)
-    LaunchedEffect(key) { viewModel.loadSection(section, filters) }
+    // Benflix: the Anime tab has its own lists from AniList (AnimeShelf), not TMDB's
+    LaunchedEffect(key) { if (section != FindSection.ANIME) viewModel.loadSection(section, filters) }
     LaunchedEffect(section) { viewModel.loadSpecial(section) }
     // Coming back from a details page: pick up anything just asked for
     LifecycleResumeEffect(Unit) {
@@ -1628,6 +1629,61 @@ private fun FindShelf(
             onAnswer = viewModel::answer,
             onDismiss = { listOpen = null },
         )
+    }
+    // Benflix (anime Requests design, Ben 2026-11-12): the Anime tab has its own side list of anime ways in
+    if (section == FindSection.ANIME) {
+        val onMenu: (DiscoverItem) -> Unit = { menuItem = it }
+        if (isTv) {
+            AnimeShelf(
+                isTv = true,
+                isAdmin = viewModel.isAdmin,
+                mineCount = mine.size,
+                waitingCount = waitingForYou.size,
+                onSearch = { searchOpen = true },
+                onList = { listOpen = it },
+                onAsk = viewModel::ask,
+                onMenu = onMenu,
+            )
+        } else {
+            Column(Modifier.fillMaxSize()) {
+                RequestsSearchBox(
+                    query = query,
+                    onQuery = { viewModel.searchQuery.value = it },
+                    placeholder = "Search anime to ask for",
+                )
+                if (searching) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    ) {
+                        searchShelves(
+                            results = searchResults,
+                            anime = searchAnime,
+                            visible = visible,
+                            scoreLine = scoreLine,
+                            onOpen = openItem,
+                            onMenu = { menuItem = it },
+                            onFocusItem = onFocusPoster,
+                            isTv = false,
+                        )
+                    }
+                } else {
+                    AnimeShelf(
+                        isTv = false,
+                        isAdmin = viewModel.isAdmin,
+                        mineCount = mine.size,
+                        waitingCount = waitingForYou.size,
+                        onSearch = {},
+                        onList = { listOpen = it },
+                        onAsk = viewModel::ask,
+                        onMenu = onMenu,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+        return
     }
     // The lists that have something to show, with Trending split into a Top 10 and the rest
     val shownRows =
@@ -1875,7 +1931,7 @@ private fun PosterWall(
 
 /** One line in the TV side list. [onPick] runs when you land on it (the wall follows); [onClick] when you press OK. */
 @Composable
-private fun SideEntry(
+internal fun SideEntry(
     label: String,
     selected: Boolean,
     onPick: (() -> Unit)? = null,
@@ -1939,7 +1995,7 @@ private fun SideSwitch(
 }
 
 @Composable
-private fun SideHeading(text: String) {
+internal fun SideHeading(text: String) {
     Text(
         text = text.uppercase(),
         fontSize = BenflixType.tag,
@@ -2010,7 +2066,7 @@ private class ShownRow(
 )
 
 /** Benflix: quick picks on the Requests Anime tab; each opens the anime deep search with it picked */
-private val ANIME_QUICK_PICKS =
+internal val ANIME_QUICK_PICKS =
     listOf(
         "Isekai",
         "Fantasy",
@@ -2042,7 +2098,7 @@ private val ANIME_QUICK_PICKS =
 
 /** Benflix: something didn't load, with a Try again button (instead of looking empty) */
 @Composable
-private fun LoadFailed(
+internal fun LoadFailed(
     text: String,
     onRetry: () -> Unit,
 ) {
