@@ -170,9 +170,13 @@ START_FILES = (".m3u", ".cue", ".gdi", ".chd", ".iso", ".rvz", ".wbfs", ".cso", 
 
 AWAY_PATH = "/benflix-games"
 
+# Benflix security: pages from inside an ebook (the reader shows them in a frame) may never run their own code.
+# Ebooks come from the internet, and a booby-trapped one could otherwise read the reader's sign-in.
+BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'"
+
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 1
+SETUP_VERSION = 2
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -623,6 +627,17 @@ def put_save(user_id, game_id, kind, body, when):
 
 
 class Handler(BaseHTTPRequestHandler):
+    _page_rules = None
+
+    def end_headers(self):
+        # Benflix security, on every reply: other websites can't show Tower's pages inside theirs (clickjacking),
+        # and browsers use the file type Tower says instead of guessing (so a picture is never run as a page)
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        if self._page_rules:
+            self.send_header("Content-Security-Policy", self._page_rules)
+        super().end_headers()
+
     def send(self, status, body, content_type="application/json"):
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
@@ -769,6 +784,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == AWAY_PATH or path.startswith(AWAY_PATH + "/"):
             path = path[len(AWAY_PATH):] or "/"
             via_internet = True
+        self._page_rules = BOOK_PAGE_RULES if path.startswith("/api/books/x/") else None
         try:
             if via_internet and (path.startswith("/api/admin/") or (web is None and path in ("/", "/web", "/index.html"))):
                 # Tower's tools (restarting apps, fixing files) only work from home, never through the internet.

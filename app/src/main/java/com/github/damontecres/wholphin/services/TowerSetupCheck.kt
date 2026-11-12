@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 1
+            const val SETUP_NEEDED = 2
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -76,6 +76,11 @@ class TowerSetupCheck
                         listOf(
                             "Benflix can tell you when Tower needs this command (this card)",
                             "Anything from the last few updates that said it needs the setup command again",
+                        ),
+                    2 to
+                        listOf(
+                            "Safer ebook reading: book pages can't run hidden code",
+                            "Other websites can't show Benflix inside their pages",
                         ),
                 )
 
