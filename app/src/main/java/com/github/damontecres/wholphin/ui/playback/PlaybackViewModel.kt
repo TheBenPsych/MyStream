@@ -874,9 +874,12 @@ class PlaybackViewModel
                                 startTimeTicks = null,
                                 deviceProfile =
                                     if (currentPlayer.value!!.backend == PlayerBackend.EXO_PLAYER) {
+                                        // The profile's own limit must match the picked quality too, or the
+                                        // server keeps sending the original file (it went by the saved one)
                                         deviceProfileService.getOrCreateDeviceProfile(
                                             preferences.appPreferences,
                                             serverRepository.currentServer?.serverVersion,
+                                            maxBitrateNow = maxBitrate,
                                         )
                                     } else {
                                         mpvDeviceProfile
