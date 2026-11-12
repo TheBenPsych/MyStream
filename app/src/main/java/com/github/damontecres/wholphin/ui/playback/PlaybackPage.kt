@@ -374,6 +374,14 @@ fun PlaybackPageContent(
                 }
             }
 
+            PlaybackAction.FindBetterSubtitles -> {
+                controllerViewState.hideControls()
+                val playing = viewModel.state.value.currentPlayback
+                if (playing != null && playing.subtitleIndex >= 0) {
+                    subtitleTiming.fix(playing.itemId, playing.subtitleIndex, better = true) { viewModel.afterSubtitleFix() }
+                }
+            }
+
             PlaybackAction.Next -> {
                 // TODO focus is lost
                 viewModel.playNextUp()

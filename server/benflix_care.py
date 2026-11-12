@@ -20,7 +20,9 @@ import subprocess
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 
 _jf = None  # The helper's jellyfin_call(method, path, token=None, body=None) -> (status, bytes, type)
 _admin_from_helper = None  # () -> (token, user id) of the admin, known once they've signed in
@@ -679,6 +681,135 @@ def fix_subtitles(item_id, index=None, auto=False):
     return {"changed": True, "shift": shift, "message": f"Fixed. They were about {abs(shift):.1f} seconds {was}{speed}.{where}"}
 
 
+# ---------- "Find better subtitles": Bazarr throws the bad ones out and fetches others ----------
+
+LANG2 = {"eng": "en", "spa": "es", "fre": "fr", "fra": "fr", "ger": "de", "deu": "de", "ita": "it", "por": "pt", "jpn": "ja", "dut": "nl", "nld": "nl"}
+
+
+def bazarr_ok():
+    return bool(os.environ.get("BAZARR_URL") and os.environ.get("BAZARR_KEY"))
+
+
+def _bazarr(method, path, params=None, timeout=30):
+    url = os.environ["BAZARR_URL"].rstrip("/") + "/api/" + path
+    query = urllib.parse.urlencode(params or {}, doseq=True)
+    headers = {"X-API-KEY": os.environ["BAZARR_KEY"], "Accept": "application/json"}
+    body = None
+    if method == "GET":
+        url += "?" + query if query else ""
+    else:
+        # Bazarr reads these as form fields, the same way its own web page sends them
+        body = query.encode()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    req = urllib.request.Request(url, data=body, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = r.read()
+    except urllib.error.HTTPError as e:
+        raise CareError(502, f"Bazarr answered with an error ({e.code}).")
+    except (urllib.error.URLError, OSError):
+        raise CareError(502, "Tower couldn't reach Bazarr. Is it running?")
+    try:
+        return json.loads(data or b"null")
+    except ValueError:
+        return None
+
+
+def _base(path):
+    return os.path.basename(str(path or "")).lower()
+
+
+def _bazarr_target(video):
+    """Bazarr's ids for this episode or movie: (kind, ids dict, Bazarr's entry)"""
+    if video.get("Type") == "Episode":
+        series = _get(f"/Items/{video.get('SeriesId')}?" + urllib.parse.urlencode({"userId": _admin()[1] or ""})) or {}
+        tvdb = str((series.get("ProviderIds") or {}).get("Tvdb") or "")
+        shows = (_bazarr("GET", "series") or {}).get("data") or []
+        show = next((x for x in shows if tvdb and str(x.get("tvdbId")) == tvdb), None)
+        show = show or next((x for x in shows if str(x.get("title") or "").lower() == str(video.get("SeriesName") or "").lower()), None)
+        if not show:
+            raise CareError(404, "Bazarr doesn't know this show. Check it's in Sonarr and Bazarr.")
+        eps = (_bazarr("GET", "episodes", {"seriesid[]": show["sonarrSeriesId"]}) or {}).get("data") or []
+        name = _base(video.get("Path"))
+        ep = next((x for x in eps if _base(x.get("path")) == name), None)
+        ep = ep or next((x for x in eps if x.get("season") == video.get("ParentIndexNumber") and x.get("episode") == video.get("IndexNumber")), None)
+        if not ep:
+            raise CareError(404, "Bazarr doesn't know this episode yet. Try again after Bazarr's next scan.")
+        return "episodes", {"seriesid": show["sonarrSeriesId"], "episodeid": ep["sonarrEpisodeId"]}, ep
+    imdb = str((video.get("ProviderIds") or {}).get("Imdb") or "")
+    films = (_bazarr("GET", "movies") or {}).get("data") or []
+    name = _base(video.get("Path"))
+    film = next((x for x in films if imdb and str(x.get("imdbId")) == imdb), None)
+    film = film or next((x for x in films if _base(x.get("path")) == name), None)
+    if not film:
+        raise CareError(404, "Bazarr doesn't know this movie. Check it's in Radarr and Bazarr.")
+    return "movies", {"radarrid": film["radarrId"]}, film
+
+
+def _english_external(item_id, lang3):
+    it = _get(f"/Items/{item_id}?" + urllib.parse.urlencode({"userId": _admin()[1] or "", "Fields": "MediaStreams,MediaSources"})) or {}
+    streams = it.get("MediaStreams") or ((it.get("MediaSources") or [{}])[0].get("MediaStreams")) or []
+    subs = [x for x in streams if x.get("Type") == "Subtitle" and x.get("IsExternal") and str(x.get("Path", "")).lower().endswith(".srt")]
+    same = [x for x in subs if str(x.get("Language") or "").lower() == lang3]
+    return (same or subs or [None])[-1]
+
+
+def better_subtitles(item_id, index=None):
+    """Bazarr deletes the subtitles on screen, never fetches that file again, and downloads different
+    ones. Then Tower lines the new ones up with the voices."""
+    video = _get(f"/Items/{item_id}?" + urllib.parse.urlencode({"userId": _admin()[1] or "", "Fields": "Path,MediaStreams,MediaSources,ProviderIds"})) or {}
+    if not video.get("Path"):
+        raise CareError(404, "Tower couldn't find that video.")
+    streams = video.get("MediaStreams") or ((video.get("MediaSources") or [{}])[0].get("MediaStreams")) or []
+    sub = next((x for x in streams if x.get("Type") == "Subtitle" and x.get("Index") == index), None)
+    lang3 = str((sub or {}).get("Language") or "eng").lower()
+    lang = LANG2.get(lang3, lang3[:2])
+    kind, ids, entry = _bazarr_target(video)
+    gone = _base((sub or {}).get("Path")) if sub and sub.get("IsExternal") else ""
+    how = "searched"
+    if gone:
+        which = {"episodeid": ids["episodeid"]} if kind == "episodes" else {"radarrid": ids["radarrid"]}
+        history = (_bazarr("GET", f"{kind}/history", which) or {}).get("data") or []
+        got = next((h for h in history if h.get("provider") and h.get("subs_id") and _base(h.get("subtitles_path")) == gone), None)
+        if got:
+            # Blacklisting deletes the file, remembers never to fetch it again, and searches for another
+            _bazarr("POST", f"{kind}/blacklist", dict(ids, provider=got["provider"], subs_id=got["subs_id"], language=lang, subtitles_path=got["subtitles_path"]), timeout=300)
+            how = "blocked"
+        else:
+            mine = next((x for x in (entry.get("subtitles") or []) if _base(x.get("path")) == gone), None)
+            if mine:
+                _bazarr("DELETE", f"{kind}/subtitles", dict(ids, language=lang, forced="False", hi=str(bool(mine.get("hi"))), path=mine["path"]))
+            how = "deleted" if mine else "searched"
+    if how != "blocked":
+        _bazarr("PATCH", f"{kind}/subtitles", dict(ids, language=lang, forced="False", hi="False"), timeout=300)
+    # Did Bazarr end up with a subtitle in that language?
+    if kind == "episodes":
+        fresh = ((_bazarr("GET", "episodes", {"episodeid[]": ids["episodeid"]}) or {}).get("data") or [{}])[0]
+    else:
+        fresh = ((_bazarr("GET", "movies", {"radarrid[]": ids["radarrid"]}) or {}).get("data") or [{}])[0]
+    found = [x for x in (fresh.get("subtitles") or []) if x.get("code2") == lang and x.get("path")]
+    log(f"bazarr {_nice_name(video)}: {how}, now {len(found)} {lang} subtitle file(s)")
+    if not found and how == "searched":
+        return {"changed": False, "message": "Bazarr couldn't find other subtitles for this one. You can still move them yourself with Subtitle timing."}
+    if not found:
+        return {"changed": False, "message": "Bazarr couldn't find other subtitles yet, so this one has none for now. Bazarr keeps looking by itself, and new ones show up in Subtitles when it finds some."}
+    _post(f"/Items/{item_id}/Refresh?metadataRefreshMode=Default&imageRefreshMode=None")
+    new = None
+    for _ in range(10):
+        time.sleep(3)
+        new = _english_external(item_id, lang3)
+        if new:
+            break
+    if not new:
+        return {"changed": True, "message": "Bazarr got new subtitles. Pick them in Subtitles in a minute."}
+    try:
+        lined = fix_subtitles(item_id, new.get("Index"))
+        extra = " Tower moved them to line up with the voices too." if lined.get("changed") else " They already line up with the voices."
+    except CareError:
+        extra = ""
+    return {"changed": True, "message": "Bazarr got new subtitles." + extra}
+
+
 def _auto_sync(it):
     """During the night test: fix .srt files next to new videos that are clearly early or late"""
     try:
@@ -692,16 +823,20 @@ def _auto_sync(it):
         log(f"subtitles: {e}")
 
 
-def sync_request(item_id, index):
+def sync_request(item_id, index, better=False):
     if not (_dir and ffmpeg_ok()):
         raise CareError(503, "The subtitle fixer isn't on Tower yet. Run the Benflix setup command again.")
+    if better and not bazarr_ok():
+        raise CareError(503, "Bazarr isn't connected to Tower yet. Run the Benflix setup command again.")
     with _lock:
         job = _sync_jobs.get(item_id)
         if job and job["state"] in ("waiting", "working"):
             return job
         job = {"state": "waiting", "message": "Tower is lining the subtitles up with the voices. It takes a minute or two.", "at": time.time()}
         _sync_jobs[item_id] = job
-        _sync_queue.append((item_id, index))
+        if better:
+            job["message"] = "Tower asked Bazarr for different subtitles. It can take a couple of minutes."
+        _sync_queue.append((item_id, index, better))
     _sync_wake.set()
     return job
 
@@ -718,11 +853,11 @@ def _sync_worker():
             with _lock:
                 if not _sync_queue:
                     break
-                item_id, index = _sync_queue.pop(0)
+                item_id, index, better = _sync_queue.pop(0)
                 job = _sync_jobs[item_id]
                 job["state"] = "working"
             try:
-                answer = fix_subtitles(item_id, index)
+                answer = better_subtitles(item_id, index) if better else fix_subtitles(item_id, index)
                 job.update(state="done", **answer)
             except CareError as e:
                 job.update(state="failed", message=e.message)
@@ -1019,7 +1154,7 @@ def user_route(method, path, read_json):
         if m and method == "POST":
             body = read_json() or {}
             index = body.get("index")
-            return 200, sync_request(m.group(1), index if isinstance(index, int) else None)
+            return 200, sync_request(m.group(1), index if isinstance(index, int) else None, bool(body.get("better")))
         if m and method == "GET":
             return 200, sync_status(m.group(1))
     except CareError as e:
