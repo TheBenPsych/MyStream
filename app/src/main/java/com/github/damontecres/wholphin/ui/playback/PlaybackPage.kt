@@ -377,7 +377,8 @@ fun PlaybackPageContent(
             PlaybackAction.FindBetterSubtitles -> {
                 controllerViewState.hideControls()
                 val playing = viewModel.state.value.currentPlayback
-                if (playing != null && playing.subtitleIndex >= 0) {
+                if (playing != null) {
+                    // With subtitles off, -1 tells Tower to just ask Bazarr for some
                     subtitleTiming.fix(playing.itemId, playing.subtitleIndex, better = true) { viewModel.afterSubtitleFix() }
                 }
             }
