@@ -385,9 +385,10 @@ def _artist(a):
 # ---------- What the app and web page can ask ----------
 
 
-def route(method, path, query, token, user_id, is_admin, read_json, is_kids=False):
-    """The helper sends /api/music/... here. Returns (status, answer). Made for you is for everyone but Kids;
-    the rest is only for the admin (Ben)."""
+def route(method, path, query, token, user_id, is_admin, read_json, is_kids=False, user_name=""):
+    """The helper sends /api/music/... here. Returns (status, answer). Made for you is for everyone but Kids.
+    Grown-up family profiles can look and ask too (Redesign 2, Ben 2026-11-10), but their asks wait for Ben's
+    Approve before anything downloads. Playlists, the Drop folder and the tidy-up stay Ben's only."""
     if method == "GET" and path == "/api/music/mixes":
         if is_kids:
             return 403, {"error": "No music on the Kids profile."}
@@ -402,8 +403,10 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 403, {"error": "No music on the Kids profile."}
         one = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
         return 200, {"songs": album_size(one("artist"), one("album"))}
+    if is_kids:
+        return 403, {"error": "No music requests on the Kids profile."}
     if not is_admin:
-        return 403, {"error": "Only Ben can ask for music."}
+        return _family_route(method, path, query, user_id, user_name, read_json)
     if not _dir:
         return 503, {"error": "Music is off: the helper has no folder to save requests in. Run the Benflix setup command again."}
     remember_admin(token, user_id)
@@ -429,9 +432,14 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         if method == "POST" and path == "/api/music/redo":
             body = read_json()
             return 200, redo_song(str(body.get("id") or ""), token, user_id)
-        m = re.fullmatch(r"/api/music/request/([\w-]+)/(retry|remove)", path)
+        m = re.fullmatch(r"/api/music/request/([\w-]+)/(retry|remove|approve|decline)", path)
         if method == "POST" and m:
-            return 200, (retry(m.group(1)) if m.group(2) == "retry" else remove(m.group(1)))
+            act = m.group(2)
+            if act == "approve":
+                return 200, approve(m.group(1))
+            if act == "decline":
+                return 200, remove(m.group(1))
+            return 200, (retry(m.group(1)) if act == "retry" else remove(m.group(1)))
         if method == "POST" and path == "/api/music/playlist":
             body = read_json()
             return 200, playlist_import(str(body.get("link") or ""), str(body.get("name") or ""), body.get("playlist", True) is not False)
@@ -774,8 +782,62 @@ def _mark_asked(out, extra_have=None):
             out["album"]["asked"] = _words(r)[0]
 
 
-def ask(kind, deezer_id, playlist=None, quiet=False):
-    """Asks for one song or album. Returns the request (an existing one if it was already asked for)."""
+FAMILY_READ = ("/api/music/search", "/api/music/discover", "/api/music/genre", "/api/music/preview", "/api/music/artist", "/api/music/album")
+
+
+def _family_route(method, path, query, user_id, user_name, read_json):
+    """A grown-up family profile: look, hear previews and ask. Asks wait for Ben (state waiting_ben)."""
+    if not _dir:
+        return 503, {"error": "Music requests aren't set up on Tower yet. Ask Ben."}
+    q = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
+    try:
+        if method == "GET" and path in FAMILY_READ:
+            if path == "/api/music/search":
+                return 200, search(q("q"))
+            if path == "/api/music/discover":
+                return 200, discover()
+            if path == "/api/music/genre":
+                return 200, genre_page(q("id"))
+            if path == "/api/music/preview":
+                return 200, preview(q("id"))
+            if path == "/api/music/artist":
+                return 200, artist_page(q("id"))
+            return 200, album_page(q("id"))
+        if method == "GET" and path == "/api/music/status":
+            with _lock:
+                reqs = [_public(r) for r in _state["requests"] if r.get("user") == user_id]
+            return 200, {"lidarr": True, "soulseek": False, "problems": [], "requests": reqs, "playlists": [], "family": True,
+                         "drop_folder": "", "music_folder": "", "drop_lines": [], "drop_last": None, "tidy": None}
+        if method == "POST" and path == "/api/music/request":
+            body = read_json()
+            return 200, ask(str(body.get("kind") or ""), body.get("id"), who=user_name or "Someone", user=user_id)
+        m = re.fullmatch(r"/api/music/request/([\w-]+)/remove", path)
+        if method == "POST" and m:
+            with _lock:
+                r = _find(m.group(1))
+                if r.get("user") != user_id:
+                    raise MusicError(403, "Only Ben can take off someone else's request.")
+            return 200, remove(m.group(1))
+    except MusicError as e:
+        return e.status, {"error": e.message}
+    return 403, {"error": "Only Ben can do that."}
+
+
+def approve(rid):
+    """Ben said yes to a family profile's music ask: now it really gets looked for"""
+    with _lock:
+        r = _find(rid)
+        if r["state"] == "waiting_ben":
+            r.update({"state": "adding", "since": time.time(), "approved": time.time()})
+            _save()
+    log(f"Ben said yes to {r.get('who') or 'someone'}'s {r['kind']} {r['artist']} - {r['title']}")
+    _kick.set()
+    return _public(r)
+
+
+def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None):
+    """Asks for one song or album. Returns the request (an existing one if it was already asked for).
+    [who] set = a family profile asking: it waits (waiting_ben) until Ben presses Approve."""
     if kind not in ("song", "album") or not str(deezer_id).isdigit():
         raise MusicError(400, "Pick a song or an album to ask for.")
     deezer_id = int(deezer_id)
@@ -821,7 +883,9 @@ def ask(kind, deezer_id, playlist=None, quiet=False):
             "cover_big": a.get("cover_xl") or a.get("cover_big") or "",
             "year": (a.get("release_date") or "")[:4],
         }
-    r.update({"id": uuid.uuid4().hex[:12], "kind": kind, "deezer": deezer_id, "state": "adding", "created": time.time(), "tries": []})
+    r.update({"id": uuid.uuid4().hex[:12], "kind": kind, "deezer": deezer_id, "state": "waiting_ben" if who else "adding", "created": time.time(), "tries": []})
+    if who:
+        r.update({"who": who, "user": user})
     if playlist:
         r["playlist"] = playlist
     with _lock:
@@ -877,6 +941,8 @@ def remove(rid):
 def _words(r):
     """(words, how full the thin bar is from 0 to 1, red?) for a request"""
     s = r["state"]
+    if s == "waiting_ben":
+        return "Asked · waiting for Ben", 0.05, False
     if s == "ready":
         return "In your music", 1.0, False
     if s == "not_found":
@@ -917,9 +983,28 @@ def _public(r):
         "bar": round(bar, 3),
         "bad": bad,
         "can_retry": r["state"] in ("not_found", "problem"),
+        # Redesign 2: one of the five status pills (asked, getting, looking, cant, ready) and how far along
+        "pill": _pill(r),
+        "pct": int(r.get("pct") or 0),
+        "who": r.get("who") or "",
+        "waiting": r["state"] == "waiting_ben",
+        "days": int((time.time() - (r.get("approved") or r.get("created") or time.time())) // 86400),
         "created": int(r.get("created") or 0),
         "playlist": r.get("playlist"),
     }
+
+
+def _pill(r):
+    s = r["state"]
+    if s == "ready":
+        return "ready"
+    if s in ("not_found", "problem"):
+        return "cant"
+    if s in ("downloading", "slsk_downloading", "tidying"):
+        return "getting"
+    if s in ("searching", "search_now", "slsk_search"):
+        return "looking"
+    return "asked"
 
 
 def status():
@@ -1125,7 +1210,7 @@ def _worker():
 
 def _tick():
     with _lock:
-        todo = [r for r in _state["requests"] if r["state"] not in ("ready", "not_found", "problem")]
+        todo = [r for r in _state["requests"] if r["state"] not in ("ready", "not_found", "problem", "waiting_ben")]
         recheck = [r for r in _state["requests"] if r["state"] == "ready" and r["kind"] == "song" and r.get("album_id") and not r.get("takes_checked")]
     if recheck and LIDARR_URL and _ensure_lidarr():
         for r in recheck:

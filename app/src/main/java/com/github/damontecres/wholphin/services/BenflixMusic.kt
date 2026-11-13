@@ -85,6 +85,15 @@ data class MusicRequest(
     val bad: Boolean,
     val canRetry: Boolean,
     val ready: Boolean,
+    /** Redesign 2: asked, getting, looking, cant or ready (blank from older Tower helpers) */
+    val pill: String = "",
+    val pct: Int = 0,
+    /** Who asked (Ben sees everyone's) */
+    val who: String = "",
+    /** A family profile's ask, waiting for Ben's Approve */
+    val waiting: Boolean = false,
+    /** Days since it was asked for (or approved) */
+    val days: Int = 0,
 )
 
 data class MusicPlaylist(
@@ -113,6 +122,8 @@ data class MusicStatus(
     val musicFolder: String,
     val dropLines: List<String>,
     val tidy: MusicTidy?,
+    /** Tower answered for a family profile (no playlists, Drop folder or tidy-up) */
+    val family: Boolean = false,
 )
 
 /**
@@ -212,6 +223,14 @@ class BenflixMusic
             makePlaylist: Boolean = true,
         ): MusicPlaylist = playlist(helper.postJson("/api/music/playlist", JSONObject().put("link", link).put("playlist", makePlaylist)))
 
+        /** Ben's answer to a family profile's music ask: yes starts the download, no takes it off */
+        suspend fun answer(
+            request: MusicRequest,
+            yes: Boolean,
+        ) {
+            helper.postJson("/api/music/request/${request.id}/${if (yes) "approve" else "decline"}")
+        }
+
         suspend fun removePlaylist(playlist: MusicPlaylist) {
             helper.postJson("/api/music/playlist/${playlist.id}/remove")
         }
@@ -239,6 +258,7 @@ class BenflixMusic
                 musicFolder = j.optString("music_folder"),
                 dropLines = j.optJSONArray("drop_lines").strings(),
                 tidy = j.optJSONObject("tidy")?.let(::tidy),
+                family = j.optBoolean("family"),
             )
 
         private fun song(j: JSONObject) =
@@ -281,6 +301,11 @@ class BenflixMusic
                 bad = j.optBoolean("bad"),
                 canRetry = j.optBoolean("can_retry"),
                 ready = j.optString("state") == "ready",
+                pill = j.optString("pill"),
+                pct = j.optInt("pct"),
+                who = j.optString("who"),
+                waiting = j.optBoolean("waiting"),
+                days = j.optInt("days"),
             )
 
         private fun playlist(j: JSONObject) =

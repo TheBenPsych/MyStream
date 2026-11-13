@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
@@ -114,7 +116,23 @@ class MusicRequestsViewModel
         private val music: BenflixMusic,
         /** Benflix: 30 second song previews beside Ask for it */
         val preview: com.github.damontecres.wholphin.services.SongPreview,
+        private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
     ) : ViewModel() {
+        /** Ben. Grown-up family profiles can ask too, but their asks wait for his Approve. */
+        val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+
+        /** Ben's Approve or Decline on a family profile's music ask */
+        fun answer(
+            request: MusicRequest,
+            yes: Boolean,
+        ) {
+            viewModelScope.launch {
+                safely { music.answer(request, yes) }
+                note.value = if (yes) "Said yes to ${request.title}. Tower starts looking now." else "Said no to ${request.title}."
+                refresh()
+            }
+        }
+
         val status = MutableStateFlow<MusicStatus?>(null)
         val problem = MutableStateFlow<String?>(null)
         val query = MutableStateFlow("")
@@ -212,7 +230,12 @@ class MusicRequestsViewModel
         ) {
             viewModelScope.launch {
                 safely { music.ask(kind, id) }?.let {
-                    note.value = "Asked for $name. It shows under Your music requests."
+                    note.value =
+                        if (isAdmin) {
+                            "Asked for $name. It shows under Your requests."
+                        } else {
+                            "Asked Ben for $name. He says yes before it downloads."
+                        }
                     refresh()
                     // Mark it on the page you're on
                     when (val p = page.value) {
@@ -303,7 +326,8 @@ class MusicRequestsViewModel
     }
 
 /**
- * Benflix Requests > Music (only Ben, the admin): search any song, album or artist and ask for it. Lidarr does the
+ * Benflix Requests > Music (Ben, and grown-up family profiles since Redesign 2: their asks wait for Ben's Approve
+ * before anything downloads): search any song, album or artist and ask for it. Lidarr does the
  * downloading on Tower behind the scenes; for a single song only that song is kept. Also: bring in a playlist,
  * the Music Drop folder, and the tidy-up for old music.
  */
@@ -357,8 +381,14 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
         }
     }
     askSong?.let { song ->
-        AskSongDialog(
-            song = song,
+        SongAskPanel(
+            title = song.title,
+            artist = song.artist,
+            album = song.album,
+            seconds = song.seconds,
+            cover = song.cover,
+            songId = song.id,
+            admin = viewModel.isAdmin,
             onDismiss = {
                 askSong = null
                 viewModel.preview.stop()
@@ -419,79 +449,353 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
         )
         return
     }
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item(key = "search") {
-            if (isTv) {
-                MusicButton(
-                    label = "Search any song, album or artist to ask for",
-                    big = true,
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .widthIn(max = 640.dp)
-                            .fillMaxWidth(),
-                ) { searchOpen = true }
-            } else {
-                RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any song, album or artist")
+    // Redesign 2 (Requests, Ben 2026-11-10): the same side list and wall as Movies, Shows and Anime.
+    // Lists: Top 10 songs, Trending, Because you have, New this week, Genres, Import a playlist (Ben only).
+    val admin = viewModel.isAdmin
+    val s = status
+    val d = discover
+    val because =
+        remember(d) {
+            val seen = HashSet<Long>()
+            d
+                ?.because
+                .orEmpty()
+                .flatMap { it.songs }
+                .filter { seen.add(it.id) }
+        }
+    val lists =
+        buildList {
+            if (d != null && d.songs.isNotEmpty()) add(SideList("top", "Top 10 songs"))
+            if (d != null && d.songs.size > 10) add(SideList("trending", "Trending"))
+            if (because.isNotEmpty()) add(SideList("because", "Because you have"))
+            if (d != null && d.newReleases.isNotEmpty()) add(SideList("new", "New this week"))
+            if (d != null && d.genres.isNotEmpty()) add(SideList("genres", "Genres"))
+            if (admin) add(SideList("playlist", "Import a playlist"))
+        }
+    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    val pickedKey =
+        picked?.takeIf { p -> p == PICK_YOURS || p == PICK_WAITING || lists.any { it.key == p } } ?: lists.firstOrNull()?.key ?: ""
+    var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }
+    val all = s?.requests.orEmpty()
+    val waiting = if (admin) all.filter { it.waiting } else emptyList()
+    val yours = all.filter { !it.waiting || !admin }
+    val yourLines =
+        yours.map { r ->
+            r.toAskLine(
+                showWho = admin,
+                onRetry = { viewModel.retry(r) },
+                onRemove = { confirm("Take ${r.title} off the list? Files already in Music stay.") { viewModel.remove(r) } },
+            )
+        }
+    val waitingLines = waiting.map { r -> r.toAskLine(showWho = true, onAnswer = { yes -> viewModel.answer(r, yes) }) }
+    val focusedLine = remember { mutableStateOf<String?>(null) }
+    val wall: @Composable (Modifier) -> Unit = { m ->
+        Column(m) {
+            note?.let { NoteLine(it) }
+            problem?.let { WarningLine(it) }
+            if (admin) s?.problems?.forEach { line -> WarningLine(line) }
+            when (pickedKey) {
+                PICK_YOURS -> {
+                    AskLinesWall(
+                        lines = yourLines,
+                        grouped = true,
+                        empty = "Nothing asked for yet. Pick a song or album and ask for it.",
+                        note = if (admin) null else "Ben says yes before anything downloads.",
+                    )
+                }
+
+                PICK_WAITING -> {
+                    AskLinesWall(lines = waitingLines, grouped = false, empty = "Nobody is waiting on you right now.")
+                }
+
+                "playlist" -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        if (s == null) {
+                            item(key = "loading") { MutedLine("Asking Tower…") }
+                            return@LazyColumn
+                        }
+                        item(key = "playlists") {
+                            PlaylistSection(
+                                playlists = s.playlists,
+                                onAdd = { playlistOpen = true },
+                                onRemove = { p ->
+                                    confirm("Take ${p.name} off the list? The playlist in Jellyfin stays.") { viewModel.removePlaylist(p) }
+                                },
+                            )
+                        }
+                        item(key = "drop") { DropSection(s) }
+                        item(key = "tidy") {
+                            TidySection(
+                                status = s,
+                                onPreview = { viewModel.tidy("preview", it) },
+                                onApply = { folder ->
+                                    confirm(
+                                        "Tidy everything in $folder into Music/Artist/Album? Songs twice go to Music Leftovers, " +
+                                            "and Undo puts it all back.",
+                                    ) { viewModel.tidy("apply", folder) }
+                                },
+                                onUndo = { file ->
+                                    confirm("Put the files from the last tidy-up back where they were?") {
+                                        viewModel.tidy("undo", undoFile = file)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    if (d == null) {
+                        if (discoverProblem) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
+                                MutedLine("Couldn't load what's popular right now.", pad = false)
+                                MusicButton("Try again", onClick = viewModel::loadDiscover)
+                            }
+                        } else {
+                            MutedLine("Loading what's popular…")
+                        }
+                        return@Column
+                    }
+                    if (isTv) {
+                        Text(
+                            text = focusedLine.value ?: " ",
+                            fontSize = BenflixType.body,
+                            color = BenflixColors.Soft,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    val songs =
+                        when (pickedKey) {
+                            "top" -> d.songs.take(10)
+                            "trending" -> d.songs.drop(10)
+                            "because" -> because
+                            else -> emptyList()
+                        }
+                    when (pickedKey) {
+                        "new" -> {
+                            MusicWall(
+                                tiles =
+                                    d.newReleases.map { a ->
+                                        WallTile(
+                                            key = "a-${a.id}",
+                                            cover = a.cover,
+                                            name = a.title,
+                                            line = a.asked ?: a.artist,
+                                            focusLine = albumLineWords(a),
+                                            onClick = { viewModel.openAlbum(a) },
+                                            onLongClick = { if (a.asked == null) viewModel.ask("album", a.id, a.title) },
+                                        )
+                                    },
+                                listKey = pickedKey,
+                                onFocusLine = { focusedLine.value = it },
+                            )
+                        }
+
+                        "genres" -> {
+                            MusicWall(
+                                tiles =
+                                    d.genres.map { g ->
+                                        WallTile(
+                                            key = "g-${g.id}",
+                                            cover = g.picture,
+                                            name = g.name,
+                                            line = null,
+                                            focusLine = g.name,
+                                            onClick = { viewModel.openGenre(g) },
+                                        )
+                                    },
+                                listKey = pickedKey,
+                                onFocusLine = { focusedLine.value = it },
+                            )
+                        }
+
+                        else -> {
+                            val owned = songs.count { it.have }
+                            val shown = if (ownedOpen == pickedKey) songs else songs.filter { !it.have }
+                            MusicWall(
+                                tiles =
+                                    shown.mapIndexed { i, song ->
+                                        WallTile(
+                                            key = "s-${song.id}",
+                                            cover = song.cover,
+                                            name = song.title,
+                                            line = songUnder(song),
+                                            focusLine =
+                                                listOfNotNull(
+                                                    song.title,
+                                                    song.artist,
+                                                    if (song.seconds > 0) "%d:%02d".format(song.seconds / 60, song.seconds % 60) else null,
+                                                    if (song.asked == null && !song.have) "OK to hear 30 seconds and ask" else null,
+                                                ).joinToString(" · "),
+                                            rank = if (pickedKey == "top") i + 1 else null,
+                                            onClick = { onSong(song) },
+                                            onLongClick = {
+                                                if (song.asked == null && !song.have) viewModel.ask("song", song.id, song.title)
+                                            },
+                                        )
+                                    },
+                                listKey = pickedKey,
+                                onFocusLine = { focusedLine.value = it },
+                                owned = owned,
+                                ownedOpen = ownedOpen == pickedKey,
+                                onOwned = { ownedOpen = if (ownedOpen == pickedKey) null else pickedKey },
+                            )
+                        }
+                    }
+                }
             }
         }
-        note?.let { item(key = "note") { NoteLine(it) } }
-        problem?.let { item(key = "problem") { WarningLine(it) } }
-        status?.problems?.forEach { line -> item(key = "p-$line") { WarningLine(line) } }
-        if (!isTv && query.trim().length >= 2) {
-            musicResults(results, onSong, viewModel::openAlbum, viewModel::openArtist)
-            return@LazyColumn
+    }
+    RequestSideFrame(
+        isTv = isTv,
+        lists = lists,
+        picked = pickedKey,
+        onPick = { picked = it },
+        yoursCount = yours.size,
+        waitingCount = if (admin) waiting.size else null,
+        onSearch = { searchOpen = true },
+        loading = d == null,
+        searchLabel = "Search any song or album",
+        phoneTop = { RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any song, album or artist") },
+        phoneWall = query.trim().length < 2,
+        phoneAlt = { m ->
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+                modifier = m,
+            ) {
+                musicResults(results, onSong, viewModel::openAlbum, viewModel::openArtist)
+            }
+        },
+        wall = wall,
+    )
+}
+
+/** The line above the wall for an album: name · artist · year · kind */
+private fun albumLineWords(a: MusicAlbum): String =
+    listOf(a.title, a.artist, a.year, albumType(a))
+        .filter { it.isNotBlank() }
+        .joinToString(" · ")
+
+/** The small line under a song's cover: its status pill words, Ready to play, or the artist */
+private fun songUnder(song: MusicSong): String =
+    when {
+        song.asked != null -> pillFromWords(song.asked, AskKind.PLAY).words
+        song.have -> "Ready to play"
+        else -> song.artist
+    }
+
+/** One square cover on the music wall */
+private class WallTile(
+    val key: String,
+    val cover: String?,
+    val name: String,
+    val line: String?,
+    val focusLine: String,
+    val onClick: () -> Unit,
+    val rank: Int? = null,
+    val onLongClick: (() -> Unit)? = null,
+)
+
+/** The music wall: square covers, 6 across on TV (3 on phones), the Top 10 numbered, names under every cover */
+@Composable
+private fun MusicWall(
+    tiles: List<WallTile>,
+    listKey: String,
+    onFocusLine: (String) -> Unit,
+    owned: Int = 0,
+    ownedOpen: Boolean = false,
+    onOwned: () -> Unit = {},
+) {
+    val isTv = rememberIsTv()
+    val grid =
+        androidx.compose.foundation.lazy.grid
+            .rememberLazyGridState()
+    LaunchedEffect(listKey) { grid.scrollToItem(0) }
+    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+        columns =
+            androidx.compose.foundation.lazy.grid.GridCells
+                .Fixed(if (isTv) 6 else 3),
+        state = grid,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        items(tiles.size, key = { "$listKey-${tiles[it].key}-$it" }) { i ->
+            val t = tiles[i]
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box {
+                    Surface(
+                        onClick = t.onClick,
+                        onLongClick = t.onLongClick,
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                        colors =
+                            ClickableSurfaceDefaults.colors(
+                                containerColor = BenflixColors.Raised,
+                                focusedContainerColor = BenflixColors.Raised,
+                            ),
+                        border = doorFocusBorder(RoundedCornerShape(10.dp)),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .onFocusChanged { if (it.isFocused) onFocusLine(t.focusLine) },
+                    ) {
+                        AsyncImage(
+                            model = t.cover,
+                            contentDescription = t.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    t.rank?.let { n ->
+                        Text(
+                            text = "No. $n",
+                            fontSize = BenflixType.tag,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = BenflixColors.Tray,
+                            modifier =
+                                Modifier
+                                    .padding(6.dp)
+                                    .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = t.name,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.Bold,
+                    color = BenflixColors.Text,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!t.line.isNullOrBlank()) {
+                    Text(
+                        text = t.line,
+                        fontSize = BenflixType.tag,
+                        color = BenflixColors.Muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
-        val s = status
-        if (s == null) {
-            if (problem == null) item(key = "loading") { MutedLine("Asking Tower…") }
-            return@LazyColumn
-        }
-        item(key = "requests") {
-            MusicRequestRow(
-                requests = s.requests,
-                onRetry = viewModel::retry,
-                onRemove = { r -> confirm("Take ${r.title} off the list? Files already in Music stay.") { viewModel.remove(r) } },
-            )
-        }
-        discoverRows(
-            found = discover,
-            failed = discoverProblem,
-            onSong = onSong,
-            onAllSongs = { viewModel.openSongs("Top 100 songs", it) },
-            onAlbum = viewModel::openAlbum,
-            onArtist = viewModel::openArtist,
-            onGenre = viewModel::openGenre,
-            onRetry = viewModel::loadDiscover,
-        )
-        item(key = "playlists") {
-            PlaylistSection(
-                playlists = s.playlists,
-                onAdd = { playlistOpen = true },
-                onRemove = { p ->
-                    confirm("Take ${p.name} off the list? The playlist in Jellyfin stays.") { viewModel.removePlaylist(p) }
-                },
-            )
-        }
-        item(key = "drop") { DropSection(s) }
-        item(key = "tidy") {
-            TidySection(
-                status = s,
-                onPreview = { viewModel.tidy("preview", it) },
-                onApply = { folder ->
-                    confirm(
-                        "Tidy everything in $folder into Music/Artist/Album? Songs twice go to Music Leftovers, " +
-                            "and Undo puts it all back.",
-                    ) { viewModel.tidy("apply", folder) }
-                },
-                onUndo = { file ->
-                    confirm("Put the files from the last tidy-up back where they were?") { viewModel.tidy("undo", undoFile = file) }
-                },
-            )
+        if (owned > 0) {
+            item(key = "$listKey-owned", span = {
+                androidx.compose.foundation.lazy.grid
+                    .GridItemSpan(maxLineSpan)
+            }) {
+                Box(Modifier.padding(top = 8.dp)) { OwnedMoreButton(owned, ownedOpen, onOwned) }
+            }
         }
     }
 }
@@ -1032,82 +1336,6 @@ private fun Tile(
     }
 }
 
-/** "Your music requests": what you asked for, in words, with the thin bar (red when it couldn't be found) */
-@Composable
-private fun MusicRequestRow(
-    requests: List<MusicRequest>,
-    onRetry: (MusicRequest) -> Unit,
-    onRemove: (MusicRequest) -> Unit,
-) {
-    val isTv = rememberIsTv()
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        RowTitle(if (requests.isEmpty()) "Your music requests" else "Your music requests (${requests.size})")
-        if (requests.isEmpty()) {
-            MutedLine("Nothing asked for yet. Search a song or album above and pick it.")
-            return
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
-            items(requests, key = { "r-${it.id}" }) { r ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier =
-                        Modifier
-                            .width(if (isTv) 300.dp else 260.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(BenflixColors.Panel)
-                            .padding(10.dp),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Cover(r.cover, 56, RoundedCornerShape(6.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.weight(1f)) {
-                            Text(
-                                r.title,
-                                fontSize = BenflixType.body,
-                                fontWeight = FontWeight.Bold,
-                                color = BenflixColors.Text,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = if (r.kind == "album") "${r.artist} · Album" else r.artist,
-                                fontSize = BenflixType.small,
-                                color = BenflixColors.Soft,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = r.words,
-                                fontSize = BenflixType.small,
-                                color = if (r.bad) BAD else BenflixColors.Soft,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(BenflixColors.Raised),
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(r.bar)
-                                .height(4.dp)
-                                .background(if (r.bad) BAD else BenflixColors.Text),
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (r.canRetry) MusicButton("Try again", primary = true, modifier = Modifier.weight(1f)) { onRetry(r) }
-                        MusicButton(if (r.ready) "Done" else "Remove", modifier = Modifier.weight(1f)) { onRemove(r) }
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun PlaylistSection(
     playlists: List<MusicPlaylist>,
@@ -1220,33 +1448,6 @@ private fun TidySection(
             ) {
                 tidy.lines.takeLast(120).forEach { Text(it, fontSize = BenflixType.tag, color = BenflixColors.Soft) }
             }
-        }
-    }
-}
-
-@Composable
-private fun AskSongDialog(
-    song: MusicSong,
-    onDismiss: () -> Unit,
-    onSong: () -> Unit,
-    onAlbum: () -> Unit,
-) {
-    BasicDialog(onDismissRequest = onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 520.dp).padding(22.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Cover(song.cover, 72, RoundedCornerShape(8.dp))
-                Column {
-                    Text(song.title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text, maxLines = 2)
-                    Text("${song.artist} · ${song.album}", fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2)
-                }
-            }
-            LocalSongPreview.current?.let { preview ->
-                val state by preview.state.collectAsState()
-                MusicButton(previewLabel(state, song.id), modifier = Modifier.fillMaxWidth()) { preview.toggle(song.id) }
-            }
-            MusicButton("Just this song", primary = true, modifier = Modifier.fillMaxWidth(), onClick = onSong)
-            MusicButton("The whole album", modifier = Modifier.fillMaxWidth(), onClick = onAlbum)
-            MusicButton("Cancel", modifier = Modifier.fillMaxWidth(), onClick = onDismiss)
         }
     }
 }
@@ -1430,5 +1631,3 @@ private fun WarningLine(text: String) {
         modifier = Modifier.padding(horizontal = 16.dp),
     )
 }
-
-private val BAD = Color(0xFFFF8A8A)

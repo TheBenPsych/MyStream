@@ -26,7 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -251,14 +250,7 @@ private fun CardButton(
 private fun declined(entry: RequestEntry) =
     !entry.available && (entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE)
 
-private fun statusWords(entry: RequestEntry): String =
-    when {
-        entry.available -> "Ready to watch"
-        declined(entry) -> "Not this time"
-        entry.downloading -> entry.downloadPercent?.let { "Downloading, $it%" } ?: "Downloading"
-        entry.status == RequestStatus.PENDING -> "Waiting for a yes"
-        else -> "Yes! Looking for it"
-    }
+private fun statusWords(entry: RequestEntry): String = entry.askPill().words
 
 private fun progress(entry: RequestEntry): Float =
     when {
