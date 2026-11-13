@@ -43,7 +43,7 @@ const TOOL_GROUPS = [
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
@@ -147,6 +147,7 @@ PAGES.overview = (el) => {
       down.forEach((a) => health.push(["bad", `${a.nice} isn't running properly`, a.status, `<a class="btn small white" href="#/server/tools/apps">Go</a>`]));
       stuck.forEach((d) => health.push(["warn", `Stuck download: ${d.title}`, d.why || "It stopped moving", `<button class="btn small white" data-replace="${esc(d.app)}/${esc(String(d.id))}" data-title="${esc(d.title)}" data-episodes="${d.episodes || 1}">Find another</button>`]));
       if (setupWaiting) health.push(["warn", "Tower needs the setup command", "The yellow card above has it, with Copy", ""]);
+      (t.drives_bad || []).forEach((d) => health.push([d.words.startsWith("Failing") ? "bad" : "warn", `Drive ${d.name}: ${d.words}`, d.where, `<a class="btn small white" href="#/server/tools/drives">Go</a>`]));
       disksFull.forEach((d) => health.push(["warn", `The disk with ${d.name} is nearly full`, `${bytes(d.free)} free`, `<a class="btn small" href="#/server/library/library">Go</a>`]));
       const asks = pending.map((r) => ["warn", (r.media && (r.media.title || r.media.name)) || "A request", `Asked by ${(r.requestedBy && (r.requestedBy.displayName || r.requestedBy.username)) || "someone"}`, `<button class="btn small white" data-rq="${r.id}" data-yes="1">Yes</button><button class="btn small" data-rq="${r.id}">No</button>`]);
       const bad = health.some((h) => h[0] === "bad");
@@ -338,6 +339,23 @@ PAGES.kidsgames = (el) => {
     } catch (err) { if (current === "kidsgames") $("#kg").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   load();
+};
+
+// ---------- Drive health (Idea Box 24, from the Scrutiny app) ----------
+const hoursText = (h) => (h == null ? "" : h >= 8760 ? `${(h / 8760).toFixed(1)} years switched on` : `${Math.round(h / 24)} days switched on`);
+PAGES.drives = (el) => {
+  el.innerHTML = `<p class="sub">Every drive in Tower checks its own health. Scrutiny reads those checks and spots the warning signs of a drive that's wearing out, so you can swap it before anything is lost.</p><div id="dh">${loading()}</div>`;
+  const draw = async (fresh) => {
+    let r;
+    try { r = await call("GET", "api/admin/drives" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "drives") $("#dh").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    if (current !== "drives") return;
+    if (!r.set_up) { $("#dh").innerHTML = `<div class="note">Scrutiny isn't connected yet. Install Scrutiny from Apps on Tower (search "scrutiny"), then run the setup command again (Tools, Tower, Setup command).</div>`; return; }
+    const list = r.drives || [];
+    $("#dh").innerHTML = `<div class="list">${list.map((d) => `<div class="item"><span class="dot ${d.ok ? "ok" : d.words.startsWith("Failing") ? "bad" : "warn"}"></span><div class="grow"><div class="t">${esc(d.name)}</div><div class="s">${esc([d.words, d.size ? bytes(d.size) : "", d.temp != null ? `${d.temp}°C` : "", hoursText(d.hours), d.where].filter(Boolean).join(" · "))}</div></div></div>`).join("") || `<div class="empty">Scrutiny hasn't checked any drives yet. It checks once a day.</div>`}</div>
+      <div class="acts" style="margin-top:14px"><button class="btn small" id="dhFresh">${B.I("restart")} Check again now</button></div>`;
+    $("#dhFresh").onclick = () => draw(true);
+  };
+  draw(false);
 };
 
 // ---------- Games that didn't start (Idea Box 24) ----------

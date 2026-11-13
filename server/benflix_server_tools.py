@@ -129,6 +129,60 @@ def disks():
     return [{"name": "Movies and shows", "used": total - free, "free": free}]
 
 
+# Drive health (Idea Box 24): Scrutiny reads each drive's own health report (SMART) and spots the warning signs
+# of a drive that's about to fail. The setup command finds the Scrutiny app and saves its address.
+_drives_cache = {"at": 0.0, "data": None}
+DRIVES_SECONDS = 600
+
+
+def _drive_words(status):
+    """Scrutiny's status number in plain words (0 is healthy)"""
+    if not status:
+        return "Healthy"
+    if status & 1:
+        return "Failing: the drive says it's going wrong"
+    return "Warning signs: back up anything you can't download again"
+
+
+def drives(fresh=False):
+    """Each drive's health from Scrutiny, worst first. {"set_up": False} when Scrutiny isn't connected."""
+    url = os.environ.get("SCRUTINY_URL", "").rstrip("/")
+    if not url:
+        return {"set_up": False, "drives": []}
+    with _lock:
+        if not fresh and _drives_cache["data"] is not None and time.time() - _drives_cache["at"] < DRIVES_SECONDS:
+            return _drives_cache["data"]
+    try:
+        with urllib.request.urlopen(url + "/api/summary", timeout=15) as r:
+            summary = (json.loads(r.read()).get("data") or {}).get("summary") or {}
+    except (OSError, ValueError, urllib.error.URLError):
+        raise ToolError(502, "Couldn't reach Scrutiny (the drive health app). Is it running?")
+    out = []
+    for one in summary.values():
+        dev = one.get("device") or {}
+        smart = one.get("smart") or {}
+        status = int(dev.get("device_status") or 0)
+        size = int(dev.get("capacity") or 0)
+        name = " ".join(x for x in (dev.get("label") or "", dev.get("model_name") or "") if x).strip()
+        out.append(
+            {
+                "name": name or dev.get("device_name") or "Drive",
+                "where": "/dev/" + dev["device_name"] if dev.get("device_name") else "",
+                "size": size,
+                "ok": status == 0,
+                "words": _drive_words(status),
+                "temp": smart.get("temp"),
+                "hours": smart.get("power_on_hours"),
+                "checked": smart.get("collector_date") or "",
+            }
+        )
+    out.sort(key=lambda d: (d["ok"], d["name"].lower()))
+    data = {"set_up": True, "drives": out, "link": url}
+    with _lock:
+        _drives_cache.update(at=time.time(), data=data)
+    return data
+
+
 def up_seconds():
     try:
         with open("/proc/uptime") as f:
@@ -568,6 +622,10 @@ def tower(fresh=False):
         if not fresh and _cache["data"] is not None and time.time() - _cache["at"] < CACHE_SECONDS:
             return _cache["data"]
     result = {"up_seconds": up_seconds(), "memory": memory_busy(), "gpu": gpu_busy(), "disks": disks()}
+    try:  # Drives with warning signs show on the Server page's first screen
+        result["drives_bad"] = [d for d in drives().get("drives", []) if not d["ok"]]
+    except ToolError:
+        result["drives_bad"] = []
     problems = []
     holder = {}
 

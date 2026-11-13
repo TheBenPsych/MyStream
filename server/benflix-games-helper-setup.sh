@@ -224,6 +224,26 @@ find_bazarr() {
 }
 find_bazarr
 
+say "Connecting Scrutiny (drive health on the Server page)"
+find_scrutiny() {
+  local c port ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i scrutiny | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Scrutiny app found. Install it from Apps (the Scrutiny steps), then run this again."; return; fi
+  # The port Unraid gave Scrutiny's web page (8080 inside the app)
+  port=$(docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{if eq $p "8080/tcp"}}{{(index $b 0).HostPort}}{{end}}{{end}}' "$c")
+  [ -n "$port" ] || port=8080
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port" "http://$HOST_IP:$port" ${ipaddr:+"http://$ipaddr:8080"}; do
+    if curl -fs -m 8 "$u/api/health" >/dev/null; then
+      printf 'SCRUTINY_URL=%s\n' "$u" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but it didn't answer on port $port. Send this output to Claude."
+}
+find_scrutiny
+
 say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
 SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
 find_slskd() {

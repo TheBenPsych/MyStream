@@ -1006,6 +1006,8 @@ class Handler(BaseHTTPRequestHandler):
             raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
         if method == "POST" and path == "/api/admin/livetv/refresh" and livetv is not None:
             return self.send(200, {"started": livetv.refresh(), **livetv.status()})
+        if method == "GET" and path == "/api/admin/drives":
+            return self.send(200, tools.drives(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         if method == "GET" and path == "/api/admin/tower":
             return self.send(200, tools.tower(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         m = re.fullmatch(r"/api/admin/apps/([\w.-]+)/restart", path)
