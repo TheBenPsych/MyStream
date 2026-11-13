@@ -223,6 +223,7 @@ fun EpisodesPanel(
                             fontSize = BenflixType.body,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

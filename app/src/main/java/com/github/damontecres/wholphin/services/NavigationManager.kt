@@ -45,6 +45,16 @@ class NavigationManager
             log()
         }
 
+        /** Benflix "where am I" line: back to the page at [index] in the back stack */
+        fun goBackTo(index: Int) {
+            synchronized(this) {
+                while (backStack.size > index + 1 && backStack.size > 1) {
+                    backStack.removeLastOrNull()
+                }
+            }
+            log()
+        }
+
         /**
          * Go all the way back to the home page
          */

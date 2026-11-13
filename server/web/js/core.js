@@ -42,6 +42,7 @@ const P = {
   vol: '<path d="M11 5 6 9H2v6h4l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
   mute: '<path d="M11 5 6 9H2v6h4l5 4V5ZM22 9l-6 6M16 9l6 6"/>',
   full: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  pip: '<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="7" rx="1"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   dl: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   trailer: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/>',
@@ -230,7 +231,9 @@ B.render = async () => {
     const m = hash.slice(1).match(re);
     if (m) {
       window.scrollTo(0, 0);
+      B.placeName = "";
       try { await fn(m, nav); } catch (e) { if (nav === B.nav) B.fail(e); }
+      if (nav === B.nav) B.where(hash);
       return;
     }
   }
@@ -245,9 +248,40 @@ B.fail = (e) => {
 window.addEventListener("hashchange", B.render);
 B.q = (k) => new URLSearchParams((location.hash.split("?")[1] || "")).get(k);
 
+// ---------- "Where am I" line (Idea Box 24) ----------
+// Deeper pages show a small "Movies > Action > Die Hard" in the top bar, in place of the door name.
+// Click any part to jump back to it. The trail lives for this tab only.
+const TRAIL_KEY = "benflix.trail";
+B.placeName = "";
+B.where = (hash) => {
+  let trail = [];
+  try { trail = JSON.parse(sessionStorage.getItem(TRAIL_KEY) || "[]"); } catch (e) {}
+  const page = hash.split("?")[0];
+  if (/^#\/(home|who|signin)$/.test(page)) trail = [];
+  const name = B.placeName || "";
+  const at = trail.findIndex((t) => t.h === hash);
+  if (at >= 0) trail = trail.slice(0, at + 1);
+  else if (name) trail.push({ h: hash, n: name.slice(0, 80) });
+  trail = trail.slice(-6);
+  try { sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail)); } catch (e) {}
+  let place = $(".top .place");
+  if (!place && $(".top .homelink") && trail.length >= 2) {
+    place = document.createElement("span");
+    place.className = "place";
+    $(".top .homelink").after(place);
+  }
+  if (!place || trail.length < 2 || /^#\/(home|who|signin|play|game|read)/.test(page)) return;
+  const steps = trail.slice(-4);
+  place.classList.add("where");
+  place.innerHTML = steps.map((t, i) => (i === steps.length - 1 || t.h === hash
+    ? `<b>${esc(t.n)}</b>`
+    : `<a href="${esc(t.h)}">${esc(t.n)}</a>`)).join('<span class="sep">›</span>');
+};
+
 // ---------- top bar ----------
 B.top = (place, color, opts) => {
   opts = opts || {};
+  if (place) B.placeName = place;
   const now = new Date();
   const t = B.clock(now).split(" ");
   return `<header class="top ${opts.solid ? "solid" : ""}">
@@ -430,7 +464,10 @@ B.doorOf = (it) => {
       if (name) {
         const d = document.createElement("div");
         d.className = "noart";
-        d.textContent = name;
+        const nt = document.createElement("span");
+        nt.className = "nt";
+        nt.textContent = name;
+        d.appendChild(nt);
         const it = card.dataset.id && B.items[card.dataset.id];
         if (it && it.Type) d.style.setProperty("--door", B.doorOf(it));
         im.appendChild(d);
@@ -504,7 +541,7 @@ B.posterCard = (it, opts) => {
   const newCount = it.Type === "Series" && ud.UnplayedItemCount && opts.newCount ? opts.newCount : 0;
   const year = it.ProductionYear ? String(it.ProductionYear) : "";
   return `<a class="poster" href="${opts.href || B.hrefOf(it)}" data-id="${esc(it.Id)}" title="${esc(it.Name)}">
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(it.SeriesName || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(it.SeriesName || it.Name)}</span></div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}
@@ -520,7 +557,7 @@ B.wideCard = (it, opts) => {
   const pct = ud.PlayedPercentage ? Math.min(100, ud.PlayedPercentage) : 0;
   const soon = opts.soon;
   return `<${soon ? "div" : "a"} class="wide ${soon ? "soon" : ""}" ${soon ? "" : `href="${opts.href || B.hrefOf(it)}"`} data-id="${esc(it.Id)}" ${opts.play ? `data-play="${esc(it.Id)}"` : ""}>
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(opts.title || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(opts.title || it.Name)}</span></div>`}
       ${pct && !ud.Played ? `<div class="prog" style="position:absolute;left:10px;right:10px;bottom:9px;height:4px;border-radius:2px;background:rgba(0,0,0,.55);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#fff"></i></div>` : ""}
       ${ud.Played ? `<span class="tick" style="position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center">${I("check")}</span>` : ""}
       ${opts.tag ? `<span class="tag">${esc(opts.tag)}</span>` : ""}
@@ -729,3 +766,28 @@ B.install = async () => {
 if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+
+// Idea Box 24 "The Play button plays": press P on a poster (picked with Tab, or under the mouse) and it
+// starts right away, from where you left off. A show plays its next episode. Enter still opens the page.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "p" && e.key !== "P") return;
+  if (e.ctrlKey || e.metaKey || e.altKey || !B.me) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (/^#\/(play|playgame|read)/.test(location.hash)) return;
+  const hovered = Array.from(document.querySelectorAll(":hover")).reverse().map((x) => x.closest && x.closest("[data-id]")).find(Boolean);
+  const card = (t && t.closest && t.closest("[data-id]")) || hovered;
+  if (!card) return;
+  const it = B.items[card.dataset.id];
+  if (!it) return;
+  e.preventDefault();
+  if (["Movie", "Episode", "Video", "MusicVideo"].includes(it.Type)) return B.go(`#/play/${it.Id}?resume=1`);
+  if (it.Type === "Series") {
+    B.get(`/Shows/NextUp?SeriesId=${it.Id}&UserId=${B.uid()}&Limit=1&EnableResumable=true`)
+      .then((r) => (r.Items || [])[0] || B.get(`/Shows/${it.Id}/Episodes?UserId=${B.uid()}&Limit=1`).then((x) => (x.Items || [])[0]))
+      .then((ep) => B.go(ep ? `#/play/${ep.Id}?resume=1` : B.hrefOf(it)))
+      .catch(() => B.go(B.hrefOf(it)));
+    return;
+  }
+  B.go(B.hrefOf(it));
+});

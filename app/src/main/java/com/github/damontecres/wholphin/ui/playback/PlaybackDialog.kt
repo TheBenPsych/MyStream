@@ -130,50 +130,37 @@ fun PlaybackDialog(
                         )
                     }
                     add(PanelLine.Heading("Something off?"))
-                    if (subtitlesOn && enableSubtitleDelay) {
+                    // Benflix: these rows always show (greyed-out rows stay reachable and say why, ground rule 1)
+                    val turnOnFirst = { Toast.makeText(context, "Pick a subtitle above first, then try again.", Toast.LENGTH_LONG).show() }
+                    if (enableSubtitleDelay) {
                         add(
                             PanelLine.Row(
                                 label = "Subtitle timing",
-                                value = delayWords(settings.subtitleDelay),
-                                note = "Move the words earlier or later yourself",
-                                closes = false,
-                                onClick = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
-                            ),
-                        )
-                    }
-                    if (subtitlesOn) {
-                        add(
-                            PanelLine.Row(
-                                label = "Subtitles are early or late",
-                                note = "Tower lines them up with the voices",
-                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) },
-                            ),
-                        )
-                        add(
-                            PanelLine.Row(
-                                label = "Find better subtitles",
-                                note = "Bazarr swaps them for different ones",
-                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FindBetterSubtitles) },
+                                value = if (subtitlesOn) delayWords(settings.subtitleDelay) else null,
+                                note = if (subtitlesOn) "Move the words earlier or later yourself" else "Turn subtitles on above first",
+                                closes = !subtitlesOn,
+                                onClick = {
+                                    if (subtitlesOn) onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) else turnOnFirst()
+                                },
                             ),
                         )
                     }
                     add(
                         PanelLine.Row(
-                            label = "Find other subtitles",
-                            // Greyed-out rows stay reachable and say why (Redesign 2 ground rule 1)
-                            note = if (settings.hasSubtitleDownloadPermission) "Search and download" else "Only Ben can download subtitles",
+                            label = "Subtitles are early or late",
+                            note = if (subtitlesOn) "Tower lines them up with the voices" else "Turn subtitles on above first",
                             onClick = {
-                                if (settings.hasSubtitleDownloadPermission) {
-                                    onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
-                                } else {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "Only Ben can download subtitles. Report a problem to ask him.",
-                                            Toast.LENGTH_LONG,
-                                        ).show()
-                                }
+                                if (subtitlesOn) onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) else turnOnFirst()
                             },
+                        ),
+                    )
+                    // One button for new subtitles: Bazarr throws out the ones on screen and gets different
+                    // ones (Jellyfin's own search has nothing to search with on Tower, so it's gone)
+                    add(
+                        PanelLine.Row(
+                            label = "Find other subtitles",
+                            note = if (subtitlesOn) "Bazarr deletes these and gets different ones" else "Bazarr looks for subtitles",
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.FindBetterSubtitles) },
                         ),
                     )
                 }

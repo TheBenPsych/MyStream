@@ -30,6 +30,8 @@ data class ServerGame(
     val genres: List<String> = emptyList(),
     /** Rated for everyone, so it shows on the Kids profile */
     val kids: Boolean = false,
+    /** Fine for Big kids too (E10+ and Teen, or switched on by the main profile) */
+    val bigKids: Boolean = false,
     /** How well loved it is, 0 to 100, from RomM's IGDB ratings (0 if unknown) */
     val rating: Double = 0.0,
 )
@@ -244,6 +246,7 @@ class GameLibraryClient
                                     g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                                         ?: emptyList(),
                                 kids = g.optBoolean("kids", false),
+                                bigKids = g.optBoolean("bigkids", g.optBoolean("kids", false)),
                                 rating = g.optDouble("rating", 0.0).takeIf { !it.isNaN() } ?: 0.0,
                             )
                         },

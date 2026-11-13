@@ -175,8 +175,11 @@ class SearchViewModel
                             emptyList()
                         } else {
                             c.games
-                                .filter { !kids || it.kids }
-                                .map { g ->
+                                .filter {
+                                    !kids ||
+                                        com.github.damontecres.wholphin.services.KidsMode
+                                            .allowsGame(it.kids, it.bigKids)
+                                }.map { g ->
                                     SearchGame(
                                         key = "rom-${g.id}",
                                         title = g.name,

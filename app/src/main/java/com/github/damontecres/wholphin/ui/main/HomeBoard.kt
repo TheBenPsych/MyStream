@@ -240,6 +240,7 @@ private fun Greeting(
             fontSize = BenflixType.pageTitle,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         if (weather != null) {
             Text(
@@ -351,6 +352,7 @@ private fun SquareDoor(
                     lineHeight = words.name * 1.1f,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false,
                 )
                 // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
@@ -362,6 +364,7 @@ private fun SquareDoor(
                     fontWeight = FontWeight.SemiBold,
                     minLines = 2,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = u * 0.2f),
                 )
             }

@@ -163,6 +163,25 @@ CORES = {
     "intellivision": "freeintv",
     "vectrex": "vecx",
     "3do": "opera",
+    # Other folder names the app knows (games/Consoles.kt), so games in them don't say "Can't play here yet"
+    "fds": "fceumm",
+    "sega-cd": "genesis_plus_gx",
+    "ps1": "swanstation",
+    "playstation": "swanstation",
+    "a2600": "stella2014",
+    "2600": "stella2014",
+    "a7800": "prosystem",
+    "7800": "prosystem",
+    "atarilynx": "handy",
+    "neogeopocket": "mednafen_ngp",
+    "neogeopocketcolor": "mednafen_ngp",
+    "wonderswancolor": "mednafen_wswan",
+    "vb": "mednafen_vb",
+    "neo-geo": "fbneo",
+    "nintendo-64": "mupen64plus_next",
+    "nintendo64": "mupen64plus_next",
+    "turbografx16": "mednafen_pce_fast",
+    "pcecd": "mednafen_pce_fast",
 }
 
 # For games that are a folder of files, the file to start from (best first)
@@ -176,11 +195,12 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 3
+SETUP_VERSION = 5
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _names = {}  # Jellyfin account id -> the profile's name (for "asked by")
+_kids_big = {}  # Jellyfin kids account id -> True when its max rating is PG-13 / TV-14 ("Big kids")
 _lock = threading.Lock()
 
 
@@ -230,8 +250,18 @@ def check_signed_in(token):
     if not user_id:
         raise HelperError(502, "Jellyfin didn't say who you are.")
     is_admin = bool(policy.get("IsAdministrator"))
+    # Big kids: a kids account Jellyfin lets watch PG-13 / TV-14 (rating score 13 or more) also gets Teen games
+    try:
+        big = is_kids and int(policy.get("MaxParentalRating") or 0) >= 13
+    except (TypeError, ValueError):
+        big = False
     with _lock:
+        if big:
+            _big_users.add(user_id)
+        else:
+            _big_users.discard(user_id)
         _tokens[token] = (time.time(), user_id, is_admin, is_kids)
+        _kids_big[user_id] = big
         _names[user_id] = str(user.get("Name") or "")
     return user_id, is_admin, is_kids
 
@@ -241,9 +271,13 @@ KIDS_OK = {"E", "EC", "E10", "E10+", "EVERYONE", "EVERYONE10+", "3", "7", "A", "
 KIDS_NO = {"T", "M", "AO", "TEEN", "MATURE", "ADULTSONLY", "12", "16", "18", "B", "C", "D", "Z", "USK12", "USK16", "USK18", "RP"}
 
 
-def kids_safe(g):
-    """True when the game's age rating says it's for everyone. Games with no rating are left out, like
-    movies on the Kids profile."""
+# Big kids (like PG-13 / TV-14 for movies) may also play these: ESRB E10+ and Teen, PEGI 12, CERO B, USK 12
+TEEN_OK = {"E10", "E10+", "EVERYONE10+", "T", "TEEN", "12", "B", "USK12"}
+GROWN_UP = {"M", "AO", "MATURE", "ADULTSONLY", "16", "18", "C", "D", "Z", "USK16", "USK18"}
+
+
+def age_ratings(g):
+    """The game's age ratings from RomM, tidied up ("ESRB E10+" -> "E10+")"""
     m = g.get("metadatum") or {}
     ratings = m.get("age_ratings") or g.get("age_ratings") or []
     seen = set()
@@ -253,10 +287,164 @@ def kids_safe(g):
             text = text.upper().replace(prefix, "")
         seen.add(re.sub(r"[^A-Z0-9+]", "", text.upper()))
     seen.discard("")
-    return bool(seen & KIDS_OK) and not (seen & KIDS_NO)
+    return seen
+
+
+def rating_level(g):
+    """"everyone", "teen", "grown" or "none" (no rating RomM knows of)"""
+    seen = age_ratings(g)
+    if not seen or seen <= {"RP"}:
+        return "none"
+    if seen & GROWN_UP:
+        return "grown"
+    if seen & (TEEN_OK - KIDS_OK):
+        return "teen"
+    return "everyone" if seen & KIDS_OK else "none"
+
+
+def kids_safe(g):
+    """True when the game is for everyone (or Ben switched it on for Kids). Games with no rating are left
+    out unless Ben says so, like movies on the Kids profile."""
+    choice = kids_choices().get(str(g.get("id")))
+    if choice is not None:
+        return bool(choice.get("kids"))
+    return rating_level(g) == "everyone"
+
+
+def bigkids_safe(g):
+    """Big kids: everything Kids gets, plus E10+ and Teen games (or what Ben chose)"""
+    choice = kids_choices().get(str(g.get("id")))
+    if choice is not None:
+        return bool(choice.get("kids") or choice.get("big"))
+    return rating_level(g) in ("everyone", "teen")
+
+
+# Ben's own choices from the Server page, kept with the saves: {"<game id>": {"kids": bool, "big": bool}}
+KIDS_CHOICES = os.path.join(SAVES, ".benflix", "kids-games.json")
+_kids_choices = None
+
+
+def kids_choices():
+    global _kids_choices
+    if _kids_choices is None:
+        try:
+            with open(KIDS_CHOICES) as f:
+                _kids_choices = json.load(f) or {}
+        except (OSError, ValueError):
+            _kids_choices = {}
+    return _kids_choices
+
+
+def set_kids_choice(game_id, kids=None, big=None, reset=False):
+    """Server page: switches one game on or off for Kids / Big kids (reset = back to its age rating)"""
+    choices = dict(kids_choices())
+    key = str(int(game_id))
+    if reset:
+        choices.pop(key, None)
+    else:
+        now = dict(choices.get(key) or {})
+        if kids is not None:
+            now["kids"] = bool(kids)
+            if kids:
+                now["big"] = True  # anything fine for Kids is fine for Big kids too
+        if big is not None:
+            now["big"] = bool(big) or bool(now.get("kids"))
+        now.setdefault("kids", False)
+        now.setdefault("big", bool(now["kids"]))
+        choices[key] = now
+    os.makedirs(os.path.dirname(KIDS_CHOICES), exist_ok=True)
+    tmp = KIDS_CHOICES + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(choices, f)
+    os.replace(tmp, KIDS_CHOICES)
+    global _kids_choices
+    _kids_choices = choices
+    return {"ok": True}
+
+
+def kids_games_list():
+    """Server page: every game, its age rating, and whether Kids and Big kids get it"""
+    load_games()
+    out = []
+    with _lock:
+        raw = list(_raw_games)
+    for g in raw:
+        level = rating_level(g)
+        choice = kids_choices().get(str(g.get("id")))
+        out.append(
+            {
+                "id": g["id"],
+                "name": g.get("name") or g.get("fs_name_no_tags") or g.get("fs_name") or "Unknown game",
+                "console": g.get("platform_display_name") or g.get("platform_name") or g.get("platform_fs_slug") or "",
+                "rating": ", ".join(sorted(age_ratings(g))) or "No rating",
+                "level": level,
+                "kids": kids_safe(g),
+                "big": bigkids_safe(g),
+                "chosen": choice is not None,
+            }
+        )
+    out.sort(key=lambda x: (x["level"] != "none", x["name"].lower()))
+    return {"games": out}
+
+
+# ---------- "Didn't start" list (Idea Box 24) ----------
+# TVs, phones and browsers quietly say when a game showed only a black screen, couldn't load, or closed by itself in
+# its first half minute. The Server page lists them so bad copies get replaced. Newest first, at most 200 kept.
+GAME_PROBLEMS = os.path.join(SAVES, ".benflix", "game-problems.json")
+_problems_lock = threading.Lock()
+
+
+def game_problems():
+    try:
+        with open(GAME_PROBLEMS) as f:
+            return json.load(f) or []
+    except (OSError, ValueError):
+        return []
+
+
+def add_game_problem(body, who):
+    try:
+        game_id = int(body.get("id") or 0)
+    except (TypeError, ValueError):
+        game_id = 0
+    if game_id <= 0:
+        raise HelperError(400, "Which game?")
+    clip = lambda v, n: str(v or "")[:n]  # noqa: E731
+    entry = {
+        "id": game_id,
+        "name": clip(body.get("name"), 120),
+        "console": clip(body.get("console"), 60),
+        "what": clip(body.get("what"), 60) or "Didn't start",
+        "device": clip(body.get("device"), 80),
+        "who": clip(who, 60),
+        "at": int(time.time()),
+    }
+    with _problems_lock:
+        now = game_problems()
+        # The same game on the same device within a day counts once
+        now = [p for p in now if not (p.get("id") == game_id and p.get("device") == entry["device"] and entry["at"] - p.get("at", 0) < 86400)]
+        now.insert(0, entry)
+        os.makedirs(os.path.dirname(GAME_PROBLEMS), exist_ok=True)
+        tmp = GAME_PROBLEMS + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(now[:200], f)
+        os.replace(tmp, GAME_PROBLEMS)
+    return {"ok": True}
+
+
+def clear_game_problems(game_id=None):
+    with _problems_lock:
+        now = [] if game_id is None else [p for p in game_problems() if p.get("id") != game_id]
+        os.makedirs(os.path.dirname(GAME_PROBLEMS), exist_ok=True)
+        with open(GAME_PROBLEMS, "w") as f:
+            json.dump(now, f)
+    return {"ok": True}
 
 
 _kids_ids = set()  # games a kids account may download, filled by load_games()
+_bigkids_ids = set()  # and a Big kids account
+_big_users = set()  # Jellyfin accounts that are Big kids
+_raw_games = []  # RomM's own list, for the Server page
 
 
 WEB_PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benflix-web.html")
@@ -282,6 +470,79 @@ def jellyfin_call(method, path, token=None, body=None, device_id="benflix-web", 
         return e.code, e.read() or b"", e.headers.get("Content-Type", "application/json")
     except (urllib.error.URLError, OSError):
         raise HelperError(502, "The helper couldn't reach Jellyfin. Check it's running.")
+
+
+# ---------- Kids accounts in the browser ----------
+# The same rules as the app's Kids profile (services/KidsMode.kt): lists of movies & shows only hold kid
+# ratings, and anything with no rating at all is left out. Jellyfin's own max-rating setting lets unrated
+# titles through (and an account just named "Kids" has no limit at all), so the helper checks every list.
+KIDS_RATINGS = {"G", "PG", "TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "TV-PG", "U", "UC", "ALL", "APPROVED", "0", "6", "7", "FSK-0", "FSK-6"}
+BIG_KIDS_RATINGS = {"PG-13", "TV-14", "12", "12A", "13", "FSK-12", "M", "PG13"}
+KIDS_RATED_TYPES = {"Movie", "Series", "Episode", "Season", "Video", "Trailer", "MusicVideo", "BoxSet"}
+KIDS_LIST_PATH = re.compile(
+    r"(?i)(Items(/Latest|/Resume|/Suggestions)?|/Shows/NextUp|/Shows/Upcoming|/Shows/[^/]+/(Episodes|Seasons)|/Similar|/Search/Hints)$"
+)
+_kids_series = {}  # show id -> its rating ("" when it has none)
+
+
+def kids_list_path(jf_path, big):
+    """The browser's Jellyfin address with the kids limits added (or None when it isn't a list of titles)"""
+    path, _, q = jf_path.partition("?")
+    if not KIDS_LIST_PATH.search(path):
+        return None
+    params = urllib.parse.parse_qsl(q, keep_blank_values=True)
+    names = {k.lower(): v for k, v in params}
+    if "maxofficialrating" not in names:
+        params.append(("maxOfficialRating", "PG-13" if big else "PG"))
+    types = names.get("includeitemtypes")
+    if types is not None and "episode" not in types.lower() and "season" not in types.lower() and "hasparentalrating" not in names:
+        params.append(("hasParentalRating", "true"))
+    return path + "?" + urllib.parse.urlencode(params)
+
+
+def _kids_rating(item):
+    r = item.get("OfficialRating")
+    return str(r).strip() or None if r else None
+
+
+def kids_filter(data, token, device_id, big):
+    """Takes out of a Jellyfin answer every movie, show or episode that isn't rated for kids"""
+    try:
+        answer = json.loads(data)
+    except ValueError:
+        return b'{"Items":[],"TotalRecordCount":0}'
+    lists = [answer] if isinstance(answer, list) else [answer.get(k) for k in ("Items", "SearchHints") if isinstance(answer.get(k), list)]
+    missing = set()
+    for items in lists:
+        for it in items:
+            if isinstance(it, dict) and it.get("Type") in ("Episode", "Season") and not _kids_rating(it):
+                sid = str(it.get("SeriesId") or "")
+                if sid and sid not in _kids_series:
+                    missing.add(sid)
+    if missing:
+        status, body, _ = jellyfin_call("GET", "/Items?ids=" + ",".join(sorted(missing)), token=token, device_id=device_id)
+        if status == 200:
+            for it in (json.loads(body).get("Items") or []):
+                _kids_series[str(it.get("Id"))] = _kids_rating(it) or ""
+
+    def allowed(it):
+        if not isinstance(it, dict) or it.get("Type") not in KIDS_RATED_TYPES:
+            return True
+        rating = _kids_rating(it)
+        if not rating and it.get("Type") in ("Episode", "Season"):
+            rating = _kids_series.get(str(it.get("SeriesId") or "")) or None
+        if not rating:
+            return False
+        r = rating.upper()
+        return r in KIDS_RATINGS or (big and r in BIG_KIDS_RATINGS)
+
+    if isinstance(answer, list):
+        answer = [it for it in answer if allowed(it)]
+    else:
+        for k in ("Items", "SearchHints"):
+            if isinstance(answer.get(k), list):
+                answer[k] = [it for it in answer[k] if allowed(it)]
+    return json.dumps(answer).encode()
 
 
 def web_login(info):
@@ -348,6 +609,7 @@ def load_games():
                     "year": release_year(g),
                     "genres": genres_of(g),
                     "kids": kids_safe(g),
+                    "bigkids": bigkids_safe(g),
                     "rating": rating_of(g),
                 }
             )
@@ -355,6 +617,11 @@ def load_games():
                 _kids_ids.add(g["id"])
             else:
                 _kids_ids.discard(g["id"])
+            if bigkids_safe(g):
+                _bigkids_ids.add(g["id"])
+            else:
+                _bigkids_ids.discard(g["id"])
+        _raw_games[:] = games
     return {
         "consoles": [
             {"name": n, "slug": slugs.get(n, ""), "games": sorted(gs, key=lambda x: x["name"].lower())}
@@ -476,6 +743,35 @@ def game_path(game_id):
     return folder, path
 
 
+# Multi-disc games (Idea Box 24): a folder with one .cue (or .chd / .iso) per disc gets a made-up list file, so the
+# game player opens disc 1 and can swap to the others ("Swap disc" in the game menu). The files themselves stay as
+# they are. Folders that already have their own .m3u use that.
+DISC_LIST = "Benflix discs.m3u"
+DISC_KINDS = (".cue", ".chd", ".iso", ".pbp", ".cso")
+
+
+def disc_order(name):
+    """Disc 1 before Disc 2 before Disc 10 (by the first "disc/disk/cd N" in the name, then the name)"""
+    m = re.search(r"(?:disc|disk|cd)\s*[-_]?\s*(\d+)", name, re.I)
+    return (int(m.group(1)) if m else 0, name.lower())
+
+
+def disc_list(path):
+    """The made-up .m3u for a multi-disc folder (as bytes), or None when there's nothing to list"""
+    if not os.path.isdir(path):
+        return None
+    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+    if any(f.lower().endswith(".m3u") for f in files):
+        return None
+    for kind in DISC_KINDS:
+        discs = sorted((f for f in files if f.lower().endswith(kind)), key=disc_order)
+        if len(discs) > 1:
+            return ("\n".join(discs) + "\n").encode("utf-8")
+        if discs:
+            return None
+    return None
+
+
 def rom_files(game_id):
     """The files Benflix downloads to play a game on the TV/phone, and which one to start"""
     folder, path = game_path(game_id)
@@ -484,11 +780,60 @@ def rom_files(game_id):
         files = [os.path.basename(path)]
     else:
         files = sorted(f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+    listed = [{"name": f, "size": os.path.getsize(os.path.join(os.path.dirname(start), f))} for f in files]
+    discs = disc_list(path)
+    if discs is not None:
+        listed.append({"name": DISC_LIST, "size": len(discs)})
+        start = os.path.join(path, DISC_LIST)
     return {
         "console": folder,
         "start": os.path.basename(start),
-        "files": [{"name": f, "size": os.path.getsize(os.path.join(os.path.dirname(start), f))} for f in files],
+        "files": listed,
+        "discs": discs.decode("utf-8").count("\n") if discs else 1,
     }
+
+
+def send_rom_zip(handler, game_id):
+    """The browser's game player can only fetch one file, so a game made of several files (a .cue and its .bin
+    files, or several discs) is sent as one .zip, packed as it goes (nothing is written to Tower's drives)."""
+    import zipfile
+
+    _, path = game_path(game_id)
+    if not os.path.isdir(path):
+        return handler.send_file(path)
+    files = sorted(f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+    discs = disc_list(path)
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/zip")
+    handler.send_header("Content-Disposition", 'attachment; filename="game.zip"')
+    handler.end_headers()
+
+    class Out:
+        """The connection, as something zipfile can write to (it can't jump back, so zipfile adds sizes after)"""
+
+        def __init__(self, w):
+            self.w = w
+
+        def write(self, b):
+            self.w.write(b)
+            return len(b)
+
+        def flush(self):
+            self.w.flush()
+
+    with zipfile.ZipFile(Out(handler.wfile), "w", zipfile.ZIP_STORED) as z:
+        if discs is not None:
+            z.writestr(DISC_LIST, discs)
+        for f in files:
+            full = os.path.join(path, f)
+            info = zipfile.ZipInfo(f, time.localtime(os.path.getmtime(full))[:6])
+            info.file_size = os.path.getsize(full)
+            with open(full, "rb") as src, z.open(info, "w", force_zip64=info.file_size > 2**31 - 1) as dst:
+                while True:
+                    chunk = src.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    dst.write(chunk)
 
 
 def rom_file(game_id, name):
@@ -755,6 +1100,8 @@ class Handler(BaseHTTPRequestHandler):
             raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
         if method == "POST" and path == "/api/admin/livetv/refresh" and livetv is not None:
             return self.send(200, {"started": livetv.refresh(), **livetv.status()})
+        if method == "GET" and path == "/api/admin/drives":
+            return self.send(200, tools.drives(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         if method == "GET" and path == "/api/admin/tower":
             return self.send(200, tools.tower(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         m = re.fullmatch(r"/api/admin/apps/([\w.-]+)/restart", path)
@@ -856,7 +1203,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token and method in ("GET", "HEAD") and (
                 (path.startswith("/api/web/jf/") and "/Images/" in path)
                 or path.startswith("/api/web/stream/")
-                or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/file|bios/file)", path)
+                or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/(?:file|zip)|bios/file)", path)
                 or re.fullmatch(r"/api/books/(?:cover/\w+|vol/\w+/p/\d+|file/\w+(?:/\d+)?|x/\w+/.+)", path)
             ):
                 # Pictures, video and game files in the browser (an <img>, <video> or emulator can't send the
@@ -951,23 +1298,48 @@ class Handler(BaseHTTPRequestHandler):
                         raise HelperError(413, "That's too big.")
                     body = self.rfile.read(length) if length > 0 else b""
                 jf_path = path[len("/api/web/jf"):] + (("?" + parsed.query) if parsed.query else "")
+                kids_path = kids_list_path(jf_path, _kids_big.get(user_id, False)) if is_kids and method == "GET" else None
                 status, data, ctype = jellyfin_call(
-                    method, jf_path, token=token, body=body, device_id=self.web_device(), content_type=self.headers.get("Content-Type")
+                    method, kids_path or jf_path, token=token, body=body, device_id=self.web_device(), content_type=self.headers.get("Content-Type")
                 )
+                if kids_path and status == 200 and "json" in (ctype or ""):
+                    # Kids accounts: only titles rated for kids (unrated ones are left out, like in the app)
+                    data = kids_filter(data, token, self.web_device(), _kids_big.get(user_id, False))
                 return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
                 games = load_games()
                 if is_kids:
+                    field = "bigkids" if user_id in _big_users else "kids"
                     games["consoles"] = [
-                        dict(c, games=[x for x in c["games"] if x["kids"]]) for c in games["consoles"]
+                        dict(c, games=[x for x in c["games"] if x[field]]) for c in games["consoles"]
                     ]
                     games["consoles"] = [c for c in games["consoles"] if c["games"]]
                 return self.send(200, games)
+            if path == "/api/games/problems":
+                if method == "POST":
+                    return self.send(200, add_game_problem(self.read_json(), _names.get(user_id, "")))
+                if not is_admin:
+                    raise HelperError(403, "Only the main profile can see this.")
+                if method == "GET":
+                    return self.send(200, {"problems": game_problems()})
+                if method == "DELETE":
+                    gid = (query.get("id") or [""])[0]
+                    return self.send(200, clear_game_problems(int(gid) if gid.isdigit() else None))
+            if path == "/api/games/kids":
+                # Server page: which games Kids and Big kids get (the main profile only)
+                if not is_admin:
+                    raise HelperError(403, "Only the main profile can change this.")
+                if method == "GET":
+                    return self.send(200, kids_games_list())
+                if method == "POST":
+                    body = self.read_json()
+                    return self.send(200, set_kids_choice(body.get("id"), body.get("kids"), body.get("big"), bool(body.get("reset"))))
             m = re.fullmatch(r"/api/(?:info|cover|rom|save)/(\d+)(?:/.*)?", path)
             if is_kids and m:
                 if not _kids_ids:
                     load_games()
-                if int(m.group(1)) not in _kids_ids:
+                allowed = _bigkids_ids if user_id in _big_users else _kids_ids
+                if int(m.group(1)) not in allowed:
                     raise HelperError(403, "That game isn't rated for kids.")
             m = re.fullmatch(r"/api/info/(\d+)", path)
             if method == "GET" and m:
@@ -981,7 +1353,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, rom_files(int(m.group(1))))
             m = re.fullmatch(r"/api/rom/(\d+)/file", path)
             if method == "GET" and m:
-                return self.send_file(rom_file(int(m.group(1)), (query.get("name") or [""])[0]))
+                name = (query.get("name") or [""])[0]
+                if name == DISC_LIST:
+                    _, gpath = game_path(int(m.group(1)))
+                    discs = disc_list(gpath)
+                    if discs is None:
+                        raise HelperError(404, "That game file wasn't found on the server.")
+                    return self.send(200, discs, "audio/x-mpegurl")
+                return self.send_file(rom_file(int(m.group(1)), name))
+            m = re.fullmatch(r"/api/rom/(\d+)/zip", path)
+            if method == "GET" and m:
+                return send_rom_zip(self, int(m.group(1)))
             if method == "GET" and path == "/api/bios":
                 return self.send(200, bios_list())
             if method == "GET" and path == "/api/bios/file":

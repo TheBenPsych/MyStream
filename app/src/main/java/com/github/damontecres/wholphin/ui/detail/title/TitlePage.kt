@@ -651,6 +651,7 @@ private fun InfoLine(
                 fontSize = BenflixType.tag,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
                         .background(BenflixColors.Raised.copy(alpha = .8f), RoundedCornerShape(4.dp))
@@ -723,6 +724,7 @@ private fun TitleButtonView(
                 fontSize = if (big) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -819,6 +821,7 @@ private fun TabLine(
                         fontSize = if (wide) BenflixType.lead else BenflixType.body,
                         fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Box(
                         Modifier

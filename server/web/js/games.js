@@ -11,7 +11,13 @@ const EJS_CORES = {
   ngp: "ngp", ngpc: "ngp", "neo-geo-pocket": "ngp", "neo-geo-pocket-color": "ngp", ws: "ws", wsc: "ws", wonderswan: "ws", "wonderswan-color": "ws",
   virtualboy: "vb", "virtual-boy": "vb", arcade: "arcade", fbneo: "arcade", mame: "arcade", cps1: "arcade", cps2: "arcade", cps3: "arcade", neogeoaes: "arcade", neogeomvs: "arcade",
   coleco: "coleco", colecovision: "coleco", "3do": "3do",
+  // Other folder names the TV and phone app know (games/Consoles.kt)
+  fds: "nes", "sega-cd": "segaCD", ps1: "psx", playstation: "psx", a2600: "atari2600", 2600: "atari2600", a7800: "atari7800", 7800: "atari7800",
+  atarilynx: "lynx", neogeopocket: "ngp", neogeopocketcolor: "ngp", wonderswancolor: "ws", vb: "vb", "neo-geo": "arcade", "nintendo-64": "n64", nintendo64: "n64",
+  turbografx16: "pce", "tg-cd": "pce", "pce-cd": "pce", pcecd: "pce",
 };
+// Benflix: whether this console's games play in the browser (Search uses it too)
+B.webPlayable = (slug) => !!EJS_CORES[slug];
 // Benflix security: one fixed version of the game player, never "whatever is newest today", so a change on
 // their website can't reach Benflix by itself. To update: check the newest at https://www.npmjs.com/package/@emulatorjs/emulatorjs
 const EJS_DATA = "https://cdn.emulatorjs.org/4.2.3/data/";
@@ -20,7 +26,7 @@ const cover = (g) => (g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "");
 const playableHere = (c) => !!EJS_CORES[c.slug];
 const gameCard = (g, sub) => {
   B.items["g" + g.id] = g;
-  return `<a class="poster gm" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im">${cover(g) ? `<img class="art" src="${cover(g)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--games)">${esc(g.name)}</div>`}</div><div class="cap"><span class="nm">${esc(g.name)}</span><small>${esc(sub || g.console || "")}</small></div></a>`;
+  return `<a class="poster gm" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im">${cover(g) ? `<img class="art" src="${cover(g)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--games)"><span class="nt">${esc(g.name)}</span></div>`}</div><div class="cap"><span class="nm">${esc(g.name)}</span><small>${esc(sub || g.console || "")}</small></div></a>`;
 };
 const favKey = () => "benflix.gamefavs." + B.me.id;
 const favs = () => loadJson(favKey(), []);
@@ -44,8 +50,8 @@ B.route(/^\/games$/, async (m, nav) => {
   $("#rows").innerHTML = text ? B.row(`Games matching “${B.q("q")}”`, all.filter((g) => g.name.toLowerCase().includes(text)).slice(0, 60).map((g) => gameCard(g))) || `<div class="wrap empty">No games match that.</div>` : [
     B.row("Continue playing", cont.map((g) => gameCard(g))),
     B.row("Favourites", fav.map((g) => gameCard(g))),
-    all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
-    `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end">${esc(c.name)}<small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
+    all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin" style="white-space:normal;max-width:100%">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
+    `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end"><span class="tname">${esc(c.name)}</span><small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
     B.row("Arcade", arcade.slice(0, 30).map((g) => gameCard(g))),
     ...consoles.filter((c) => EJS_CORES[c.slug] !== "arcade").slice(0, 6).map((c) => B.row(c.name, c.games.slice(0, 24).map((g) => gameCard(g, c.year)), { seeAll: `#/console/${enc(c.slug)}` })),
     `<div class="wrap dim" style="font-size:14px">Benflix's own games (puzzles, party games and Ember Road) are on the TV and phone app.</div>`,
@@ -162,21 +168,25 @@ B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
   data.consoles.forEach((x) => { const f = x.games.find((y) => y.id === id); if (f) { g = f; c = x; } });
   const core = c && EJS_CORES[c.slug];
   if (!g || !core) return B.go(`#/game/${id}`);
-  if (files.files.length > 1 && !/\.(m3u|chd|pbp|iso|zip|7z)$/i.test(files.start)) {
-    B.page().innerHTML = B.top("Games", DOORS.games.color) + `<div class="center"><div><div class="h1">This one needs the TV or phone</div><p class="sub">${esc(g.name)} is made of several files, which the browser can't load yet.</p><a class="btn white" href="#/game/${id}">Back</a></div></div>`;
-    return B.wireTop();
-  }
+  // A game made of several files (a .cue with its .bin files, or several discs) comes from Tower as one .zip
+  const many = files.files.length > 1 && !/\.(chd|pbp|iso|zip|7z)$/i.test(files.start);
   const key = enc(B.me.token);
   const biosFile = core === "psx" ? (bios.files || []).find((b) => /^scph(5501|1001|5500|5502)\.bin$/i.test(b.name)) : core === "gba" ? (bios.files || []).find((b) => /^gba_bios\.bin$/i.test(b.name)) : null;
   B.page().innerHTML = `<div class="emu"><div id="game"></div><button class="btn quit" id="quit">${I("x")} Quit and save</button></div>`;
   Object.assign(window, {
     EJS_player: "#game", EJS_core: core, EJS_gameName: g.name, EJS_color: "#FF6F91", EJS_startOnLoaded: true, EJS_pathtodata: EJS_DATA,
-    EJS_gameUrl: `api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
+    EJS_gameUrl: many ? `api/rom/${id}/zip?api_key=${key}` : `api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
     EJS_biosUrl: biosFile ? `api/bios/file?path=${enc(biosFile.path)}&api_key=${key}` : "",
     EJS_defaultOptions: { "save-state-location": "browser" },
   });
+  // "Didn't start" list (Idea Box 24): if the game hasn't started after 45 seconds, Tower hears about it
+  let started = false;
+  const tellTower = (what) => { if (!started) B.call("POST", "api/games/problems", { id, name: g.name, console: c.name, what, device: "Browser" }).catch(() => {}); };
+  const noStart = setTimeout(() => { if (B.alive(nav)) tellTower("Didn't start in the browser"); }, 45000);
+  B.onLeave(() => clearTimeout(noStart));
   // Put the shared in-game save in place once the game has started
   window.EJS_onGameStart = async () => {
+    started = true; clearTimeout(noStart);
     if (!saves.srm) return;
     try {
       const buf = new Uint8Array(await (await fetch(`api/save/${id}/srm`, { headers: { "X-Benflix-Token": B.me.token } })).arrayBuffer());

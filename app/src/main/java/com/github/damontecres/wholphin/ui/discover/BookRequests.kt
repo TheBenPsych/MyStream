@@ -646,7 +646,15 @@ private fun FoundRow(
                     f.volumes?.let { "$it volumes" },
                     f.score?.let { (if (f.manga) "AniList " else "Open Library ") + "%.1f".format(it) },
                 )
-            if (bits.isNotEmpty()) Text(bits.joinToString(" · "), color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+            if (bits.isNotEmpty()) {
+                Text(
+                    bits.joinToString(" · "),
+                    color = BenflixColors.Muted,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             when {
                 f.have != null -> {
                     MusicButton("Ready to read", BenflixIcon.CHECK, onClick = { viewModel.open(f.have) })

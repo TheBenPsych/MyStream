@@ -547,6 +547,7 @@ fun PlayerPillButton(
                 fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
         }

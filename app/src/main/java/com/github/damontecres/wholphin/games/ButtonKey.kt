@@ -157,6 +157,7 @@ fun ButtonKey(
                         fontSize = if (line.press.length > 3) text * 0.85f else text,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Text(

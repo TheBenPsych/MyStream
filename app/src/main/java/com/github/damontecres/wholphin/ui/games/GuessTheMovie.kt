@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -447,6 +448,7 @@ private fun RoundContent(
             color = if (state.picked == round.answer) Color(0xFF46D37A) else Color.White,
             textAlign = TextAlign.Center,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         val firstFocus = remember(round.number) { FocusRequester() }
         LaunchedEffect(round.number) { firstFocus.tryRequestFocus() }
@@ -480,7 +482,13 @@ private fun RoundContent(
                                 .then(if (rowIndex == 0 && i == 0) Modifier.focusRequester(firstFocus) else Modifier),
                         scale = ButtonDefaults.scale(focusedScale = 1f),
                     ) {
-                        Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        Text(
+                            text = choice,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }

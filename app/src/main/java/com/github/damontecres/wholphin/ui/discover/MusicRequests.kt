@@ -1223,6 +1223,7 @@ private fun SongRow(
                     fontWeight = FontWeight.Bold,
                     color = if (song.asked == null && !song.have) BenflixColors.Text else BenflixColors.Muted,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 220.dp),
                 )
             }
@@ -1371,7 +1372,7 @@ private fun PlaylistSection(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(p.words, fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2)
+                    Text(p.words, fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Box(
                         Modifier
                             .fillMaxWidth()

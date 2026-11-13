@@ -239,6 +239,7 @@ private fun CardButton(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .align(Alignment.Center)

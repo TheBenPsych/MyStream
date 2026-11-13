@@ -41,9 +41,9 @@ const PAGES = {};
 const TOOL_GROUPS = [
   { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
-  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions and Kids ratings", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"]] },
-  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names", subs: [["tracks", "Track names"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
+  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
+  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
@@ -63,11 +63,13 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 3;
+const SETUP_NEEDED = 5;
 const SETUP_WAITING = {
   1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
-  3: ["The family can ask for music (it waits for Ben's Approve)"],
+  3: ["Kids accounts in the web browser only see titles rated for kids", "Games in more console folders (like ps1 or fds) play everywhere"],
+  4: ["Kids and Big kids game choices, and the \"Games that didn't start\" list", "Games on more than one disc, and browser play for games made of several files", "Drive health from Scrutiny on the Server page"],
+  5: ["The family can ask for music (it waits for Ben's Approve)"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
 const setupNeed = async () => {
@@ -148,6 +150,7 @@ PAGES.overview = (el) => {
       down.forEach((a) => health.push(["bad", `${a.nice} isn't running properly`, a.status, `<a class="btn small white" href="#/server/tools/apps">Go</a>`]));
       stuck.forEach((d) => health.push(["warn", `Stuck download: ${d.title}`, d.why || "It stopped moving", `<button class="btn small white" data-replace="${esc(d.app)}/${esc(String(d.id))}" data-title="${esc(d.title)}" data-episodes="${d.episodes || 1}">Find another</button>`]));
       if (setupWaiting) health.push(["warn", "Tower needs the setup command", "The yellow card above has it, with Copy", ""]);
+      (t.drives_bad || []).forEach((d) => health.push([d.words.startsWith("Failing") ? "bad" : "warn", `Drive ${d.name}: ${d.words}`, d.where, `<a class="btn small white" href="#/server/tools/drives">Go</a>`]));
       disksFull.forEach((d) => health.push(["warn", `The disk with ${d.name} is nearly full`, `${bytes(d.free)} free`, `<a class="btn small" href="#/server/library/library">Go</a>`]));
       const asks = pending.map((r) => ["warn", (r.media && (r.media.title || r.media.name)) || "A request", `Asked by ${(r.requestedBy && (r.requestedBy.displayName || r.requestedBy.username)) || "someone"}`, `<button class="btn small white" data-rq="${r.id}" data-yes="1">Yes</button><button class="btn small" data-rq="${r.id}">No</button>`]);
       const bad = health.some((h) => h[0] === "bad");
@@ -298,6 +301,86 @@ PAGES.kidsratings = (el) => {
     } catch (err) { if (current === "kidsratings") $("#kr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   draw();
+};
+
+// ---------- Kids games (Idea Box 24): which games Kids and Big kids get ----------
+// Games rated E start on for Kids, E10+ and Teen for Big kids. Games with no rating start off (listed first), so they
+// can be switched on here. Tower keeps the choices, so every TV, phone and browser follows them.
+const KIDS_GAME_WHO = (g) => (g.kids ? "Kids and Big kids" : g.big ? "Big kids only" : "Not on Kids");
+PAGES.kidsgames = (el) => {
+  el.innerHTML = `<p class="sub">Games rated E start on for Kids, E10+ and Teen for Big kids. Games with no rating start off, so they're listed first. Pick Change to switch a game on or off.</p><div id="kg">${loading()}</div>`;
+  let all = [], showAll = false;
+  const paint = () => {
+    const unrated = all.filter((g) => g.level === "none" && !g.chosen).length;
+    const shown = showAll ? all : all.slice(0, 40);
+    $("#kg").innerHTML = `<div class="list"><div class="item"><span class="dot ${unrated ? "warn" : "ok"}"></span><div class="grow"><div class="t">${all.filter((g) => g.kids).length} for Kids, ${all.filter((g) => g.big).length} for Big kids${unrated ? ` · ${unrated} with no rating` : ""}</div></div></div>
+      ${shown.map((g) => `<div class="item"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s">${esc([g.console, g.rating, KIDS_GAME_WHO(g) + (g.chosen ? " (your pick)" : "")].filter(Boolean).join(" · "))}</div></div>
+        <div class="acts"><button class="btn small" data-kg="${g.id}">Change</button></div></div>`).join("")}
+      ${!showAll && all.length > shown.length ? `<div class="item"><div class="grow"><div class="t">${all.length - shown.length} more</div></div><div class="acts"><button class="btn small" id="kgAll">Show all</button></div></div>` : ""}</div>`;
+    const more = $("#kgAll"); if (more) more.onclick = () => { showAll = true; paint(); };
+    el.querySelectorAll("[data-kg]").forEach((b) => {
+      b.onclick = () => {
+        const g = all.find((x) => x.id === +b.dataset.kg); if (!g) return;
+        const choices = [{ value: "both", label: "Kids and Big kids" }, { value: "big", label: "Big kids only" }, { value: "off", label: "Not on Kids" }];
+        if (g.chosen) choices.push({ value: "reset", label: "Follow its age rating" });
+        B.dropdown(b, choices, null, (v) => B.busy(b, async () => {
+          const body = v === "reset" ? { id: g.id, reset: true } : { id: g.id, kids: v === "both", big: v !== "off" };
+          await call("POST", "api/games/kids", body);
+          await load();
+          return v === "reset" ? `${g.name} follows its age rating again.` : v === "both" ? `${g.name} is on for Kids and Big kids.` : v === "big" ? `${g.name} is on for Big kids.` : `${g.name} is off for Kids.`;
+        }));
+      };
+    });
+  };
+  const load = async () => {
+    try {
+      const r = await call("GET", "api/games/kids");
+      if (current !== "kidsgames") return;
+      all = r.games || [];
+      if (!all.length) { $("#kg").innerHTML = `<div class="list"><div class="item"><div class="grow"><div class="t">No games yet</div><div class="s">Games you add to RomM show up here.</div></div></div></div>`; return; }
+      paint();
+    } catch (err) { if (current === "kidsgames") $("#kg").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  load();
+};
+
+// ---------- Drive health (Idea Box 24, from the Scrutiny app) ----------
+const hoursText = (h) => (h == null ? "" : h >= 8760 ? `${(h / 8760).toFixed(1)} years switched on` : `${Math.round(h / 24)} days switched on`);
+PAGES.drives = (el) => {
+  el.innerHTML = `<p class="sub">Every drive in Tower checks its own health. Scrutiny reads those checks and spots the warning signs of a drive that's wearing out, so you can swap it before anything is lost.</p><div id="dh">${loading()}</div>`;
+  const draw = async (fresh) => {
+    let r;
+    try { r = await call("GET", "api/admin/drives" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "drives") $("#dh").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    if (current !== "drives") return;
+    if (!r.set_up) { $("#dh").innerHTML = `<div class="note">Scrutiny isn't connected yet. Install Scrutiny from Apps on Tower (search "scrutiny"), then run the setup command again (Tools, Tower, Setup command).</div>`; return; }
+    const list = r.drives || [];
+    $("#dh").innerHTML = `<div class="list">${list.map((d) => `<div class="item"><span class="dot ${d.ok ? "ok" : d.words.startsWith("Failing") ? "bad" : "warn"}"></span><div class="grow"><div class="t">${esc(d.name)}</div><div class="s">${esc([d.words, d.size ? bytes(d.size) : "", d.temp != null ? `${d.temp}°C` : "", hoursText(d.hours), d.where].filter(Boolean).join(" · "))}</div></div></div>`).join("") || `<div class="empty">Scrutiny hasn't checked any drives yet. It checks once a day.</div>`}</div>
+      <div class="acts" style="margin-top:14px"><button class="btn small" id="dhFresh">${B.I("restart")} Check again now</button></div>`;
+    $("#dhFresh").onclick = () => draw(true);
+  };
+  draw(false);
+};
+
+// ---------- Games that didn't start (Idea Box 24) ----------
+// TVs, phones and browsers quietly tell Tower when a game showed only a black screen, couldn't load, or closed by
+// itself in its first half minute. Usually that means a damaged copy (replace it in RomM) or a missing BIOS file.
+const agoText = (at) => { const d = Math.round((Date.now() / 1000 - at) / 86400); return d <= 0 ? "Today" : d === 1 ? "Yesterday" : `${d} days ago`; };
+PAGES.gameproblems = (el) => {
+  el.innerHTML = `<p class="sub">Games that showed only a black screen, couldn't load, or closed by themselves in their first half minute. Usually the copy is damaged (replace it in RomM) or the console needs a BIOS file in Games/bios.</p><div id="gp">${loading()}</div>`;
+  const load = async () => {
+    try {
+      const r = await call("GET", "api/games/problems");
+      if (current !== "gameproblems") return;
+      const list = r.problems || [];
+      $("#gp").innerHTML = list.length
+        ? `<div class="list">${list.map((p) => `<div class="item"><span class="dot warn"></span><div class="grow"><div class="t">${esc(p.name || "Game " + p.id)}</div><div class="s">${esc([p.what, p.console, p.device, p.who, agoText(p.at)].filter(Boolean).join(" · "))}</div></div>
+            <div class="acts"><button class="btn small" data-gpx="${p.id}">Fixed</button></div></div>`).join("")}</div><div class="row" style="margin-top:12px"><button class="btn small" id="gpAll">Clear the list</button></div>`
+        : `<div class="list"><div class="item"><span class="dot ok"></span><div class="grow"><div class="t">Every game started fine</div><div class="s">Nothing to fix.</div></div></div></div>`;
+      el.querySelectorAll("[data-gpx]").forEach((b) => { b.onclick = () => B.busy(b, async () => { await call("DELETE", `api/games/problems?id=${b.dataset.gpx}`); await load(); return "Taken off the list."; }); });
+      const all = $("#gpAll"); if (all) all.onclick = () => B.busy(all, async () => { await call("DELETE", "api/games/problems"); await load(); return "List cleared."; });
+    } catch (err) { if (current === "gameproblems") $("#gp").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  load();
 };
 
 // ---------- Web version: where these files came from ----------
