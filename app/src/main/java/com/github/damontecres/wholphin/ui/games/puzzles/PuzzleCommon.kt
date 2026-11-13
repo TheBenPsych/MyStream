@@ -133,6 +133,7 @@ fun AnswerLine(
             },
         textAlign = TextAlign.Center,
         maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 

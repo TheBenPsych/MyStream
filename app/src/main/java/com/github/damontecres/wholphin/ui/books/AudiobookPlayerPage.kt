@@ -191,6 +191,7 @@ private fun PlayerInfo(
             fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
     // How far through this chapter, and the whole book

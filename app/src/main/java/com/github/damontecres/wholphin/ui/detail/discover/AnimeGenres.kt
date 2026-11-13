@@ -844,6 +844,7 @@ private fun AnimePoster(
             color = LABEL_GREY,
             fontSize = BenflixType.tag,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

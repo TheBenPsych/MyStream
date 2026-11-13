@@ -552,6 +552,7 @@ private fun AnimeWall(
                                 fontSize = BenflixType.small,
                                 color = BenflixColors.Muted,
                                 maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
                             )
                         }
@@ -715,6 +716,7 @@ private fun Badge(
         fontSize = BenflixType.tag,
         fontWeight = FontWeight.Bold,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
                 .background(if (light) BenflixColors.Text else Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
@@ -760,7 +762,13 @@ private fun FeelWall(
                 ) {
                     Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                         Text(f.name, color = Color.White, fontSize = BenflixType.lead, fontWeight = FontWeight.ExtraBold)
-                        Text(f.line, color = Color.White.copy(alpha = .85f), fontSize = BenflixType.tag, maxLines = 1)
+                        Text(
+                            f.line,
+                            color = Color.White.copy(alpha = .85f),
+                            fontSize = BenflixType.tag,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
@@ -882,6 +890,7 @@ private fun AnimeCalendar(
                 fontSize = BenflixType.small,
                 color = BenflixColors.Muted,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
             )
         }
@@ -952,7 +961,7 @@ private fun AnimeCalendar(
                                 onClick = { viewModel.open(a.card, onAsk) },
                                 scale = ButtonDefaults.scale(focusedScale = 1f),
                                 colors = ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
-                            ) { Text("Ask", maxLines = 1) }
+                            ) { Text("Ask", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                     }
                 }
@@ -996,8 +1005,9 @@ private fun CalendarCard(
                     if (busy) "Opening…" else "Ep ${a.episode} · $time",
                     fontSize = BenflixType.tag,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                a.card.scoreText?.let { Text("AniList $it", fontSize = BenflixType.tag, maxLines = 1) }
+                a.card.scoreText?.let { Text("AniList $it", fontSize = BenflixType.tag, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
     }

@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -185,6 +186,7 @@ fun BenflixTopBar(
                 fontSize = 22.sp * scale,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 4.dp),
             )
         }
@@ -289,6 +291,7 @@ fun BenflixPhoneHeader(
                 fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.weight(1f))
@@ -324,6 +327,7 @@ private fun BigClock(scale: Float) {
             fontSize = 25.sp * scale,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         if (suffix.isNotBlank()) {
             Text(
@@ -332,6 +336,7 @@ private fun BigClock(scale: Float) {
                 fontSize = 13.sp * scale,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 4.dp, bottom = 3.dp),
             )
         }
@@ -578,6 +583,7 @@ fun ProfileMenu(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 minutesWatched?.let {
                     Text(
@@ -714,6 +720,7 @@ private fun MenuRow(
                 fontSize = 15.sp,
                 fontWeight = if (focused) FontWeight.ExtraBold else FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             item.note?.let {
@@ -723,6 +730,7 @@ private fun MenuRow(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
                             .background(BenflixColors.Text, RoundedCornerShape(50))

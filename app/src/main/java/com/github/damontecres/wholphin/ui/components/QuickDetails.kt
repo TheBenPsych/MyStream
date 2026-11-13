@@ -20,6 +20,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -98,6 +99,7 @@ fun AniListScoreText(
         color = MaterialTheme.colorScheme.onSurface,
         style = textStyle,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
 }
@@ -151,6 +153,7 @@ fun QuickDetailsText(
         style = textStyle,
         inlineContent = inlineContentMap,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
 }
@@ -241,6 +244,7 @@ fun EndsAt(
         text = remainingStr,
         style = textStyle,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
 }

@@ -403,6 +403,7 @@ fun GamesPage(
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.width(cardHeight * BoxArt.DEFAULT_RATIO),
                                         )
                                     }
@@ -832,7 +833,13 @@ private fun KeepPlayingCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = status ?: line, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                Text(
+                    text = status ?: line,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Surface(
                     onClick = onPlay,
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),

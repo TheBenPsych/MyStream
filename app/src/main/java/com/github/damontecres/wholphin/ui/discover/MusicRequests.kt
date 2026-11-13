@@ -919,6 +919,7 @@ private fun SongRow(
                     fontWeight = FontWeight.Bold,
                     color = if (song.asked == null && !song.have) BenflixColors.Text else BenflixColors.Muted,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 220.dp),
                 )
             }
@@ -1143,7 +1144,7 @@ private fun PlaylistSection(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(p.words, fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2)
+                    Text(p.words, fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -1236,8 +1237,21 @@ private fun AskSongDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Cover(song.cover, 72, RoundedCornerShape(8.dp))
                 Column {
-                    Text(song.title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text, maxLines = 2)
-                    Text("${song.artist} · ${song.album}", fontSize = BenflixType.small, color = BenflixColors.Soft, maxLines = 2)
+                    Text(
+                        song.title,
+                        fontSize = BenflixType.rowName,
+                        fontWeight = FontWeight.Bold,
+                        color = BenflixColors.Text,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${song.artist} · ${song.album}",
+                        fontSize = BenflixType.small,
+                        color = BenflixColors.Soft,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             LocalSongPreview.current?.let { preview ->

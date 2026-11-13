@@ -302,6 +302,7 @@ private fun BookHero(
                 color = BenflixColors.Soft,
                 fontSize = BenflixType.lead,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             c.desc?.let {
                 Text(
@@ -449,6 +450,7 @@ private fun Top10Book(
                 ),
             color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.offset(x = pull, y = coverHeight * 0.12f),
         )
         Box(Modifier.offset(x = pull - width * 0.2f).onFocusChanged { focused = it.hasFocus }) {
@@ -504,6 +506,7 @@ private fun GenreTile(
                 fontSize = BenflixType.body,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -935,7 +938,15 @@ private fun AboutTop(
                     .joinToString(", ")
                     .takeIf { it.isNotBlank() },
             )
-        if (bits.isNotEmpty()) Text(bits.joinToString("  ·  "), color = BenflixColors.Soft, fontSize = BenflixType.lead, maxLines = 2)
+        if (bits.isNotEmpty()) {
+            Text(
+                bits.joinToString("  ·  "),
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.lead,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         val scores =
             listOfNotNull(
                 a.score?.let { (a.scoreFrom ?: "Score") + " " + "%.1f".format(it) + "/5" + (if (a.votes > 0) " (${a.votes})" else "") },
@@ -1153,6 +1164,7 @@ private fun SeriesLine(
                             color = if (b.have != null || b.asked != null) BenflixColors.Books else BenflixColors.Muted,
                             fontSize = BenflixType.tag,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -1174,6 +1186,7 @@ private fun BackCover(a: BookAbout) {
             fontSize = BenflixType.tag,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             a.blurb.ifBlank { "No blurb yet." },

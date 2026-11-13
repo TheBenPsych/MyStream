@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -422,6 +423,7 @@ private fun FindBox(
                 fontSize = BenflixType.body,
                 color = if (query.isBlank()) BenflixColors.Muted else BenflixColors.Text,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -601,12 +603,13 @@ private fun MenuRow(
                 fontSize = BenflixType.lead,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         supportingContent =
             supporting?.let {
                 {
-                    Text(text = it, fontSize = BenflixType.small, maxLines = 1)
+                    Text(text = it, fontSize = BenflixType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             },
         leadingContent = {

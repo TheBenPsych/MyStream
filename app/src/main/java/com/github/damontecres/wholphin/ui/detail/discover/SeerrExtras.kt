@@ -613,8 +613,15 @@ private fun InfoStrip(
                     fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = BenflixType.tag, maxLines = 1)
+                Text(
+                    text = score.label,
+                    color = Color(0xFFC9CCD4),
+                    fontSize = BenflixType.tag,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         if (scores.isNotEmpty() && facts.isNotEmpty()) {
@@ -636,7 +643,15 @@ private fun InfoStrip(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = BenflixType.tag, maxLines = 1) }
+                fact.note?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFFFB3B3),
+                        fontSize = BenflixType.tag,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

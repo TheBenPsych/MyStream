@@ -135,7 +135,7 @@ fun NowPlayingLine(
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             Text(leftText, color = BenflixColors.Muted, fontSize = BenflixType.small)
             Spacer(Modifier.weight(1f))
-            Text(rightText, color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+            Text(rightText, color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

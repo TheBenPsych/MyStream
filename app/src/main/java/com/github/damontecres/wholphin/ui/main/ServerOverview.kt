@@ -306,7 +306,13 @@ private fun NeedsYouCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     need.supporting?.let {
-                        Text(text = it, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 2)
+                        Text(
+                            text = it,
+                            fontSize = BenflixType.small,
+                            color = BenflixColors.Muted,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
                 need.actions.forEach { (label, action) ->
@@ -378,6 +384,7 @@ private fun WatchingNowCard(
                                     fontWeight = FontWeight.Bold,
                                     color = BenflixColors.Text,
                                     maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(
                                     text = w.what,
@@ -396,6 +403,7 @@ private fun WatchingNowCard(
                                     fontSize = BenflixType.tag,
                                     color = BenflixColors.Muted,
                                     maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 w.progress?.let {
                                     Spacer(Modifier.height(4.dp))
@@ -462,7 +470,13 @@ internal fun ServerToolTiles(
                         contentDescription = null,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text(text = group.title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(
+                        text = group.title,
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         text = group.line,
                         fontSize = BenflixType.tag,
@@ -572,6 +586,7 @@ internal fun SmallButton(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }

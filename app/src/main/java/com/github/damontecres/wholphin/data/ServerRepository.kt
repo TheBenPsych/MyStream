@@ -4,6 +4,7 @@ import android.content.Context
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ProfileModes
 import com.github.damontecres.wholphin.services.hilt.IoDispatcher
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -103,6 +104,13 @@ class ServerRepository
                 Timber.v("Changing user to ${user.name} on ${server.url}")
                 apiClient.update(baseUrl = server.url, accessToken = user.accessToken)
                 val userDto by apiClient.userApi.getCurrentUser()
+                // Benflix: a kids account on Jellyfin (a max rating set, or named "Kids") always gets the Kids
+                // profile, like on the web. Before, signing in to it directly showed the grown-up app.
+                val maxRating = userDto.policy?.maxParentalRating
+                if ((maxRating != null || userDto.name?.trim().equals("kids", ignoreCase = true)) && !KidsMode.isActive) {
+                    KidsMode.set(true, big = (maxRating ?: 0) >= 13)
+                    ProfileModes.save(context, userDto.id)
+                }
                 val updatedServer =
                     try {
                         val sysInfo by apiClient.systemApi.getPublicSystemInfo()

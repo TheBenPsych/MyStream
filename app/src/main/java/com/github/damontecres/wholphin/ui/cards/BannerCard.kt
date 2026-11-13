@@ -533,6 +533,7 @@ private fun GrownPreview(
                     style = MaterialTheme.typography.labelSmall,
                     color = BenflixColors.Soft,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             // Benflix: anime show their AniList and MyAnimeList scores and fan genres too

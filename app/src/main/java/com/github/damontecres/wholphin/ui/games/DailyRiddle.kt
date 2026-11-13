@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -629,6 +630,7 @@ private fun RiddleRound(
         color = if (s.right == true) Color(0xFF46D37A) else BenflixRed,
         textAlign = TextAlign.Center,
         maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
     )
     val firstFocus = remember(s.answer) { FocusRequester() }
     LaunchedEffect(s.answer) { firstFocus.tryRequestFocus() }
@@ -664,7 +666,13 @@ private fun RiddleRound(
                             .then(if (r == 0 && c == 0) Modifier.focusRequester(firstFocus) else Modifier),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
                 ) {
-                    Text(text = choice, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text(
+                        text = choice,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }

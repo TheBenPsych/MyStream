@@ -827,7 +827,13 @@ private fun MusicAskDialog(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(item.artist, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                    Text(
+                        item.artist,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.small,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     if (item.kind == "song" && item.albumTitle.isNotBlank() && plain(item.albumTitle) != plain(item.title)) {
                         Text(
                             "Album: ${item.albumTitle}",
