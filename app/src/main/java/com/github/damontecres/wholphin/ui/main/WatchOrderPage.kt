@@ -543,7 +543,7 @@ private fun MissingCard(
             border =
                 ClickableSurfaceDefaults.border(
                     border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), shape = RoundedCornerShape(6.dp)),
-                    focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(6.dp)),
+                    focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(6.dp)),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier =
@@ -588,8 +588,8 @@ private fun OrderTabButton(
             ButtonDefaults.colors(
                 containerColor = Color.Transparent,
                 contentColor = if (on) Color.White else Color(0xFFB5ABAC),
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
@@ -629,8 +629,8 @@ private fun OrderChip(
             ButtonDefaults.colors(
                 containerColor = if (on) Color(0xFFE5303A) else Color.White.copy(alpha = .1f),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier,
         scale = ButtonDefaults.scale(focusedScale = 1f),

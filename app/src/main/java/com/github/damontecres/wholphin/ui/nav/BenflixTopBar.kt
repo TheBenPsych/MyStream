@@ -455,7 +455,7 @@ fun focusRing(shape: androidx.compose.ui.graphics.Shape) =
     ClickableSurfaceDefaults.border(
         focusedBorder =
             Border(
-                border = BorderStroke(2.5.dp, BenflixColors.Text),
+                border = BorderStroke(2.5.dp, BenflixColors.Focus),
                 shape = shape,
             ),
     )
@@ -676,8 +676,8 @@ private fun MenuPill(
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Line,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {

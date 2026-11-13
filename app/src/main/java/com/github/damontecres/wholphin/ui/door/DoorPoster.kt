@@ -66,7 +66,7 @@ private val PosterShape = BenflixShapes.Card
 @Composable
 fun doorFocusBorder(shape: androidx.compose.ui.graphics.Shape = PosterShape) =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Text), inset = 0.dp, shape = shape),
+        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
     )
 
 /** How far through it is, 0 to 1 (null when not started or finished) */

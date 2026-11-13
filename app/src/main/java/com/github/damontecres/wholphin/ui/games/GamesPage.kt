@@ -749,7 +749,7 @@ internal fun ActionTile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
         modifier = Modifier.size(width = 280.dp, height = 84.dp),
@@ -884,7 +884,7 @@ internal fun ServerGameCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1F1F1F), focusedContainerColor = Color(0xFF1F1F1F)),
         modifier = modifier,

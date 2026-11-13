@@ -134,8 +134,8 @@ fun SuggestionChips(
                     ClickableSurfaceDefaults.colors(
                         containerColor = BenflixColors.Raised,
                         contentColor = BenflixColors.Text,
-                        focusedContainerColor = BenflixColors.Text,
-                        focusedContentColor = BenflixColors.Tray,
+                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                     ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {

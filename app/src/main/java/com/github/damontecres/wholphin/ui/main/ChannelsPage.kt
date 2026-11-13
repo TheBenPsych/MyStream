@@ -739,8 +739,8 @@ private fun GuideGrid(
                                     ClickableSurfaceDefaults.colors(
                                         containerColor = if (live) Color(0xFF26262D) else Color(0xFF1C1C21),
                                         contentColor = Color.White,
-                                        focusedContainerColor = Color.White,
-                                        focusedContentColor = Color.Black,
+                                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                                     ),
                                 border =
                                     if (isSelected) {
@@ -748,7 +748,7 @@ private fun GuideGrid(
                                             border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
                                             focusedBorder =
                                                 Border(
-                                                    BorderStroke(3.dp, BenflixColors.Text),
+                                                    BorderStroke(3.dp, BenflixColors.Focus),
                                                     shape = RoundedCornerShape(6.dp),
                                                 ),
                                         )
@@ -976,7 +976,7 @@ private fun AddChannelsTile(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.width(160.dp).height(64.dp),
@@ -1028,8 +1028,8 @@ private fun SuggestButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = Color(0xFF26262C),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
@@ -1483,8 +1483,8 @@ private fun EasyButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Raised,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),

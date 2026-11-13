@@ -378,8 +378,8 @@ private fun FixButton(
             ButtonDefaults.colors(
                 containerColor = if (white) Color.White else Color(0xFF1E2026),
                 contentColor = if (white) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier = modifier.fillMaxWidth(),

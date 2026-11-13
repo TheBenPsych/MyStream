@@ -299,7 +299,7 @@ fun GenreTile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         modifier = modifier.size(180.dp, 64.dp),
     ) {

@@ -405,8 +405,8 @@ private fun OfflineButton(
             androidx.tv.material3.ButtonDefaults.colors(
                 containerColor = if (primary) BENFLIX_RED else Color(0xFF333333),
                 contentColor = if (primary) Color(0xFF0B0C10) else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color(0xFF0B0C10),
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier.widthIn(min = 240.dp),
     ) {

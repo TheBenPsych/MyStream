@@ -158,8 +158,8 @@ fun SearchStart(
                                 ButtonDefaults.colors(
                                     containerColor = Color.Transparent,
                                     contentColor = Color(0xFFA69C9D),
-                                    focusedContainerColor = Color.White,
-                                    focusedContentColor = Color.Black,
+                                    focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                    focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                                 ),
                             scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
@@ -295,8 +295,8 @@ private fun RecentChip(
                 ButtonDefaults.colors(
                     containerColor = Color.White.copy(alpha = .1f),
                     contentColor = Color(0xFFE8E2E2),
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color.Black,
+                    focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                    focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 ),
             scale = ButtonDefaults.scale(focusedScale = 1f),
         ) {
@@ -310,8 +310,8 @@ private fun RecentChip(
                 ButtonDefaults.colors(
                     containerColor = Color.White.copy(alpha = .1f),
                     contentColor = Color(0xFFA69C9D),
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color.Black,
+                    focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                    focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 ),
             scale = ButtonDefaults.scale(focusedScale = 1f),
         ) {
@@ -344,8 +344,8 @@ private fun StartButton(
             ButtonDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.primary.copy(alpha = .25f),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {

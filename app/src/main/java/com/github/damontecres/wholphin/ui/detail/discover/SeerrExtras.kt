@@ -538,8 +538,8 @@ fun SeerrTagsBlock(
                     ClickableSurfaceDefaults.colors(
                         containerColor = Color.Transparent,
                         contentColor = LABEL_GREY,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
+                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                     ),
                 modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

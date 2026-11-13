@@ -199,8 +199,18 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
 });
 // Easy mode starts 25% bigger (the Text size steps still change it)
-B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || (w.easy && !B.me.kids ? 125 : 100); document.body.style.zoom = s === 100 ? "" : s / 100; };
+B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || (w.easy && !B.me.kids ? 125 : 100); document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); };
 window.addEventListener("hashchange", () => B.applyLook());
+// Kids look (Ben's pick kc-sky, 13 Nov 2026): Sky and Sunshine blue and yellow with round letters while a Kids
+// profile is open, and the calmer Night Light colours from 8 PM (an hour before the usual 9 PM bedtime) until 6 AM.
+B.kidsLook = () => {
+  const kids = !!(B.me && B.me.kids);
+  const h = new Date().getHours();
+  const root = document.documentElement;
+  root.classList.toggle("kids", kids);
+  root.classList.toggle("night", kids && (h >= 20 || h < 6));
+};
+setInterval(() => B.kidsLook(), 60000);
 
 // ---------- Help and updates ----------
 const HELP = [

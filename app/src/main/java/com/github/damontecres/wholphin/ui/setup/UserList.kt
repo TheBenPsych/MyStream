@@ -316,7 +316,7 @@ fun AvatarPickerDialog(
                                         ),
                                     focusedBorder =
                                         androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                                         ),
                                 ),
                             modifier =

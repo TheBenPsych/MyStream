@@ -146,7 +146,7 @@ internal fun BoardPanel(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF16161A), focusedContainerColor = Color(0xFF1C1C22)),
         modifier = modifier,
     ) {
@@ -243,7 +243,7 @@ internal fun DeviceCard(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -352,14 +352,14 @@ internal fun SortChip(
         border =
             ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(1.dp, if (selected) Color.White else Color.Transparent), shape = shape),
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) Color.White.copy(alpha = .2f) else Color(0xFF242424),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
     ) {
         Text(
@@ -396,7 +396,7 @@ internal fun ConsoleGrid(
                 onClick = { onOpen(console.slug) },
                 shape = ClickableSurfaceDefaults.shape(shape),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+                border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Raised,
@@ -499,7 +499,7 @@ internal fun StorageCard(
         onClick = { if (games.isNotEmpty() && onRemove != null) managing = true },
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1C1C1C), focusedContainerColor = Color(0xFF262626)),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -588,7 +588,7 @@ internal fun ChoiceButton(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
         modifier = modifier.fillMaxWidth(),
     ) {

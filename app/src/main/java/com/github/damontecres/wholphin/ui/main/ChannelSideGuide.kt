@@ -144,8 +144,8 @@ private fun SideGuideContent(
                             ClickableSurfaceDefaults.colors(
                                 containerColor = if (name == group) Color(0xFF3A3A42) else Color(0xFF1C1C21),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {

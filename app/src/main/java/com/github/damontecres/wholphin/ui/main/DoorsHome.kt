@@ -1309,7 +1309,12 @@ fun DoorsHomePage(
             // Kids (kd-family), Easy mode (ez-family) and Guest (gs-family): big doors and one row
             FamilyHome(
                 kind = familyKind,
-                greeting = if (familyKind == FamilyKind.GUEST) "Welcome" else greetingFor(viewModel.userName),
+                greeting =
+                    when (familyKind) {
+                        FamilyKind.GUEST -> "Welcome"
+                        FamilyKind.KIDS -> "Hi there!"
+                        else -> greetingFor(viewModel.userName)
+                    },
                 doors = familyDoorSet,
                 // Never show rows that belong to someone else, even for a moment
                 data = if (familyData.key.endsWith("-" + familyKind.name)) familyData else FamilyHomeData(),

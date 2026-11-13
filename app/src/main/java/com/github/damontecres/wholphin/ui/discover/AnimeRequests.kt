@@ -985,9 +985,9 @@ private fun CalendarCard(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Panel,
-                focusedContainerColor = BenflixColors.Text,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
                 contentColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = Modifier.fillMaxWidth(),

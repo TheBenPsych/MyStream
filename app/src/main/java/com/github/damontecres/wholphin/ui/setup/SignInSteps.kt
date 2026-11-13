@@ -666,7 +666,7 @@ internal fun SignInButton(
             ClickableSurfaceDefaults.border(
                 focusedBorder =
                     androidx.tv.material3.Border(
-                        border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                        border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                         inset = (-4).dp,
                         shape = shape,
                     ),
@@ -844,8 +844,8 @@ private fun Key(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (lit) BenflixColors.Soft else BenflixColors.Raised,
                 contentColor = if (lit) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 pressedContainerColor = BenflixColors.Text,
                 pressedContentColor = BenflixColors.Tray,
             ),

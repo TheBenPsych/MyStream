@@ -450,8 +450,8 @@ private fun GridChip(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) BenflixColors.Text else BenflixColors.Raised,
                 contentColor = if (selected) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 pressedContainerColor = BenflixColors.Text,
                 pressedContentColor = BenflixColors.Tray,
             ),
@@ -487,7 +487,7 @@ private fun SearchBox(
                 .width(180.dp)
                 .onFocusChanged { focused = it.isFocused }
                 .background(BenflixColors.Raised, shape)
-                .border(if (focused) 3.dp else 1.dp, if (focused) BenflixColors.Text else BenflixColors.Line, shape),
+                .border(if (focused) 3.dp else 1.dp, if (focused) BenflixColors.Focus else BenflixColors.Line, shape),
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp)) {
                 Box {

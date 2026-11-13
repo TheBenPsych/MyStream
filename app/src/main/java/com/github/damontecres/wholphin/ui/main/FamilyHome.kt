@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.KidsLook
 import java.util.UUID
 
 /**
@@ -199,6 +200,18 @@ fun FamilyHome(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (kind == FamilyKind.KIDS) {
+                // Ben: Kids profiles are shared by every kid on the TV, so no names, just a friendly question
+                Text(
+                    text = "What do you want to watch?",
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.lead,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
             if (kind == FamilyKind.GUEST) {
                 Text(
                     text = "Nothing you watch is saved",
@@ -355,7 +368,18 @@ private fun FamilyDoor(
     modifier: Modifier = Modifier,
     small: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(if (small) 18.dp else 14.dp)
+    // Kids look: rounder doors that grow a little inside a thick yellow ring (Ben: kc-p-glow)
+    val kids = KidsLook.on
+    val shape =
+        RoundedCornerShape(
+            if (kids) {
+                (if (small) 22.dp else 26.dp)
+            } else if (small) {
+                18.dp
+            } else {
+                14.dp
+            },
+        )
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -370,9 +394,9 @@ private fun FamilyDoor(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(border = BorderStroke(4.dp, BenflixColors.Text), inset = 0.dp, shape = shape),
+                focusedBorder = Border(border = BorderStroke(if (kids) 6.dp else 4.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
             ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = if (kids) 1.04f else 1f),
         modifier = modifier,
     ) {
         Box(
@@ -435,7 +459,7 @@ private fun MoreDoor(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(border = BorderStroke(4.dp, BenflixColors.Text), inset = 0.dp, shape = shape),
+                focusedBorder = Border(border = BorderStroke(4.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
@@ -485,7 +509,7 @@ private fun FamilyPoster(
                 ),
             border =
                 ClickableSurfaceDefaults.border(
-                    focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Text), inset = 0.dp, shape = shape),
+                    focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier = Modifier.width(width).height(height),
@@ -539,7 +563,8 @@ fun ProfileBadge(
     if (!kids && !guest) return
     val (text, bg, fg) =
         if (kids) {
-            Triple(KidsMode.displayName, KIDS_BADGE, Color(0xFF0B0C10))
+            // Kids look: the badge is sunny yellow (amber on the grown-up look, if ever shown there)
+            Triple(KidsMode.displayName, KidsLook.palette?.accent ?: KIDS_BADGE, KidsLook.palette?.onAccent ?: Color(0xFF0B0C10))
         } else {
             Triple("Guest", BenflixColors.Line, BenflixColors.Soft)
         }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.BenflixAccent
@@ -47,16 +48,20 @@ fun WholphinTheme(
     content: @Composable () -> Unit,
 ) {
     val themeColors = getThemeColors(appThemeColors)
+    KidsLookWatcher()
 
     val baseScheme =
         when {
             darkTheme -> themeColors.darkScheme
             else -> themeColors.lightScheme
         }
-    // Benflix redesign: one look for everyone (no profile colours, and Kids look the same as everyone
-    // else, just bigger). Buttons, progress lines and highlights are white on the dark tray.
-    val colorScheme = baseScheme
-    val accentColor = BenflixRedBase
+    // Benflix redesign: one look for grown-ups (no profile colours). Buttons, progress lines and highlights
+    // are white on the dark tray.
+    // Kids (Ben's pick kc-sky): Sky and Sunshine, or Night Light near bedtime. Reading KidsLook here redraws
+    // everything when Kids is switched on or off.
+    val kidsPalette = KidsLook.palette
+    val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
+    val accentColor = kidsPalette?.accent ?: BenflixRedBase
     // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
     val density = LocalDensity.current
     val readDensity =
@@ -64,8 +69,9 @@ fun WholphinTheme(
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()
-    val tvTypography = androidx.compose.runtime.remember(isTv) { appTypography() }
-    val materialTypography = androidx.compose.runtime.remember(isTv) { appMaterialTypography() }
+    val kidsFont = KidsLook.on
+    val tvTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appTypography() }
+    val materialTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appMaterialTypography() }
     val finalScheme = if (easyRead) colorScheme.copy(onSurfaceVariant = Color(0xFFE8E8EA)) else colorScheme
     CompositionLocalProvider(
         LocalTheme provides appThemeColors,
@@ -74,7 +80,9 @@ fun WholphinTheme(
     ) {
         androidx.compose.material3.MaterialTheme(
             colorScheme =
-                if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial,
+                (if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial).let { scheme ->
+                    if (kidsPalette != null) scheme.withKids(kidsPalette) else scheme
+                },
             typography = materialTypography,
         ) {
             MaterialTheme(
@@ -121,3 +129,35 @@ fun BenflixAccent.toColor(): Color =
         BenflixAccent.ACCENT_ORANGE -> Color(0xFFF26B1D)
         BenflixAccent.ACCENT_MONO -> Color(0xFF9A9AA2)
     }
+
+/** The Kids colours for the TV parts of the app */
+private fun ColorScheme.withKids(k: KidsPalette): ColorScheme =
+    copy(
+        primary = k.accent,
+        onPrimary = k.onAccent,
+        border = k.accent,
+        background = k.tray,
+        onBackground = k.text,
+        surface = k.tray,
+        onSurface = k.text,
+        surfaceVariant = k.panel,
+        onSurfaceVariant = k.soft,
+    )
+
+/** The Kids colours for the phone-style (Material 3) parts of the app */
+private fun androidx.compose.material3.ColorScheme.withKids(k: KidsPalette): androidx.compose.material3.ColorScheme =
+    copy(
+        primary = k.accent,
+        onPrimary = k.onAccent,
+        background = k.tray,
+        onBackground = k.text,
+        surface = k.tray,
+        onSurface = k.text,
+        surfaceVariant = k.panel,
+        onSurfaceVariant = k.soft,
+        surfaceContainer = k.panel,
+        surfaceContainerHigh = k.panelHigh,
+        surfaceContainerLow = k.tray,
+        surfaceContainerHighest = k.panelHigh,
+        surfaceContainerLowest = k.tray,
+    )

@@ -180,8 +180,8 @@ fun NextUpEpisode(
                         ButtonDefaults.colors(
                             containerColor = Color.White.copy(alpha = .75f),
                             contentColor = Color.Black,
-                            focusedContainerColor = Color.White,
-                            focusedContentColor = Color.Black,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                         ),
                     // Takes whatever room is left after "Watch credits", so that button is never cut off
                     modifier =
@@ -234,8 +234,8 @@ fun NextUpEpisode(
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
@@ -258,8 +258,8 @@ fun NextUpEpisode(
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),

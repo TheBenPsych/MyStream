@@ -75,6 +75,7 @@ B.me = null;
 B.pick = (id) => {
   B.me = B.profiles().find((p) => p.id === id) || null;
   if (B.me) store("benflix.last", B.me.id);
+  if (B.kidsLook) B.kidsLook();
   B.cache = {};
   if (B.me) B.englishSubs();
 };

@@ -192,7 +192,7 @@ private fun QueueRow(
                 androidx.tv.material3.ClickableSurfaceDefaults.border(
                     focusedBorder =
                         androidx.tv.material3.Border(
-                            androidx.compose.foundation.BorderStroke(2.dp, BenflixColors.Text),
+                            androidx.compose.foundation.BorderStroke(2.dp, BenflixColors.Focus),
                             shape = RoundedCornerShape(8.dp),
                         ),
                 ),

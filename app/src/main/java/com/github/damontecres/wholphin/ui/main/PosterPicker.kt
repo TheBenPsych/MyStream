@@ -357,8 +357,8 @@ fun PosterPickerPage(
                     ButtonDefaults.colors(
                         containerColor = Color.White,
                         contentColor = Color.Black,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
+                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                     ),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
                 modifier = Modifier.focusRequester(useFocus),
