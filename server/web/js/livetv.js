@@ -51,6 +51,8 @@ B.chCard = chCard;
 const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()) / 60000));
 
 B.route(/^\/live$/, async (m, nav) => {
+  // Kids don't get live channels, like the TV and phone app: live programmes have no age ratings
+  if (B.me.kids) return B.go("#/home");
   B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   let list, prefs;
@@ -165,6 +167,7 @@ B.remind = (c, p) => {
 
 // ---------- watching a channel ----------
 B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
+  if (B.me.kids) return B.go("#/home");
   // Starting a movie, show, channel or game stops the music
   if (B.music) B.music.stop();
   const [list, prefs] = await Promise.all([B.channels(), chPrefs.read().catch(() => ({ favourites: [], recent: [], hidden: [] }))]);
