@@ -126,7 +126,13 @@ private fun PickerTile(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
             ) {
                 badge()
-                Text(text = title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(
+                    text = title,
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(text = line, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         } else {
@@ -142,6 +148,7 @@ private fun PickerTile(
                         fontSize = if (easy) BenflixType.rowName else BenflixType.lead,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (!easy) {
                         Text(

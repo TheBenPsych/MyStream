@@ -82,6 +82,11 @@ class TowerSetupCheck
                             "Safer ebook reading: book pages can't run hidden code",
                             "Other websites can't show Benflix inside their pages",
                         ),
+                    3 to
+                        listOf(
+                            "Kids accounts in the web browser only see titles rated for kids",
+                            "Games in more console folders (like ps1 or fds) play everywhere",
+                        ),
                     4 to
                         listOf(
                             "Kids and Big kids game choices, and the \"Games that didn't start\" list",

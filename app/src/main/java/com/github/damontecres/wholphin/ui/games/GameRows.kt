@@ -292,6 +292,7 @@ private fun RowTile(
                 fontSize = BenflixType.tag,
                 color = BenflixColors.Muted,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

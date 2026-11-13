@@ -751,7 +751,7 @@ fun ScoreLine(
                 withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(" $site") }
             }
         }
-    Text(text = text, fontSize = BenflixType.body, maxLines = 1, modifier = modifier)
+    Text(text = text, fontSize = BenflixType.body, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
 /** "2023 · 1h 52m · PG-13 · Drama" (episodes: "S2 E5 · Episode name") */
@@ -930,6 +930,7 @@ private fun PickedCard(
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.tag,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }

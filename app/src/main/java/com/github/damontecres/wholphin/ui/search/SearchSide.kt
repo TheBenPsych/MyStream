@@ -143,6 +143,7 @@ fun SuggestionChips(
                     text = withTypedBold(name, query),
                     fontSize = BenflixType.small,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
                 )
             }

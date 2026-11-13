@@ -163,6 +163,25 @@ CORES = {
     "intellivision": "freeintv",
     "vectrex": "vecx",
     "3do": "opera",
+    # Other folder names the app knows (games/Consoles.kt), so games in them don't say "Can't play here yet"
+    "fds": "fceumm",
+    "sega-cd": "genesis_plus_gx",
+    "ps1": "swanstation",
+    "playstation": "swanstation",
+    "a2600": "stella2014",
+    "2600": "stella2014",
+    "a7800": "prosystem",
+    "7800": "prosystem",
+    "atarilynx": "handy",
+    "neogeopocket": "mednafen_ngp",
+    "neogeopocketcolor": "mednafen_ngp",
+    "wonderswancolor": "mednafen_wswan",
+    "vb": "mednafen_vb",
+    "neo-geo": "fbneo",
+    "nintendo-64": "mupen64plus_next",
+    "nintendo64": "mupen64plus_next",
+    "turbografx16": "mednafen_pce_fast",
+    "pcecd": "mednafen_pce_fast",
 }
 
 # For games that are a folder of files, the file to start from (best first)
@@ -181,6 +200,7 @@ SETUP_VERSION = 4
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _names = {}  # Jellyfin account id -> the profile's name (for "asked by")
+_kids_big = {}  # Jellyfin kids account id -> True when its max rating is PG-13 / TV-14 ("Big kids")
 _lock = threading.Lock()
 
 
@@ -241,6 +261,7 @@ def check_signed_in(token):
         else:
             _big_users.discard(user_id)
         _tokens[token] = (time.time(), user_id, is_admin, is_kids)
+        _kids_big[user_id] = big
         _names[user_id] = str(user.get("Name") or "")
     return user_id, is_admin, is_kids
 
@@ -449,6 +470,79 @@ def jellyfin_call(method, path, token=None, body=None, device_id="benflix-web", 
         return e.code, e.read() or b"", e.headers.get("Content-Type", "application/json")
     except (urllib.error.URLError, OSError):
         raise HelperError(502, "The helper couldn't reach Jellyfin. Check it's running.")
+
+
+# ---------- Kids accounts in the browser ----------
+# The same rules as the app's Kids profile (services/KidsMode.kt): lists of movies & shows only hold kid
+# ratings, and anything with no rating at all is left out. Jellyfin's own max-rating setting lets unrated
+# titles through (and an account just named "Kids" has no limit at all), so the helper checks every list.
+KIDS_RATINGS = {"G", "PG", "TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "TV-PG", "U", "UC", "ALL", "APPROVED", "0", "6", "7", "FSK-0", "FSK-6"}
+BIG_KIDS_RATINGS = {"PG-13", "TV-14", "12", "12A", "13", "FSK-12", "M", "PG13"}
+KIDS_RATED_TYPES = {"Movie", "Series", "Episode", "Season", "Video", "Trailer", "MusicVideo", "BoxSet"}
+KIDS_LIST_PATH = re.compile(
+    r"(?i)(Items(/Latest|/Resume|/Suggestions)?|/Shows/NextUp|/Shows/Upcoming|/Shows/[^/]+/(Episodes|Seasons)|/Similar|/Search/Hints)$"
+)
+_kids_series = {}  # show id -> its rating ("" when it has none)
+
+
+def kids_list_path(jf_path, big):
+    """The browser's Jellyfin address with the kids limits added (or None when it isn't a list of titles)"""
+    path, _, q = jf_path.partition("?")
+    if not KIDS_LIST_PATH.search(path):
+        return None
+    params = urllib.parse.parse_qsl(q, keep_blank_values=True)
+    names = {k.lower(): v for k, v in params}
+    if "maxofficialrating" not in names:
+        params.append(("maxOfficialRating", "PG-13" if big else "PG"))
+    types = names.get("includeitemtypes")
+    if types is not None and "episode" not in types.lower() and "season" not in types.lower() and "hasparentalrating" not in names:
+        params.append(("hasParentalRating", "true"))
+    return path + "?" + urllib.parse.urlencode(params)
+
+
+def _kids_rating(item):
+    r = item.get("OfficialRating")
+    return str(r).strip() or None if r else None
+
+
+def kids_filter(data, token, device_id, big):
+    """Takes out of a Jellyfin answer every movie, show or episode that isn't rated for kids"""
+    try:
+        answer = json.loads(data)
+    except ValueError:
+        return b'{"Items":[],"TotalRecordCount":0}'
+    lists = [answer] if isinstance(answer, list) else [answer.get(k) for k in ("Items", "SearchHints") if isinstance(answer.get(k), list)]
+    missing = set()
+    for items in lists:
+        for it in items:
+            if isinstance(it, dict) and it.get("Type") in ("Episode", "Season") and not _kids_rating(it):
+                sid = str(it.get("SeriesId") or "")
+                if sid and sid not in _kids_series:
+                    missing.add(sid)
+    if missing:
+        status, body, _ = jellyfin_call("GET", "/Items?ids=" + ",".join(sorted(missing)), token=token, device_id=device_id)
+        if status == 200:
+            for it in (json.loads(body).get("Items") or []):
+                _kids_series[str(it.get("Id"))] = _kids_rating(it) or ""
+
+    def allowed(it):
+        if not isinstance(it, dict) or it.get("Type") not in KIDS_RATED_TYPES:
+            return True
+        rating = _kids_rating(it)
+        if not rating and it.get("Type") in ("Episode", "Season"):
+            rating = _kids_series.get(str(it.get("SeriesId") or "")) or None
+        if not rating:
+            return False
+        r = rating.upper()
+        return r in KIDS_RATINGS or (big and r in BIG_KIDS_RATINGS)
+
+    if isinstance(answer, list):
+        answer = [it for it in answer if allowed(it)]
+    else:
+        for k in ("Items", "SearchHints"):
+            if isinstance(answer.get(k), list):
+                answer[k] = [it for it in answer[k] if allowed(it)]
+    return json.dumps(answer).encode()
 
 
 def web_login(info):
@@ -1204,9 +1298,13 @@ class Handler(BaseHTTPRequestHandler):
                         raise HelperError(413, "That's too big.")
                     body = self.rfile.read(length) if length > 0 else b""
                 jf_path = path[len("/api/web/jf"):] + (("?" + parsed.query) if parsed.query else "")
+                kids_path = kids_list_path(jf_path, _kids_big.get(user_id, False)) if is_kids and method == "GET" else None
                 status, data, ctype = jellyfin_call(
-                    method, jf_path, token=token, body=body, device_id=self.web_device(), content_type=self.headers.get("Content-Type")
+                    method, kids_path or jf_path, token=token, body=body, device_id=self.web_device(), content_type=self.headers.get("Content-Type")
                 )
+                if kids_path and status == 200 and "json" in (ctype or ""):
+                    # Kids accounts: only titles rated for kids (unrated ones are left out, like in the app)
+                    data = kids_filter(data, token, self.web_device(), _kids_big.get(user_id, False))
                 return self.send(status, data, ctype)
             if method == "GET" and path == "/api/games":
                 games = load_games()

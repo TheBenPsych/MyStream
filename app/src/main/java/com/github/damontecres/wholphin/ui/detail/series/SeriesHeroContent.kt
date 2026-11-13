@@ -448,6 +448,7 @@ private fun SeasonChip(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
         )
     }
@@ -722,6 +723,7 @@ private fun GroupChip(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }

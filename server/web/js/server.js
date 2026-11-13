@@ -67,6 +67,7 @@ const SETUP_NEEDED = 4;
 const SETUP_WAITING = {
   1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
+  3: ["Kids accounts in the web browser only see titles rated for kids", "Games in more console folders (like ps1 or fds) play everywhere"],
   4: ["Kids and Big kids game choices, and the \"Games that didn't start\" list", "Games on more than one disc, and browser play for games made of several files", "Drive health from Scrutiny on the Server page"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";

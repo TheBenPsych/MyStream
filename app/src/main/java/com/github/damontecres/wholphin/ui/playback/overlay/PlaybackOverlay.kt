@@ -304,6 +304,7 @@ fun PlaybackOverlay(
                             fontSize = BenflixType.small,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

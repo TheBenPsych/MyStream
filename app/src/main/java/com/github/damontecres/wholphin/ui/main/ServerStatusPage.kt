@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -976,6 +977,7 @@ private fun PageHeader(
                 fontWeight = FontWeight.SemiBold,
                 color = BenflixColors.Muted,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = sectionTitle,
@@ -983,6 +985,7 @@ private fun PageHeader(
                 lineHeight = if (isTv) 42.sp else 36.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             val status =
                 when {
@@ -990,7 +993,15 @@ private fun PageHeader(
                     waitingOn.isNotEmpty() -> "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…"
                     else -> ago
                 }
-            status?.let { Text(text = it, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1) }
+            status?.let {
+                Text(
+                    text = it,
+                    fontSize = BenflixType.small,
+                    color = BenflixColors.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (onRefresh != null) SmallButton("Refresh", onClick = onRefresh)
     }
@@ -1451,6 +1462,7 @@ private fun DiskBar(disk: ServerDisk) {
                 fontSize = BenflixType.body,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Text(

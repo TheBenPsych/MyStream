@@ -347,6 +347,7 @@ fun PosterPickerPage(
                 fontSize = BenflixType.small,
                 color = Color(0xFFA7A9B0),
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Button(
                 onClick = viewModel::use,
@@ -557,6 +558,7 @@ private fun ChoiceTile(
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)

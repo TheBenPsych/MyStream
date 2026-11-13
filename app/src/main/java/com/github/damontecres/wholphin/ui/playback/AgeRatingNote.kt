@@ -93,6 +93,7 @@ fun AgeRatingNote(
                     fontWeight = FontWeight.Bold,
                     fontSize = if (isTv) BenflixType.rowName else BenflixType.body,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (meaning != null) {
                     Text(

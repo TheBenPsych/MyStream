@@ -173,6 +173,7 @@ fun DoorPoster(
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
@@ -280,6 +281,7 @@ fun DoorTop10Poster(
                 ),
             color = if (focused) BenflixColors.Text else TOP10_GREY,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .offset(x = pull, y = numberHeight * 0.07f)
@@ -369,6 +371,7 @@ fun BrowseTile(
                 fontSize = if (big) BenflixType.rowName else BenflixType.lead,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

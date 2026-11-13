@@ -456,6 +456,7 @@ fun RequestSteps(
                     fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
                     color = if (done) Color.White else MUTED,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false,
                     modifier = Modifier.padding(start = 4.dp),
                 )
@@ -553,7 +554,7 @@ fun SeasonPickDialog(
             if (open.size > 1) {
                 val all = chosen.containsAll(open)
                 Button(onClick = { chosen = if (all) emptySet() else open.toSet() }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
-                    Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1)
+                    Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Column(
@@ -599,9 +600,12 @@ fun SeasonPickDialog(
                             else -> "Ask for ${chosen.size} seasons"
                         },
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                    Text("Cancel", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

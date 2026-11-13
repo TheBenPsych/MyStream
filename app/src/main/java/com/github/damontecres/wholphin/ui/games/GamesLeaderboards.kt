@@ -212,6 +212,7 @@ internal fun BoardLine(
                             else -> Color.White.copy(alpha = .9f)
                         },
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -457,7 +458,7 @@ internal fun ConsoleGrid(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(count, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
+                    Text(count, fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
