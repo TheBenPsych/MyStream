@@ -162,21 +162,25 @@ B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
   data.consoles.forEach((x) => { const f = x.games.find((y) => y.id === id); if (f) { g = f; c = x; } });
   const core = c && EJS_CORES[c.slug];
   if (!g || !core) return B.go(`#/game/${id}`);
-  if (files.files.length > 1 && !/\.(m3u|chd|pbp|iso|zip|7z)$/i.test(files.start)) {
-    B.page().innerHTML = B.top("Games", DOORS.games.color) + `<div class="center"><div><div class="h1">This one needs the TV or phone</div><p class="sub">${esc(g.name)} is made of several files, which the browser can't load yet.</p><a class="btn white" href="#/game/${id}">Back</a></div></div>`;
-    return B.wireTop();
-  }
+  // A game made of several files (a .cue with its .bin files, or several discs) comes from Tower as one .zip
+  const many = files.files.length > 1 && !/\.(chd|pbp|iso|zip|7z)$/i.test(files.start);
   const key = enc(B.me.token);
   const biosFile = core === "psx" ? (bios.files || []).find((b) => /^scph(5501|1001|5500|5502)\.bin$/i.test(b.name)) : core === "gba" ? (bios.files || []).find((b) => /^gba_bios\.bin$/i.test(b.name)) : null;
   B.page().innerHTML = `<div class="emu"><div id="game"></div><button class="btn quit" id="quit">${I("x")} Quit and save</button></div>`;
   Object.assign(window, {
     EJS_player: "#game", EJS_core: core, EJS_gameName: g.name, EJS_color: "#FF6F91", EJS_startOnLoaded: true, EJS_pathtodata: EJS_DATA,
-    EJS_gameUrl: `api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
+    EJS_gameUrl: many ? `api/rom/${id}/zip?api_key=${key}` : `api/rom/${id}/file?name=${enc(files.start)}&api_key=${key}`,
     EJS_biosUrl: biosFile ? `api/bios/file?path=${enc(biosFile.path)}&api_key=${key}` : "",
     EJS_defaultOptions: { "save-state-location": "browser" },
   });
+  // "Didn't start" list (Idea Box 24): if the game hasn't started after 45 seconds, Tower hears about it
+  let started = false;
+  const tellTower = (what) => { if (!started) B.call("POST", "api/games/problems", { id, name: g.name, console: c.name, what, device: "Browser" }).catch(() => {}); };
+  const noStart = setTimeout(() => { if (B.alive(nav)) tellTower("Didn't start in the browser"); }, 45000);
+  B.onLeave(() => clearTimeout(noStart));
   // Put the shared in-game save in place once the game has started
   window.EJS_onGameStart = async () => {
+    started = true; clearTimeout(noStart);
     if (!saves.srm) return;
     try {
       const buf = new Uint8Array(await (await fetch(`api/save/${id}/srm`, { headers: { "X-Benflix-Token": B.me.token } })).arrayBuffer());

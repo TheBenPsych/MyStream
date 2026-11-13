@@ -41,8 +41,8 @@ const PAGES = {};
 const TOOL_GROUPS = [
   { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
-  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions and Kids ratings", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"]] },
-  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names", subs: [["tracks", "Track names"]] },
+  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
+  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
   { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
 const SECTIONS = [
@@ -297,6 +297,69 @@ PAGES.kidsratings = (el) => {
     } catch (err) { if (current === "kidsratings") $("#kr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
   draw();
+};
+
+// ---------- Kids games (Idea Box 24): which games Kids and Big kids get ----------
+// Games rated E start on for Kids, E10+ and Teen for Big kids. Games with no rating start off (listed first), so they
+// can be switched on here. Tower keeps the choices, so every TV, phone and browser follows them.
+const KIDS_GAME_WHO = (g) => (g.kids ? "Kids and Big kids" : g.big ? "Big kids only" : "Not on Kids");
+PAGES.kidsgames = (el) => {
+  el.innerHTML = `<p class="sub">Games rated E start on for Kids, E10+ and Teen for Big kids. Games with no rating start off, so they're listed first. Pick Change to switch a game on or off.</p><div id="kg">${loading()}</div>`;
+  let all = [], showAll = false;
+  const paint = () => {
+    const unrated = all.filter((g) => g.level === "none" && !g.chosen).length;
+    const shown = showAll ? all : all.slice(0, 40);
+    $("#kg").innerHTML = `<div class="list"><div class="item"><span class="dot ${unrated ? "warn" : "ok"}"></span><div class="grow"><div class="t">${all.filter((g) => g.kids).length} for Kids, ${all.filter((g) => g.big).length} for Big kids${unrated ? ` · ${unrated} with no rating` : ""}</div></div></div>
+      ${shown.map((g) => `<div class="item"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s">${esc([g.console, g.rating, KIDS_GAME_WHO(g) + (g.chosen ? " (your pick)" : "")].filter(Boolean).join(" · "))}</div></div>
+        <div class="acts"><button class="btn small" data-kg="${g.id}">Change</button></div></div>`).join("")}
+      ${!showAll && all.length > shown.length ? `<div class="item"><div class="grow"><div class="t">${all.length - shown.length} more</div></div><div class="acts"><button class="btn small" id="kgAll">Show all</button></div></div>` : ""}</div>`;
+    const more = $("#kgAll"); if (more) more.onclick = () => { showAll = true; paint(); };
+    el.querySelectorAll("[data-kg]").forEach((b) => {
+      b.onclick = () => {
+        const g = all.find((x) => x.id === +b.dataset.kg); if (!g) return;
+        const choices = [{ value: "both", label: "Kids and Big kids" }, { value: "big", label: "Big kids only" }, { value: "off", label: "Not on Kids" }];
+        if (g.chosen) choices.push({ value: "reset", label: "Follow its age rating" });
+        B.dropdown(b, choices, null, (v) => B.busy(b, async () => {
+          const body = v === "reset" ? { id: g.id, reset: true } : { id: g.id, kids: v === "both", big: v !== "off" };
+          await call("POST", "api/games/kids", body);
+          await load();
+          return v === "reset" ? `${g.name} follows its age rating again.` : v === "both" ? `${g.name} is on for Kids and Big kids.` : v === "big" ? `${g.name} is on for Big kids.` : `${g.name} is off for Kids.`;
+        }));
+      };
+    });
+  };
+  const load = async () => {
+    try {
+      const r = await call("GET", "api/games/kids");
+      if (current !== "kidsgames") return;
+      all = r.games || [];
+      if (!all.length) { $("#kg").innerHTML = `<div class="list"><div class="item"><div class="grow"><div class="t">No games yet</div><div class="s">Games you add to RomM show up here.</div></div></div></div>`; return; }
+      paint();
+    } catch (err) { if (current === "kidsgames") $("#kg").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  load();
+};
+
+// ---------- Games that didn't start (Idea Box 24) ----------
+// TVs, phones and browsers quietly tell Tower when a game showed only a black screen, couldn't load, or closed by
+// itself in its first half minute. Usually that means a damaged copy (replace it in RomM) or a missing BIOS file.
+const agoText = (at) => { const d = Math.round((Date.now() / 1000 - at) / 86400); return d <= 0 ? "Today" : d === 1 ? "Yesterday" : `${d} days ago`; };
+PAGES.gameproblems = (el) => {
+  el.innerHTML = `<p class="sub">Games that showed only a black screen, couldn't load, or closed by themselves in their first half minute. Usually the copy is damaged (replace it in RomM) or the console needs a BIOS file in Games/bios.</p><div id="gp">${loading()}</div>`;
+  const load = async () => {
+    try {
+      const r = await call("GET", "api/games/problems");
+      if (current !== "gameproblems") return;
+      const list = r.problems || [];
+      $("#gp").innerHTML = list.length
+        ? `<div class="list">${list.map((p) => `<div class="item"><span class="dot warn"></span><div class="grow"><div class="t">${esc(p.name || "Game " + p.id)}</div><div class="s">${esc([p.what, p.console, p.device, p.who, agoText(p.at)].filter(Boolean).join(" · "))}</div></div>
+            <div class="acts"><button class="btn small" data-gpx="${p.id}">Fixed</button></div></div>`).join("")}</div><div class="row" style="margin-top:12px"><button class="btn small" id="gpAll">Clear the list</button></div>`
+        : `<div class="list"><div class="item"><span class="dot ok"></span><div class="grow"><div class="t">Every game started fine</div><div class="s">Nothing to fix.</div></div></div></div>`;
+      el.querySelectorAll("[data-gpx]").forEach((b) => { b.onclick = () => B.busy(b, async () => { await call("DELETE", `api/games/problems?id=${b.dataset.gpx}`); await load(); return "Taken off the list."; }); });
+      const all = $("#gpAll"); if (all) all.onclick = () => B.busy(all, async () => { await call("DELETE", "api/games/problems"); await load(); return "List cleared."; });
+    } catch (err) { if (current === "gameproblems") $("#gp").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+  };
+  load();
 };
 
 // ---------- Web version: where these files came from ----------

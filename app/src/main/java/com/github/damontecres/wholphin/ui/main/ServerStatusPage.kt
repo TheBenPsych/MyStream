@@ -785,10 +785,12 @@ fun ServerStatusPage(
                         )
                         messageItems(toolsState, { toolsDialog = it }, sectionTitle)
                         kidsRatingItems()
+                        kidsGamesItems()
                     }
 
                     ServerToolGroup.FIXES -> {
                         trackTidyItems(tracks, tracksProblem, towerViewModel)
+                        gameProblemItems()
                         speedCheckItems(speedState, speedCheck)
                         startupSpeedItem(sectionTitle)
                     }

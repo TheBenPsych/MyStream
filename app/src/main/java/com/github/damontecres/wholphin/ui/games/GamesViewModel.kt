@@ -356,7 +356,7 @@ class GamesViewModel
             if (KidsMode.isActive) {
                 val kidsConsoles =
                     consoles
-                        .map { c -> c.copy(games = c.games.filter { it.kids }) }
+                        .map { c -> c.copy(games = c.games.filter { KidsMode.allowsGame(it.kids, it.bigKids) }) }
                         .filter { it.games.isNotEmpty() }
                 if (kidsConsoles.isEmpty()) {
                     LibraryState.Failed(
@@ -373,8 +373,7 @@ class GamesViewModel
             }
 
         /** Games downloaded on this device that this profile may see (Kids: only games rated for everyone) */
-        fun visibleDownloads(): List<DownloadedGame> =
-            localGames.downloaded().let { all -> if (KidsMode.isActive) all.filter { it.ref.kids } else all }
+        fun visibleDownloads(): List<DownloadedGame> = localGames.downloaded().filter { KidsMode.allowsGame(it.ref.kids, it.ref.bigKids) }
 
         /** Shows the Play / Resume choices for a game */
         fun choose(ref: GameRef) {

@@ -146,7 +146,7 @@ fun GamesPage(
             playable
                 .flatMap { (c, _, _) ->
                     c.games.map {
-                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
+                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids, bigKids = it.bigKids)
                     }
                 }.toMap()
         }
