@@ -137,7 +137,7 @@ object Cards {
             border = Border.None,
             focusedBorder =
                 Border(
-                    border = BorderStroke(3.dp, BenflixColors.Text),
+                    border = BorderStroke(3.dp, BenflixColors.Focus),
                     inset = 0.dp,
                     shape = focusShape,
                 ),

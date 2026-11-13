@@ -537,8 +537,8 @@ private fun TagChip(
             androidx.tv.material3.ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .12f),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier,
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

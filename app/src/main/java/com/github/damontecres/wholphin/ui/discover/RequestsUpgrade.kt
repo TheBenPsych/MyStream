@@ -168,8 +168,8 @@ fun RequestsChip(
             ButtonDefaults.colors(
                 containerColor = if (selected) Color.White else CHIP,
                 contentColor = if (selected) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier.height(40.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
@@ -193,8 +193,8 @@ fun ActiveFilterChip(
                 // Redesign: greys and white, no red
                 containerColor = Color.White,
                 contentColor = Color.Black,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = Modifier.height(36.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),

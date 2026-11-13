@@ -302,7 +302,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     border =
                         ClickableSurfaceDefaults.border(
-                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
+                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
                         ),
                     modifier =
                         Modifier

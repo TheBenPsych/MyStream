@@ -142,7 +142,7 @@ private fun MoodTile(
         border =
             ClickableSurfaceDefaults.border(
                 border = if (selected) Border(BorderStroke(2.dp, Color.White.copy(alpha = .7f)), shape = shape) else Border.None,
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         modifier = modifier.size(200.dp, 84.dp),
     ) {

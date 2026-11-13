@@ -229,7 +229,8 @@ B.route(/^\/home$/, async (m, nav) => {
   const doors = keys.map((k) => DOORS[k]);
   const small = kids || easy;
   const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(d.desc)}</div></div></a>`;
-  const greet = `${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}`;
+  // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
+  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">

@@ -51,6 +51,9 @@ object KidsMode {
         seriesRatings.clear()
         isBig = on && big
         _active.value = on
+        // The Kids look (Sky and Sunshine) follows straight away, before the next screen is drawn
+        com.github.damontecres.wholphin.ui.theme.KidsLook
+            .refresh(on)
     }
 
     /**

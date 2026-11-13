@@ -211,8 +211,8 @@ fun EpisodesPanel(
                             ButtonDefaults.colors(
                                 containerColor = if (selected) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
                                 contentColor = if (selected) Color.Black else Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         modifier = Modifier.height(40.dp),

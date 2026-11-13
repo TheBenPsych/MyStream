@@ -183,7 +183,7 @@ fun HiddenGenresPicker(
                     ),
                 border =
                     ClickableSurfaceDefaults.border(
-                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(50)),
+                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(50)),
                     ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
@@ -289,7 +289,7 @@ private fun GenreChoice(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), inset = (-3).dp, shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), inset = (-3).dp, shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,

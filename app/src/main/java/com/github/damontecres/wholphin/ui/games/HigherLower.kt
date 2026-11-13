@@ -382,8 +382,8 @@ private fun HigherLowerRound(
                         ButtonDefaults.colors(
                             containerColor = Color(0xFF2A2A2E),
                             contentColor = Color.White,
-                            focusedContainerColor = Color.White,
-                            focusedContentColor = Color.Black,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                         ),
                     modifier =
                         Modifier

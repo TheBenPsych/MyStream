@@ -7,14 +7,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Typography
 import com.github.damontecres.wholphin.R
 
-/** Benflix's clean, round font (Outfit), used for all text */
-val BenflixFont =
+/** Benflix's clean, round font (Outfit), used for all text; Kids get the rounder Fredoka (Ben: kc-p-letters) */
+val BenflixFont: FontFamily get() = if (KidsLook.on) KidsFont else OutfitFont
+
+private val OutfitFont =
     FontFamily(
         Font(R.font.outfit_regular, FontWeight.Normal),
         Font(R.font.outfit_medium, FontWeight.Medium),
         Font(R.font.outfit_semibold, FontWeight.SemiBold),
         Font(R.font.outfit_bold, FontWeight.Bold),
         Font(R.font.outfit_extrabold, FontWeight.ExtraBold),
+    )
+
+/** Round, friendly letters for Kids (Fredoka; it has no extra-bold, so that uses bold) */
+private val KidsFont =
+    FontFamily(
+        Font(R.font.kids_fredoka_regular, FontWeight.Normal),
+        Font(R.font.kids_fredoka_medium, FontWeight.Medium),
+        Font(R.font.kids_fredoka_semibold, FontWeight.SemiBold),
+        Font(R.font.kids_fredoka_bold, FontWeight.Bold),
+        Font(R.font.kids_fredoka_bold, FontWeight.ExtraBold),
     )
 
 /** Tall movie-poster letters (Bebas Neue). Only for the giant Top 10 numbers; everything else uses Outfit */

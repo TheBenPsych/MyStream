@@ -1,5 +1,10 @@
 css/benflix.css
 css/reader.css
+fonts/fredoka.LICENSE.txt
+fonts/kids_fredoka_bold.ttf
+fonts/kids_fredoka_medium.ttf
+fonts/kids_fredoka_regular.ttf
+fonts/kids_fredoka_semibold.ttf
 fonts/opendyslexic.LICENSE.txt
 fonts/opendyslexic_regular.woff2
 fonts/outfit_bold.ttf

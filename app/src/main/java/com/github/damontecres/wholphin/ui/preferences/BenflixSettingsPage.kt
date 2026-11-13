@@ -403,7 +403,7 @@ private fun FindBox(
                     ),
                 focusedBorder =
                     androidx.tv.material3.Border(
-                        androidx.compose.foundation.BorderStroke(2.5.dp, BenflixColors.Text),
+                        androidx.compose.foundation.BorderStroke(2.5.dp, BenflixColors.Focus),
                         shape = RoundedCornerShape(10.dp),
                     ),
             ),

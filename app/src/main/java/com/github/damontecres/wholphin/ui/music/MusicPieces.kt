@@ -421,7 +421,7 @@ fun SongRow(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(2.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(2.dp, BenflixColors.Focus), shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
@@ -532,7 +532,7 @@ fun MusicButton(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), inset = 3.dp, shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), inset = 3.dp, shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,

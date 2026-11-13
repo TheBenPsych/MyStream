@@ -158,8 +158,8 @@ private fun Pill(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (strong) Color(0xE6E8D44D) else Color.Black.copy(alpha = .7f),
                 contentColor = if (strong) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {

@@ -394,7 +394,7 @@ private fun GridBoard(
                         shape = ClickableSurfaceDefaults.shape(shape),
                         border =
                             ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
                             ),
                         colors =
                             ClickableSurfaceDefaults.colors(

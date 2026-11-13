@@ -575,8 +575,8 @@ internal fun SmallButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (primary) BenflixColors.Text else BenflixColors.PanelHigh,
                 contentColor = if (primary) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = focusRing(BenflixShapes.Pill),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

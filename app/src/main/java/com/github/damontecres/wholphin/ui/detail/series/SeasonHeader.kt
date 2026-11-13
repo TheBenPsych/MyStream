@@ -277,7 +277,7 @@ fun SeasonPills(
                     ),
                 border =
                     ClickableSurfaceDefaults.border(
-                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(20.dp)),
+                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(20.dp)),
                     ),
             ) {
                 Text(
@@ -338,7 +338,7 @@ fun EpisodeListRow(
         border =
             ClickableSurfaceDefaults.border(
                 border = if (showRing) Border(BorderStroke(2.dp, Color.White), shape = shape) else Border.None,
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         modifier =
             modifier
