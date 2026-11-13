@@ -79,6 +79,12 @@ class GameLibraryClient
         private val homeAddress: String
             get() {
                 customAddress.takeIf { it.isNotBlank() }?.let { return it }
+                return autoHomeAddress
+            }
+
+        /** The Jellyfin server's address with port 8097 */
+        private val autoHomeAddress: String
+            get() {
                 val host =
                     serverRepository.currentServer
                         ?.url
@@ -142,6 +148,15 @@ class GameLibraryClient
         suspend fun pickAddress() = withContext(Dispatchers.IO) { pickNow() }
 
         private fun pickNow() {
+            // Benflix: a typed-in home address (like the old 10.0.0.58) stops working when Tower moves. When it
+            // doesn't answer but the automatic one does, forget the typed one so it heals by itself.
+            if (customAddress.isNotBlank() && !lastWasAway) {
+                val auto = autoHomeAddress
+                if (auto.isNotBlank() && auto != customAddress && !answers(customAddress) && answers(auto)) {
+                    Timber.i("Typed games helper address stopped working, using the automatic one")
+                    prefs.edit().putString("address", "").apply()
+                }
+            }
             val home = homeAddress
             val away = awayAddress
             val awayFirst = lastWasAway && away != null
