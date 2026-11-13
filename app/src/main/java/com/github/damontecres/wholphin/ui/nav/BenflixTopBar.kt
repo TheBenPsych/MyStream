@@ -4,6 +4,7 @@ import android.view.Gravity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -256,6 +257,7 @@ fun BenflixPhoneHeader(
     onClickProfile: () -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onHome: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -277,6 +279,13 @@ fun BenflixPhoneHeader(
         BenflixLogo(
             height = 22.dp,
             markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
+            // Benflix Idea Box 24: tapping the logo goes straight Home, from anywhere
+            modifier =
+                if (onHome != null) {
+                    Modifier.clickable(onClickLabel = "Home", onClick = onHome)
+                } else {
+                    Modifier
+                },
         )
         if (door == null) {
             com.github.damontecres.wholphin.ui.main

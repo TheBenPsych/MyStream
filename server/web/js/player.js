@@ -34,6 +34,7 @@ const FIXES = [
   ["undo", "Undo my fixes for this episode"],
 ];
 const withKey = (url) => url + (url.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token);
+const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const streamUrl = (url) => "api/web/stream" + (url.startsWith("/") ? url : "/" + url);
 
 // Watch time: adds this browser's playing time to the person's total (like the TV and phone do)
@@ -59,12 +60,21 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   // Starting a movie, show, channel or game stops the music
   if (B.music) B.music.stop();
   const u = B.uid();
-  const it = await B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},Chapters,MediaSources,People`);
+  const it = await B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},Chapters,MediaSources,People,Trickplay`);
   if (!B.alive(nav)) return;
   B.lastPlayed = { id: it.Id, title: it.Type === "Episode" ? `${it.SeriesName} S${it.ParentIndexNumber} E${it.IndexNumber}` : it.Name };
   const settings = B.webSettings();
   const ud = it.UserData || {};
   let startTicks = B.q("resume") === "1" && ud.PlaybackPositionTicks && !ud.Played ? ud.PlaybackPositionTicks : 0;
+  // Smart resume (same as the TV and phone): coming back after a while starts a few seconds early, so you
+  // catch the sentence you were in the middle of. 5s after a few minutes, 15s after a day, 30s after a week.
+  let backedUp = 0;
+  if (startTicks && ud.LastPlayedDate) {
+    const away = Date.now() - Date.parse(ud.LastPlayedDate);
+    backedUp = !(away >= 120000) ? 0 : away >= 7 * 864e5 ? 30 : away >= 864e5 ? 15 : 5;
+    startTicks = Math.max(0, startTicks - backedUp * B.TICKS);
+    if (backedUp) setTimeout(() => { if (B.alive(nav)) B.toast(`Started ${backedUp} seconds back, so you don't miss anything`); }, 1800);
+  }
   if (B.q("t")) startTicks = +B.q("t");
   let audioIndex = B.q("audio") != null ? +B.q("audio") : null;
   let subIndex = B.q("sub") != null ? +B.q("sub") : null;
@@ -85,7 +95,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="eprow hidden" id="pEps"></div>
     <div class="controls">
       <div class="chap" id="pChap"></div>
-      <div class="bar" id="pBar"><div class="segs" id="pSegs"></div><span class="knob" id="pKnob"></span><span class="hovert hidden" id="pHover"></span></div>
+      <div class="bar" id="pBar"><div class="segs" id="pSegs"></div><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
       <div class="row2">
         <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
         <button class="pbtn" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}</button>
@@ -99,6 +109,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         <button class="pbtn" id="pSub" title="Subtitles (S turns them on and off)">${I("sub")}</button>
         <button class="pbtn" id="pGear" title="Settings: audio, subtitle timing, quality and Fix a problem">${I("gear")}</button>
         ${B.volume("pVol")}
+        ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
         <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
       </div>
     </div>
@@ -131,7 +142,16 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (!source) throw new Error("Jellyfin couldn't find a way to play this.");
     playSession = info.PlaySessionId;
     if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
-    if (subIndex == null) subIndex = source.DefaultSubtitleStreamIndex ?? -1;
+    if (subIndex == null) {
+      subIndex = source.DefaultSubtitleStreamIndex ?? -1;
+      // Plain subtitles before ones that also describe sounds ("[door slams]"), when both are there
+      const subs = (source.MediaStreams || []).filter((s) => s.Type === "Subtitle");
+      const pick = subs.find((s) => s.Index === subIndex);
+      if (pick && pick.IsHearingImpaired) {
+        const plain = subs.find((s) => !s.IsHearingImpaired && !s.IsForced && (s.Language || "") === (pick.Language || ""));
+        if (plain) subIndex = plain.Index;
+      }
+    }
     if (source.SupportsDirectPlay && !forceStream && !source.TranscodingUrl) {
       method = "DirectPlay";
       v.src = streamUrl(`/Videos/${it.Id}/stream?static=true&mediaSourceId=${enc(source.Id)}&api_key=${enc(B.me.token)}`);
@@ -222,12 +242,41 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   };
   const barTime = (e) => { const r = $("#pBar").getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * total(); };
   $("#pBar").onclick = (e) => { v.currentTime = barTime(e); poke(); };
+  // Picture previews while moving along the bar (Jellyfin's "trickplay" pictures, the same ones the TV and
+  // phone show). Each picture file is a grid of small frames; we show the one for that moment.
+  const trick = (() => {
+    const bySource = it.Trickplay || {};
+    const forSource = (source && bySource[source.Id]) || Object.values(bySource)[0];
+    if (!forSource) return null;
+    const widths = Object.keys(forSource).map(Number).sort((a, b) => a - b);
+    const w = widths.find((x) => x >= 240) || widths[widths.length - 1];
+    const t = forSource[w];
+    if (!t || !t.Interval || !t.TileWidth || !t.TileHeight) return null;
+    const srcId = (source && bySource[source.Id]) ? source.Id : Object.keys(bySource)[0];
+    return { w, h: t.Height || Math.round(w * 9 / 16), cols: t.TileWidth, rows: t.TileHeight, every: t.Interval / 1000, count: t.ThumbnailCount || 0, src: srcId };
+  });
+  const showPreview = (t) => {
+    const p = $("#pPrev"), tp = trick();
+    if (!tp) return p.classList.add("hidden");
+    let n = Math.floor(t / tp.every);
+    if (tp.count) n = Math.min(n, tp.count - 1);
+    const per = tp.cols * tp.rows, file = Math.floor(n / per), at = n % per;
+    const scale = 200 / tp.w, ww = 200, hh = Math.round(tp.h * scale);
+    p.style.width = ww + "px"; p.style.height = hh + "px";
+    p.style.backgroundImage = `url('${streamUrl(`/Videos/${it.Id}/Trickplay/${tp.w}/${file}.jpg?mediaSourceId=${enc(tp.src)}&api_key=${enc(B.me.token)}`)}')`;
+    p.style.backgroundSize = `${tp.cols * ww}px ${tp.rows * hh}px`;
+    p.style.backgroundPosition = `-${(at % tp.cols) * ww}px -${Math.floor(at / tp.cols) * hh}px`;
+    const r = $("#pBar").getBoundingClientRect(), x = (t / total()) * r.width;
+    p.style.left = Math.max(ww / 2, Math.min(r.width - ww / 2, x)) + "px";
+    p.classList.remove("hidden");
+  };
   $("#pBar").onmousemove = (e) => {
     const t = barTime(e), h = $("#pHover"), ch = segs.find((s) => t >= s.start && t < s.end);
     h.classList.remove("hidden"); h.textContent = B.hms(t) + (ch && ch.name ? " · " + ch.name : "");
     h.style.left = (t / total()) * 100 + "%";
+    showPreview(t);
   };
-  $("#pBar").onmouseleave = () => $("#pHover").classList.add("hidden");
+  $("#pBar").onmouseleave = () => { $("#pHover").classList.add("hidden"); $("#pPrev").classList.add("hidden"); };
 
   // ---------- controls ----------
   const poke = () => {
@@ -240,6 +289,19 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   v.addEventListener("dblclick", () => full());
   const full = () => (document.fullscreenElement ? document.exitFullscreen() : pl.requestFullscreen().catch(() => {}));
   $("#pFull").onclick = full;
+  // Pop-out player: the video keeps playing in a small window on top of other tabs and apps
+  if ($("#pPip")) $("#pPip").onclick = () => {
+    (document.pictureInPictureElement ? document.exitPictureInPicture() : v.requestPictureInPicture())
+      .catch(() => B.toast("This browser can't pop the video out."));
+  };
+  // Play speed, remembered per show (or per movie)
+  const speedKey = "benflix.speed." + (series || it.Id);
+  const setSpeed = (r) => {
+    v.defaultPlaybackRate = r; v.playbackRate = r;
+    try { if (r === 1) localStorage.removeItem(speedKey); else localStorage.setItem(speedKey, String(r)); } catch (e) {}
+  };
+  try { const saved = +localStorage.getItem(speedKey); if (saved > 0 && saved !== 1) { v.defaultPlaybackRate = saved; v.playbackRate = saved; } } catch (e) {}
+  v.addEventListener("loadedmetadata", () => { if (v.playbackRate !== v.defaultPlaybackRate) v.playbackRate = v.defaultPlaybackRate; });
   $("#pPlay").onclick = () => (v.paused ? v.play() : v.pause());
   $("#pBk").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 10); poke(); };
   $("#pFw").onclick = () => { v.currentTime = Math.min(total(), v.currentTime + 10); poke(); };
@@ -374,6 +436,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
       <h4>Subtitle timing</h4>${canMove ? `<p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later. Words come after? Press −. (Keys: G sooner, H later.) <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-10, "−10 s"], [-1, "−1 s"], [-0.5, "−½ s"], [0.5, "+½ s"], [1, "+1 s"], [10, "+10 s"], [0, "Reset"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : `<p class="dim" style="font-size:13px;margin:-4px 0 8px">${subOn ? "These subtitles are pictures, so they can't be moved here. Try Subtitles wrong below." : "Turn subtitles on first (just above)."}</p>`}
       <h4>Quality</h4>${QUALITY_STEPS.map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${QUALITY_WORDS[k]}</button>`).join("")}
+      <h4>Play speed</h4><div class="delay-row">${SPEEDS.map((r) => `<button class="opt ${v.playbackRate === r ? "on" : ""}" data-speed="${r}">${r === 1 ? "Normal" : r + "×"}</button>`).join("")}</div>
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
       <h4>Fix a problem</h4>
       <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
@@ -391,6 +454,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
       const fx = e.target.closest("[data-fix]"), dl = e.target.closest("[data-delay]");
       if (dl) return nudgeSubs(+dl.dataset.delay);
+      const sp = e.target.closest("[data-speed]");
+      if (sp) { setSpeed(+sp.dataset.speed); $$("[data-speed]", p).forEach((b) => b.classList.toggle("on", b === sp)); return B.toast("Play speed: " + (+sp.dataset.speed === 1 ? "normal" : sp.dataset.speed + "×")); }
       if (fx) { p.remove(); return fixSkip(fx.dataset.fix); }
       if (e.target.closest("[data-skipwrong]")) return $(".fixlist", p).classList.toggle("hidden");
       if (e.target.closest("[data-nosound]")) { p.remove(); return fixNoSound(); }

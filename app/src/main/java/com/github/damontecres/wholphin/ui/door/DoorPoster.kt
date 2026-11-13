@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.cards.doorColor
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.PosterHoldMenu
+import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
@@ -138,7 +139,7 @@ fun DoorPoster(
     // Benflix: holding a poster (finger on phones, OK on TV) opens its menu, unless the page has its own
     var timesHeld by remember(item.id) { mutableIntStateOf(0) }
     if (onLongClick == null && timesHeld > 0) PosterHoldMenu(item, timesHeld)
-    Column(modifier = modifier.width(width)) {
+    Column(modifier = modifier.playButtonPlays(item).width(width)) {
         Surface(
             onClick = onClick,
             onLongClick = onLongClick ?: { timesHeld += 1 },

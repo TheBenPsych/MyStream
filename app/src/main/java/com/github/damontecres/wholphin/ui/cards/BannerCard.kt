@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.appendAnimeScores
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -157,6 +158,7 @@ fun BannerCard(
     Card(
         modifier =
             modifier
+                .playButtonPlays(item)
                 .bringIntoViewRequester(bringIntoView)
                 .size(cardWidth, cardHeight),
         onClick = { currentOnClick() },

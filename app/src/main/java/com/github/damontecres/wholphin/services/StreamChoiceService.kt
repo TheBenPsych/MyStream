@@ -399,7 +399,10 @@ class StreamChoiceService
                 val candidates =
                     candidates
                         .sortedWith(
-                            compareByDescending<MediaStream> { it.isExternal }
+                            // Benflix: plain subtitles before ones that also describe sounds ("[door slams]"), when
+                            // both are there. An SDH track is still used when it's the only one in that language.
+                            compareBy<MediaStream> { it.isHearingImpaired }
+                                .thenByDescending { it.isExternal }
                                 .thenByDescending { it.isDefault }
                                 .thenByDescending {
                                     !it.isForced && it.language.equals(subtitleLanguage, true)

@@ -40,6 +40,12 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 .top.solid { background: var(--tray); border-bottom: 1px solid var(--line); }
 .top .logo { font-size: 26px; cursor: pointer; }
 .top .place { font-size: 26px; font-weight: 700; padding-left: 18px; border-left: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .place.where { font-size: 15px; font-weight: 500; color: var(--ink3) !important; min-width: 0; direction: rtl; text-align: left; }
+.top .place.where > * { direction: ltr; unicode-bidi: isolate; }
+.top .place.where a { color: var(--ink3); text-decoration: none; }
+.top .place.where a:hover, .top .place.where a:focus-visible { color: var(--ink); text-decoration: underline; }
+.top .place.where b { color: var(--ink); font-weight: 700; }
+.top .place.where .sep { margin: 0 6px; opacity: .7; }
 .top .homelink { display: flex; align-items: center; border-radius: 8px; padding: 4px 6px; margin: -4px -6px; transition: background .15s; }
 .top .homelink:hover, .top .homelink:focus-visible { background: var(--pg3); }
 .top .right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
@@ -342,6 +348,7 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .player .bar .segs i u { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.35); }
 .player .bar .knob { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; transform: translateX(-50%); pointer-events: none; }
 .player .bar .hovert { position: absolute; bottom: 26px; transform: translateX(-50%); background: rgba(0,0,0,.8); padding: 3px 8px; border-radius: 6px; font-size: 13px; pointer-events: none; }
+.player .bar .tpv { position: absolute; bottom: 56px; transform: translateX(-50%); border-radius: 8px; background-color: #000; background-repeat: no-repeat; box-shadow: 0 4px 18px rgba(0,0,0,.6); outline: 2px solid rgba(255,255,255,.85); pointer-events: none; }
 .player .row2 { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
 .player .row2 .time { font-size: 15px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .player .row2 .grow { flex: 1; }
