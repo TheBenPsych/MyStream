@@ -378,7 +378,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Fix a problem</h4>
       <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
       <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
-      ${subOn && !B.me.kids ? `<button class="opt" data-better>${I("sub")} Find better subtitles<small>Bazarr swaps them for different ones</small></button>` : ""}
+      ${!B.me.kids ? `<button class="opt" data-better>${I("sub")} Find other subtitles<small>${subOn ? "Bazarr deletes these and gets different ones" : "Bazarr looks for subtitles"}</small></button>` : ""}
       ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
       <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
       <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
@@ -450,7 +450,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const before = new Set(((source && source.MediaStreams) || []).map((x) => x.Index));
     await load(v.currentTime).catch((err) => msg(err.message));
     // Subtitles that were inside the video come back as a new choice: switch to it
-    const fresh = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle" && x.IsExternal && !before.has(x.Index) && (x.Language || "") === (was.Language || ""));
+    const fresh = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle" && x.IsExternal && !before.has(x.Index) && (!was.Language || (x.Language || "") === was.Language));
     if (fresh.length) { subIndex = fresh[fresh.length - 1].Index; await load(v.currentTime).catch(() => {}); }
   };
 
