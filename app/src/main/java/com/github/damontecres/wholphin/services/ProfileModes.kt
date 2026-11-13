@@ -49,7 +49,9 @@ object ProfileModes {
         userId: String?,
     ): Triple<Boolean, Boolean, Boolean> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val sameUser = userId.isNullOrBlank() || prefs.getString(KEY_USER, null).equals(userId, ignoreCase = true)
+        // The game player gets the id without dashes (Jellyfin's style), but it's saved with them: compare both bare
+        val savedUser = prefs.getString(KEY_USER, null)?.replace("-", "")
+        val sameUser = userId.isNullOrBlank() || savedUser.equals(userId.replace("-", ""), ignoreCase = true)
         if (!sameUser) return Triple(false, false, false)
         val kids = prefs.getBoolean(KEY_KIDS, false)
         return Triple(kids, kids && prefs.getBoolean(KEY_BIG, false), prefs.getBoolean(KEY_GUEST, false))
