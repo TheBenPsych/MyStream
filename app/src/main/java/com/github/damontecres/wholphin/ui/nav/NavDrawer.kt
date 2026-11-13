@@ -67,6 +67,7 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ImageType
@@ -94,6 +95,55 @@ class NavDrawerViewModel
         private val _libraryArt = MutableStateFlow<Map<UUID, LibraryArt>>(emptyMap())
         val libraryArt: StateFlow<Map<UUID, LibraryArt>> = _libraryArt
         private var libraryArtJob: Job? = null
+
+        /**
+         * Benflix: the remote's Play button on a poster. Movies and episodes start where you left off; a show
+         * starts its next episode (or the first one); anything else opens its page like OK does.
+         */
+        fun quickPlay(item: com.github.damontecres.wholphin.data.model.BaseItem) {
+            if (item.type in com.github.damontecres.wholphin.util.supportedPlayableTypes) {
+                navigationManager.navigateTo(Destination.Playback(item))
+                return
+            }
+            if (item.type != BaseItemKind.SERIES) {
+                navigationManager.navigateTo(item.destination())
+                return
+            }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val next =
+                    try {
+                        api.tvShowsApi
+                            .getNextUp(
+                                org.jellyfin.sdk.model.api.request.GetNextUpRequest(
+                                    seriesId = item.id,
+                                    limit = 1,
+                                    enableResumable = true,
+                                ),
+                            ).content.items
+                            .firstOrNull()
+                            ?: api.tvShowsApi
+                                .getEpisodes(
+                                    org.jellyfin.sdk.model.api.request.GetEpisodesRequest(
+                                        seriesId = item.id,
+                                        limit = 1,
+                                        enableImages = false,
+                                    ),
+                                ).content.items
+                                .firstOrNull()
+                    } catch (e: Exception) {
+                        Timber.w(e, "Play button: no episode for %s", item.id)
+                        null
+                    }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (next != null) {
+                        val ticks = next.userData?.playbackPositionTicks ?: 0L
+                        navigationManager.navigateTo(Destination.Playback(next.id, ticks / 10_000L))
+                    } else {
+                        navigationManager.navigateTo(item.destination())
+                    }
+                }
+            }
+        }
 
         /** Benflix: Surprise me (in the More menu): opens a random unwatched movie or show */
         fun surpriseMe(context: android.content.Context) {
@@ -611,6 +661,16 @@ fun NavDrawer(
                     badge = badge,
                     onClickSearch = onClickSearch,
                     onClickProfile = onClickProfile,
+                    onHome =
+                        if (destination is Destination.Home) {
+                            null
+                        } else {
+                            { viewModel.navigationManager.goToHome() }
+                        },
+                )
+                WhereAmILine(
+                    stack = viewModel.navigationManager.backStack.toList(),
+                    onPick = { viewModel.navigationManager.goBackTo(it) },
                 )
                 DestinationContent(
                     destination = destination,
@@ -640,6 +700,10 @@ fun NavDrawer(
         return
     }
     val underBar = destination.underTopBar()
+    // Benflix remote shortcuts (hold Back for Home, Play plays, Search, page jumps)
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val shortcutScope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(destination) { RemoteShortcuts.focused = null }
     // The bar's own height: 18 above, 6 below, and the row itself
     val barHeight = 24.dp + TopNavBarHeight * (if (easy) 1.2f else 1f)
     Column(
@@ -647,7 +711,19 @@ fun NavDrawer(
             modifier.onPreviewKeyEvent { event ->
                 // Holding the remote's Menu button also opens the profile menu
                 val native = event.nativeKeyEvent
-                if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU &&
+                if (RemoteShortcuts.onKey(
+                        native = native,
+                        destination = destination,
+                        kids = kids,
+                        focusManager = focusManager,
+                        scope = shortcutScope,
+                        goHome = { viewModel.navigationManager.goToHome() },
+                        openSearch = onClickSearch,
+                        play = { viewModel.quickPlay(it) },
+                    )
+                ) {
+                    true
+                } else if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU &&
                     native.action == android.view.KeyEvent.ACTION_DOWN &&
                     native.repeatCount == MENU_HOLD_REPEATS
                 ) {
