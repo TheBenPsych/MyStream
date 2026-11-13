@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -462,6 +463,7 @@ private fun GridChip(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 4.dp else 7.dp),
         )
     }
@@ -489,7 +491,15 @@ private fun SearchBox(
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp)) {
                 Box {
-                    if (value.isEmpty()) Text("Search this list", color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+                    if (value.isEmpty()) {
+                        Text(
+                            "Search this list",
+                            color = BenflixColors.Muted,
+                            fontSize = BenflixType.small,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     inner()
                 }
             }

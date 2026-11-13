@@ -141,6 +141,7 @@ fun SeasonInfoBlock(
                         letterSpacing = 1.sp,
                         color = if (watched > 0) WatchedGreen else MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .clip(RoundedCornerShape(6.dp))
@@ -284,6 +285,7 @@ fun SeasonPills(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
@@ -428,6 +430,7 @@ fun EpisodeListRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = if (played) WatchedGreen else Color.White.copy(alpha = .8f),
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

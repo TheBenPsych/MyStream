@@ -205,6 +205,7 @@ fun FamilyHome(
                     color = BenflixColors.Muted,
                     fontSize = BenflixType.small,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -218,6 +219,7 @@ fun FamilyHome(
                 fontSize = BenflixType.rowName * scale,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 10.dp),
             )
             if (data.loaded && data.cards.isEmpty()) {
@@ -393,6 +395,7 @@ private fun FamilyDoor(
                     lineHeight = (if (small) 24.sp else 36.sp) * scale,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false,
                 )
                 if (!line.isNullOrBlank()) {
@@ -442,12 +445,20 @@ private fun MoreDoor(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxSize().padding(10.dp),
         ) {
-            Text(text = "More", fontSize = 24.sp * scale, fontWeight = FontWeight.ExtraBold, color = BenflixColors.Text, maxLines = 1)
+            Text(
+                text = "More",
+                fontSize = 24.sp * scale,
+                fontWeight = FontWeight.ExtraBold,
+                color = BenflixColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 text = if (count == 1) "1 more door" else "$count more doors",
                 fontSize = BenflixType.small,
                 color = BenflixColors.Muted,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -487,6 +498,7 @@ private fun FamilyPoster(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.Center).padding(8.dp),
                 )
                 if (card.image != null) {
@@ -538,6 +550,7 @@ fun ProfileBadge(
             fontSize = 14.sp * scale,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .background(bg, RoundedCornerShape(50))
@@ -549,6 +562,7 @@ fun ProfileBadge(
                 color = BenflixColors.Muted,
                 fontSize = 13.sp * scale,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

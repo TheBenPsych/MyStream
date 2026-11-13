@@ -17,7 +17,7 @@ B.askCard = (r) => {
   const img = tmdbImg(r.posterPath);
   B.items["s" + r.mediaType + r.id] = r;
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
-    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart">${esc(t)}</div>`}${asked(r) ? '<span class="newp">Asked</span>' : ""}</div>
+    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${asked(r) ? '<span class="newp">Asked</span>' : ""}</div>
     <div class="cap">${esc(t)}<small>${esc(year)}</small></div></button>`;
 };
 
@@ -533,7 +533,7 @@ B.animeRequests = (nav, getLists, openList) => {
   const poster = (c, rank) => {
     B.animeCards[c.id] = c;
     return `<button class="poster ancard" data-an="${c.id}" title="${esc(c.titles[0] || "")}">
-      <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart">${esc(c.titles[0] || "")}</div>`}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
+      <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart"><span class="nt">${esc(c.titles[0] || "")}</span></div>`}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
       <div class="cap">${esc(c.titles[0] || "")}<small>${esc(airing(c) || c.year || "")}</small></div></button>`;
   };
   const head = (title, note, extra) => `${extra || ""}<div class="rqhead"><b>${esc(title)}</b><span>${esc(note || "")}</span></div>`;

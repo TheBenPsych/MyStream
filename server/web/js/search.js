@@ -58,7 +58,7 @@ B.route(/^\/search/, async (m, nav) => {
     // "funny 90s movie under 2 hours": the words become filters (extras.js), searched beside the names
     const words = B.extras ? B.extras.parseWords(t) : null;
     const described = words ? await B.extras.searchWords(words).catch(() => []) : [];
-        if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => x.playable).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
+        if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => (B.webPlayable ? B.webPlayable(c.slug) : x.playable)).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
     if (my !== seq || !B.alive(nav)) return;
     const gl = games.filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));
     // Closest name first

@@ -367,6 +367,7 @@ private fun HigherLowerRound(
             color = if (state.right == true) Color(0xFF46D37A) else BenflixRed,
             textAlign = TextAlign.Center,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         val first = remember(state.guess.name) { FocusRequester() }
         LaunchedEffect(state.guess.name) { first.tryRequestFocus() }

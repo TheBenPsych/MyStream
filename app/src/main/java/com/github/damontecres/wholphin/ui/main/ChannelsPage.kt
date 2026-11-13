@@ -805,6 +805,7 @@ private fun GuideGrid(
                                                 text = clock(program.startMs),
                                                 fontSize = BenflixType.tag,
                                                 maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                         }
                                     }
@@ -1002,7 +1003,14 @@ private fun SuggestFavouriteTile(
                 .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp),
     ) {
-        Text("Add $name?", fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        Text(
+            "Add $name?",
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         SuggestButton("Add", onAdd)
         SuggestButton("No thanks", onNo)
     }
@@ -1307,7 +1315,14 @@ fun ChannelBanner(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(info.number.toString(), fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                Text(info.name, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                Text(
+                    info.name,
+                    fontSize = BenflixType.rowName,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (info.key in favourites) Text("★", fontSize = BenflixType.rowName, color = Color.White)
                 if (info.own) {
                     Text(
@@ -1332,6 +1347,7 @@ fun ChannelBanner(
                     fontSize = BenflixType.lead,
                     color = Color.White,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 val length = (info.endMs - info.startMs).coerceAtLeast(1L)
                 Box(
@@ -1359,7 +1375,13 @@ fun ChannelBanner(
                                 java.time.format.DateTimeFormatter
                                     .ofPattern("h:mm"),
                             )
-                    Text("Next at $at  ·  $next", fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1)
+                    Text(
+                        "Next at $at  ·  $next",
+                        fontSize = BenflixType.small,
+                        color = BenflixColors.Muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }

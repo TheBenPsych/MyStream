@@ -563,6 +563,7 @@ private fun CollectionHero(
                         fontSize = BenflixType.lead,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
@@ -572,6 +573,7 @@ private fun CollectionHero(
                         color = BenflixColors.Muted,
                         fontSize = BenflixType.small,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
@@ -613,6 +615,7 @@ private fun CollectionHero(
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }

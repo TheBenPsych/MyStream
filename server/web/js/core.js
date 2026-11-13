@@ -464,7 +464,10 @@ B.doorOf = (it) => {
       if (name) {
         const d = document.createElement("div");
         d.className = "noart";
-        d.textContent = name;
+        const nt = document.createElement("span");
+        nt.className = "nt";
+        nt.textContent = name;
+        d.appendChild(nt);
         const it = card.dataset.id && B.items[card.dataset.id];
         if (it && it.Type) d.style.setProperty("--door", B.doorOf(it));
         im.appendChild(d);
@@ -538,7 +541,7 @@ B.posterCard = (it, opts) => {
   const newCount = it.Type === "Series" && ud.UnplayedItemCount && opts.newCount ? opts.newCount : 0;
   const year = it.ProductionYear ? String(it.ProductionYear) : "";
   return `<a class="poster" href="${opts.href || B.hrefOf(it)}" data-id="${esc(it.Id)}" title="${esc(it.Name)}">
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(it.SeriesName || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(it.SeriesName || it.Name)}</span></div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}
@@ -554,7 +557,7 @@ B.wideCard = (it, opts) => {
   const pct = ud.PlayedPercentage ? Math.min(100, ud.PlayedPercentage) : 0;
   const soon = opts.soon;
   return `<${soon ? "div" : "a"} class="wide ${soon ? "soon" : ""}" ${soon ? "" : `href="${opts.href || B.hrefOf(it)}"`} data-id="${esc(it.Id)}" ${opts.play ? `data-play="${esc(it.Id)}"` : ""}>
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(opts.title || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(opts.title || it.Name)}</span></div>`}
       ${pct && !ud.Played ? `<div class="prog" style="position:absolute;left:10px;right:10px;bottom:9px;height:4px;border-radius:2px;background:rgba(0,0,0,.55);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#fff"></i></div>` : ""}
       ${ud.Played ? `<span class="tick" style="position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center">${I("check")}</span>` : ""}
       ${opts.tag ? `<span class="tag">${esc(opts.tag)}</span>` : ""}

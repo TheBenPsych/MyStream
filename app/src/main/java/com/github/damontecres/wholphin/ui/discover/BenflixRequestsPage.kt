@@ -2111,7 +2111,9 @@ internal fun LoadFailed(
             fontSize = BenflixType.lead,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = onRetry, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1) }
+        Button(onClick = onRetry, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+            Text("Try again", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -2442,21 +2444,25 @@ private fun RequestRow(
             Button(
                 onClick = { onAnswer(true) },
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-            ) { Text("Approve", maxLines = 1, softWrap = false) }
+            ) { Text("Approve", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false) }
             Button(
                 onClick = { onAnswer(false) },
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-            ) { Text("Decline", maxLines = 1, softWrap = false) }
+            ) { Text("Decline", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false) }
         } else if (entry.item != null) {
             Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) {
-                Text(if (entry.available) "Watch" else "Details", maxLines = 1, softWrap = false)
+                Text(if (entry.available) "Watch" else "Details", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
             }
         }
         onCantFind?.let {
-            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Can't find", maxLines = 1, softWrap = false) }
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Can't find", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
         }
         onUndoCantFind?.let {
-            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) }
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Try again", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
         }
     }
     val daysWaiting =
@@ -2604,7 +2610,15 @@ private fun StatusTag(
                 .background(color.copy(alpha = .18f))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
-        Text(text = text, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = color, maxLines = 1, softWrap = false)
+        Text(
+            text = text,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
+        )
     }
 }
 

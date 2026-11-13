@@ -110,6 +110,7 @@ internal fun RequestSearchButton(
             text = "Search any movie, show or anime to ask for",
             fontSize = if (compact) BenflixType.small else BenflixType.body,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = if (compact) 10.dp else 14.dp),
         )
     }

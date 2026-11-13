@@ -282,6 +282,7 @@ private fun RankedPoster(
                 ),
             color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.offset(y = posterHeight * 0.2f),
         )
         Box(Modifier.offset(x = -width * 0.18f).onFocusChanged { focused = it.hasFocus }) {
@@ -414,6 +415,7 @@ fun RequestPoster(
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
@@ -460,6 +462,7 @@ private fun Pill(
         fontSize = BenflixType.tag,
         fontWeight = FontWeight.ExtraBold,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
                 .background(BenflixColors.Text, RoundedCornerShape(6.dp))

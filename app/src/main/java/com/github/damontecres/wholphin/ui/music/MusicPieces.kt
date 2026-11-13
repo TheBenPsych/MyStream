@@ -577,6 +577,7 @@ fun MusicButton(
                     fontSize = if (big) BenflixType.rowName else BenflixType.body,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -614,6 +615,7 @@ fun MusicKicker(
         fontWeight = FontWeight.ExtraBold,
         letterSpacing = 0.14.em,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
 }

@@ -35,7 +35,7 @@
     const bar = t.status === "reading" && t.progress > 0.005 ? `<span class="bk-bar"><i style="width:${Math.max(3, t.progress * 100)}%"></i></span>` : "";
     const done = t.status === "done" ? `<span class="bk-tick">${B.I("check")}</span>` : "";
     const ears = t.kind === "audiobook" ? `<span class="bk-ears">${I("ears")}</span>` : "";
-    return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)">${esc(t.name)}</div>`}${tag}${ears}${done}${bar}</div>
+    return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)"><span class="nt">${esc(t.name)}</span></div>`}${tag}${ears}${done}${bar}</div>
       <div class="cap"><span class="nm">${esc(t.name)}</span><small>${esc(t.notHere ? "Not on Benflix yet" : t.line || "")}</small></div></a>`;
   };
   const grid = (tiles) => tiles.length ? `<div class="bk-grid">${tiles.map((t) => card(t)).join("")}</div>` : "";
@@ -463,7 +463,7 @@
     const tag = ranked && c.rank ? `<span class="tag" style="background:${LIME};color:${ON_LIME}">#${c.rank}</span>` : "";
     const ears = c.audioOnly ? `<span class="bk-ears">${I("ears")}</span>` : "";
     const under = c.asked || c.award || c.line || c.author || "";
-    return `<a class="poster bk" href="${aboutHref(c)}"><div class="im">${c.cover ? `<img class="art" src="${esc(outPic(c.cover))}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)">${esc(c.name)}</div>`}${tag}${ears}</div>
+    return `<a class="poster bk" href="${aboutHref(c)}"><div class="im">${c.cover ? `<img class="art" src="${esc(outPic(c.cover))}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)"><span class="nt">${esc(c.name)}</span></div>`}${tag}${ears}</div>
       <div class="cap"><span class="nm">${esc(c.name)}</span><small${c.asked ? ` style="color:${LIME};font-weight:700"` : ""}>${esc(under)}</small></div></a>`;
   };
   const genreTile = (g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`;

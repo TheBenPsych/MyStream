@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -314,6 +315,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
                             fontSize = BenflixType.tag,
                             color = Color.White,
                             maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(6.dp),
                         )
                         AsyncImage(
@@ -332,6 +334,7 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
             fontSize = BenflixType.body,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

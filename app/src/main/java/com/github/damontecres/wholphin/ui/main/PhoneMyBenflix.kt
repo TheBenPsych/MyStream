@@ -175,7 +175,7 @@ private fun RowScope.RoundButton(
         ) {
             Text(text = stringResource(faIcon), fontFamily = FontAwesome, fontSize = 21.sp, color = Color.White)
         }
-        Text(text = label, fontSize = BenflixType.tag, color = Color(0xFFDDDDDD), maxLines = 1)
+        Text(text = label, fontSize = BenflixType.tag, color = Color(0xFFDDDDDD), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

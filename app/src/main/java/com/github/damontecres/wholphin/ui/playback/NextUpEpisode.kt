@@ -155,6 +155,7 @@ fun NextUpEpisode(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -245,6 +246,7 @@ fun NextUpEpisode(
                             fontWeight = FontWeight.Bold,
                             fontSize = BenflixType.body,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -268,6 +270,7 @@ fun NextUpEpisode(
                             fontWeight = FontWeight.Bold,
                             fontSize = BenflixType.body,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

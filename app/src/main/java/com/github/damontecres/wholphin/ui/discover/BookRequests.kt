@@ -351,7 +351,15 @@ private fun FoundRow(
                     f.volumes?.let { "$it volumes" },
                     f.score?.let { (if (f.manga) "AniList " else "Open Library ") + "%.1f".format(it) },
                 )
-            if (bits.isNotEmpty()) Text(bits.joinToString(" · "), color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+            if (bits.isNotEmpty()) {
+                Text(
+                    bits.joinToString(" · "),
+                    color = BenflixColors.Muted,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             when {
                 f.have != null -> {
                     MusicButton("On Benflix", BenflixIcon.CHECK, onClick = { viewModel.open(f.have) })
@@ -423,6 +431,7 @@ private fun RequestRow(
                 color = BenflixColors.Muted,
                 fontSize = BenflixType.small,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill(r.words.ifBlank { r.state }, stateColor(r.state))
