@@ -549,6 +549,7 @@
 
   // ---------- grids (See all, Browse by) ----------
   B.route(/^\/mgrid\/(\w+)(?:\/([\w-]+))?/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const kind = m[1], id = m[2];
     const titles = { recent: "Recently added", albums: "Albums", artists: "Artists", genres: "Genres", playlists: "Playlists", genre: B.q("name") || "Genre" };
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(titles[kind] || "Music")}</h1><div class="mgrid" id="mg">${B.spinner()}</div></div>`;
@@ -602,6 +603,7 @@
     setTimeout(() => { const p = $("[data-h=play]"); if (p) p.focus({ preventScroll: true }); }, 30);
   };
   B.route(/^\/album\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [al, songs] = await Promise.all([B.get(`/Users/${u}/Items/${m[1]}`), items(`ParentId=${enc(m[1])}&IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName&${SONG_FIELDS}`)]);
     if (!B.alive(nav)) return;
@@ -657,6 +659,7 @@
     if (similar.length && B.alive(nav)) tp.pane("tpSimilar").innerHTML = `<div class="grid tp-grid">${similar.map(albumCard).join("")}</div>`;
   });
   B.route(/^\/playlist\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [pl, list, perm] = await Promise.all([
       B.get(`/Users/${u}/Items/${m[1]}`),
@@ -680,6 +683,7 @@
   });
   // Browse by > Songs: every song, A to Z
   B.route(/^\/songs$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const raw = await items(`IncludeItemTypes=Audio&SortBy=SortName&Limit=10000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
     // The same song saved twice (same artist, same name ignoring spaces/punctuation, length within 3s) shows once
@@ -697,12 +701,14 @@
     await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
   });
   B.route(/^\/liked$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const songs = await items(`IncludeItemTypes=Audio&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=3000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
     await collection(nav, { kick: "PLAYLIST", title: "Liked songs", line: "Every song you gave a heart", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
   });
   B.route(/^\/mix\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const mix = (await B.musicMixes()).find((x) => x.key === decodeURIComponent(m[1]));
     if (!mix) return B.go("#/music");
     const got = await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`);
@@ -714,6 +720,7 @@
 
   // ---------- artist page ----------
   B.route(/^\/artist\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [ar, top, albums] = await Promise.all([
       B.get(`/Users/${u}/Items/${m[1]}`),

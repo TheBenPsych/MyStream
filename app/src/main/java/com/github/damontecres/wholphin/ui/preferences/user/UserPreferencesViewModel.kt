@@ -12,6 +12,7 @@ import com.github.damontecres.wholphin.preferences.UserProfileSettings
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ScreensaverService
+import com.github.damontecres.wholphin.services.orBenflixSubtitleLanguage
 import com.github.damontecres.wholphin.ui.combineTriple
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
@@ -81,7 +82,7 @@ class UserPreferencesViewModel
                     // Language user has chosen from server user profile
                     val userDisplayLang =
                         userDto.configuration
-                            ?.let { if (isAudio) it.audioLanguagePreference else it.subtitleLanguagePreference }
+                            ?.let { if (isAudio) it.audioLanguagePreference else it.subtitleLanguagePreference.orBenflixSubtitleLanguage() }
                             .let { userLang ->
                                 languages.firstOrNull { it.threeLetterIsoLanguageName == userLang }?.displayName
                                     ?: userLang

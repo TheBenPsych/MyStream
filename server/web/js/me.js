@@ -131,11 +131,14 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     const cfg = me.Configuration || {};
     const subModes = [["Default", "Only for other languages"], ["Always", "Always"], ["OnlyForced", "Only signs and songs"], ["None", "Off"]];
     const langs = [["", "The film's own language"], ["eng", "English"], ["jpn", "Japanese"], ["spa", "Spanish"], ["fre", "French"], ["ger", "German"], ["kor", "Korean"]];
+    // Subtitles are English unless someone picks another language
+    const subLangs = langs.slice(1);
+    const subLang = cfg.SubtitleLanguagePreference || "eng";
     const label = (list, v) => (list.find((x) => x[0] === v) || list[0])[1];
     sp.innerHTML = setRow("Play the next episode by itself", "When an episode ends, the next one starts after 10 seconds.", valBtn("autoplay", ws.autoplay === false ? "Off" : "On"))
       + setRow("Skip intros and credits by themselves", "Otherwise a Skip button shows. You can also pick this per show in the player.", valBtn("autoskip", ws.autoskip ? "On" : "Off"))
       + setRow("Subtitles", "When subtitles turn on by themselves.", valBtn("subMode", label(subModes, cfg.SubtitleMode || "Default")))
-      + setRow("Subtitle language", "", valBtn("subLang", label(langs, cfg.SubtitleLanguagePreference || "")))
+      + setRow("Subtitle language", "", valBtn("subLang", label(subLangs, subLang)))
       + setRow("Audio language", "", valBtn("audioLang", label(langs, cfg.AudioLanguagePreference || "")));
     sp.onclick = (e) => {
       const b = e.target.closest("[data-pick]"); if (!b) return;
@@ -144,7 +147,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       if (k === "autoplay") { B.setWebSetting("autoplay", ws.autoplay === false); cfg.EnableNextEpisodeAutoPlay = ws.autoplay === false; saveCfg(() => {}); }
       if (k === "autoskip") { B.setWebSetting("autoskip", !ws.autoskip); B.render(); }
       if (k === "subMode") B.dropdown(b, subModes.map(([value, l]) => ({ value, label: l })), cfg.SubtitleMode || "Default", (v) => saveCfg((c) => { c.SubtitleMode = v; }));
-      if (k === "subLang") B.dropdown(b, langs.map(([value, l]) => ({ value, label: l })), cfg.SubtitleLanguagePreference || "", (v) => saveCfg((c) => { c.SubtitleLanguagePreference = v; }));
+      if (k === "subLang") B.dropdown(b, subLangs.map(([value, l]) => ({ value, label: l })), subLang, (v) => saveCfg((c) => { c.SubtitleLanguagePreference = v; }));
       if (k === "audioLang") B.dropdown(b, langs.map(([value, l]) => ({ value, label: l })), cfg.AudioLanguagePreference || "", (v) => saveCfg((c) => { c.AudioLanguagePreference = v; c.PlayDefaultAudioTrack = !v; }));
     };
   }
