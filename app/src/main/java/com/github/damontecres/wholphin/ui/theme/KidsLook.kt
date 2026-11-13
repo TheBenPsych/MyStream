@@ -54,7 +54,14 @@ object KidsLook {
         private set
 
     /** The colours to use right now, or null for the normal grown-up look */
-    val palette: KidsPalette? get() = if (!on) null else if (night) NightLight else SkyAndSunshine
+    val palette: KidsPalette? get() =
+        if (!on) {
+            null
+        } else if (night) {
+            NightLight
+        } else {
+            SkyAndSunshine
+        }
 
     /** Called whenever Kids is switched on or off, and once a minute (for the Night Light) */
     fun refresh(

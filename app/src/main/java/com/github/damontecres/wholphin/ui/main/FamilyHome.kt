@@ -50,9 +50,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.KidsLook
 import java.util.UUID
 
 /**
@@ -370,7 +370,16 @@ private fun FamilyDoor(
 ) {
     // Kids look: rounder doors that grow a little inside a thick yellow ring (Ben: kc-p-glow)
     val kids = KidsLook.on
-    val shape = RoundedCornerShape(if (kids) (if (small) 22.dp else 26.dp) else if (small) 18.dp else 14.dp)
+    val shape =
+        RoundedCornerShape(
+            if (kids) {
+                (if (small) 22.dp else 26.dp)
+            } else if (small) {
+                18.dp
+            } else {
+                14.dp
+            },
+        )
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
