@@ -60,7 +60,7 @@ enum class ServerToolGroup(
     DOWNLOADS("Downloads", "What's downloading, and stuck ones", BenflixIcon.DOWNLOAD),
     PEOPLE("People", "Messages, Benflix versions and Kids ratings", BenflixIcon.PERSON),
     FIXES("Playback fixes", "Tidy track names and check playback speed", BenflixIcon.PLAY),
-    TOWER("Tower", "Setup command, apps, restart, chores, weather town", BenflixIcon.SERVER),
+    TOWER("Tower", "Setup command, apps, drive health, restart, chores, weather town", BenflixIcon.SERVER),
 }
 
 /**

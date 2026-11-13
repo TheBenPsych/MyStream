@@ -56,6 +56,22 @@ object RetroNative {
     /** The last picture: [width, height, ARGB pixels...] */
     external fun snapshot(): IntArray?
 
+    /** Benflix: how many discs this game has (0 when it can't swap discs) */
+    external fun discCount(): Int
+
+    /** The disc in now, counting from 0 */
+    external fun discNow(): Int
+
+    /** Takes the disc out, puts in disc [index] (from 0) and closes the lid */
+    external fun swapDisc(index: Int): Boolean
+
+    /** A finger on the game picture at [x], [y] (pixels inside the game view), or lifted when [down] is false */
+    external fun setPointer(
+        x: Float,
+        y: Float,
+        down: Boolean,
+    )
+
     external fun unload()
 
     external fun glInit()

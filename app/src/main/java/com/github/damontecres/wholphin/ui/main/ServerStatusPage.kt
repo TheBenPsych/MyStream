@@ -460,6 +460,7 @@ fun ServerStatusPage(
                     when {
                         disks == null && tower == null -> Light.UNKNOWN
                         brokenApps(tower).isNotEmpty() -> Light.BAD
+                        tower?.drivesBad.orEmpty().isNotEmpty() -> Light.WARN
                         disks.orEmpty().any { it.nearlyFull } -> Light.WARN
                         tower?.downloads.orEmpty().any { it.stuck } -> Light.WARN
                         else -> Light.GOOD
@@ -513,6 +514,17 @@ fun ServerStatusPage(
                             text = "Tower needs the setup command",
                             light = Light.WARN,
                             supporting = "The yellow card above has it, with Copy",
+                        ),
+                    )
+                }
+                tower?.drivesBad.orEmpty().forEach { d ->
+                    add(
+                        NeedLine(
+                            key = "drive-${d.where}-${d.name}",
+                            text = "Drive ${d.name}: ${d.words}",
+                            light = driveLight(d),
+                            supporting = d.where.ifBlank { null },
+                            actions = listOf("Go" to { openTools(ServerToolGroup.TOWER) }),
                         ),
                     )
                 }
@@ -786,10 +798,12 @@ fun ServerStatusPage(
                         )
                         messageItems(toolsState, { toolsDialog = it }, sectionTitle)
                         kidsRatingItems()
+                        kidsGamesItems()
                     }
 
                     ServerToolGroup.FIXES -> {
                         trackTidyItems(tracks, tracksProblem, towerViewModel)
+                        gameProblemItems()
                         speedCheckItems(speedState, speedCheck)
                         startupSpeedItem(sectionTitle)
                     }
@@ -819,6 +833,7 @@ fun ServerStatusPage(
                             onCancelRestart = viewModel::cancelRestart,
                             showScan = false,
                         )
+                        driveHealthItems()
                         homeWeatherItems()
                         bookListItems()
                     }
