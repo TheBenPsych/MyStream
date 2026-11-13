@@ -177,7 +177,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (g.id === "devices") {
     sp.innerHTML = `<p class="dim">On the TV or phone you want to sign in, choose “Sign in with my phone” or Quick Connect. It shows a 6-letter code. Type it here.</p>
       <form id="qcf" class="row"><input class="field" id="qcCode" maxlength="6" placeholder="Code" style="max-width:240px;font-size:32px;letter-spacing:.3em;text-transform:uppercase;font-weight:800;text-align:center"><button class="btn white big">Sign it in</button></form>`;
-    $("#qcf").onsubmit = (e) => { e.preventDefault(); const c = $("#qcCode").value.trim().toUpperCase(); if (!c) return; B.busy(null, async () => { await B.jf("POST", `/QuickConnect/Authorize?code=${enc(c)}&userId=${B.uid()}`); $("#qcCode").value = ""; return "Done. That TV or phone is signing in as " + B.me.name + "."; }); };
+    $("#qcf").onsubmit = (e) => { e.preventDefault(); const c = $("#qcCode").value.trim().toUpperCase(); if (!c) { $("#qcCode").focus(); return B.toast("Type the 6-letter code from the TV or phone first."); } B.busy(null, async () => { await B.jf("POST", `/QuickConnect/Authorize?code=${enc(c)}&userId=${B.uid()}`); $("#qcCode").value = ""; return "Done. That TV or phone is signing in as " + B.me.name + "."; }); };
   }
   if (g.id === "install") {
     sp.innerHTML = setRow("Install Benflix on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`);

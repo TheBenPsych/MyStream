@@ -1,0 +1,183 @@
+name: Benflix button sweep (deep robot)
+
+# The deep robot: opens every page on a pretend TV, a pretend phone and in a web browser (computer and
+# phone size), presses every button, dropdown and switch once, and lists anything that crashed, showed an
+# error, or did nothing. Run it by hand (Actions > Benflix button sweep > Run workflow). It takes about
+# 1.5 hours. Results go to the "sweep-results" branch (sweep-report.json / web-report.json + screenshots).
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How many minutes each robot may spend pressing buttons"
+        default: "80"
+  push:
+    branches:
+      - 'claude/project-thread-eeyxa1'
+    paths:
+      - 'tools/audit/sweep.py'
+      - 'tools/audit/web_sweep.js'
+      - '.github/workflows/sweep.yml'
+
+concurrency:
+  group: sweep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    # pushes to the robot's own branch only re-run the (quicker) web robot
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [tv, phone]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download the newest published build
+        run: curl -fsSL -o app.apk https://github.com/${{ github.repository }}/releases/download/latest-build/MyStream-x86_64.apk
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/local/lib/node_modules || true
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Set up the emulator
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --list 2>/dev/null | grep -E "system-images;android-3[0-9];(android-tv|google-tv|google_apis);x86" | awk '{print $1}' | sort -u > images.txt
+          if [ "${{ matrix.mode }}" = tv ]; then
+            want="android-36;android-tv;x86_64 android-36;google-tv;x86_64"
+            device=tv_1080p
+          else
+            want="android-34;google_apis;x86_64 android-33;google_apis;x86_64"
+            device=pixel_6
+          fi
+          img=""
+          for w in $want; do if grep -qx "system-images;$w" images.txt; then img="system-images;$w"; break; fi; done
+          echo "Using $img"
+          echo "IMG=$img" >> $GITHUB_ENV
+          sdkmanager "emulator" "platform-tools" "$img" >/dev/null
+          mkdir -p "$HOME/avd"
+          echo "ANDROID_AVD_HOME=$HOME/avd" >> $GITHUB_ENV
+          export ANDROID_AVD_HOME="$HOME/avd"
+          echo no | avdmanager create avd -n sweep -k "$img" -d $device -p "$HOME/avd/sweep.avd" --force
+          printf 'hw.ramSize=4096\ndisk.dataPartition.size=4G\nhw.keyboard=yes\n' >> "$HOME/avd/sweep.avd/config.ini"
+      - name: Run the sweep robot
+        env:
+          SWEEP_MINUTES: ${{ github.event.inputs.minutes || '80' }}
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
+          adb kill-server || true
+          [ -f ~/.android/adbkey ] || adb keygen ~/.android/adbkey
+          export ADB_VENDOR_KEYS=~/.android/adbkey
+          adb start-server
+          GPU=swiftshader_indirect
+          [ "${{ matrix.mode }}" = tv ] && GPU=swangle_indirect
+          booted=0
+          for attempt in 1 2 3; do
+            nohup emulator -avd sweep -no-window -no-audio -no-boot-anim -gpu $GPU -no-snapshot -wipe-data -camera-back none >> emulator.log 2>&1 &
+            timeout 240 adb wait-for-device || true
+            for i in $(seq 1 100); do
+              if [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then booted=1; break; fi
+              if timeout 5 adb devices | grep -q unauthorized; then adb kill-server; adb start-server; fi
+              sleep 3
+            done
+            [ $booted = 1 ] && break
+            adb emu kill || true; pkill -f qemu-system || true; sleep 5
+          done
+          [ $booted = 1 ] || { tail -50 emulator.log; exit 1; }
+          sleep 45
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          adb shell input keyevent 82 || true
+          timeout 300 adb install -r -g app.apk
+          PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
+          echo "Package $PKG"
+          timeout 7200 python3 tools/audit/sweep.py ${{ matrix.mode }} "$PKG" results/${{ matrix.mode }} || echo "robot stopped with $?"
+      - name: Shrink screenshots
+        if: always()
+        run: |
+          pip install pillow >/dev/null
+          python3 - <<'PY'
+          import glob, os
+          from PIL import Image
+          for p in glob.glob("results/*/*.png"):
+              try:
+                  im = Image.open(p).convert("RGB")
+                  im.thumbnail((960, 960))
+                  im.save(p[:-4] + ".jpg", quality=65)
+              except Exception as e:
+                  print(p, e)
+              os.remove(p)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: sweep-${{ matrix.mode }}
+          path: results
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Start the Benflix helper (web version) against the Jellyfin demo server
+        run: |
+          cp -r server /tmp/srv
+          # test the web files from this branch, not the copy the helper would fetch from GitHub
+          sed -i 's#^RAW = .*#RAW = "http://127.0.0.1:1/none"#' /tmp/srv/benflix_web.py
+          cd /tmp/srv
+          JELLYFIN_URL=https://demo.jellyfin.org/stable PORT=8097 nohup python3 benflix-games-helper.py > /tmp/helper.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8097/ >/dev/null && break; sleep 1; done
+      - name: Run the web robot
+        env:
+          SWEEP_MINUTES: ${{ github.event.inputs.minutes || '60' }}
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          cd "$GITHUB_WORKSPACE"
+          NODE_PATH=/tmp/pw/node_modules timeout 6600 node tools/audit/web_sweep.js http://127.0.0.1:8097/ results/web || echo "web robot stopped with $?"
+          cp /tmp/helper.log results/web/ || true
+          # the list of problems, once each, in the log too
+          python3 -c "
+          import json, collections
+          r = json.load(open('results/web/web-report.json'))
+          c = collections.Counter((p['size'], p['type'], p.get('where', ''), p.get('button', ''), (p.get('text') or '')[:160]) for p in r['problems'])
+          print('PAGES', json.dumps(r.get('viewports')))
+          for k, n in sorted(c.items()): print('WEBPROBLEM', n, ' | '.join(k))
+          " || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: sweep-web
+          path: results
+
+  publish:
+    needs: [android, web]
+    if: ${{ !cancelled() && needs.web.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: sweep-*
+          merge-multiple: true
+          path: results
+      - name: Save results to the sweep-results branch
+        run: |
+          mkdir -p results
+          cd results
+          git init -q -b sweep-results
+          git config user.name "sweep robot"
+          git config user.email "audit@users.noreply.github.com"
+          echo "Run ${{ github.run_id }} on ${{ github.sha }}" > RUN.txt
+          git add -A
+          git commit -qm "Sweep run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" sweep-results
