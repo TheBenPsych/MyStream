@@ -36,7 +36,9 @@ chown nobody:users "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers" 2
 chmod 777 "$MEDIA/Music Drop"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
+[ -n "$HOST_IP" ] || HOST_IP=$(hostname -i 2>/dev/null | awk '{print $1}')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
+echo "Tower's home address right now: $HOST_IP"
 
 say "Downloading the helper"
 for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_home.py benflix-fix-tracks.py benflix-web.html; do
@@ -362,6 +364,29 @@ if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"live_tv": true'; then
 else
   echo "  PROBLEM  Live TV didn't load in the helper. Send this output to Claude."
 fi
+
+say "Tower's address in Jellyfin's Live TV"
+# After a move (new router, new home address) Jellyfin's Live TV links still point at the old address.
+# This finds them in Jellyfin's settings file and swaps in Tower's address now. Nothing changes if they're right.
+fix_livetv_links() {
+  local c dir f
+  c=$(docker ps -a --format '{{.Names}}' | grep -i jellyfin | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Jellyfin app found."; return; fi
+  dir=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")
+  f=$(find "$dir" -maxdepth 3 -name livetv.xml 2>/dev/null | head -1)
+  if [ -z "$f" ]; then echo "  skip  Live TV isn't set up in Jellyfin yet."; return; fi
+  if ! grep -Eq "http://[0-9.]+:8097/livetv/" "$f"; then echo "  ok  Jellyfin's Live TV links don't use an address that can go stale."; return; fi
+  if ! grep -Eo "http://[0-9.]+:8097/livetv/" "$f" | grep -vq "^http://$HOST_IP:8097/"; then
+    echo "  ok  Jellyfin's Live TV links already use $HOST_IP"; return
+  fi
+  echo "  Jellyfin's Live TV links use an old address. Changing them to $HOST_IP (Jellyfin restarts, about 30 seconds)."
+  cp "$f" "$f.before-move"
+  docker stop "$c" >/dev/null
+  sed -i -E "s#http://[0-9.]+:8097/livetv/#http://$HOST_IP:8097/livetv/#g" "$f"
+  docker start "$c" >/dev/null
+  echo "  ok  Done. Jellyfin's Live TV now uses http://$HOST_IP:8097/livetv/ (old file kept as $(basename "$f").before-move)"
+}
+fix_livetv_links
 
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."

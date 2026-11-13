@@ -92,7 +92,7 @@ document.addEventListener("click", async (e) => {
   if (b.dataset.setup === "copy") {
     try { await navigator.clipboard.writeText(SETUP_COMMAND); b.textContent = "Copied"; } catch (err) { B.toast("Couldn't copy. Select the command and copy it by hand."); }
   } else {
-    B.ask("Where do I paste it?", "Open Unraid in your browser (http://10.0.0.58), click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, and Benflix keeps working while it runs.", "OK", "Close");
+    B.ask("Where do I paste it?", `Open Unraid in your browser (http://${location.hostname.match(/^[\d.]+$/) ? location.hostname : "tower"}), click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, and Benflix keeps working while it runs.`, "OK", "Close");
   }
 });
 

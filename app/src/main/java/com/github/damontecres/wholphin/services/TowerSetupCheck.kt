@@ -101,9 +101,9 @@ class TowerSetupCheck
                     "benflix-games-helper-setup.sh | bash ; true"
 
             const val WHERE =
-                "On your computer, open Unraid in the browser (http://10.0.0.58), click the Terminal button " +
-                    "(the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, " +
-                    "and Benflix keeps working while it runs."
+                "On your computer, open Unraid in the browser (http://tower, or Tower's home address), " +
+                    "click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. " +
+                    "It takes about a minute, and Benflix keeps working while it runs."
 
             private const val MIN_GAP_MS = 60_000L
         }

@@ -156,7 +156,7 @@ class ServerRepository
                     is MostRecentServer.Server -> {
                         val server = serverDao.getServer(recentServer.serverId)
                         if (server != null) {
-                            RestoredSession.ServerOnly(server.server)
+                            RestoredSession.ServerOnly(findMovedServer(server.server))
                         } else {
                             RestoredSession.None
                         }
@@ -191,7 +191,7 @@ class ServerRepository
                     is MostRecentServer.Server -> recentServer.serverId
                     is MostRecentServer.ServerAndUser -> recentServer.serverId
                 }
-            val server = serverId?.let { serverDao.getServer(serverId)?.server }
+            val server = serverId?.let { serverDao.getServer(serverId)?.server }?.let { findMovedServer(it) }
             return if (server != null) {
                 RestoredSession.ServerOnly(server)
             } else {
@@ -220,7 +220,7 @@ class ServerRepository
                             // Benflix: bring back Kids / Guest first (they're only in memory otherwise),
                             // so a child doesn't come back on the full grown-up sign-in
                             ProfileModes.restore(context, user.id)
-                            changeUser(serverAndUsers.server, user)
+                            changeUser(findMovedServer(serverAndUsers.server), user)
                         } else {
                             null
                         }
@@ -228,6 +228,26 @@ class ServerRepository
                         null
                     }
                 }
+            }
+
+        /**
+         * Benflix: when Tower got a new home address (a move or a new router), find it again and save the new
+         * address, so TVs signed in with the old one keep working. See [ServerMoved].
+         */
+        private suspend fun findMovedServer(server: JellyfinServer): JellyfinServer =
+            withContext(ioDispatcher) {
+                val found =
+                    try {
+                        ServerMoved.findAgain(jellyfin, server)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Couldn't look for a moved server")
+                        server
+                    }
+                if (found.url != server.url) {
+                    serverDao.addOrUpdateServer(found)
+                    if (currentServer?.id == found.id) apiClient.update(baseUrl = found.url)
+                }
+                found
             }
 
         /**

@@ -712,7 +712,7 @@ fun GamesPage(
         StringInputDialog(
             input =
                 StringInput(
-                    title = "Games server address (for example 10.0.0.58). Leave empty for automatic.",
+                    title = "Games server address (Tower's home address, like 10.0.0.58). Leave empty for automatic.",
                     value = viewModel.gamesAddress.removePrefix("http://"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     onSubmit = {},
