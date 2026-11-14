@@ -187,6 +187,11 @@ CORES = {
 # For games that are a folder of files, the file to start from (best first)
 START_FILES = (".m3u", ".cue", ".gdi", ".chd", ".iso", ".rvz", ".wbfs", ".cso", ".pbp")
 
+try:  # The Lobby: a 3D room to walk around in and watch together (who's where, chat, the TV, pool), in benflix_lobby.py
+    import benflix_lobby as lobby
+except ImportError:
+    lobby = None
+
 AWAY_PATH = "/benflix-games"
 
 # Benflix security: pages from inside an ebook (the reader shows them in a frame) may never run their own code.
@@ -195,7 +200,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 5
+SETUP_VERSION = 6
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -1154,6 +1159,7 @@ class Handler(BaseHTTPRequestHandler):
                         "facts": facts is not None,
                         "books": books is not None,
                         "home": home is not None,
+                        "lobby": lobby is not None,
                         # Which setup the helper came from (the app and web show the yellow setup card when it's older)
                         "setup": SETUP_VERSION,
                     },
@@ -1244,6 +1250,15 @@ class Handler(BaseHTTPRequestHandler):
                 if answer is None:
                     raise HelperError(404, "Not found")
                 return self.send(answer[0], answer[1])
+            if path.startswith("/api/lobby/"):
+                # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
+                if lobby is None:
+                    raise HelperError(503, "The Lobby isn't on the server yet. Run the Benflix setup command again.")
+                try:
+                    status, answer = lobby.route(method, path, self.read_json, user_id, _names.get(user_id, ""), is_admin, is_kids)
+                except lobby.LobbyError as e:
+                    raise HelperError(e.status, e.message)
+                return self.send(status, answer)
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:

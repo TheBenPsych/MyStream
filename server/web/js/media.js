@@ -505,6 +505,7 @@ const movieMore = (it) => {
   B.tpMore(it.Name, [
     { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) },
     resume ? { label: "Play from the start", icon: "restart", onClick: () => B.go(`#/play/${it.Id}`) } : null,
+    B.me.kids || !B.lobby ? null : { label: "Watch together in the Lobby", icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: it, pos: resume ? ud.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Audio, subtitles and version", icon: "sub", onClick: () => B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`)) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     ids.Imdb ? { label: "Open on IMDb", icon: "info", href: `https://www.imdb.com/title/${esc(ids.Imdb)}`, blank: true } : null,
@@ -589,6 +590,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   $("#bMore").onclick = () => B.tpMore(it.Name, [
     { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
     B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+    B.me.kids || !B.lobby || !target ? null : { label: `Watch S${target.ParentIndexNumber} E${target.IndexNumber} together in the Lobby`, icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: Object.assign({ OfficialRating: it.OfficialRating }, target, target.OfficialRating ? {} : { OfficialRating: it.OfficialRating }), pos: target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? target.UserData.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
   ]);
