@@ -22,6 +22,7 @@ js/extras.js
 js/fix.js
 js/games.js
 js/livetv.js
+js/lobby.js
 js/me.js
 js/media.js
 js/music.js
@@ -40,3 +41,5 @@ sounds/opening.wav
 sw.js
 vendor/hls.LICENSE.txt
 vendor/hls.min.js
+vendor/three.LICENSE.txt
+vendor/three.min.js

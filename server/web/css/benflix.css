@@ -1310,3 +1310,55 @@ html.kids .poster .prog i, html.kids .kwbar .line i, html.kids .player .bar .seg
 html.kids .poster:focus-visible, html.kids .wide:focus-visible { outline-color: var(--kacc); }
 html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 600; color: var(--ink2); margin-top: 4px; letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { html.kids .door { transition: none; } html.kids .door:focus-visible { transform: none; } }
+
+/* ---------- The Lobby (lobby.js): a 3D room to watch together ---------- */
+.lb-list { padding: calc(var(--bar) + 24px) var(--gutter) 60px; max-width: 980px; }
+.lb-list h3 { margin: 28px 0 10px; }
+.lb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.lb-card { position: relative; display: grid; gap: 4px; background: var(--pg2); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.lb-card:hover, .lb-card:focus-visible { background: var(--pg3); }
+.lb-card b { font-size: 18px; padding-right: 64px; }
+.lb-code { position: absolute; top: 14px; right: 16px; font-weight: 700; letter-spacing: .12em; color: var(--ink2); }
+.lb-rooms { display: flex; flex-wrap: wrap; gap: 8px; }
+.lb-code-form { display: flex; gap: 8px; }
+.lb-code-form input, .lb-find { background: var(--pg3); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; text-transform: uppercase; letter-spacing: .14em; width: 140px; }
+.lb-find { width: 100%; text-transform: none; letter-spacing: 0; margin-bottom: 10px; }
+.lb { position: fixed; inset: 0; z-index: 55; background: #000; }
+.lb [hidden] { display: none !important; }
+.lb-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.lb-stage canvas { display: block; width: 100%; height: 100%; }
+.lb video { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+.lb.lb-full video { width: 100%; height: 100%; inset: 0; opacity: 1; pointer-events: auto; background: #000; object-fit: contain; z-index: 2; }
+.lb.lb-full .lb-sub { z-index: 3; }
+.lb-hud { position: absolute; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; z-index: 6; }
+.lb-hud.tl { top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); max-width: 70%; }
+.lb-hud.tr { top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); }
+.lb-pill { background: rgba(11,12,16,.74); border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 6px 12px; font-size: 14px; color: var(--ink); backdrop-filter: blur(6px); font-variant-numeric: tabular-nums; }
+.lb-pill b { font-weight: 600; }
+.lb-btn { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; font: inherit; font-size: 14px; }
+.lb-btn:hover { background: rgba(38,41,50,.9); }
+.lb-dot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 0 2px rgba(0,0,0,.4); pointer-events: none; }
+.lb-prompt { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: rgba(11,12,16,.82); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 14px; font-weight: 500; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.lb-prompt kbd, .lb-keys kbd { font: 600 12px inherit; font-family: inherit; background: var(--ink); color: var(--tray); border-radius: 5px; padding: 1px 6px; margin-right: 4px; }
+.lb-sub { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); max-width: min(760px, 90%); text-align: center; font-size: 22px; font-weight: 500; text-shadow: 0 2px 6px #000; background: rgba(0,0,0,.45); padding: 4px 12px; border-radius: 8px; pointer-events: none; white-space: pre-line; }
+.lb-toast { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); max-width: min(520px, 90%); background: rgba(22,24,30,.95); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; text-align: center; pointer-events: none; z-index: 4; }
+.lb-chat { position: absolute; left: 14px; bottom: 14px; width: min(360px, 62%); display: grid; gap: 4px; z-index: 4; }
+.lb-chat .m { background: rgba(11,12,16,.7); border-radius: 8px; padding: 5px 10px; font-size: 14px; transition: opacity .6s; overflow-wrap: anywhere; }
+.lb-chat .m.sys { color: var(--ink2); font-style: italic; }
+.lb-chat .m b { font-weight: 600; margin-right: 6px; }
+.lb-chat input { background: rgba(11,12,16,.92); border: 1px solid var(--ink3); border-radius: 8px; padding: 7px 10px; width: 100%; }
+.lb-start { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(11,12,16,.4), rgba(11,12,16,.88)); z-index: 5; }
+.lb-card-in { text-align: center; display: grid; gap: 14px; justify-items: center; padding: 16px; }
+.lb-big { font-size: clamp(22px, 3vw, 32px); font-weight: 800; }
+.lb-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; color: var(--ink2); font-size: 14px; max-width: 620px; }
+.lb-stick { position: absolute; left: 18px; bottom: 18px; width: 116px; height: 116px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); z-index: 4; }
+.lb-stick i { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(255,255,255,.55); }
+.lb-tbtns { position: absolute; right: 16px; bottom: 18px; display: grid; gap: 10px; z-index: 4; }
+.lb-tbtns button { width: 64px; height: 64px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); background: rgba(11,12,16,.6); color: var(--ink); font-weight: 600; }
+.lb-touch:not([hidden]) ~ .lb-chat, .lb-stage:has(.lb-touch:not([hidden])) .lb-chat { bottom: 150px; }
+.lb-stage:has(.lb-touch:not([hidden])) .lb-prompt { bottom: auto; top: 110px; white-space: normal; text-align: center; }
+.lb-swatches { display: flex; gap: 10px; margin: 6px 0 12px; }
+.lb-sw { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.lb-sw.on { border-color: #fff; }
+.side h4 { margin: 18px 0 8px; }
+@media (max-width: 700px) { .lb-list { padding-left: 16px; padding-right: 16px; } .lb-hud.tl { max-width: 60%; } .lb-hud.tl .lb-pill:last-child { display: none; } }

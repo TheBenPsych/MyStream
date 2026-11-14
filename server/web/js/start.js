@@ -212,6 +212,8 @@ document.addEventListener("click", (e) => {
   store(doorUseKey(), JSON.stringify(use));
 });
 B.route(/^\/home$/, async (m, nav) => {
+  // Someone has the Lobby open: a tap on the shoulder to join (lobby.js)
+  if (B.lobby) B.lobby.homeNudge(nav);
   const grow = B.doorsGrow; B.doorsGrow = false;
   const kids = B.me.kids;
   const easy = B.easyMode();
@@ -626,6 +628,7 @@ B.openMenu = async () => {
   const items = [
     ["#/requests", "plus", "Requests"],
     ["#/mine", "chart", "My watching"],
+    ["#/lobby", "tv", "Lobby: watch together"],
     ["#/settings", "gear", "Settings"],
     B.me.admin ? ["#/server", "server", "Server"] : null,
     ["#/help", "help", "Help and updates"],
