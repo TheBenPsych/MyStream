@@ -225,9 +225,9 @@ class TestStreamChoiceServiceDefault(
                             subtitle(1, "ger", default = true, forced = true),
                         ),
                 ),
-                // Benflix: forced words in the sound's own language still turn on
+                // Benflix: only English turns on by itself, even when the sound is German
                 TestInput(
-                    1,
+                    null,
                     SubtitlePlaybackMode.DEFAULT,
                     subtitles =
                         listOf(

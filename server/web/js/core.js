@@ -94,18 +94,15 @@ B.englishSubs = async () => {
 };
 // Jellyfin turns on any subtitle track marked "default" or "forced" inside the file, in any language.
 // That showed German words for a few seconds after the intro on The Big Bang Theory. A track that
-// turned on by itself must be in your subtitle language, the sound's language, or not marked.
-B.autoSub = (streams, subIndex, audioIndex) => {
+// turned on by itself must be in your subtitle language (English unless you picked another) or not marked.
+B.autoSub = (streams, subIndex) => {
   if (subIndex == null || subIndex < 0) return -1;
   const sub = (streams || []).find((s) => s.Type === "Subtitle" && s.Index === subIndex);
   if (!sub) return subIndex;
   const lang = (sub.Language || "").toLowerCase();
   if (!lang || lang === "und" || lang === "unknown") return subIndex;
   const want = (B.subPref || "eng").toLowerCase();
-  const audio = (streams || []).find((s) => s.Type === "Audio" && s.Index === audioIndex);
-  if (lang === want || (want === "eng" && lang === "en")) return subIndex;
-  if (audio && (audio.Language || "").toLowerCase() === lang) return subIndex;
-  return -1;
+  return lang === want || (want === "eng" && lang === "en") ? subIndex : -1;
 };
 B.addProfile = (s) => {
   const list = B.profiles().filter((p) => p.id !== s.id);
