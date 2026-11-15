@@ -1,9 +1,6 @@
 package com.github.damontecres.wholphin.data
 
 import com.github.damontecres.wholphin.data.model.JellyfinServer
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.withTimeoutOrNull
-import org.jellyfin.sdk.Jellyfin
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.net.HttpURLConnection
@@ -18,7 +15,7 @@ import java.net.URL
  * tries Tower's name. If the same server (same server id) answers somewhere new, the new address is used
  * and saved, so it just keeps working.
  *
- * Internet addresses (like yohobox.duckdns.org) are never touched: they don't change when Tower moves.
+ * It also picks the home address over the internet one when on the home Wi-Fi, and an internet one when away.
  */
 @dagger.hilt.EntryPoint
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
@@ -69,66 +66,80 @@ internal object ServerMoved {
         server: JellyfinServer,
     ): Boolean = id?.toUUIDOrNull() == server.id
 
+    /** True for addresses that only work inside the house: 192.168.x / 10.x / 172.16-31.x, or Tower's names */
+    fun isLocal(url: String): Boolean {
+        if (isHomeAddress(url)) return true
+        val host =
+            try {
+                URL(url).host.lowercase()
+            } catch (_: Exception) {
+                return false
+            }
+        return host in NAMES
+    }
+
+    /** True when this device is on Wi-Fi or a cable (so Tower's home address might answer) */
+    fun onHomeKindOfNetwork(context: android.content.Context): Boolean =
+        try {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            caps == null ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+        } catch (_: Exception) {
+            true
+        }
+
+    private fun portOf(url: String): Int =
+        try {
+            URL(url).port.takeIf { it > 0 && !url.startsWith("https") } ?: 8096
+        } catch (_: Exception) {
+            8096
+        }
+
     /**
-     * Returns [server] with its new address when it moved, or [server] unchanged when the saved address still
-     * works (or Tower can't be found). Call off the main thread.
+     * Benflix: picks the best address for [server] right now. Every address this device knows (the saved one, home,
+     * Tower's names, the internet name, Tailscale) is tried AT THE SAME TIME, and on Wi-Fi the home network is also
+     * asked "where's Jellyfin?". On Wi-Fi a home address wins over the internet one (AT&T's box won't let phones
+     * inside the house use the internet address, which left phones on "You're offline" at home).
+     *
+     * Returns [server] with the address to use, or unchanged when nothing answers. Call off the main thread.
      */
     suspend fun findAgain(
         context: android.content.Context,
-        jellyfin: Jellyfin,
         server: JellyfinServer,
     ): JellyfinServer {
-        if (serverIdAt(server.url) != null) return server
-        // Benflix: first every other address this device knows for the server (home, Tower's name, the internet
-        // name, Tailscale, GitHub's list), all at once. This also gets a phone that left home back in.
-        val known = ServerAddressBook.all(context, server.id).filter { it != server.url.trimEnd('/') }
-        Timber.i("Saved address %s doesn't answer, trying %d other known addresses", server.url, known.size)
-        ServerAddressBook.firstWorking(known, server.id)?.let {
-            Timber.i("Server answers at another known address: %s -> %s", server.url, it)
+        val saved = server.url.trimEnd('/')
+        val port = portOf(saved)
+        val onWifi = onHomeKindOfNetwork(context)
+        val candidates =
+            (
+                listOf(saved) +
+                    ServerAddressBook.all(context, server.id) +
+                    NAMES.map { "http://$it:$port" }
+            ).distinct()
+        val askWifi: suspend () -> String? = { findOnWifi().firstOrNull { it.id == server.id }?.url }
+        val finders = if (onWifi) listOf(askWifi) else emptyList()
+        val best =
+            ServerAddressBook.bestWorking(
+                candidates = candidates,
+                serverId = server.id,
+                preferHome = onWifi,
+                isHome = ::isLocal,
+                finders = finders,
+            )
+        if (best != null) {
+            if (best != saved) Timber.i("Using a better server address: %s -> %s", saved, best)
+            return if (best == saved) server else server.copy(url = best)
+        }
+        // Nothing this device knows answers: GitHub's list might name a new address
+        Timber.i("No known address answers for %s, checking GitHub's list", saved)
+        ServerAddressBook.firstWorking(ServerAddressBook.gitHubList(), server.id)?.let {
+            Timber.i("Server answers at an address from GitHub's list: %s", it)
             return server.copy(url = it)
         }
-        if (!isHomeAddress(server.url)) {
-            // An internet address that stopped working: GitHub's list might name a new one
-            ServerAddressBook.firstWorking(ServerAddressBook.gitHubList(), server.id)?.let {
-                Timber.i("Server answers at an address from GitHub's list: %s", it)
-                return server.copy(url = it)
-            }
-            return server
-        }
-        Timber.i("Saved home address %s doesn't answer, looking for the server on the home network", server.url)
-        val found =
-            try {
-                withTimeoutOrNull(6000) {
-                    jellyfin.discovery
-                        .discoverLocalServers()
-                        .firstOrNull { it.id.toUUIDOrNull() == server.id }
-                        ?.address
-                }
-            } catch (e: Exception) {
-                Timber.w(e, "Server finder didn't work")
-                null
-            }
-        val port =
-            try {
-                URL(server.url).port.takeIf { it > 0 } ?: 8096
-            } catch (_: Exception) {
-                8096
-            }
-        val newUrl =
-            found?.takeIf { sameServer(serverIdAt(it), server) }
-                ?: NAMES.map { "http://$it:$port" }.firstOrNull { sameServer(serverIdAt(it), server) }
-                ?: senderAddress(server.id, port)
-                ?: findOnWifi().firstOrNull { it.id == server.id }?.url
-        if (newUrl == null) {
-            ServerAddressBook.firstWorking(ServerAddressBook.gitHubList(), server.id)?.let {
-                Timber.i("Server answers at an address from GitHub's list: %s", it)
-                return server.copy(url = it)
-            }
-            Timber.i("Couldn't find the server at a new address")
-            return server
-        }
-        Timber.i("Server moved: %s -> %s", server.url, newUrl)
-        return server.copy(url = newUrl.trimEnd('/'))
+        Timber.i("Couldn't reach the server at any address")
+        return server
     }
 
     /**

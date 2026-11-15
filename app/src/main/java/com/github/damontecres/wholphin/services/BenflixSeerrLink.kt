@@ -172,6 +172,33 @@ class BenflixSeerrLink
             }
         }
 
+        /**
+         * Benflix: the Jellyfin address changed (came home, left home). Requests through Jellyfin Enhanced follow it
+         * to the new address; a direct Seerr address that stopped answering switches to Jellyfin Enhanced.
+         */
+        suspend fun afterAddressChange() {
+            val state = seerrServerRepository.connection.value.connection
+            val current = (state as? SeerrConnectionStatus.Success)?.current
+            if (current == null || current.server.id == JELLYFIN_ENHANCED_SERVER_ID) {
+                viaJellyfinEnhanced()
+                return
+            }
+            val answers =
+                withContext(Dispatchers.IO) {
+                    try {
+                        val request =
+                            Request.Builder().url(current.server.url.trimEnd('/') + "/api/v1/status").build()
+                        quickHttp.newCall(request).execute().use { it.isSuccessful }
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+            if (!answers) {
+                Timber.i("Seerr's own address stopped answering after a network change, trying Jellyfin Enhanced")
+                viaJellyfinEnhanced()
+            }
+        }
+
         /** Quick Connect people: connect with the password they type on the Requests tab */
         suspend fun connectWithPassword(password: String): Boolean {
             val user = serverRepository.currentUser ?: return false

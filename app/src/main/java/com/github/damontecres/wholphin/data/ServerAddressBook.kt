@@ -115,6 +115,65 @@ object ServerAddressBook {
         }.also { checks.cancel() }
     }
 
+    /**
+     * Benflix: tries every address in [candidates] (and every [finders] search, like asking the home Wi-Fi) at the
+     * same time and returns the best one where the same server answers, or null. When [preferHome] (the device is
+     * on Wi-Fi) and an internet address answers first, it waits a moment more for a home one, because many home
+     * routers (AT&T's included) won't let devices inside the house use the internet address reliably.
+     * Waits at most about 7 seconds. Call off the main thread.
+     */
+    suspend fun bestWorking(
+        candidates: List<String>,
+        serverId: UUID,
+        preferHome: Boolean,
+        isHome: (String) -> Boolean,
+        finders: List<suspend () -> String?> = emptyList(),
+    ): String? {
+        val list = candidates.mapNotNull { clean(it) }.distinct()
+        val total = list.size + finders.size
+        if (total == 0) return null
+        val answers = Channel<String?>(total)
+        val checks = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        list.forEach { url -> checks.launch { answers.trySend(url.takeIf { serverIdAt(it) == serverId }) } }
+        finders.forEach { find ->
+            checks.launch {
+                val found =
+                    try {
+                        find()?.let { clean(it) }
+                    } catch (e: Exception) {
+                        Timber.w(e, "Server search didn't work")
+                        null
+                    }
+                answers.trySend(found)
+            }
+        }
+        var heard = 0
+        try {
+            val first =
+                withTimeoutOrNull(7000) {
+                    var winner: String? = null
+                    while (winner == null && heard < total) {
+                        winner = answers.receive()
+                        heard++
+                    }
+                    winner
+                } ?: return null
+            if (!preferHome || isHome(first)) return first
+            val home =
+                withTimeoutOrNull(1200) {
+                    var winner: String? = null
+                    while (winner == null && heard < total) {
+                        winner = answers.receive()?.takeIf { isHome(it) }
+                        heard++
+                    }
+                    winner
+                }
+            return home ?: first
+        } finally {
+            checks.cancel()
+        }
+    }
+
     /** The server id answering at [base], or null */
     fun serverIdAt(base: String): UUID? =
         try {
@@ -197,7 +256,6 @@ object ServerAddressBook {
         val key = "checked-$serverId"
         val now = System.currentTimeMillis()
         if (!force && now - p.getLong(key, 0) < REFRESH_MS) return
-        p.edit().putLong(key, now).apply()
         coroutineScope {
             val fromTower =
                 async(Dispatchers.IO) {
@@ -209,7 +267,20 @@ object ServerAddressBook {
                 }
             val fromGitHub =
                 async(Dispatchers.IO) { get(GITHUB_LIST)?.let { addressesIn(it) }.orEmpty() }
-            val found = fromTower.await() + fromGitHub.await()
+            // Jellyfin itself says its home address ("LocalAddress"), so the home address is learned even when
+            // the helper can't be reached through the internet address
+            val fromJellyfin =
+                async(Dispatchers.IO) {
+                    val body = get(workingUrl.trimEnd('/') + "/System/Info/Public") ?: return@async emptyList()
+                    listOfNotNull(
+                        Regex("\"LocalAddress\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1),
+                    )
+                }
+            val tower = fromTower.await()
+            val found = tower + fromJellyfin.await() + fromGitHub.await()
+            // Benflix: only wait hours before asking again when Tower actually answered (before, one failed ask
+            // meant the home address might not be learned for 6 hours)
+            if (tower.isNotEmpty()) p.edit().putLong(key, now).apply()
             if (found.isNotEmpty()) {
                 Timber.i("Address book for %s: %d addresses from Tower and GitHub", serverId, found.size)
                 remember(context, serverId, found)

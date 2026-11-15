@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jellyfin.sdk.Jellyfin
@@ -237,22 +238,51 @@ class ServerRepository
          */
         private suspend fun findMovedServer(server: JellyfinServer): JellyfinServer =
             withContext(ioDispatcher) {
-                val found =
-                    try {
-                        ServerMoved.findAgain(context, jellyfin, server)
-                    } catch (e: Exception) {
-                        Timber.w(e, "Couldn't look for a moved server")
-                        server
+                // One search at a time (opening the app, a network change and the nap screen can all ask at once)
+                findLock.withLock {
+                    val latest = currentServer?.takeIf { it.id == server.id } ?: server
+                    val found =
+                        try {
+                            ServerMoved.findAgain(context, latest)
+                        } catch (e: Exception) {
+                            Timber.w(e, "Couldn't look for a moved server")
+                            latest
+                        }
+                    if (found.url != latest.url) {
+                        serverDao.addOrUpdateServer(found)
+                        ServerAddressBook.remember(context, found.id, found.url, first = true)
+                        if (currentServer?.id == found.id) {
+                            apiClient.update(baseUrl = found.url)
+                            _current.update { it?.copy(server = found) }
+                            _current.value?.let { mostRecentServerProvider.save(it) }
+                            _addressChanged.tryEmit(found.url)
+                        }
                     }
-                if (found.url != server.url) {
-                    serverDao.addOrUpdateServer(found)
-                    if (currentServer?.id == found.id) {
-                        apiClient.update(baseUrl = found.url)
-                        _current.update { it?.copy(server = found) }
-                    }
+                    found
                 }
-                found
             }
+
+        private val findLock = kotlinx.coroutines.sync.Mutex()
+
+        private val _addressChanged =
+            kotlinx.coroutines.flow.MutableSharedFlow<String>(
+                extraBufferCapacity = 4,
+                onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST,
+            )
+
+        /** Benflix: the server address in use changed (for things that keep their own copy, like Seerr) */
+        val addressChanged: kotlinx.coroutines.flow.SharedFlow<String> = _addressChanged
+
+        /**
+         * Benflix: checks the signed-in server still answers at the address in use, and switches to the best other
+         * known address when it doesn't (or when a home address works and we're on the home Wi-Fi). Used when the
+         * app comes back from the background and by the "taking a nap" screen. Returns true when the server answers.
+         */
+        suspend fun reconnect(): Boolean {
+            val server = currentServer ?: return false
+            val found = findMovedServer(server)
+            return withContext(ioDispatcher) { ServerAddressBook.serverIdAt(found.url) == found.id }
+        }
 
         private var networkCheck: kotlinx.coroutines.Job? = null
 
@@ -290,8 +320,8 @@ class ServerRepository
                 backgroundScope.launch {
                     // Let the new network settle first
                     kotlinx.coroutines.delay(4000)
-                    val server = currentServer ?: return@launch
-                    findMovedServer(server)
+                    if (currentServer == null) return@launch
+                    reconnect()
                 }
         }
 
@@ -430,6 +460,20 @@ class ServerRepository
 
         init {
             watchNetwork()
+            // Benflix: the server stopped answering (the "taking a nap" screen)? Maybe it's just the address: look
+            // for it at every other known address straight away, instead of retrying the same one forever.
+            backgroundScope.launch {
+                com.github.damontecres.wholphin.services.ServerNap.down.collect { down ->
+                    if (down && currentServer != null) {
+                        Timber.i("Server stopped answering, looking at other addresses")
+                        try {
+                            reconnect()
+                        } catch (e: Exception) {
+                            Timber.w(e, "Couldn't look for another address")
+                        }
+                    }
+                }
+            }
         }
 
         /**

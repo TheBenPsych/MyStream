@@ -26,12 +26,27 @@ class MusicCarLibrary
         private val serverRepository: ServerRepository,
         private val imageUrlService: ImageUrlService,
     ) {
+        /**
+         * Benflix: the car can open the music list before the phone app has been opened (Benflix closed in the
+         * background). Sign back in the same way opening the app does, finding the server at whichever address works.
+         */
+        private suspend fun signedIn(): Boolean {
+            if (serverRepository.currentUser != null) return true
+            return try {
+                serverRepository.restoreLastSession()
+                serverRepository.currentUser != null
+            } catch (e: Exception) {
+                timber.log.Timber.w(e, "Couldn't sign in for the car")
+                false
+            }
+        }
+
         /** The top of the car's list */
         fun root(): MediaItem = folder(ROOT, "Benflix")
 
         /** What's inside [parentId] on the car's screen */
         suspend fun children(parentId: String): List<MediaItem> {
-            if (serverRepository.currentUser == null) {
+            if (!signedIn()) {
                 return listOf(note("Open Benflix on your phone first", "Then pick who's listening"))
             }
             return when {
@@ -100,7 +115,7 @@ class MusicCarLibrary
 
         /** What to play when [mediaId] is picked, or null when it isn't a song or list from here */
         suspend fun toPlay(mediaId: String): ToPlay? {
-            if (serverRepository.currentUser == null) return null
+            if (!signedIn()) return null
             if (mediaId == SHUFFLE) {
                 val songs = (music.mostPlayedSongs(150) + music.likedSongs().take(150)).distinctBy { it.id }.shuffled()
                 return ToPlay(songs, 0, null).takeIf { songs.isNotEmpty() }
