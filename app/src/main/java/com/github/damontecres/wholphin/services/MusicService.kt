@@ -83,7 +83,10 @@ class MusicService
         private val imageUrlService: ImageUrlService,
         private val userPreferencesService: UserPreferencesService,
         private val downloadService: DownloadService,
+        private val carLibraryLazy: dagger.Lazy<MusicCarLibrary>,
     ) {
+        private val carLibrary: MusicCarLibrary get() = carLibraryLazy.get()
+
         private val _state = MutableStateFlow(MusicServiceState.EMPTY)
         val state: StateFlow<MusicServiceState> = _state
 
@@ -376,27 +379,10 @@ class MusicService
         suspend fun start() {
             // Benflix Books: music stops the audiobook (its place is saved)
             AudiobookService.stopForOther()
-            if (mediaSession == null) {
-                mutex.withLock {
-                    if (mediaSession == null) {
-                        Timber.i("Starting music MediaSession")
-                        mediaSession =
-                            MediaSession
-                                .Builder(context, player)
-                                .setId("benflix-music")
-                                .setCallback(
-                                    MusicSessionCallback(
-                                        onLike = {
-                                            state.value.currentAudio?.let { audio ->
-                                                defaultScope.launch { setLiked(audio.id, !state.value.liked) }
-                                            }
-                                        },
-                                        onStop = { defaultScope.launch { stop() } },
-                                    ),
-                                ).setCustomLayout(MusicSessionButtons.buttons(false))
-                                .build()
-                        // The lock screen controls, and music that keeps going with the screen off
-                        onMain { BenflixMusicPlaybackService.start(context) }
+            onMain { ensureSession() }
+            mutex.withLock {
+                if (activityTracker == null) {
+                    onMain {
                         activityTracker =
                             // Music time counts for My watching (this week's bar and the Music card), not the movie hours
                             TrackActivityPlaybackListener(api, player, watchDoor = "music") {
@@ -404,20 +390,71 @@ class MusicService
                                     PlaybackItemState(
                                         itemId = itemId,
                                         playMethod = PlayMethod.DIRECT_PLAY,
-//                                        playSessionId = mediaSession?.id,
                                     )
                                 }
                             }.also { player.addListener(it) }
-                        websocketJob = subscribe()
                     }
                 }
+                if (websocketJob == null) websocketJob = subscribe()
             }
             onMain {
                 player.prepare()
                 player.play()
-                // The lock screen controls come back too if Android stopped the service while paused
+                // The lock screen controls, and music that keeps going with the screen off (they come back too if
+                // Android stopped the service while paused)
                 BenflixMusicPlaybackService.start(context)
             }
+        }
+
+        /**
+         * Benflix: the music session, made once and kept (also while stopped), so Android Auto can always browse
+         * and play music, and the lock screen controls work. Call from any thread.
+         */
+        fun ensureSession(): MediaSession {
+            synchronized(this) {
+                mediaSession?.let { return it }
+                Timber.i("Starting music MediaSession")
+                val session =
+                    androidx.media3.session.MediaLibraryService.MediaLibrarySession
+                        .Builder(
+                            context,
+                            player,
+                            MusicSessionCallback(
+                                onLike = {
+                                    state.value.currentAudio?.let { audio ->
+                                        defaultScope.launch { setLiked(audio.id, !state.value.liked) }
+                                    }
+                                },
+                                onStop = { defaultScope.launch { stop() } },
+                                car = carLibrary,
+                                playFromCar = ::playFromCar,
+                            ),
+                        ).setId("benflix-music")
+                        .setCustomLayout(MusicSessionButtons.buttons(false))
+                        .build()
+                mediaSession = session
+                return session
+            }
+        }
+
+        /**
+         * Benflix in the car: gets the songs picked on the car's screen ready, the same way the phone plays a list.
+         * The car's session puts them in the player; then the music starts like on the phone.
+         */
+        private suspend fun playFromCar(toPlay: MusicCarLibrary.ToPlay): List<MediaItem> {
+            val ac3 = preferAc3Surround()
+            val items = toPlay.songs.drop(toPlay.start).map { convert(it, ac3) }
+            generation++
+            added.clear()
+            sourceId = toPlay.sourceId
+            _state.update { it.copy(thenTitle = null) }
+            defaultScope.launch {
+                // After the car's session has put the songs in: the lock screen, My watching and Up next
+                kotlinx.coroutines.delay(400)
+                start()
+                withContext(WholphinDispatchers.Main) { updateQueueSize() }
+            }
+            return items
         }
 
         /**
@@ -436,11 +473,7 @@ class MusicService
         private suspend fun stopNow() {
             mutex.withLock {
                 Timber.i("Stopping music")
-                if (mediaSession == null) {
-                    Timber.w("Stopping but no MediaSession")
-                }
-                mediaSession?.release()
-                mediaSession = null
+                // Benflix: the session stays (Android Auto and the lock screen use it); only the music stops
                 onMain { BenflixMusicPlaybackService.stop(context) }
                 onMain {
                     websocketJob?.cancel()
