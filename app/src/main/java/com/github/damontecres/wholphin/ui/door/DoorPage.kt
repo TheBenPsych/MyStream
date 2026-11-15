@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -351,6 +352,19 @@ private fun WideDoor(
         }
     }
 
+    // Ben (robot find): coming Back after finishing a movie, Keep watching drops that card while it has the
+    // focus, and the focus fell onto the side menu (which opened over the page). When a row change takes the
+    // focus away from the rows, put it back on the same row, on the card now in that spot.
+    var rowsHaveFocus by remember { mutableStateOf(false) }
+    var rowsLostFocusAt by remember { mutableStateOf(0L) }
+    val rowsSignature = state.rows.map { r -> r.key to r.items.size }
+    LaunchedEffect(rowsSignature) {
+        val changedAt = System.currentTimeMillis()
+        if (!isTv || !restored) return@LaunchedEffect
+        delay(FOCUS_SETTLE_MS)
+        if (!rowsHaveFocus && rowsLostFocusAt >= changedAt - FOCUS_SETTLE_MS) restore.tryRequestFocus()
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
@@ -365,7 +379,11 @@ private fun WideDoor(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .onFocusChanged {
+                            if (rowsHaveFocus && !it.hasFocus) rowsLostFocusAt = System.currentTimeMillis()
+                            rowsHaveFocus = it.hasFocus
+                        },
             ) {
                 state.entries().forEach { entry ->
                     val row = (entry as? DoorEntry.Real)?.row
