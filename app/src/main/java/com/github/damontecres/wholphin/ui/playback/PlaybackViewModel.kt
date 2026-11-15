@@ -1047,7 +1047,14 @@ class PlaybackViewModel
                             TrackActivityPlaybackListener(
                                 api = api,
                                 player = player,
-                                getState = { playbackItemState },
+                                // Benflix: the sound or subtitles picked while playing (a direct-play switch keeps this
+                                // listener), so Tower sees and remembers the new choice
+                                getState = {
+                                    state.value.currentPlayback
+                                        ?.takeIf { it.item.id == playback.item.id && it.playSessionId == playback.playSessionId }
+                                        ?.let { PlaybackItemState(it) }
+                                        ?: playbackItemState
+                                },
                                 countWatchTime = playback.item.type == BaseItemKind.MOVIE || playback.item.type == BaseItemKind.EPISODE,
                                 watchDoor =
                                     when (playback.item.type) {

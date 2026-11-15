@@ -133,6 +133,8 @@ def open_title(name):
     if MODE != "tv" and edit:
         d.touch_tap(edit[0])
         time.sleep(1)
+    elif MODE == "tv":
+        d.key("DPAD_CENTER", wait=1.5)  # TV: the box says "OK to type"
     d.sh("input keyevent " + " ".join(["DEL"] * 30))
     for w in name.split():
         d.sh(f"input text '{w}'")
@@ -250,16 +252,21 @@ def sound_and_subtitles():
     time.sleep(3)
     before = play_info()
     # show the controls, then Settings > Audio > Spanish
-    tap_player()
+    # the controls hide again after a few seconds, so press Settings straight from the same look
+    opened = False
+    for _ in range(3):
+        tap_player()
+        n = d.find(d.dump(), r"^Settings$")
+        if n is not None:
+            d.tap(n)
+            opened = True
+            break
     j.step("switch-controls")
-    if not d.press(r"^Settings$", timeout=6):
+    if not opened:
         j.problem("no Settings button on the player controls", "Test Pattern One")
         leave_player()
         return
     time.sleep(2)
-    if d.find(d.dump(), r"^Audio") is None:  # the first press can just wake the controls
-        d.press(r"^Settings$", timeout=4)
-        time.sleep(2)
     j.step("switch-settings-panel")
     if d.press(r"^Audio", timeout=5):
         time.sleep(1)
@@ -269,8 +276,15 @@ def sound_and_subtitles():
             j.step("switch-audio-spanish")
     after_audio = play_info()
     # subtitles: the player's own Subtitles button
-    tap_player()
-    if d.press(r"^Subtitles$", timeout=6):
+    subs_open = False
+    for _ in range(3):
+        tap_player()
+        n = d.find(d.dump(), r"^Subtitles$")
+        if n is not None:
+            d.tap(n)
+            subs_open = True
+            break
+    if subs_open:
         time.sleep(1)
         j.step("switch-subtitle-list")
         if d.press(r"Spanish|Español|spa", timeout=5):
@@ -464,7 +478,8 @@ def kids_and_guest():
             d.sh("input text 'Test'")
             time.sleep(6)
             root, s = j.step("kids-search")
-            bad = [t for t in TITLES[:3] + ["Test Show"] if d.find(root, re.escape(t)) is not None]
+            # (Test Show is TV-PG, which Kids may watch)
+            bad = [t for t in TITLES[:3] if d.find(root, re.escape(t)) is not None]
             DEEP["kids"]["grown-up titles in Kids Search"] = bad
             if bad:
                 j.problem("Kids Search finds grown-up titles", ", ".join(bad))

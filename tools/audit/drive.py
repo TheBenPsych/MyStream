@@ -587,6 +587,9 @@ def welcome_setup():
     for _ in range(40):
         root = dump()
         step = find(root, r"^Step \d+ of \d+$")
+        # TV: moving down scrolls the step dots off the top; still the same step while its buttons show
+        if step is None and seen and find(root, r"^Next$|^Back$|^Skip for now$|^Looks good$|^No thanks$") is not None:
+            step = ET.Element("node", {"text": seen[-1]})
         if step is None:
             # the "You're all set" screen has no step dots
             n = find(root, r"^Go to Home$")
@@ -631,8 +634,11 @@ def welcome_setup():
         for b in buttons:
             n = find(root, b)
             if n is not None:
+                log(f"welcome {label}: pressing '{n.get('text') or n.get('content-desc')}' (try {tries[label]})")
                 tap(n)
                 time.sleep(2)
+                if tries[label] in (2, 5):
+                    shot(f"welcome-{label.split()[1]}-try{tries[label]}")
                 break
         else:
             # TV: the button can sit below the bottom of the screen until the remote moves down to it
