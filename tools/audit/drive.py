@@ -616,7 +616,7 @@ def welcome_setup():
         # (once picked it shows a tick; on TV the explanation underneath can also read just
         # "Only for other languages", so don't keep pressing it)
         n = find(root, r"^Only for other languages$")
-        if n is not None and find(root, r"^✓ ") is None:
+        if n is not None and find(root, r"^✓ ") is None and tries[label] <= 1:
             tap(n)
             time.sleep(1.5)
             continue

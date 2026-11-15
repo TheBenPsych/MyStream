@@ -166,7 +166,7 @@ async function resume(page) {
   const it = await itemByName("Test Pattern One");
   if (!it) return;
   await play(page, it.Id, "Test Pattern One (resume)");
-  await page.waitForTimeout(30000);
+  await page.waitForTimeout(60000); // Jellyfin only remembers places past 5% of the video
   await page.goto(BASE + `#/movie/${it.Id}`); await settle(page, 8000);
   await page.waitForTimeout(2000);
   await shot(page, "resume-title-page");

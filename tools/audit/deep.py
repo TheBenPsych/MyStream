@@ -168,11 +168,13 @@ def open_title(name):
     return secs
 
 
-def start_playing(label, button=r"^Play$|^Resume$|^Play from start$"):
+def start_playing(label, button=r"^Play$|^Resume$|^Play from start$|^Play S\d", server=True):
     """Press Play and time until the server says the video is moving"""
     if not d.press(button, timeout=8):
         j.problem("no Play button", label)
         return None
+    if not server:  # Guest tells the server nothing, on purpose
+        return 0
     start = time.time()
     first = None
     while time.time() - start < 45:
@@ -254,7 +256,10 @@ def sound_and_subtitles():
         j.problem("no Settings button on the player controls", "Test Pattern One")
         leave_player()
         return
-    time.sleep(1)
+    time.sleep(2)
+    if d.find(d.dump(), r"^Audio") is None:  # the first press can just wake the controls
+        d.press(r"^Settings$", timeout=4)
+        time.sleep(2)
     j.step("switch-settings-panel")
     if d.press(r"^Audio", timeout=5):
         time.sleep(1)
@@ -452,6 +457,10 @@ def kids_and_guest():
         # Search too
         if d.press(r"^Search$", timeout=6):
             time.sleep(2)
+            edit = [n for n in d.nodes(d.dump()) if n.get("class", "").endswith("EditText")]
+            if MODE != "tv" and edit:
+                d.touch_tap(edit[0])
+                time.sleep(1)
             d.sh("input text 'Test'")
             time.sleep(6)
             root, s = j.step("kids-search")
@@ -464,7 +473,9 @@ def kids_and_guest():
         j.step("guest-home")
         before = ((item_id("Surround Test") or {}).get("UserData") or {}).get("PlaybackPositionTicks", 0)
         if open_title("Surround Test") is not None:
-            start_playing("Surround Test (guest)", r"^Play$|^Resume$")
+            start_playing("Surround Test (guest)", r"^Play$|^Resume$", server=False)
+            time.sleep(5)
+            j.step("guest-playing")
             time.sleep(25)
             leave_player()
             time.sleep(3)

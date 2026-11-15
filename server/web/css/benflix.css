@@ -534,6 +534,10 @@ textarea.field { min-height: 90px; resize: vertical; }
 .bnow { font-size: 26px; font-weight: 800; }
 .player .time { white-space: nowrap; }
 @media (max-width: 600px) {
+  /* Phones: when the bar names the page, the logo keeps just its four squares so the name fits whole */
+  .top:has(.place) .logo { font-size: 0; gap: 0; }
+  .top:has(.place) .logo .sq { width: 24px; height: 24px; gap: 2px; }
+  .top:has(.place) .logo .sq i { border-radius: 2px; }
   .bnow { font-size: 19px; }
   .keyhint, #pEnds { display: none; }
   .player .row2 { gap: 4px; }
