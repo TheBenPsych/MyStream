@@ -388,6 +388,23 @@ fix_livetv_links() {
 }
 fix_livetv_links
 
+say "The address Jellyfin tells TVs"
+# Jellyfin can be told to always say "I'm at <address>" (JELLYFIN_PublishedServerUrl). After a move that old
+# address sends TVs to the wrong place on "Is this your server?", so warn when it isn't Tower's address now.
+check_published() {
+  local c pub
+  c=$(docker ps -a --format '{{.Names}}' | grep -i jellyfin | head -1)
+  [ -n "$c" ] || return
+  pub=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$c" | sed -n 's/^JELLYFIN_PublishedServerUrl=//p' | head -1)
+  if [ -z "$pub" ]; then echo "  ok  Jellyfin works out its own address."; return; fi
+  case "$pub" in
+    *"$HOST_IP"* | *[a-zA-Z]*) echo "  ok  Jellyfin tells TVs: $pub" ;;
+    *) echo "  PROBLEM  Jellyfin tells TVs it's at $pub, but Tower is at $HOST_IP now."
+       echo "           Docker tab > Jellyfin > Edit > JELLYFIN_PublishedServerUrl = http://$HOST_IP:8096 > Apply." ;;
+  esac
+}
+check_published
+
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."
 echo "The Server page (My Benflix > Server) now shows your apps, downloads and how busy Tower is."
