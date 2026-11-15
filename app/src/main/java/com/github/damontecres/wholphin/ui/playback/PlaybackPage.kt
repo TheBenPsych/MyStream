@@ -331,6 +331,7 @@ fun PlaybackPageContent(
             )
         }
 
+    val togetherContext = LocalContext.current
     val onPlaybackActionClick: (PlaybackAction) -> Unit = {
         when (it) {
             is PlaybackAction.PlaybackSpeed -> {
@@ -416,6 +417,20 @@ fun PlaybackPageContent(
             is PlaybackAction.ReportProblem -> {
                 viewModel.reportProblem(it.problem)
             }
+
+            PlaybackAction.TogetherStart -> {
+                state.currentPlayback?.item?.let { item ->
+                    scope.launch { WatchTogether.start(togetherContext, item, player.currentPosition, player.playWhenReady) }
+                }
+            }
+
+            is PlaybackAction.TogetherJoin -> {
+                WatchTogether.join(it.code)
+            }
+
+            PlaybackAction.TogetherLeave -> {
+                WatchTogether.leave(togetherContext)
+            }
         }
     }
 
@@ -448,6 +463,9 @@ fun PlaybackPageContent(
         )
         onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
     }
+
+    // Benflix: watch together, in step with the lobby (see WatchTogether)
+    WatchTogetherEffect(player, state.currentPlayback?.item, viewModel.navigationManager)
 
     // Benflix on phones: keep watching in a small window when leaving the app (see PhonePip)
     if (!isTv) {
@@ -1314,6 +1332,8 @@ fun PlaybackPageContent(
                             }
                         },
                     canFixSkips = state.currentPlayback?.item?.type != BaseItemKind.TV_CHANNEL,
+                    canWatchTogether =
+                        state.currentPlayback?.item?.type.let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
                 ),
             onDismissRequest = {
                 playbackDialog =

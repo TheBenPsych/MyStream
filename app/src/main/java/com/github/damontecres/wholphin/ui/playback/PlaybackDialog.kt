@@ -48,6 +48,9 @@ enum class PlaybackDialogType {
 
     /** Benflix: "Report a problem" from the player's Fix a problem list */
     REPORT,
+
+    /** Benflix: watch together with people on other TVs, phones and browsers */
+    TOGETHER,
 }
 
 data class PlaybackSettings(
@@ -66,6 +69,8 @@ data class PlaybackSettings(
     val title: String? = null,
     /** "Skip at the wrong time" only shows when there's something to skip (not on live channels) */
     val canFixSkips: Boolean = true,
+    /** Watch together (not on live channels) */
+    val canWatchTogether: Boolean = false,
 )
 
 /**
@@ -234,6 +239,18 @@ fun PlaybackDialog(
                             onClick = { onClickPlaybackDialogType(PlaybackDialogType.BITRATE) },
                         ),
                     )
+                    if (settings.canWatchTogether) {
+                        add(
+                            PanelLine.Row(
+                                label = "Watch together",
+                                value = WatchTogether.code?.let { "On · ${WatchTogether.people.size + 1} watching" } ?: "Off",
+                                note = "In step with other TVs, phones and the web Lobby",
+                                icon = BenflixIcon.PERSON,
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.TOGETHER) },
+                            ),
+                        )
+                    }
                     add(PanelLine.Heading("Fix a problem"))
                     add(
                         PanelLine.Row(
@@ -418,6 +435,69 @@ fun PlaybackDialog(
                         )
                     },
                 onDismissRequest = onDismissRequest,
+            )
+        }
+
+        PlaybackDialogType.TOGETHER -> {
+            val inLobby = WatchTogether.code
+            androidx.compose.runtime.LaunchedEffect(inLobby) {
+                if (inLobby == null) WatchTogether.loadLobbies(context)
+            }
+            val lobbies = WatchTogether.lobbies
+            PlayerPanel(
+                title = "Watch together",
+                subtitle =
+                    if (inLobby != null) {
+                        val others = WatchTogether.people
+                        if (others.isEmpty()) {
+                            "Waiting for others. On another TV or phone: Settings > Watch together > join ${WatchTogether.hostName}'s."
+                        } else {
+                            "Watching with ${others.joinToString(", ")}. Play, pause and jumps happen for everyone."
+                        }
+                    } else {
+                        "Watch in step with people on other TVs, phones and the web Lobby."
+                    },
+                lines =
+                    buildList {
+                        if (inLobby != null) {
+                            WatchTogether.problem?.let { add(PanelLine.Heading(it)) }
+                            add(
+                                PanelLine.Row(
+                                    label = "Stop watching together",
+                                    icon = BenflixIcon.CLOSE,
+                                    onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherLeave) },
+                                ),
+                            )
+                        } else {
+                            add(
+                                PanelLine.Row(
+                                    label = "Start watching together",
+                                    note = "Others join from their TV, phone or the web Lobby",
+                                    icon = BenflixIcon.PLAY,
+                                    onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherStart) },
+                                ),
+                            )
+                            when {
+                                lobbies == null -> add(PanelLine.Heading("Looking for people watching…"))
+                                lobbies.none { !it.mine } -> add(PanelLine.Heading("Nobody else is watching together right now"))
+                                else -> {
+                                    add(PanelLine.Heading("Join"))
+                                    lobbies.filter { !it.mine }.forEach { lobby ->
+                                        add(
+                                            PanelLine.Row(
+                                                label = "${lobby.hostName}'s",
+                                                value = lobby.title.ifBlank { "Nothing on yet" },
+                                                note = "${lobby.people} watching",
+                                                icon = BenflixIcon.PERSON,
+                                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherJoin(lobby.code)) },
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
 

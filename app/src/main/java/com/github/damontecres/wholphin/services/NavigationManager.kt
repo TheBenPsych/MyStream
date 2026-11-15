@@ -33,6 +33,14 @@ class NavigationManager
             log()
         }
 
+        /** Benflix: swap the page on top for [destination] (watch together follows the lobby to its next movie) */
+        fun replaceTop(destination: Destination) {
+            synchronized(this) {
+                if (backStack.isEmpty()) backStack.add(destination) else backStack[backStack.lastIndex] = destination
+            }
+            log()
+        }
+
         /**
          * Go to the previous page
          */

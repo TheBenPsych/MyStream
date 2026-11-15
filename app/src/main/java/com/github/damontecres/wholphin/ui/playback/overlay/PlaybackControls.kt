@@ -146,6 +146,17 @@ sealed interface PlaybackAction {
 
     data object Previous : PlaybackAction
 
+    /** Benflix: watch together, start a lobby with this movie or show */
+    data object TogetherStart : PlaybackAction
+
+    /** Benflix: watch together, join the lobby [code] */
+    data class TogetherJoin(
+        val code: String,
+    ) : PlaybackAction
+
+    /** Benflix: watch together, leave the lobby */
+    data object TogetherLeave : PlaybackAction
+
     data object Next : PlaybackAction
 
     data class ChangeBitrate(
