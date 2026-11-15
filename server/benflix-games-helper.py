@@ -200,7 +200,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 6
+SETUP_VERSION = 7
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -1438,6 +1438,36 @@ class Handler(BaseHTTPRequestHandler):
         self.route("HEAD")
 
 
+def wifi_finder():
+    """Benflix: answers "who is JellyfinServer?" on port 7360, so TVs find Tower on the Wi-Fi even when Jellyfin
+    (in Docker) can't hear the question or names an old address. The answer says Tower's real address."""
+    import socket
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("0.0.0.0", 7360))
+    except Exception as e:
+        print(f"Wi-Fi finder off: {e}", flush=True)
+        return
+    jf_port = urllib.parse.urlparse(JELLYFIN_URL).port or 8096
+    while True:
+        try:
+            data, sender = sock.recvfrom(1024)
+            if b"jellyfin" not in data.lower():
+                continue
+            info = json.loads(urllib.request.urlopen(JELLYFIN_URL + "/System/Info/Public", timeout=4).read())
+            # Tower's own address on the network the question came from
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            probe.connect(sender)
+            mine = probe.getsockname()[0]
+            probe.close()
+            answer = {"Address": f"http://{mine}:{jf_port}", "Id": info.get("Id"), "Name": info.get("ServerName"), "EndpointAddress": None}
+            sock.sendto(json.dumps(answer).encode(), sender)
+        except Exception as e:
+            print(f"Wi-Fi finder: {e}", flush=True)
+
+
 if __name__ == "__main__":
     if livetv is not None:
         livetv.start()
@@ -1467,5 +1497,6 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
+    threading.Thread(target=wifi_finder, daemon=True).start()
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

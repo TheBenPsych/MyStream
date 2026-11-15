@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 6
+            const val SETUP_NEEDED = 7
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -100,6 +100,10 @@ class TowerSetupCheck
                     6 to
                         listOf(
                             "The Lobby: a 3D room in web Benflix to watch together, chat and play pool",
+                        ),
+                    7 to
+                        listOf(
+                            "TVs find Tower on the Wi-Fi by themselves, even after Tower's address changes",
                         ),
                 )
 
