@@ -285,9 +285,12 @@ B.where = (hash) => {
   try { trail = JSON.parse(sessionStorage.getItem(TRAIL_KEY) || "[]"); } catch (e) {}
   const page = hash.split("?")[0];
   if (/^#\/(home|who|signin)$/.test(page)) trail = [];
+  // A door or a page from the top bar starts a new line (Movies then Shows isn't "Movies > Shows")
+  if (/^#\/(movies|shows|live|music|games|books|requests|search|settings(\/\w+)?|help(\/\w+)?|mine|lobby)$/.test(page)) trail = [];
   const name = B.placeName || "";
   const at = trail.findIndex((t) => t.h === hash);
   if (at >= 0) trail = trail.slice(0, at + 1);
+  else if (name && trail.length && trail[trail.length - 1].n === name) trail[trail.length - 1] = { h: hash, n: name.slice(0, 80) };
   else if (name) trail.push({ h: hash, n: name.slice(0, 80) });
   trail = trail.slice(-6);
   try { sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail)); } catch (e) {}

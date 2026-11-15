@@ -475,7 +475,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);
         subIndex = idx; p.remove();
-        if (idx === -1 || (st && st.DeliveryMethod === "External")) return showSubs();
+        if (idx === -1 || (st && st.DeliveryMethod === "External")) { showSubs(); return report("/Progress"); } // tell Tower straight away
         return load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
       }
       if (qq) { settings.quality = qq.dataset.q; B.setWebSetting("quality", qq.dataset.q); p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }

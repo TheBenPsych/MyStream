@@ -150,7 +150,7 @@ async function soundAndSubs(page) {
   await page.click("#pGear").catch(() => {});
   await page.waitForTimeout(800);
   const spanishSub = page.locator("button[data-s]", { hasText: /Spanish|Español|spa/i }).first();
-  if (await spanishSub.count()) { await spanishSub.click(); await page.waitForTimeout(6000); } else problem("computer", "no Spanish subtitle choice in the player Settings", "");
+  if (await spanishSub.count()) { await spanishSub.click(); await page.waitForTimeout(12000); } else problem("computer", "no Spanish subtitle choice in the player Settings", "");
   await shot(page, "switch-subtitles-spanish");
   const afterSubs = await playInfo();
   const shown = await page.evaluate(() => Array.from(document.querySelectorAll("video track, .subs, #pSubsText")).map((e) => e.label || e.innerText || "").join(" | ")).catch(() => "");

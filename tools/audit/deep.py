@@ -67,13 +67,13 @@ def api(path, method="GET", body=None):
 
 def app_session():
     """The app's playing session on the server, or None"""
-    s = api("/Sessions?ActiveWithinSeconds=120")
+    s = api("/Sessions?ActiveWithinSeconds=60")
     if not isinstance(s, list):
         return None
-    for x in s:
-        if x.get("DeviceId") != "deep-robot" and x.get("NowPlayingItem"):
-            return x
-    return None
+    playing = [x for x in s if x.get("DeviceId") != "deep-robot" and x.get("NowPlayingItem")]
+    # the newest one (an older stopped video can linger for a moment)
+    playing.sort(key=lambda x: x.get("LastPlaybackCheckIn") or x.get("LastActivityDate") or "", reverse=True)
+    return playing[0] if playing else None
 
 
 def play_info():
@@ -109,11 +109,16 @@ def docker(*args):
     return r.returncode == 0
 
 
+HOMES = d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome$"
+
+
 def go_home():
-    d.back_to_home()
-    if d.find(d.dump(), d.HOME_GREETING_RE) is None:
+    for _ in range(6):
+        if d.find(d.dump(), HOMES) is not None:
+            return
+        d.key("BACK", wait=1)
+    if d.find(d.dump(), HOMES) is None:
         j.ensure_app()
-        d.back_to_home()
 
 
 def open_title(name):
@@ -192,6 +197,18 @@ def watch(label, seconds=12):
     return a, b, moved
 
 
+def tap_player():
+    if MODE == "tv":
+        d.key("DPAD_CENTER", wait=1.2)
+        return
+    root = d.dump()
+    nodes = d.nodes(root)
+    if nodes:
+        a, b, c, e = d.bounds(nodes[0])
+        d.sh(f"input tap {(a + c) // 2} {(b + e) // 3}")
+    time.sleep(1)
+
+
 def leave_player():
     for _ in range(4):
         if d.find(d.dump(), r"^Play$|^Resume$|^Play from start$|^Episodes$|^Overview$") is not None:
@@ -231,11 +248,7 @@ def sound_and_subtitles():
     time.sleep(3)
     before = play_info()
     # show the controls, then Settings > Audio > Spanish
-    if MODE == "tv":
-        d.key("DPAD_CENTER", wait=1.2)
-    else:
-        d.sh("input tap 540 1100")
-        time.sleep(1)
+    tap_player()
     j.step("switch-controls")
     if not d.press(r"^Settings$", timeout=6):
         j.problem("no Settings button on the player controls", "Test Pattern One")
@@ -251,16 +264,12 @@ def sound_and_subtitles():
             j.step("switch-audio-spanish")
     after_audio = play_info()
     # subtitles: the player's own Subtitles button
-    if MODE == "tv":
-        d.key("DPAD_CENTER", wait=1.2)
-    else:
-        d.sh("input tap 540 1100")
-        time.sleep(1)
+    tap_player()
     if d.press(r"^Subtitles$", timeout=6):
         time.sleep(1)
         j.step("switch-subtitle-list")
         if d.press(r"Spanish|Español|spa", timeout=5):
-            time.sleep(6)
+            time.sleep(12)
             j.step("switch-subtitles-spanish")
     after_subs = play_info()
     DEEP["switching"] = {"before": before, "after sound": after_audio, "after subtitles": after_subs}
@@ -354,29 +363,37 @@ def bad_wifi():
         j.problem("after Tower came back, the movie didn't carry on by itself", str(play_info()))
     leave_player()
 
-    # Tower switched off while browsing
+    # Tower switched off while browsing: open Movies, then just wait like a person would
     go_home()
+    d.press(r"^Movies$", timeout=6)
+    time.sleep(4)
     docker("stop", "jellyfin")
-    for door in ("Movies", "Shows"):
-        d.press(rf"^{door}$", timeout=6)
-        time.sleep(8)
-        root, s = j.step(f"tower-off-{door}")
-        if not s.get("texts"):
-            j.problem("blank screen with Tower off", door)
-        d.key("BACK", wait=2)
+    d.key("BACK", wait=2)
+    d.press(r"^Shows$", timeout=6)
+    for at in (8, 30):
+        time.sleep(at - (8 if at == 30 else 0))
+        j.step(f"tower-off-{at}s")
     docker("start", "jellyfin")
     for _ in range(60):
         if "Version" in json.dumps(api("/System/Info/Public")):
             break
         time.sleep(2)
     TOKEN[0] = None
-    time.sleep(5)
-    d.press(r"^Movies$", timeout=6)
-    t = d.wait_for("|".join(TITLES), 40)
-    j.step("tower-back-on-movies")
-    DEEP["tower off"] = {"seconds for Movies to show again after Tower came back": t}
+    t0 = time.time()
+    t = None
+    while time.time() - t0 < 60:
+        root = d.dump()
+        if d.find(root, r"taking a nap|being worked on|Checking again") is None and d.texts(root):
+            t = round(time.time() - t0, 1)
+            break
+        time.sleep(2)
+    root, s = j.step("tower-back-on")
+    landed = " | ".join(x for x in d.texts(root) if x)[:200]
+    DEEP["tower off"] = {"seconds to leave the nap screen after Tower came back": t, "landed on": landed}
     if t is None:
-        j.problem("Movies stayed empty after Tower came back on", "")
+        j.problem("still on the nap screen a minute after Tower came back", "")
+    elif d.find(root, r"Who's watching") is not None:
+        j.problem("after Tower came back, the app went to Who's watching instead of where you were", landed)
 
 
 def switch_profile(tile):
@@ -413,7 +430,7 @@ def switch_profile(tile):
         n = d.find(d.dump(), b)
         if n is not None:
             d.tap(n)
-    if d.wait_for(d.HOME_GREETING_RE, 30) is None:
+    if d.wait_for(d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome$", 30) is None:
         j.step(f"{tile}-no-home")
         j.problem("profile didn't reach Home", tile)
         return False

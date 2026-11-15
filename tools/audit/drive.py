@@ -635,6 +635,10 @@ def welcome_setup():
                 time.sleep(2)
                 break
         else:
+            # TV: the button can sit below the bottom of the screen until the remote moves down to it
+            if MODE == "tv" and tries[label] <= 3:
+                key("DPAD_DOWN", 3, wait=0.5)
+                continue
             REPORT["problems"].append({"type": "welcome setup: no button to go on", "text": label})
             break
     REPORT["welcome_steps"] = seen
