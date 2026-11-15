@@ -102,6 +102,7 @@ internal object ServerMoved {
             found?.takeIf { sameServer(serverIdAt(it), server) }
                 ?: NAMES.map { "http://$it:$port" }.firstOrNull { sameServer(serverIdAt(it), server) }
                 ?: senderAddress(server.id, port)
+                ?: findOnWifi().firstOrNull { it.id == server.id }?.url
         if (newUrl == null) {
             Timber.i("Couldn't find the server at a new address")
             return server
@@ -211,4 +212,71 @@ internal object ServerMoved {
             .firstOrNull { serverIdAt(it)?.toUUIDOrNull() == want }
             ?.also { Timber.i("Found server by where its answer came from: %s", it) }
     }
+
+    /** A Jellyfin server found on the home Wi-Fi: its id, name and an address that answers */
+    data class Found(
+        val id: java.util.UUID,
+        val name: String?,
+        val url: String,
+    )
+
+    /**
+     * Benflix: finds Tower on the home Wi-Fi even when Jellyfin's own finder doesn't answer (Jellyfin in Docker
+     * often can't hear the question) or answers with an old address. Asks Jellyfin (port 7359) and Tower's Benflix
+     * helper (port 7360, which always hears it), uses the address each answer came from, and also tries Tower's
+     * names. Only addresses that really answer are returned. Call off the main thread.
+     */
+    fun findOnWifi(): List<Found> {
+        val found = linkedMapOf<java.util.UUID, Found>()
+        fun tryUrl(url: String) {
+            val body = publicInfo(url) ?: return
+            val id = Regex("\"Id\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)?.toUUIDOrNull() ?: return
+            if (id in found) return
+            val name = Regex("\"ServerName\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1)
+            found[id] = Found(id, name, url)
+        }
+        try {
+            java.net.DatagramSocket().use { socket ->
+                socket.broadcast = true
+                socket.soTimeout = 1200
+                val ask = "who is JellyfinServer?".toByteArray()
+                val all = java.net.InetAddress.getByName("255.255.255.255")
+                for (port in listOf(7359, 7360)) socket.send(java.net.DatagramPacket(ask, ask.size, all, port))
+                val buf = ByteArray(4096)
+                val end = System.currentTimeMillis() + 2500
+                val answers = mutableListOf<Pair<String, Int>>()
+                while (System.currentTimeMillis() < end) {
+                    val packet = java.net.DatagramPacket(buf, buf.size)
+                    try {
+                        socket.receive(packet)
+                    } catch (_: java.net.SocketTimeoutException) {
+                        break
+                    }
+                    val body = String(packet.data, 0, packet.length)
+                    val port =
+                        Regex("\"Address\"\\s*:\\s*\"[^\"]*:(\\d+)").find(body)?.groupValues?.get(1)?.toIntOrNull() ?: 8096
+                    packet.address?.hostAddress?.let { answers.add(it to port) }
+                }
+                answers.distinct().forEach { (ip, port) -> tryUrl("http://$ip:$port") }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Wi-Fi server finder didn't work")
+        }
+        if (found.isEmpty()) NAMES.forEach { tryUrl("http://$it:8096") }
+        return found.values.toList()
+    }
+
+    private fun publicInfo(base: String): String? =
+        try {
+            val conn = URL(base.trimEnd('/') + "/System/Info/Public").openConnection() as HttpURLConnection
+            conn.connectTimeout = 2500
+            conn.readTimeout = 3000
+            try {
+                if (conn.responseCode == 200) conn.inputStream.bufferedReader().use { it.readText() } else null
+            } finally {
+                conn.disconnect()
+            }
+        } catch (_: Exception) {
+            null
+        }
 }

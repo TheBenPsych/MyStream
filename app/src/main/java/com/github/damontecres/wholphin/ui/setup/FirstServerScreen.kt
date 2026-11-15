@@ -158,5 +158,5 @@ fun FirstServerScreen(
     }
 }
 
-private const val LOOK_MS = 4000L
+private const val LOOK_MS = 6000L
 private const val MAX_FOUND = 3
