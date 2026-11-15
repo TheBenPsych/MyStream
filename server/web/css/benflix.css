@@ -1365,3 +1365,17 @@ html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 6
 
 /* Touch screens swipe rows; the hover arrows stuck on after a tap and covered the first card's name */
 @media (hover: none) { .rowx .arrow { display: none; } }
+
+/* Ben (2026-11-15): on touch screens every button is at least 44 pixels tall, so thumbs hit it easily.
+   Things with a visible box grow to 44 (still centred, same look); small text links keep their look and
+   get an invisible 44-pixel touch area around them, so nothing on the page moves. */
+@media (hover: none) and (pointer: coarse) {
+  .top .circle, .top .me .pic { width: 44px; height: 44px; }
+  .top .homelink { min-height: 44px; }
+  .chip, .drail a, .btn, .btn.small, .valbtn { min-height: 44px; }
+  .tp .tp-tab { min-height: 44px; display: inline-flex; align-items: flex-end; }
+  /* phones have no keyboard: the shortcuts button only squeezed the other player buttons down to 26 pixels */
+  .player #pKeys { display: none; }
+  .rowx h3 .more, .tp .tp-more { position: relative; }
+  .rowx h3 .more::after, .tp .tp-more::after { content: ""; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
+}
