@@ -109,7 +109,7 @@ def open_door(name):
     return True
 
 
-def first_poster_tv(downs=2, rights=1):
+def first_poster_tv(downs=0, rights=1):
     d.key("DPAD_DOWN", downs, wait=0.6)
     d.key("DPAD_RIGHT", rights, wait=0.6)
     time.sleep(1)
@@ -259,7 +259,7 @@ def profile_and_settings():
     if MODE == "tv":
         d.key("DPAD_UP", 4, wait=0.5)
         step("home-top-bar")
-        d.key("DPAD_RIGHT", 6, wait=0.4)
+        d.key("DPAD_RIGHT", 2, wait=0.4)
         step("home-top-bar-right")
         d.key("DPAD_CENTER", wait=1.5)
     else:
@@ -307,8 +307,7 @@ def home_walk():
             d.sh("input swipe 500 1700 500 700 400")
             time.sleep(1.2)
             step(f"home-scroll-{i}")
-        d.key("BACK", wait=1.5)
-        step("home-back-while-scrolled")
+        d.sh("input swipe 500 600 500 2000 300")
 
 
 def back_from_home():
@@ -318,6 +317,16 @@ def back_from_home():
     J["back_from_home"] = s.get("texts", [])[:10]
     if not d.app_running():
         J["back_from_home"] = "app closed straight away"
+
+
+def ensure_app():
+    """Back on Home closes the app on a phone (like most apps): open it again so the next trip can start"""
+    top = d.sh("dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity'")
+    if PKG not in top:
+        J["steps"].append({"step": "app was closed; opening it again"})
+        d.sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
+        time.sleep(6)
+        d.sign_in()
 
 
 def main():
@@ -348,6 +357,7 @@ def main():
         if d.out_of_time():
             break
         try:
+            ensure_app()
             trip()
         except Exception as e:  # keep going: one broken trip shouldn't hide the rest
             problem("robot error", repr(e)[:300])
