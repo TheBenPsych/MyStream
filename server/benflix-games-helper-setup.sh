@@ -407,6 +407,29 @@ check_published() {
 }
 check_published
 
+say "Keeping Tower up to date by itself"
+# Every hour Tower checks GitHub for a newer helper and runs this command again by itself when there is one,
+# so nobody has to paste it after an update. It lives on the USB stick, so it survives restarts.
+install_autosetup() {
+  local cron=/boot/config/plugins/dynamix/benflix-autosetup.cron line
+  line="23 * * * * /bin/bash /boot/config/benflix/autosetup.sh >/dev/null 2>&1"
+  # Remember this copy of the command, so the hourly check only runs it again when GitHub has a newer one
+  curl -fsSL "$RAW/benflix-games-helper-setup.sh" -o "$APP/setup-last.sh" 2>/dev/null
+  if ! mkdir -p /boot/config/benflix || ! curl -fsSL "$RAW/benflix-autosetup.sh" -o /boot/config/benflix/autosetup.sh; then
+    echo "  PROBLEM  Couldn't save the hourly update check. Run this command again later."
+    return
+  fi
+  if command -v update_cron >/dev/null 2>&1 && mkdir -p "$(dirname "$cron")"; then
+    printf '# Benflix: check GitHub for helper updates every hour\n%s\n' "$line" >"$cron"
+    update_cron
+  else
+    (crontab -l 2>/dev/null | grep -v benflix/autosetup.sh; echo "$line") | crontab -
+  fi
+  echo "  ok  Tower checks for helper updates every hour and installs them by itself."
+  echo "      You won't need to run this command again after updates. What it did: $APP/autosetup.log"
+}
+install_autosetup
+
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."
 echo "The Server page (My Benflix > Server) now shows your apps, downloads and how busy Tower is."
