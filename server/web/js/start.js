@@ -628,7 +628,7 @@ B.openMenu = async () => {
   const items = [
     ["#/requests", "plus", "Requests"],
     ["#/mine", "chart", "My watching"],
-    ["#/lobby", "tv", "Lobby: watch together"],
+    B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together"] : null,
     ["#/settings", "gear", "Settings"],
     B.me.admin ? ["#/server", "server", "Server"] : null,
     ["#/help", "help", "Help and updates"],

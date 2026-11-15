@@ -10,8 +10,7 @@ This file is Tower's "room helper". It only keeps things in memory (nothing is s
 - The pool table: each shot (where the balls were and how hard the white ball was hit), so every browser
   plays the same shot.
 
-Rules: up to 8 people a lobby. Kids profiles can join only when the TV is showing something Kids may watch,
-can't open a lobby, and chat with ready-made phrases instead of typing. A lobby closes 15 minutes after the
+Rules: up to 8 people a lobby. Kids profiles can't use the Lobby at all (Ben, 2026-11-15). A lobby closes 15 minutes after the
 last person leaves. Only uses the Python standard library.
 """
 
@@ -151,6 +150,11 @@ def _may_control(lob, user_id):
 def route(method, path, read_json, user_id, user_name, is_admin, is_kids):
     """Answers /api/lobby/... Returns (status, answer)."""
     parts = [p for p in path.split("/") if p][2:]  # after "api", "lobby"
+    if is_kids:
+        # The Lobby is for grown-ups and Big kids only, never Kids profiles (Ben, 2026-11-15)
+        if method == "GET" and parts == ["list"]:
+            return 200, {"lobbies": [], "kids_phrases": []}
+        raise LobbyError(403, "The Lobby isn't for Kids profiles.")
     with _lock:
         _tidy()
         if method == "GET" and parts == ["list"]:
