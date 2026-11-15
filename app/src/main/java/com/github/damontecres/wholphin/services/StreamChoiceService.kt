@@ -458,12 +458,13 @@ class StreamChoiceService
 
                         SubtitlePlaybackMode.DEFAULT -> {
                             // Benflix: with a subtitle language set, a track that is only marked "default" or
-                            // "forced" must still be in that language, the sound's language, or unmarked.
+                            // "forced" must still be in that language (English unless the profile picked
+                            // another) or have no language marked. Never another language by itself.
                             // Before, a German forced track (yellow words for a few seconds after the intro on
                             // The Big Bang Theory) turned on by itself on English shows.
                             if (subtitleLanguage.isNotNullOrBlank()) {
                                 candidates.firstOrNull { it.language.equals(subtitleLanguage, true) && (it.isDefault || it.isForced) }
-                                    ?: candidates.firstOrNull { (it.isDefault || it.isForced) && it.language.fitsSound(audioStreamLang) }
+                                    ?: candidates.firstOrNull { (it.isDefault || it.isForced) && it.language.isUnknown }
                             } else {
                                 candidates.firstOrNull { it.isDefault || it.isForced }
                             }
@@ -607,10 +608,6 @@ private val String?.isUnknown: Boolean
 
 private val String?.isNotUnknown: Boolean
     get() = !this.isUnknown
-
-/** Benflix: true when a subtitle in this language goes with the sound (same language, or not marked). */
-private fun String?.fitsSound(audioLanguage: String?): Boolean =
-    this.isUnknown || (audioLanguage != null && equals(audioLanguage, ignoreCase = true))
 
 private fun String?.equalsLangOrUnknown(lang: String): Boolean = equals(lang, ignoreCase = true) || this.isUnknown
 
