@@ -318,10 +318,12 @@ fun SearchPage(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 boxModifier
-                    .focusGroup()
-                    // Ben: Search opens (and comes back) on the search box, not the microphone beside it
+                    // Ben: Search opens (and comes back) on the search box, not the microphone beside it.
+                    // Order matters: the requester and onEnter must sit before focusGroup to belong to the
+                    // group (after it they went to the first child, the microphone)
+                    .focusRequester(focusRequesters[SEARCH_ROW])
                     .focusProperties { onEnter = { textFieldFocusRequester.tryRequestFocus() } }
-                    .focusRequester(focusRequesters[SEARCH_ROW]),
+                    .focusGroup(),
         ) {
             AnimatedVisibility(
                 visible = voiceSearchButtonVisible,
