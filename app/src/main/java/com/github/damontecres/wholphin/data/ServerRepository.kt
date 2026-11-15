@@ -297,7 +297,12 @@ class ServerRepository
 
         /** Benflix: remembers the address that just worked and asks Tower/GitHub for any others, in the background */
         private fun rememberWorking(server: JellyfinServer) {
-            ServerAddressBook.remember(context, server.id, server.url, first = true)
+            try {
+                ServerAddressBook.remember(context, server.id, server.url, first = true)
+            } catch (e: Exception) {
+                Timber.w(e, "Couldn't remember the server address")
+                return
+            }
             backgroundScope.launch {
                 try {
                     ServerAddressBook.refresh(context, server.id, server.url)
