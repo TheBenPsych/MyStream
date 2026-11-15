@@ -577,6 +577,21 @@ class MainActivity : AppCompatActivity() {
         Timber.d("onDestroy")
     }
 
+    // Benflix: a phone playing a movie or show goes into a small window when you leave (see PhonePip)
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        com.github.damontecres.wholphin.ui.playback.PhonePip
+            .onLeave(this)
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        com.github.damontecres.wholphin.ui.playback.PhonePip.active = isInPictureInPictureMode
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         Timber.d("onConfigurationChanged: newConfig=%s", newConfig)

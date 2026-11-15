@@ -123,6 +123,8 @@ class WholphinApplication :
         com.github.damontecres.wholphin.ui.components.BenflixPopups.waiting.size
         com.github.damontecres.wholphin.ui.downloads.OfflineScreenState.showing.value
         com.github.damontecres.wholphin.ui.nav.TopBarInset.heightPx
+        com.github.damontecres.wholphin.ui.playback.PhonePip.active
+        com.github.damontecres.wholphin.ui.playback.WatchTogether.code
     }
 
     @Inject

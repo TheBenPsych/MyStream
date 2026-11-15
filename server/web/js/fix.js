@@ -1,5 +1,5 @@
 /* Benflix web: "Fix poster and details" for the main profile (admin only).
-   Change the title, year, story and age rating, pick a different poster or background picture from the
+   Fix a wrong match (pick the right film or show), change the title, year, story and age rating, pick a different poster or background picture from the
    ones Jellyfin can find online, or ask Jellyfin to look the whole thing up again. Jellyfin itself checks
    that only an admin can save these. */
 "use strict";
@@ -21,10 +21,12 @@
     // Albums, artists, episodes, people, books and channels (Redesign 2: Pick a picture on every card) have just their one picture
     const titleKind = /^(Movie|Series|Season|BoxSet)$/.test(it.Type);
     const kinds = () => KINDS.filter((k) => (!titleKind ? k.type === "Primary" : k.seasons ? it.Type === "Series" : k.type !== "Logo" || (it.Type !== "Season" && it.Type !== "BoxSet")));
+    // "Fix wrong match" (Jellyfin's Identify): search the movie and show sites and pick the right one
+    const canMatch = it.Type === "Movie" || it.Type === "Series";
     const p = B.side(`<div id="fixBody">${B.spinner()}</div>`, () => B.render());
     const body = () => p.querySelector("#fixBody");
     const tabs = () => `<h3>Fix ${esc(it.Name)}</h3><p class="dim">Changes show on every TV, phone and browser.</p>
-      <div class="row" style="gap:8px;margin:14px 0 18px;flex-wrap:wrap">${[["details", "Details"], ...kinds().map((k) => [k.type, k.label]), ["again", "Look it up again"]]
+      <div class="row" style="gap:8px;margin:14px 0 18px;flex-wrap:wrap">${[["details", "Details"], ...(canMatch ? [["match", "Fix wrong match"]] : []), ...kinds().map((k) => [k.type, k.label]), ["again", "Look it up again"]]
         .map(([id, label]) => `<button class="chip ${tab === id ? "on" : ""}" data-tab="${id}">${esc(label)}</button>`).join("")}</div>`;
 
     const drawDetails = () => {
@@ -108,6 +110,36 @@
       draw();
     };
 
+    const drawMatch = (name, year, results) => {
+      const kind = it.Type === "Series" ? "Series" : "Movie";
+      body().innerHTML = tabs() + `<p>Showing the wrong ${kind === "Series" ? "show" : "film"}? Search for the right one and pick it. Story, cast and pictures all switch over.</p>
+        <form id="matchForm" class="row" style="gap:8px;flex-wrap:wrap;margin:12px 0">
+          <input class="field" name="name" value="${esc(name)}" placeholder="Name" style="flex:1 1 220px">
+          <input class="field" name="year" value="${esc(year || "")}" placeholder="Year" inputmode="numeric" style="width:90px">
+          <button class="btn white" type="submit">${I("search")} Search</button></form>
+        <div id="matchList">${results === undefined ? "" : !results ? B.spinner() : !results.length ? `<p class="dim">Nothing found. Try fewer words or no year.</p>`
+          : results.map((r, i) => `<button class="opt" data-match="${i}" style="display:flex;gap:12px;align-items:center;text-align:left">
+              ${r.ImageUrl ? `<img src="${esc(r.ImageUrl)}" alt="" style="width:54px;height:80px;object-fit:cover;border-radius:6px;flex:none">` : ""}
+              <span><b>${esc(r.Name)}</b>${r.ProductionYear ? ` (${esc(r.ProductionYear)})` : ""}<small>${esc(r.SearchProviderName || "")}${r.Overview ? " · " + esc(String(r.Overview).slice(0, 140)) + (String(r.Overview).length > 140 ? "…" : "") : ""}</small></span></button>`).join("")}</div>`;
+      p.querySelector("#matchForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const n = f.name.value.trim(), y = parseInt(f.year.value, 10);
+        if (!n) return;
+        drawMatch(n, isNaN(y) ? "" : y, null);
+        try {
+          const found = await B.jf("POST", `/Items/RemoteSearch/${kind}`, { ItemId: it.Id, SearchInfo: { Name: n, Year: isNaN(y) ? null : y } });
+          if (tab === "match") drawMatch(n, isNaN(y) ? "" : y, found || []);
+        } catch (err) { if (tab === "match") { drawMatch(n, y, []); B.toast(err.message); } }
+      };
+      p.querySelectorAll("[data-match]").forEach((b) => {
+        b.onclick = () => B.busy(b, async () => {
+          await B.jf("POST", `/Items/RemoteSearch/Apply/${it.Id}?replaceAllImages=true`, results[+b.dataset.match]);
+          return "Switched. Give it a minute, then open the page again.";
+        });
+      });
+    };
+
     const drawAgain = () => {
       body().innerHTML = tabs() + `<p>Wrong film or show, or everything looks muddled? Jellyfin can look it all up again.</p>
         <button class="opt" data-again="missing">${I("restart")} Fill in what's missing<small>Keeps what's there</small></button>
@@ -125,6 +157,7 @@
 
     const draw = () => {
       if (tab === "details") drawDetails();
+      else if (tab === "match") drawMatch(it.Name || "", it.ProductionYear || "", undefined);
       else if (tab === "again") drawAgain();
       else drawPictures(KINDS.find((k) => k.type === tab) || KINDS[0]);
     };
