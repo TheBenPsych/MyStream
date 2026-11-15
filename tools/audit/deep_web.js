@@ -249,12 +249,22 @@ async function everyPage(page, vp, isPhone, tag) {
     .concat(it ? [`movie/${it.Id}`] : []).concat(show ? [`show/${show.Id}`] : []);
   for (const p of pages) {
     const s = Date.now();
-    await page.goto(BASE + "#/" + p); await settle(page, 10000);
-    const secs = Math.round((Date.now() - s) / 100) / 10;
+    await page.goto(BASE + "#/" + p);
+    // ready = no spinner left and some words on the page (checked every 0.1 s, up to 15 s)
+    let secs = null;
+    while (Date.now() - s < 15000) {
+      const ready = await page.evaluate(() => !document.querySelector(".spin") && document.body.innerText.trim().length > 40).catch(() => false);
+      if (ready) { secs = Math.round((Date.now() - s) / 100) / 10; break; }
+      await page.waitForTimeout(100);
+    }
+    await settle(page, 4000);
+    await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(300);
+    const where = await page.evaluate(() => { const p = document.querySelector(".top .place"); return p ? p.innerText.replace(/\s+/g, " ").trim() : ""; }).catch(() => "");
     report.timings[`${vp} ${tag} page ${p}`] = secs;
     const file = await shot(page, `${vp}-${tag}-${p}`);
     const seen = await look(page, isPhone).catch((e) => ({ error: String(e) }));
-    report.pages[`${vp} ${tag} ${p}`] = Object.assign({ file, seconds: secs }, seen);
+    report.pages[`${vp} ${tag} ${p}`] = Object.assign({ file, seconds: secs, where }, seen);
+    if (secs === null) problem(vp, "page still loading after 15 seconds", `${tag} ${p}`);
     if (seen.wide > 4) problem(vp, "sideways scrolling", `${tag} ${p}: ${seen.wide}px`);
     const broken = await page.evaluate(() => /Something went wrong/.test(document.body.innerText)).catch(() => false);
     if (broken) problem(vp, "Something went wrong screen", `${tag} ${p}`);
@@ -286,7 +296,10 @@ async function kids(browser) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
+  // Google Chrome (like people use) plays H.264/AAC; the plain Chromium build can't, so it's only the fallback
+  const opts = { args: ["--autoplay-policy=no-user-gesture-required"] };
+  let browser;
+  try { browser = await chromium.launch(Object.assign({ channel: "chrome" }, opts)); report.browser = "chrome"; } catch (e) { browser = await chromium.launch(opts); report.browser = "chromium"; }
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => problem("computer", "javascript error", String(e).slice(0, 300)));

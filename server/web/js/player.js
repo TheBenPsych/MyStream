@@ -392,6 +392,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pNx") && ($("#pNx").onclick = async () => { const n = await findNext(); if (n) goNext(n); else B.toast("That was the last episode."); });
 
   v.addEventListener("timeupdate", () => {
+    if (stopped) return; // the page has gone (the bar isn't there any more)
     const t = v.currentTime;
     if (subDelay) moveCues(); // words that arrive while playing get moved too
     drawBar();

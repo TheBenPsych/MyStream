@@ -550,7 +550,7 @@ def sign_in():
                 tap(n)
             time.sleep(4)
             continue
-        n = find(root, r"^Add profile$")
+        n = find(root, r"^Add profile$|^Add someone$")
         if n is not None:
             tap(n)
             time.sleep(2)
