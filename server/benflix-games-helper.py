@@ -200,7 +200,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 7
+SETUP_VERSION = 8
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -1143,6 +1143,13 @@ class Handler(BaseHTTPRequestHandler):
                 # Benflix in a browser does work away from home (https://<internet address>/benflix-games/):
                 # it signs in through Jellyfin like the apps do, and Jellyfin checks every request.
                 raise HelperError(403, "Tower's tools only work at home.")
+            if via_internet:
+                learn_internet_address(
+                    self.headers.get("X-Forwarded-Host") or self.headers.get("Host"),
+                    self.headers.get("X-Forwarded-Proto") or self.headers.get("X-Forwarded-Scheme"),
+                )
+            if method == "GET" and path == "/api/addresses":
+                return self.send(200, tower_addresses())
             if method == "GET" and path == "/health":
                 return self.send(
                     200,
@@ -1436,6 +1443,91 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
         self.route("HEAD")
+
+
+
+# Benflix: Tower's "address book". The apps ask for it while they're connected and remember every address, so when
+# one stops working (Tower moved, the phone left home, the internet address changed) they quietly try the others.
+_ADDR_FILES = ("/skips/benflix-addresses.json", "/musicdata/benflix-addresses.json", "/tmp/benflix-addresses.json")
+_addr_lock = threading.Lock()
+
+
+def _addr_file():
+    for f in _ADDR_FILES:
+        if os.path.isdir(os.path.dirname(f)):
+            return f
+    return _ADDR_FILES[-1]
+
+
+def _addr_saved():
+    try:
+        with open(_addr_file()) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def learn_internet_address(host, proto):
+    """Remembers the internet name (like myserver.duckdns.org) people reach Tower by, from the proxy's Host header."""
+    host = (host or "").strip().lower().split(":")[0]
+    if not host or not re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}", host) or host.startswith("tower"):
+        return
+    url = ("https://" if (proto or "https").lower() != "http" else "http://") + host
+    with _addr_lock:
+        data = _addr_saved()
+        known = [u for u in data.get("internet", []) if isinstance(u, str)]
+        if url in known:
+            return
+        data["internet"] = ([url] + known)[:4]
+        try:
+            with open(_addr_file(), "w") as f:
+                json.dump(data, f)
+        except OSError:
+            pass
+
+
+def _own_ip(towards):
+    import socket
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect((towards, 80))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except OSError:
+        return None
+
+
+def tower_addresses():
+    """Every address Tower's Jellyfin can be reached at, best first. The apps check each one is really this server."""
+    port = urllib.parse.urlparse(JELLYFIN_URL).port or 8096
+    out = []
+
+    def add(url, kind):
+        if url and url not in [a["url"] for a in out]:
+            out.append({"url": url, "kind": kind})
+
+    home = _own_ip("1.1.1.1")
+    if home and not home.startswith("127."):
+        add(f"http://{home}:{port}", "home")
+    add(f"http://tower:{port}", "name")
+    saved = _addr_saved()
+    for u in saved.get("internet", []):
+        add(u, "internet")
+    ts = _own_ip("100.100.100.100")
+    if ts and ts.startswith("100.") and 64 <= int(ts.split(".")[1]) <= 127:
+        add(f"http://{ts}:{port}", "tailscale")
+    for u in saved.get("extra", []):
+        add(u, "extra")
+    server_id = None
+    try:
+        server_id = json.loads(urllib.request.urlopen(JELLYFIN_URL + "/System/Info/Public", timeout=4).read()).get("Id")
+    except Exception:
+        pass
+    return {"id": server_id, "addresses": out, "checked": int(time.time())}
 
 
 def wifi_finder():

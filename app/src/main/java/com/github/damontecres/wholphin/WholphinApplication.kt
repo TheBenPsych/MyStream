@@ -53,6 +53,9 @@ class WholphinApplication :
     }
 
     override fun onCreate() {
+        // Benflix: crashing on every open fixes itself (clears saved screen copies, keeps sign-ins)
+        com.github.damontecres.wholphin.util.CrashLoopGuard
+            .onStart(this)
         super.onCreate()
         com.github.damontecres.wholphin.util.StartupTimer
             .mark(com.github.damontecres.wholphin.util.StartupTimer.APP)
