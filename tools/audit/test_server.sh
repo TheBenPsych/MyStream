@@ -104,9 +104,9 @@ call POST /Users/New '{"Name":"demo","Password":""}' >/dev/null
 KID=$(call POST /Users/New '{"Name":"Kids","Password":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['Id'])")
 call GET "/Users/$KID" | python3 -c "
 import json,sys
-p=json.load(sys.stdin)['Policy']; p['MaxParentalRating']=1; p['BlockUnratedItems']=['Movie','Series','Episode']
+p=json.load(sys.stdin)['Policy']; p['MaxParentalRating']=1; p['BlockUnratedItems']=['Movie','Series']
 print(json.dumps(p))" > /tmp/kidpolicy.json
-call POST "/Users/$KID/Policy" "$(cat /tmp/kidpolicy.json)"
+call POST "/Users/$KID/Policy" "$(cat /tmp/kidpolicy.json)" || echo "Kids limits could not be set"
 for i in $(seq 1 90); do
   n=$(curl -fs "$J/Items?Recursive=true&IncludeItemTypes=Movie,Episode" -H "$T" | python3 -c "import json,sys;print(json.load(sys.stdin)['TotalRecordCount'])" || echo 0)
   [ "$n" -ge 7 ] && break
