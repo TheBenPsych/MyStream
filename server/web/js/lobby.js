@@ -18,6 +18,15 @@
   const STYLE_NAMES = { pebble: "Pebble", facet: "Usher", glow: "Headphones" };
   const KIDS_RATINGS = ["G", "PG", "TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "TV-PG", "APPROVED"];
   L.kidsOk = (rating) => KIDS_RATINGS.includes(String(rating || "").toUpperCase());
+  // Only on a computer (web browser or the desktop app), never on phones or tablets, and never for Kids (Ben, 2026-11-15)
+  L.onPhone = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia("(pointer: coarse)").matches && !matchMedia("(pointer: fine)").matches);
+  L.allowed = () => !!(B.me && !B.me.kids && !L.onPhone());
+  const notHere = () => {
+    B.page().innerHTML = B.top("Lobby") + `<div class="center"><div><div class="h1">${B.me && B.me.kids ? "The Lobby isn't for Kids" : "The Lobby is for computers"}</div>
+      <p class="sub">${B.me && B.me.kids ? "Ask a grown-up to pick something to watch together." : "Open Benflix in a web browser on a computer, or the Benflix desktop app, to walk into the Lobby."}</p>
+      <a class="btn white" href="#/home">Back to Home</a></div></div>`;
+    B.wireTop();
+  };
   const api = (method, path, body) => B.call(method, "api/lobby/" + path, body);
   const lookKey = () => "benflix.lobby.look." + (B.me ? B.me.id : "");
   const myLook = () => Object.assign({ style: "pebble", color: B.picOf(B.me).color, quality: "auto", fullSound: false }, loadJson(lookKey(), {}));
@@ -25,6 +34,7 @@
 
   // ---------- opening a lobby (from a title page's More menu, or the Lobby page) ----------
   L.open = async (opts) => {
+    if (!L.allowed()) return notHere();
     opts = opts || {};
     const body = { room: opts.room };
     if (opts.item) Object.assign(body, { item: opts.item.Id, title: L.titleOf(opts.item), kids_ok: L.kidsOk(opts.item.OfficialRating), pos: opts.pos || 0 });
@@ -36,6 +46,7 @@
 
   // Home: a tap on the shoulder when someone else has a lobby open
   L.homeNudge = async (nav) => {
+    if (!L.allowed()) return;
     const got = await api("GET", "list").catch(() => null);
     if (!got || !B.alive(nav)) return;
     got.lobbies.filter((l) => !l.mine && l.people.length).forEach((l) => B.corner({
@@ -48,6 +59,7 @@
 
   // ---------- the Lobby page: open lobbies, open your own, or type a code ----------
   B.route(/^\/lobby$/, async (m, nav) => {
+    if (!L.allowed()) return notHere();
     B.page().innerHTML = B.top("Lobby") + `<div class="lb-list"><div class="h1">The Lobby</div>
       <p class="sub">A 3D room where everyone walks around together, watches the same thing on the big TV, plays pool and chats.</p>
       <div id="lbOpen">${B.spinner()}</div></div>`;
@@ -85,6 +97,7 @@
   }));
 
   B.route(/^\/lobby\/([A-Za-z]{4})/, async (m, nav) => {
+    if (!L.allowed()) return notHere();
     const code = m[1].toUpperCase();
     B.page().innerHTML = `<div class="center"><div>${B.spinner()}<p class="dim">Opening the lobby…</p></div></div>`;
     await loadThree();
