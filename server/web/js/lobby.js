@@ -627,7 +627,8 @@
           } else video.src = url;
         } else throw new Error("This one can't play in a browser.");
         // Your own subtitles (shown under the TV for you only), when your profile has them on
-        const sub = (source.MediaStreams || []).find((s) => s.Index === source.DefaultSubtitleStreamIndex && s.DeliveryMethod === "External" && s.DeliveryUrl);
+        const subPick = B.autoSub(source.MediaStreams, source.DefaultSubtitleStreamIndex ?? -1, source.DefaultAudioStreamIndex);
+        const sub = (source.MediaStreams || []).find((s) => s.Index === subPick && s.DeliveryMethod === "External" && s.DeliveryUrl);
         if (sub) {
           const tr = document.createElement("track"); tr.kind = "subtitles"; tr.srclang = sub.Language || "en";
           tr.src = streamUrl(withKey(sub.DeliveryUrl.replace(/\/Stream\.\w+/, "/Stream.vtt")));
