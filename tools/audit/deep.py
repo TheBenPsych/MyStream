@@ -133,6 +133,8 @@ def open_title(name):
     if MODE != "tv" and edit:
         d.touch_tap(edit[0])
         time.sleep(1)
+    elif MODE == "tv":
+        d.key("DPAD_CENTER", wait=1.5)  # TV: the box says "OK to type"
     d.sh("input keyevent " + " ".join(["DEL"] * 30))
     for w in name.split():
         d.sh(f"input text '{w}'")
