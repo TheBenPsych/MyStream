@@ -1009,7 +1009,9 @@ class HomeDoorsViewModel
             private const val FACT_WAIT_MS = 1_200L
             private const val WEATHER_WAIT_MS = 1_200L
             private const val REQUESTS_GAP_MS = 5 * 60_000L
-            private const val FACT_MAX_LENGTH = 130
+            // Ben: Home list words must never be cut. Two lines of the fact row hold about 72 letters on a
+            // phone and a TV (longer ones ended in "…"), so only facts that short are picked
+            private const val FACT_MAX_LENGTH = 72
             private const val POSTER_HEIGHT = 240
             const val MAX_NEWS = 12
             private const val MAX_SEEN = 80
