@@ -911,6 +911,8 @@ class HomeDoorsViewModel
                             if (name.isNotBlank() && !fact.contains(name.substringBefore(":").trim(), ignoreCase = true)) {
                                 fact = "$name: $fact"
                             }
+                            // the title in front can make it too long to show whole: skip that one
+                            if (fact.length > FACT_MAX_LENGTH + FACT_NAME_ROOM) return@mapNotNull null
                             HomeRow(
                                 id = "fact-$id",
                                 kind = "Did you know",
@@ -1009,9 +1011,11 @@ class HomeDoorsViewModel
             private const val FACT_WAIT_MS = 1_200L
             private const val WEATHER_WAIT_MS = 1_200L
             private const val REQUESTS_GAP_MS = 5 * 60_000L
+
             // Ben: Home list words must never be cut. Two lines of the fact row hold about 72 letters on a
             // phone and a TV (longer ones ended in "…"), so only facts that short are picked
             private const val FACT_MAX_LENGTH = 72
+            private const val FACT_NAME_ROOM = 6
             private const val POSTER_HEIGHT = 240
             const val MAX_NEWS = 12
             private const val MAX_SEEN = 80
