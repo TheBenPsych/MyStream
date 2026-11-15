@@ -20,9 +20,17 @@ import java.net.URL
  *
  * Internet addresses (like yohobox.duckdns.org) are never touched: they don't change when Tower moves.
  */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface ServerMovedEntryPoint {
+    fun serverDao(): JellyfinServerDao
+
+    fun mostRecentServer(): MostRecentServerProvider
+}
+
 internal object ServerMoved {
     /** Names a home router usually knows Tower by (Unraid's default name is "Tower") */
-    private val NAMES = listOf("tower", "tower.local", "tower.lan", "tower.home")
+    private val NAMES = listOf("tower", "tower.local", "tower.lan", "tower.home", "tower.attlocal.net")
 
     /** True for home-network addresses like 10.x, 192.168.x and 172.16-31.x */
     fun isHomeAddress(url: String): Boolean {
@@ -99,5 +107,39 @@ internal object ServerMoved {
         }
         Timber.i("Server moved: %s -> %s", server.url, newUrl)
         return server.copy(url = newUrl.trimEnd('/'))
+    }
+
+    /**
+     * Benflix: "Change server address" on the can't-connect screen. Saves [input] (like 192.168.1.105:8096) as
+     * the server's address when the same server answers there. Returns null when it worked, else a plain
+     * sentence saying what went wrong. Call off the main thread.
+     */
+    fun useAddress(
+        context: android.content.Context,
+        input: String,
+    ): String? {
+        var a = input.trim().trimEnd('/')
+        if (a.isBlank()) return "Type Tower's address, like 192.168.1.105:8096"
+        if (!a.startsWith("http://") && !a.startsWith("https://")) a = "http://$a"
+        val hasPort = Regex("^https?://[^/]+:\\d+").containsMatchIn(a)
+        if (!hasPort && a.startsWith("http://")) {
+            val u = URL(a)
+            a = "http://" + u.host + ":8096" + u.path
+        }
+        val entry =
+            dagger.hilt.android.EntryPointAccessors
+                .fromApplication(context.applicationContext, ServerMovedEntryPoint::class.java)
+        val serverId =
+            when (val recent = entry.mostRecentServer().get()) {
+                is MostRecentServer.Server -> recent.serverId
+                is MostRecentServer.ServerAndUser -> recent.serverId
+                else -> null
+            } ?: return "No server is saved on this device yet."
+        val server = entry.serverDao().getServer(serverId)?.server ?: return "No server is saved on this device yet."
+        val id = serverIdAt(a) ?: return "Nothing answered at $a. Check the address and that Tower is on."
+        if (!sameServer(id, server)) return "A different Jellyfin server answered at $a."
+        entry.serverDao().addOrUpdateServer(server.copy(url = a))
+        Timber.i("Server address changed by hand: %s -> %s", server.url, a)
+        return null
     }
 }
