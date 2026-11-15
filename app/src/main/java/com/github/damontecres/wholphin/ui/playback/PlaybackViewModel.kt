@@ -1066,6 +1066,15 @@ class PlaybackViewModel
                                 currentPlayback = playback,
                             )
                         }
+                        // Benflix: subtitles off means off. Without this the player could turn on a track
+                        // marked "default" or "forced" inside the file by itself (like German words after
+                        // the intro on The Big Bang Theory), because nothing told it subtitles were off.
+                        player.trackSelectionParameters =
+                            player.trackSelectionParameters
+                                .buildUpon()
+                                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, (subtitleIndex ?: -1) < 0)
+                                .build()
                         player.setMediaItem(
                             mediaItem,
                             positionMs,
@@ -1089,7 +1098,7 @@ class PlaybackViewModel
                             }
                         }
                         val onTracksChangedListener =
-                            if (transcodeType == PlayMethod.DIRECT_PLAY && (audioIndex != null || subtitleIndex != null)) {
+                            if (transcodeType == PlayMethod.DIRECT_PLAY) {
                                 TracksChangedListener(
                                     player = player,
                                     audioIndex = audioIndex,
@@ -1172,7 +1181,8 @@ class PlaybackViewModel
                     .filter { it.type == MediaStreamType.SUBTITLE && it.isForced != true }
             val pick =
                 subtitles.firstOrNull { it.language?.lowercase() in listOf("eng", "en", "english") }
-                    ?: subtitles.firstOrNull()
+                    // Benflix: never flash up words in a language nobody asked for
+                    ?: subtitles.firstOrNull { it.language.isNullOrBlank() || it.language.equals("und", true) }
                     ?: return
             val offIndex = currentPlayback.subtitleIndex
             whatDidTheySayJob =

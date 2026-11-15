@@ -86,10 +86,26 @@ B.englishSubs = async () => {
   try {
     const me = await B.get(`/Users/${enc(id)}`);
     const cfg = me && me.Configuration;
+    if (cfg && B.me && B.me.id === id) B.subPref = cfg.SubtitleLanguagePreference || "eng";
     if (!cfg || cfg.SubtitleLanguagePreference || !B.me || B.me.id !== id) return;
     cfg.SubtitleLanguagePreference = "eng";
     await B.jf("POST", `/Users/Configuration?userId=${enc(id)}`, cfg).catch(() => B.jf("POST", `/Users/${enc(id)}/Configuration`, cfg));
   } catch (e) { /* tries again next time this profile is picked */ }
+};
+// Jellyfin turns on any subtitle track marked "default" or "forced" inside the file, in any language.
+// That showed German words for a few seconds after the intro on The Big Bang Theory. A track that
+// turned on by itself must be in your subtitle language, the sound's language, or not marked.
+B.autoSub = (streams, subIndex, audioIndex) => {
+  if (subIndex == null || subIndex < 0) return -1;
+  const sub = (streams || []).find((s) => s.Type === "Subtitle" && s.Index === subIndex);
+  if (!sub) return subIndex;
+  const lang = (sub.Language || "").toLowerCase();
+  if (!lang || lang === "und" || lang === "unknown") return subIndex;
+  const want = (B.subPref || "eng").toLowerCase();
+  const audio = (streams || []).find((s) => s.Type === "Audio" && s.Index === audioIndex);
+  if (lang === want || (want === "eng" && lang === "en")) return subIndex;
+  if (audio && (audio.Language || "").toLowerCase() === lang) return subIndex;
+  return -1;
 };
 B.addProfile = (s) => {
   const list = B.profiles().filter((p) => p.id !== s.id);

@@ -143,7 +143,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     playSession = info.PlaySessionId;
     if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
     if (subIndex == null) {
-      subIndex = source.DefaultSubtitleStreamIndex ?? -1;
+      subIndex = B.autoSub(source.MediaStreams, source.DefaultSubtitleStreamIndex ?? -1, audioIndex);
       // Plain subtitles before ones that also describe sounds ("[door slams]"), when both are there
       const subs = (source.MediaStreams || []).filter((s) => s.Type === "Subtitle");
       const pick = subs.find((s) => s.Index === subIndex);
@@ -151,6 +151,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         const plain = subs.find((s) => !s.IsHearingImpaired && !s.IsForced && (s.Language || "") === (pick.Language || ""));
         if (plain) subIndex = plain.Index;
       }
+      // A turned-down track that Jellyfin was going to draw into the picture: ask again with it off
+      const dflt = source.DefaultSubtitleStreamIndex ?? -1;
+      if (dflt >= 0 && subIndex === -1 && /SubtitleMethod=Encode/i.test(source.TranscodingUrl || "")) return load(atSeconds);
     }
     if (source.SupportsDirectPlay && !forceStream && !source.TranscodingUrl) {
       method = "DirectPlay";

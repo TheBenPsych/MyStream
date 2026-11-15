@@ -204,8 +204,9 @@ class TestStreamChoiceServiceDefault(
                         ),
                     userSubtitleLang = null,
                 ),
+                // Benflix: a Spanish track marked default doesn't turn on by itself on English sound
                 TestInput(
-                    1,
+                    null,
                     SubtitlePlaybackMode.DEFAULT,
                     subtitles =
                         listOf(
@@ -213,6 +214,27 @@ class TestStreamChoiceServiceDefault(
                             subtitle(1, "spa", true),
                         ),
                     userSubtitleLang = null,
+                ),
+                // Benflix: German forced words on an English show stay off (The Big Bang Theory)
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.DEFAULT,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", false),
+                            subtitle(1, "ger", default = true, forced = true),
+                        ),
+                ),
+                // Benflix: forced words in the sound's own language still turn on
+                TestInput(
+                    1,
+                    SubtitlePlaybackMode.DEFAULT,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", false),
+                            subtitle(1, "ger", forced = true),
+                        ),
+                    streamAudioLang = "ger",
                 ),
                 TestInput(
                     null,
