@@ -813,6 +813,13 @@ class MainActivityViewModel
             if (signInAutomatically && currentUser != null && !currentUser.user.isProtected) {
                 // Hot reload
                 Timber.v("Hot reload restoring state")
+                // Benflix: back after a while (maybe on a different network now)? Make sure the server answers at
+                // the address in use, else switch to one that does, before Home starts asking it for rows
+                try {
+                    kotlinx.coroutines.withTimeoutOrNull(4_000) { serverRepository.reconnect() }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't check the server address")
+                }
                 setupNavigationManager.navigateTo(
                     SetupDestination.AppContent(currentUser),
                 )
