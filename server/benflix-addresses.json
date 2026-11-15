@@ -1,0 +1,4 @@
+{
+  "about": "Extra addresses Benflix tries when it can't reach Tower. Apps read this file from GitHub about twice a day, so a change here reaches every phone and TV without an app update. Each address is checked to really be your Jellyfin server before it's used. This file is PUBLIC, so only list addresses you're fine with anyone seeing.",
+  "addresses": []
+}

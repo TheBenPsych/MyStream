@@ -74,11 +74,27 @@ internal object ServerMoved {
      * works (or Tower can't be found). Call off the main thread.
      */
     suspend fun findAgain(
+        context: android.content.Context,
         jellyfin: Jellyfin,
         server: JellyfinServer,
     ): JellyfinServer {
-        if (!isHomeAddress(server.url)) return server
         if (serverIdAt(server.url) != null) return server
+        // Benflix: first every other address this device knows for the server (home, Tower's name, the internet
+        // name, Tailscale, GitHub's list), all at once. This also gets a phone that left home back in.
+        val known = ServerAddressBook.all(context, server.id).filter { it != server.url.trimEnd('/') }
+        Timber.i("Saved address %s doesn't answer, trying %d other known addresses", server.url, known.size)
+        ServerAddressBook.firstWorking(known, server.id)?.let {
+            Timber.i("Server answers at another known address: %s -> %s", server.url, it)
+            return server.copy(url = it)
+        }
+        if (!isHomeAddress(server.url)) {
+            // An internet address that stopped working: GitHub's list might name a new one
+            ServerAddressBook.firstWorking(ServerAddressBook.gitHubList(), server.id)?.let {
+                Timber.i("Server answers at an address from GitHub's list: %s", it)
+                return server.copy(url = it)
+            }
+            return server
+        }
         Timber.i("Saved home address %s doesn't answer, looking for the server on the home network", server.url)
         val found =
             try {
@@ -104,6 +120,10 @@ internal object ServerMoved {
                 ?: senderAddress(server.id, port)
                 ?: findOnWifi().firstOrNull { it.id == server.id }?.url
         if (newUrl == null) {
+            ServerAddressBook.firstWorking(ServerAddressBook.gitHubList(), server.id)?.let {
+                Timber.i("Server answers at an address from GitHub's list: %s", it)
+                return server.copy(url = it)
+            }
             Timber.i("Couldn't find the server at a new address")
             return server
         }
@@ -141,6 +161,7 @@ internal object ServerMoved {
         val id = serverIdAt(a) ?: return "Nothing answered at $a. Check the address and that Tower is on."
         if (!sameServer(id, server)) return "A different Jellyfin server answered at $a."
         entry.serverDao().addOrUpdateServer(server.copy(url = a))
+        ServerAddressBook.remember(context, server.id, a, first = true)
         Timber.i("Server address changed by hand: %s -> %s", server.url, a)
         return null
     }

@@ -136,6 +136,7 @@ class ServerRepository
                 _current.value = currentUser
                 _currentUserDto.value = ServerUserConfig(userDto)
                 saveEnglishSubtitlesIfUnset(userDto)
+                rememberWorking(updatedServer)
                 return@withContext currentUser
             }
 
@@ -238,17 +239,73 @@ class ServerRepository
             withContext(ioDispatcher) {
                 val found =
                     try {
-                        ServerMoved.findAgain(jellyfin, server)
+                        ServerMoved.findAgain(context, jellyfin, server)
                     } catch (e: Exception) {
                         Timber.w(e, "Couldn't look for a moved server")
                         server
                     }
                 if (found.url != server.url) {
                     serverDao.addOrUpdateServer(found)
-                    if (currentServer?.id == found.id) apiClient.update(baseUrl = found.url)
+                    if (currentServer?.id == found.id) {
+                        apiClient.update(baseUrl = found.url)
+                        _current.update { it?.copy(server = found) }
+                    }
                 }
                 found
             }
+
+        private var networkCheck: kotlinx.coroutines.Job? = null
+
+        /**
+         * Benflix: when the phone or TV changes network (leaves home, joins the Wi-Fi, switches to mobile data),
+         * check the server still answers at the address in use, and if not, switch to another known one
+         * straight away, without waiting for the next app start.
+         */
+        private fun watchNetwork() {
+            try {
+                val cm =
+                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                        ?: return
+                val request =
+                    android.net.NetworkRequest
+                        .Builder()
+                        .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build()
+                cm.registerNetworkCallback(
+                    request,
+                    object : android.net.ConnectivityManager.NetworkCallback() {
+                        override fun onAvailable(network: android.net.Network) = checkSoon()
+
+                        override fun onLost(network: android.net.Network) = checkSoon()
+                    },
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "Couldn't watch for network changes")
+            }
+        }
+
+        private fun checkSoon() {
+            networkCheck?.cancel()
+            networkCheck =
+                backgroundScope.launch {
+                    // Let the new network settle first
+                    kotlinx.coroutines.delay(4000)
+                    val server = currentServer ?: return@launch
+                    findMovedServer(server)
+                }
+        }
+
+        /** Benflix: remembers the address that just worked and asks Tower/GitHub for any others, in the background */
+        private fun rememberWorking(server: JellyfinServer) {
+            ServerAddressBook.remember(context, server.id, server.url, first = true)
+            backgroundScope.launch {
+                try {
+                    ServerAddressBook.refresh(context, server.id, server.url)
+                } catch (e: Exception) {
+                    Timber.w(e, "Couldn't refresh the address book")
+                }
+            }
+        }
 
         /**
          * Given a successful [AuthenticationResult], switch to the user that just authenticated
@@ -365,6 +422,10 @@ class ServerRepository
             }
 
         private val backgroundScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+
+        init {
+            watchNetwork()
+        }
 
         /**
          * Benflix: subtitles are English unless someone picked another language. A profile that never

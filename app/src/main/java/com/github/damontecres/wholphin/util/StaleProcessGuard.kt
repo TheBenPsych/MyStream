@@ -101,6 +101,7 @@ object StaleProcessGuard {
                 Log.w("Benflix", "Old copy of Benflix crashed after an update, starting fresh", error)
                 restart(app, relaunch = resumed > 0)
             } else {
+                CrashLoopGuard.onCrash(app)
                 previous?.uncaughtException(thread, error)
             }
         }
