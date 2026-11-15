@@ -270,7 +270,9 @@ class SwitchServerViewModel
                         JellyfinServer(
                             server.id.toUUID(),
                             server.name,
-                            server.address,
+                            // Benflix: Jellyfin may still say its old address after Tower moves; use one that answers
+                            com.github.damontecres.wholphin.data.ServerMoved
+                                .reachableAddress(server.id, server.address),
                             null,
                         )
                     _state.update {

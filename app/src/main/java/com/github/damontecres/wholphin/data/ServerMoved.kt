@@ -142,4 +142,29 @@ internal object ServerMoved {
         Timber.i("Server address changed by hand: %s -> %s", server.url, a)
         return null
     }
+
+    /**
+     * Benflix: the "Is this your server?" screen shows the address Jellyfin says it's at. After a move that can
+     * be the old one (Jellyfin's "published" address wasn't updated), so check it really answers, and if not
+     * look for the same server under Tower's names. Returns the address that works, else [address] unchanged.
+     * Call off the main thread.
+     */
+    fun reachableAddress(
+        id: String,
+        address: String,
+    ): String {
+        val want = id.toUUIDOrNull() ?: return address
+        if (serverIdAt(address)?.toUUIDOrNull() == want) return address
+        val port =
+            try {
+                URL(address).port.takeIf { it > 0 } ?: 8096
+            } catch (_: Exception) {
+                8096
+            }
+        return NAMES
+            .map { "http://$it:$port" }
+            .firstOrNull { serverIdAt(it)?.toUUIDOrNull() == want }
+            ?.also { Timber.i("Found server answers at %s, not %s", it, address) }
+            ?: address
+    }
 }
