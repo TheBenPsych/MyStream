@@ -168,11 +168,21 @@ object WatchTogether {
     /** Checks in with the lobby and returns what's on its TV */
     suspend fun sync(context: Context): Tv? {
         val c = code ?: return null
-        val me = JSONObject().put("x", 0).put("z", 6).put("yaw", 0).put("sit", -1).put("act", "app")
+        val me =
+            JSONObject()
+                .put("x", 0)
+                .put("z", 6)
+                .put("yaw", 0)
+                .put("sit", -1)
+                .put("act", "app")
         val answer = helper(context).postJson("/api/lobby/$c/sync", JSONObject().put("me", me).put("chat_since", 1_000_000_000))
         val tv = answer.optJSONObject("tv") ?: return null
         val names =
-            answer.optJSONArray("people")?.let { arr -> (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name") } }.orEmpty()
+            answer
+                .optJSONArray("people")
+                ?.let { arr ->
+                    (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name") }
+                }.orEmpty()
         onMain {
             people = names
             hostName = answer.optString("host_name")

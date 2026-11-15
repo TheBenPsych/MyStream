@@ -1335,7 +1335,10 @@ fun PlaybackPageContent(
                     // Not for Kids profiles, like the Lobby (Ben, 2026-11-15)
                     canWatchTogether =
                         !com.github.damontecres.wholphin.services.KidsMode.isActive &&
-                            state.currentPlayback?.item?.type.let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
+                            state.currentPlayback
+                                ?.item
+                                ?.type
+                                .let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
                 ),
             onDismissRequest = {
                 playbackDialog =

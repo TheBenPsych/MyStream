@@ -35,7 +35,7 @@ class MusicCarLibrary
                 return listOf(note("Open Benflix on your phone first", "Then pick who's listening"))
             }
             return when {
-                parentId == ROOT ->
+                parentId == ROOT -> {
                     listOf(
                         playable(SHUFFLE, "Shuffle your favourites", "Most played and liked songs", null),
                         folder(RECENT, "Recently played"),
@@ -43,29 +43,51 @@ class MusicCarLibrary
                         folder(PLAYLISTS, "Playlists"),
                         folder(ALBUMS, "Albums"),
                     )
+                }
 
-                parentId == RECENT -> music.albums(ItemSortBy.DATE_PLAYED, descending = true, limit = 40).map { albumFolder(it) }
+                parentId == RECENT -> {
+                    music.albums(ItemSortBy.DATE_PLAYED, descending = true, limit = 40).map { albumFolder(it) }
+                }
 
-                parentId == ALBUMS -> music.albums(limit = 500).map { albumFolder(it) }
+                parentId == ALBUMS -> {
+                    music.albums(limit = 500).map { albumFolder(it) }
+                }
 
-                parentId == PLAYLISTS ->
+                parentId == PLAYLISTS -> {
                     music.playlists().map {
-                        folder("$PLAYLIST_PREFIX${it.id}", it.data.name ?: "Playlist", null, art(it.id, it.data.imageTags?.get(ImageType.PRIMARY)))
+                        folder(
+                            "$PLAYLIST_PREFIX${it.id}",
+                            it.data.name ?: "Playlist",
+                            null,
+                            art(it.id, it.data.imageTags?.get(ImageType.PRIMARY)),
+                        )
                     }
+                }
 
-                parentId == LIKED -> songItems("liked", "", music.likedSongs())
+                parentId == LIKED -> {
+                    songItems("liked", "", music.likedSongs())
+                }
 
-                parentId.startsWith(ALBUM_PREFIX) ->
-                    parentId.removePrefix(ALBUM_PREFIX).toUUIDOrNull()?.let { songItems("album", it.toString(), music.albumSongs(it)) }.orEmpty()
+                parentId.startsWith(ALBUM_PREFIX) -> {
+                    parentId
+                        .removePrefix(
+                            ALBUM_PREFIX,
+                        ).toUUIDOrNull()
+                        ?.let { songItems("album", it.toString(), music.albumSongs(it)) }
+                        .orEmpty()
+                }
 
-                parentId.startsWith(PLAYLIST_PREFIX) ->
+                parentId.startsWith(PLAYLIST_PREFIX) -> {
                     parentId
                         .removePrefix(PLAYLIST_PREFIX)
                         .toUUIDOrNull()
                         ?.let { songItems("playlist", it.toString(), music.playlistSongs(it)) }
                         .orEmpty()
+                }
 
-                else -> emptyList()
+                else -> {
+                    emptyList()
+                }
             }
         }
 
@@ -131,7 +153,13 @@ class MusicCarLibrary
             tag: String?,
         ): Uri? =
             try {
-                imageUrlService.getItemImageUrl(itemId = id, imageType = ImageType.PRIMARY, maxWidth = 400, tag = tag)?.let { Uri.parse(it) }
+                imageUrlService
+                    .getItemImageUrl(
+                        itemId = id,
+                        imageType = ImageType.PRIMARY,
+                        maxWidth = 400,
+                        tag = tag,
+                    )?.let { Uri.parse(it) }
             } catch (_: Exception) {
                 null
             }

@@ -478,8 +478,14 @@ fun PlaybackDialog(
                                 ),
                             )
                             when {
-                                lobbies == null -> add(PanelLine.Heading("Looking for people watching…"))
-                                lobbies.none { !it.mine } -> add(PanelLine.Heading("Nobody else is watching together right now"))
+                                lobbies == null -> {
+                                    add(PanelLine.Heading("Looking for people watching…"))
+                                }
+
+                                lobbies.none { !it.mine } -> {
+                                    add(PanelLine.Heading("Nobody else is watching together right now"))
+                                }
+
                                 else -> {
                                     add(PanelLine.Heading("Join"))
                                     lobbies.filter { !it.mine }.forEach { lobby ->
