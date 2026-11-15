@@ -322,7 +322,7 @@ B.arrangeRows = (news, way, facts) => {
   return { rows: out.slice(0, HOME_SLOTS), more: 0, all };
 };
 // The small coloured line's colours: green ready, amber on the way, teal Did you know, grey everything else
-const KIND_READY = "#5BD18B", KIND_WAY = "#FFB547", KIND_FACT = "#3DD6C6", KIND_OTHER = "#9497A3";
+const KIND_READY = "#5BD18B", KIND_WAY = "#FFB547", KIND_FACT = "#3DD6C6", KIND_OTHER = "#9497A3", KIND_CANT = "#F07A3E";
 // "On the way, about 20 minutes left" becomes "On the way · 20 min left"
 const wayKind = (line) => {
   const l = String(line || "").toLowerCase();
@@ -374,6 +374,34 @@ const myRequests = async () => {
   return { ready: ready.sort(newest).slice(0, 2), way: way.sort(newest).slice(0, 3) };
 };
 
+// Something you asked for that Ben couldn't find (Ben 2026-11-15: a Home news row, never a pop-up). The list is
+// the one the TV and phone app shares with every profile (benflix-shared / benflix.cantfind.v1). Ben marks these
+// himself, so he isn't told. A row stays 14 days, or until it's cleared.
+const cantFindRows = async () => {
+  if (B.me.admin || B.me.kids || !B.seerrMe) return [];
+  const [me, shared] = await Promise.all([B.seerrMe(), B.prefs("benflix-shared").catch(() => null)]);
+  if (!me || !me.active || !me.userFound) return [];
+  let list = [];
+  try { list = JSON.parse(((shared && shared.CustomPrefs) || {})["benflix.cantfind.v1"] || "[]"); } catch (e) {}
+  const mine = (Array.isArray(list) ? list : [])
+    .filter((e) => e && e.key && !e.keepLooking && (e.askedBy || []).includes(me.jellyseerrUserId))
+    .map((e) => ({ e, t: Date.parse(`${e.date}T00:00:00`) || 0 }))
+    .filter((x) => x.t && Date.now() - x.t < 14 * 86400000)
+    .sort((a, b) => b.t - a.t).slice(0, 2);
+  const rows = await Promise.all(mine.map(async ({ e, t }) => {
+    const type = e.key.startsWith("MOVIE") ? "movie" : "tv", tmdb = e.key.split("-")[1];
+    const d = await B.cached(`seerr-${type}-${tmdb}-home`, 300000, () => B.seerr(`/${type}/${tmdb}`)).catch(() => null);
+    // It turned up in the meantime: nothing to say sorry about
+    if (d && d.mediaInfo && d.mediaInfo.status === 5) return null;
+    const title = (d && (d.title || d.name)) || e.title || "Something you asked for";
+    const why = e.auto ? `We looked for ${title} for a week but couldn't find a copy yet.` : `Ben looked for ${title} but couldn't find a copy yet.`;
+    const img = (d && B.tmdbImg ? B.tmdbImg(d.posterPath, "w185") : "") || e.posterUrl || "";
+    return { id: `cant-${e.key}-${e.date}`, news: true, kind: "Couldn't find it", title, full: `${why} If one turns up, it'll come to Benflix by itself.${e.note ? ` Ben's note: \u201C${e.note}\u201D` : ""}`,
+      go: ["See details", `#/ask/${type}/${tmdb}`], kc: KIND_CANT, img, href: "", t };
+  }));
+  return rows.filter(Boolean);
+};
+
 let lastFacts = "";
 // A note from Ben that talks about one part of Benflix gets a button in its pop-up to go there
 const noteLink = (text) => {
@@ -405,7 +433,7 @@ B.loadBoard = async (nav) => {
   clearedNow = new Set();
   const news = [];
   const add = (row) => news.push(row);
-  const [prefs, nextUp, music, books, reqs, facts, weather] = await Promise.all([
+  const [prefs, nextUp, music, books, reqs, facts, weather, cant] = await Promise.all([
     B.prefs().catch(() => null),
     B.get(`/Shows/NextUp?userId=${B.uid()}&limit=24&fields=DateCreated&enableResumable=false&enableRewatching=false&disableFirstEpisode=true`).catch(() => null),
     (async () => {
@@ -417,6 +445,7 @@ B.loadBoard = async (nav) => {
     myRequests().catch(() => ({ ready: [], way: [] })),
     B.call("GET", `api/facts/home?n=2&max=130&skip=${lastFacts}`).catch(() => null),
     B.call("GET", "api/home/weather").catch(() => null),
+    cantFindRows().catch(() => []),
   ]);
   if (!B.alive(nav) || !$("#blist")) return;
   // Weather: Tower's line with today's name in front (nothing when no town is set on the Server page)
@@ -469,6 +498,7 @@ B.loadBoard = async (nav) => {
     add({ id: `book-${b.id}`, news: true, kind, title, kc: id.startsWith("bkr-") ? KIND_READY : KIND_OTHER, img: pic(b.cover), href: `#/book/${enc(b.title)}`, t: (+b.at || 0) * 1000 });
   });
   reqs.ready.forEach(add);
+  cant.forEach(add);
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
     let text = f.fact;
