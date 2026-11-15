@@ -242,13 +242,20 @@ fun SearchStart(
                 )
                 // Phones: two tiles side by side, sharing the width (a fixed tile width left only one per line)
                 val isTv = rememberIsTv()
+                // Kids: no Horror, Thriller or Crime tiles (their pages would be nearly empty for Kids anyway)
+                val genres =
+                    if (KidsMode.isActive) {
+                        BenflixGenre.entries.filter { it !in KIDS_HIDDEN_GENRES }
+                    } else {
+                        BenflixGenre.entries
+                    }
                 if (isTv) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     ) {
-                        BenflixGenre.entries.forEach { genre ->
+                        genres.forEach { genre ->
                             GenreTile(genre = genre, onClick = { navigationManager.openGenreHub(genre) })
                         }
                     }
@@ -257,7 +264,7 @@ fun SearchStart(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     ) {
-                        BenflixGenre.entries.chunked(2).forEach { pair ->
+                        genres.chunked(2).forEach { pair ->
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth(),
@@ -278,6 +285,9 @@ fun SearchStart(
         }
     }
 }
+
+/** Genre tiles Kids don't see on Search */
+private val KIDS_HIDDEN_GENRES = setOf(BenflixGenre.HORROR, BenflixGenre.THRILLER, BenflixGenre.CRIME)
 
 /** One recent search with its own ✕ */
 @Composable

@@ -550,7 +550,7 @@ def sign_in():
                 tap(n)
             time.sleep(4)
             continue
-        n = find(root, r"^Add profile$")
+        n = find(root, r"^Add profile$|^Add someone$")
         if n is not None:
             tap(n)
             time.sleep(2)
@@ -616,7 +616,7 @@ def welcome_setup():
         # (once picked it shows a tick; on TV the explanation underneath can also read just
         # "Only for other languages", so don't keep pressing it)
         n = find(root, r"^Only for other languages$")
-        if n is not None and find(root, r"^✓ ") is None:
+        if n is not None and find(root, r"^✓ ") is None and tries[label] <= 1:
             tap(n)
             time.sleep(1.5)
             continue
@@ -635,6 +635,10 @@ def welcome_setup():
                 time.sleep(2)
                 break
         else:
+            # TV: the button can sit below the bottom of the screen until the remote moves down to it
+            if MODE == "tv" and tries[label] <= 3:
+                key("DPAD_DOWN", 3, wait=0.5)
+                continue
             REPORT["problems"].append({"type": "welcome setup: no button to go on", "text": label})
             break
     REPORT["welcome_steps"] = seen
