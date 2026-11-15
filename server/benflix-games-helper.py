@@ -200,13 +200,17 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 8
+SETUP_VERSION = 9
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
 _names = {}  # Jellyfin account id -> the profile's name (for "asked by")
 _kids_big = {}  # Jellyfin kids account id -> True when its max rating is PG-13 / TV-14 ("Big kids")
 _lock = threading.Lock()
+# Benflix silent updates: when someone last used the helper (anything but the quick health checks), so Tower's
+# hourly self-update can wait until nobody is using Benflix
+_last_use = {"at": 0.0}
+QUIET_FOR_S = 15 * 60
 
 
 class HelperError(Exception):
@@ -899,6 +903,30 @@ def _played_at(text):
         return 0
 
 
+def busy_now():
+    """For Tower's hourly self-update (benflix-autosetup.sh, asked from Tower itself only): is anyone using
+    Benflix right now? Busy when Jellyfin is playing anything for anyone (paused counts too), or the helper
+    was used in the last 15 minutes (web videos, games, the Lobby, Home lists). "jellyfin" says whether
+    Jellyfin could be asked (it needs Ben to have opened Benflix once since Tower started)."""
+    quiet_for = time.time() - _last_use["at"]
+    if quiet_for < QUIET_FOR_S:
+        return {"busy": True, "why": "Benflix was used in the last 15 minutes", "jellyfin": None}
+    token = (getattr(skips, "_admin", None) or {}).get("token") if skips is not None else None
+    if not token:
+        return {"busy": False, "why": "", "jellyfin": False}
+    try:
+        status, data, _ = jellyfin_call("GET", "/Sessions?ActiveWithinSeconds=900", token=token)
+    except Exception:
+        # Jellyfin not answering: play it safe
+        return {"busy": True, "why": "Jellyfin didn't answer", "jellyfin": False}
+    if status != 200:
+        return {"busy": False, "why": "", "jellyfin": False}
+    playing = [x for x in json.loads(data) if x.get("NowPlayingItem")]
+    if playing:
+        return {"busy": True, "why": f"{len(playing)} playing in Jellyfin", "jellyfin": True}
+    return {"busy": False, "why": "", "jellyfin": True}
+
+
 def household_popular():
     """What the household watched most in the last 30 days: movies and shows, ranked by how many
     people watched them (then by plays). Uses the admin's sign-in that Tower keeps for skip times,
@@ -1150,6 +1178,13 @@ class Handler(BaseHTTPRequestHandler):
                 )
             if method == "GET" and path == "/api/addresses":
                 return self.send(200, tower_addresses())
+            if method == "GET" and path == "/busy":
+                # Only Tower itself may ask (it says whether someone is watching)
+                if via_internet or self.client_address[0] not in ("127.0.0.1", "::1"):
+                    raise HelperError(403, "Only Tower can ask this.")
+                return self.send(200, busy_now())
+            if path not in ("/health", "/api/addresses"):
+                _last_use["at"] = time.time()
             if method == "GET" and path == "/health":
                 return self.send(
                     200,
