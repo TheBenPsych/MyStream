@@ -73,26 +73,38 @@ du -sh "$MEDIA"
 
 docker run -d --name jellyfin -p 8096:8096 -v "$MEDIA:/media:ro" jellyfin/jellyfin:10.10.7 >/dev/null
 J=http://127.0.0.1:8096
-for i in $(seq 1 90); do curl -fs "$J/System/Info/Public" >/dev/null && break; sleep 2; done
+# Jellyfin answers "starting up" for a while: wait until the first-time setup questions answer
+for i in $(seq 1 120); do curl -fs "$J/Startup/Configuration" >/dev/null && break; sleep 2; done
 H='Content-Type: application/json'
 A='X-Emby-Authorization: MediaBrowser Client="robot", Device="robot", DeviceId="robot", Version="1"'
-curl -fs -X POST "$J/Startup/Configuration" -H "$H" -d '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}'
-curl -fs "$J/Startup/User" >/dev/null || true
-curl -fs -X POST "$J/Startup/User" -H "$H" -d '{"Name":"demo","Password":""}'
-curl -fs -X POST "$J/Startup/RemoteAccess" -H "$H" -d '{"EnableRemoteAccess":true,"EnableAutomaticPortMapping":false}'
-curl -fs -X POST "$J/Startup/Complete"
-TOKEN=$(curl -fs -X POST "$J/Users/AuthenticateByName" -H "$H" -H "$A" -d '{"Username":"demo","Pw":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['AccessToken'])")
+call() { # method path [body]: tries again for a while, shows what went wrong
+  for t in $(seq 1 20); do
+    code=$(curl -s -o /tmp/call.out -w '%{http_code}' -X "$1" "$J$2" -H "$H" -H "$A" ${TOKEN:+-H "X-Emby-Token: $TOKEN"} ${3:+-d "$3"})
+    case $code in 2*) cat /tmp/call.out; return 0;; esac
+    echo "  $1 $2 answered $code: $(head -c 200 /tmp/call.out)" >&2
+    sleep 3
+  done
+  return 1
+}
+TOKEN=
+call POST /Startup/Configuration '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}' >/dev/null
+call GET /Startup/User >/dev/null
+call POST /Startup/User '{"Name":"demo","Password":""}' >/dev/null
+call POST /Startup/RemoteAccess '{"EnableRemoteAccess":true,"EnableAutomaticPortMapping":false}' >/dev/null
+call POST /Startup/Complete >/dev/null
+for i in $(seq 1 30); do curl -fs "$J/System/Info/Public" | grep -q '"StartupWizardCompleted":true' && break; sleep 2; done
+TOKEN=$(call POST /Users/AuthenticateByName '{"Username":"demo","Pw":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['AccessToken'])")
 T="X-Emby-Token: $TOKEN"
-curl -fs -X POST "$J/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false" -H "$H" -H "$T" -d '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Movies"}],"EnableRealtimeMonitor":false}}'
-curl -fs -X POST "$J/Library/VirtualFolders?name=Shows&collectionType=tvshows&refreshLibrary=false" -H "$H" -H "$T" -d '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Shows"}],"EnableRealtimeMonitor":false}}'
-curl -fs -X POST "$J/Library/Refresh" -H "$T"
+call POST "/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false" '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Movies"}],"EnableRealtimeMonitor":false}}'
+call POST "/Library/VirtualFolders?name=Shows&collectionType=tvshows&refreshLibrary=false" '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Shows"}],"EnableRealtimeMonitor":false}}'
+call POST /Library/Refresh
 # A Jellyfin user called Kids that may only see G (what a parent would set up on Tower)
-KID=$(curl -fs -X POST "$J/Users/New" -H "$H" -H "$T" -d '{"Name":"Kids","Password":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['Id'])")
-curl -fs "$J/Users/$KID" -H "$T" | python3 -c "
+KID=$(call POST /Users/New '{"Name":"Kids","Password":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['Id'])")
+call GET "/Users/$KID" | python3 -c "
 import json,sys
 p=json.load(sys.stdin)['Policy']; p['MaxParentalRating']=1; p['BlockUnratedItems']=['Movie','Series','Episode']
 print(json.dumps(p))" > /tmp/kidpolicy.json
-curl -fs -X POST "$J/Users/$KID/Policy" -H "$H" -H "$T" -d @/tmp/kidpolicy.json
+call POST "/Users/$KID/Policy" "$(cat /tmp/kidpolicy.json)"
 for i in $(seq 1 90); do
   n=$(curl -fs "$J/Items?Recursive=true&IncludeItemTypes=Movie,Episode" -H "$T" | python3 -c "import json,sys;print(json.load(sys.stdin)['TotalRecordCount'])" || echo 0)
   [ "$n" -ge 7 ] && break
