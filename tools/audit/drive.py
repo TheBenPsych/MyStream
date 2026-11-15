@@ -587,6 +587,9 @@ def welcome_setup():
     for _ in range(40):
         root = dump()
         step = find(root, r"^Step \d+ of \d+$")
+        # TV: moving down scrolls the step dots off the top; still the same step while its buttons show
+        if step is None and seen and find(root, r"^Next$|^Back$|^Skip for now$|^Looks good$|^No thanks$") is not None:
+            step = ET.Element("node", {"text": seen[-1]})
         if step is None:
             # the "You're all set" screen has no step dots
             n = find(root, r"^Go to Home$")
