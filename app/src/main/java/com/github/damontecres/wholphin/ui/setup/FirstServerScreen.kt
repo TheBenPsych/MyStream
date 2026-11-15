@@ -127,7 +127,7 @@ fun FirstServerScreen(
                 }
 
                 FirstServerStep.TYPE -> {
-                    Question("What's your server address?", "Like 10.0.0.58:8096 or myserver.duckdns.org")
+                    Question("What's your server address?", "Like 192.168.1.105:8096 or myserver.duckdns.org")
                     Answer(
                         value = address,
                         onValue = {
