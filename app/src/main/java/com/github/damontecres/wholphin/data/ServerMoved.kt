@@ -101,6 +101,7 @@ internal object ServerMoved {
         val newUrl =
             found?.takeIf { sameServer(serverIdAt(it), server) }
                 ?: NAMES.map { "http://$it:$port" }.firstOrNull { sameServer(serverIdAt(it), server) }
+                ?: senderAddress(server.id, port)
         if (newUrl == null) {
             Timber.i("Couldn't find the server at a new address")
             return server
@@ -165,6 +166,49 @@ internal object ServerMoved {
             .map { "http://$it:$port" }
             .firstOrNull { serverIdAt(it)?.toUUIDOrNull() == want }
             ?.also { Timber.i("Found server answers at %s, not %s", it, address) }
+            ?: senderAddress(want, port)
             ?: address
+    }
+
+    /**
+     * Benflix: asks the home network "who is Jellyfin?" (the same question Jellyfin's own apps ask) and uses the
+     * address the answer actually CAME FROM, not the address written inside it, which can be stale after a move.
+     * Returns a working http address for server [want], or null.
+     */
+    private fun senderAddress(
+        want: java.util.UUID,
+        port: Int,
+    ): String? {
+        val senders = mutableListOf<String>()
+        try {
+            java.net.DatagramSocket().use { socket ->
+                socket.broadcast = true
+                socket.soTimeout = 1500
+                val ask = "who is JellyfinServer?".toByteArray()
+                socket.send(
+                    java.net.DatagramPacket(ask, ask.size, java.net.InetAddress.getByName("255.255.255.255"), 7359),
+                )
+                val buf = ByteArray(4096)
+                val end = System.currentTimeMillis() + 2500
+                while (System.currentTimeMillis() < end) {
+                    val packet = java.net.DatagramPacket(buf, buf.size)
+                    try {
+                        socket.receive(packet)
+                    } catch (_: java.net.SocketTimeoutException) {
+                        break
+                    }
+                    val body = String(packet.data, 0, packet.length)
+                    val id = Regex("\"Id\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)
+                    if (id?.toUUIDOrNull() == want) packet.address?.hostAddress?.let { senders.add(it) }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Server finder (sender address) didn't work")
+        }
+        return senders
+            .distinct()
+            .map { "http://$it:$port" }
+            .firstOrNull { serverIdAt(it)?.toUUIDOrNull() == want }
+            ?.also { Timber.i("Found server by where its answer came from: %s", it) }
     }
 }
