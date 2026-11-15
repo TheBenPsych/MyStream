@@ -89,15 +89,17 @@ call() { # method path [body]: tries again for a while, shows what went wrong
 TOKEN=
 call POST /Startup/Configuration '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}' >/dev/null
 call GET /Startup/User >/dev/null
-call POST /Startup/User '{"Name":"demo","Password":""}' >/dev/null
+# Jellyfin wants a password on the first (admin) user; the robots use "demo" (no password), made below
+call POST /Startup/User '{"Name":"robotadmin","Password":"robot-admin-pw"}' >/dev/null
 call POST /Startup/RemoteAccess '{"EnableRemoteAccess":true,"EnableAutomaticPortMapping":false}' >/dev/null
 call POST /Startup/Complete >/dev/null
 for i in $(seq 1 30); do curl -fs "$J/System/Info/Public" | grep -q '"StartupWizardCompleted":true' && break; sleep 2; done
-TOKEN=$(call POST /Users/AuthenticateByName '{"Username":"demo","Pw":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['AccessToken'])")
+TOKEN=$(call POST /Users/AuthenticateByName '{"Username":"robotadmin","Pw":"robot-admin-pw"}' | python3 -c "import json,sys;print(json.load(sys.stdin)['AccessToken'])")
 T="X-Emby-Token: $TOKEN"
 call POST "/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false" '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Movies"}],"EnableRealtimeMonitor":false}}'
 call POST "/Library/VirtualFolders?name=Shows&collectionType=tvshows&refreshLibrary=false" '{"LibraryOptions":{"PathInfos":[{"Path":"/media/Shows"}],"EnableRealtimeMonitor":false}}'
 call POST /Library/Refresh
+call POST /Users/New '{"Name":"demo","Password":""}' >/dev/null
 # A Jellyfin user called Kids that may only see G (what a parent would set up on Tower)
 KID=$(call POST /Users/New '{"Name":"Kids","Password":""}' | python3 -c "import json,sys;print(json.load(sys.stdin)['Id'])")
 call GET "/Users/$KID" | python3 -c "
