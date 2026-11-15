@@ -447,12 +447,22 @@ fun NavDrawer(
 ) {
     val focusRequester = remember { FocusRequester() }
 
-    // If the user presses back while on the home page, move to the top bar, another back press will quit the app
+    // Ben: Back on Home (TV) says "Press Back again to leave Benflix"; a second Back within 3 seconds leaves.
+    // (It used to jump the focus up to your picture, which felt random.)
     var topBarFocused by remember { mutableStateOf(false) }
-    // (TV only: phones have no top bar, so Back on Home just leaves the app like any other phone app)
+    // (TV only: phones leave on Back like any other phone app)
     val isTv = rememberIsTv()
-    BackHandler(enabled = (isTv && !topBarFocused && destination is Destination.Home)) {
-        focusRequester.tryRequestFocus()
+    var leaveArmed by remember { mutableStateOf(false) }
+    LaunchedEffect(leaveArmed) {
+        if (leaveArmed) {
+            delay(LEAVE_AGAIN_MS)
+            leaveArmed = false
+        }
+    }
+    BackHandler(enabled = (isTv && !leaveArmed && destination is Destination.Home)) {
+        leaveArmed = true
+        com.github.damontecres.wholphin.ui.components.BenflixNotices
+            .pill("Press Back again to leave Benflix")
     }
     val userImageUrl = remember(user) { viewModel.getUserImage(user) }
     // Benflix: requests waiting for the main profile to say yes or no
@@ -815,3 +825,5 @@ private const val MENU_HOLD_REPEATS = 10
 val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
 
 val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open
+
+private const val LEAVE_AGAIN_MS = 3_000L
