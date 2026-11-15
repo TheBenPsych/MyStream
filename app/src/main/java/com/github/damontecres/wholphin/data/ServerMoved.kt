@@ -228,9 +228,15 @@ internal object ServerMoved {
      */
     fun findOnWifi(): List<Found> {
         val found = linkedMapOf<java.util.UUID, Found>()
+
         fun tryUrl(url: String) {
             val body = publicInfo(url) ?: return
-            val id = Regex("\"Id\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)?.toUUIDOrNull() ?: return
+            val id =
+                Regex("\"Id\"\\s*:\\s*\"([^\"]+)\"")
+                    .find(body)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.toUUIDOrNull() ?: return
             if (id in found) return
             val name = Regex("\"ServerName\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1)
             found[id] = Found(id, name, url)
@@ -254,7 +260,11 @@ internal object ServerMoved {
                     }
                     val body = String(packet.data, 0, packet.length)
                     val port =
-                        Regex("\"Address\"\\s*:\\s*\"[^\"]*:(\\d+)").find(body)?.groupValues?.get(1)?.toIntOrNull() ?: 8096
+                        Regex("\"Address\"\\s*:\\s*\"[^\"]*:(\\d+)")
+                            .find(body)
+                            ?.groupValues
+                            ?.get(1)
+                            ?.toIntOrNull() ?: 8096
                     packet.address?.hostAddress?.let { answers.add(it to port) }
                 }
                 answers.distinct().forEach { (ip, port) -> tryUrl("http://$ip:$port") }
