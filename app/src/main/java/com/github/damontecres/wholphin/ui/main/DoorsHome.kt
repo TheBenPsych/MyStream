@@ -766,7 +766,9 @@ class HomeDoorsViewModel
                     .filter { seerrUserId in it.askedBy && "${it.key}|${it.date}" !in told }
                     .mapNotNull { entry ->
                         val day = runCatching { java.time.LocalDate.parse(entry.date) }.getOrNull()
-                        if (day == null || java.time.temporal.ChronoUnit.DAYS.between(day, today) > CANT_FIND_DAYS) {
+                        if (day == null || java.time.temporal.ChronoUnit.DAYS
+                                .between(day, today) > CANT_FIND_DAYS
+                        ) {
                             null
                         } else {
                             entry to day
@@ -810,10 +812,17 @@ class HomeDoorsViewModel
             try {
                 val tmdbId = entry.key.substringAfter('-').toIntOrNull()
                 when {
-                    tmdbId == null -> null
-                    entry.key.startsWith("MOVIE") ->
+                    tmdbId == null -> {
+                        null
+                    }
+
+                    entry.key.startsWith("MOVIE") -> {
                         seerrService.createDiscoverItem(seerrService.api.moviesApi.movieMovieIdGet(movieId = tmdbId))
-                    else -> seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
+                    }
+
+                    else -> {
+                        seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
+                    }
                 }
             } catch (ex: CancellationException) {
                 throw ex

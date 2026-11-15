@@ -385,7 +385,8 @@ class MainActivity : AppCompatActivity() {
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
                                                 // Benflix: Ben's auto "Couldn't find it" check (people are told on Home)
-                                                com.github.damontecres.wholphin.ui.main.CantFindLayer()
+                                                com.github.damontecres.wholphin.ui.main
+                                                    .CantFindLayer()
                                                 // Benflix Wrapped (December)
                                                 com.github.damontecres.wholphin.ui.main.BenflixWrappedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
