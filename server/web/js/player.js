@@ -298,7 +298,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       .catch(() => B.toast("This browser can't pop the video out."));
   };
   // Play speed, remembered per show (or per movie)
-  const speedKey = "benflix.speed." + (series || it.Id);
+  const speedKey = "benflix.speed." + ((isEp && it.SeriesId) || it.Id);
   const setSpeed = (r) => {
     v.defaultPlaybackRate = r; v.playbackRate = r;
     try { if (r === 1) localStorage.removeItem(speedKey); else localStorage.setItem(speedKey, String(r)); } catch (e) {}

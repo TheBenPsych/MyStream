@@ -1362,3 +1362,6 @@ html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 6
 .lb-sw.on { border-color: #fff; }
 .side h4 { margin: 18px 0 8px; }
 @media (max-width: 700px) { .lb-list { padding-left: 16px; padding-right: 16px; } .lb-hud.tl { max-width: 60%; } .lb-hud.tl .lb-pill:last-child { display: none; } }
+
+/* Touch screens swipe rows; the hover arrows stuck on after a tap and covered the first card's name */
+@media (hover: none) { .rowx .arrow { display: none; } }

@@ -229,7 +229,13 @@ B.go = (hash, opts) => {
 B.back = () => (history.length > 1 ? history.back() : B.go("#/home"));
 B.page = () => $("#page");
 B.nav = 0;
+// Back (or opening the same door again within 10 minutes) comes back where you were on the page, like the TV
+const spots = {};
+let shownHash = "";
+const KEEPS_PLACE = /^#\/(home|movies|shows|music|books|live|games|requests|search|grid|mgrid|browse|songs|liked|mine)\b/;
 B.render = async () => {
+  if (shownHash && KEEPS_PLACE.test(shownHash)) spots[shownHash] = { y: window.scrollY, at: Date.now() };
+  shownHash = location.hash || "#/who";
   timers.forEach(clearInterval); timers = [];
   const l = leaving; leaving = [];
   l.forEach((f) => { try { f(); } catch (e) {} });
@@ -248,6 +254,13 @@ B.render = async () => {
       B.placeName = "";
       try { await fn(m, nav); } catch (e) { if (nav === B.nav) B.fail(e); }
       if (nav === B.nav) B.where(hash);
+      const spot = spots[hash];
+      if (spot && spot.y > 0 && Date.now() - spot.at < 6e5 && nav === B.nav) {
+        // rows can still be loading in: try now and once more when they have
+        const put = () => { if (nav === B.nav && window.scrollY < 5) window.scrollTo(0, Math.min(spot.y, document.documentElement.scrollHeight - innerHeight)); };
+        put();
+        setTimeout(put, 700);
+      }
       return;
     }
   }

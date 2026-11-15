@@ -82,6 +82,8 @@ async function step(page, vp, name, isPhone, extra) {
   let seen = {};
   try { seen = await look(page, isPhone); } catch (e) { seen = { error: String(e) }; }
   const s = Object.assign({ size: vp, step: name, file, hash: await page.evaluate(() => location.hash).catch(() => ""), scrollY: await page.evaluate(() => scrollY).catch(() => 0) }, seen, extra || {});
+  const broken = await page.evaluate(() => /Something went wrong/.test(document.body.innerText) ? document.body.innerText.slice(0, 300) : "").catch(() => "");
+  if (broken) problem(vp, "Something went wrong screen", `${name}: ${broken.replace(/\s+/g, " ")}`);
   report.steps.push(s);
   console.log(`[${vp}] ${name} ${s.hash} cut:${(s.cut || []).length} covered:${(s.covered || []).length} small:${(s.small || []).length} wide:${s.wide}`);
   save();
