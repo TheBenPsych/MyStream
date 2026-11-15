@@ -52,11 +52,17 @@ async function signIn(page) {
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
   await settle(page, 8000);
   if (await page.locator("#addSomeone").count()) await page.click("#addSomeone");
-  await page.waitForSelector("#v", { timeout: 20000 });
-  await page.fill("#v", USER);
-  await page.click("button[type=submit]");
-  await page.waitForSelector("#v[type=password]", { timeout: 20000 });
-  await page.click("#go");
+  // Redesign 2 sign-in: one form (Name + Password + Sign in); older one-question-at-a-time screens as a fallback
+  await page.waitForSelector("#nm, #v", { timeout: 30000 });
+  if (await page.locator("#nm").count()) {
+    await page.fill("#nm", USER);
+    await page.click("#go");
+  } else {
+    await page.fill("#v", USER);
+    await page.click("button[type=submit]");
+    await page.waitForSelector("#v[type=password]", { timeout: 20000 });
+    await page.click("#go");
+  }
   // first-time setup / Who's watching / Home
   for (let i = 0; i < 30; i++) {
     await page.waitForTimeout(1000);

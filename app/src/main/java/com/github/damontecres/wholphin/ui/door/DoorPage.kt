@@ -286,7 +286,13 @@ private fun WideDoor(
     // press a button the door keeps going back to the top row as rows arrive above it.
     val firstKey = state.rows.firstOrNull()?.key
     val savedRow = viewModel.focusedRow.takeIf { viewModel.userMoved }
-    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+    // the "Can't decide?" cards at the bottom count as a row too, so Back from a game lands on them again
+    val targetRow =
+        if (savedRow == PICKERS_KEY && door.hasPickers() && state.rows.isNotEmpty()) {
+            PICKERS_KEY
+        } else {
+            state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+        }
     val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     // Back (approved dr-p-back): first back up to the top row's first card, then out of the door
@@ -311,7 +317,14 @@ private fun WideDoor(
     // Ben (TV): cards were too small to read; 120 wide with a slightly shorter top area still shows the next row
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
-        rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
+        rememberLazyListState(
+            initialFirstVisibleItemIndex =
+                if (targetRow == PICKERS_KEY) {
+                    state.entries().size
+                } else {
+                    state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0)
+                },
+        )
     LaunchedEffect(firstKey) {
         snapshotFlow { columnState.firstVisibleItemIndex == 0 && (focusedKey == null || focusedKey == firstKey) }
             .collect { frame.atTop = it }
@@ -382,13 +395,20 @@ private fun WideDoor(
                 }
                 // Ben: the "Can't decide?" games sit at the very bottom, and only pick from this door
                 if (door.hasPickers() && state.rows.isNotEmpty()) {
-                    item(key = "pickers") {
+                    item(key = PICKERS_KEY) {
                         PickerRow(
                             door = door,
                             easy = easy,
                             compact = false,
                             onOpen = { viewModel.navigationManager.navigateTo(it) },
                             modifier = Modifier.padding(start = SIDE, end = SIDE),
+                            focusRequester = if (targetRow == PICKERS_KEY) restore else null,
+                            focusIndex = targetIndex,
+                            onFocus = { index ->
+                                focusedKey = PICKERS_KEY
+                                viewModel.focusedRow = PICKERS_KEY
+                                viewModel.focusedIndex = index
+                            },
                         )
                     }
                 }
@@ -998,3 +1018,5 @@ private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
+
+private const val PICKERS_KEY = "pickers"

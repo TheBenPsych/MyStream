@@ -218,7 +218,12 @@ fun BenflixTopBar(
                 badge = badge,
                 onClick = onClickProfile,
                 pictureSize = 40.dp * scale,
-                modifier = down.focusRequester(profileFocusRequester),
+                // Your picture is the last thing on the bar: Right stays put instead of jumping down onto
+                // whatever sits below on the right (on Home that was a notice's X, which then got cleared)
+                modifier =
+                    down
+                        .focusProperties { right = FocusRequester.Cancel }
+                        .focusRequester(profileFocusRequester),
             )
         }
     }

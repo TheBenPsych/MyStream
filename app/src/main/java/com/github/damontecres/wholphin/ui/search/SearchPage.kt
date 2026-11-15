@@ -349,7 +349,10 @@ fun SearchPage(
                 // TV: the keyboard is tucked away, so say how to get it
                 placeholder =
                     if (isTv) {
-                        { Text("Press OK to type", color = BenflixColors.Muted) }
+                        {
+                            // short enough to fit the narrow box whole (the longer words were cut to "Press OK to")
+                            Text("OK to type", color = BenflixColors.Muted, maxLines = 1, softWrap = false)
+                        }
                     } else {
                         null
                     },

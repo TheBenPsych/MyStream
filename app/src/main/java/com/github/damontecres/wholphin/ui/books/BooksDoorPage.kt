@@ -117,13 +117,16 @@ fun BooksDoorPage(
         return
     }
     if (home == null) {
+        // The remote starts on Try again (not up on the top bar)
+        val retryFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = modifier.fillMaxSize().padding(horizontal = edge, vertical = 32.dp),
         ) {
             Title("Couldn't reach the Books helper on Tower")
             Text(
-                text = state.problem ?: "",
+                text = plainProblem(state.problem),
                 color = BenflixColors.Muted,
                 fontSize = BenflixType.body,
             )
@@ -132,7 +135,13 @@ fun BooksDoorPage(
                 color = BenflixColors.Soft,
                 fontSize = BenflixType.body,
             )
-            MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::retry, primary = true)
+            MusicButton(
+                "Try again",
+                BenflixIcon.REFRESH,
+                onClick = viewModel::retry,
+                primary = true,
+                modifier = Modifier.focusRequester(retryFocus),
+            )
         }
         return
     }
@@ -653,5 +662,16 @@ private fun EmptyBooks(
                 )
             }
         }
+    }
+}
+
+/** Ground rule: plain words. Programmer messages (like "Value <!doctype ... JSONObject") become one plain line. */
+private fun plainProblem(problem: String?): String {
+    val p = problem?.trim().orEmpty()
+    val techy = Regex("""java\.|kotlin\.|exception|jsonobject|<!doctype|<html|stacktrace|\bnull\b""", RegexOption.IGNORE_CASE)
+    return when {
+        p.isEmpty() -> ""
+        techy.containsMatchIn(p) -> "Tower answered, but not with Books (the helper may be old or not running)."
+        else -> p
     }
 }
