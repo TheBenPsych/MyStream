@@ -631,8 +631,11 @@ def welcome_setup():
         for b in buttons:
             n = find(root, b)
             if n is not None:
+                log(f"welcome {label}: pressing '{n.get('text') or n.get('content-desc')}' (try {tries[label]})")
                 tap(n)
                 time.sleep(2)
+                if tries[label] in (2, 5):
+                    shot(f"welcome-{label.split()[1]}-try{tries[label]}")
                 break
         else:
             # TV: the button can sit below the bottom of the screen until the remote moves down to it
