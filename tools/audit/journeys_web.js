@@ -98,11 +98,17 @@ async function signIn(page) {
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
   await settle(page, 8000);
   if (await page.locator("#addSomeone").count()) await page.click("#addSomeone");
-  await page.waitForSelector("#v", { timeout: 20000 });
-  await page.fill("#v", USER);
-  await page.click("button[type=submit]");
-  await page.waitForSelector("#v[type=password]", { timeout: 20000 });
-  await page.click("#go");
+  // Redesign 2 sign-in: one form (Name + Password + Sign in); older one-question-at-a-time screens as a fallback
+  await page.waitForSelector("#nm, #v", { timeout: 30000 });
+  if (await page.locator("#nm").count()) {
+    await page.fill("#nm", USER);
+    await page.click("#go");
+  } else {
+    await page.fill("#v", USER);
+    await page.click("button[type=submit]");
+    await page.waitForSelector("#v[type=password]", { timeout: 20000 });
+    await page.click("#go");
+  }
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(1000);
     const h = await page.evaluate(() => location.hash);
@@ -127,7 +133,7 @@ async function trip(browser, vp, size, isPhone) {
   const ctx = await browser.newContext({ viewport: size, isMobile: isPhone, hasTouch: isPhone, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => problem(vp, "javascript error", String(e).slice(0, 300)));
-  if (!(await signIn(page))) { await step(page, vp, "could-not-sign-in", isPhone); problem(vp, "robot", "could not sign in"); return; }
+  if (!(await signIn(page).catch((e) => { problem(vp, "sign-in", String(e).slice(0, 200)); return false; }))) { await step(page, vp, "could-not-sign-in", isPhone); problem(vp, "robot", "could not sign in"); return; }
   await settle(page, 8000);
   await step(page, vp, "home", isPhone);
   for (let i = 1; i <= 3; i++) { await page.mouse.wheel(0, size.height * 0.8); await page.waitForTimeout(700); await step(page, vp, `home-scroll-${i}`, isPhone); }
