@@ -136,9 +136,10 @@ fun MusicMiniBar(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = BenflixColors.PanelHigh,
+                // Music redesign 3: the violet mini player above the Music tabs
+                containerColor = Color(0xFF2A2142),
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.FocusRow,
+                focusedContainerColor = Color(0xFF362B55),
                 focusedContentColor = BenflixColors.Text,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

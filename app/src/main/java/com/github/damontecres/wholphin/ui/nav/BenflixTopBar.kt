@@ -153,6 +153,8 @@ fun BenflixTopBar(
     overPicture: Boolean = false,
     /** Pages under the bar can name where Down goes (see [TopBarDown]) */
     downTarget: TopBarDown? = null,
+    /** Music pages have the player strip along the bottom instead (Music redesign 3) */
+    hideMusicPill: Boolean = false,
 ) {
     val scale = if (big) 1.2f else 1f
     val down =
@@ -198,8 +200,10 @@ fun BenflixTopBar(
             modifier = if (overPicture) Modifier.softShadow() else Modifier,
         ) {
             // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
-            com.github.damontecres.wholphin.ui.music
-                .MusicNowPill(scale = scale, modifier = down)
+            if (!hideMusicPill) {
+                com.github.damontecres.wholphin.ui.music
+                    .MusicNowPill(scale = scale, modifier = down)
+            }
             // Benflix Books: while an audiobook plays, a lime pill (OK opens the player)
             com.github.damontecres.wholphin.ui.books
                 .AudiobookPill(scale = scale, modifier = down)

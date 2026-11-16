@@ -438,6 +438,14 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 403, {"error": "No music on the Kids profile."}
         body = read_json()
         return 200, mix_hide(user_id, str(body.get("key") or ""), str(body.get("id") or ""))
+    if path.startswith("/api/music/me"):
+        # Music redesign 3 (Ben 2026-11-16): what this profile played, pinned and searched, on every screen
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        try:
+            return 200, me_route(method, path, user_id, read_json)
+        except MusicError as e:
+            return e.status, {"error": e.message}
     if is_kids:
         return 403, {"error": "No music requests on the Kids profile."}
     if not is_admin:
@@ -3701,6 +3709,83 @@ def mix_hide(user_id, key, song_id):
     with _theme_lock:
         _themes.pop(user_id, None)
     return {"ok": True}
+
+
+# ---------- Your music places: Recently played, pins, Recent searches (Music redesign 3, Ben 2026-11-16) ----------
+# Kept per profile on Tower so the TV, the phones and the browser all show the same Jump back in, Recently played,
+# pins in Your library and Recent searches. Recently played keeps 3 months (at most 300), searches the last 10,
+# pins 4 (Liked songs is always first and doesn't count).
+
+ME_KINDS = ("album", "playlist", "mix", "artist", "liked", "songs", "song")
+ME_RECENT_DAYS = 92
+ME_RECENT_MAX = 300
+ME_SEARCH_MAX = 10
+ME_PIN_MAX = 4
+
+
+def _me_all():
+    return _read("music-me.json") or {}
+
+
+def _me_clean(entry):
+    kind = str(entry.get("kind") or "")
+    item = str(entry.get("id") or "")
+    if kind not in ME_KINDS or not re.fullmatch(r"[\w-]{0,80}", item):
+        raise MusicError(400, "What did you play?")
+    return {"kind": kind, "id": item, "name": str(entry.get("name") or "")[:120]}
+
+
+def me_get(user_id):
+    mine = _me_all().get(user_id) or {}
+    cut = time.time() - ME_RECENT_DAYS * 86400
+    return {
+        "recents": [r for r in mine.get("recents") or [] if (r.get("at") or 0) >= cut],
+        "searches": (mine.get("searches") or [])[:ME_SEARCH_MAX],
+        "pins": (mine.get("pins") or [])[:ME_PIN_MAX],
+    }
+
+
+def me_route(method, path, user_id, read_json):
+    if not _dir:
+        raise MusicError(503, "Music is off on Tower right now.")
+    if method == "GET" and path == "/api/music/me":
+        return me_get(user_id)
+    if method != "POST":
+        raise MusicError(404, "Not here.")
+    body = read_json() or {}
+    with _lock:
+        everyone = _me_all()
+        mine = everyone.setdefault(user_id, {})
+        now = time.time()
+        if path == "/api/music/me/played":
+            entry = _me_clean(body)
+            entry["at"] = now
+            same = lambda r: r.get("kind") == entry["kind"] and r.get("id") == entry["id"]  # noqa: E731
+            recents = [entry] + [r for r in mine.get("recents") or [] if not same(r)]
+            cut = now - ME_RECENT_DAYS * 86400
+            mine["recents"] = [r for r in recents if (r.get("at") or 0) >= cut][:ME_RECENT_MAX]
+        elif path == "/api/music/me/search":
+            q = " ".join(str(body.get("q") or "").split())[:80]
+            searches = [s for s in mine.get("searches") or [] if s.get("q", "").lower() != q.lower()]
+            if body.get("clear"):
+                searches = []
+            elif body.get("remove"):
+                pass
+            elif q:
+                searches = [{"q": q, "at": now, "opened": str(body.get("opened") or "")[:120]}] + searches
+            mine["searches"] = searches[:ME_SEARCH_MAX]
+        elif path == "/api/music/me/pin":
+            entry = _me_clean(body)
+            pins = [p for p in mine.get("pins") or [] if not (p.get("kind") == entry["kind"] and p.get("id") == entry["id"])]
+            if body.get("on", True):
+                if len(pins) >= ME_PIN_MAX:
+                    raise MusicError(409, f"You can pin {ME_PIN_MAX}. Unpin one first.")
+                pins.append(entry)
+            mine["pins"] = pins
+        else:
+            raise MusicError(404, "Not here.")
+        _write("music-me.json", everyone)
+    return me_get(user_id)
 
 
 # ---------- Themed playlists: holidays in season, decades, genres, moods, activities, throwbacks, seasons ----------
