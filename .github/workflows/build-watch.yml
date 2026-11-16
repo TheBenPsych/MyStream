@@ -32,7 +32,8 @@ jobs:
           TITLE: ${{ github.event.workflow_run.display_title }}
         run: |
           ISSUE_TITLE="The app update didn't build"
-          open_issue=$(gh issue list -R "$REPO" --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          open_issue=$(gh issue list -R "$REPO" --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          # Issues can be switched off on the repo: then the watcher only goes red when a build really failed
           if [ "$CONCLUSION" = "success" ]; then
             if [ -n "$open_issue" ]; then
               gh issue close "$open_issue" -R "$REPO" --comment "All good again: the build for \"$TITLE\" worked, so the update is out. $RUN_URL"
@@ -61,6 +62,10 @@ jobs:
           Build: $RUN_URL
 
           Ask Claude in the Benflix project to look at it. This issue closes by itself when a build works."
+          if ! gh api "repos/$REPO" --jq .has_issues | grep -q true; then
+            echo "::error::The app update didn't build twice: $RUN_URL"
+            exit 1
+          fi
           if [ -n "$open_issue" ]; then
             gh issue comment "$open_issue" -R "$REPO" --body "$body"
           else
