@@ -1,5 +1,5 @@
-/* Benflix web: the Live TV door. Top area describes the channel you point at; Favourites and
-   Recently watched rows; then the full guide (2 hours across). Watching: banner at the bottom,
+/* Benflix web: the Live TV door. Top area describes the channel you point at; a Recently
+   watched row, then the full guide (favourites first, 2 hours across). Watching: banner at the bottom,
    Up/Down change channel by number, Left opens the side guide. */
 "use strict";
 
@@ -62,7 +62,9 @@ B.route(/^\/live$/, async (m, nav) => {
   const favs = prefs.favourites.map((n) => byName[n]).filter(Boolean);
   const recent = prefs.recent.map((n) => byName[n]).filter(Boolean);
   const hidden = new Set(prefs.hidden);
-  const shown = list.filter((c) => !hidden.has(c._type));
+  // Ben (2026-11-16): no separate Favourites row; favourites are the first channels in the guide
+  // (and the "★ Favourites" chip shows just them)
+  const shown = [...favs, ...list.filter((c) => !hidden.has(c._type) && !favs.includes(c))];
   const describe = (c) => {
     if (!$("#liveInfo")) return; // already left the page
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
@@ -82,11 +84,10 @@ B.route(/^\/live$/, async (m, nav) => {
     }).join("")}</div></div>`).join("");
   const types = [...new Set(list.map((c) => c._type))];
   $("#rows").innerHTML = [
-    B.row("Favourites", favs.map(chCard)) || `<section class="rowx"><h3>Favourites</h3><p class="wrap dim" style="margin:0">Star channels in the guide (press ★ beside a channel) and they show up here first.</p></section>`,
     B.row("Recently watched", recent.map(chCard)),
     `<section class="rowx"><h3>Guide</h3>
       <div class="gridbar" style="--accent:${DOORS.live.color};top:var(--bar)"><input class="search-in" id="chSearch" placeholder="Channel name or number">
-      ${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
+      ${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
       <button class="chip" id="editTypes">Edit types</button></div>
       <div class="guide"><div class="ghead"><span></span><div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
   ].join("");
@@ -108,7 +109,7 @@ B.route(/^\/live$/, async (m, nav) => {
     if (t) {
       const on = !t.classList.contains("on");
       $$("[data-type]").forEach((x) => x.classList.toggle("on", on && x === t));
-      filtered = on ? shown.filter((c) => c._type === t.dataset.type) : shown;
+      filtered = !on ? shown : t.dataset.type === "__fav" ? favs : shown.filter((c) => c._type === t.dataset.type);
       return redraw();
     }
     const pr = e.target.closest(".prog");
