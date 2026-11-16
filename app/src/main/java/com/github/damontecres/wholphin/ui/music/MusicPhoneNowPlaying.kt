@@ -134,7 +134,9 @@ internal fun PhoneNowPlaying(
         ) {
             SmallButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, easy, filledHeart = liked, onClick = viewModel::like)
             SmallButton("Up next", BenflixIcon.LIST, easy, onClick = viewModel::openUpNext)
-            if (viewModel.canAsk) SmallButton("Similar", BenflixIcon.REQUESTS, easy, onClick = viewModel::openSimilar)
+            // Music redesign 3: the About cards (with Songs like this to ask for) and Play on another screen
+            SmallButton("About", BenflixIcon.INFO, easy, onClick = viewModel::openAbout)
+            SmallButton("Play on", BenflixIcon.TV, easy, onClick = { viewModel.playOnOpen.value = true })
             SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
             SmallButton("More", BenflixIcon.MORE_VERT, easy, onClick = viewModel::openMenu)
         }
@@ -312,7 +314,7 @@ private fun RoundButton(
     }
 }
 
-/** Heart / Up next / Stop / More: 52dp circles (a comfy thumb target), with their names under them in Easy read */
+/** Heart / Up next / About / Play on / Stop / More: 48dp circles (six fit across a small phone), with their names under them in Easy read */
 @Composable
 private fun SmallButton(
     label: String,
@@ -327,7 +329,7 @@ private fun SmallButton(
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(52.dp).background(BenflixColors.Raised, CircleShape),
+            modifier = Modifier.size(48.dp).background(BenflixColors.Raised, CircleShape),
         ) {
             if (filledHeart) {
                 Image(

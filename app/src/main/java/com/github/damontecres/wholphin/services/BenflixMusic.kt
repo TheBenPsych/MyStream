@@ -263,6 +263,14 @@ class BenflixMusic
             )
         }
 
+        /** Songs on Benflix whose words have these words: (artist, title, the line that matched) */
+        suspend fun lyricsSearch(words: String): List<Triple<String, String, String>> =
+            helper
+                .getJson("/api/music/lyricsearch?q=" + Uri.encode(words))
+                .optJSONArray("songs")
+                .objects()
+                .map { Triple(it.optString("artist"), it.optString("title"), it.optString("line")) }
+
         /** An album and its songs */
         suspend fun album(id: Long): Pair<MusicAlbum, List<MusicSong>> {
             val j = helper.getJson("/api/music/album?id=$id")

@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.music
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,7 +84,7 @@ fun MusicUpNextPage(
     ) {
         item(key = "title") {
             Text(
-                "Up next",
+                "Queue",
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle,
                 fontWeight = FontWeight.ExtraBold,
@@ -89,7 +92,7 @@ fun MusicUpNextPage(
             )
         }
         if (current != null) {
-            item(key = "now-name") { MusicKicker("Playing now", Modifier.padding(top = 8.dp, bottom = 4.dp)) }
+            item(key = "now-name") { MusicKicker("Now playing", Modifier.padding(top = 8.dp, bottom = 4.dp)) }
             item(key = "now") {
                 QueueRow(current, isCurrent = true, playing = music.status == NowPlayingStatus.PLAYING, onPlay = {
                 }, onUp = null, onDown = null, onRemove = null)
@@ -97,7 +100,7 @@ fun MusicUpNextPage(
         }
         if (added.isNotEmpty()) {
             item(key = "added-name") {
-                MusicKicker("Up next · songs you added", Modifier.padding(top = 18.dp, bottom = 4.dp), color = BenflixColors.Soft)
+                MusicKicker("Next in queue", Modifier.padding(top = 18.dp, bottom = 4.dp), color = BenflixColors.Soft)
             }
             added.forEach { (index, audio) ->
                 val focus = !focusGiven
@@ -125,7 +128,7 @@ fun MusicUpNextPage(
         if (then.isNotEmpty()) {
             item(key = "then-name") {
                 MusicKicker(
-                    "Then plays" + (music.thenTitle?.let { ": $it" } ?: ""),
+                    music.thenTitle?.let { "Next from: $it" } ?: "Next from your music",
                     Modifier.padding(top = 18.dp, bottom = 4.dp),
                     color = BenflixColors.Soft,
                 )
@@ -142,8 +145,9 @@ fun MusicUpNextPage(
                             refocus = true
                             act { service.playIndex(index) }()
                         },
-                        onUp = null,
-                        onDown = null,
+                        // Music redesign 3: these move too (within Next from)
+                        onUp = act { if (index > now + 1 + added.size) service.moveQueue(index, index - 1) },
+                        onDown = act { if (index < queue.size - 1) service.moveQueue(index, index + 1) },
                         onRemove = {
                             refocus = true
                             act { service.removeFromQueue(index) }()
@@ -177,7 +181,35 @@ private fun QueueRow(
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Music redesign 3: on phones, press and hold a waiting song, then drag it up or down the queue
+    val isTv = rememberIsTv()
+    val up = androidx.compose.runtime.rememberUpdatedState(onUp)
+    val down = androidx.compose.runtime.rememberUpdatedState(onDown)
+    val step = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
+    var dragged by remember { mutableStateOf(0f) }
+    val dragMod =
+        if (isTv || (onUp == null && onDown == null)) {
+            Modifier
+        } else {
+            Modifier
+                .pointerInput(Unit) {
+                    detectDragGesturesAfterLongPress(
+                        onDragEnd = { dragged = 0f },
+                        onDragCancel = { dragged = 0f },
+                    ) { change, amount ->
+                        change.consume()
+                        dragged += amount.y
+                        if (dragged <= -step) {
+                            dragged += step
+                            up.value?.invoke()
+                        } else if (dragged >= step) {
+                            dragged -= step
+                            down.value?.invoke()
+                        }
+                    }
+                }.graphicsLayer { translationY = dragged }
+        }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = dragMod) {
         androidx.tv.material3.Surface(
             onClick = onPlay,
             shape =

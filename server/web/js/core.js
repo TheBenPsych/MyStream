@@ -485,6 +485,7 @@ const nextCorner = () => {
   el.className = "corner";
   el.innerHTML = `${card.img ? `<span class="cimg" style="background-image:url('${esc(card.img)}')"></span>` : ""}<div class="cw"><b>${esc(card.title)}</b><span>${esc(card.line || "")}${card.href ? " · Click to open" : ""}</span></div><i class="ctime"></i>`;
   if (card.href) el.onclick = () => { done(); B.go(card.href); };
+  else if (card.run) el.onclick = () => { done(); card.run(); };
   document.body.appendChild(el);
   let gone = false;
   const done = () => { if (gone) return; gone = true; el.remove(); nextCorner(); };

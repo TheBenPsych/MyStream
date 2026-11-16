@@ -30,6 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.sessionApi
 import org.jellyfin.sdk.api.sockets.SocketApiState
 import org.jellyfin.sdk.api.sockets.subscribe
@@ -56,6 +57,7 @@ class ServerEventListener
         private val serverRepository: ServerRepository,
         private val navigationManager: NavigationManager,
         private val benflixMessages: BenflixMessages,
+        private val musicService: MusicService,
     ) : DefaultLifecycleObserver {
         private val activity = (context as AppCompatActivity)
 
@@ -285,9 +287,49 @@ class ServerEventListener
                 return
             }
             val positionMs = (request.startPositionTicks ?: 0L) / TICKS_PER_MS
+            // Music redesign 3 (Play on): songs sent from a phone or the browser play here as music, from the same
+            // song and the same spot, with the rest of the queue after it, and Now playing opens
+            if (playSongsHere(request, positionMs)) return
             withContext(WholphinDispatchers.Main) {
                 navigationManager.navigateTo(Destination.Playback(itemId = itemId, positionMs = positionMs))
             }
+        }
+
+        private suspend fun playSongsHere(
+            request: PlayRequest,
+            positionMs: Long,
+        ): Boolean {
+            val ids = request.itemIds.orEmpty().take(MAX_SENT_SONGS)
+            val found =
+                try {
+                    api.itemsApi
+                        .getItems(
+                            org.jellyfin.sdk.model.api.request.GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                ids = ids,
+                                fields = com.github.damontecres.wholphin.ui.SongListFields,
+                            ),
+                        ).content.items
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Play on: couldn't look up what was sent")
+                    return false
+                }
+            val byId = found.associateBy { it.id }
+            val songs =
+                ids.mapNotNull { byId[it] }.filter { it.type == org.jellyfin.sdk.model.api.BaseItemKind.AUDIO }.map {
+                    com.github.damontecres.wholphin.data.model
+                        .BaseItem(it, false)
+                }
+            if (songs.isEmpty() || byId[ids.first()]?.type != org.jellyfin.sdk.model.api.BaseItemKind.AUDIO) return false
+            val start = (request.startIndex ?: 0).coerceIn(0, songs.size - 1)
+            musicService.playList(songs, start, false, null, "Sent to this TV")
+            withContext(WholphinDispatchers.Main) {
+                if (positionMs > 0) musicService.player.seekTo(positionMs)
+                navigationManager.navigateTo(Destination.NowPlaying)
+            }
+            return true
         }
 
         override fun onResume(owner: LifecycleOwner) {
@@ -306,6 +348,9 @@ class ServerEventListener
     }
 
 private const val TICKS_PER_MS = 10_000L
+
+/** Play on: at most this many songs of the queue come along */
+private const val MAX_SENT_SONGS = 100
 
 private val HEARTBEAT = 4.minutes
 

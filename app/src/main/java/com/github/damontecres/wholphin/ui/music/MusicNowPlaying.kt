@@ -68,6 +68,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.lyricsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.LyricDto
@@ -88,7 +89,13 @@ class MusicNowPlayingViewModel
         private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
         /** 30-second tastes in Similar songs (Ben 2026-11-16); the playing song pauses while one plays */
         val preview: com.github.damontecres.wholphin.services.SongPreview,
+        arrivals: com.github.damontecres.wholphin.services.MusicArrivals,
     ) : ViewModel() {
+        init {
+            // Music redesign 3: a song you asked for just came in? A corner card offers to play it next (once)
+            arrivals.check()
+        }
+
         /** Ben, or a grown-up family profile (their asks wait for Ben's yes). Never Kids or Guest. */
         val canAsk: Boolean get() = !KidsMode.isActive && !GuestMode.isActive
 
@@ -255,7 +262,106 @@ class MusicNowPlayingViewModel
         fun closeMenu() {
             _menuSong.value = null
         }
+
+        /** Music redesign 3: the Play on picker is open */
+        val playOnOpen = MutableStateFlow(false)
+
+        /** Music redesign 3: the About cards (null = closed) */
+        private val _about = MutableStateFlow<AboutSong?>(null)
+        val about: StateFlow<AboutSong?> = _about
+
+        fun openAbout() {
+            val audio = musicService.state.value.currentAudio ?: return
+            _about.value = AboutSong(audio.id, loading = true)
+            viewModelScope.launchIO {
+                _about.value =
+                    try {
+                        val song = api.userLibraryApi.getItem(audio.id).content
+                        val artistRef = song.albumArtists?.firstOrNull() ?: song.artistItems?.firstOrNull()
+                        val artist =
+                            artistRef?.let {
+                                try {
+                                    api.userLibraryApi.getItem(it.id).content
+                                } catch (ex: Exception) {
+                                    Timber.d(ex, "About: the artist")
+                                    null
+                                }
+                            }
+                        val credits =
+                            buildList {
+                                song.artists?.takeIf { it.isNotEmpty() }?.let { add("Performed by" to it.joinToString(", ")) }
+                                song.people
+                                    ?.groupBy { it.type }
+                                    ?.forEach { (type, people) ->
+                                        val role =
+                                            when (type) {
+                                                org.jellyfin.sdk.model.api.PersonKind.COMPOSER -> "Written by"
+                                                org.jellyfin.sdk.model.api.PersonKind.LYRICIST -> "Words by"
+                                                org.jellyfin.sdk.model.api.PersonKind.PRODUCER -> "Produced by"
+                                                org.jellyfin.sdk.model.api.PersonKind.ARRANGER -> "Arranged by"
+                                                org.jellyfin.sdk.model.api.PersonKind.CONDUCTOR -> "Conducted by"
+                                                else -> null
+                                            }
+                                        if (role != null) add(role to people.mapNotNull { it.name }.distinct().joinToString(", "))
+                                    }
+                                song.album?.let { add("Album" to listOfNotNull(it, song.productionYear?.toString()).joinToString(" · ")) }
+                                song.genres?.takeIf { it.isNotEmpty() }?.let { add("Style" to it.take(3).joinToString(", ")) }
+                            }
+                        AboutSong(
+                            songId = audio.id,
+                            artistId = artistRef?.id,
+                            artistName = artistRef?.name ?: audio.artistNames,
+                            artistBio = artist?.overview?.trim()?.ifBlank { null },
+                            artistImage =
+                                artistRef?.id?.let {
+                                    runCatching {
+                                        api.imageApi.getItemImageUrl(
+                                            itemId = it,
+                                            imageType = org.jellyfin.sdk.model.api.ImageType.PRIMARY,
+                                            maxHeight = 400,
+                                        )
+                                    }.getOrNull()
+                                },
+                            credits = credits,
+                        )
+                    } catch (ex: kotlinx.coroutines.CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "About this song")
+                        AboutSong(audio.id, artistName = audio.artistNames)
+                    }
+            }
+        }
+
+        fun closeAbout() {
+            _about.value = null
+        }
+
+        fun goToArtist(id: UUID) {
+            _about.value = null
+            navigationManager.navigateTo(Destination.MediaItem(id, org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST))
+        }
+
+        /** The songs from the playing one to the end of the queue (for Play on) */
+        fun queueFromHere(): List<UUID> {
+            val p = player
+            val from = p.currentMediaItemIndex.coerceAtLeast(0)
+            return (from until p.mediaItemCount)
+                .mapNotNull { (p.getMediaItemAt(it).localConfiguration?.tag as? AudioItem)?.id }
+                .take(100)
+        }
     }
+
+/** What the About cards show for the playing song */
+data class AboutSong(
+    val songId: UUID,
+    val loading: Boolean = false,
+    val artistId: UUID? = null,
+    val artistName: String? = null,
+    val artistBio: String? = null,
+    val artistImage: String? = null,
+    val credits: List<Pair<String, String>> = emptyList(),
+)
 
 /**
  * Benflix music: Now playing (approved np-cover + w-column + v-blocks). The cover on the left, the name
@@ -323,6 +429,10 @@ fun MusicNowPlayingPage(
     menuSong?.let { song ->
         SongMenu(song = song, liked = music.liked, onDismiss = viewModel::closeMenu)
     }
+    val about by viewModel.about.collectAsState()
+    about?.let { AboutPanel(it, viewModel, next = remember(music.queueVersion, music.currentIndex) { comingUp(viewModel) }) }
+    val playOn by viewModel.playOnOpen.collectAsState()
+    if (playOn) MusicPlayOnDialog(viewModel, onDismiss = { viewModel.playOnOpen.value = false })
     val similar by viewModel.similar.collectAsState()
     val similarPicked by viewModel.similarPicked.collectAsState()
     val similarNote by viewModel.similarNote.collectAsState()
@@ -413,6 +523,13 @@ fun MusicNowPlayingPage(
             )
         }
     }
+}
+
+/** The next few songs in the queue (the Next in queue card) */
+private fun comingUp(viewModel: MusicNowPlayingViewModel): List<AudioItem> {
+    val p = viewModel.player
+    val from = p.currentMediaItemIndex + 1
+    return (from until minOf(p.mediaItemCount, from + 3)).mapNotNull { p.getMediaItemAt(it).localConfiguration?.tag as? AudioItem }
 }
 
 private fun nextSong(viewModel: MusicNowPlayingViewModel): AudioItem? {
@@ -600,16 +717,11 @@ private fun ExtraButtons(
         modifier = named(likeName),
     )
     MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy, modifier = named("Up next"))
-    // Ben 2026-11-15: a few songs like this one to ask for
-    if (viewModel.canAsk) {
-        MusicButton(
-            if (labels) "Similar songs" else null,
-            BenflixIcon.REQUESTS,
-            onClick = viewModel::openSimilar,
-            big = easy,
-            modifier = named("Similar songs"),
-        )
-    }
+    // Music redesign 3: About the artist, Credits, Next in queue and Songs like this to ask for, as cards
+    MusicButton(if (labels) "About" else null, BenflixIcon.INFO, onClick = viewModel::openAbout, big = easy, modifier = named("About"))
+    MusicButton(if (labels) "Play on" else null, BenflixIcon.TV, onClick = {
+        viewModel.playOnOpen.value = true
+    }, big = easy, modifier = named("Play on"))
     MusicButton(if (labels) "Stop" else null, BenflixIcon.STOP, onClick = viewModel::stop, big = easy, modifier = named("Stop"))
     // Play next, Add to a playlist, Go to album ... and, on Ben's profile, Delete and find again
     MusicButton(if (labels) "More" else null, BenflixIcon.MORE_VERT, onClick = viewModel::openMenu, big = easy, modifier = named("More"))

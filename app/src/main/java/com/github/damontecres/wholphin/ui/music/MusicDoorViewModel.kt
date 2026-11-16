@@ -115,6 +115,7 @@ class MusicDoorViewModel
         val musicService: MusicService,
         val navigationManager: NavigationManager,
         val musicMe: com.github.damontecres.wholphin.services.MusicMe,
+        private val arrivals: com.github.damontecres.wholphin.services.MusicArrivals,
     ) : ViewModel() {
         private val _state = MutableStateFlow(MusicDoorState())
         val state: StateFlow<MusicDoorState> = _state
@@ -139,6 +140,8 @@ class MusicDoorViewModel
             }
 
         fun start() {
+            // Music redesign 3: a song you asked for just came in? A corner card offers to play it next (once)
+            arrivals.check()
             // Benflix speed: Music used to start from nothing every time, waiting on Tower's mixes before
             // anything showed. Last time's page now shows at once and the fresh one replaces it when it's in.
             val key = snapshotKey()

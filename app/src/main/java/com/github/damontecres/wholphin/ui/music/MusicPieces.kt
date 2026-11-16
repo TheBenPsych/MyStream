@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +64,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.extensions.ticks
@@ -459,9 +463,58 @@ fun SongRow(
     big: Boolean = false,
     dimmed: Boolean = false,
     onFocus: (() -> Unit)? = null,
+    /** Music redesign 3: on phones, swiping the song to the right adds it to the queue */
+    onSwipeQueue: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(8.dp)
     val imageUrlService = LocalImageUrlService.current
+    val swipe =
+        remember {
+            androidx.compose.animation.core
+                .Animatable(0f)
+        }
+    val swipeScope = androidx.compose.runtime.rememberCoroutineScope()
+    val swipeAt = with(LocalDensity.current) { 88.dp.toPx() }
+    // Music redesign 3: on phones every song can be swiped right to go on the queue (TV: More > Add to Up next)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val touch =
+        !com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    val swipeQueue =
+        onSwipeQueue ?: if (touch && song.type == org.jellyfin.sdk.model.api.BaseItemKind.AUDIO) {
+            {
+                swipeScope.launch {
+                    com.github.damontecres.wholphin.services
+                        .musicService(context)
+                        .addToUpNext(song)
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Added \"${song.title.orEmpty()}\" to the queue")
+                }
+            }
+        } else {
+            null
+        }
+    val onSwipe = androidx.compose.runtime.rememberUpdatedState(swipeQueue)
+    val swipeMod =
+        if (swipeQueue == null) {
+            Modifier
+        } else {
+            Modifier
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val far = swipe.value >= swipeAt
+                            if (far) onSwipe.value?.invoke()
+                            swipeScope.launch { swipe.animateTo(0f) }
+                        },
+                        onDragCancel = { swipeScope.launch { swipe.animateTo(0f) } },
+                    ) { change, dx ->
+                        change.consume()
+                        swipeScope.launch { swipe.snapTo((swipe.value + dx).coerceIn(0f, swipeAt * 1.3f)) }
+                    }
+                }.graphicsLayer { translationX = swipe.value }
+        }
+
     val coverPx = with(LocalDensity.current) { 44.dp.roundToPx() }
     val cover = remember(song.id, withCover) { if (withCover) imageUrlService.musicCover(song, coverPx) else null }
     Surface(
@@ -483,6 +536,7 @@ fun SongRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .then(swipeMod)
                 .onFocusChanged { if (it.isFocused) onFocus?.invoke() },
     ) {
         Row(
