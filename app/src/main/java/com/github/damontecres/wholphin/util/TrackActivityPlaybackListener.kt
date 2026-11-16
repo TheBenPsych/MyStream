@@ -127,6 +127,10 @@ class TrackActivityPlaybackListener(
         }
         val after = afterStopped
         afterStopped = null
+        // Benflix (Idea Box 25): the people ticked under "Also counts for", read now before the player forgets them
+        val alsoFor =
+            com.github.damontecres.wholphin.services.AlsoCountsFor.chosen.value
+        val durationMs = player.duration
         launch("reportPlaybackStopped") {
             try {
                 getState.invoke()?.let { state ->
@@ -142,6 +146,13 @@ class TrackActivityPlaybackListener(
                             playSessionId = state.playSessionId,
                             liveStreamId = state.liveStreamId,
                         ),
+                    )
+                    com.github.damontecres.wholphin.services.AlsoCountsFor.copyTo(
+                        api = api,
+                        people = alsoFor,
+                        itemId = state.itemId,
+                        positionMs = position.inWholeMilliseconds,
+                        durationMs = durationMs,
                     )
                 }
             } finally {

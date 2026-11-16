@@ -34,6 +34,8 @@ data class ServerGame(
     val bigKids: Boolean = false,
     /** How well loved it is, 0 to 100, from RomM's IGDB ratings (0 if unknown) */
     val rating: Double = 0.0,
+    /** Idea Box 25: how many can play at once (0 = one, or not known) */
+    val players: Int = 0,
 )
 
 /** One console and its games, e.g. "Nintendo 64" */
@@ -283,6 +285,7 @@ class GameLibraryClient
                                 kids = g.optBoolean("kids", false),
                                 bigKids = g.optBoolean("bigkids", g.optBoolean("kids", false)),
                                 rating = g.optDouble("rating", 0.0).takeIf { !it.isNaN() } ?: 0.0,
+                                players = g.optInt("players", 0),
                             )
                         },
                 )

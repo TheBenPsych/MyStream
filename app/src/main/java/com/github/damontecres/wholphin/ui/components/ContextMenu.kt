@@ -308,6 +308,15 @@ fun ContextMenu(
                     } else {
                         null
                     },
+                onKidsChoice =
+                    if (markUpToViewModel.isAdmin &&
+                        !com.github.damontecres.wholphin.services.KidsMode.isActive &&
+                        item.type in KIDS_CHOICE_TYPES
+                    ) {
+                        { adminTitle.openKids(item.id) }
+                    } else {
+                        null
+                    },
                 onReportProblem = {
                     val title = item.title ?: item.name ?: "this"
                     chooseVersion =
@@ -435,6 +444,10 @@ fun ContextMenu(
     }
 }
 
+/** Titles the "Kids profile" choice is offered on (an episode or season opens its show) */
+private val KIDS_CHOICE_TYPES =
+    setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.SEASON, BaseItemKind.EPISODE)
+
 private fun buildContextMenuItems(
     resources: Resources,
     contextMenu: ContextMenu.ForBaseItem,
@@ -457,6 +470,7 @@ private fun buildContextMenuItems(
     onRefreshInfo: (() -> Unit)? = null,
     onChangePoster: (() -> Unit)? = null,
     onFileDetails: (() -> Unit)? = null,
+    onKidsChoice: (() -> Unit)? = null,
 ): List<DialogItem> =
     buildList {
         // Songs should not show Go to
@@ -692,6 +706,17 @@ private fun buildContextMenuItems(
                     BenflixIcon.IMAGE.vector,
                     dismissOnClick = false,
                     onClick = onChangePoster,
+                ),
+            )
+        }
+        // Benflix (admins, Idea Box 25): let a title into Kids, hide it, or put it on the Kids home
+        if (onKidsChoice != null) {
+            add(
+                DialogItem(
+                    "Kids profile",
+                    BenflixIcon.STAR.vector,
+                    dismissOnClick = false,
+                    onClick = onKidsChoice,
                 ),
             )
         }

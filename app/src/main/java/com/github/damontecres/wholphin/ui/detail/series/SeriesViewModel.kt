@@ -173,6 +173,8 @@ class SeriesViewModel
                     val guide = parentsGuide.guideFor(series.data)
                     if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
                 }
+                // Benflix (Idea Box 25): "Catch me up" after a break from the show
+                viewModelScope.launchIO { loadCatchUp(series) }
                 // Benflix "Did you know" facts that cycle on the page
                 viewModelScope.launchIO {
                     val facts = funFacts.forItem(series)
@@ -442,6 +444,81 @@ class SeriesViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not refresh episodes for %s", seriesId)
+                }
+            }
+        }
+
+        /**
+         * Benflix (Idea Box 25) "Catch me up": when the last episode was watched three weeks ago or more (and the show
+         * isn't finished), the page offers a short reminder of the last three episodes watched. Nothing past them.
+         */
+        private suspend fun loadCatchUp(series: BaseItem) {
+            if (series.played) return
+            val userId = serverRepository.currentUser?.id ?: return
+            try {
+                val recent =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                parentId = series.id,
+                                recursive = true,
+                                includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                fields = listOf(ItemFields.OVERVIEW),
+                                enableUserData = true,
+                                enableImages = false,
+                                limit = CATCH_UP_LOOK,
+                            ),
+                        ).content.items
+                        .filter { it.userData?.lastPlayedDate != null }
+                val newest = recent.firstOrNull()?.userData?.lastPlayedDate ?: return
+                if (newest.isAfter(
+                        java.time.LocalDateTime
+                            .now()
+                            .minusDays(CATCH_UP_AFTER_DAYS),
+                    )
+                ) {
+                    return
+                }
+                val lines =
+                    recent
+                        .filter { it.userData?.played == true }
+                        .take(CATCH_UP_EPISODES)
+                        .reversed()
+                        .map { ep ->
+                            CatchUpLine(
+                                number =
+                                    if (ep.parentIndexNumber == 0) {
+                                        "Special"
+                                    } else {
+                                        "S${ep.parentIndexNumber ?: 1} E${ep.indexNumber ?: 0}"
+                                    },
+                                name = ep.name.orEmpty(),
+                                story = shortStory(ep.overview),
+                            )
+                        }
+                if (lines.isNotEmpty()) _state.update { it.copy(catchUp = lines) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Catch me up")
+            }
+        }
+
+        /** The first two sentences of an episode's story, so the list stays short */
+        private fun shortStory(overview: String?): String {
+            val text = overview?.trim().orEmpty()
+            if (text.isEmpty()) return "No story for this one."
+            val sentences = Regex("(?<=[.!?])\\s+").split(text)
+            return sentences.take(2).joinToString(" ").take(CATCH_UP_CHARS).let {
+                if (it.length < text.length &&
+                    !it.endsWith(".")
+                ) {
+                    "$it…"
+                } else {
+                    it
                 }
             }
         }
@@ -1156,4 +1233,19 @@ data class SeriesState(
     val parentsGuide: List<ParentsGuideLine> = emptyList(),
     /** Benflix "Did you know" facts about this title (empty = none, so the spot isn't shown) */
     val facts: List<String> = emptyList(),
+    /** Benflix (Idea Box 25) "Catch me up": the last episodes watched, oldest first (empty = no button) */
+    val catchUp: List<CatchUpLine> = emptyList(),
 )
+
+/** One line of "Catch me up": "S2 E3", the episode's name and its short story */
+data class CatchUpLine(
+    val number: String,
+    val name: String,
+    val story: String,
+)
+
+/** Catch me up: how far back to look, after how many days away, and how many episodes to show */
+private const val CATCH_UP_LOOK = 8
+private const val CATCH_UP_AFTER_DAYS = 21L
+private const val CATCH_UP_EPISODES = 3
+private const val CATCH_UP_CHARS = 220

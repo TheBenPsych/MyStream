@@ -511,6 +511,7 @@ const movieMore = (it) => {
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     ids.Imdb ? { label: "Open on IMDb", icon: "info", href: `https://www.imdb.com/title/${esc(ids.Imdb)}`, blank: true } : null,
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
+    B.me.admin && !B.me.kids && B.kidsChoice ? { label: "Kids profile", icon: "star", youOnly: true, onClick: () => B.kidsChoice(it) } : null,
   ]);
 };
 // Audio + subtitles panel before playing
@@ -530,6 +531,28 @@ B.trackPicker = (it, done) => {
     if (x.dataset.s != null) s = +x.dataset.s;
     if (x.hasAttribute("data-go")) { B.closeAll(); return done(a, s); }
     p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>` + draw();
+  };
+};
+
+// Idea Box 25 "Catch me up": back on a show after three weeks or more (and not finished)? A button next to Play shows
+// the stories of the last three episodes watched, never anything past them. Same as the TV and phone.
+B.catchUp = async (show, target, nav) => {
+  if ((show.UserData || {}).Played) return;
+  const u = B.uid();
+  const list = await B.get(`/Items?userId=${u}&ParentId=${show.Id}&Recursive=true&IncludeItemTypes=Episode&SortBy=DatePlayed&SortOrder=Descending&Fields=Overview&EnableImages=false&Limit=8`)
+    .then((r) => (r.Items || []).filter((e) => e.UserData && e.UserData.LastPlayedDate)).catch(() => []);
+  if (!list.length || !B.alive(nav)) return;
+  if (Date.now() - new Date(list[0].UserData.LastPlayedDate) < 21 * 86400000) return;
+  const eps = list.filter((e) => e.UserData.Played).slice(0, 3).reverse();
+  const first = $(".tp .btns > :first-child");
+  if (!eps.length || !first) return;
+  const short = (t) => { const x = String(t || "").trim(); if (!x) return "No story for this one."; const two = x.split(/(?<=[.!?])\s+/).slice(0, 2).join(" "); return two.length > 220 ? two.slice(0, 220) + "…" : two; };
+  first.insertAdjacentHTML("afterend", `<button class="btn big" id="bCatch">${I("info")} <span>Catch me up</span></button>`);
+  $("#bCatch").onclick = () => {
+    const p = B.side(`<h3>Where you left off</h3><p class="dim">${esc(show.Name)}</p>
+      ${eps.map((e) => `<div class="opt" style="display:block;cursor:default"><b>${esc(e.ParentIndexNumber === 0 ? "Special" : `S${e.ParentIndexNumber} E${e.IndexNumber}`)} · ${esc(e.Name || "")}</b><small style="display:block;white-space:normal">${esc(short(e.Overview))}</small></div>`).join("")}
+      ${target ? `<div class="acts" style="margin-top:16px"><a class="btn white" href="#/play/${target.Id}?resume=1">${I("play")} Play S${target.ParentIndexNumber} E${target.IndexNumber}</a></div>` : ""}`);
+    p.onclick = (e) => { if (e.target.closest("a.btn")) B.closeAll(); };
   };
 };
 
@@ -589,12 +612,14 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   });
   B.tpFacts(it, tp.pane("tpFacts"), nav);
   B.facts(it).then((html) => tp.setStoryExtra(html));
+  B.catchUp(it, target, nav);
   $("#bMore").onclick = () => B.tpMore(it.Name, [
     { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
     B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
     !B.lobby || !B.lobby.allowed() || !target ? null : { label: `Watch S${target.ParentIndexNumber} E${target.IndexNumber} together in the Lobby`, icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: Object.assign({ OfficialRating: it.OfficialRating }, target, target.OfficialRating ? {} : { OfficialRating: it.OfficialRating }), pos: target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? target.UserData.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
+    B.me.admin && !B.me.kids && B.kidsChoice ? { label: "Kids profile", icon: "star", youOnly: true, onClick: () => B.kidsChoice(it) } : null,
   ]);
   let episodes = [], group = 0;
   const drawEps = () => {

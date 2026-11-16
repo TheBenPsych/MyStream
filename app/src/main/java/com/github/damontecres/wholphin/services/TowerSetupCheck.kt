@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 9
+            const val SETUP_NEEDED = 10
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =

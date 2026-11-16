@@ -200,7 +200,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 9
+SETUP_VERSION = 10
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -601,6 +601,12 @@ def kids_list_path(jf_path, big):
     names = {k.lower(): v for k, v in params}
     if "maxofficialrating" not in names:
         params.append(("maxOfficialRating", "PG-13" if big else "PG"))
+    # Ben's "Kids profile: Let it through / Hide it" choice is the title's custom rating, so ask for it too
+    fkey = next((k for k, _ in params if k.lower() == "fields"), None)
+    if fkey is None:
+        params.append(("Fields", "CustomRating"))
+    elif "customrating" not in names.get("fields", "").lower():
+        params = [(k, v + ",CustomRating" if k == fkey else v) for k, v in params]
     types = names.get("includeitemtypes")
     if types is not None and "episode" not in types.lower() and "season" not in types.lower() and "hasparentalrating" not in names:
         params.append(("hasParentalRating", "true"))
@@ -608,8 +614,12 @@ def kids_list_path(jf_path, big):
 
 
 def _kids_rating(item):
-    r = item.get("OfficialRating")
-    return str(r).strip() or None if r else None
+    """Ben's own choice (custom rating) first, else the official rating"""
+    for key in ("CustomRating", "OfficialRating"):
+        r = item.get(key)
+        if r and str(r).strip():
+            return str(r).strip()
+    return None
 
 
 def kids_filter(data, token, device_id, big):
@@ -627,7 +637,7 @@ def kids_filter(data, token, device_id, big):
                 if sid and sid not in _kids_series:
                     missing.add(sid)
     if missing:
-        status, body, _ = jellyfin_call("GET", "/Items?ids=" + ",".join(sorted(missing)), token=token, device_id=device_id)
+        status, body, _ = jellyfin_call("GET", "/Items?Fields=CustomRating&ids=" + ",".join(sorted(missing)), token=token, device_id=device_id)
         if status == 200:
             for it in (json.loads(body).get("Items") or []):
                 _kids_series[str(it.get("Id"))] = _kids_rating(it) or ""
@@ -718,6 +728,7 @@ def load_games():
                     "kids": kids_safe(g),
                     "bigkids": bigkids_safe(g),
                     "rating": rating_of(g),
+                    "players": players_of(g),
                 }
             )
             if kids_safe(g):
@@ -775,6 +786,20 @@ def rating_of(g):
         elif r <= 10:
             r *= 10
         return round(min(r, 100.0), 1)
+    return 0
+
+
+def players_of(g):
+    """Idea Box 25 "Games for two": how many people can play at once (0 = one, or unknown). RomM gives a
+    player count like "1-4" (ScreenScraper) or game modes like "Co-operative" / "Split screen" (IGDB)."""
+    m = g.get("metadatum") or {}
+    count = str(m.get("player_count") or g.get("player_count") or "")
+    nums = [int(n) for n in re.findall(r"\d+", count)]
+    if nums and max(nums) >= 2:
+        return min(max(nums), 8)
+    modes = " ".join(str(x.get("name") if isinstance(x, dict) else x) for x in (m.get("game_modes") or g.get("game_modes") or [])).lower()
+    if any(w in modes for w in ("multiplayer", "co-operative", "cooperative", "split screen", "split-screen")):
+        return 2
     return 0
 
 

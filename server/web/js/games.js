@@ -26,7 +26,7 @@ const cover = (g) => (g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "");
 const playableHere = (c) => !!EJS_CORES[c.slug];
 const gameCard = (g, sub) => {
   B.items["g" + g.id] = g;
-  return `<a class="poster gm" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im">${cover(g) ? `<img class="art" src="${cover(g)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--games)"><span class="nt">${esc(g.name)}</span></div>`}</div><div class="cap"><span class="nm">${esc(g.name)}</span><small>${esc(sub || g.console || "")}</small></div></a>`;
+  return `<a class="poster gm" href="#/game/${g.id}" data-id="g${g.id}" title="${esc(g.name)}"><div class="im" style="position:relative">${g.players >= 2 ? `<span class="pbadge" style="position:absolute;top:6px;left:6px;z-index:1;background:#fff;color:#000;font-size:12px;padding:2px 8px">${g.players}P</span>` : ""}${cover(g) ? `<img class="art" src="${cover(g)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--games)"><span class="nt">${esc(g.name)}</span></div>`}</div><div class="cap"><span class="nm">${esc(g.name)}</span><small>${esc(sub || g.console || "")}</small></div></a>`;
 };
 const favKey = () => "benflix.gamefavs." + B.me.id;
 const favs = () => loadJson(favKey(), []);
@@ -50,6 +50,8 @@ B.route(/^\/games$/, async (m, nav) => {
   $("#rows").innerHTML = text ? B.row(`Games matching “${B.q("q")}”`, all.filter((g) => g.name.toLowerCase().includes(text)).slice(0, 60).map((g) => gameCard(g))) || `<div class="wrap empty">No games match that.</div>` : [
     B.row("Continue playing", cont.map((g) => gameCard(g))),
     B.row("Favourites", fav.map((g) => gameCard(g))),
+    // Idea Box 25: the best-loved games two or more can play at once
+    B.row("Games for two", all.filter((g) => g.players >= 2).sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20).map((g) => gameCard(g))),
     all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin" style="white-space:normal;max-width:100%">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
     `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end"><span class="tname">${esc(c.name)}</span><small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
     B.row("Arcade", arcade.slice(0, 30).map((g) => gameCard(g))),
@@ -74,17 +76,19 @@ B.route(/^\/console\/([^?]+)/, async (m, nav) => {
   if (!c) return B.go("#/games");
   const games = c.games.map((g) => Object.assign({ console: c.name, slug }, g));
   B.page().innerHTML = B.top("Games", DOORS.games.color) + `<div class="wrap" style="padding-bottom:0"><div class="h1">${esc(c.name)}</div></div>
-    <div class="gridbar" style="--accent:${DOORS.games.color}"><input class="search-in" id="cq" placeholder="Search ${esc(c.name)}"></div><div class="grid-wrap"><div class="grid-body" id="cg"></div></div>`;
+    <div class="gridbar" style="--accent:${DOORS.games.color}"><input class="search-in" id="cq" placeholder="Search ${esc(c.name)}">${games.some((g) => g.players >= 2) ? `<button class="chip" id="cTwo">2 players</button>` : ""}</div><div class="grid-wrap"><div class="grid-body" id="cg"></div></div>`;
   B.wireTop();
   const draw = (t) => {
     let html = "", last = null;
-    games.filter((g) => !t || g.name.toLowerCase().includes(t)).forEach((g) => {
+    games.filter((g) => (!t || g.name.toLowerCase().includes(t)) && (!twoOnly || g.players >= 2)).forEach((g) => {
       const h = /[a-z]/i.test(g.name[0]) ? g.name[0].toUpperCase() : "#";
       if (h !== last) { html += (last ? "</div>" : "") + `<div class="grid-head">${h}</div><div class="grid">`; last = h; }
       html += gameCard(g, g.year || "");
     });
     $("#cg").innerHTML = html ? html + "</div>" : `<div class="empty">No games match that.</div>`;
   };
+  let twoOnly = false;
+  if ($("#cTwo")) $("#cTwo").onclick = (e) => { twoOnly = !twoOnly; e.currentTarget.classList.toggle("on", twoOnly); draw($("#cq").value.toLowerCase()); };
   $("#cq").oninput = (e) => { $("#cBest") && ($("#cBest").hidden = !!e.target.value); draw(e.target.value.toLowerCase()); };
   draw("");
   // "Best on <console>": the 10 best-loved games, from RomM's ratings (only when at least 5 are rated)

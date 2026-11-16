@@ -133,6 +133,54 @@ class ServerCareViewModel
             }
         }
 
+        /** Idea Box 25 "New sign-in alert": family accounts signed in on a device Tower hasn't seen before */
+        private val _signins = MutableStateFlow<List<NewSignIn>>(emptyList())
+        val signins: StateFlow<List<NewSignIn>> = _signins
+
+        fun loadSignins() {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val items = tower.care("signins").optJSONArray("items") ?: JSONArray()
+                    _signins.value =
+                        (0 until items.length())
+                            .mapNotNull { i ->
+                                val j = items.optJSONObject(i) ?: return@mapNotNull null
+                                NewSignIn(
+                                    id = j.optString("id"),
+                                    user = j.optString("user", "Someone"),
+                                    device = j.optString("device", "A device"),
+                                    app = j.optString("app"),
+                                    at = j.optDouble("at", 0.0).toLong(),
+                                    away = if (j.isNull("away")) null else j.optBoolean("away"),
+                                )
+                            }.filter { it.id.isNotBlank() }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    // Older Tower (setup not re-run yet): just no card
+                    Timber.w(ex, "Server page: new sign-ins")
+                }
+            }
+        }
+
+        /** "That's fine" (keep) or "Sign it out" (forget the device so it needs the password again) */
+        fun answerSignin(
+            row: NewSignIn,
+            signOut: Boolean,
+        ) {
+            _signins.value = _signins.value.filterNot { it.id == row.id }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    tower.carePost(if (signOut) "signins/out" else "signins/ok", JSONObject().put("id", row.id))
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Server page: answer sign-in")
+                    loadSignins()
+                }
+            }
+        }
+
         fun loadLibrary() {
             viewModelScope.launch(WholphinDispatchers.IO) {
                 try {
@@ -534,6 +582,29 @@ fun ServerCareDialogs(viewModel: ServerCareViewModel) {
     } else {
         notice?.let {
             ConfirmDialog(title = "Tidy-up", body = it, onCancel = viewModel::clearNotice, onConfirm = viewModel::clearNotice)
+        }
+    }
+}
+
+/** A family account signed in on a new device (Server page Overview, "Needs you") */
+data class NewSignIn(
+    val id: String,
+    val user: String,
+    val device: String,
+    val app: String,
+    /** Seconds since 1970 (0 when Jellyfin didn't say) */
+    val at: Long,
+    val away: Boolean?,
+) {
+    /** "5 minutes ago", "3 hours ago", "2 days ago" */
+    fun whenWords(now: Long = System.currentTimeMillis() / 1000): String? {
+        if (at <= 0) return null
+        val mins = ((now - at) / 60).coerceAtLeast(0)
+        return when {
+            mins < 1 -> "just now"
+            mins < 60 -> "$mins minute${if (mins == 1L) "" else "s"} ago"
+            mins < 60 * 24 -> (mins / 60).let { "$it hour${if (it == 1L) "" else "s"} ago" }
+            else -> (mins / (60 * 24)).let { "$it day${if (it == 1L) "" else "s"} ago" }
         }
     }
 }

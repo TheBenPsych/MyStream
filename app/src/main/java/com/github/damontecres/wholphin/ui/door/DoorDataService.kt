@@ -448,6 +448,21 @@ class DoorDataService
                 }
             }
 
+        /** Idea Box 25: titles Ben put on the Kids home ("Picked for you"). Kids only gets back the ones it may see. */
+        suspend fun kidsPicks(userId: UUID): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    userId = userId,
+                    tags = listOf(KidsMode.PICK_TAG),
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    sortBy = listOf(ItemSortBy.SORT_NAME),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = 30,
+                ),
+            )
+
         /** These titles, in this order (ones that aren't there any more are left out) */
         suspend fun byIds(
             userId: UUID,

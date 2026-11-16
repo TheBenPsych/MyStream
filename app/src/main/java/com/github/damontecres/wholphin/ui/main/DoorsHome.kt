@@ -266,9 +266,10 @@ class HomeDoorsViewModel
                     val cards =
                         if (kind == FamilyKind.GUEST) popularCards(userId) else keepWatchingCards(userId)
                     val lines = if (kind == FamilyKind.KIDS) kidsDoorLines(userId) else emptyMap()
+                    val picks = if (kind == FamilyKind.KIDS) doorData.kidsPicks(userId).map { card(it) } else emptyList()
                     // Only if this profile is still the one on screen
                     if (familyKey(kind) != key) return@launchIO
-                    val data = FamilyHomeData(key = key, cards = cards, lines = lines, loaded = true)
+                    val data = FamilyHomeData(key = key, cards = cards, picks = picks, lines = lines, loaded = true)
                     familyMemory[key] = data
                     _family.value = data
                 } catch (ex: CancellationException) {

@@ -443,6 +443,28 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     B.toast(`Trying a lighter picture: ${QUALITY_WORDS[next]}. Change it back in Settings > Quality.`);
     load(v.currentTime).catch((err) => msg(err.message));
   };
+  // ---------- Idea Box 25 "Also counts for": someone watching with Ben on his profile keeps up too ----------
+  // Only the main profile (Jellyfin only lets an admin save someone else's spot). The ticks last until the player is left.
+  const alsoOk = !!(B.me && B.me.admin && !B.me.kids && (it.Type === "Movie" || it.Type === "Episode"));
+  B.alsoFor = B.alsoFor || [];
+  const drawAlso = async (p) => {
+    const box = $("[data-alsolist]", p); if (!box) return;
+    if (!B.familyUsers) B.familyUsers = await B.jf("GET", "/Users?isDisabled=false").then((list) => (list || []).filter((x) => x.Id !== B.uid())).catch(() => null);
+    if (!box.isConnected) return;
+    const list = B.familyUsers || [];
+    box.innerHTML = list.length ? list.map((x) => `<button class="opt ${B.alsoFor.some((y) => y.id === x.Id) ? "on" : ""}" data-also="${esc(x.Id)}" data-name="${esc(x.Name || "")}">${esc(x.Name || "Someone")}</button>`).join("") : '<p class="dim">There are no other profiles on Benflix yet.</p>';
+  };
+  const copyToAlso = (posTicks, len) => {
+    const people = alsoOk ? B.alsoFor : [];
+    if (!people.length || posTicks <= 0) return;
+    const finished = len > 0 && posTicks / B.TICKS >= len * 0.9;
+    people.forEach((x) => {
+      const done = finished
+        ? B.jf("POST", `/UserPlayedItems/${it.Id}?userId=${enc(x.id)}`)
+        : B.jf("POST", `/UserItems/${it.Id}/UserData?userId=${enc(x.id)}`, { PlaybackPositionTicks: posTicks, LastPlayedDate: new Date().toISOString() });
+      done.catch(() => {});
+    });
+  };
   const openPanel = (focus) => {
     if ($(".player .panel")) return $(".player .panel").remove();
     const streams = (source && source.MediaStreams) || [];
@@ -459,6 +481,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <h4>Quality</h4>${QUALITY_STEPS.map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${QUALITY_WORDS[k]}</button>`).join("")}
       <h4>Play speed</h4><div class="delay-row">${SPEEDS.map((r) => `<button class="opt ${v.playbackRate === r ? "on" : ""}" data-speed="${r}">${r === 1 ? "Normal" : r + "×"}</button>`).join("")}</div>
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
+      ${alsoOk ? `<h4>Also counts for</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Tick who's watching with you. When this ends, it's marked watched for them too.</p><div data-alsolist><p class="dim">Looking for family profiles…</p></div>` : ""}
       <h4>Fix a problem</h4>
       <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
       <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
@@ -469,12 +492,20 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
     pl.classList.add("ui");
+    if (alsoOk) drawAlso(p);
     if (focus === "subs") { const on = $(".opt.on[data-s]", p) || $("[data-s]", p); if (on) on.focus(); }
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
       const fx = e.target.closest("[data-fix]"), dl = e.target.closest("[data-delay]");
       if (dl) return nudgeSubs(+dl.dataset.delay);
+      const al = e.target.closest("[data-also]");
+      if (al) {
+        const id = al.dataset.also, had = B.alsoFor.some((x) => x.id === id);
+        B.alsoFor = had ? B.alsoFor.filter((x) => x.id !== id) : B.alsoFor.concat([{ id, name: al.dataset.name }]);
+        al.classList.toggle("on", !had);
+        return;
+      }
       const sp = e.target.closest("[data-speed]");
       if (sp) { setSpeed(+sp.dataset.speed); $$("[data-speed]", p).forEach((b) => b.classList.toggle("on", b === sp)); return B.toast("Play speed: " + (+sp.dataset.speed === 1 ? "normal" : sp.dataset.speed + "×")); }
       if (fx) { p.remove(); return fixSkip(fx.dataset.fix); }
@@ -611,13 +642,14 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (stopped) return;
     stopped = true;
     const pos = Math.round(v.currentTime * B.TICKS);
-    report("/Stopped", { PositionTicks: pos });
+    const len = v.duration > 0 ? v.duration : dur;
+    report("/Stopped", { PositionTicks: pos }).then(() => copyToAlso(pos, len));
     if (method !== "DirectPlay" && B.me) B.jf("DELETE", `/Videos/ActiveEncodings?deviceId=${enc("benflix-web-" + B.me.device)}&playSessionId=${enc(playSession || "")}`).catch(() => {});
     WT.send();
     if (hls) hls.destroy();
     v.removeAttribute("src"); try { v.load(); } catch (e) {}
   };
-  const leave = () => { finish(); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
+  const leave = () => { finish(); B.alsoFor = []; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
   const unload = () => {
     if (stopped || !B.me) return;
     fetch("api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },

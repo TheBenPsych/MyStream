@@ -87,6 +87,8 @@ data class FamilyCard(
 data class FamilyHomeData(
     val key: String = "",
     val cards: List<FamilyCard> = emptyList(),
+    /** Kids only (Idea Box 25): titles Ben put on the Kids home, shown first as "Picked for you" */
+    val picks: List<FamilyCard> = emptyList(),
     val lines: Map<BenflixDoor, String> = emptyMap(),
     val loaded: Boolean = false,
 )
@@ -227,7 +229,8 @@ fun FamilyHome(
     val row: @Composable (posterHeight: Dp) -> Unit = { posterHeight ->
         Column(Modifier.graphicsLayer { alpha = listAlpha() }) {
             Text(
-                text = rowTitle,
+                // Ben's picks come first in the one row, so the doors keep their size on the TV
+                text = if (data.picks.isNotEmpty()) "Picked for you" else rowTitle,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.rowName * scale,
                 fontWeight = FontWeight.Bold,
@@ -235,14 +238,33 @@ fun FamilyHome(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 10.dp),
             )
-            if (data.loaded && data.cards.isEmpty()) {
+            if (data.loaded && data.cards.isEmpty() && data.picks.isEmpty()) {
                 Text(text = empty, color = BenflixColors.Soft, fontSize = BenflixType.body * scale)
             } else {
+                val pickIds = data.picks.map { it.id }.toSet()
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(end = 24.dp),
                 ) {
-                    items(data.cards, key = { it.id }) { card ->
+                    items(data.picks, key = { "pick-" + it.id }) { card ->
+                        FamilyPoster(card = card, height = posterHeight, scale = scale, onClick = { onCard(card) })
+                    }
+                    val rest = data.cards.filter { it.id !in pickIds }
+                    if (data.picks.isNotEmpty() && rest.isNotEmpty()) {
+                        // A small label where Keep watching starts
+                        item(key = "keep-label") {
+                            Text(
+                                text = rowTitle,
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.small * scale,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.width(70.dp).padding(top = posterHeight / 2 - 12.dp),
+                            )
+                        }
+                    }
+                    items(if (data.picks.isEmpty()) data.cards else rest, key = { it.id }) { card ->
                         FamilyPoster(card = card, height = posterHeight, scale = scale, onClick = { onCard(card) })
                     }
                 }

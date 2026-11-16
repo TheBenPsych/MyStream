@@ -2257,6 +2257,17 @@ class PlaybackViewModel
             Timber.v("release")
             disconnectPlayer()
             activityListener = null
+            // Benflix (Idea Box 25): "Also counts for" ticks last only while the player is open
+            com.github.damontecres.wholphin.services.AlsoCountsFor
+                .clear()
+        }
+
+        /** Benflix (Idea Box 25): reads the family profiles for "Also counts for" */
+        fun loadAlsoCountsFamily() {
+            viewModelScope.launchIO {
+                com.github.damontecres.wholphin.services.AlsoCountsFor
+                    .loadFamily(api, serverRepository.currentUser?.id)
+            }
         }
 
         fun subscribeToWebSocket() {

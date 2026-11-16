@@ -5,10 +5,12 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemRefreshApi
+import org.jellyfin.sdk.api.client.extensions.itemUpdateApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -147,6 +150,140 @@ class AdminTitleViewModel
             }
         }
 
+        /** Ben's "Kids profile" choice for the title the hold menu was opened on */
+        private val _kids = MutableStateFlow<KidsChoice?>(null)
+        val kids: StateFlow<KidsChoice?> = _kids
+
+        /** Opens the Kids profile choices. An episode or season opens its show, since the choice is for the whole show. */
+        fun openKids(itemId: UUID) {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    _kids.value = readKids(itemId)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not read Kids choice")
+                    showToast(context, "Couldn't open that title.")
+                }
+            }
+        }
+
+        private suspend fun readKids(itemId: UUID): KidsChoice {
+            val userId = serverRepository.currentUser?.id
+            var dto = api.userLibraryApi.getItem(itemId, userId).content
+            if (dto.type == BaseItemKind.EPISODE || dto.type == BaseItemKind.SEASON) {
+                dto.seriesId?.let { dto = api.userLibraryApi.getItem(it, userId).content }
+            }
+            return KidsChoice(
+                id = dto.id,
+                name = dto.name.orEmpty(),
+                show = dto.type == BaseItemKind.SERIES,
+                rule =
+                    KidsMode.ruleOf(dto.customRating),
+                picked =
+                    dto.tags.orEmpty().any {
+                        it.equals(
+                            KidsMode.PICK_TAG,
+                            ignoreCase = true,
+                        )
+                    },
+                rating = dto.officialRating?.takeIf { it.isNotBlank() },
+            )
+        }
+
+        fun closeKids() {
+            _kids.value = null
+        }
+
+        /** Saves Ben's choice as the title's custom rating. Jellyfin passes it on to every season and episode. */
+        fun setKidsRule(
+            choice: KidsChoice,
+            rule: KidsMode.TitleRule,
+        ) {
+            _kids.value = null
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val words =
+                    try {
+                        saveKids(choice.id, rule, null)
+                        when (rule) {
+                            KidsMode.TitleRule.LET_THROUGH -> {
+                                "Kids and Big kids can now see ${choice.name}."
+                            }
+
+                            KidsMode.TitleRule.HIDE -> {
+                                "${choice.name} is now hidden from Kids and Big kids."
+                            }
+
+                            KidsMode.TitleRule.FOLLOW -> {
+                                "${choice.name} follows its age rating again."
+                            }
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save Kids choice")
+                        "Couldn't save that. Try again in a moment."
+                    }
+                showToast(context, words, Toast.LENGTH_LONG)
+            }
+        }
+
+        /**
+         * Puts a title on (or takes it off) the Kids home's "Picked for you" row. A title Kids can't see yet is let through
+         * at the same time, so it really shows up.
+         */
+        fun setKidsPick(
+            choice: KidsChoice,
+            on: Boolean,
+        ) {
+            _kids.value = null
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val letIn =
+                    on &&
+                        choice.rule != KidsMode.TitleRule.LET_THROUGH &&
+                        (choice.rule == KidsMode.TitleRule.HIDE || !KidsMode.kidsRating(choice.rating))
+                val words =
+                    try {
+                        saveKids(choice.id, if (letIn) KidsMode.TitleRule.LET_THROUGH else null, on)
+                        when {
+                            !on -> "${choice.name} is off the Kids home."
+                            letIn -> "${choice.name} is on the Kids home. It wasn't rated for Kids, so it's let through too."
+                            else -> "${choice.name} is on the Kids home."
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save Kids pick")
+                        "Couldn't save that. Try again in a moment."
+                    }
+                showToast(context, words, Toast.LENGTH_LONG)
+            }
+        }
+
+        /** Changes the custom rating ([rule], when given) and the "Picked for you" tag ([picked], when given) in one save */
+        private suspend fun saveKids(
+            itemId: UUID,
+            rule: KidsMode.TitleRule?,
+            picked: Boolean?,
+        ) {
+            val dto = api.userLibraryApi.getItem(itemId, serverRepository.currentUser?.id).content
+            val show = dto.type == BaseItemKind.SERIES
+            val custom =
+                when (rule) {
+                    null -> dto.customRating
+                    KidsMode.TitleRule.LET_THROUGH -> KidsMode.letThroughRating(show)
+                    KidsMode.TitleRule.HIDE -> KidsMode.hideRating(show)
+                    KidsMode.TitleRule.FOLLOW -> null
+                }
+            val tags =
+                when (picked) {
+                    null -> dto.tags
+                    true -> (dto.tags.orEmpty() + KidsMode.PICK_TAG).distinct()
+                    false -> dto.tags.orEmpty().filterNot { it.equals(KidsMode.PICK_TAG, ignoreCase = true) }
+                }
+            api.itemUpdateApi.updateItem(itemId, dto.copy(customRating = custom, tags = tags))
+        }
+
         fun closeDetails() {
             _details.value = null
         }
@@ -155,6 +292,16 @@ class AdminTitleViewModel
             _fixItem.value = null
         }
     }
+
+/** One title's Kids profile settings, for the hold menu's "Kids profile" choices */
+data class KidsChoice(
+    val id: UUID,
+    val name: String,
+    val show: Boolean,
+    val rule: KidsMode.TitleRule,
+    val picked: Boolean,
+    val rating: String?,
+)
 
 private fun titleOf(dto: BaseItemDto): String =
     if (dto.type == BaseItemKind.EPISODE) {
@@ -204,6 +351,8 @@ fun AdminTitleDialogs(viewModel: AdminTitleViewModel) {
             onConfirm = viewModel::closeDetails,
         )
     }
+    val kids by viewModel.kids.collectAsState()
+    kids?.let { choice -> KidsChoiceDialog(choice, viewModel) }
     fixItem?.let { item ->
         com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
             item = item,
@@ -211,4 +360,52 @@ fun AdminTitleDialogs(viewModel: AdminTitleViewModel) {
             onFixed = viewModel::closeFixMatch,
         )
     }
+}
+
+/** Benflix (Idea Box 25): Ben's "Kids profile" choices for one movie or show */
+@Composable
+private fun KidsChoiceDialog(
+    choice: KidsChoice,
+    viewModel: AdminTitleViewModel,
+) {
+    val ratedOk = KidsMode.kidsRating(choice.rating)
+    val ratingWords = choice.rating?.let { "rated $it" } ?: "no rating"
+    val line: @Composable (String) -> Unit = { androidx.tv.material3.Text(it) }
+    com.github.damontecres.wholphin.ui.components.DialogPopup(
+        showDialog = true,
+        title = "Kids profile: ${choice.name}",
+        dialogItems =
+            listOf(
+                com.github.damontecres.wholphin.ui.components.DialogItem(
+                    headlineContent = { line("Let it through") },
+                    supportingContent = { line("Kids and Big kids can see it") },
+                    selected = choice.rule == KidsMode.TitleRule.LET_THROUGH,
+                    onClick = { viewModel.setKidsRule(choice, KidsMode.TitleRule.LET_THROUGH) },
+                ),
+                com.github.damontecres.wholphin.ui.components.DialogItem(
+                    headlineContent = { line("Hide it") },
+                    supportingContent = { line("Kids and Big kids never see it") },
+                    selected = choice.rule == KidsMode.TitleRule.HIDE,
+                    onClick = { viewModel.setKidsRule(choice, KidsMode.TitleRule.HIDE) },
+                ),
+                com.github.damontecres.wholphin.ui.components.DialogItem(
+                    headlineContent = { line("Follow its age rating") },
+                    supportingContent = {
+                        line(if (ratedOk) "It's $ratingWords, so Kids can see it" else "It's $ratingWords, so Kids can't see it")
+                    },
+                    selected = choice.rule == KidsMode.TitleRule.FOLLOW,
+                    onClick = { viewModel.setKidsRule(choice, KidsMode.TitleRule.FOLLOW) },
+                ),
+                com.github.damontecres.wholphin.ui.components.DialogItemDivider,
+                com.github.damontecres.wholphin.ui.components.DialogItem(
+                    headlineContent = { line(if (choice.picked) "Take off the Kids home" else "Put on the Kids home") },
+                    supportingContent = { line("The \"Picked for you\" row at the top of the Kids home") },
+                    onClick = { viewModel.setKidsPick(choice, !choice.picked) },
+                ),
+            ),
+        onDismissRequest = viewModel::closeKids,
+        dismissOnClick = false,
+        waitToLoad = false,
+        elevation = 3.dp,
+    )
 }

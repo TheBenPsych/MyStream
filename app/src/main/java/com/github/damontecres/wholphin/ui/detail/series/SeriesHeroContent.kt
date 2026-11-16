@@ -110,6 +110,7 @@ fun SeriesHeroContent(
     var showMore by remember { mutableStateOf(false) }
     var showRate by remember { mutableStateOf(false) }
     var held by remember { mutableStateOf<BaseItem?>(null) }
+    var showCatchUp by remember { mutableStateOf(false) }
     val anime = state.subDub != null
     val likes = series.data.userData?.likes
     val trailer = state.trailers.firstOrNull()
@@ -123,6 +124,17 @@ fun SeriesHeroContent(
                     note = state.progress?.words(),
                 ),
             )
+            // Idea Box 25: back after three weeks or more? A quick reminder of the last episodes watched
+            if (state.catchUp.isNotEmpty()) {
+                add(
+                    TitleButton(
+                        label = "Catch me up",
+                        icon = BenflixIcon.INFO,
+                        onClick = { showCatchUp = true },
+                        note = "What happened in the last episodes you watched",
+                    ),
+                )
+            }
             if (state.inlineEpisodes.isNotEmpty()) {
                 add(TitleButton(label = "Episodes", icon = BenflixIcon.LIST, onClick = {}, opensTab = "Episodes"))
             }
@@ -233,6 +245,30 @@ fun SeriesHeroContent(
         big = easy,
         modifier = modifier,
     )
+
+    if (showCatchUp) {
+        BenflixChoiceDialog(
+            title = "Where you left off",
+            subtitle = series.title,
+            choices =
+                state.catchUp.map { line ->
+                    BenflixChoice(
+                        label = listOf(line.number, line.name).filter { it.isNotBlank() }.joinToString(" · "),
+                        note = line.story,
+                        onClick = {},
+                    )
+                } +
+                    BenflixChoice(
+                        label = state.nextUpLabel ?: "Play",
+                        icon = BenflixIcon.PLAY,
+                        onClick = {
+                            showCatchUp = false
+                            actions.playNext()
+                        },
+                    ),
+            onDismissRequest = { showCatchUp = false },
+        )
+    }
 
     if (showMore) {
         TitleMorePanel(

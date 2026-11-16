@@ -63,7 +63,7 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 9;
+const SETUP_NEEDED = 10;
 const SETUP_WAITING = {
   1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
@@ -134,11 +134,12 @@ PAGES.overview = (el) => {
   setupNeed().then((w) => { setupWaiting = w; });
   const draw = async (fresh) => {
     try {
-      const [t, sessions, info, reqs] = await Promise.all([
+      const [t, sessions, info, reqs, signs] = await Promise.all([
         tower(fresh).catch((e) => ({ problems: [e.message] })),
         jf("GET", "/Sessions?activeWithinSeconds=960").catch(() => null),
         jf("GET", "/System/Info").catch(() => null),
         jf("GET", "/JellyfinEnhanced/jellyseerr/request?take=50&filter=pending").catch(() => null),
+        call("GET", "api/admin/care/signins").catch(() => null),
       ]);
       if (current !== "overview") return;
       const watching = (sessions || []).filter((s) => s.NowPlayingItem);
@@ -157,6 +158,14 @@ PAGES.overview = (el) => {
       (t.drives_bad || []).forEach((d) => health.push([d.words.startsWith("Failing") ? "bad" : "warn", `Drive ${d.name}: ${d.words}`, d.where, `<a class="btn small white" href="#/server/tools/drives">Go</a>`]));
       disksFull.forEach((d) => health.push(["warn", `The disk with ${d.name} is nearly full`, `${bytes(d.free)} free`, `<a class="btn small" href="#/server/library/library">Go</a>`]));
       const asks = pending.map((r) => ["warn", (r.media && (r.media.title || r.media.name)) || "A request", `Asked by ${(r.requestedBy && (r.requestedBy.displayName || r.requestedBy.username)) || "someone"}`, `<button class="btn small white" data-rq="${r.id}" data-yes="1">Yes</button><button class="btn small" data-rq="${r.id}">No</button>`]);
+      // Idea Box 25 "New sign-in alert": a family account signed in on a device Tower hasn't seen before
+      const ago = (secs) => {
+        if (!secs) return "";
+        const m = Math.max(0, Math.floor((Date.now() / 1000 - secs) / 60));
+        const say = (n, w) => `${n} ${w}${n === 1 ? "" : "s"} ago`;
+        return m < 1 ? "just now" : m < 60 ? say(m, "minute") : m < 1440 ? say(Math.floor(m / 60), "hour") : say(Math.floor(m / 1440), "day");
+      };
+      const newSigns = ((signs && signs.items) || []).map((n) => ["warn", `New sign-in on ${n.user}'s account`, [n.device, n.away === true ? "away from home" : n.away === false ? "at home" : "", ago(n.at)].filter(Boolean).join(" · "), `<button class="btn small white" data-sign="${esc(n.id)}">That's fine</button><button class="btn small" data-sign="${esc(n.id)}" data-out="1" data-dev="${esc(n.device)}">Sign it out</button>`]);
       const bad = health.some((h) => h[0] === "bad");
       const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
       const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";
@@ -166,7 +175,7 @@ PAGES.overview = (el) => {
       html += `<div class="srv-banner ${level}"><div class="h"><span class="big-dot"></span>${esc(headline)}</div>${reason ? `<div class="r">${esc(reason)}</div>` : ""}
         <div class="pills">${pill(info ? "Jellyfin" : "Jellyfin: not answering", info ? "ok" : "bad")}${pill(down.length ? `Tower: ${down.length} app${down.length === 1 ? "" : "s"} down` : "Tower", down.length ? "bad" : apps.length ? "ok" : "off")}${pill(stuck.length ? `Downloads: ${stuck.length} stuck` : "Downloads", stuck.length ? "warn" : "ok")}${info ? `<span class="dim">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</span>` : ""}</div></div>`;
       if (setupWaiting) html += setupCard(setupWaiting);
-      const needs = health.concat(asks);
+      const needs = health.concat(newSigns, asks);
       html += `<div class="srv-cards">
         <section class="srv-card"><h3>Needs you${needs.length ? ` <span class="cnt">${needs.length}</span>` : ""}</h3>${needs.map((n) => need(...n)).join("") || `<div class="empty">All good! Nothing needs you right now.</div>`}</section>
         <section class="srv-card"><h3>Watching now${watching.length ? ` <span class="cnt">${watching.length}</span>` : ""}</h3>${watching.map((s) => {
@@ -184,7 +193,16 @@ PAGES.overview = (el) => {
     }
   };
   el.onclick = async (e) => {
-    const r = e.target.closest("[data-rq]"), d = e.target.closest("[data-replace]");
+    const r = e.target.closest("[data-rq]"), d = e.target.closest("[data-replace]"), sg = e.target.closest("[data-sign]");
+    if (sg) {
+      const out = !!sg.dataset.out;
+      if (out && !await B.ask(`Sign out ${sg.dataset.dev || "this device"}? It will need the password to come back.`)) return;
+      B.busy(sg, async () => {
+        await call("POST", `api/admin/care/signins/${out ? "out" : "ok"}`, { id: sg.dataset.sign });
+        draw(false);
+        return out ? "Signed it out." : "Okay, it won't show again.";
+      });
+    }
     if (r) {
       const yes = !!r.dataset.yes;
       B.busy(r, async () => {

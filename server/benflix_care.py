@@ -1125,6 +1125,85 @@ def status():
     return {"on": bool(_dir), "ffmpeg": ffmpeg_ok(), "log": list(_log_lines[-20:])}
 
 
+# ---------- Idea Box 25: "New sign-in" alerts on the Server page ----------
+# Every device that has signed in to Jellyfin is remembered. A device Tower hasn't seen before shows on the
+# Server page Overview (who, what device, at home or away) with "That's fine" and "Sign it out".
+KNOWN_DEVICES = "known-devices.json"
+
+
+def _private_ip(ip):
+    ip = str(ip or "").strip().strip("[]")
+    if ip.startswith("::ffff:"):
+        ip = ip[7:]
+    return (
+        ip.startswith(("10.", "192.168.", "127.", "fe80", "fd", "fc", "::1", "100."))
+        or bool(re.match(r"172\.(1[6-9]|2\d|3[01])\.", ip))
+    )
+
+
+def signins():
+    """New devices since Tower last looked. The very first time, every device is taken as already known."""
+    if not _dir:
+        return {"items": []}
+    devices = (_get("/Devices") or {}).get("Items") or []
+    ids = [d.get("Id") for d in devices if d.get("Id")]
+    known = _read(KNOWN_DEVICES)
+    if not isinstance(known, list):
+        _write(KNOWN_DEVICES, sorted(ids))
+        return {"items": []}
+    known = set(known)
+    where = {}
+    try:
+        for s in _get("/Sessions") or []:
+            if s.get("DeviceId") and s.get("RemoteEndPoint"):
+                where[s["DeviceId"]] = not _private_ip(s["RemoteEndPoint"])
+    except CareError:
+        pass
+    items = []
+    for d in devices:
+        if not d.get("Id") or d["Id"] in known:
+            continue
+        items.append(
+            {
+                "id": d["Id"],
+                "user": d.get("LastUserName") or "Someone",
+                "device": d.get("Name") or "A device",
+                "app": d.get("AppName") or "",
+                "at": _when(d.get("DateLastActivity")),
+                "away": where.get(d["Id"]),
+            }
+        )
+    items.sort(key=lambda x: -x["at"])
+    return {"items": items[:10]}
+
+
+def signin_ok(body):
+    """"That's fine": this device won't show again"""
+    dev = str((body or {}).get("id") or "")
+    if not dev:
+        raise CareError(400, "Which device?")
+    known = _read(KNOWN_DEVICES)
+    known = set(known) if isinstance(known, list) else set()
+    known.add(dev)
+    _write(KNOWN_DEVICES, sorted(known))
+    return {"ok": True}
+
+
+def signin_out(body):
+    """"Sign it out": Jellyfin forgets the device, so it has to sign in again with the password"""
+    dev = str((body or {}).get("id") or "")
+    if not dev:
+        raise CareError(400, "Which device?")
+    token = _admin()[0]
+    if not token:
+        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+    status, _, _ = _jf("DELETE", "/Devices?id=" + urllib.parse.quote(dev), token=token)
+    if status not in (200, 204):
+        raise CareError(502, f"Jellyfin couldn't sign that device out ({status}).")
+    log("signed out a device from the Server page")
+    return {"ok": True}
+
+
 def admin_route(method, path, query, read_json):
     """/api/admin/care/... for the Server page. Returns (status, answer) or None when it isn't one."""
     fresh = (query.get("fresh") or ["0"])[0] == "1"
@@ -1142,6 +1221,12 @@ def admin_route(method, path, query, read_json):
             return 200, playtest_ok(m.group(1)) if m.group(2) == "ok" else playtest_again(m.group(1))
         if method == "GET" and path == "/api/admin/care/status":
             return 200, status()
+        if method == "GET" and path == "/api/admin/care/signins":
+            return 200, signins()
+        if method == "POST" and path == "/api/admin/care/signins/ok":
+            return 200, signin_ok(read_json())
+        if method == "POST" and path == "/api/admin/care/signins/out":
+            return 200, signin_out(read_json())
     except CareError as e:
         return e.status, {"error": e.message}
     return None
